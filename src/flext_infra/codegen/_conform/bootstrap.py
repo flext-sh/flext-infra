@@ -218,17 +218,11 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         *,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.CodegenConformSurfaceContract:
-        """Resolve a declared surface without defaulting an invalid input.
+        """Resolve the declared conformance surface to its owned contract.
 
         Returns:
             The contract owned by the declared conformance surface.
-
-        Raises:
-            TypeError: If unsupported codegen conform surface.
         """
-        if not isinstance(surface, c.Infra.CodegenConformSurface):
-            message = f"unsupported codegen conform surface: {surface}"
-            raise TypeError(message)
         return cls._declared_surface_contract(surface, codegen=codegen)
 
     @classmethod

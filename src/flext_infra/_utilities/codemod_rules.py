@@ -193,14 +193,14 @@ class FlextInfraUtilitiesCodemodRules:
     @classmethod
     def _qualified_global_matches(
         cls,
-        value: t.JsonValue,
+        value: t.JsonMapping | t.JsonValue,
         aliases: t.StrMapping,
         local_names: frozenset[str] = frozenset(),
     ) -> t.JsonValue:
         """Preserve native local utility shadows while qualifying provider globals."""
         if isinstance(value, Mapping):
             local = value.get("utils")
-            shadows = local_names | (
+            shadows: frozenset[str] = local_names | (
                 frozenset(local) if isinstance(local, Mapping) else frozenset()
             )
             if isinstance(local, Mapping) and set(aliases.values()).intersection(local):
@@ -1131,11 +1131,12 @@ class FlextInfraUtilitiesCodemodRules:
                 f"ensure-imports entry must be a {{module, name}} mapping, "
                 f"got {type(item).__name__}",
             )
-        unknown = sorted(set(item) - {"module", "name"})
+        entry: t.JsonMapping = item
+        unknown: list[str] = sorted(set(entry) - {"module", "name"})
         if unknown:
             return failure.fail(f"ensure-imports entry has unknown keys {unknown}")
-        module = item.get("module")
-        name = item.get("name")
+        module = entry.get("module")
+        name = entry.get("name")
         if not isinstance(module, str) or not module.strip():
             return failure.fail("ensure-imports entry requires a non-empty module")
         if not isinstance(name, str) or not name.strip():
@@ -1166,8 +1167,9 @@ class FlextInfraUtilitiesCodemodRules:
                 f"ensure-imports must be a list of {{module, name}} mappings, "
                 f"got {type(declared).__name__}",
             )
+        declared_items: t.SequenceOf[t.JsonValue] = declared
         entries: list[m.Infra.CodemodEnsureImport] = []
-        for item in declared:
+        for item in declared_items:
             model = cls._validated_ensure_import_entry(item)
             if model.failure:
                 return failure.from_failure(model)

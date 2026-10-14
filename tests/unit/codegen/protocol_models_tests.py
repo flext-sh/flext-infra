@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, get_type_hints
@@ -179,10 +179,7 @@ def member_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Pat
     _purge_member_modules()
     _write_member(tmp_path)
     # Pytest accepts a path converted with str() and restores it at teardown.
-    prepend = u.type_adapter(Callable[[str], None]).validate_python(
-        monkeypatch.syspath_prepend,
-    )
-    prepend(str(tmp_path / "src"))
+    monkeypatch.syspath_prepend(str(tmp_path / "src"))
     yield tmp_path
     _purge_member_modules()
 

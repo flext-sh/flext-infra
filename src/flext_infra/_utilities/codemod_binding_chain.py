@@ -853,7 +853,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             rows = FlextInfraUtilitiesRopeStructure.logical_statements(source)
             name = expression.rpartition(".")[-1]
             binding = runtime.expression_name(scope, expression)
-            assignment_lines = (
+            assignment_lines: frozenset[int | None] = (
                 frozenset(assignment.get_lineno() for assignment in binding.assignments)
                 if isinstance(binding, p.Infra.RopeAssignedName)
                 else frozenset()

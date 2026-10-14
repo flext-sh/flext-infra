@@ -117,6 +117,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class DeptryScan(m.Value):
         """Native findings bound to the exact settings and report bytes."""
 
+        scanned_files: Annotated[
+            int,
+            m.Field(ge=1, strict=True, description="Native extractor's executed file count"),
+        ]
         venv_bin: Annotated[
             Path,
             m.Field(description="Explicit runtime binary directory owning the scanner"),

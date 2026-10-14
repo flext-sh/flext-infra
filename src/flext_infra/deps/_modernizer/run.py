@@ -11,13 +11,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.deps._modernizer.document import _RenderPolicy
+from flext_infra.deps._modernizer.document import RenderPolicy
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
 
     from flext_infra import p
-    from flext_infra.deps._modernizer.document import _RenderPolicySpec
+    from flext_infra.deps._modernizer.document import RenderPolicySpec
 
 
 class FlextInfraPyprojectModernizerRun:
@@ -65,7 +65,7 @@ class FlextInfraPyprojectModernizerRun:
             state: m.Infra.PyprojectDocumentState,
             changes: t.StrSequence,
             *,
-            policy: _RenderPolicySpec,
+            policy: RenderPolicySpec,
         ) -> p.Result[t.StrSequence]: ...
 
     def _selected_project_paths(self) -> p.Result[t.SequenceOf[Path]]:
@@ -532,7 +532,7 @@ class FlextInfraPyprojectModernizerRun:
         rendered = self._render_document_state(
             root_state,
             tuple(changes),
-            policy=_RenderPolicy(
+            policy=RenderPolicy(
                 dry_run=True,
                 skip_comments=True,
                 format_source=False,

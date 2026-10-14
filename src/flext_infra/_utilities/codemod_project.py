@@ -15,9 +15,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import sys
-from collections import deque
 from collections.abc import Generator, Mapping, MutableMapping
 from contextlib import closing, contextmanager
 from functools import cache, lru_cache
@@ -697,7 +695,9 @@ class FlextInfraUtilitiesCodemodProject(
                 ),
             )
         )
-        imports: t.MutableMappingKV[Path, tuple[ast.Import | ast.ImportFrom, ...]] = {}
+        imports: t.MutableMappingKV[
+            Path, t.VariadicTuple[p.Infra.RopeImportStatement]
+        ] = {}
         python_modules: t.MutableMappingKV[
             t.Pair[str, str], t.Infra.RopeResource | None
         ] = {}
@@ -707,6 +707,7 @@ class FlextInfraUtilitiesCodemodProject(
                 project.frozen_layout(),
             ):
                 lookup = m.Infra.CodemodImportResources(
+                    modules={},
                     source_folders=tuple(
                         folder
                         for folder in project.get_source_folders()
@@ -742,7 +743,7 @@ class FlextInfraUtilitiesCodemodProject(
                 visited: set[Path] = set()
                 while pending:
                     fetched = cls._snapshot_module_imports(
-                        states, imports, visited, pending.pop()
+                        project, states, imports, visited, pending.pop()
                     )
                     if fetched is None:
                         continue
@@ -759,18 +760,21 @@ class FlextInfraUtilitiesCodemodProject(
 
     @staticmethod
     def _snapshot_module_imports(
+        project: p.Infra.RopeProject,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-        imports: t.MutableMappingKV[Path, tuple[ast.Import | ast.ImportFrom, ...]],
+        imports: t.MutableMappingKV[Path, t.VariadicTuple[p.Infra.RopeImportStatement]],
         visited: set[Path],
         resource: t.Infra.RopeResource,
     ) -> (
-        t.Triple[Path, t.Infra.RopeResource, tuple[ast.Import | ast.ImportFrom, ...]]
+        t.Triple[
+            Path, t.Infra.RopeResource, t.VariadicTuple[p.Infra.RopeImportStatement]
+        ]
         | None
     ):
         """Authenticate one module and retain only its static import statements.
 
         Returns:
-            The resolved path, live resource, and parsed tree, or ``None``
+            The resolved path, live resource, and native imports, or ``None``
             when the resource carries no governable Python source.
 
         Raises:
@@ -813,19 +817,10 @@ class FlextInfraUtilitiesCodemodProject(
             msg = f"binding source is absent: {path}"
             raise ValueError(msg)
         if path not in imports:
-            tree = ast.parse(state.content.decode("utf-8"), filename=str(path))
-            pending = deque[ast.stmt | ast.ExceptHandler | ast.match_case](tree.body)
-            statements: list[ast.Import | ast.ImportFrom] = []
-            while pending:
-                node = pending.popleft()
-                if isinstance(node, ast.Import | ast.ImportFrom):
-                    statements.append(node)
-                pending.extend(
-                    child
-                    for child in ast.iter_child_nodes(node)
-                    if isinstance(child, ast.stmt | ast.ExceptHandler | ast.match_case)
-                )
-            imports[path] = tuple(statements)
+            imports[path] = FlextInfraUtilitiesRopeImports.source_import_statements(
+                project,
+                state.content.decode("utf-8"),
+            )
         return path, resource, imports[path]
 
     @classmethod
@@ -833,7 +828,7 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         project: p.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        imports: t.SequenceOf[ast.Import | ast.ImportFrom],
+        imports: t.SequenceOf[p.Infra.RopeImportStatement],
         lookup: m.Infra.CodemodImportResources,
     ) -> list[t.Infra.RopeResource]:
         """Collect the Rope resources of every import inside one module tree.
@@ -854,7 +849,7 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         project: p.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        node: ast.AST,
+        node: p.Infra.RopeImportStatement,
         lookup: m.Infra.CodemodImportResources,
     ) -> list[t.Infra.RopeResource]:
         """Collect the Rope resources of one import statement's targets.
@@ -864,14 +859,15 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         found: list[t.Infra.RopeResource] = []
+        declared = FlextInfraUtilitiesRopeImports.import_statement_module_name(node)
+        names = FlextInfraUtilitiesRopeImports.import_statement_names_and_aliases(node)
+        level = len(declared) - len(declared.lstrip(".")) if declared is not None else 0
+        module_name = declared[level:] if declared is not None else ""
         imports = (
-            tuple(alias.name for alias in node.names)
-            if isinstance(node, ast.Import)
-            else (node.module or "",)
-            if isinstance(node, ast.ImportFrom)
-            else ()
+            (module_name,)
+            if declared is not None
+            else tuple(name for name, _alias in names)
         )
-        level = node.level if isinstance(node, ast.ImportFrom) else 0
         for name in imports:
             imported = cls._snapshot_imported_resource(
                 project,
@@ -882,12 +878,12 @@ class FlextInfraUtilitiesCodemodProject(
             )
             if imported is not None:
                 found.append(imported)
-        if not isinstance(node, ast.ImportFrom):
+        if declared is None:
             return found
-        for alias in node.names:
-            if alias.name == "*":
+        for name, _alias in names:
+            if name == "*":
                 continue
-            qualified = f"{node.module}.{alias.name}" if node.module else alias.name
+            qualified = f"{module_name}.{name}" if module_name else name
             child = cls._snapshot_imported_resource(
                 project,
                 resource,
@@ -974,12 +970,8 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the predicate is not one the engine declares.
-            TypeError: If predicate is not declared.
         """
         predicate = condition.predicate
-        if not isinstance(predicate, c.Infra.CodemodContextPredicate):
-            message = f"predicate is not declared: {predicate}"
-            raise TypeError(message)
         own = FlextInfraUtilitiesPyproject.project_package_name(root)
         match predicate:
             case _ if predicate in c.Infra.CODEMOD_PACKAGE_CONTEXT_PREDICATES:

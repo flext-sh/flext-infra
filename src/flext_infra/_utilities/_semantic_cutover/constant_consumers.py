@@ -180,7 +180,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 "return ${literal}",
                 arguments={"literal": f"type={literal_type}"},
             )
-            for literal_type in ("builtins.str", "builtins.int")
+            for literal_type in ("__builtin__.str", "__builtin__.int")
         }
         if not any(returns_by_type.values()):
             return source, ()
@@ -322,9 +322,13 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             path.relative_to(Path(project.root.real_path)).as_posix()
         )
         module = runtime.build_string_module(project, source, resource=resource)
-        arguments = {"frozen": "name=builtins.frozenset"}
-        if not refactors.semantic_regions(
-            module, "${frozen}(${value})", arguments=arguments
+        arguments = {"frozen": "name=__builtin__.frozenset"}
+        if not any(
+            refactors.semantic_regions(module, pattern, arguments=arguments)
+            for pattern in (
+                "${subject} in ${frozen}(${value})",
+                "${subject} not in ${frozen}(${value})",
+            )
         ):
             return source, ()
         package = cls._constant_facade_package(
@@ -340,7 +344,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         if not public:
             return source, ()
         matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
-        for literal_type in ("builtins.str", "builtins.int"):
+        for literal_type in ("__builtin__.str", "__builtin__.int"):
             for expression, reference in cls._literal_constant_patterns(
                 project, public, literal_type=literal_type, frozen=True
             ):
@@ -424,10 +428,14 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             path.relative_to(Path(project.root.real_path)).as_posix()
         )
         module = runtime.build_string_module(project, source, resource=resource)
-        if not refactors.semantic_regions(
-            module,
-            "${literal}[${value}]",
-            arguments={"literal": "name=typing.Literal"},
+        if not any(
+            refactors.semantic_regions(
+                module, pattern, arguments={"literal": "name=typing.Literal"}
+            )
+            for pattern in (
+                "${name}: ${literal}[${value}]",
+                "${name}: ${literal}[${value}] = ${default}",
+            )
         ):
             return source, ()
         package = cls._constant_facade_package(
@@ -510,7 +518,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         project: p.Infra.RopeProject,
         public: t.MappingKV[str, p.Infra.RopePyName],
         *,
-        literal_type: str = "builtins.str",
+        literal_type: str = "__builtin__.str",
         frozen: bool = False,
     ) -> t.VariadicTuple[t.Pair[str, str]]:
         """Read proven literals at uniquely assigned public c bindings.
@@ -588,17 +596,17 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     ):
                         literal = source[start:end]
                         if (
-                            literal_type == "builtins.str"
+                            literal_type == "__builtin__.str"
                             and (start, end) not in literal_regions
                         ):
                             continue
-                        if literal_type == "builtins.int" and not literal.isdecimal():
+                        if literal_type == "__builtin__.int" and not literal.isdecimal():
                             continue
                         expression = (
                             f"${{frozen}}({{{literal}}})" if frozen else literal
                         )
                         arguments = (
-                            {"frozen": "name=builtins.frozenset"} if frozen else {}
+                            {"frozen": "name=__builtin__.frozenset"} if frozen else {}
                         )
                         pattern = (
                             f"${{target}}: ${{annotation}} = {expression}"

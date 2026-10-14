@@ -199,7 +199,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return result.ok(state)
 
     @staticmethod
-    def _module_source(module_name: str) -> p.Result[Path]:
+    def module_source(module_name: str) -> p.Result[Path]:
         """Observe native module origin; the isolated import authenticates election."""
         module = modules.get(module_name)
         if module is None:
@@ -293,6 +293,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         from flext_infra.workspace.native_reference import (
             FlextInfraWorkspaceNativeReference,
         )
+        from flext_infra._utilities.rope_runtime_modules import (
+            FlextInfraUtilitiesRopeRuntimeModules,
+        )
 
         names = tuple(
             sorted(
@@ -306,32 +309,14 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return result.ok(())
         selections = tuple(m.Infra.SourceClassReference(target=name) for name in names)
         if reference is None:
-            authority = FlextInfraCodegenPreconditions.capture_source_authority(
-                nominated=selections
-            )
-            if authority.failure:
-                return result.from_failure(authority)
-            inputs = FlextInfraCodegenPreconditions.authority_inputs(authority.value)
-            if inputs.failure:
-                return result.from_failure(inputs)
-            elected = cls._module_source(package_name)
-            if elected.failure:
-                return result.from_failure(elected)
-            source_root = (
-                elected.value.parent if elected.value.is_file() else elected.value
-            )
-            authenticated = FlextInfraWorkspaceNativeReference.authenticate(
-                m.Infra.NativeImportRequest(
-                    repository_root=source_root,
-                    runtime_root=Path(sys.prefix).absolute().parent,
-                    modules=selections,
-                    source_authority=authority.value,
-                    inputs=inputs.value,
-                )
+            authenticated = FlextInfraUtilitiesRopeRuntimeModules.source_proof(
+                names,
+                module_source=cls.module_source,
+                observer=FlextInfraWorkspaceNativeReference,
             )
             if authenticated.failure:
                 return result.from_failure(authenticated)
-            source_files = authenticated.value.sources
+            source_files = authenticated.value
         else:
             if not set(selections).issubset(reference.modules):
                 return result.fail(
@@ -782,7 +767,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if name == package_name or name.startswith(f"{package_name}.")
         )
         for name in names:
-            elected = cls._module_source(name)
+            elected = cls.module_source(name)
             if elected.failure:
                 return r[bool].from_failure(elected)
             if not elected.value.resolve().is_relative_to(expected_root):

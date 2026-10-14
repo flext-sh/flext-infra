@@ -205,6 +205,17 @@ receipts authorize membership changes. Publication observation authenticates the
 producer closure before selecting the requested consumer scope. None of this proves
 an earlier process whose source context was not captured.
 
+Native callback identity follows the elected supplier's actual registrations.
+An extension can export a callback at module level while its qualified name
+describes a class. Observation checks those native namespaces by object identity;
+the qualified name alone does not establish or invalidate registration.
+Bound interpreter methods are checked against the registered receiver type and
+its native descriptor, and their evidence retains the receiver value. Import
+dependency discovery uses the shared import maps; class-lineage validation remains
+with the queries that request class information. Namespace packages contribute
+their physical portions to source authority without requiring an executable
+initializer.
+
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from

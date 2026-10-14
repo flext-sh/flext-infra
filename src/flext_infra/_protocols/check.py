@@ -12,8 +12,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_cli import p, t
 
     from flext_infra import m
@@ -22,37 +20,6 @@ if TYPE_CHECKING:
 @runtime_checkable
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
-
-    class NativeModuleSourceResolver(Protocol):
-        """Resolve an elected physical supplier without importing its module."""
-
-        def __call__(self, module_name: str) -> p.Result[Path]: ...
-
-    class NativeSourceObserver(Protocol):
-        """Provide callback-free native observation to the source proof owner."""
-
-        def _is_class(self, value: p.AttributeProbe) -> bool: ...
-
-        def _class_namespace(
-            self,
-            value: p.AttributeProbe,
-        ) -> t.MappingKV[str, p.AttributeProbe]: ...
-
-        def _value(
-            self,
-            value: p.AttributeProbe | None,
-            seen: frozenset[int] = frozenset(),
-            *,
-            construction: bool = False,
-        ) -> str: ...
-
-        def _native_wrapper_kind(self, value: p.AttributeProbe) -> str | None: ...
-
-        def _native_wrapper_function(
-            self,
-            value: p.AttributeProbe,
-            kind: str,
-        ) -> p.Result[p.AttributeProbe]: ...
 
     @runtime_checkable
     class NativeCodeIdentity(Protocol):
@@ -109,6 +76,7 @@ class FlextInfraProtocolsCheck(Protocol):
 
         __name__: str
         __module__: str | None
+        __qualname__: str
 
         @property
         def __dict__(self) -> t.MappingKV[str, p.AttributeProbe | None]: ...

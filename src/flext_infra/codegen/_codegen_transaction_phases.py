@@ -26,8 +26,6 @@ from flext_infra.codegen._codegen_transaction_recovery import (
 )
 
 if TYPE_CHECKING:
-    from typing import Protocol
-
     from flext_infra import p
 
 

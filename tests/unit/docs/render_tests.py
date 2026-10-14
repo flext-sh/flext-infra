@@ -30,7 +30,9 @@ class MkDocsProjectLoader(Protocol):
         config_file: str,
         *,
         plugins: list[object],
-    ) -> MkDocsConfig: ...
+    ) -> MkDocsConfig:
+        """Load one project configuration, overriding declared plugins."""
+        ...
 
 
 @runtime_checkable
@@ -38,7 +40,9 @@ class MkDocsConfigModulePort(Protocol):
     """Native ``mkdocs.config`` module port exposing its loader."""
 
     @property
-    def load_config(self) -> MkDocsProjectLoader: ...
+    def load_config(self) -> MkDocsProjectLoader:
+        """The native loader bound to this configuration module."""
+        ...
 
 
 def mkdocs_project_config(
@@ -46,6 +50,9 @@ def mkdocs_project_config(
     config_file: str,
 ) -> MkDocsConfig:
     """Load one project ``mkdocs.yml`` with plugin overrides disabled.
+
+    Returns:
+        The loaded native MkDocs configuration.
 
     Raises:
         TypeError: If the native module does not satisfy its loader port.

@@ -58,7 +58,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModScanFinding] = (),
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan one phase's edits without effects; every module failure is kept.
+        """Plan one phase without effects; the first exception escapes unchanged.
 
         ``rope_workspace`` supplies the repository root that reported findings
         are relative to and, for class nesting, the module ownership policy.

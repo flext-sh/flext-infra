@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
     from flext_infra import p
 
-    class _RenderPolicySpec(Protocol):
+    class RenderPolicySpec(Protocol):
         """Read-only render policy contract crossing modernizer module bounds."""
 
         @property
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
         def preserve_layout(self) -> bool: ...
 
 
-class _RenderPolicy(m.ArbitraryTypesModel):
+class RenderPolicy(m.ArbitraryTypesModel):
     """Keyword policy for one document render and optional durable write."""
 
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
@@ -282,7 +282,7 @@ class FlextInfraPyprojectModernizerDocument:
             return self._render_document_state(
                 state,
                 migrated.value,
-                policy=_RenderPolicy(
+                policy=RenderPolicy(
                     dry_run=dry_run,
                     skip_comments=True,
                     format_source=False,
@@ -296,7 +296,7 @@ class FlextInfraPyprojectModernizerDocument:
                 canonical_dev=canonical_dev,
                 topology=m.Infra.PyprojectDeclaredTopology(),
             ),
-            policy=_RenderPolicy(dry_run=dry_run, skip_comments=skip_comments),
+            policy=RenderPolicy(dry_run=dry_run, skip_comments=skip_comments),
         )
 
     def _apply_document_phases(
@@ -396,7 +396,7 @@ class FlextInfraPyprojectModernizerDocument:
         state: m.Infra.PyprojectDocumentState,
         changes: t.StrSequence,
         *,
-        policy: _RenderPolicySpec,
+        policy: RenderPolicySpec,
     ) -> p.Result[t.StrSequence]:
         """Order, annotate, and format one payload; write unless ``dry_run``.
 

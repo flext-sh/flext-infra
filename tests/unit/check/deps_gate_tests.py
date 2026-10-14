@@ -84,6 +84,7 @@ class TestsFlextInfraDepsGate:
                     ),
                 ),
             ),
+            development_only=(),
             inputs=(
                 u.Cli.atomic_read_binary_file_state(
                     root / "src" / "fixturepkg.py",
@@ -193,6 +194,62 @@ class TestsFlextInfraDepsGate:
         tm.that(reused.failure, eq=True)
         tm.that(reused.error, has="already exists")
         tm.that(report_path.read_bytes(), eq=before)
+
+    @staticmethod
+    @pytest.mark.parametrize("excluded", [False, True])
+    def test_native_capture_requires_executed_sources(tmp_path: Path, *, excluded: bool) -> None:
+        """An empty tree and native exclusions cannot produce a clean receipt."""
+        root = TestsFlextInfraDepsGate._project(tmp_path, "", "import os\n")
+        if excluded:
+            pyproject = root / c.PYPROJECT_FILENAME
+            pyproject.write_text(
+                pyproject.read_text(encoding="utf-8") + 'exclude = ["src/.*"]\n',
+                encoding="utf-8",
+            )
+        else:
+            (root / "src" / "fixturepkg.py").unlink()
+
+        scan = u.Infra.capture_deptry_scan(
+            root,
+            Path(sys.executable).parent,
+            config_path=root / c.PYPROJECT_FILENAME,
+            json_output_path=tmp_path / "empty-native.json",
+        )
+
+        tm.that(scan.failure, eq=True)
+        tm.that(scan.error, has="native scan coverage")
+        tm.that(scan.error, has="Scanning 0 file")
+
+    @staticmethod
+    def test_development_only_supplier_requires_consumer_rewire(tmp_path: Path) -> None:
+        """Identity stays present while its contract forbids runtime promotion."""
+        root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
+        inputs = TestsFlextInfraDepsGate._dependency_inputs(root)
+        provider = inputs.providers[0]
+        inputs = inputs.model_copy(update={"development_only": (provider.requirement,)})
+        pyproject = root / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8")
+            + f"\n[dependency-groups]\ndev = [{dumps(provider.requirement)}]\n",
+            encoding="utf-8",
+        )
+        before = pyproject.read_bytes()
+        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
+        context = m.Infra.GateContext(
+            repository_root=root,
+            reports_dir=tmp_path / "reports",
+            apply_fixes=True,
+            runtime_dependency_inputs=inputs,
+        )
+
+        repaired = gate.fix(root, context)
+        checked = gate.check(root, context)
+
+        tm.that(repaired.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.that(checked.result.passed, eq=False)
+        assert any(issue.code.endswith("DEP004") for issue in checked.issues)
+        tm.that(pyproject.read_bytes(), eq=before)
+        tm.that(inputs.providers, eq=(provider,))
 
     @staticmethod
     def test_fix_preserves_authored_requirement_policy_and_lock(tmp_path: Path) -> None:

@@ -490,7 +490,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         module = project.get_pymodule(
             project.get_resource(path.relative_to(root).as_posix()),
         )
-        for outer in module.get_scope().get_scopes():
+        module_scope = module.get_scope()
+        if module_scope is None:
+            return None
+        for outer in module_scope.get_scopes():
             if outer.get_kind() != "Class":
                 continue
             for node in outer.get_scopes():
@@ -960,8 +963,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     )
         return tuple(changes)
 
-    @staticmethod
-    def _checked_type_reference(scope: p.Infra.RopeScope, expression: str) -> str:
+    @classmethod
+    def _checked_type_reference(cls, scope: p.Infra.RopeScope, expression: str) -> str:
         root = expression.partition(".")[0]
         if not all(part.isidentifier() for part in expression.split(".")):
             msg = f"quoted type destination is not an identifier chain: {expression}"

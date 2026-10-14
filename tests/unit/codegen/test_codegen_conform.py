@@ -496,6 +496,9 @@ class TestsFlextInfraCodegenConform:
         )
         first = infra.codegen_new(service)
         first_result = tm.ok(first)
+        tm.that(first_result.plan is not None, eq=True)
+        if first_result.plan is None:
+            pytest.fail("generation did not return its actual plan")
         editor_settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             tm.ok(
                 u.Cli.json_parse(settings_path.read_text(encoding=c.DEFAULT_ENCODING))

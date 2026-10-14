@@ -12,6 +12,9 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_infra import m, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
+from flext_infra.codegen._mise_artifacts_comparison import (
+    FlextInfraMiseArtifactsComparison,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -249,7 +252,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
             The resulting ``p.Result[bool]``.
 
         """
-        if not cls.same_directory_identity(authorized.root, observed.root):
+        if not FlextInfraMiseArtifactsComparison.same_directory_identity(
+            authorized.root, observed.root
+        ):
             return r[bool].fail(
                 f"temporary tree root identity changed: {authorized.root.path}",
             )
@@ -381,7 +386,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
                     f"journaled temporary-tree entry is missing: {path}",
                 )
             if entry.kind == "directory":
-                if not cls.same_directory_identity(entry, current_entry):
+                if not FlextInfraMiseArtifactsComparison.same_directory_identity(
+                    entry, current_entry
+                ):
                     return r[bool].fail(
                         f"temporary-tree directory identity changed: {path}",
                     )
@@ -554,42 +561,6 @@ class FlextInfraMiseArtifactsVerificationManifest:
             observed.reparse_tag,
         )
         return actual == expected
-
-    @classmethod
-    def same_directory_identity(
-        cls,
-        expected: m.Cli.AtomicPhysicalTreeEntry,
-        observed: m.Cli.AtomicPhysicalTreeEntry,
-    ) -> bool:
-        return (
-            expected.path,
-            expected.kind,
-            expected.parent_device,
-            expected.parent_inode,
-            expected.parent_mount_id,
-            expected.mode,
-            expected.device,
-            expected.inode,
-            expected.mount_id,
-            expected.uid,
-            expected.gid,
-            expected.file_attributes,
-            expected.reparse_tag,
-        ) == (
-            observed.path,
-            observed.kind,
-            observed.parent_device,
-            observed.parent_inode,
-            observed.parent_mount_id,
-            observed.mode,
-            observed.device,
-            observed.inode,
-            observed.mount_id,
-            observed.uid,
-            observed.gid,
-            observed.file_attributes,
-            observed.reparse_tag,
-        )
 
     @classmethod
     def _manifest_root_matches_created(

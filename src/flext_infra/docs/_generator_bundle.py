@@ -94,6 +94,8 @@ class FlextInfraDocGeneratorBundleMixin:
         Yields:
             Results of the documentation generation bundle preparation for each batch.
         """
+        from flext_infra.docs.generator import FlextInfraDocGenerator
+
         root_scope = next(
             (scope for scope in selected if scope.name == c.Infra.RK_ROOT),
             None,
@@ -103,7 +105,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 continue
             producer = FlextInfraCodegenPreconditions.capture_producer(
                 root,
-                entrypoint=cls._scope_batches,
+                entrypoint=FlextInfraDocGenerator.execute_request,
             )
             if producer.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(producer)
@@ -268,9 +270,11 @@ class FlextInfraDocGeneratorBundleMixin:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
+        from flext_infra.docs.generator import FlextInfraDocGenerator
+
         producer = FlextInfraCodegenPreconditions.capture_producer(
             request.repository_root,
-            entrypoint=cls._prepare_request,
+            entrypoint=FlextInfraDocGenerator.execute_request,
         )
         if producer.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(producer)

@@ -107,15 +107,15 @@ class FlextInfraModelsWorkspace:
             min_length=1,
             description="Source-owned module/binding selections for this epoch",
         )
+        import_roots: t.VariadicTuple[Path] = m.Field(
+            description="Physical import roots carrying the elected producer sources",
+        )
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority for reference consumption, not publication",
         )
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             description="Pinned source inputs checked before and after authentication",
             exclude=True,
-        )
-        import_roots: t.VariadicTuple[Path] = m.Field(
-            description="Physical import roots of all nominated and elected modules",
         )
 
     class WorkspaceEnvironmentRequest(m.ContractModel):

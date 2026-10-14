@@ -66,7 +66,7 @@ class TestsFlextInfraFileParticipantRecovery:
     def _corrupted_journal_state(
         journal: Path,
         journal_change: str,
-    ) -> p.Result[m.Cli.AtomicFileState] | None:
+    ) -> m.Cli.AtomicFileState | None:
         """Corrupt the journaled authority per the parametrized change kind.
 
         Args:

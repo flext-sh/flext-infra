@@ -13,11 +13,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra.codegen._mise_artifacts_comparison import (
+    FlextInfraMiseArtifactsComparison,
+)
 from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
 from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
-from flext_infra.codegen._mise_artifacts_verification import (
-    FlextInfraMiseArtifactsVerification,
-)
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -457,7 +457,7 @@ class FlextInfraCodegenPreconditions:
             for state in states.value
             if state.path not in covered or state.path in representatives
         )
-        current = FlextInfraMiseArtifactsVerification.states_current(retained)
+        current = FlextInfraMiseArtifactsComparison.states_current(retained)
         if current.failure:
             return current
         return cls.producer_trees_current(
@@ -542,7 +542,7 @@ class FlextInfraCodegenPreconditions:
         inventory = u.Cli.atomic_inventory_physical_tree(tree.root.path)
         if inventory.failure:
             return r[bool].from_failure(inventory)
-        if not FlextInfraMiseArtifactsVerification.same_directory_identity(
+        if not FlextInfraMiseArtifactsComparison.same_directory_identity(
             tree.root, inventory.value.root
         ):
             return r[bool].fail(f"producer root identity changed: {tree.root.path}")
@@ -579,7 +579,7 @@ class FlextInfraCodegenPreconditions:
                 f"producer directory membership changed: {tree.root.path}"
             )
         for path, before in directories.items():
-            if not FlextInfraMiseArtifactsVerification.same_directory_identity(
+            if not FlextInfraMiseArtifactsComparison.same_directory_identity(
                 before, live[path]
             ):
                 return r[bool].fail(f"producer directory identity changed: {path}")
@@ -816,16 +816,16 @@ class FlextInfraCodegenPreconditions:
 
         """
         source_barrier = FlextInfraCodegenPreconditions.unique_states(sources).flat_map(
-            FlextInfraMiseArtifactsVerification.states_current
+            FlextInfraMiseArtifactsComparison.states_current
         )
         if source_barrier.failure:
             return source_barrier
-        destination_barrier = FlextInfraMiseArtifactsVerification.states_current(
+        destination_barrier = FlextInfraMiseArtifactsComparison.states_current(
             destinations,
         )
         if destination_barrier.failure:
             return destination_barrier
-        return FlextInfraMiseArtifactsVerification.sources(plan)
+        return FlextInfraMiseArtifactsComparison.sources(plan)
 
     @staticmethod
     def unchanged_journal(

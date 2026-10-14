@@ -14,6 +14,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
+from flext_infra._utilities._rope_runtime_source_proof import (
+    FlextInfraUtilitiesRopeRuntimeSourceProof,
+)
 
 
 class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntimeBase):
@@ -360,6 +363,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeRuntimeModules(
+    FlextInfraUtilitiesRopeRuntimeSourceProof,
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 ):
     """Load Rope project/module/import objects behind protocols."""

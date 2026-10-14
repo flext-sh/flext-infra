@@ -20,6 +20,22 @@ from flext_infra._models import (
 from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
+GitSourceUrlPrefixField = Annotated[
+    t.NonEmptyStr | None,
+    m.Field(
+        alias="git-source-url-prefix",
+        description="Explicit Git source URL scope",
+    ),
+]
+GitSourceRefFromField = Annotated[
+    t.NonEmptyStr | None,
+    m.Field(alias="git-source-ref-from", description="Explicit reference to migrate"),
+]
+GitSourceRefToField = Annotated[
+    t.NonEmptyStr | None,
+    m.Field(alias="git-source-ref-to", description="Replacement Git reference"),
+]
+
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
     """Models for dependency detection and modernization reporting."""
@@ -115,6 +131,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         providers: Annotated[
             t.VariadicTuple[FlextInfraModelsDeps.RuntimeDependencyProvider],
             m.Field(description="All matching suppliers; ambiguity is preserved"),
+        ]
+        development_only: Annotated[
+            t.StrTuple,
+            m.Field(description="Contract-owned requirements forbidden in runtime"),
         ]
         inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
@@ -339,23 +359,9 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 ),
             ),
         ] = False
-        git_source_url_prefix: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                alias="git-source-url-prefix",
-                description="Explicit Git source URL scope",
-            ),
-        ] = None
-        git_source_ref_from: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                alias="git-source-ref-from", description="Explicit reference to migrate"
-            ),
-        ] = None
-        git_source_ref_to: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(alias="git-source-ref-to", description="Replacement Git reference"),
-        ] = None
+        git_source_url_prefix: GitSourceUrlPrefixField = None
+        git_source_ref_from: GitSourceRefFromField = None
+        git_source_ref_to: GitSourceRefToField = None
 
     # Codegen consumes the pure pyproject
     # renderer directly, so no deps CLI payload remains for path/workspace modes.

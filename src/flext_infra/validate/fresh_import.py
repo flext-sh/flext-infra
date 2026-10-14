@@ -45,7 +45,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         default_factory=lambda: type(settings).fetch_global().Infra.runtime_root
     )
 
-    _PRELUDE: ClassVar[str] = (
+    PRELUDE: ClassVar[str] = (
         "import importlib, sys\n"
         "from importlib.metadata import EntryPoint\n"
         "from pathlib import Path\n"
@@ -63,10 +63,10 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     )
     # Synthetic concat keeps the placeholder out of one plain literal: the
     # marker is template text substituted at render time, never an f-string.
-    _ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
+    ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
     # The origin gate runs inside the same probe namespace as the export
     # resolution, so its loop names must never rebind the probed ``module``.
-    _ORIGIN_CODE: ClassVar[str] = (
+    ORIGIN_CODE: ClassVar[str] = (
         "for loaded_name, loaded_module in tuple(sys.modules.items()):\n"
         "    for package, directory in {origins!r}:\n"
         "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
@@ -289,7 +289,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         view = authenticated.value
         plan = view.plan
         code = (
-            self._PRELUDE
+            self.PRELUDE
             + (
                 "from hashlib import sha256\n"
                 f"if {plan.package!r} in sys.modules "
@@ -476,8 +476,8 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             (layout.package_name, str(layout.package_dir.resolve()))
             for layout in layouts
         )
-        return FlextInfraValidateFreshImport._ORIGIN_CODE.replace(
-            FlextInfraValidateFreshImport._ORIGINS_PLACEHOLDER,
+        return FlextInfraValidateFreshImport.ORIGIN_CODE.replace(
+            FlextInfraValidateFreshImport.ORIGINS_PLACEHOLDER,
             repr(origins),
         )
 
@@ -535,7 +535,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                     m.Infra.FreshImportProbe(
                         subject=f"{layout.package_name}: {group}/{name}={value}",
                         code=(
-                            self._PRELUDE + f"EntryPoint(name={name!r}, "
+                            self.PRELUDE + f"EntryPoint(name={name!r}, "
                             f"value={value!r}, group={group!r}).load()\n" + origin_code
                         ),
                     ),
@@ -597,7 +597,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         return r[m.Infra.FreshImportProbe].ok(
             m.Infra.FreshImportProbe(
                 subject=layout.package_name,
-                code=self._PRELUDE + body + origin_code,
+                code=self.PRELUDE + body + origin_code,
             ),
         )
 
@@ -621,7 +621,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             probes.append(
                 m.Infra.FreshImportProbe(
                     subject=package,
-                    code=self._PRELUDE
+                    code=self.PRELUDE
                     + self._EXPORT_IMPORT_CODE.format(package=package)
                     + origin_code
                     + self._EXPORT_RESOLVE_CODE.format(exports=()),
@@ -654,7 +654,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         # ``-B``: a validator never writes into the checkout it validates, so
         # the probed sources leave no bytecode cache behind.
         def run_probe(probe: m.Infra.FreshImportProbe) -> p.Result[p.Cli.CommandOutput]:
-            return self._execute_probe(
+            return self.execute_probe(
                 probe,
                 source_roots=tuple(layout.src_dir for layout in layouts),
             )
@@ -687,7 +687,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             m.Infra.ValidationReport(passed=True, violations=(), summary=summary),
         )
 
-    def _execute_probe(
+    def execute_probe(
         self,
         probe: m.Infra.FreshImportProbe,
         *,

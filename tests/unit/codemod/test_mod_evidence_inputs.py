@@ -19,6 +19,48 @@ class TestsFlextInfraModEvidenceInputs:
     """Validate public evidence round-trips without duplicated input bodies."""
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "declarations",
+        (
+            "def load():\n"
+            "    import first_owner as selected\n"
+            "    import second_owner as selected\n",
+            "enabled = True\n"
+            "if enabled: from first_owner import Value\n"
+            "else: import second_owner\n",
+            "def load():\n"
+            "    yield from (); import first_owner; import second_owner\n",
+        ),
+    )
+    def test_binding_snapshot_captures_all_native_import_scopes(
+        mod_workspace: Path,
+        declarations: str,
+    ) -> None:
+        """Capture conditional and rebound imports while excluding textual decoys."""
+        owners = tuple(mod_workspace / f"{name}_owner.py" for name in ("first", "second"))
+        for owner in owners:
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    owner, "class Value:\n    pass\n",
+                ),
+            )
+        decoy = mod_workspace / "decoy_owner.py"
+        tm.ok(u.Cli.atomic_write_text_file(decoy, "class Value:\n    pass\n"))
+        consumer = mod_workspace / "consumer.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                consumer,
+                "# import decoy_owner\n"
+                "message = 'from decoy_owner import Value'\n" + declarations,
+            ),
+        )
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True))
+        snapshot = u.Infra.codemod_binding_snapshot(mod_workspace, (state,))
+        captured = {item.path for item in snapshot.states}
+        tm.that(set(owners).issubset(captured))
+        tm.that(decoy in captured, eq=False)
+
+    @staticmethod
     def test_composed_native_scan_preserves_provider_utils_and_local_shadows(
         mod_workspace: Path,
         tmp_path: Path,

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from importlib import import_module
+from inspect import getfile
 from pathlib import Path
 
 import pytest
@@ -14,8 +14,8 @@ from pydantic import RootModel
 from typing_inspection.introspection import AnnotationSource, inspect_annotation
 
 from flext_core import m
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
-from tests import tm
+from flext_infra.codegen import FlextInfraCodegenPreconditions
+from tests import p, tm
 
 
 class TestsFlextInfraNativeModelProvenance:
@@ -23,27 +23,27 @@ class TestsFlextInfraNativeModelProvenance:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "module_name",
-        [
-            RootModel.__module__,
-            m.ContractModel.__module__,
-            inspect_annotation.__module__,
-        ],
+        "entrypoint",
+        [RootModel.model_construct, inspect_annotation],
     )
     def test_real_model_module_retains_authenticated_native_sources(
-        module_name: str,
+        entrypoint: p.AttributeProbe,
     ) -> None:
         """Validate real model presets and generated annotation inspection payloads."""
         root = RootModel[str].model_validate("wire-value")
         tm.that(root.model_dump(), eq="wire-value")
         inspection = inspect_annotation(str, annotation_source=AnnotationSource.ANY)
         tm.that(inspection.type, eq=str)
-        module = import_module(module_name)
-        assert module.__file__ is not None
-        expected_source = Path(module.__file__).resolve()
-        sources = FlextInfraWorkspaceEnvironmentProvenance.loaded_import_sources(
-            module_name,
-        ).unwrap()
+        preset = m.ContractModel.model_validate({})
+        tm.that(preset.model_dump(), eq={})
+        expected_source = Path(getfile(entrypoint)).resolve()
+        admission = tm.ok(
+            FlextInfraCodegenPreconditions.capture_producer(
+                Path.cwd(), entrypoint=entrypoint
+            )
+        )
+        assert admission.generator_reference is not None
+        sources = admission.generator_reference.sources
         tm.that(sources, empty=False)
         tm.that(
             any(Path(source).resolve() == expected_source for _, source, _ in sources),

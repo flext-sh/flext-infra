@@ -473,11 +473,9 @@ class FlextInfraUtilitiesDeclarationPayload:
         if base not in ancestry or settings in ancestry:
             return None
         scope = value.get_scope()
-        statements = (
-            None
-            if scope is None
-            else cls._admitted_payload_statements(module, value, scope)
-        )
+        if scope is None:
+            return None
+        statements = cls._admitted_payload_statements(module, value, scope)
         if statements is None:
             return None
         finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)

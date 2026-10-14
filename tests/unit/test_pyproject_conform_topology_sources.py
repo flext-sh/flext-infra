@@ -139,7 +139,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         first = u.Tests.repository_ref("flext-tests")
         second = u.Tests.repository_ref("flext-other")
-        sources: list[dict[str, t.JsonValue]] = [
+        sources: list[t.JsonValue] = [
             {"distribution": first.distribution, "url": first.url, "commit": "a" * 40},
             {
                 "distribution": (

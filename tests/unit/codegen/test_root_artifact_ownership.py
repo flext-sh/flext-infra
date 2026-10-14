@@ -175,6 +175,9 @@ class TestsFlextInfraRootArtifactOwnership:
 
         first = infra.codegen_conform(request)
         result = tm.ok(first)
+        tm.that(result.plan is not None, eq=True)
+        if result.plan is None:
+            pytest.fail("conform did not return its actual plan")
         governed = tuple(file for file in result.plan.files if file.policy is not None)
         tm.that(
             {file.path: file.policy for file in governed},
