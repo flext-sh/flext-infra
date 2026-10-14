@@ -909,7 +909,14 @@ class FlextInfraWorkspaceNativeReference:
                     "extension callback has no registered lexical owner",
                 )
             namespace = cls._class_namespace(owner)
-        if namespace.get(components[-1]) is not value:
+        registered = namespace.get(components[-1])
+        # A native extension recreates its bound callback per attribute access:
+        # identity can never hold for C descriptors. Presence in the
+        # extension's namespace is the registration proof.
+        if registered is None or (
+            registered is not value
+            and not isinstance(supplier.__spec__.loader, ExtensionFileLoader)
+        ):
             return r[t.Triple[str, str, str]].fail(
                 "extension callback differs from its registered descriptor",
             )

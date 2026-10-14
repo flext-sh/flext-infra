@@ -60,7 +60,7 @@ class FlextInfraUtilitiesRefactor:
         directory = root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH.parent / "native"
         u.Cli.ensure_dir(directory).unwrap()
         before = u.Cli.atomic_read_binary_file_receipt(
-            directory / f"{staged.sha256}.jsonl"
+            directory / staged.sha256
         ).unwrap()
         if before.device is None:
             return u.Cli.atomic_publish_staged_binary_file_receipt_guarded(

@@ -78,6 +78,7 @@ class FlextInfraModGateEngine:
                     ),
                     stdout_file=Path(temp_dir) / "stdout",
                     stderr_file=Path(temp_dir) / "stderr",
+                    artifact_root=root,
                 )
                 if tested.failure:
                     remedy = (
@@ -144,6 +145,7 @@ class FlextInfraModGateEngine:
                     ),
                     stdout_file=Path(temp_dir) / "stdout",
                     stderr_file=Path(temp_dir) / "stderr",
+                    artifact_root=root,
                 ).unwrap()
                 cls._run_tool(
                     temp_root,
@@ -155,6 +157,7 @@ class FlextInfraModGateEngine:
                     ),
                     stdout_file=Path(temp_dir) / "stdout",
                     stderr_file=Path(temp_dir) / "stderr",
+                    artifact_root=root,
                 ).unwrap()
                 changes.extend(
                     cls._publish_regenerated_snapshots(
@@ -395,6 +398,7 @@ class FlextInfraModGateEngine:
         *,
         stdout_file: Path,
         stderr_file: Path,
+        artifact_root: Path,
         finding_exit_code: int | None = None,
     ) -> p.Result[p.Cli.ProcessOutcome]:
         """Run one AST tool and preserve its documented finding status.
@@ -443,36 +447,27 @@ class FlextInfraModGateEngine:
                 and outcome.forwarded_signal is None
             ):
                 return r[p.Cli.ProcessOutcome].ok(outcome)
-            diagnostics: list[str] = []
-            for path in (stdout_file, stderr_file):
-                content = (
-                    u.Cli
-                    .atomic_read_binary_file_state(path, required=True)
-                    .unwrap()
-                    .content
-                )
-                if content is not None and content.strip():
-                    diagnostics.append(content.decode("utf-8").strip())
-            detail = "\n".join(diagnostics)
-            return r[p.Cli.ProcessOutcome].fail(
-                f"{command[0]} exited with code {outcome.raw_return_code}: {detail}",
+            streams = tuple(
+                u.Infra.publish_mod_native_artifact(artifact_root, path)
+                for path in (stdout_file, stderr_file)
             )
-        stderr_bytes = (
-            u.Cli
-            .atomic_read_binary_file_state(stderr_file, required=True)
-            .unwrap()
-            .content
-        )
-        error = (
-            f"ast-grep stderr stream is missing: {stderr_file}"
-            if stderr_bytes is None
-            else stderr_bytes.decode("utf-8").strip()
-        )
-        return (
-            r[p.Cli.ProcessOutcome].fail(error)
-            if error
-            else r[p.Cli.ProcessOutcome].ok(outcome)
-        )
+            detail = "\n".join(
+                f"{channel}={receipt.path} size={receipt.size} sha256={receipt.sha256}"
+                for channel, receipt in zip(("stdout", "stderr"), streams, strict=True)
+            )
+            return r[p.Cli.ProcessOutcome].fail(
+                f"{command[0]} exited with code {outcome.raw_return_code} "
+                f"timed_out={outcome.timed_out} "
+                f"forwarded_signal={outcome.forwarded_signal}\n{detail}",
+            )
+        stderr = u.Cli.atomic_read_binary_file_receipt(stderr_file, required=True).unwrap()
+        if stderr.size != 0:
+            receipt = u.Infra.publish_mod_native_artifact(artifact_root, stderr_file)
+            return r[p.Cli.ProcessOutcome].fail(
+                f"{command[0]} emitted unexpected stderr: {receipt.path} "
+                f"size={receipt.size} sha256={receipt.sha256}"
+            )
+        return r[p.Cli.ProcessOutcome].ok(outcome)
 
     @staticmethod
     def _path_depth(path: Path) -> int:
@@ -1126,6 +1121,7 @@ class FlextInfraModGateEngine:
                 scan_command,
                 stdout_file=stdout_file,
                 stderr_file=stderr_file,
+                artifact_root=artifact_root,
                 finding_exit_code=1,
             )
             if run.failure:

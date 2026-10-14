@@ -129,6 +129,26 @@ class TestsFlextInfraModEvidenceInputs:
         tmp_path: Path,
     ) -> None:
         """One immutable capture keeps each same-spelling import's real owner."""
+        selections, inputs = TestsFlextInfraModEvidenceInputs._built_binding_projects(
+            tmp_path
+        )
+        snapshot = u.Infra.codemod_binding_snapshot(
+            tmp_path, tuple(inputs), projects=tuple(selections)
+        )
+        TestsFlextInfraModEvidenceInputs._verified_owner_bindings(selections, snapshot)
+
+    @staticmethod
+    def _built_binding_projects(
+        tmp_path: Path,
+    ) -> tuple[list[m.Infra.CodemodBindingProject], list[m.Cli.AtomicFileState]]:
+        """Build two same-spelling binding projects with distinct owners.
+
+        Args:
+            tmp_path: Test scratch root owning both projects.
+
+        Returns:
+            The binding selections with their captured consumer states.
+        """
         selections: list[m.Infra.CodemodBindingProject] = []
         inputs: list[m.Cli.AtomicFileState] = []
         for name in ("left", "right"):
@@ -154,9 +174,19 @@ class TestsFlextInfraModEvidenceInputs:
                     root=project, source_paths=(consumer,), modules=()
                 )
             )
-        snapshot = u.Infra.codemod_binding_snapshot(
-            tmp_path, tuple(inputs), projects=tuple(selections)
-        )
+        return selections, inputs
+
+    @staticmethod
+    def _verified_owner_bindings(
+        selections: list[m.Infra.CodemodBindingProject],
+        snapshot: m.Infra.CodemodBindingSnapshot,
+    ) -> None:
+        """Verify each project's consumer resolves to its own captured owner.
+
+        Args:
+            selections: The binding selections under proof.
+            snapshot: The shared immutable binding capture.
+        """
         paths = [state.path for state in snapshot.states]
         tm.that(len(paths), eq=len(set(paths)))
         epoch = u.Infra.codemod_source_epoch(snapshot)
@@ -183,29 +213,9 @@ class TestsFlextInfraModEvidenceInputs:
         mod_workspace: Path, occurrences: int, resources: int
     ) -> None:
         """Distinct binding groups share inputs through both JSON publication paths."""
-        source = mod_workspace / "consumer.py"
-        owner = mod_workspace / "binding_owner.py"
-        owner.write_text("class Public:\n    value = 'captured'\n", encoding="utf-8")
-        marker = "descriptor evidence sentinel"
-        source.write_text(
-            f"# {marker}\nfrom __future__ import annotations\n"
-            "from binding_owner import Public\n"
-            + "".join(
-                f"def call_{index}(value: str) -> str:\n    return str(value)\n"
-                for index in range(occurrences)
-            ),
-            encoding="utf-8",
+        report, inputs, source, owner, marker = (
+            self._scanned_shared_occurrences(mod_workspace, occurrences, resources)
         )
-        report = tm.ok(
-            FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
-            )
-        )
-        tm.that(report.findings, eq=occurrences)
-        snapshot = u.Infra.codemod_binding_snapshot(
-            mod_workspace, (tm.not_none(report.entries[0].source_state),)
-        )
-        inputs = list(snapshot.states)
         for index in range(resources):
             resource = mod_workspace / f"binding_{index}.py"
             resource.write_text(f"value = {index}\n", encoding="utf-8")

@@ -157,7 +157,7 @@ class FlextInfraMiseArtifactsVerification(
         """
         if not outcome.completed or outcome.issues or outcome.pending_files:
             return r[bool].fail("generation batch is incomplete; run make gen")
-        closure = cls._producer_closure_current(outcome, with_modules=True)
+        closure = cls._producer_closure_current(outcome)
         if closure.failure:
             return closure
         membership = cls._docs_membership_current(outcome)
@@ -172,15 +172,11 @@ class FlextInfraMiseArtifactsVerification(
     def _producer_closure_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
-        *,
-        with_modules: bool,
     ) -> p.Result[bool]:
         """Prove pre-planning producer closure for a batchless outcome.
 
         Args:
             outcome: Published phase outcome to authenticate.
-            with_modules: Pass the outcome's generator modules to the
-                precondition owner.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -200,20 +196,12 @@ class FlextInfraMiseArtifactsVerification(
             return r[bool].fail(
                 "generation batch lacks pre-planning producer closure; run make gen",
             )
-        if with_modules:
-            producer = FlextInfraCodegenPreconditions.producer_trees_current(
-                outcome.generator_trees,
-                outcome.outputs,
-                modules=outcome.generator_modules,
-                reference=outcome.generator_reference,
-            )
-        else:
-            producer = FlextInfraCodegenPreconditions.producer_trees_current(
-                outcome.generator_trees,
-                outcome.outputs,
-                modules=outcome.generator_modules,
-                reference=outcome.generator_reference,
-            )
+        producer = FlextInfraCodegenPreconditions.producer_trees_current(
+            outcome.generator_trees,
+            outcome.outputs,
+            modules=outcome.generator_modules,
+            reference=outcome.generator_reference,
+        )
         if producer.failure:
             return producer
         return r[bool].ok(value=True)
@@ -381,7 +369,7 @@ class FlextInfraMiseArtifactsVerification(
             The resulting ``p.Result[bool]``.
 
         """
-        closure = cls._producer_closure_current(outcome, with_modules=False)
+        closure = cls._producer_closure_current(outcome)
         if closure.failure:
             return closure
         membership = cls._docs_frontier_membership_current(outcome)

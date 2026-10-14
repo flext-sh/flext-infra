@@ -38,7 +38,19 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         producer: m.Infra.CodegenPhaseAnalysis | None = None,
         source_authority: m.Infra.CodegenSourceAuthority | None = None,
     ) -> None:
-        """Initialize the transaction with its configured Mise artifact owner."""
+        """Initialize the transaction with its configured Mise artifact owner.
+
+        Args:
+            owner: The configured Mise artifact owner of the transaction.
+            participant_policy: The declared participant authorization policy.
+            producer: The bound producer analysis, or ``None`` to self-serve
+                the pre-planning producer authority.
+            source_authority: The cold source authority, when publishing.
+
+        Raises:
+            RuntimeError: When the self-served producer authority capture
+                fails.
+        """
         if producer is None:
             # Self-serve the pre-planning producer authority: every transaction
             # publication journals the generator's own source states, and the
