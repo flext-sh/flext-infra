@@ -80,15 +80,21 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        by_path = {item.path: item for item in file_plans}
+        if any(by_path.get(item.path) != item for item in config_plans):
+            return result_type.fail(
+                "generation configurations differ from the complete file plan",
+            )
+        sources = FlextInfraCodegenPreconditions.unique_states(
+            tuple(source for item in file_plans for source in item.source_states)
+        )
+        if sources.failure:
+            return result_type.from_failure(sources)
         destinations = FlextInfraMisePublication.admit_batch(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-                inputs=tuple(
-                    source
-                    for item in (*config_plans, *file_plans)
-                    for source in item.source_states
-                ),
-                files=(*config_plans, *file_plans),
+                inputs=sources.value,
+                files=file_plans,
             )
         )
         if destinations.failure:
@@ -101,7 +107,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         if settled.failure:
             return result_type.from_failure(settled)
         published = self._publish_generation_transaction(
-            settled.value, (*config_plans, *file_plans)
+            settled.value, file_plans
         )
         if published.failure:
             return result_type.from_failure(published)

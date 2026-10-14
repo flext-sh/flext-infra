@@ -9,7 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenTransaction
+from flext_infra.codegen import (
+    FlextInfraCodegenFileLeases,
+    FlextInfraCodegenTransaction,
+    FlextInfraMiseArtifactsVerification,
+)
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteScaffold
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
@@ -19,6 +23,19 @@ from flext_infra.validate import FlextInfraValidateFreshImport
 
 class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteScaffold):
     """Publish file-only surfaces through the existing locked transaction."""
+
+    @staticmethod
+    def _observe_publication(
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Consume authenticated publication evidence without invoking a planner."""
+        with FlextInfraCodegenFileLeases.mutation_lease(request.root):
+            observed = FlextInfraMiseArtifactsVerification.publication_current(request)
+            if observed.failure:
+                return r[m.Infra.CodegenResult].from_failure(observed)
+            return r[m.Infra.CodegenResult].ok(
+                m.Infra.CodegenResult(verified_publication=observed.value),
+            )
 
     def _execute_lazy_init(
         self,
@@ -30,6 +47,8 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             The checked or atomically published initializer plan.
 
         """
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+            return self._observe_publication(request)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
         )
@@ -58,24 +77,6 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
                 return r[m.Infra.CodegenResult].from_failure(stage_workspace)
             if stage_workspace.value != request.root.expanduser().resolve():
                 roots["@stage-inputs-0"] = stage_workspace.value
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            if request.what != c.Infra.CodegenConformSurface.FACADES:
-                return self._execute_lazy_init_locked(
-                    request,
-                    transaction,
-                    roots,
-                    request.root.expanduser().resolve(),
-                )
-            return transaction.run_files_locked(
-                roots,
-                lambda scope_root: self._execute_lazy_init_locked(
-                    request,
-                    transaction,
-                    roots,
-                    scope_root,
-                ),
-                prepare=False,
-            )
         return transaction.run_files_locked(
             roots,
             lambda scope_root: self._execute_lazy_init_locked(
@@ -99,6 +100,8 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             The initializer result, retaining any planner or transaction failure.
 
         """
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+            return self._observe_publication(request)
         planned = self._plan_single_surface(request)
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
@@ -112,11 +115,6 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             for file in analysis.files
             if u.Infra.codegen_file_requires_effect(file)
         )
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            drift = self._drift_message(changed, str(request.what))
-            if drift is not None:
-                return r[m.Infra.CodegenResult].fail(drift)
-            return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         if not changed:
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         return self._publish_directed_phase(

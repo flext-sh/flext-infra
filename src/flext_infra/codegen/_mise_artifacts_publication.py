@@ -149,6 +149,8 @@ class FlextInfraMisePublication:
     @staticmethod
     def admit_batch(
         analysis: m.Infra.CodegenPhaseAnalysis,
+        *,
+        journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[bool]:
         """Authenticate batch inputs and original destination states once."""
         inputs = FlextInfraCodegenPreconditions.unique_states(analysis.inputs)
@@ -166,19 +168,16 @@ class FlextInfraMisePublication:
         current = FlextInfraMisePublication._source_prerequisites(inputs.value, {})
         if current.failure:
             return current
-        destinations: list[m.Cli.AtomicFileState] = []
-        for plan in analysis.files:
-            before = u.Infra.codegen_file_before_state(plan)
-            if before.failure:
-                return r[bool].from_failure(before)
-            destinations.append(before.value)
-        return FlextInfraMiseArtifactsVerification.states_current(tuple(destinations))
+        return FlextInfraMiseArtifactsVerification.plans_current(
+            analysis.files, journal=journal
+        )
 
     @staticmethod
     def publish(
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
         batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Publish every target independently and retain all native failures.
 
@@ -198,7 +197,9 @@ class FlextInfraMisePublication:
                 return r[m.Infra.CodegenPhaseOutcome].fail(
                     "staged publications differ from admitted batch",
                 )
-            admitted_batch = FlextInfraMisePublication.admit_batch(batch_analysis)
+            admitted_batch = FlextInfraMisePublication.admit_batch(
+                batch_analysis, journal=journal
+            )
             if admitted_batch.failure:
                 return r[m.Infra.CodegenPhaseOutcome].from_failure(admitted_batch)
         written: list[Path] = []
