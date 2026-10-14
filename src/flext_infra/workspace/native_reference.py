@@ -900,16 +900,53 @@ class FlextInfraWorkspaceNativeReference:
             )
         namespace = vars(supplier)
         components = metadata["__qualname__"].split(".")
+        lexical_owner = None
         for component in components[:-1]:
             owner = namespace.get(component)
             if not cls._is_class(owner):
                 return r[t.Triple[str, str, str]].fail(
                     "extension callback has no registered lexical owner",
                 )
+            lexical_owner = owner
             namespace = cls._class_namespace(owner)
-        if namespace.get(components[-1]) is not value:
+        registered = namespace.get(components[-1])
+        if registered is not value:
+            descriptor_owner = (
+                registered.__objclass__
+                if type(registered) in {
+                    GetSetDescriptorType,
+                    MemberDescriptorType,
+                    ClassMethodDescriptorType,
+                    MethodDescriptorType,
+                    WrapperDescriptorType,
+                }
+                else None
+            )
             return r[t.Triple[str, str, str]].fail(
                 "extension callback differs from its registered descriptor",
+                error_data={
+                    "supplier": metadata["__module__"],
+                    "name": metadata["__name__"],
+                    "qualname": metadata["__qualname__"],
+                    "native_type": cls._symbol(native),
+                    "registered_descriptor_present": components[-1] in namespace,
+                    "registered_descriptor_kind": (
+                        cls._symbol(type(registered))
+                        if components[-1] in namespace
+                        else None
+                    ),
+                    "registered_lexical_owner": (
+                        cls._symbol(lexical_owner)
+                        if lexical_owner is not None
+                        else None
+                    ),
+                    "registered_descriptor_owner": (
+                        cls._symbol(descriptor_owner)
+                        if descriptor_owner is not None
+                        and cls._is_class(descriptor_owner)
+                        else None
+                    ),
+                },
             )
         return r[t.Triple[str, str, str]].ok((
             metadata["__module__"],
@@ -1281,35 +1318,42 @@ class FlextInfraWorkspaceNativeReference:
         pending = []
         for name in names:
             module = sys.modules.get(name)
-            if type(module) is not ModuleType:
-                if name.partition(".")[0] not in {
-                    "flext",
-                    "flext_core",
-                    "flext_infra",
-                    "flext_cli",
-                    "flext_api",
-                }:
-                    # Third-party lazy/aliased modules (pygments.lexers, ...)
-                    # are their package's construction: this workspace's
-                    # epoch proves first-party bindings only.
-                    continue
-                return r[m.Infra.NativeImportObservation].fail(
-                    f"native reference lacks an elected module: {name}",
-                )
             origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(name)
             if origin.failure:
                 return r[m.Infra.NativeImportObservation].from_failure(origin)
+            if sys.modules.get(name) is not module:
+                return r[m.Infra.NativeImportObservation].fail(
+                    f"native reference module election changed: {name}",
+                )
+            namespace = vars(ModuleType)["__dict__"].__get__(module, type(module))
             origins[name] = cls._source_path(origin.value, paths)
             sources.add((name, str(origins[name]), ""))
+            evidence.append(
+                m.Infra.NativeBindingEvidence(
+                    binding=name,
+                    kind="module",
+                    supplier=name,
+                    name=namespace["__name__"],
+                    qualname="",
+                    operands=(("module_type", cls._symbol(type(module))),),
+                ),
+            )
+            if type(module) is not ModuleType:
+                pending.append((
+                    f"{name}.module_type",
+                    type(module),
+                    name,
+                    str(origins[name]),
+                ))
             mutable_globals = set()
             functions = [
-                value for value in vars(module).values() if type(value) is FunctionType
+                value for value in namespace.values() if type(value) is FunctionType
             ]
             functions.extend(
                 member.__func__
                 if type(member) in {classmethod, staticmethod}
                 else member
-                for value in vars(module).values()
+                for value in namespace.values()
                 if cls._is_class(value)
                 for member in cls._class_namespace(value).values()
                 if type(member) in {FunctionType, classmethod, staticmethod}
@@ -1333,12 +1377,12 @@ class FlextInfraWorkspaceNativeReference:
                     qualname=key,
                     operands=(("value", cls._value(value)),),
                 )
-                for key, value in sorted(vars(module).items())
+                for key, value in sorted(namespace.items())
                 if type(value) is bool and key not in mutable_globals
             )
             pending.extend(
                 (f"{name}::{key}", value, name, "")
-                for key, value in sorted(vars(module).items())
+                for key, value in sorted(namespace.items())
                 if cls._is_class(value)
                 or type(value) in {FunctionType, BuiltinFunctionType, MethodType}
                 or type(value) in {property, classmethod, staticmethod}
@@ -1376,21 +1420,9 @@ class FlextInfraWorkspaceNativeReference:
                         actual_supplier,
                     )
                     if observed.failure:
-                        # The supplier module sits outside this epoch's
-                        # election (pyyaml C loaders, typing origins, ...):
-                        # the binding is third-party alias evidence, and the
-                        # supplier's own package owns its proof.
-                        evidence.append(
-                            m.Infra.NativeBindingEvidence(
-                                binding=binding,
-                                kind="alias",
-                                supplier=supplier,
-                                name="",
-                                qualname="",
-                                operands=(("target", actual_supplier),),
-                            ),
+                        return r[m.Infra.NativeImportObservation].from_failure(
+                            observed,
                         )
-                        continue
                     origin = origins[actual_supplier] = cls._source_path(
                         observed.value,
                         paths,
@@ -1679,7 +1711,9 @@ class FlextInfraWorkspaceNativeReference:
             if isinstance(actual_supplier, str):
                 module = sys.modules.get(actual_supplier)
                 if module is None or (
-                    not generated and value.__globals__ is not vars(module)
+                    not generated
+                    and value.__globals__
+                    is not vars(ModuleType)["__dict__"].__get__(module, type(module))
                 ):
                     return r[m.Infra.NativeImportObservation].fail(
                         f"producer globals have no native supplier: {binding}",

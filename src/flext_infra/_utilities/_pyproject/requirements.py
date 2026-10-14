@@ -110,34 +110,44 @@ class FlextInfraUtilitiesPyprojectRequirements:
         generated: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
         custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
     ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
-        """Keep generated floor ownership and authored native occurrence order.
+        """Add missing full requirements without consuming authored occurrences.
 
         Returns:
             The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
 
         """
-        owned = {
-            cls._development_requirement_identity(entry)
-            for entry in generated
-            if isinstance(entry, str)
-        }
         active = frozenset(
             cls.active_development_requirements(
                 tuple(entry for entry in custom if isinstance(entry, str)),
             ),
         )
-        return (
-            *generated,
-            *(
-                entry
-                for entry in custom
-                if not isinstance(entry, str)
-                or (
-                    entry in active
-                    and cls._development_requirement_identity(entry) not in owned
-                )
-            ),
+        authored = tuple(
+            entry
+            for entry in custom
+            if not isinstance(entry, str) or entry in active
         )
+        requirements = {
+            Requirement(entry) for entry in authored if isinstance(entry, str)
+        }
+        inclusions = {
+            canonicalize_name(entry.include_group)
+            for entry in authored
+            if not isinstance(entry, str)
+        }
+        additions: list[str | m.Infra.DependencyGroupInclude] = []
+        for entry in generated:
+            if isinstance(entry, str):
+                parsed = Requirement(entry)
+                if parsed in requirements:
+                    continue
+                requirements.add(parsed)
+            else:
+                included = canonicalize_name(entry.include_group)
+                if included in inclusions:
+                    continue
+                inclusions.add(included)
+            additions.append(entry)
+        return (*additions, *authored)
 
     @staticmethod
     def _development_requirement_identity(
@@ -686,9 +696,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             if isinstance(requirement, str) and cls._declares_direct_source(requirement)
         )
         required_dev: list[str] = []
-        for requirement in FlextInfraUtilitiesDependencies.dedupe_specs(
-            required_dev_dependencies,
-        ):
+        for requirement in required_dev_dependencies:
             if FlextInfraUtilitiesDependencies.dep_name(requirement) == project_name:
                 continue
             normalized = cls._canonical_requirement(requirement, provenance=provenance)

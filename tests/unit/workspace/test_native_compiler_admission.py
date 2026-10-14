@@ -18,6 +18,135 @@ class TestsNativeCompilerAdmission:
     """Observe native consumers and unchanged effects during provenance rejection."""
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "module_name",
+        ["flext_native_module_provider", "vendor_native_module_provider"],
+    )
+    def test_native_module_subclass_is_observed_without_attribute_callbacks(
+        tmp_path: Path,
+        module_name: str,
+    ) -> None:
+        """Native module storage admits both namespaces without replaying getters."""
+        package = tmp_path / module_name
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "import sys\n"
+                "from pathlib import Path\n"
+                "from types import ModuleType\n"
+                "reads = []\n"
+                "marker = Path(__file__).with_suffix('.getter-effects')\n"
+                "marker.write_bytes(b'')\n"
+                "class Payload:\n"
+                "    def operation(self):\n"
+                "        return 'native'\n"
+                "class NativeModule(ModuleType):\n"
+                "    def __getattribute__(self, name):\n"
+                "        reads.append(name)\n"
+                "        with marker.open('a', encoding='utf-8') as stream:\n"
+                "            stream.write(name + '\\n')\n"
+                "        return ModuleType.__getattribute__(self, name)\n"
+                "sys.modules[__name__].__class__ = NativeModule\n",
+            ),
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from types import ModuleType\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as native\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "name = sys.argv[2]\n"
+            "module = importlib.import_module(name)\n"
+            "namespace = vars(ModuleType)['__dict__'].__get__(module, type(module))\n"
+            "assert module.Payload().operation() == 'native'\n"
+            "before = tuple(namespace['reads'])\n"
+            "assert before\n"
+            "marker = namespace['marker']\n"
+            "physical = marker.read_bytes()\n"
+            "observed = native.capture((name,)).unwrap()\n"
+            "assert tuple(namespace['reads']) == before\n"
+            "assert marker.read_bytes() == physical\n"
+            "assert any(item.binding == name and item.kind == 'module' "
+            "for item in observed.bindings)\n"
+            "bindings = {item.binding: item for item in observed.bindings}\n"
+            "module_type = bindings[name + '.module_type']\n"
+            "if module_type.kind == 'alias':\n"
+            "    module_type = bindings[dict(module_type.operands)['target']]\n"
+            "assert module_type.kind == 'class'\n"
+            "assert module_type.supplier == name\n"
+            "assert module_type.qualname == 'NativeModule'\n"
+            "assert observed.modules == (name,)\n"
+            "assert observed.sources\n"
+            "result = provenance.loaded_import_sources(name)\n"
+            "assert tuple(namespace['reads']) == before\n"
+            "assert marker.read_bytes() == physical\n"
+            "result.unwrap()\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), module_name],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["absent", "missing-spec", "broken-origin"])
+    def test_imported_class_preserves_its_supplier_failure(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """A failed supplier never becomes a successful third-party alias string."""
+        package = tmp_path / "supplier_contract_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from .supplier import Payload\n",
+            ),
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "supplier.py",
+                "class Payload:\n"
+                "    def operation(self):\n"
+                "        return 'native'\n",
+            ),
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as native\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('supplier_contract_provider')\n"
+            "assert module.Payload().operation() == 'native'\n"
+            "name = module.Payload.__module__\n"
+            "supplier = sys.modules[name]\n"
+            "defect = sys.argv[2]\n"
+            "if defect == 'absent':\n"
+            "    del sys.modules[name]\n"
+            "elif defect == 'missing-spec':\n"
+            "    supplier.__spec__ = None\n"
+            "else:\n"
+            "    supplier.__file__ = supplier.__file__ + '.absent'\n"
+            "original = native.capture((name,))\n"
+            "assert original.failure\n"
+            "observed = native.capture((module.__name__,))\n"
+            "assert observed.failure, observed\n"
+            "assert observed.error == original.error, (observed, original)\n"
+            "assert observed.error_code == original.error_code\n"
+            "assert observed.exception is original.exception\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
     def test_source_proof_never_replays_an_absolute_import_effect(
         tmp_path: Path,
     ) -> None:
