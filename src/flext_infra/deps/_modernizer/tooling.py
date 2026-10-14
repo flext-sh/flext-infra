@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, config, m, r, t, u
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -187,6 +188,12 @@ class FlextInfraPyprojectModernizerTooling:
                     request.topology.project_kind,
                 ),
                 "first_party": tools.first_party,
+                "deptry_first_party": tuple(
+                    FlextInfraToolTablesPhase.deptry_first_party_namespaces(
+                        path=project_dir,
+                        planned_sources=tuple(request.planned_sources),
+                    ),
+                ),
                 "mypy_path": (
                     derived_mypy_path
                     if declared_roots

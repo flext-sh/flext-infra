@@ -104,7 +104,7 @@ omit = [
 
 [tool.deptry]
 known_first_party = [
-{% for item in tooling_runtime.first_party %}
+{% for item in tooling_runtime.deptry_first_party %}
   {{ item | tojson }},
 {% endfor %}
 ]
@@ -430,6 +430,13 @@ extend-safe-fixes = [
   {{ item | tojson }},
 {% endfor %}
 ]
+{% if tooling.tools.ruff.lint.extend_select %}
+extend-select = [
+{% for item in tooling.tools.ruff.lint.extend_select | sort %}
+  {{ item | tojson }},
+{% endfor %}
+]
+{% endif %}
 {# ignore holds only the unscoped operator-authorized exceptions declared at
    the tooling owner; repositories declare no exception. #}
 ignore = [

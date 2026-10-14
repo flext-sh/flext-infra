@@ -13,7 +13,7 @@ from flext_cli import m
 from typing_extensions import TypeForm
 
 from flext_core import u
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
@@ -29,33 +29,52 @@ class FlextInfraModelsWorkspace:
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
 
-    class NativeBindingEvidence(m.Value):
-        """Static executable binding observed after a real native import."""
+    class SourceBinding(m.ArbitraryTypesModel):
+        """An elected source value, including a legitimate null literal."""
 
-        binding: str = m.Field(description="Module and lexical binding path")
-        kind: str = m.Field(description="Native descriptor category")
-        supplier: str = m.Field(description="Actual defining module")
-        name: str = m.Field(description="Advertised native name")
-        qualname: str = m.Field(description="Advertised qualified name")
-        code: str | None = m.Field(
+        value: p.AttributeProbe | None = m.Field(
+            description="Source-bound value retained without changing null semantics"
+        )
+
+    class SourceConstruction(m.ArbitraryTypesModel):
+        """Captured class syntax and the loaded bindings of declared factories."""
+
+        source: Path = m.Field(description="Cold-elected physical declaration source")
+        syntax: t.Infra.RopeAstNode = m.Field(
+            description="Captured construction module AST"
+        )
+        declaration: t.Infra.RopeAstNode = m.Field(
+            description="Unique source class declaration"
+        )
+        owner: p.AttributeProbe | None = m.Field(
             default=None,
-            description="Base64 native marshal transport, compared as CodeType",
+            description="Loaded class identity at the source-declared lexical path",
         )
-        operands: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+        factories: t.VariadicTuple[p.AttributeProbe] = m.Field(
+            description="Actual source-declared factory bindings"
+        )
+        bases: t.VariadicTuple[p.AttributeProbe] = m.Field(
+            default=(), description="Authenticated declared base bindings"
+        )
+        decorators: t.VariadicTuple[p.AttributeProbe] = m.Field(
+            default=(), description="Authenticated declared decorator bindings"
+        )
+        metaclass: p.AttributeProbe | None = m.Field(
+            default=None,
+            description="Authenticated explicitly declared metaclass binding",
+        )
+        code_sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
             default=(),
-            description="Static construction inputs and executable links",
+            description=(
+                "Authenticated source and binary suppliers of native annotation"
+                " operations"
+            ),
         )
-
-    class NativeImportReference(m.Value):
-        """One immutable runtime epoch, shared by every selected namespace."""
-
-        runtime: Path = m.Field(description="Exact native interpreter")
-        modules: t.StrSequence = m.Field(description="Ordered elected loaded modules")
-        sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
-            description="Physical supplier and generated declaration origins",
-        )
-        bindings: t.VariadicTuple[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
-            m.Field(description="Static native import observations")
+        dataclass_fields: t.MappingKV[str, p.AttributeProbe] | None = m.Field(
+            default=None,
+            description=(
+                "Native field contract reconstructed from source-proven class ancestry"
+            ),
         )
 
     class NativeImportRequest(m.ArbitraryTypesModel):

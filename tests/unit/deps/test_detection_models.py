@@ -104,4 +104,3 @@ class TestsFlextInfraDepsDetectionModels:
         """Verify unsupported type."""
         with pytest.raises(m.ValidationError):
             _ = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(str(tmp_path))
-

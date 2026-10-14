@@ -200,6 +200,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeScope(Protocol):
         """Rope semantic scope shape."""
 
+        @property
+        def parent(self) -> FlextInfraProtocolsRopeRuntime.RopeScope | None: ...
+
         def get_scopes(
             self,
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeScope]: ...
@@ -425,6 +428,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Native Rope match coordinates without exposing syntax trees."""
 
         def get_region(self) -> t.Pair[int, int]: ...
+
+        def get_ast(self, name: str) -> p.AttributeProbe | None: ...
 
     @runtime_checkable
     class RopeSimilarFinder(Protocol):

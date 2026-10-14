@@ -11,22 +11,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import base64
-import importlib
-import json
-import marshal
-import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from types import (
-    BuiltinFunctionType,
-    CodeType,
-    FunctionType,
-    GetSetDescriptorType,
-    MemberDescriptorType,
-    MethodType,
-    ModuleType,
-)
 from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
@@ -60,24 +46,20 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             "import importlib, sys\n"
             "from flext_infra import m\n"
             "from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport\n"
-            "request = m.Infra.NativeImportRequest.model_validate_json(\n"
-            "        sys.stdin.read()\n"
-            "    )\n"
+            "request = m.Infra.NativeImportRequest.model_validate_json(sys.argv[1])\n"
             "for name in request.modules:\n"
             "    importlib.import_module(name)\n"
             "reference = FlextInfraValidateFreshImport.observe_native_reference(request).unwrap()\n"
             "print(reference.model_dump_json())\n"
         )
-        # The request carries every elected source file's content: argv has a
-        # 128 KiB per-argument ceiling (E2BIG), stdin does not.
         observed = u.Cli.run_raw(
             [
                 str(u.Infra.runtime_python(request.runtime_root)),
                 "-c",
                 code,
+                request.model_dump_json(),
             ],
             cwd=request.repository_root,
-            options=m.Cli.ProcessOptions(input_data=request.model_dump_json()),
         )
         if observed.failure:
             return result_type.from_failure(observed)
@@ -108,7 +90,8 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             )
         for state in request.inputs:
             current_state = u.Cli.atomic_read_binary_file_state(
-                state.path, required=True,
+                state.path,
+                required=True,
             )
             if current_state.failure:
                 return result_type.from_failure(current_state)

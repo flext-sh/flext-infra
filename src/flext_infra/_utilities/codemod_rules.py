@@ -899,12 +899,12 @@ class FlextInfraUtilitiesCodemodRules:
         return r[m.Infra.CodemodRule].ok(
             m.Infra.CodemodRule.model_validate({
                 "id": rule_id,
-                "digest": u.Cli.sha256_content(canonical.value),
+                "digest": u.Cli.sha256_content(canonical_json),
                 "provider": provider,
                 "resource": resource,
                 "fixable": "fix" in parsed_rule,
                 "module_absence": module_absence,
-                "expected": declared.value[0] if declared.value else None,
+                "expected": declared_receipt[0] if declared_receipt else None,
                 "owner": declared_metadata.get(
                     c.Infra.CODEMOD_RULE_OWNER_KEY,
                 ),
@@ -919,6 +919,38 @@ class FlextInfraUtilitiesCodemodRules:
             }),
         )
 
+    @staticmethod
+    def _validated_ensure_import_entry(
+        item: object,
+    ) -> p.Result[m.Infra.CodemodEnsureImport]:
+        """Validate one declared ``{module, name}`` ensure-imports entry.
+
+        Returns:
+            The validated ensure-import record, or the first entry failure.
+
+        """
+        failure = r[m.Infra.CodemodEnsureImport]
+        if not isinstance(item, Mapping):
+            return failure.fail(
+                f"ensure-imports entry must be a {{module, name}} mapping, "
+                f"got {type(item).__name__}",
+            )
+        unknown = sorted(set(item) - {"module", "name"})
+        if unknown:
+            return failure.fail(f"ensure-imports entry has unknown keys {unknown}")
+        module = item.get("module")
+        name = item.get("name")
+        if not isinstance(module, str) or not module.strip():
+            return failure.fail("ensure-imports entry requires a non-empty module")
+        if not isinstance(name, str) or not name.strip():
+            return failure.fail("ensure-imports entry requires a non-empty name")
+        return failure.ok(
+            m.Infra.CodemodEnsureImport.model_validate({
+                "module": module,
+                "name": name,
+            }),
+        )
+
     @classmethod
     def _declared_ensure_imports(
         cls,
@@ -930,41 +962,21 @@ class FlextInfraUtilitiesCodemodRules:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]``.
 
         """
+        failure = r[t.VariadicTuple[m.Infra.CodemodEnsureImport]]
         if declared is None:
-            return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].ok(value=())
+            return failure.ok(value=())
         if not isinstance(declared, Sequence) or isinstance(declared, str):
-            return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
+            return failure.fail(
                 f"ensure-imports must be a list of {{module, name}} mappings, "
                 f"got {type(declared).__name__}",
             )
         entries: list[m.Infra.CodemodEnsureImport] = []
         for item in declared:
-            if not isinstance(item, Mapping):
-                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
-                    f"ensure-imports entry must be a {{module, name}} mapping, "
-                    f"got {type(item).__name__}",
-                )
-            unknown = sorted(set(item) - {"module", "name"})
-            if unknown:
-                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
-                    f"ensure-imports entry has unknown keys {unknown}",
-                )
-            module = item.get("module")
-            name = item.get("name")
-            if not isinstance(module, str) or not module.strip():
-                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
-                    "ensure-imports entry requires a non-empty module",
-                )
-            if not isinstance(name, str) or not name.strip():
-                return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].fail(
-                    "ensure-imports entry requires a non-empty name",
-                )
-            model = m.Infra.CodemodEnsureImport.model_validate({
-                "module": module,
-                "name": name,
-            })
-            entries.append(model)
-        return r[t.VariadicTuple[m.Infra.CodemodEnsureImport]].ok(value=tuple(entries))
+            model = cls._validated_ensure_import_entry(item)
+            if model.failure:
+                return failure.from_failure(model)
+            entries.append(model.value)
+        return failure.ok(value=tuple(entries))
 
     @classmethod
     def _parse_rules(

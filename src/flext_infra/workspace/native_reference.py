@@ -9,10 +9,19 @@ from __future__ import annotations
 import marshal
 import sys
 from base64 import b64decode, b64encode
-from inspect import getattr_static, getclosurevars, isbuiltin, isclass, isfunction
+from importlib.machinery import FrozenImporter
 from json import dumps
 from pathlib import Path
-from types import CodeType, MemberDescriptorType, ModuleType
+from types import (
+    BuiltinFunctionType,
+    CodeType,
+    FunctionType,
+    GenericAlias,
+    GetSetDescriptorType,
+    MemberDescriptorType,
+    ModuleType,
+    UnionType,
+)
 
 from flext_infra import m, p, r, t
 
@@ -25,11 +34,22 @@ class FlextInfraWorkspaceNativeReference:
         return vars(type)["__dict__"].__get__(value, type(value))
 
     @staticmethod
-    def _symbol(value: p.AttributeProbe) -> str:
-        if isclass(value):
+    def _is_class(value: p.AttributeProbe) -> bool:
+        """Recognize a class through native metaclass storage, never __class__."""
+        return any(
+            base is type
+            for base in vars(type)["__mro__"].__get__(
+                type(value),
+                type(type(value)),
+            )
+        )
+
+    @classmethod
+    def _symbol(cls, value: p.AttributeProbe) -> str:
+        if cls._is_class(value):
             module = type.__getattribute__(value, "__module__")
             name = type.__getattribute__(value, "__qualname__")
-        elif isfunction(value) or isbuiltin(value):
+        elif type(value) in {FunctionType, BuiltinFunctionType}:
             module = value.__module__
             name = value.__qualname__
         elif type(value) is ModuleType:
@@ -72,18 +92,65 @@ class FlextInfraWorkspaceNativeReference:
                     for key, item in value.items()
                 ),
             ))
-        fields = getattr_static(native, "__dataclass_fields__", None)
-        if type(fields) is dict and not isclass(value):
-            observed = []
-            for name in fields:
-                item = getattr_static(value, name)
-                if type(item) is MemberDescriptorType:
-                    item = item.__get__(value, native)
-                observed.append((name, cls._value(item, seen)))
-            return dumps(("dataclass", cls._symbol(native), observed))
-        # Runtime settings/model instances have their own validation authority.
-        # Their identity here is their native type, never a frozen state dump.
-        return dumps(("binding", cls._symbol(value)))
+        if native is CodeType:
+            return dumps(("code", b64encode(marshal.dumps(value)).decode("ascii")))
+        if native is FunctionType:
+            return dumps((
+                "function",
+                cls._symbol(value),
+                cls._value(value.__code__, seen),
+                cls._value(value.__defaults__, seen),
+                cls._value(value.__kwdefaults__, seen),
+                cls._value(
+                    tuple(cell.cell_contents for cell in value.__closure__ or ()),
+                    seen,
+                ),
+            ))
+        if native is UnionType:
+            arguments = vars(UnionType)["__args__"].__get__(value, UnionType)
+            return dumps(("union", cls._value(arguments, seen)))
+        if any(
+            owner is GenericAlias
+            for owner in vars(type)["__mro__"].__get__(native, type(native))
+        ):
+            storage = vars(GenericAlias)
+            return dumps((
+                "generic_alias",
+                cls._symbol(native),
+                cls._value(storage["__origin__"].__get__(value, native), seen),
+                cls._value(storage["__args__"].__get__(value, native), seen),
+            ))
+        if cls._is_class(value) or native in {BuiltinFunctionType, ModuleType}:
+            return dumps(("symbol", cls._symbol(value)))
+        observed: list[t.Pair[str, str]] = []
+        ancestry = vars(type)["__mro__"].__get__(native, type(native))
+        for owner in ancestry:
+            namespace = cls._class_namespace(owner)
+            for name, descriptor in sorted(namespace.items()):
+                if (
+                    type(descriptor) is MemberDescriptorType
+                    or (name == "__dict__" and type(descriptor) is GetSetDescriptorType)
+                ) and descriptor.__objclass__ is owner:
+                    observed.append((
+                        f"{cls._symbol(owner)}::{name}",
+                        cls._value(descriptor.__get__(value, native), seen),
+                    ))
+        if observed:
+            return dumps(("storage", cls._symbol(native), observed))
+        for module_name in (type.__getattribute__(native, "__module__"),):
+            module = sys.modules.get(module_name)
+            if type(module) is ModuleType:
+                declared = tuple(
+                    name
+                    for name, candidate in vars(module).items()
+                    if type(name) is str and candidate is value
+                )
+                if declared:
+                    return dumps(("registered", module_name, sorted(declared)))
+        raise ValueError(
+            "native import operand has no callback-free storage or registered binding: "
+            + cls._symbol(native),
+        )
 
     @staticmethod
     def _relocate_code(
@@ -146,9 +213,8 @@ class FlextInfraWorkspaceNativeReference:
             pending.extend(
                 (f"{name}::{key}", value, name, "")
                 for key, value in sorted(vars(module).items())
-                if isclass(value)
-                or isfunction(value)
-                or isbuiltin(value)
+                if cls._is_class(value)
+                or type(value) in {FunctionType, BuiltinFunctionType}
                 or type(value) in {property, classmethod, staticmethod}
             )
         visited: dict[int, str] = {}
@@ -167,7 +233,7 @@ class FlextInfraWorkspaceNativeReference:
                 )
                 continue
             visited[id(value)] = binding
-            if isclass(value):
+            if cls._is_class(value):
                 namespace = cls._class_namespace(value)
                 actual_supplier = type.__getattribute__(value, "__module__")
                 origin = origins.get(actual_supplier)
@@ -209,15 +275,23 @@ class FlextInfraWorkspaceNativeReference:
                                 "annotations",
                                 cls._value(namespace.get("__annotations__")),
                             ),
+                            (
+                                "dataclass_parameters",
+                                cls._value(namespace.get("__dataclass_params__")),
+                            ),
+                            (
+                                "dataclass_fields",
+                                cls._value(namespace.get("__dataclass_fields__")),
+                            ),
+                            ("slots", cls._value(namespace.get("__slots__"))),
                         ),
                     ),
                 )
                 pending.extend(
                     (f"{binding}.{key}", item, actual_supplier, source)
                     for key, item in sorted(namespace.items())
-                    if isclass(item)
-                    or isfunction(item)
-                    or isbuiltin(item)
+                    if cls._is_class(item)
+                    or type(item) in {FunctionType, BuiltinFunctionType}
                     or type(item) in {property, classmethod, staticmethod}
                 )
                 continue
@@ -252,7 +326,7 @@ class FlextInfraWorkspaceNativeReference:
             kind = type(value).__name__
             if type(value) in {classmethod, staticmethod}:
                 value = value.__func__
-            if not isfunction(value):
+            if type(value) is not FunctionType:
                 evidence.append(
                     m.Infra.NativeBindingEvidence(
                         binding=binding,
@@ -292,11 +366,21 @@ class FlextInfraWorkspaceNativeReference:
                 str(origin) if generated else code.co_filename,
                 owner_source if generated else "",
             ))
-            closure = getclosurevars(value)
+            nonlocals = dict(
+                zip(
+                    value.__code__.co_freevars,
+                    (cell.cell_contents for cell in value.__closure__ or ()),
+                    strict=True,
+                )
+            )
+            globals_used = tuple(
+                value.__globals__[name]
+                for name in value.__code__.co_names
+                if name in value.__globals__
+            )
             wrapped = vars(value).get("__wrapped__")
             if wrapped is not None and not any(
-                item is wrapped
-                for item in (*closure.nonlocals.values(), *closure.globals.values())
+                item is wrapped for item in (*nonlocals.values(), *globals_used)
             ):
                 return r[m.Infra.NativeImportReference].fail(
                     f"producer wrapper has no executable link: {binding}",
@@ -320,7 +404,7 @@ class FlextInfraWorkspaceNativeReference:
                         ("module", cls._value(value.__module__)),
                         ("defaults", cls._value(value.__defaults__)),
                         ("keyword_defaults", cls._value(value.__kwdefaults__)),
-                        ("closure", cls._value(closure.nonlocals)),
+                        ("closure", cls._value(nonlocals)),
                         ("wrapped", cls._value(wrapped)),
                     ),
                 ),
@@ -365,8 +449,70 @@ class FlextInfraWorkspaceNativeReference:
                 not isinstance(actual_code, CodeType)
                 or not isinstance(expected_code, CodeType)
                 or actual_code != expected_code
+                or actual_code.co_filename != expected_code.co_filename
+                or actual_code.co_firstlineno != expected_code.co_firstlineno
+                or actual_code.co_linetable != expected_code.co_linetable
+                or actual_code.co_exceptiontable != expected_code.co_exceptiontable
             ):
                 return r[bool].fail(
                     f"producer executed code differs from native import: {item.binding}"
                 )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def authored_sources_current(
+        observed: m.Infra.NativeImportReference,
+        inputs: t.SequenceOf[m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Authenticate authored driver code before read-only reference staging.
+
+        Generated descriptors require the isolated reference and are never
+        reconstructed here. This proof alone cannot authorize publication.
+        """
+        states = {item.path: item for item in inputs}
+        compiled: dict[str, tuple[CodeType, ...]] = {}
+        admitted = 0
+        for binding in observed.bindings:
+            if binding.code is None:
+                continue
+            executed = marshal.loads(b64decode(binding.code, validate=True))
+            if not isinstance(executed, CodeType):
+                return r[bool].fail(f"producer code is not native: {binding.binding}")
+            module = sys.modules[binding.supplier]
+            frozen = module.__spec__.origin == "frozen"
+            if executed.co_filename.startswith("<") and not frozen:
+                continue
+            key = binding.supplier if frozen else executed.co_filename
+            if key not in compiled:
+                if frozen:
+                    root = FrozenImporter.get_code(module.__spec__.name)
+                else:
+                    state = states.get(Path(executed.co_filename))
+                    if state is None or state.content is None:
+                        return r[bool].fail(
+                            f"authored producer source is not pinned: {binding.binding}",
+                        )
+                    root = compile(
+                        state.content,
+                        executed.co_filename,
+                        "exec",
+                        dont_inherit=True,
+                        optimize=sys.flags.optimize,
+                    )
+                pending = [root]
+                codes = []
+                while pending:
+                    code = pending.pop()
+                    codes.append(code)
+                    pending.extend(
+                        item for item in code.co_consts if isinstance(item, CodeType)
+                    )
+                compiled[key] = tuple(codes)
+            if not any(code == executed for code in compiled[key]):
+                return r[bool].fail(
+                    f"authored producer code differs from pinned native source: {binding.binding}",
+                )
+            admitted += 1
+        if not admitted:
+            return r[bool].fail("cold producer authority has no authored driver code")
         return r[bool].ok(value=True)

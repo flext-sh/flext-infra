@@ -112,13 +112,207 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         try:
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
-                return cls._rewrite_constant_consumer(
+                updated, changes = cls._rewrite_constant_consumer(
                     path, source, rope_workspace, project, paths
                 )
+                reused, literal_changes = cls._reuse_literal_returns(
+                    path, updated, rope_workspace, project, paths
+                )
+                return reused, (*changes, *literal_changes)
 
             return cls._semantic_edits(cls._editable_sources(sources), rewrite)
         finally:
             project.close()
+
+    @classmethod
+    def _reuse_literal_returns(
+        cls,
+        path: Path,
+        source: str,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        project: p.Infra.RopeProject,
+        paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+    ) -> t.Infra.TransformResult:
+        """Reuse proven public string constants in complete function returns.
+
+        Only native literal regions belonging to a single constants assignment
+        are candidates. Native return matching leaves annotations, metadata,
+        docstrings, defaults and computed expressions outside this slice.
+
+        Returns:
+            Source edits preserving the literal's runtime string value.
+
+        Raises:
+            ValueError: If a return has competing owners or a shadowed facade.
+        """
+        convention = workspace.convention(path)
+        if (
+            cls._constant_definition_source(workspace, convention)
+            or path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
+            or convention.module_policy.expected_alias in {"config", "settings"}
+            or convention.project_layout is None
+        ):
+            return source, ()
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        resource = project.get_resource(
+            path.relative_to(Path(project.root.real_path)).as_posix()
+        )
+        module = runtime.build_string_module(project, source, resource=resource)
+        returns = refactors.semantic_regions(
+            module,
+            "return ${literal}",
+            arguments={"literal": "type=builtins.str"},
+        )
+        if not any(
+            source[start:end].removeprefix("return").lstrip().startswith(("'", '"'))
+            for start, end in returns
+        ):
+            return source, ()
+        package = cls._constant_facade_package(
+            cls._constant_imports(project, module),
+            convention.project_layout.package_name,
+            path,
+        )
+        if package not in paths:
+            paths[package] = cls._constant_public_paths(project, package)
+        public = paths[package]
+        if not public:
+            return source, ()
+        matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
+        for literal, reference in cls._literal_constant_patterns(project, public):
+            for start, end in refactors.semantic_regions(
+                module, f"return {literal}", arguments={}
+            ):
+                scope = runtime.scope_at(module, start)
+                if scope.get_kind() != c.Infra.RopeScopeKind.FUNCTION:
+                    continue
+                existing = scope.lookup("c")
+                if existing is not None and not runtime.same_name(
+                    public["c"], existing
+                ):
+                    message = f"literal constant facade c is shadowed in {path}"
+                    raise ValueError(message)
+                if isinstance(
+                    existing, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
+                ) and not runtime.imported_binding_precedes(
+                    project, module, "c", start
+                ):
+                    message = (
+                        f"literal constant facade c has no preceding "
+                        f"unconditional import in {path}"
+                    )
+                    raise ValueError(message)
+                previous = matched.get((start, end))
+                if previous is not None and previous != reference:
+                    message = (
+                        f"literal return has ambiguous public constant owners "
+                        f"in {path}: {previous}, {reference}"
+                    )
+                    raise ValueError(message)
+                matched[start, end] = reference
+        if not matched:
+            return source, ()
+        changed = refactors.content_change(
+            resource,
+            source,
+            tuple(
+                m.Infra.SourceRewrite(start=start, end=end, text=f"return {reference}")
+                for (start, end), reference in matched.items()
+            ),
+        )
+        proposed = runtime.build_string_module(
+            project, changed.new_contents, resource=resource
+        )
+        imports = runtime.module_imports_for_pymodule(project, proposed)
+        imports.add_import(runtime.from_import(package, 0, [("c", None)]))
+        imports.remove_duplicates()
+        return imports.get_changed_source(), (
+            f"literal returns -> {package}.c: {len(matched)} references",
+        )
+
+    @classmethod
+    def _literal_constant_patterns(
+        cls,
+        project: p.Infra.RopeProject,
+        public: t.MappingKV[str, p.Infra.RopePyName],
+    ) -> t.VariadicTuple[t.Pair[str, str]]:
+        """Read native string regions at uniquely assigned public c bindings.
+
+        Returns:
+            Raw source patterns and their identity-proven public references.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        structure = FlextInfraUtilitiesRopeStructure
+        found: list[t.Pair[str, str]] = []
+        for reference, candidate in public.items():
+            binding = cls._constant_terminal(project, candidate, reference)
+            if (
+                not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+                or len(binding.assignments) != 1
+            ):
+                continue
+            module, line = binding.get_definition_location()
+            if module is None or line is None:
+                continue
+            resource = module.get_resource()
+            if resource is None:
+                continue
+            source = module.source_code
+            for statement in structure.logical_statements(source):
+                if (
+                    statement.line != line
+                    or statement.enclosing_kind != c.Infra.RopeScopeKind.CLASS
+                    or statement.category
+                    not in {
+                        c.Infra.StatementCategory.ASSIGN,
+                        c.Infra.StatementCategory.ANN_ASSIGN,
+                    }
+                ):
+                    continue
+                target = structure.target_name(statement)
+                if not target or not runtime.same_name(
+                    binding,
+                    runtime.expression_name(
+                        runtime.scope_at(module, statement.start_offset), target
+                    ),
+                ):
+                    continue
+                for start, end in refactors.semantic_regions(
+                    module,
+                    "${literal}",
+                    arguments={"literal": "type=builtins.str"},
+                    start=statement.start_offset,
+                    end=statement.end_offset,
+                ):
+                    literal = source[start:end]
+                    if not literal.startswith(("'", '"')):
+                        continue
+                    if refactors.word_primary_range(source, start + 1) != (
+                        start,
+                        end,
+                    ):
+                        continue
+                    pattern = (
+                        f"${{target}}: ${{annotation}} = {literal}"
+                        if statement.category == c.Infra.StatementCategory.ANN_ASSIGN
+                        else f"${{target}} = {literal}"
+                    )
+                    if not refactors.semantic_regions(
+                        module,
+                        pattern,
+                        arguments={},
+                        start=statement.start_offset,
+                        end=statement.end_offset,
+                    ):
+                        continue
+                    canonical = cls._constant_reference(
+                        public, binding, Path(resource.real_path)
+                    )
+                    if canonical is not None:
+                        found.append((literal, canonical))
+        return tuple(found)
 
     @classmethod
     def _rewrite_constant_consumer(

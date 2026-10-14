@@ -63,6 +63,21 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Apply the complete candidate campaign"),
         ] = True
 
+    class CodegenSourceAuthority(m.ArbitraryTypesModel):
+        """Cold authority permits reference staging, never project publication."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        runtime: Path = m.Field(description="Authenticated native interpreter")
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            description="Pinned producer sources, resources and distribution records",
+        )
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            description="Authenticated physical producer resource membership",
+        )
+        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+            description="Cold-elected physical producer namespaces",
+        )
+
     class CodegenPhaseAnalysis(m.ArbitraryTypesModel):
         """Immutable planner receipt reused for publication verification."""
 

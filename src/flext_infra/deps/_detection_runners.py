@@ -27,7 +27,6 @@ class FlextInfraDependencyDetectionRunnersMixin:
         *,
         config_path: Path | None = None,
         json_output_path: Path | None = None,
-        extend_exclude: t.StrSequence | None = None,
     ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
         """Consume every native deptry finding over the project's production source.
 
@@ -54,7 +53,15 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 f"deptry report destination already exists: {out_file}"
             )
         result = u.Cli.run_raw(
-            self._deptry_command(venv_bin, settings, out_file, extend_exclude),
+            [
+                str(venv_bin / c.Infra.DEPTRY),
+                str(c.Infra.DEFAULT_SRC_DIR),
+                "--config",
+                str(settings),
+                "--json-output",
+                str(out_file),
+                "--no-ansi",
+            ],
             cwd=project_path,
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
@@ -67,8 +74,9 @@ class FlextInfraDependencyDetectionRunnersMixin:
             or outcome.forwarded_signal is not None
             or outcome.raw_return_code not in {0, 1}
         ):
+            failure = m.Cli.ProcessOutcome.model_validate(outcome, from_attributes=True)
             return result_type.fail(
-                f"deptry process failed: {outcome.model_dump_json()}\n"
+                f"deptry process failed: {failure.model_dump_json()}\n"
                 f"stdout:\n{cmd_result.stdout}\nstderr:\n{cmd_result.stderr}"
             )
         report_state = u.Cli.atomic_read_binary_file_state(out_file, required=True)
@@ -104,33 +112,6 @@ class FlextInfraDependencyDetectionRunnersMixin:
             issues,
             outcome.raw_return_code,
         ))
-
-    @staticmethod
-    def _deptry_command(
-        venv_bin: Path,
-        settings: Path,
-        out_file: Path,
-        extend_exclude: t.StrSequence | None,
-    ) -> t.MutableSequenceOf[str]:
-        """Compose the deptry invocation for one project.
-
-        Returns:
-            The composed deptry command line.
-
-        """
-        cmd: t.MutableSequenceOf[str] = [
-            str(venv_bin / c.Infra.DEPTRY),
-            str(c.Infra.DEFAULT_SRC_DIR),
-            "--config",
-            str(settings),
-            "--json-output",
-            str(out_file),
-            "--no-ansi",
-        ]
-        if extend_exclude:
-            for excluded in extend_exclude:
-                cmd.extend(["--extend-exclude", excluded])
-        return cmd
 
     @staticmethod
     def _cleanup_deptry_output(

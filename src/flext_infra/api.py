@@ -395,6 +395,89 @@ class FlextInfra(
         )
 
     @staticmethod
+    def _project_git_identity(
+        resolved: Path,
+    ) -> p.Result[m.Infra.GitIdentityReport | None]:
+        """Return the repository Git identity, or ``None`` outside a repository.
+
+        Args:
+            resolved: Resolved project working directory.
+
+        Returns:
+            The Git identity report, or ``None`` when no Git identity exists.
+
+        """
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved))
+        if identity.failure:
+            return r[m.Infra.GitIdentityReport | None].ok(value=None)
+        return r[m.Infra.GitIdentityReport | None].ok(value=identity.value)
+
+    @staticmethod
+    def _project_captured_runtime(
+        resolved: Path,
+        root: Path,
+    ) -> p.Result[t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]]:
+        """Load the root codegen policy and elect the workspace runtime context.
+
+        Args:
+            resolved: Resolved project working directory.
+            root: Resolved Git repository root.
+
+        Returns:
+            The captured inputs with their elected runtime, or the first failure.
+
+        """
+        captured = u.Infra.load_codegen_inputs(root)
+        if captured.failure:
+            return r[
+                t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
+            ].from_failure(captured)
+        runtime = FlextInfraWorkspaceDetector.resolution_context(resolved)
+        if runtime.failure:
+            return r[
+                t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
+            ].from_failure(runtime)
+        return r[t.Pair[m.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]].ok(
+            (captured.value, runtime.value),
+        )
+
+    @staticmethod
+    def _project_workspace_target(
+        root: Path,
+        captured: m.Infra.CodegenInputs,
+    ) -> p.Result[t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]]:
+        """Load the workspace spec and resolve its conform target.
+
+        Args:
+            root: Resolved Git repository root.
+            captured: Loaded codegen inputs.
+
+        Returns:
+            The workspace spec with its conform target, or the first failure.
+
+        """
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            root,
+            inputs=captured,
+        )
+        if workspace.failure:
+            return r[
+                t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
+            ].from_failure(workspace)
+        target = FlextInfraWorkspaceDetector.conform_target(
+            root,
+            workspace.value,
+            inputs=captured,
+        )
+        if target.failure:
+            return r[
+                t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
+            ].from_failure(target)
+        return r[t.Pair[m.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]].ok(
+            (workspace.value, target.value),
+        )
+
+    @staticmethod
     def project_context(cwd: Path) -> p.Result[m.Infra.WorkspaceProjectContext]:
         """Derive Git, workspace, and effective project facts from ``cwd``.
 
@@ -407,47 +490,36 @@ class FlextInfra(
             return r[m.Infra.WorkspaceProjectContext].fail(
                 f"project context cwd is not a directory: {resolved}",
             )
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved))
-        if identity.failure:
+        identity = FlextInfra._project_git_identity(resolved)
+        if identity.value is None:
             return r[m.Infra.WorkspaceProjectContext].ok(
                 m.Infra.WorkspaceProjectContext(cwd=resolved),
             )
         root = identity.value.repo_root
-        captured = u.Infra.load_codegen_inputs(root)
-        if captured.failure:
-            return r[m.Infra.WorkspaceProjectContext].from_failure(captured)
-        runtime = FlextInfraWorkspaceDetector.resolution_context(resolved)
-        if runtime.failure:
-            return r[m.Infra.WorkspaceProjectContext].from_failure(runtime)
-        if captured.value.spec.repository is None:
+        captured_runtime = FlextInfra._project_captured_runtime(resolved, root)
+        if captured_runtime.failure:
+            return r[m.Infra.WorkspaceProjectContext].from_failure(captured_runtime)
+        captured, runtime = captured_runtime.value
+        if captured.spec.repository is None:
             return r[m.Infra.WorkspaceProjectContext].ok(
                 m.Infra.WorkspaceProjectContext(
                     cwd=resolved,
                     identity=identity.value,
-                    runtime=runtime.value,
+                    runtime=runtime,
                 ),
             )
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            root,
-            inputs=captured.value,
-        )
-        if workspace.failure:
-            return r[m.Infra.WorkspaceProjectContext].from_failure(workspace)
-        target = FlextInfraWorkspaceDetector.conform_target(
-            root,
-            workspace.value,
-            inputs=captured.value,
-        )
-        if target.failure:
-            return r[m.Infra.WorkspaceProjectContext].from_failure(target)
+        workspace_target = FlextInfra._project_workspace_target(root, captured)
+        if workspace_target.failure:
+            return r[m.Infra.WorkspaceProjectContext].from_failure(workspace_target)
+        workspace, target = workspace_target.value
         return r[m.Infra.WorkspaceProjectContext].ok(
             m.Infra.WorkspaceProjectContext(
                 cwd=resolved,
                 identity=identity.value,
-                workspace=workspace.value,
-                target=target.value,
+                workspace=workspace,
+                target=target,
                 governed=True,
-                runtime=runtime.value,
+                runtime=runtime,
             ),
         )
 

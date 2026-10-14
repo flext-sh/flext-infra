@@ -1126,6 +1126,64 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "defect", ["none", "filename", "annotation", "parameters"],
+    )
+    def test_native_reference_compares_static_metadata_without_callbacks(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """A captured native epoch detects mutations before reading authored getters."""
+        package = tmp_path / "static_reference_provider"
+        package.mkdir()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from dataclasses import dataclass\n"
+                "from typing import Annotated\n"
+                "from annotated_types import Ge\n"
+                "@dataclass(frozen=True)\n"
+                "class Payload:\n"
+                "    value: Annotated[int, Ge(0)]\n"
+                "class ForeignParameters:\n"
+                "    @property\n"
+                "    def frozen(self):\n"
+                "        raise AssertionError('unadmitted frozen getter ran')\n"
+                "    @property\n"
+                "    def __class__(self):\n"
+                "        raise AssertionError('unadmitted class getter ran')\n",
+            ),
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from typing import Annotated\n"
+            "from annotated_types import Ge\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('static_reference_provider')\n"
+            "assert module.Payload(3).value == 3\n"
+            "reference = provenance.capture((module.__name__,)).unwrap()\n"
+            "defect = sys.argv[2]\n"
+            "if defect == 'filename':\n"
+            "    method = module.Payload.__init__\n"
+            "    method.__code__ = method.__code__.replace(co_filename='<foreign>')\n"
+            "elif defect == 'annotation':\n"
+            "    module.Payload.__annotations__['value'] = Annotated[int, Ge(3)]\n"
+            "elif defect == 'parameters':\n"
+            "    module.Payload.__dataclass_params__ = module.ForeignParameters()\n"
+            "observed = provenance.capture((module.__name__,)).unwrap()\n"
+            "compared = provenance.compare(observed, reference)\n"
+            "assert compared.success == (defect == 'none'), compared.error\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("defect", ["none", "defaults", "kwdefaults", "closure"])
     def test_installed_annotation_dataclass_retains_native_constructor_proof(
         defect: str,
