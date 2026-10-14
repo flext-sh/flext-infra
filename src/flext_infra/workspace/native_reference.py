@@ -9,6 +9,7 @@ from __future__ import annotations
 import marshal
 import sys
 from base64 import b64decode, b64encode
+from gc import get_referents
 from importlib.machinery import FrozenImporter
 from json import dumps
 from pathlib import Path
@@ -32,6 +33,93 @@ class FlextInfraWorkspaceNativeReference:
     @staticmethod
     def _class_namespace(value: p.AttributeProbe) -> t.MappingKV[str, p.AttributeProbe]:
         return vars(type)["__dict__"].__get__(value, type(value))
+
+    @classmethod
+    def _native_wrapper_kind(cls, value: p.AttributeProbe) -> str | None:
+        """Identify exact interpreter wrapper types through their registered exports."""
+        supplier = sys.modules.get("_functools")
+        if type(supplier) is not ModuleType:
+            return None
+        namespace = vars(supplier)
+        native = type(value)
+        if native is namespace.get("_lru_cache_wrapper"):
+            return "lru_cache"
+        if native is namespace.get("partial"):
+            return "partial"
+        return None
+
+    @classmethod
+    def _native_wrapper_function(
+        cls,
+        value: p.AttributeProbe,
+        kind: str,
+    ) -> p.Result[p.AttributeProbe]:
+        """Read actual native callable slots, never the mutable __wrapped__ facade."""
+        result_type = r[p.AttributeProbe]
+        native = type(value)
+        namespace = cls._class_namespace(native)
+        if kind == "partial":
+            slot = namespace.get("func")
+            if (
+                type(slot) is not MemberDescriptorType
+                or slot.__objclass__ is not native
+            ):
+                return result_type.fail(
+                    "native partial lacks its interpreter-owned function slot",
+                )
+            return result_type.ok(slot.__get__(value, native))
+        supplier = sys.modules.get("gc")
+        if (
+            type(supplier) is not ModuleType
+            or vars(supplier).get("get_referents") is not get_referents
+            or type(get_referents) is not BuiltinFunctionType
+            or get_referents.__module__ != "gc"
+            or get_referents.__name__ != "get_referents"
+            or sys.implementation.name != "cpython"
+        ):
+            return result_type.fail(
+                "native wrapper topology has no admitted interpreter traversal",
+            )
+        storage = namespace.get("__dict__")
+        if (
+            type(storage) is not GetSetDescriptorType
+            or storage.__objclass__ is not native
+        ):
+            return result_type.fail(
+                "native cache wrapper lacks interpreter-owned dictionary storage",
+            )
+        attributes = storage.__get__(value, native)
+        references = get_referents(value)
+        # CPython's native traversal emits cache links first, then these six
+        # fixed owner slots. The facade dictionary is a separate final slot.
+        if (
+            len(references) < 7
+            or references[0] is not native
+            or type(references[-6]) is not dict
+            or references[-1] is not attributes
+            or not cls._is_class(references[-3])
+            or not cls._is_class(references[-2])
+        ):
+            return result_type.fail(
+                "native cache wrapper has an unsupported interpreter traversal layout",
+            )
+        function = references[-5]
+        if attributes.get("__wrapped__") is not function:
+            return result_type.fail(
+                "native cache wrapper facade differs from its executable function slot",
+            )
+        return result_type.ok(function)
+
+    @classmethod
+    def _callable_storage(cls, value: p.AttributeProbe) -> bool:
+        """Find callback storage without asking the object for __class__ or attributes."""
+        return any(
+            "__call__" in cls._class_namespace(owner)
+            for owner in vars(type)["__mro__"].__get__(
+                type(value),
+                type(type(value)),
+            )
+        )
 
     @classmethod
     def _source_witness(
@@ -254,7 +342,9 @@ class FlextInfraWorkspaceNativeReference:
                 if not name.isidentifier():
                     continue
                 annotation = cls._capture_text(
-                    witness, match, f"{prefix}annotation",
+                    witness,
+                    match,
+                    f"{prefix}annotation",
                 )
                 value = (
                     None
@@ -277,8 +367,10 @@ class FlextInfraWorkspaceNativeReference:
     ) -> p.Result[p.AttributeProbe | None]:
         """Resolve compiler-closed literals and their source-declared aliases."""
         code = compile(source, str(witness.source), "eval", dont_inherit=True)
-        if not code.co_names and not code.co_freevars and not any(
-            isinstance(value, CodeType) for value in code.co_consts
+        if (
+            not code.co_names
+            and not code.co_freevars
+            and not any(isinstance(value, CodeType) for value in code.co_consts)
         ):
             # With no names, closure or nested code, the native compiler unit
             # has no capability to invoke an authored object or callback.
@@ -340,18 +432,22 @@ class FlextInfraWorkspaceNativeReference:
             if statement.line == scope.get_start()
         )
         finder = u.Infra.runtime_callable(
-            "rope.base.worder", "Worder",
+            "rope.base.worder",
+            "Worder",
         )(witness.module.source_code)
         if not isinstance(finder, p.Infra.RopeWorder):
-            raise TypeError("Native header word finder violates Rope's contract")
+            msg = "Native header word finder violates Rope's contract"
+            raise TypeError(msg)
         name_offset = header.start_offset + header.indent + len("class ")
         _start, name_end = finder.get_word_range(name_offset)
-        after = witness.module.source_code[name_end:header.end_offset].lstrip()
+        after = witness.module.source_code[name_end : header.end_offset].lstrip()
         if after.startswith("["):
             _parameters_start, name_end = finder.get_word_parens_range(
-                name_offset, opening="[", closing="]",
+                name_offset,
+                opening="[",
+                closing="]",
             )
-            after = witness.module.source_code[name_end:header.end_offset].lstrip()
+            after = witness.module.source_code[name_end : header.end_offset].lstrip()
         if not after.startswith("("):
             return (
                 r[bool].ok(value=True)

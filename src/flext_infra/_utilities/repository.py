@@ -938,6 +938,107 @@ class FlextInfraUtilitiesRepository:
         return r[str].ok(f"{provider.value.base_url.rstrip('/')}/{name}")
 
     @classmethod
+    def _captured_codegen_inputs(
+        cls,
+        repository_root: Path,
+        inputs: m.Infra.CodegenInputs | None,
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Load the repository codegen inputs when the caller passed none.
+
+        Args:
+            repository_root: Repository whose strict policy is loaded.
+            inputs: Caller-supplied inputs, or ``None`` to load from disk.
+
+        Returns:
+            The effective codegen inputs, or the load failure.
+        """
+        if inputs is not None:
+            return r[m.Infra.CodegenInputs].ok(inputs)
+        captured = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+            repository_root,
+        )
+        if captured.failure:
+            return r[m.Infra.CodegenInputs].from_failure(captured)
+        return r[m.Infra.CodegenInputs].ok(captured.value)
+
+    @classmethod
+    def _submodule_integration_branch(
+        cls,
+        identity: m.Infra.GitIdentityReport,
+        superproject_root: Path,
+    ) -> p.Result[str]:
+        """Resolve the integration branch declared for one managed member.
+
+        Args:
+            identity: Git identity carrying the superproject binding.
+            superproject_root: Resolved superproject root of the member.
+
+        Returns:
+            The member's declared integration branch, the superproject's
+            recursive resolution, or the first declaration failure.
+        """
+        primary_root = identity.primary_root
+        if not primary_root.is_relative_to(superproject_root):
+            error = ValueError(
+                f"submodule identity escapes its superproject: {primary_root}",
+            )
+            return r[str].fail(str(error), exception=error)
+        contract = FlextInfraUtilitiesGit.git_submodule_declaration(
+            m.Infra.GitSubmoduleContractRequest(
+                repo_root=superproject_root,
+                member_path=primary_root.relative_to(superproject_root).as_posix(),
+            ),
+        )
+        if contract.failure:
+            return r[str].from_failure(contract)
+        branch = contract.value.branch
+        if not branch:
+            error = ValueError(
+                "managed member declares no integration branch in .gitmodules: "
+                f"{contract.value.path}",
+            )
+            return r[str].fail(str(error), exception=error)
+        if branch != c.Infra.FOLLOW_SUPERPROJECT_BRANCH:
+            return r[str].ok(branch)
+        parent_inputs = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+            superproject_root,
+        )
+        if parent_inputs.failure:
+            return r[str].from_failure(parent_inputs)
+        return cls.resolve_integration_branch(
+            superproject_root,
+            policy_branch=(parent_inputs.value.spec.branch_policy.integration_branch),
+            inputs=parent_inputs.value,
+        )
+
+    @classmethod
+    def _published_integration_baseline(
+        cls,
+        repository_root: Path,
+        policy_branch: str,
+    ) -> p.Result[str]:
+        """Return the declared policy line once published Git carries it.
+
+        Args:
+            repository_root: Repository whose remote-tracking refs are probed.
+            policy_branch: Workspace-declared policy integration line.
+
+        Returns:
+            The published integration baseline, or the loud publication
+            failure.
+        """
+        baseline = cls.repository_baseline_branch(
+            repository_root,
+            declared_branch=policy_branch,
+        )
+        if baseline.success:
+            return r[str].ok(baseline.value)
+        return r[str].fail(
+            "integration branch must be published by Git: "
+            f"{repository_root}: {baseline.error}",
+        )
+
+    @classmethod
     def resolve_integration_branch(
         cls,
         repository_root: Path,
@@ -961,13 +1062,10 @@ class FlextInfraUtilitiesRepository:
             The integration branch one repository integrates on.
 
         """
-        if inputs is None:
-            captured = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-                repository_root,
-            )
-            if captured.failure:
-                return r[str].from_failure(captured)
-            inputs = captured.value
+        captured_inputs = cls._captured_codegen_inputs(repository_root, inputs)
+        if captured_inputs.failure:
+            return r[str].from_failure(captured_inputs)
+        inputs = captured_inputs.value
         repository = inputs.spec.repository
         if repository is not None and repository.integration is not None:
             return r[str].ok(repository.integration.branch)
@@ -980,57 +1078,15 @@ class FlextInfraUtilitiesRepository:
             return r[str].from_failure(identity)
         superproject_root = identity.value.superproject_root
         if identity.value.is_submodule and superproject_root is not None:
-            primary_root = identity.value.primary_root
-            if not primary_root.is_relative_to(superproject_root):
-                error = ValueError(
-                    f"submodule identity escapes its superproject: {primary_root}",
-                )
-                return r[str].fail(str(error), exception=error)
-            contract = FlextInfraUtilitiesGit.git_submodule_declaration(
-                m.Infra.GitSubmoduleContractRequest(
-                    repo_root=superproject_root,
-                    member_path=primary_root.relative_to(superproject_root).as_posix(),
-                ),
-            )
-            if contract.failure:
-                return r[str].from_failure(contract)
-            branch = contract.value.branch
-            if not branch:
-                error = ValueError(
-                    "managed member declares no integration branch in .gitmodules: "
-                    f"{contract.value.path}",
-                )
-                return r[str].fail(str(error), exception=error)
-            if branch != c.Infra.FOLLOW_SUPERPROJECT_BRANCH:
-                return r[str].ok(branch)
-            parent_inputs = (
-                FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-                    superproject_root,
-                )
-            )
-            if parent_inputs.failure:
-                return r[str].from_failure(parent_inputs)
-            return cls.resolve_integration_branch(
+            return cls._submodule_integration_branch(
+                identity.value,
                 superproject_root,
-                policy_branch=(
-                    parent_inputs.value.spec.branch_policy.integration_branch
-                ),
-                inputs=parent_inputs.value,
             )
         # The branch a checkout happens to carry is never the answer: a lane
         # rendering its own name into the CI trigger list can never reach a
         # generation fixed point (ADR-018 p.10 — derive from the declaration
         # and from published Git facts, never from the environment).
-        baseline = cls.repository_baseline_branch(
-            repository_root,
-            declared_branch=policy_branch,
-        )
-        if baseline.success:
-            return r[str].ok(baseline.value)
-        return r[str].fail(
-            "integration branch must be published by Git: "
-            f"{repository_root}: {baseline.error}",
-        )
+        return cls._published_integration_baseline(repository_root, policy_branch)
 
     @staticmethod
     def gitmodule_branch_is_governed(
