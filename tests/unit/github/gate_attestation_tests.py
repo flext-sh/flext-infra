@@ -645,8 +645,9 @@ class TestsFlextInfraGithubGateAttestation:
         signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
         before = (tmp_path / "invocations.txt").read_bytes()
-        created = tm.ok(u.Infra.git_create_gate_attestation(request))
-        reused = tm.ok(u.Infra.git_create_gate_attestation(request))
+        context = self._context(tmp_path)
+        created = tm.ok(u.Infra.git_create_gate_attestation(request, context))
+        reused = tm.ok(u.Infra.git_create_gate_attestation(request, context))
 
         tm.that(created.reused, eq=False)
         tm.that(reused.reused, eq=True)
@@ -666,7 +667,7 @@ class TestsFlextInfraGithubGateAttestation:
         )
         tm.that(source.process.raw_return_code != 0, eq=True)
         tm.that(source.native_outcome, eq=c.Infra.ToolOutcome.FINDINGS)
-        tm.ok(u.Infra.git_create_gate_attestation(request))
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         destination = tmp_path / c.Infra.REPORTS_DIR_NAME / "verified-proof.json"
         verified = u.Infra.git_verify_gate_attestation(
             m.Infra.GateAttestationVerifyRequest(
@@ -679,6 +680,7 @@ class TestsFlextInfraGithubGateAttestation:
                 policy_digest=request.policy_digest,
                 output=str(destination),
             ),
+            self._context(tmp_path),
         )
         tm.ok(verified)
         predicate = m.Infra.GateAttestationPredicate.model_validate_json(
@@ -705,7 +707,7 @@ class TestsFlextInfraGithubGateAttestation:
         report = tmp_path / source.reports[0].path
         report.write_text("{}\n", encoding="utf-8")
 
-        tm.fail(u.Infra.git_create_gate_attestation(request))
+        tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         tm.that(
             (tmp_path / "invocations.txt").read_text(encoding="utf-8").splitlines(),
             eq=["executed"],
@@ -719,7 +721,7 @@ class TestsFlextInfraGithubGateAttestation:
         """A proof for another exact context remains outside required coverage."""
         allowed = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(request))
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         digest = f"sha256:{cli_u.Cli.sha256_content('different runtime context')}"
 
         tm.fail(
@@ -733,6 +735,7 @@ class TestsFlextInfraGithubGateAttestation:
                     policy=request.policy,
                     policy_digest=request.policy_digest,
                 ),
+                self._context(tmp_path),
             ),
         )
 
@@ -762,7 +765,7 @@ class TestsFlextInfraGithubGateAttestation:
         """Native SSH verification rejects an unrelated key under the same principal."""
         allowed = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(request))
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         foreign = tmp_path / "foreign-signing-key"
         tm.ok(
             cli_u.Cli.run_raw(
@@ -814,7 +817,7 @@ class TestsFlextInfraGithubGateAttestation:
             ),
         )
 
-        tm.fail(u.Infra.git_create_gate_attestation(request))
+        tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         tm.that(
             (tmp_path / "invocations.txt").read_text(encoding="utf-8").splitlines(),
             eq=["executed", "executed"],
