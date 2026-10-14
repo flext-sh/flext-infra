@@ -97,32 +97,34 @@ class TestsFlextInfraFileParticipantRecovery:
             ) -> p.Result[m.Infra.CodegenTransactionSession]:
                 if failure_kind == "target":
                     targets[1].write_bytes(b"concurrent\n")
+                if failure_kind == "exception":
+                    raise cause
+                if failure_kind == "validator":
+                    return r[m.Infra.CodegenTransactionSession].fail(
+                        str(cause), exception=cause
+                    )
                 return r[m.Infra.CodegenTransactionSession].ok(current)
 
-            session = tm.ok(
-                owner.append_phase_locked(
-                    session,
-                    "semantic",
-                    plans,
-                    staged_validator=staged,
-                )
+            appended = owner.append_phase_locked(
+                session,
+                "semantic",
+                plans,
+                staged_validator=staged,
             )
+            if appended.failure:
+                return r[t.VariadicTuple[Path]].from_failure(appended)
+            session = appended.value
             if failure_kind == "evidence":
                 report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
                 report.unlink()
                 report.mkdir()
 
-            return owner.commit_locked(
-                session,
-                lambda: (
-                    TestsFlextInfraFileParticipantRecovery._validate_failed_publication(
-                        session,
-                        failure_kind,
-                        cause,
-                    )
-                ),
-                published_files=receipts,
+            tm.ok(
+                TestsFlextInfraFileParticipantRecovery._validate_failed_publication(
+                    session, failure_kind, cause
+                )
             )
+            return owner.commit_locked(session, published_files=receipts)
 
         if failure_kind == "exception":
             with pytest.raises(RuntimeError) as raised:
@@ -133,7 +135,13 @@ class TestsFlextInfraFileParticipantRecovery:
             tm.fail(failed)
             if failure_kind == "validator":
                 tm.that(failed.exception is cause, eq=True)
-        expected = targets[:1] if failure_kind == "target" else targets
+        expected = (
+            ()
+            if failure_kind in {"validator", "exception"}
+            else targets[:1]
+            if failure_kind == "target"
+            else targets
+        )
         tm.that(tuple(receipt.before.path for receipt in receipts), eq=expected)
         for receipt in receipts:
             tm.that(receipt.before, eq=originals[targets.index(receipt.before.path)])
@@ -189,7 +197,11 @@ class TestsFlextInfraFileParticipantRecovery:
                     target.chmod(tm.not_none(original.mode))
                 return r[bool].fail("consumer rejected")
 
-            return owner.commit_locked(session, reject, published_files=receipts)
+            rejected = reject()
+            settled = owner.commit_locked(session, published_files=receipts)
+            if settled.failure:
+                return settled
+            return r[t.VariadicTuple[Path]].from_failure(rejected)
 
         tm.fail(owner.run_files_locked(roots, publish), has="consumer rejected")
         tm.that(len(receipts), eq=1 if drift == "none" else 0)
@@ -360,10 +372,10 @@ class TestsFlextInfraFileParticipantRecovery:
         tm.ok(owner.run_files_locked(roots, lambda _scope: r[bool].ok(value=True)))
 
     @staticmethod
-    def test_fresh_import_failure_preserves_published_initializer(
+    def test_fresh_import_failure_rejects_candidate_before_publication(
         tmp_path: Path,
     ) -> None:
-        """Preserve completed publication while reporting its invalid runtime."""
+        """Reject the complete candidate without publishing an invalid initializer."""
         root = u.Tests.git_repository(tmp_path)
         package = root / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
         package.mkdir(parents=True)
@@ -388,42 +400,28 @@ class TestsFlextInfraFileParticipantRecovery:
             desired_mode=before.mode,
             owner="lazy-init",
         )
-        validator = FlextInfraValidateFreshImport(
-            repository_root=root,
-            packages=(package.name,),
+        candidate = owner.preview_sources(
+            root,
+            {
+                initializer: tm.not_none(publication.desired_content).decode(
+                    c.DEFAULT_ENCODING
+                )
+            },
+            lambda view_root, _candidate: FlextInfraValidateFreshImport(
+                repository_root=view_root,
+                packages=(package.name,),
+            ).execute(),
+            inputs=(before,),
         )
-
-        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
-            session = tm.ok(owner.begin_files_locked(scope, roots, (before,)))
-            published = tm.ok(
-                owner.append_phase_locked(session, "lazy-init", (publication,)),
-            )
-            return owner.commit_locked(published, validator.execute)
-
-        failed = owner.run_files_locked(roots, publish)
+        tm.ok(candidate)
+        failed = candidate.value
 
         tm.fail(failed, has="missing_export")
         tm.that(failed.error, has="Traceback")
         restored = tm.ok(
             u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
-        tm.that(restored.content, eq=publication.desired_content)
-        tm.that(restored.mode, eq=before.mode)
-        report_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
-        receipt = m.Infra.CodegenPhaseOutcome.model_validate_json(
-            report_path.read_text(encoding=c.DEFAULT_ENCODING),
-        )
-        tm.that(receipt.effect_targets, eq=(initializer,))
-        tm.that(receipt.attempted_files, eq=(initializer,))
-        tm.that(receipt.pending_files, eq=())
-        tm.that(receipt.completed, eq=False)
-        transaction_id = tm.not_none(receipt.transaction_id)
-        history = (
-            report_path.with_suffix("")
-            / transaction_id
-            / f"{u.Cli.sha256_content(receipt.model_dump_json())}{report_path.suffix}"
-        )
-        tm.that(history.is_file(), eq=True)
+        tm.that(restored, eq=before)
         tm.ok(owner.run_files_locked(roots, lambda _scope: r[bool].ok(value=True)))
 
     @staticmethod
@@ -643,7 +641,11 @@ class TestsFlextInfraFileParticipantRecovery:
         def fail_validator() -> p.Result[bool]:
             if failure_kind == "exception":
                 raise cause
-            return r[bool].ok(value=False) if failure_kind == "false" else original
+            return (
+                r[bool].fail("consumer rejected")
+                if failure_kind == "false"
+                else original
+            )
 
         def fail_session(scope: Path) -> p.Result[bool]:
             session = tm.ok(owner.begin_files_locked(scope, roots, ()))
@@ -678,7 +680,7 @@ class TestsFlextInfraFileParticipantRecovery:
                 with pytest.raises(OSError, match=str(cause)) as raised:
                     owner.publish_prepared_locked(
                         initial,
-                        lambda _initial: owner.commit_locked(session, fail_validator),
+                        lambda _initial: fail_validator(),
                     )
                 tm.that(raised.value is cause, eq=True)
             else:
@@ -687,12 +689,12 @@ class TestsFlextInfraFileParticipantRecovery:
                     if failure_kind == "abort"
                     else owner.publish_prepared_locked(
                         initial,
-                        lambda _initial: owner.commit_locked(session, fail_validator),
+                        lambda _initial: fail_validator(),
                     )
                 )
                 tm.fail(failed)
                 if failure_kind == "false":
-                    tm.that(failed.error, eq="explicit publication validation failed")
+                    tm.that(failed.error, eq="consumer rejected")
                 else:
                     tm.that(failed.error, eq=original.error)
                     tm.that(failed.exception is cause, eq=True)

@@ -308,12 +308,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         """
         project = root.expanduser().absolute()
         path = (project / relative_path).absolute()
-        # Planning is read-only: an optional read of a destination whose parent
-        # chain is not materialized reports absence (no parent identity), and
-        # the generation transaction journals and creates every destination
-        # parent before staging. Creating directories here made a CHECK plan
-        # mutate the tree and the next plan diverge from the first.
-        before = u.Cli.atomic_read_binary_file_state(path, required=False)
+        before = u.Infra.codegen_target_snapshot(path)
         if before.failure:
             return r[m.Infra.CodegenFilePlan].from_failure(before)
         return r[m.Infra.CodegenFilePlan].ok(

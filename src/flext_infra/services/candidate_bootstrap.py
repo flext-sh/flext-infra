@@ -28,7 +28,7 @@ class FlextInfraCandidateBootstrapService:
         source_root: Path,
         workspace: m.Infra.WorkspaceSpec,
         command: m.Infra.CandidateBootstrapCommand,
-        manifest_state: m.Cli.AtomicFileState,
+        declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Publish a fixed point for the entire typed target declaration.
 
@@ -52,10 +52,10 @@ class FlextInfraCandidateBootstrapService:
                 "candidate bootstrap targets resolve to duplicate worktrees",
             )
         if command.dry_run or command.check_only or not command.apply_changes:
-            return self._verify(roots, targets, manifest_state)
+            return self._verify(roots, targets, declaration_states)
 
         def publish(scope_root: Path) -> p.Result[bool]:
-            planned = self._plan(roots, targets, manifest_state)
+            planned = self._plan(roots, targets, declaration_states)
             if planned.failure:
                 return r[bool].from_failure(planned)
             analysis = planned.value
@@ -65,14 +65,14 @@ class FlextInfraCandidateBootstrapService:
                 if u.Infra.codegen_file_requires_effect(plan)
             )
             if not changed:
-                return self._verify(roots, targets, manifest_state)
+                return self._verify(roots, targets, declaration_states)
             committed = self._transaction.publish_file_phase_locked(
                 scope_root,
                 roots,
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(
                     directories=(),
-                    validator=lambda: self._verify(roots, targets, manifest_state),
+                    validator=lambda: self._verify(roots, targets, declaration_states),
                 ),
             )
             if committed.failure:
@@ -85,7 +85,7 @@ class FlextInfraCandidateBootstrapService:
         self,
         roots: t.MappingKV[str, Path],
         targets: m.Infra.CandidateBootstrapTargets,
-        manifest_state: m.Cli.AtomicFileState,
+        declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Compose one immutable receipt from all conform planners.
 
@@ -95,10 +95,22 @@ class FlextInfraCandidateBootstrapService:
         """
         files: list[m.Infra.CodegenFilePlan] = []
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
-            manifest_state.path: manifest_state,
+            state.path: state for state in declaration_states
         }
         for root, target in zip(roots.values(), targets, strict=True):
-            contract = self._planner.surface_contract(target.what)
+            captured = u.Infra.load_codegen_inputs(root)
+            if captured.failure:
+                return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
+            for state in captured.value.sources:
+                previous = inputs.setdefault(state.path, state)
+                if previous != state:
+                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                        f"candidate bootstrap observed two states for {state.path}",
+                    )
+            contract = self._planner.surface_contract(
+                target.what,
+                codegen=captured.value.spec,
+            )
             if contract.complete_governed:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"candidate bootstrap requires one declared surface: {root}",
@@ -163,7 +175,7 @@ class FlextInfraCandidateBootstrapService:
         self,
         roots: t.MappingKV[str, Path],
         targets: m.Infra.CandidateBootstrapTargets,
-        manifest_state: m.Cli.AtomicFileState,
+        declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Require unchanged declarations and a complete post-publication fixed point.
 
@@ -171,17 +183,17 @@ class FlextInfraCandidateBootstrapService:
             The resulting ``p.Result[bool]``.
 
         """
-        observed = u.Cli.atomic_read_binary_file_state(
-            manifest_state.path,
-            required=True,
-        )
-        if observed.failure:
-            return r[bool].from_failure(observed)
-        if observed.value != manifest_state:
-            return r[bool].fail(
-                "candidate bootstrap declaration changed during publication",
+        for state in declaration_states:
+            observed = u.Cli.atomic_read_binary_file_state(
+                state.path,
             )
-        planned = self._plan(roots, targets, manifest_state)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != state:
+                return r[bool].fail(
+                    "candidate bootstrap declaration changed during publication",
+                )
+        planned = self._plan(roots, targets, declaration_states)
         if planned.failure:
             return r[bool].from_failure(planned)
         return u.Infra.codegen_fixed_point(

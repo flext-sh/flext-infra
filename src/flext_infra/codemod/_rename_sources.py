@@ -74,7 +74,7 @@ class FlextInfraRenameSources:
         codegen = u.Infra.load_codegen_inputs(configuration_root).unwrap().spec
         campaigns = u.Infra.load_refactor_csv_campaigns(configuration_root).unwrap()
         ignored = codegen.source_scan_ignored
-        generated = {item.path for item in codegen.managed_files}
+        generated = {item.path for item in codegen.managed_file_specs}
         templates = u.Infra.codegen_template_sources(codegen)
         config_dir = configuration_root / c.CONFIG_DIR_NAME
         drivers = {

@@ -13,18 +13,97 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import json
 import os
+import sys
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from flext_infra import config, u
-from tests import c, t, tm
+from tests import c, m, p, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
 
 
 class TestsFlextInfraUtilitiesHermeticGitMixin:
     """Build and route the fixture provider through local Git mirrors."""
+
+    @staticmethod
+    def write_native_resolution_project(
+        root: Path,
+        distribution: str,
+        *,
+        dependencies: t.StrSequence = (),
+        optional: t.StrSequence | None = None,
+        groups: str = "",
+        uv: str = "",
+    ) -> None:
+        """Write static package metadata consumed by the real UV resolver.
+
+        These are actual local packages, rather than command stand-ins. Their
+        build backend and supported Python range follow the production owner.
+        No build or installation is performed by this metadata fixture.
+        """
+        root.mkdir(parents=True, exist_ok=True)
+        build = config.Infra.codegen.scaffold.build
+        python = config.Infra.codegen.toolchain.python_required_version
+        optional_table = (
+            f"[project.optional-dependencies]\nfeature = {json.dumps(list(optional))}\n"
+            if optional is not None
+            else ""
+        )
+        (root / c.PYPROJECT_FILENAME).write_text(
+            "[build-system]\n"
+            f"requires = {json.dumps(list(build.requirements))}\n"
+            f"build-backend = {json.dumps(build.backend)}\n"
+            "[project]\n"
+            f"name = {json.dumps(distribution)}\n"
+            'version = "1.0.0"\n'
+            f"requires-python = {json.dumps(python)}\n"
+            f"dependencies = {json.dumps(list(dependencies))}\n"
+            f"{optional_table}"
+            f"{groups}\n{uv}\n",
+            encoding="utf-8",
+        )
+        package = root / "src" / distribution.replace("-", "_")
+        package.mkdir(parents=True, exist_ok=True)
+        (package / "__init__.py").write_text(
+            'IDENTITY = "native-resolution-fixture"\n',
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def resolve_native_identity_fixture(
+        root: Path,
+        *,
+        git_environment: t.StrMapping | None = None,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Observe native resolution without network, installation or lock repair.
+
+        The caller is an owned test reached through the repository Make test
+        surface. Its local Git origins remain real repositories; no resolver
+        command, dependency metadata or failure is substituted.
+        """
+        return u.Cli.run_raw(
+            [
+                c.Infra.UV,
+                "lock",
+                "--no-index",
+                "--python",
+                sys.executable,
+                "--project",
+                str(root),
+            ],
+            cwd=root,
+            options=m.Cli.ProcessOptions(
+                env={
+                    **(git_environment or {}),
+                    "GIT_ALLOW_PROTOCOL": "file",
+                    "UV_NO_GITHUB_FAST_PATH": "1",
+                },
+                remove_env_keys=(*c.Tests.MAKE_ISOLATION_ENV_KEYS, "UV_OFFLINE"),
+            ),
+        )
 
     @staticmethod
     def locked_git_sources(

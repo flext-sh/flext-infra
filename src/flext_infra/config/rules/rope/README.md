@@ -29,6 +29,20 @@ nesting step keeps `get_type_hints` bound to the moved class. Consumers used onl
 type positions participate in the same plan. Ordinary literals, `Literal` values,
 `Annotated` metadata, and unrelated homonyms retain their values.
 
+The contract-normalization phase consumes `contracts.yaml` through a typed
+configuration model. Python matches and replacements use native Rope
+`SimilarFinder`, identity-constrained `Restructure` patterns and ChangeSets.
+The phase shares the existing semantic fixed point and publication transaction;
+it has no independent repair loop or CST, AST or regular-expression parser.
+
+Pydantic field rewrites require ancestry established from the native Rope
+object graph. Same-spelled factories and declarations outside those model
+scopes retain their behavior. Empty factories migrate only when the declared
+concrete collection and the existing factory share their native identity.
+Destination imports use Rope's import manager and reject competing lexical
+bindings before publication. Configured defaults and factories remain policy
+data; projects do not carry copied detectors or symbol mapping tables.
+
 Typing unification resolves names in concrete-syntax type positions through lexical
 bindings. `Any`, `typing.Any`, and `object` do not establish JSON or attribute-probe
 contracts; they remain visible to enforcement until their consumer defines the precise

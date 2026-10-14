@@ -1,0 +1,41 @@
+id: rewire-mod-scan-selection
+language: Python
+severity: error
+message: The resolved scanner consumes one rule selection authority.
+metadata:
+  context:
+    CALL:
+      is: resolved-symbol
+      arg: flext_infra.codemod.batch_gates FlextInfraModGateEngine.scan
+rule:
+  all:
+    - kind: keyword_argument
+    - has:
+        field: name
+        regex: "^(rule_ids|plan)$"
+    - has:
+        field: value
+        pattern: $VALUE
+    - inside:
+        kind: argument_list
+        not:
+          any:
+            - has:
+                kind: keyword_argument
+                has:
+                  field: name
+                  regex: "^selection$"
+            - all:
+                - has:
+                    kind: keyword_argument
+                    has:
+                      field: name
+                      regex: "^rule_ids$"
+                - has:
+                    kind: keyword_argument
+                    has:
+                      field: name
+                      regex: "^plan$"
+        inside:
+          pattern: $CALL($$$ARGS)
+fix: selection=$VALUE

@@ -24,6 +24,27 @@ from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
 
+    class UvResolutionProject(FlextInfraConfigModelsContract.ConfigContract):
+        """Authenticated project input to the native development resolution view."""
+
+        repository: Annotated[
+            FlextInfraConfigModelsContexts.RepositoryRef,
+            m.Field(
+                description="Declared identity, package status and editable policy"
+            ),
+        ]
+        directory: Annotated[
+            Path,
+            m.Field(description="Authenticated absolute physical project directory"),
+        ]
+        document: Annotated[
+            t.Cli.TomlDocument,
+            m.Field(
+                exclude=True,
+                description="Already parsed conform-owned native project metadata",
+            ),
+        ]
+
     class GithubWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
@@ -219,6 +240,10 @@ class FlextInfraModelsCodegenRender:
     class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed only by the generated project ``.envrc``."""
 
+        uv_resolution: Annotated[
+            FlextInfraConfigModelsMake.MakeUvResolutionSpec,
+            m.Field(description="Native resolver input ownership shared with Make"),
+        ]
         repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Project-relative owner of the runtime environment"),

@@ -254,7 +254,7 @@ class FlextInfraUtilitiesPyproject:
 
         Unconflicted text is returned unchanged. A conflict is resolved only
         inside owner-declared managed TOML sections
-        (``config.Infra.codegen.managed_files``) via
+        (``config.Infra.codegen.managed_file_specs``) via
         ``FlextInfraUtilitiesManagedConflicts.recover_managed_toml``; a
         conflict outside those sections fails loud through that utility's
         own contract. Read-only: no file is written here.

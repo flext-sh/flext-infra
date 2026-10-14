@@ -1,9 +1,4 @@
-"""A member attached to a uv workspace never relocks that workspace's lock.
-
-uv resolves a checkout inside an enclosing ``[tool.uv.workspace]`` as one of
-its members, so ``uv lock --project <member>`` rewrites the workspace lock and
-leaves the member's own stale. Settling and propagation stop before that
-effect; a checkout uv resolves alone keeps owning its lock.
+"""Public conformance preserves workspace and standalone dependency locks.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -17,24 +12,18 @@ import pytest
 
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.workspace import (
-    FlextInfraWorkspaceLockCompleteness,
-    FlextInfraWorkspacePropagation,
-)
-from tests import c, tm, u
+from flext_infra.workspace import FlextInfraWorkspaceLockCompleteness
+from tests import c, t, tm, u
+
+pytestmark = pytest.mark.slow
 
 
 class TestsFlextInfraWorkspaceMemberLockOwnership:
-    """Behavior contract of the lock owner a member settle resolves."""
+    """Generation neither resolves existing locks nor creates missing locks."""
 
-    MEMBER = "fixture-alpha"
-
-    @classmethod
-    def _workspace(cls, tmp_path: Path, *, uv_workspace: bool) -> Path:
-        """Compose a governed root with one gitlinked member.
-
-        ``uv_workspace`` declares the member in the root's
-        ``[tool.uv.workspace]``, as the real composed root does.
+    @staticmethod
+    def _repository(tmp_path: Path, *, attached: bool) -> t.Pair[Path, Path]:
+        """Create an actual governed Git checkout in the requested topology.
 
         Returns:
             The workspace root.
@@ -97,40 +86,54 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
     def test_attached_member_settle_stops_before_any_lock(
         self,
         tmp_path: Path,
+        attached: bool,
     ) -> None:
-        """Settling an attached member fails naming the workspace; no lock moves."""
-        root = self._workspace(tmp_path, uv_workspace=True)
-        member = root / self.MEMBER
+        """Conform a real project while retaining each owner's exact lock bytes."""
+        root, project = self._repository(tmp_path, attached=attached)
+        paths = tuple(
+            dict.fromkeys(
+                checkout / filename
+                for checkout in (root, project)
+                for filename in (c.Infra.UV_LOCK_FILENAME, c.Infra.MISE_LOCK_FILENAME)
+            ),
+        )
+        for path in paths:
+            if not path.exists():
+                path.write_text("version = 1\n", encoding="utf-8")
+        before = tuple(path.read_bytes() for path in paths)
+        generated = tm.ok(
+            infra.codegen_conform(
+                u.Tests.conform_request(
+                    project,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                ),
+            ),
+        )
+        tm.that(bool(generated.written_files), eq=True)
+        tm.that(tuple(path.read_bytes() for path in paths), eq=before)
 
-        settled = FlextInfraCodegenConform.settle_repository(member, ports=None)
-
-        tm.that(settled.failure, eq=True)
-        tm.that(settled.error or "", has=[str(root.resolve()), "uv workspace"])
-        tm.that((root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
-        tm.that((member / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
-
-    def test_propagation_preflight_stops_before_any_lane(
+    @pytest.mark.parametrize("attached", [False, True])
+    def test_conform_does_not_create_missing_uv_lock(
         self,
         tmp_path: Path,
+        attached: bool,
     ) -> None:
-        """`make propagate` refuses attached members before opening a lane."""
-        root = self._workspace(tmp_path, uv_workspace=True)
-        member = root / self.MEMBER
-        head = u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD)
-
-        propagated = infra.workspace_propagate(
-            FlextInfraWorkspacePropagation(repository_root=root),
-        )
-
-        tm.that(propagated.failure, eq=True)
-        tm.that(propagated.error or "", has=[str(member), "uv workspace"])
-        tm.that(
-            u.Tests.git_ref_exists(
-                member,
-                f"refs/heads/{c.Infra.PROPAGATION_BRANCH}",
+        """Projection generation succeeds without becoming a dependency resolver."""
+        root, project = self._repository(tmp_path, attached=attached)
+        locks = tuple(
+            dict.fromkeys(
+                checkout / c.Infra.UV_LOCK_FILENAME for checkout in (root, project)
             ),
-            eq=False,
         )
-        tm.that(u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD), eq=head)
-        tm.that((root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
-        tm.that((member / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.that(any(path.exists() for path in locks), eq=False)
+        tm.ok(
+            infra.codegen_conform(
+                u.Tests.conform_request(
+                    project,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                ),
+            ),
+        )
+        tm.that(any(path.exists() for path in locks), eq=False)

@@ -13,6 +13,7 @@ from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles as files,
+    FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
 )
 
@@ -149,36 +150,60 @@ class FlextInfraMisePublication:
     @staticmethod
     def admit_batch(
         analysis: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[bool]:
+        *,
+        journal: m.Infra.CodegenTransactionJournal | None = None,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate batch inputs and original destination states once."""
+        result_type = r[m.Infra.CodegenPhaseOutcome]
         inputs = FlextInfraCodegenPreconditions.unique_states(analysis.inputs)
         declared = FlextInfraCodegenPreconditions.unique_states(
             tuple(source for plan in analysis.files for source in plan.source_states)
         )
         if inputs.failure:
-            return r[bool].from_failure(inputs)
+            return result_type.from_failure(inputs)
         if declared.failure:
-            return r[bool].from_failure(declared)
+            return result_type.from_failure(declared)
         if {item.path: item for item in inputs.value} != {
             item.path: item for item in declared.value
         }:
-            return r[bool].fail("batch inputs differ from publication dependencies")
+            return result_type.fail("batch inputs differ from publication dependencies")
         current = FlextInfraMisePublication._source_prerequisites(inputs.value, {})
         if current.failure:
-            return current
-        destinations: list[m.Cli.AtomicFileState] = []
+            return result_type.from_failure(current)
+        if analysis.generator_trees:
+            producer = FlextInfraCodegenPreconditions.producer_trees_current(
+                analysis.generator_trees
+            )
+            if producer.failure:
+                return result_type.from_failure(producer)
+        destinations = FlextInfraMiseArtifactsVerification.plans_current(
+            analysis.files, journal=journal
+        )
+        if destinations.failure:
+            return result_type.from_failure(destinations)
+        outputs: list[m.Infra.CodegenJournalSource] = []
         for plan in analysis.files:
-            before = u.Infra.codegen_file_before_state(plan)
-            if before.failure:
-                return r[bool].from_failure(before)
-            destinations.append(before.value)
-        return FlextInfraMiseArtifactsVerification.states_current(tuple(destinations))
+            captured = FlextInfraMiseArtifactsJournal.source_record(
+                "output", plan.before, path=plan.path
+            )
+            if captured.failure:
+                return result_type.from_failure(captured)
+            outputs.append(captured.value)
+        return result_type.ok(
+            m.Infra.CodegenPhaseOutcome(
+                analysis=analysis,
+                admitted_states=inputs.value,
+                phase=analysis.phase,
+                outputs=tuple(outputs),
+            )
+        )
 
     @staticmethod
     def publish(
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
+        journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Publish every target independently and retain all native failures.
 
@@ -186,21 +211,53 @@ class FlextInfraMisePublication:
             The complete written paths and target issues.
 
         """
-        if batch_analysis is not None:
+        if batch_admission is not None:
+            batch_analysis = batch_admission.analysis
+            if (
+                batch_analysis is None
+                or batch_admission.error
+                or batch_admission.issues
+                or batch_admission.exception is not None
+                or batch_admission.phase != batch_analysis.phase
+                or batch_admission.admitted_states != batch_analysis.inputs
+            ):
+                return r[m.Infra.CodegenPhaseOutcome].fail(
+                    "publication requires its exact native batch admission",
+                )
             expected = {
                 plan.path
                 for plan in batch_analysis.files
                 if u.Infra.codegen_file_requires_effect(plan)
             }
             if expected != {item.before.path for item in publications} or any(
-                item.phase != batch_analysis.phase for item in publications
+                item.phase != batch_analysis.phase
+                and not (
+                    batch_analysis.phase
+                    == c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP
+                    and item.phase == c.Infra.CodegenStagedFilePhase.MISE
+                )
+                for item in publications
             ):
                 return r[m.Infra.CodegenPhaseOutcome].fail(
                     "staged publications differ from admitted batch",
                 )
-            admitted_batch = FlextInfraMisePublication.admit_batch(batch_analysis)
-            if admitted_batch.failure:
-                return r[m.Infra.CodegenPhaseOutcome].from_failure(admitted_batch)
+            plans = {item.path: item for item in batch_analysis.files}
+            if any(
+                item.project != plans[item.before.path].project
+                or (None if item.replacement is None else item.replacement.content)
+                != plans[item.before.path].desired_content
+                or (None if item.replacement is None else item.replacement.mode)
+                != plans[item.before.path].desired_mode
+                for item in publications
+            ):
+                return r[m.Infra.CodegenPhaseOutcome].fail(
+                    "staged candidates differ from admitted desired outputs",
+                )
+            destinations = FlextInfraMiseArtifactsVerification.plans_current(
+                batch_analysis.files, journal=journal
+            )
+            if destinations.failure:
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(destinations)
         written: list[Path] = []
         admitted: list[m.Infra.CodegenStagedFile] = []
         retained: list[Path] = []
@@ -220,7 +277,35 @@ class FlextInfraMisePublication:
                 publications,
                 written,
             )
-            if ready.success and batch_analysis is None:
+            if ready.success and journal is not None and journal.generator_trees:
+                authority = {item.path: item for item in journal.outputs}
+                for staged in ordered:
+                    if (
+                        staged.replacement is None
+                        or staged.before.path in published_states
+                    ):
+                        continue
+                    encoded = FlextInfraMiseArtifactsJournal.source_record(
+                        "staging", staged.replacement
+                    )
+                    if encoded.failure:
+                        ready = r[bool].from_failure(encoded)
+                        break
+                    authority[encoded.value.path] = encoded.value
+                if ready.success:
+                    for _before, after in published_states.values():
+                        encoded = FlextInfraMiseArtifactsJournal.source_record(
+                            "output", after
+                        )
+                        if encoded.failure:
+                            ready = r[bool].from_failure(encoded)
+                            break
+                        authority[encoded.value.path] = encoded.value
+                if ready.success:
+                    ready = FlextInfraCodegenPreconditions.producer_trees_current(
+                        journal.generator_trees, tuple(authority.values())
+                    )
+            if ready.success and batch_admission is None:
                 ready = FlextInfraMisePublication._source_prerequisites(
                     publication.source_states,
                     published_states,

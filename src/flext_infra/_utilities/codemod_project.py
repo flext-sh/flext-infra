@@ -430,8 +430,8 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         admission: m.Infra.CodemodAdmission,
         *,
-        project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        project: p.Infra.RopeProject | None = None,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> bool:
         """Return whether one finding satisfies its rule's project context.
 
@@ -470,6 +470,15 @@ class FlextInfraUtilitiesCodemodProject(
                 c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
                 c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
             }:
+                snapshot = admission.snapshot
+                if snapshot is None or project is None or sources is None:
+                    msg = (
+                        f"{rule.id}: binding context requires its captured snapshot "
+                        "and active project sources: "
+                        f"snapshot={snapshot is not None} "
+                        f"project={project is not None} sources={sources is not None}"
+                    )
+                    raise ValueError(msg)
                 holds = cls._occurrence_binding_holds(
                     (root, source, project), condition, captures, sources
                 )
@@ -775,46 +784,14 @@ class FlextInfraUtilitiesCodemodProject(
             The imported module resource, or ``None`` when Rope cannot find it.
 
         """
-        modules_by_name = lookup.modules
-        folder = resource.parent
-        key = (name, folder.real_path, level)
-        if key in modules_by_name:
-            return modules_by_name[key]
-        if level:
-            modules_by_name[key] = project.find_relative_module(name, folder, level)
-            return modules_by_name[key]
-        # Source and Python-path folders are frozen for this snapshot. Their
-        # absolute-module lookup is shared by every importing module; only the
-        # final importing-folder lookup is local to the occurrence.
-        absolute = (name, None, 0)
-        if absolute not in modules_by_name:
-            imported = next(
-                (
-                    resource
-                    for folder in lookup.source_folders
-                    if (resource := project.find_relative_module(name, folder, 1))
-                    is not None
-                ),
-                None,
+        key = (name, resource.parent.real_path, level)
+        if key not in lookup.modules:
+            lookup.modules[key] = (
+                project.find_relative_module(name, resource.parent, level)
+                if level
+                else project.find_module(name, resource.parent)
             )
-            if imported is None:
-                for search_folder in lookup.python_folders:
-                    shared = (name, search_folder.real_path)
-                    if shared not in lookup.python_modules:
-                        lookup.python_modules[shared] = project.find_relative_module(
-                            name, search_folder, 1
-                        )
-                    imported = lookup.python_modules[shared]
-                    if imported is not None:
-                        break
-            modules_by_name[absolute] = imported
-        imported = modules_by_name[absolute]
-        modules_by_name[key] = (
-            imported
-            if imported is not None
-            else project.find_relative_module(name, folder, 1)
-        )
-        return modules_by_name[key]
+        return lookup.modules[key]
 
     @staticmethod
     def _captured_text(
@@ -867,32 +844,35 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the predicate is not one the engine declares.
-
+            TypeError: If predicate is not declared.
         """
         predicate = condition.predicate
+        if not isinstance(predicate, c.Infra.CodemodContextPredicate):
+            message = f"predicate is not declared: {predicate}"
+            raise TypeError(message)
+        own = FlextInfraUtilitiesPyproject.project_package_name(root)
         match predicate:
-            case c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION:
+            case (
+                c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
+                | c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION
+            ):
                 with FlextInfraUtilitiesRopeCore.open_project(root) as project:
-                    resource = FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                        project.get_resource(
-                            file_path.relative_to(root).as_posix(),
-                        ),
-                        file_path,
-                    )
-                    declarations = tuple(
-                        node
-                        for node in ast.walk(ast.parse(resource.read()))
-                        if isinstance(node, ast.ClassDef) and node.name == captured[0]
-                    )
-                    return (
-                        len(declarations) == 1
-                        and FlextInfraUtilitiesDeclarationPayload.payload_declaration(
+                    declarations = (
+                        FlextInfraUtilitiesDeclarationPayload.declaration_names(
                             project,
                             file_path,
-                            declarations[0],
+                            captured[0],
                         )
-                        is not None
                     )
+                    if len(declarations) != 1:
+                        return False
+                    resolve = (
+                        FlextInfraUtilitiesDeclarationPayload.payload_declaration
+                        if predicate
+                        is c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
+                        else FlextInfraUtilitiesDeclarationPayload.protocol_declaration
+                    )
+                    return resolve(project, file_path, declarations[0]) is not None
             case _ if predicate in c.Infra.CODEMOD_PACKAGE_CONTEXT_PREDICATES:
                 own = facts.own_package
                 if own is None:

@@ -42,6 +42,7 @@ class FlextInfraUtilitiesCodegen(
 
         """
         return m.Infra.EnvrcRenderSpec(
+            uv_resolution=config.Infra.codegen.make.uv_resolution,
             environment_path_prepends=(
                 config.Infra.codegen.toolchain.environment_path_prepends
             ),

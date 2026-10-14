@@ -257,6 +257,9 @@ class FlextInfraModelsCodegenJournalModels:
             t.NonEmptyStr,
             m.Field(description="Generation phase that consumed source"),
         ]
+        role: (
+            Literal["layer0", "family", "consumer", "resource", "distribution"] | None
+        ) = m.Field(default=None, description="Authenticated producer input role")
         path: Annotated[Path, m.Field(description="Absolute authenticated source path")]
         parent_device: Annotated[
             int | None,

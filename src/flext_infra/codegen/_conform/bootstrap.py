@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, assert_never
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, s, t, u
+from flext_infra import c, m, s, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -65,6 +65,9 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         default=None,
         exclude=True,
         description="First native file planning cause",
+    )
+    producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
+        default=None, exclude=True, description="Producer captured before planning"
     )
 
     def _record_file_failure(
@@ -212,13 +215,21 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     def surface_contract(
         cls,
         surface: c.Infra.CodegenConformSurface,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.CodegenConformSurfaceContract:
         """Resolve a declared surface without defaulting an invalid input.
 
         Returns:
             The contract owned by the declared conformance surface.
 
+        Raises:
+            ValueError: If the surface is not a declared conformance surface.
+            TypeError: If unsupported codegen conform surface.
         """
+        if not isinstance(surface, c.Infra.CodegenConformSurface):
+            message = f"unsupported codegen conform surface: {surface}"
+            raise TypeError(message)
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
                 contract = m.Infra.CodegenConformSurfaceContract(complete_governed=True)
@@ -226,7 +237,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset(
                         item.path.as_posix()
-                        for item in config.Infra.codegen.managed_files
+                        for item in codegen.managed_file_specs
                         if item.runtime_binding
                     ),
                     runtime_bindings=True,
@@ -247,7 +258,13 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 )
             case c.Infra.CodegenConformSurface.PYPROJECT:
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.PYPROJECT_FILENAME}),
+                    destinations=frozenset(
+                        path.as_posix()
+                        for path in (
+                            Path(c.PYPROJECT_FILENAME),
+                            *codegen.uv_resolution_pyprojects,
+                        )
+                    ),
                     delegates=False,
                     templates=False,
                     custom=False,

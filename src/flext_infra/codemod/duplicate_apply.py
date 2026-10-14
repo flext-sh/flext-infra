@@ -782,22 +782,39 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 ),
             )
 
-        def verify() -> p.Result[bool]:
-            """Prove the published bytes, then run the joint gates.
+        def verify(candidate_root: Path) -> p.Result[bool]:
+            """Prove the complete candidate, then run its joint consumer gates.
 
             Returns:
                 The resulting ``p.Result[bool]``.
 
             """
-            rope_workspace.refresh()
-            residue = cls._published_residue(edits, deletions)
+            residue = cls._published_residue(
+                tuple(
+                    edit.model_copy(
+                        update={
+                            "file_path": candidate_root
+                            / edit.file_path.relative_to(root)
+                        }
+                    )
+                    for edit in edits
+                ),
+                tuple(
+                    deletion.model_copy(
+                        update={
+                            "path": candidate_root / deletion.path.relative_to(root)
+                        }
+                    )
+                    for deletion in deletions
+                ),
+            )
             if residue is not None:
                 return r[bool].fail(residue)
             return FlextInfraWorkspaceChecker(
-                repository_root=root,
+                repository_root=candidate_root,
             ).execute_payload(
                 m.Infra.RunCommand(
-                    repository_root=root,
+                    repository_root=candidate_root,
                     projects=cls._publication_projects(root, semantic_plans),
                     gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
                 ),

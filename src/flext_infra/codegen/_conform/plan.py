@@ -31,6 +31,14 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[m.Infra.CodegenPlan]``.
 
         """
+        if self.producer is None:
+            producer = FlextInfraCodegenPreconditions.capture_producer()
+            if producer.failure:
+                return r[m.Infra.CodegenPlan].from_failure(producer)
+            self.producer = producer.value
+        verified = FlextInfraCodegenPreconditions.producer_current(self.producer)
+        if verified.failure:
+            return r[m.Infra.CodegenPlan].from_failure(verified)
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenPlan].from_failure(inputs)
@@ -92,18 +100,56 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if selected_result.failure:
             return r[m.Infra.CodegenPlan].from_failure(selected_result)
         selected = selected_result.value
-        contract = self.surface_contract(c.Infra.CodegenConformSurface(request.what))
+        contract = self.surface_contract(
+            c.Infra.CodegenConformSurface(request.what),
+            codegen=config_spec,
+        )
         gathered = self._gathered_repository_plans(
             root,
             workspace,
             current_target,
             selected,
-            contract,
+            c.Infra.CodegenConformSurface(request.what),
             inputs,
         )
         if gathered.failure:
             return r[m.Infra.CodegenPlan].from_failure(gathered)
         files, environments, issues = gathered.value
+        if contract.pyproject and (
+            contract.destinations is None
+            or c.PYPROJECT_FILENAME in contract.destinations
+        ):
+            for repository in selected:
+                if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
+                    continue
+                project_root = (root / repository.path).resolve()
+                project_inputs = (
+                    r[m.Infra.CodegenInputs].ok(inputs)
+                    if project_root == root
+                    else u.Infra.load_codegen_inputs(project_root)
+                )
+                if project_inputs.failure:
+                    return r[m.Infra.CodegenPlan].from_failure(project_inputs)
+                project_workspace = (
+                    r[m.Infra.WorkspaceSpec].ok(workspace)
+                    if project_root == root
+                    else FlextInfraWorkspaceDetector.load_workspace_spec(
+                        project_root,
+                        inputs=project_inputs.value,
+                    )
+                )
+                if project_workspace.failure:
+                    return r[m.Infra.CodegenPlan].from_failure(project_workspace)
+                views = self.native_resolution_plans(
+                    project_root,
+                    project_workspace.value,
+                    project_inputs.value,
+                    files,
+                    rendered_by=self.rendered_by_stamp(),
+                )
+                if views.failure:
+                    return r[m.Infra.CodegenPlan].from_failure(views)
+                files.extend(views.value)
         return r[m.Infra.CodegenPlan].ok(
             m.Infra.CodegenPlan(
                 request=request,
@@ -566,7 +612,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         workspace: m.Infra.WorkspaceSpec,
         current_target: m.Infra.RepositoryConformTarget,
         selected: t.VariadicTuple[m.Infra.RepositoryRef],
-        contract: m.Infra.CodegenConformSurfaceContract,
+        surface: c.Infra.CodegenConformSurface,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[
         t.Triple[
@@ -605,7 +651,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     initial_workspace=self.initial_workspace,
                     current_target=current_target,
                     repository=repository,
-                    contract=contract,
+                    surface=surface,
                     selected_inputs=(
                         inputs
                         if repository.name == current_target.repository.name
@@ -772,7 +818,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             task.workspace,
             target,
             local_workspace,
-            task.contract,
+            planner.surface_contract(task.surface, codegen=inputs.spec),
             inputs,
         )
         if planned.failure:

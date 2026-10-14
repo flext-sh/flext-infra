@@ -1,0 +1,110 @@
+id: rewire-mod-scan-selection
+snapshots:
+  ? |
+    Engine.scan(
+        root, fix=False,
+        rule_ids=rules,  # Keep the argument comment.
+    )
+  : fixed: |
+      Engine.scan(
+          root, fix=False,
+          selection=rules,  # Keep the argument comment.
+      )
+    labels:
+    - source: rule_ids=rules
+      style: primary
+      start: 38
+      end: 52
+    - source: rule_ids
+      style: secondary
+      start: 38
+      end: 46
+    - source: rules
+      style: secondary
+      start: 47
+      end: 52
+    - source: |-
+        Engine.scan(
+            root, fix=False,
+            rule_ids=rules,  # Keep the argument comment.
+        )
+      style: secondary
+      start: 0
+      end: 85
+    - source: |-
+        (
+            root, fix=False,
+            rule_ids=rules,  # Keep the argument comment.
+        )
+      style: secondary
+      start: 11
+      end: 85
+  Engine.scan(root, fix=False, plan=plan):
+    fixed: Engine.scan(root, fix=False, selection=plan)
+    labels:
+    - source: plan=plan
+      style: primary
+      start: 29
+      end: 38
+    - source: plan
+      style: secondary
+      start: 29
+      end: 33
+    - source: plan
+      style: secondary
+      start: 34
+      end: 38
+    - source: Engine.scan(root, fix=False, plan=plan)
+      style: secondary
+      start: 0
+      end: 39
+    - source: (root, fix=False, plan=plan)
+      style: secondary
+      start: 11
+      end: 39
+  Engine.scan(root, fix=False, rule_ids=choose(plan=plan)):
+    fixed: Engine.scan(root, fix=False, selection=choose(plan=plan))
+    labels:
+    - source: rule_ids=choose(plan=plan)
+      style: primary
+      start: 29
+      end: 55
+    - source: rule_ids
+      style: secondary
+      start: 29
+      end: 37
+    - source: choose(plan=plan)
+      style: secondary
+      start: 38
+      end: 55
+    - source: Engine.scan(root, fix=False, rule_ids=choose(plan=plan))
+      style: secondary
+      start: 0
+      end: 56
+    - source: (root, fix=False, rule_ids=choose(plan=plan))
+      style: secondary
+      start: 11
+      end: 56
+  Engine.scan(root, fix=False, rule_ids=rules):
+    fixed: Engine.scan(root, fix=False, selection=rules)
+    labels:
+    - source: rule_ids=rules
+      style: primary
+      start: 29
+      end: 43
+    - source: rule_ids
+      style: secondary
+      start: 29
+      end: 37
+    - source: rules
+      style: secondary
+      start: 38
+      end: 43
+    - source: Engine.scan(root, fix=False, rule_ids=rules)
+      style: secondary
+      start: 0
+      end: 44
+    - source: (root, fix=False, rule_ids=rules)
+      style: secondary
+      start: 11
+      end: 44

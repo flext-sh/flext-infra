@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, t, u
+from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.docs import FlextInfraDocGeneratorBundleMixin
@@ -76,7 +77,14 @@ class FlextInfraDocGenerator(
         self,
         bundle: m.Infra.DocsGenerationBundle,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
-        """Admit and settle one captured batch before another batch is prepared."""
+        """Admit and settle one captured batch before another batch is prepared.
+
+        Args:
+            bundle: The batch of docs generation artifacts to publish.
+
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+        """
         roots = {
             f"@docs-{index}": path
             for index, path in enumerate(
@@ -90,6 +98,26 @@ class FlextInfraDocGenerator(
         def publish(
             scope_root: Path,
         ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+            topology = u.Infra.docs_verify_source_topology(
+                bundle.repository_root,
+                bundle.source_states,
+                source_roots=bundle.source_roots,
+                source_scope=bundle.source_scope,
+                source_directories=bundle.source_directories,
+            )
+            if topology.failure:
+                return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(topology)
+            plans = self.plan_files(bundle)
+            if plans.failure:
+                return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(plans)
+            analysis = m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.DOCS,
+                files=plans.value,
+                inputs=bundle.source_states,
+            )
+            admitted = FlextInfraMisePublication.admit_batch(analysis)
+            if admitted.failure:
+                return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(admitted)
             started = transaction.begin_files_locked(
                 scope_root,
                 roots,
@@ -106,6 +134,8 @@ class FlextInfraDocGenerator(
                     (),
                     source_topology=bundle.source_directories,
                     scope_roots=bundle.source_roots,
+                    source_scope=bundle.source_scope,
+                    phase=c.Infra.CodegenStagedFilePhase.DOCS,
                 )
                 if bound.failure:
                     return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(bound)
@@ -134,26 +164,11 @@ class FlextInfraDocGenerator(
                     return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(
                         prepared
                     )
-                plans = self.plan_files(bundle)
-                if plans.failure:
-                    return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(plans)
-                analysis = m.Infra.CodegenPhaseAnalysis(
-                    phase=c.Infra.CodegenStagedFilePhase.DOCS,
-                    files=plans.value,
-                    inputs=bundle.source_states,
-                )
                 written = transaction.append_phase_locked(
                     prepared.value,
                     analysis.phase,
                     analysis.files,
-                    batch_analysis=analysis,
-                    admission=lambda created: u.Infra.docs_verify_source_topology(
-                        bundle.repository_root,
-                        bundle.source_states,
-                        source_roots=bundle.source_roots,
-                        source_directories=bundle.source_directories,
-                        created_directories=created,
-                    ),
+                    batch_admission=admitted.value,
                 )
                 if written.failure:
                     return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(
@@ -271,7 +286,12 @@ class FlextInfraDocGenerator(
     def prepare_batches(
         self,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-        """Yield the next captured scope only after the caller settles its batch."""
+        """Yield the next captured scope only after the caller settles its batch.
+
+        Returns:
+            An iterator over ``p.Result[m.Infra.DocsGenerationBundle]`` for each prepared batch.
+
+        """
         return self._prepare_batches(self._configured_request())
 
     @override

@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
+    FlextInfraMisePublication,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -26,10 +26,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenTransaction(
-    FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
-):
+class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     """Keep every generation phase recoverable until one final fixed point."""
 
     def preview_sources[T](
@@ -396,6 +393,11 @@ class FlextInfraCodegenTransaction(
             The scope identity report of the transaction scope.
 
         """
+        if self._producer.failure:
+            return r[T].from_failure(self._producer)
+        producer = FlextInfraCodegenPreconditions.producer_current(self._producer.value)
+        if producer.failure:
+            return r[T].from_failure(producer)
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[m.Infra.GitIdentityReport].from_failure(identity)
@@ -459,6 +461,13 @@ class FlextInfraCodegenTransaction(
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        if self._producer.failure:
+            return result_type.from_failure(self._producer)
+        producer_current = FlextInfraCodegenPreconditions.producer_current(
+            self._producer.value
+        )
+        if producer_current.failure:
+            return result_type.from_failure(producer_current)
         if set(roots.values()) - self._file_leases.keys():
             return result_type.fail("file session requires every destination lease")
         transaction_id = secrets.token_hex(16)
@@ -568,6 +577,7 @@ class FlextInfraCodegenTransaction(
             transaction_id=transaction_id,
             sources=tuple(("docs", source) for source in inputs),
             directories=directories,
+            producer=self._producer.value,
         )
         if journal.failure:
             return result_type.from_failure(journal)
@@ -608,7 +618,7 @@ class FlextInfraCodegenTransaction(
         analysis: m.Infra.CodegenPhaseAnalysis,
         policy: m.Infra.CodegenPhasePublicationPolicy,
         *,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
         staged_validator: Callable[
             [
                 m.Infra.CodegenTransactionSession,
@@ -625,6 +635,23 @@ class FlextInfraCodegenTransaction(
 
         """
         result_type = r[t.VariadicTuple[Path]]
+        if self._producer.failure:
+            return result_type.from_failure(self._producer)
+        bound = FlextInfraCodegenPreconditions.bind_producer_analysis(
+            analysis, self._producer.value
+        )
+        if bound.failure:
+            return result_type.from_failure(bound)
+        analysis = bound.value
+        if batch_admission is not None and batch_admission.analysis != analysis:
+            return result_type.fail(
+                "external batch admission differs from captured producer context"
+            )
+        if batch_admission is None:
+            admitted = FlextInfraMisePublication.admit_batch(analysis)
+            if admitted.failure:
+                return result_type.from_failure(admitted)
+            batch_admission = admitted.value
         started = self.begin_files_locked(scope_root, roots, analysis.inputs)
         if started.failure:
             return result_type.from_failure(started)
@@ -643,12 +670,11 @@ class FlextInfraCodegenTransaction(
             analysis.files,
             issues=analysis.issues,
             staged_validator=staged_validator,
-            batch_analysis=batch_analysis,
-            admission=policy.admission,
+            batch_admission=batch_admission,
         )
         if published.failure:
             return result_type.from_failure(published)
-        return self.commit_locked(published.value, policy.validator)
+        return self.commit_locked(published.value)
 
     def validate(
         self,

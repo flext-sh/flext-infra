@@ -48,10 +48,18 @@ class FlextInfraDepsGate(FlextInfraGate):
     ) -> m.Infra.GateExecution:
         """Run deptry over the checkout and fail on any declared-surface gap.
 
+        Native execution and report failures remain ERROR receipts, not findings.
+
+        Args:
+            project_dir: The root directory of the project to check.
+            ctx: The gate context containing configuration and report directories.
+
         Returns:
             The complete scan receipt with every dependency issue.
 
-        Native execution and report failures remain ERROR receipts, not findings.
+        Raises:
+            FileExistsError: If the report directory cannot be created.
+            ValueError: If the deptry command fails unexpectedly.
         """
         started = time.monotonic()
         raw_output = ""

@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import secrets
-import sys
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -20,6 +19,7 @@ from flext_infra.codegen import (
     FlextInfraMiseRecovery,
     FlextInfraMiseWorkspacePlanner,
 )
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
 
 if TYPE_CHECKING:
@@ -34,12 +34,18 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         owner: p.Infra.MiseArtifactsOwner,
         *,
         participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
+        producer: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> None:
         """Initialize journal planning and recovery for one Mise artifact owner."""
         super().__init__(participant_policy)
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
         self._recovery = FlextInfraMiseRecovery()
         self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        self._producer = (
+            FlextInfraCodegenPreconditions.capture_producer()
+            if producer is None
+            else r[m.Infra.CodegenPhaseAnalysis].ok(producer)
+        )
 
     @staticmethod
     def record_publication(
@@ -77,14 +83,29 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
         outputs = {item.path: item for item in session.journal.outputs}
         written = set(session.written_files)
+        source_records = {item.path: item for item in session.journal.sources}
+        if session.journal.phase == c.Infra.CodegenStagedFilePhase.DOCS:
+            for path in written:
+                if path in outputs and u.Infra.docs_source_path_is_input(
+                    path,
+                    session.journal.scope_roots,
+                    source_scope=session.journal.source_scope,
+                ):
+                    source_records[path] = outputs[path].model_copy(
+                        update={"phase": c.Infra.CodegenStagedFilePhase.DOCS}
+                    )
         sources = tuple(
-            item.model_copy(update=outputs[item.path].model_dump(exclude={"phase"}))
+            item.model_copy(
+                update=outputs[item.path].model_dump(exclude={"phase", "role"})
+            )
             if item.path in written and item.path in outputs
             else item
-            for item in session.journal.sources
+            for item in source_records.values()
         )
         generator_sources = tuple(
-            item.model_copy(update=outputs[item.path].model_dump(exclude={"phase"}))
+            item.model_copy(
+                update=outputs[item.path].model_dump(exclude={"phase", "role"})
+            )
             if item.path in written and item.path in outputs
             else item
             for item in session.journal.generator_sources
@@ -117,7 +138,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         outcome = m.Infra.CodegenPhaseOutcome(
             root=session.plan.layout.scope_root,
             transaction_id=session.journal.transaction_id,
-            phase=phase,
+            phase=phase or session.journal.phase,
             completed=completed and not pending_files,
             written_files=session.written_files,
             published_files=session.published_files,
@@ -130,8 +151,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             sources=sources,
             outputs=session.journal.outputs,
             generator_sources=generator_sources,
+            generator_trees=session.journal.generator_trees,
             source_topology=topology,
             scope_roots=session.journal.scope_roots,
+            source_scope=session.journal.source_scope,
         )
         evidence = FlextInfraCodegenTransactionRecovery.publish_outcome(
             session.plan.layout.scope_root,
@@ -193,6 +216,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 operation.root != root
                 or operation.surface != request.what
                 or operation.scope != request.scope
+                or operation.module != request.module
             )
         ):
             return r[m.Infra.CodegenPhaseOutcome].fail(
@@ -224,6 +248,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             phase=c.Infra.CodegenStagedFilePhase.CONFORM,
             surface=request.what,
             scope=request.scope,
+            module=request.module,
             scope_roots=scope_roots,
             completed=completed,
             batches=batches,
@@ -245,12 +270,28 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         *,
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
         scope_roots: t.VariadicTuple[Path] = (),
+        source_scope: Path | None = None,
+        phase: c.Infra.CodegenStagedFilePhase | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Persist the complete native output set without rendering or byte copies."""
         outputs = {item.path: item for item in session.journal.outputs}
+        if batch_admission is not None:
+            if (
+                batch_admission.analysis is None
+                or batch_admission.analysis.files != plans
+                or {item.path for item in batch_admission.outputs}
+                != {item.path for item in plans}
+            ):
+                return r[m.Infra.CodegenTransactionSession].fail(
+                    "output proof differs from its native admitted plan",
+                )
+            outputs.update({item.path: item for item in batch_admission.outputs})
         admitted = {item.before.path: item for item in session.published_files}
         for plan in plans:
             actual = admitted.get(plan.path)
+            if actual is None and plan.path in outputs:
+                continue
             if actual is not None and actual.replacement is not None:
                 state: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = (
                     actual.replacement
@@ -277,40 +318,17 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             if record.failure:
                 return r[m.Infra.CodegenTransactionSession].from_failure(record)
             outputs[plan.path] = record.value
-        generator_sources = session.journal.generator_sources
-        if not generator_sources:
-            namespaces = {
-                base.__module__.partition(".")[0]
-                for base in u.__mro__
-                if base.__module__.partition(".")[0] not in sys.stdlib_module_names
-            }
-            paths = {
-                Path(module.__spec__.origin).absolute()
-                for module in tuple(sys.modules.values())
-                if module is not None
-                and module.__spec__ is not None
-                and module.__spec__.origin is not None
-                and module.__spec__.name.partition(".")[0] in namespaces
-            }
-            records: list[m.Infra.CodegenJournalSource] = []
-            for path in sorted(paths):
-                observed = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
-                if observed.failure:
-                    return r[m.Infra.CodegenTransactionSession].from_failure(observed)
-                record = FlextInfraMiseArtifactsJournal.source_record(
-                    "generator",
-                    observed.value,
-                )
-                if record.failure:
-                    return r[m.Infra.CodegenTransactionSession].from_failure(record)
-                records.append(record.value)
-            generator_sources = tuple(records)
+        if not session.journal.generator_sources or not session.journal.generator_trees:
+            return r[m.Infra.CodegenTransactionSession].fail(
+                "publication has no pre-planning producer authority"
+            )
         journal = session.journal.model_copy(
             update={
                 "outputs": tuple(outputs.values()),
-                "generator_sources": generator_sources,
                 "source_topology": source_topology or session.journal.source_topology,
                 "scope_roots": scope_roots or session.journal.scope_roots,
+                "source_scope": source_scope or session.journal.source_scope,
+                "phase": phase or session.journal.phase,
             }
         )
         written = self._write_journal(

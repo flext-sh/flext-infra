@@ -227,7 +227,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if render_inputs is not None:
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
-                render_inputs=render_inputs,
+                target=render_inputs.target,
+                workspace=render_inputs.workspace,
+                codegen=render_inputs.codegen,
             )
             if conformed.failure:
                 return result_type.from_failure(conformed)
@@ -502,6 +504,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # A repository without one must not render ledger activation.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
+                    uv_resolution=codegen.make.uv_resolution,
                     repository_root_rel=self._repository_root_rel(workspace),
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends

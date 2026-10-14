@@ -1035,7 +1035,6 @@ class FlextInfraCodemodSemanticApply:
         return FlextInfraSemanticPublication.publish_semantic_file_plans(
             semantic_plans,
             repository_root=root,
-            validator=(lambda: validator(root)) if validator is not None else None,
             projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
             dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
         ).map(lambda _: True)

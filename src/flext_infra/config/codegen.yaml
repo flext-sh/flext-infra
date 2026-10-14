@@ -524,6 +524,13 @@ Infra:
       ruff_cache:
         external_storage_directory: flext/infra/ruff
       # Public verbs execute their declared operation without mode selectors.
+      uv_resolution:
+        local_directory: .flext/uv/local
+        standalone_directory: .flext/uv/standalone
+        hosted_variable: GITHUB_ACTIONS
+        hosted_value: 'true'
+        virtual_distribution_suffix: '-resolution'
+        member_group_separator: '-'
       ci:
         variable: CI
         value: Y
@@ -655,7 +662,7 @@ Infra:
       # Workspace-only (topology owns applicability): a standalone Makefile
       # never declares it. Never merges; a rerun continues the same lanes.
       - name: propagate
-        description: Apply this workspace's flext-infra to every declared member (conform, then lock) and publish one pull-request lane per member whose projections or lock change; unchanged members publish nothing.
+        description: Apply this workspace's flext-infra projections to every declared member and publish one pull-request lane per changed member; lock updates belong exclusively to make upg.
         profiles: [ workspace ]
       - name: build
         description: Build the project distribution artifacts.
@@ -1421,7 +1428,7 @@ Infra:
           runtime: [ click>=8.5.0, typer>=0.27.3, jinja2>=3.1.6, jsonschema>=4.26.0, tomlkit>=0.15.1, ruamel.yaml>=0.19.1, defusedxml>=0.7.1, openpyxl>=3.1.5, python-docx>=1.2.0, python-pptx>=1.0.2 ]
         - upstream: flext_cli
           project: flext-infra
-          runtime: [ flext-cli, defusedxml>=0.7.1, GitPython>=3.2.0, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.11.1, "rope @ git+https://github.com/marlon-costa-dc/rope.git@datacosmos", pytest>=9.1.1, mkdocs>=1.6.1 ]
+          runtime: [ flext-cli, defusedxml>=0.7.1, GitPython>=3.2.0, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.11, "rope @ git+https://github.com/marlon-costa-dc/rope.git@datacosmos", pytest>=9.1.1, pytest-markdown-docs, mkdocs>=1.6.1 ]
         - upstream: flext_cli
           project: flext-tests
           runtime: [ flext-cli, flext-infra, pytest>=9.1.1, pytest-timeout>=2.4.0, docker>=7.2.0, python-on-whales>=0.81.0 ]
@@ -2262,10 +2269,9 @@ Infra:
         destination: "src/{package_name}/services/ping.py"
         profiles: [ workspace, standalone ]
         delegate: render
-      # Runtime config is app-owned and loaded
-      # by FlextConfig from the project-root config directory.
+      # Runtime defaults belong to the declaring import-package resource.
       - source: base/src/config/ns.yaml.j2
-        destination: "config/{ns}.yaml"
+        destination: "src/{package_name}/config/{ns}.yaml"
         profiles: [ workspace, standalone ]
         delegate: render
       # Config/settings declarations live in

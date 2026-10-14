@@ -851,7 +851,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             # governed fixture must declare both.
             python_required = config.Infra.codegen.toolchain.python_required_version
             pyproject.write_text(
-                f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+                f'[project]\nname = "{distribution}"\n'
+                f'version = "{config.Infra.initial_project_version}"\n'
                 f'description = "{distribution} governed fixture"\n'
                 f'requires-python = "{python_required}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
@@ -941,14 +942,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         ) -> None:
             """Declare and commit ``member`` as a real gitlink of ``parent``."""
             _ = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
-            (parent / c.Infra.GITMODULES).write_text(
-                f'[submodule "{distribution}"]\n'
-                f"\tpath = {relative_path}\n"
-                f"\turl = {cls.governed_repository_url(distribution)}\n"
-                "\tbranch = "
-                f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n",
-                encoding="utf-8",
-            )
+            for key, value in (
+                ("path", relative_path),
+                ("url", cls.governed_repository_url(distribution)),
+                (
+                    "branch",
+                    TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+                ),
+            ):
+                _ = TestsFlextInfraUtilitiesGitMixin.git_run(
+                    parent,
+                    "config",
+                    "--file",
+                    c.Infra.GITMODULES,
+                    f"submodule.{distribution}.{key}",
+                    value,
+                )
             # A workspace parent declares its own role as workspace: the
             # manifest must agree with the topology the detector observes.
             TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(

@@ -12,8 +12,39 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
+
+
+def _write_candidate_targets(
+    root: Path,
+    targets: t.SequenceOf[m.Infra.CandidateBootstrapTargetSpec],
+) -> Path:
+    """Declare recovery targets through the repository's current config owner."""
+    inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+    declaration = (inputs.spec.repository or m.Infra.RepositoryDeltaSpec()).model_copy(
+        update={"candidate_bootstrap_targets": tuple(targets)},
+    )
+    path = root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+    tm.ok(u.Cli.ensure_dir(path.parent))
+    tm.ok(
+        u.Cli.yaml_dump(
+            path,
+            {
+                "Infra": {
+                    "codegen": {
+                        "repository": declaration.model_dump(
+                            mode="json",
+                            exclude_none=True,
+                            exclude_defaults=True,
+                        ),
+                    },
+                },
+            },
+        ),
+    )
+    return path
 
 
 def _declared_candidate_campaign(
@@ -33,14 +64,14 @@ def _declared_candidate_campaign(
         tmp_path / "candidate",
         c.Infra.MakeProfile.STANDALONE,
     )
-    manifest = u.Tests.write_workspace_manifest(source, source.name)
-    u.Tests.write_workspace_manifest(candidate, candidate.name)
-    manifest.write_text(
-        manifest.read_text(encoding="utf-8")
-        + "\ncandidate_bootstrap_targets:\n"
-        + f"  - path: {Path(os.path.relpath(candidate, source)).as_posix()}\n"
-        + f"    what: {surface}\n",
-        encoding="utf-8",
+    _write_candidate_targets(
+        source,
+        (
+            m.Infra.CandidateBootstrapTargetSpec(
+                path=Path(os.path.relpath(candidate, source)),
+                what=surface,
+            ),
+        ),
     )
     return source, candidate
 
@@ -102,16 +133,16 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             c.Infra.MakeProfile.STANDALONE,
         )
         for root in (first, second):
-            u.Tests.write_workspace_manifest(root, root.name)
-        manifest = u.Tests.write_workspace_manifest(source, source.name)
-        declaration = "candidate_bootstrap_targets:\n" + "".join(
-            f"  - path: {Path(os.path.relpath(root, source)).as_posix()}\n"
-            "    what: makefile\n"
-            for root in (first, second)
-        )
-        manifest.write_text(
-            manifest.read_text(encoding="utf-8") + "\n" + declaration,
-            encoding="utf-8",
+            _write_candidate_targets(root, ())
+        _write_candidate_targets(
+            source,
+            tuple(
+                m.Infra.CandidateBootstrapTargetSpec(
+                    path=Path(os.path.relpath(root, source)),
+                    what=c.Infra.CodegenConformSurface.MAKEFILE,
+                )
+                for root in (first, second)
+            ),
         )
         return source, first, second
 
@@ -132,12 +163,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 issue_prefix="fixture",
             ),
         )
-        manifest = u.Infra.workspace_manifest_path(project_root)
-        manifest.write_text(
-            manifest.read_text(encoding="utf-8")
-            + "\ncandidate_bootstrap_targets: []\n",
-            encoding="utf-8",
-        )
+        _write_candidate_targets(project_root, ())
 
         result = infra.bootstrap_candidate(
             m.Infra.CandidateBootstrapCommand(repository_root=project_root),
@@ -145,6 +171,37 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
         tm.that(result.failure, eq=True)
         tm.that(result.error, has="candidate bootstrap targets are not declared")
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_duplicate_target_worktree_is_rejected_without_publication(
+        tmp_path: Path,
+    ) -> None:
+        """One worktree cannot receive two competing recovery surfaces."""
+        source, candidate = _declared_candidate_campaign(
+            tmp_path,
+            c.Infra.CodegenConformSurface.PYPROJECT,
+        )
+        relative = Path(os.path.relpath(candidate, source))
+        _write_candidate_targets(
+            source,
+            tuple(
+                m.Infra.CandidateBootstrapTargetSpec(path=relative, what=surface)
+                for surface in (
+                    c.Infra.CodegenConformSurface.PYPROJECT,
+                    c.Infra.CodegenConformSurface.MAKEFILE,
+                )
+            ),
+        )
+        before = TestsFlextInfraConformSupport.project_tree(candidate)
+
+        result = infra.bootstrap_candidate(
+            m.Infra.CandidateBootstrapCommand(repository_root=source),
+        )
+
+        tm.that(result.failure, eq=True)
+        tm.that(result.error, has="duplicate worktrees")
+        tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=before)
 
     @pytest.mark.slow
     def test_initializer_surface_recovers_without_touching_module_source(
@@ -162,15 +219,14 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         initializer = package / c.Infra.INIT_PY
         initializer.write_text("# stale initializer\n", encoding="utf-8")
-        manifest = u.Infra.workspace_manifest_path(source)
-        manifest.write_text(
-            manifest.read_text(encoding="utf-8").split(
-                "candidate_bootstrap_targets:",
-            )[0]
-            + "candidate_bootstrap_targets:\n"
-            + f"  - path: {Path(os.path.relpath(first, source)).as_posix()}\n"
-            + "    what: lazy-init\n",
-            encoding="utf-8",
+        _write_candidate_targets(
+            source,
+            (
+                m.Infra.CandidateBootstrapTargetSpec(
+                    path=Path(os.path.relpath(first, source)),
+                    what=c.Infra.CodegenConformSurface.LAZY_INIT,
+                ),
+            ),
         )
         before = tm.ok(u.Cli.atomic_read_binary_file_state(module, required=True))
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
@@ -197,9 +253,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
     ) -> None:
         """Bootstrap cannot broaden a recovery target into full generation."""
         source, first, _ = self._campaign(tmp_path)
-        manifest = u.Infra.workspace_manifest_path(source)
-        manifest.write_text(
-            manifest.read_text(encoding="utf-8").replace(
+        declaration = source / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+        declaration.write_text(
+            declaration.read_text(encoding="utf-8").replace(
                 "what: makefile",
                 "what: all",
             ),
@@ -234,8 +290,11 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(first_makefile, required=True),
         )
-        second_manifest = second / "config" / "workspace.yaml"
-        second_manifest.write_text("invalid: [\n", encoding="utf-8")
+        second_declaration = (
+            second / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+        )
+        original = second_declaration.read_text(encoding="utf-8")
+        second_declaration.write_text("invalid: [\n", encoding="utf-8")
 
         failed = infra.bootstrap_candidate(
             m.Infra.CandidateBootstrapCommand(repository_root=source),
@@ -246,7 +305,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             tm.ok(u.Cli.atomic_read_binary_file_state(first_makefile, required=True)),
             eq=before,
         )
-        u.Tests.write_workspace_manifest(second, second.name)
+        second_declaration.write_text(original, encoding="utf-8")
         tm.ok(
             infra.bootstrap_candidate(
                 m.Infra.CandidateBootstrapCommand(repository_root=source),
@@ -380,6 +439,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             tmp_path,
             c.Infra.CodegenConformSurface.PYPROJECT,
         )
+        tm.that(u.Infra.workspace_manifest_path(source).exists(), eq=False)
         projection = candidate / c.PYPROJECT_FILENAME
         original = projection.read_text(encoding="utf-8")
         original_groups = u.Tests.toml_table_at(original, "dependency-groups")
@@ -409,6 +469,13 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         before = TestsFlextInfraConformSupport.project_tree(candidate)
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
+        inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
+        contract = FlextInfraCodegenConform.surface_contract(
+            c.Infra.CodegenConformSurface.PYPROJECT,
+            codegen=inputs.spec,
+        )
+        destinations = contract.destinations
+        assert destinations is not None
 
         tm.ok(infra.bootstrap_candidate(command))
         first = tm.ok(u.Cli.atomic_read_binary_file_state(projection, required=True))
@@ -424,12 +491,20 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             eq=original_groups,
         )
         after = TestsFlextInfraConformSupport.project_tree(candidate)
+        for relative in inputs.spec.uv_resolution_pyprojects:
+            view = candidate / relative
+            tm.that(view.is_file(), eq=True)
+            tm.that(
+                u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8"))
+                is not None,
+                eq=True,
+            )
         tm.that(
-            tuple(item for item in after if item[0] != projection.name),
-            eq=tuple(item for item in before if item[0] != projection.name),
+            tuple(item for item in after if item[0] not in destinations),
+            eq=tuple(item for item in before if item[0] not in destinations),
             msg=TestsFlextInfraConformSupport.project_tree_diff(
-                tuple(item for item in before if item[0] != projection.name),
-                tuple(item for item in after if item[0] != projection.name),
+                tuple(item for item in before if item[0] not in destinations),
+                tuple(item for item in after if item[0] not in destinations),
             ),
         )
         tm.that(
@@ -449,3 +524,4 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             tm.ok(u.Cli.atomic_read_binary_file_state(projection, required=True)),
             eq=first,
         )
+        tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=after)

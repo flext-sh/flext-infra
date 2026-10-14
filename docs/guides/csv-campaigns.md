@@ -19,9 +19,17 @@ mapping, null, non-string, and blank entries fail before any publication; no
 scope is expanded into characters or coerced into a glob. Omitted scopes retain
 the typed rule defaults, and empty lists remain valid unrestricted selectors.
 When a candidate's Python package cannot import, the healthy Infra provider
-can run `make mod-text-candidate` after its workspace manifest declares exactly
-one `candidate_bootstrap_targets` entry. The same target declaration also
-supports `make bootstrap-candidate` to project the declared recovery surface.
+can run `make mod-text-candidate` after its repository declaration supplies exactly
+one `candidate_bootstrap_targets` entry. Declare targets under
+`Infra.codegen.repository.candidate_bootstrap_targets` in `config/codegen.yaml`,
+with each `path` relative to the healthy provider and a canonical `what` surface.
+The same target declaration supports `make bootstrap-candidate` to project the
+declared recovery surface without importing the candidate package. A candidate
+worktree may appear only once per invocation. Recover a conflicted pyproject with
+`what: pyproject`, then run the candidate's `make initialize` to regenerate its
+Makefile and `make gen` to complete conformance. The bootstrap authenticates the
+consulted codegen declarations through publication; it requires no retired
+`config/workspace.yaml`.
 For regexes that may match several identifiers, declare a named group and
 `capture_equals: {keyword: expected_name}` in the rule. The engine validates
 that the group exists and rejects a different captured value before publishing
