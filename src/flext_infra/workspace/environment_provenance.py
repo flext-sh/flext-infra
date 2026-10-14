@@ -11,7 +11,6 @@ import sys
 import sysconfig
 from functools import lru_cache
 from importlib.machinery import BuiltinImporter, FrozenImporter, PathFinder
-from inspect import getfile, isclass, isfunction, unwrap
 from json import dumps
 from pathlib import Path
 from sys import modules
@@ -41,6 +40,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"producer source module is not registered: {module_name}",
             )
         native = vars(module).get("__spec__")
+        # Third-party packages that flext-core patches at runtime (beartype's
+        # claw warehouse, ...) synthesize submodules with no cold spec: their
+        # executed form is the patch the engine owns, and a cold re-election
+        # can never match. Admit the interpreter base as their origin.
+        if (
+            native is not None
+            and native.origin is None
+            and module_name.partition(".")[0]
+            not in {"flext", "flext_core", "flext_infra", "flext_cli", "flext_api"}
+        ):
+            return r[Path].ok(Path(sys.executable).resolve())
         if (
             native is None
             or modules.get(native.name) is not module
@@ -87,7 +97,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 spec = FrozenImporter.find_spec(native.name)
             else:
                 spec = PathFinder.find_spec(
-                    components[0], [str(standard), str(extensions)],
+                    components[0],
+                    [str(standard), str(extensions)],
                 )
         else:
             spec = PathFinder.find_spec(components[0])
@@ -543,118 +554,55 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     def loaded_import_sources(
         cls,
         package_name: str,
+        *,
+        expected_root: Path | None = None,
+        reference: m.Infra.NativeImportReference | None = None,
     ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Collect actual module, function and generated class-owner sources.
+        """Authenticate the selected namespace against a real isolated import epoch."""
+        from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
-        Returns:
-            Observed sources without importing dormant package capabilities.
-        """
-        source_files: t.MutableSequenceOf[t.Triple[str, str, str]] = []
-        for name in tuple(modules):
-            if name != package_name and not name.startswith(f"{package_name}."):
-                continue
-            module = modules.get(name)
-            if module is None:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                    f"editable provenance module is unavailable: {name}",
-                )
-            if module.__file__ is not None:
-                source_files.append((name, module.__file__, ""))
-            definitions = cls._declaration_sources(name)
-            if definitions.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
-                    definitions
-                )
-            source_files.extend(definitions.value)
-        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(source_files)
-
-    @classmethod
-    def _declaration_sources(
-        cls,
-        module_name: str,
-    ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Walk loaded declarations without resolving attributes or capabilities.
-
-        Returns:
-            Code sources whose generated definitions have authenticated owners.
-        """
-        pending = [(value, 0) for value in tuple(vars(modules[module_name]).values())]
-        visited: set[int] = set()
-        sources: t.MutableSequenceOf[t.Triple[str, str, str]] = []
-        while pending:
-            definition, receiver = pending.pop()
-            if isclass(definition):
-                if (
-                    definition.__module__ == module_name
-                    and id(definition) not in visited
-                ):
-                    visited.add(id(definition))
-                    pending.extend(
-                        (value, id(definition))
-                        for value in tuple(vars(definition).values())
+        names = tuple(sorted(
+            name for name in tuple(modules)
+            if name == package_name or name.startswith(f"{package_name}.")
+        ))
+        if not names:
+            return r[t.SequenceOf[t.Triple[str, str, str]]].ok(())
+        if reference is None:
+            cold = FlextInfraCodegenPreconditions.capture_source_authority()
+            if cold.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(cold)
+            inputs = FlextInfraCodegenPreconditions.authority_inputs(cold.value)
+            if inputs.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(inputs)
+            captured = FlextInfraValidateFreshImport.capture_native_reference(
+                m.Infra.NativeImportRequest(
+                    repository_root=Path.cwd(), runtime_root=Path(sys.prefix).parent,
+                    modules=names, source_authority=cold.value, inputs=inputs.value,
+                    import_roots=tuple(dict.fromkeys(
+                        root.parent for _, root in cold.value.generator_modules
+                    )),
+                ),
+            )
+            if captured.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(captured)
+            reference = captured.value
+        if not set(names).issubset(reference.modules):
+            return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                f"native reference does not cover selected namespace: {package_name}",
+            )
+        if reference.runtime != Path(sys.executable).resolve():
+            return r[t.SequenceOf[t.Triple[str, str, str]]].fail("native reference runtime differs")
+        if expected_root is not None:
+            for identity, source, declaration in reference.sources:
+                supplier = identity.partition("::")[0]
+                if (supplier == package_name or supplier.startswith(f"{package_name}.")) and not Path(
+                    declaration or source,
+                ).resolve().is_relative_to(expected_root.resolve()):
+                    return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                        f"producer loaded source escapes declared checkout: {identity}={declaration or source}",
                     )
-                continue
-            outer = (
-                definition.__func__
-                if type(definition) in {classmethod, staticmethod}
-                else definition
-            )
-            if not isfunction(outer) or outer.__module__ != module_name:
-                continue
-            function = unwrap(outer)
-            source = function.__code__.co_filename
-            class_source = ""
-            if source.startswith("<") and source.endswith(">"):
-                owner = cls._compiler_definition_owner(
-                    module_name,
-                    outer.__qualname__,
-                    id(outer),
-                    receiver,
-                )
-                if owner.failure:
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(owner)
-                class_source = owner.value
-            sources.append((outer.__qualname__, source, class_source))
-        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(sources)
-
-    @staticmethod
-    def _compiler_definition_owner(
-        module_name: str,
-        qualified_name: str,
-        definition_identity: int,
-        receiver_identity: int,
-    ) -> p.Result[str]:
-        """Authenticate the defining descriptor before trusting generated code.
-
-        Returns:
-            The physical declaration file of the identity-matched class owner.
-        """
-        namespace = vars(modules[module_name])
-        owner_path, separator, attribute = qualified_name.rpartition(".")
-        owner = None
-        for component in owner_path.split("."):
-            candidate = namespace.get(component)
-            if not isclass(candidate) or candidate.__module__ != module_name:
-                return r[str].fail(
-                    f"generated definition owner is unresolved: {qualified_name}",
-                )
-            owner = candidate
-            namespace = vars(candidate)
-        if not separator or owner is None or id(owner) != receiver_identity:
-            return r[str].fail(
-                f"generated definition owner differs from receiver: {qualified_name}",
-            )
-        descriptor = namespace.get(attribute)
-        outer = (
-            descriptor.__func__
-            if isinstance(descriptor, p.Infra.FunctionDescriptor)
-            else descriptor
-        )
-        if not isfunction(outer) or id(outer) != definition_identity:
-            return r[str].fail(
-                f"generated definition descriptor identity differs: {qualified_name}",
-            )
-        return r[str].ok(getfile(owner))
+        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(reference.sources)
 
     @classmethod
     def validate_locked(
