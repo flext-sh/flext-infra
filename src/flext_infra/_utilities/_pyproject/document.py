@@ -443,11 +443,17 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                     )
                     if origin.failure:
                         return result.from_failure(origin)
-                    _head, marker, (url, reference) = origin.value
-                    request = f"{member.distribution}{extras} @ git+{url}@{reference}"
-                    requests.append(
-                        f"{request}; {marker[1]}" if marker[0] else request,
+                    _head, marker, source_origin = origin.value
+                    request = FlextInfraUtilitiesPyprojectDocument._rendered_canonical(
+                        f"{member.distribution}{extras}",
+                        member.distribution,
+                        (source_origin, None),
+                        marker,
+                        pins_commit=False,
                     )
+                    if request.failure:
+                        return result.from_failure(request)
+                    requests.append(request.value)
             else:
                 requests.append(
                     f"{member.distribution}{extras} @ "
@@ -466,7 +472,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         lock_state: m.Cli.AtomicFileState | None = None,
     ) -> p.Result[m.Cli.AtomicFileState]:
         """Elect the authenticated live or installed producer declaration."""
-        from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+        from flext_infra.workspace import (
+            FlextInfraWorkspaceDetector,
+            FlextInfraWorkspaceEnvironmentProvenance,
+        )
 
         result = r[m.Cli.AtomicFileState]
         matches = u.installed_distributions(name=repository.distribution)
@@ -507,19 +516,23 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 repository_root / repository.path / c.PYPROJECT_FILENAME,
                 required=True,
             )
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return result.from_failure(context)
+        lock_path = context.value.lock_path
         if lock_state is None:
             lock_read = u.Cli.atomic_read_binary_file_state(
-                repository_root / c.Infra.UV_LOCK_FILENAME,
+                lock_path,
                 required=True,
             )
             if lock_read.failure:
                 return result.from_failure(lock_read)
             lock_state = lock_read.value
         if (
-            lock_state.path != (repository_root / c.Infra.UV_LOCK_FILENAME).resolve()
+            lock_state.path != lock_path
             or lock_state.content is None
         ):
-            return result.fail("member artifact needs its captured root lock")
+            return result.fail("member artifact needs its captured elected lock")
         locked_document = u.Cli.toml_parse_text(
             lock_state.content.decode(c.DEFAULT_ENCODING),
         )

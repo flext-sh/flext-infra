@@ -149,6 +149,10 @@ the native MRO without invoking descriptor callbacks. The receiver alias must re
 that descriptor identity, and the actual supplier declaration and executed function
 must match physical source. Replacing either side, its source, or its code fails;
 membership of the supplier in the receiver's MRO does not waive alias authentication.
+An alias to a method declared in the same class resolves from that class's physical
+namespace before the module namespace. A module-level name does not replace the
+class-local binding. An absent binding remains a failure; authentication never
+manufactures an operand from a path or a missing name.
 An unresolved factory binding reports bounded, escaped identifier, module/package
 registration, receiver/declaration, physical source path, and supplier-kind context.
 Diagnostics never render the operand, its material values, or a source excerpt; they
@@ -160,6 +164,9 @@ construction hook. Function compilation uses authenticated native suppliers and
 data-only attachment targets; alias operands and compiler constructor bindings
 require admission before invocation. Value comparison must not invoke authored
 equality, hashing, or attribute access.
+Compiler field defaults use the existing native operand-admission contract.
+Immutable scalar defaults are valid inputs; a default with a `__set_name__`
+callback remains inadmissible before native class assembly.
 Dataclass ancestry is compared with its source-declared bindings and retained as
 supplier evidence, not replayed to construct compiler data. Native assembly uses an
 object-rooted data-only class with authenticated declarations and fields; neither

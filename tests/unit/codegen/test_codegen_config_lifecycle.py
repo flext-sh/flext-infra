@@ -183,13 +183,44 @@ import sys
 from pathlib import Path
 
 from flext_infra import c, config, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 root = Path(sys.argv[1])
+context = FlextInfraWorkspaceDetector.resolution_context(root).unwrap()
+lock_state = u.Cli.atomic_read_binary_file_state(
+    context.lock_path, required=True,
+).unwrap()
+assert lock_state.mode is not None
+obsolete = root / c.Infra.UV_LOCK_FILENAME
+if obsolete != context.lock_path:
+    obsolete_state = u.Cli.atomic_read_binary_file_state(
+        obsolete, required=False,
+    ).unwrap()
+    u.Cli.atomic_write_binary_file_guarded(
+        obsolete_state,
+        b"obsolete root lock must not be parsed\\n",
+        permission_mode=lock_state.mode,
+    ).unwrap()
 repository = u.Infra.configured_repository_ref(
     codegen=config.Infra.codegen,
     repository_root=root,
 ).unwrap()
 state = u.Infra.member_project_declaration(root, repository).unwrap()
+explicit = u.Infra.member_project_declaration(
+    root, repository, lock_state=lock_state,
+).unwrap()
+assert explicit == state
+if obsolete != context.lock_path:
+    foreign_lock = lock_state.model_copy(update={"path": obsolete})
+    refused = u.Infra.member_project_declaration(
+        root, repository, lock_state=foreign_lock,
+    )
+    assert refused.failure
+    assert "captured elected lock" in refused.error
+assert u.Cli.atomic_read_binary_file_state(
+    context.lock_path, required=True,
+).unwrap() == lock_state
+print("installed declaration elected-lock=" + str(context.lock_path))
 assert state.path.is_relative_to(Path(sys.prefix))
 metadata, requirements = u.Infra.member_declaration_requirements(
     state,

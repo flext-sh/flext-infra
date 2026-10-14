@@ -515,8 +515,11 @@ class TestsFlextInfraUvNativeResolution:
         )
 
     @staticmethod
+    @pytest.mark.parametrize("marked", [False, True])
     def test_conformed_workspace_root_resolves_without_member_checkout(
         tmp_path: Path,
+        *,
+        marked: bool,
     ) -> None:
         """Resolve the actual conformed root's Git groups after members disappear."""
         root = tmp_path / "workspace"
@@ -540,6 +543,9 @@ class TestsFlextInfraUvNativeResolution:
             ("clone", "--bare", str(checkout), str(origin)),
         )
         requirement = f"{member_ref.distribution} @ git+{member_ref.url}@{branch}"
+        if marked:
+            requirement += ' ; python_version >= "0"'
+        authored = Requirement(requirement)
         u.Tests.write_native_resolution_project(
             root,
             root_ref.distribution,
@@ -569,6 +575,14 @@ class TestsFlextInfraUvNativeResolution:
                 options=u.Infra.PyprojectConformOptions(
                     repository_root=root,
                     flext_line=u.Tests.integration(),
+                    member_declarations=(
+                        tm.ok(
+                            u.Cli.atomic_read_binary_file_state(
+                                checkout / c.PYPROJECT_FILENAME,
+                                required=True,
+                            ),
+                        ),
+                    ),
                 ),
             ),
         )
@@ -605,6 +619,15 @@ class TestsFlextInfraUvNativeResolution:
             ),
         )
         actual_uv = u.Tests.toml_table_at(conformed, "tool", "uv")
+        member_requirements = tuple(
+            Requirement(line)
+            for line in tm.ok(u.Infra.document_requirement_lines(actual))
+            if Requirement(line).name == member_ref.distribution
+        )
+        tm.that(bool(member_requirements), eq=True)
+        for projected in member_requirements:
+            tm.that(projected.url, eq=authored.url)
+            tm.that(str(projected.marker), eq=str(authored.marker))
         tm.that(
             u.Tests.toml_strings(actual_uv["override-dependencies"]),
             eq=(f"{root_ref.distribution}>=1.0.0,<2.0.0",),
