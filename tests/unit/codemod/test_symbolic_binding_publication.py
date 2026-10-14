@@ -49,7 +49,9 @@ class TestsFlextInfraSymbolicBindingPublication:
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.parametrize("receiver", ["source", "replacement", "intermediate"])
+    @pytest.mark.parametrize(
+        "receiver", ["source", "replacement", "intermediate", "conditional", "loop"]
+    )
     def test_rebound_receiver_is_diagnostic_without_mutation(
         symbolic_workspace: Path,
         receiver: str,
@@ -75,6 +77,18 @@ class TestsFlextInfraSymbolicBindingPublication:
                 "u = Independent.TestsFlextInfraUtilities\n"
                 + _OWNED_CI_LINE
                 + "u = canonical.TestsFlextInfraUtilities\n"
+            )
+        elif receiver == "conditional":
+            before += (
+                "if True:\n"
+                "    utilities = canonical\n"
+                + _OWNED_CI_LINE
+            )
+        elif receiver == "loop":
+            before += (
+                "for utilities in (canonical,):\n"
+                "    pass\n"
+                + _OWNED_CI_LINE
             )
         else:
             before += (

@@ -166,6 +166,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         ast_node: FlextInfraProtocolsRopeRuntime.RopeAstNode
 
+        def get_lineno(self) -> int | None: ...
+
     @runtime_checkable
     class RopePyName(Protocol):
         """Rope semantic name shape."""

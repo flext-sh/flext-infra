@@ -477,7 +477,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         cls,
         project: p.Infra.RopeProject,
         path: Path,
-        source: str,
+        _source: str,
         unresolved: set[t.Triple[Path, str, str]],
     ) -> t.Triple[p.Infra.RopeScope, p.Infra.RopeScope, p.Infra.RopePyName] | None:
         """Return the first bound payload declaration not already reported.
@@ -786,8 +786,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
     ) -> set[str]:
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        resource = module.get_resource()
         imports = cls._native_import_infos(project, module)
         names = {
             alias or name.partition(".")[0]

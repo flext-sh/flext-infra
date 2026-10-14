@@ -58,6 +58,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         source: str,
         *,
         project: p.Infra.RopeProject | None = None,
+        pymodule: p.Infra.RopePyModule | None = None,
     ) -> t.StrDict:
         """Read the ``install_lazy_exports`` namespace alias map of one module.
 
@@ -79,9 +80,16 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         if path.name != c.Infra.INIT_PY:
             return {}
         # A required initializer that does not parse remains a real input error.
-        parsed = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-            project, source
+        parsed = (
+            pymodule
+            if pymodule is not None
+            else FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project, source
+            )
         )
+        if parsed.source_code != source:
+            message = "Lazy aliases differ from their native Rope snapshot"
+            raise ValueError(message)
         if not isinstance(parsed, p.Infra.RopeSourceModule):
             message = "Lazy aliases require a native Rope source module"
             raise TypeError(message)

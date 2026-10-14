@@ -15,6 +15,7 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsDuplication
+from flext_infra._models.deps import FlextInfraModelsDeps
 
 # Gate models use base type primitives; importing the composing project facade
 # here creates unresolved aliases while Pydantic analyzes nested root models.
@@ -113,6 +114,19 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class DeptryNativeReport(m.RootModel[tuple[DeptryDiagnostic, ...]]):
         """Native deptry JSON array; only a valid empty array means no findings."""
 
+    class DeptryScan(m.Value):
+        """Native findings bound to the exact settings and report bytes."""
+
+        settings: Annotated[
+            m.Cli.AtomicFileState, m.Field(description="Consumed pyproject state"),
+        ]
+        report_state: Annotated[
+            m.Cli.AtomicFileState, m.Field(description="Fresh native report state"),
+        ]
+        report: Annotated[
+            DeptryNativeReport, m.Field(description="Complete native findings"),
+        ]
+
     class GateContext(m.ContractModel):
         """Quality gate execution context and configuration."""
 
@@ -134,6 +148,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             bool,
             m.Field(description="Never write files even when fix mode is requested"),
         ] = False
+        runtime_dependency_inputs: Annotated[
+            FlextInfraModelsDeps.RuntimeDependencyInputs | None,
+            m.Field(description="Target-runtime dependency proof injected at composition"),
+        ] = None
         ruff_args: Annotated[
             t.StrSequence,
             m.Field(description="Extra arguments for Ruff"),

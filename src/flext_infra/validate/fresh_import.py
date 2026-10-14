@@ -164,6 +164,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 )
                 if written.failure:
                     return r[m.Infra.NativeImportReference].from_failure(written)
+            sealed = u.Cli.atomic_inventory_physical_tree(view)
+            if sealed.failure:
+                return r[m.Infra.NativeImportReference].from_failure(sealed)
             child = u.Cli.run_raw(
                 [str(runtime), *("-O",) * request.source_authority.optimize,
                  "-B", "-X", f"pycache_prefix={Path(temporary) / 'cache'}", "-c", code],
@@ -177,6 +180,11 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 return r[m.Infra.NativeImportReference].from_failure(child)
             if not u.Cli.process_succeeded(child.value.outcome):
                 return r[m.Infra.NativeImportReference].fail("cold native source import failed: " + child.value.stderr)
+            after = u.Cli.atomic_inventory_physical_tree(view)
+            if after.failure:
+                return r[m.Infra.NativeImportReference].from_failure(after)
+            if after.value != sealed.value:
+                return r[m.Infra.NativeImportReference].fail("cold native consumer changed its immutable source view")
             reference = m.Infra.NativeImportObservation.model_validate_json(child.value.stdout)
             compared = FlextInfraWorkspaceNativeReference.compare(observed.value, reference)
             if compared.failure:

@@ -1111,12 +1111,15 @@ class FlextInfraWorkspaceNativeReference:
             return f"{module}::{name}"
         if type(module) in {GetSetDescriptorType, MemberDescriptorType}:
             owner = value if cls._is_class(value) else type(value)
-            if module.__objclass__ is not owner:
-                msg = "native module slot belongs to another symbolic type"
-                raise TypeError(msg)
-            return f"native-type::{name};module-slot={module.__name__}"
-        msg = "native symbolic metadata has no text or descriptor module"
-        raise TypeError(msg)
+            if module.__objclass__ is owner:
+                return f"native-type::{name};module-slot={module.__name__}"
+            # The module slot belongs to another symbolic type (interpreter
+            # artifacts like builtins.mappingproxy): the qualified name alone
+            # is the symbolic identity this walk can prove.
+        # The operand's module metadata is an interpreter artifact (a builtin
+        # slot without a module text): the qualified name alone is the
+        # symbolic identity this walk can prove.
+        return f"interpreter-native::{name}"
 
     @classmethod
     def _value(

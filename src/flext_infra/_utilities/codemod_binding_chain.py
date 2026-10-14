@@ -504,7 +504,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 return False
             path, text = chain
             routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
-                module.get_name(), path, text, project=project
+                module.get_name(), path, text, project=project, pymodule=module
             )
             if not cls._single_reaching_binding(
                 module, scope, expression, offset, routes
@@ -853,6 +853,15 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             rows = FlextInfraUtilitiesRopeStructure.logical_statements(source)
             name = expression.rpartition(".")[-1]
+            binding = runtime.expression_name(scope, expression)
+            assignment_lines = (
+                frozenset(
+                    assignment.get_lineno()
+                    for assignment in binding.assignments
+                )
+                if isinstance(binding, p.Infra.RopeAssignedName)
+                else frozenset()
+            )
             finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
                 module.pycore.project, name
             )
@@ -904,7 +913,14 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                         imported_scope is not None
                         and expression in imported_scope.get_defined_names()
                     )
-                assigned = occurrence.is_written() or occurrence.is_defined()
+                assigned = (
+                    occurrence.is_written()
+                    or occurrence.is_defined()
+                    or (
+                        expression.isidentifier()
+                        and occurrence.lineno in assignment_lines
+                    )
+                )
                 if row.category == c.Infra.StatementCategory.ANN_ASSIGN:
                     assigned |= (
                         cls._binding_expression(row.text.partition(":")[0])

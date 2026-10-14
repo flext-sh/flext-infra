@@ -18,10 +18,69 @@ from flext_infra._models import (
     FlextInfraModelsMixins,
 )
 from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
     """Models for dependency detection and modernization reporting."""
+
+    class RuntimeDependencyProvider(m.Value):
+        """One imported package associated with an authenticated locked supplier."""
+
+        modules: Annotated[
+            t.StrTuple,
+            m.Field(min_length=1, description="Native import identities supplied by metadata"),
+        ]
+        package: Annotated[
+            FlextInfraModelsWorkspace.LockedPackage,
+            m.Field(description="Exact package selected by the target's native lock"),
+        ]
+        requirement: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Target-qualified PEP 508 requirement retaining its source"),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(min_length=1, description="Authenticated distribution metadata states"),
+        ]
+
+    class RuntimeDependencyInputs(m.Value):
+        """Explicit interpreter, lock and import-provider proof injected by the owner."""
+
+        target_root: Annotated[Path, m.Field(description="Selected repository root")]
+        python: Annotated[Path, m.Field(description="Elected consumer interpreter")]
+        providers: Annotated[
+            t.VariadicTuple[RuntimeDependencyProvider],
+            m.Field(description="All matching suppliers; ambiguity is preserved"),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(min_length=1, description="Native lock and production-source input states"),
+        ]
+
+    class RuntimeDependencyPlan(m.Value):
+        """Calculated target requirements and unchanged diagnostic identities."""
+
+        before: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Authenticated pyproject state consumed by native deptry"),
+        ]
+        dependencies: Annotated[
+            t.StrTuple,
+            m.Field(description="Calculated runtime requirements, including marker variants"),
+        ]
+        promoted: Annotated[
+            t.StrTuple,
+            m.Field(description="Existing development requirements also needed at runtime"),
+        ]
+        unresolved_modules: Annotated[
+            t.StrTuple,
+            m.Field(description="Missing or ambiguous import suppliers remaining red"),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(description="Every metadata, lock and source state backing this plan"),
+        ]
 
     class DependencyMarkerEnvironment(m.Value):
         """Complete PEP 508 facts reported by the consumer interpreter."""
