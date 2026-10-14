@@ -17,7 +17,6 @@ from flext_infra.codegen._mise_artifacts_comparison import (
     FlextInfraMiseArtifactsComparison,
 )
 from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
-from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -1153,34 +1152,6 @@ class FlextInfraCodegenPreconditions:
         if destination_barrier.failure:
             return destination_barrier
         return FlextInfraMiseArtifactsComparison.sources(plan)
-
-    @staticmethod
-    def unchanged_journal(
-        session: m.Infra.CodegenTransactionSession,
-        changed_error: str,
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Require the complete journal receipt; a lease cannot authorize replacement.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
-
-        """
-        result_type = r[m.Infra.CodegenTransactionSession]
-        observed = FlextInfraMiseArtifactsState.journal_state(session.plan.layout)
-        observed_snapshot = (
-            None
-            if observed.failure
-            else FlextInfraMiseArtifactsState.journal_snapshot(observed.value)
-        )
-        expected = session.journal_state
-        if observed.failure or observed_snapshot != expected:
-            return result_type.fail(
-                observed.error or changed_error,
-                error_data={
-                    "cleanup_error": "journal authority mismatch vs session receipt",
-                },
-            )
-        return result_type.ok(session)
 
 
 __all__: list[str] = ["FlextInfraCodegenPreconditions"]

@@ -233,8 +233,10 @@ class FlextInfraModelsCodemod:
         pattern: Annotated[t.NonEmptyStr, m.Field(description="Native Rope pattern")]
         goal: Annotated[t.NonEmptyStr, m.Field(description="Native Rope replacement")]
         arguments: Annotated[
-            t.MappingKV[str, str],
-            m.Field(description="Native Rope wildcard identity constraints"),
+            t.MappingKV[str, str | t.StrSequence],
+            m.Field(
+                description="Native Rope identity constraints or admitted alternatives"
+            ),
         ]
         imports: t.MappingKV[str, str] = u.Field(
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
@@ -251,6 +253,14 @@ class FlextInfraModelsCodemod:
         unshadowed_builtins: t.StrSequence = m.Field(
             default=(),
             description="Native lexical names required to be interpreter builtins",
+        )
+        repeats_annotation: bool = m.Field(
+            default=False,
+            description="Whether the replacement evaluates the annotation again",
+        )
+        reorders_annotation: bool = m.Field(
+            default=False,
+            description="Whether the replacement changes annotation evaluation order",
         )
         families: t.StrSequence = m.Field(
             default=(),

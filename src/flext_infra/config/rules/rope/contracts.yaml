@@ -75,28 +75,33 @@ rules:
       TypeForm: typing_extensions.TypeForm
   - id: pydantic-annotated-factory
     phase: contract-normalization
+    reorders_annotation: true
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${annotated}[${contract}, ${field}(default_factory=${factory})]'
     goal: '${name}: ${contract} = ${field}(default_factory=${factory})'
     arguments:
       annotated: name=typing.Annotated
-      field: name=pydantic.Field
+      field: &pydantic_field_bindings
+        - name=pydantic.Field
+        - name=flext_core.FlextModels.Field
   - id: pydantic-annotated-default
     phase: contract-normalization
+    reorders_annotation: true
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${annotated}[${contract}, ${field}(default=${default})]'
     goal: '${name}: ${contract} = ${default}'
     arguments:
       annotated: name=typing.Annotated
-      field: name=pydantic.Field
+      field: *pydantic_field_bindings
   - id: pydantic-empty-list-factory
     phase: contract-normalization
+    repeats_annotation: true
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${collection}[${element}] = ${field}(default_factory=${collection})'
     goal: '${name}: ${collection}[${element}] = ${field}(default_factory=u.empty(TypeForm(${collection}[${element}])))'
     arguments:
       collection: name=__builtin__.list
-      field: name=pydantic.Field
+      field: *pydantic_field_bindings
     imports:
       u: from flext_core import u
       TypeForm: from typing_extensions import TypeForm
@@ -105,12 +110,13 @@ rules:
       TypeForm: typing_extensions.TypeForm
   - id: pydantic-empty-dict-factory
     phase: contract-normalization
+    repeats_annotation: true
     model_bases: [pydantic.BaseModel]
     unshadowed_builtins: [dict]
     pattern: '${name}: dict[${parameters}] = ${field}(default_factory=dict)'
     goal: '${name}: dict[${parameters}] = ${field}(default_factory=u.empty(TypeForm(dict[${parameters}])))'
     arguments:
-      field: name=pydantic.Field
+      field: *pydantic_field_bindings
     imports:
       u: from flext_core import u
       TypeForm: from typing_extensions import TypeForm

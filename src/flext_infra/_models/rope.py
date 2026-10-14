@@ -24,6 +24,28 @@ from flext_infra._models.base import FlextInfraModelsBase
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
 
+    class RopeRestructureRequest(m.ArbitraryTypesModel):
+        """One complete native restructuring operation and its admitted inputs."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
+
+        pattern: t.NonEmptyStr = m.Field(description="Native Rope match template")
+        goal: t.NonEmptyStr = m.Field(description="Native Rope replacement template")
+        arguments: t.MappingKV[str, str | t.StrSequence] = m.Field(
+            description="Native wildcard constraints and exact identity alternatives",
+        )
+        resources: t.SequenceOf[p.Infra.RopeResource] = m.Field(
+            description="The complete resource inventory selected for this operation",
+        )
+        imports: t.StrSequence | t.MappingKV[str, str] = m.Field(
+            default=(),
+            description="Native imports, optionally keyed by reusable lexical bindings",
+        )
+        match_filter: t.Infra.RopeMatchFilter | None = m.Field(
+            default=None,
+            description="Domain proof admitting each native source occurrence",
+        )
+
     class RopeSourceImport(FlextInfraModelsBase.FrozenArbitrary):
         """One native import declaration and its original logical source region."""
 

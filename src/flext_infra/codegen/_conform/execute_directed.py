@@ -37,7 +37,9 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
         """
         with FlextInfraCodegenFileLeases.mutation_lease(request.root):
-            observed = FlextInfraMiseArtifactsVerification.publication_current(request)
+            observed = FlextInfraMiseArtifactsVerification.publication_current(
+                request,
+            )
             if observed.failure:
                 return r[m.Infra.CodegenResult].from_failure(observed)
             return r[m.Infra.CodegenResult].ok(

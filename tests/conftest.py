@@ -32,6 +32,20 @@ _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
 
 
 @pytest.fixture
+def rope_contract_consumer(
+    tmp_path: Path,
+) -> Iterator[t.Pair[p.Infra.RopeWorkspaceDsl, Path]]:
+    """Compose the inherited workspace factory with a real public Rope session.
+
+    Yields:
+        The live workspace and its isolated consumer source path.
+    """
+    root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+    with infra.rope_workspace(root) as workspace:
+        yield workspace, package / "consumer.py"
+
+
+@pytest.fixture
 def rope_workspace(tmp_path: Path) -> Iterator[p.Infra.RopeWorkspaceDsl]:
     """Provide one real Rope workspace through the public composition root.
 

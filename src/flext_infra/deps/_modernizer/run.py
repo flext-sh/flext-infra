@@ -409,9 +409,11 @@ class FlextInfraPyprojectModernizerRun:
             The resulting ``int``.
 
         Raises:
-            ValueError: If the project table is absent or the dependency owner
-                changed between the read and the write.
-
+            TypeError: If ``not isinstance(entries, list)``; or if
+                ``isinstance(requirement, Mapping)``; or if ``not
+                isinstance(requirement, str)``.
+            ValueError: If project declaration is absent; or if dependency owner changed
+                during read.
         """
         try:
             root_project_name = u.Infra.project_name_from_payload(

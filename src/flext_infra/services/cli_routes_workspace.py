@@ -31,7 +31,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
 
     @staticmethod
     def _editable_members(
-        params: p.Infra.WorkspaceRequest,
+        params: m.Infra.WorkspaceRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Print eligible relative member paths from installed provenance.
 
