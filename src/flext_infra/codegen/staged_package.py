@@ -88,21 +88,9 @@ class FlextInfraStagedPackage:
         metadata = cls._pin_workspace_metadata(workspace, states)
         if metadata.failure:
             return result_type.from_failure(metadata)
-        for before in inputs:
-            observed = states.get(before.path)
-            if observed is None:
-                # Evidence-only input: never pinned (installed packages and
-                # scratch views live outside every rope layout), so it owns
-                # no fresh observation. A rewrite target always has one.
-                if before.path in normalized:
-                    return result_type.fail(
-                        f"candidate original source identity changed: {before.path}",
-                    )
-                continue
-            if observed != before:
-                return result_type.fail(
-                    f"candidate original source identity changed: {before.path}",
-                )
+        verified = cls._verified_input_originals(states, inputs, normalized)
+        if verified.failure:
+            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.StageSourcePlan(
                 workspace=workspace,
@@ -118,6 +106,40 @@ class FlextInfraStagedPackage:
                 workspace_packages=tuple(sorted(layouts)),
             )
         )
+
+    @staticmethod
+    def _verified_input_originals(
+        states: t.MappingKV[Path, m.Cli.AtomicFileState],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        normalized: t.MappingKV[Path, str],
+    ) -> p.Result[bool]:
+        """Verify every caller input kept its pinned original identity.
+
+        Args:
+            states: Freshly pinned states keyed by path.
+            inputs: Original caller snapshots to verify.
+            normalized: Rewrite targets of the candidate.
+
+        Returns:
+            Whether every original input kept its identity, or the first
+            identity failure.
+        """
+        for before in inputs:
+            observed = states.get(before.path)
+            if observed is None:
+                # Evidence-only input: never pinned (installed packages and
+                # scratch views live outside every rope layout), so it owns
+                # no fresh observation. A rewrite target always has one.
+                if before.path in normalized:
+                    return r[bool].fail(
+                        f"candidate original source identity changed: {before.path}",
+                    )
+                continue
+            if observed != before:
+                return r[bool].fail(
+                    f"candidate original source identity changed: {before.path}",
+                )
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _normalized_updates(

@@ -11,11 +11,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from sys import modules
-from tempfile import TemporaryDirectory
 from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
@@ -32,82 +30,6 @@ from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeRefe
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     """Verify consumers and publication contracts without inherited import state."""
-
-    @classmethod
-    def capture_native_reference(
-        cls,
-        request: m.Infra.NativeImportRequest,
-    ) -> p.Result[m.Infra.NativeImportReference]:
-        """Consume one cold source epoch through the real native interpreter."""
-        result_type = r[m.Infra.NativeImportReference]
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
-
-        runtime = u.Infra.runtime_python(
-            request.repository_root, runtime_root=request.runtime_root
-        )
-        environment = u.Infra.runtime_environment_dir(
-            request.repository_root, runtime_root=request.runtime_root
-        )
-        if environment.is_symlink() or not runtime.is_file():
-            return result_type.fail("native reference has no owned physical runtime")
-        if (
-            runtime.resolve() != request.source_authority.runtime
-            or environment.absolute() != Path(sys.prefix).absolute()
-        ):
-            return result_type.fail("native reference runtime authority differs")
-        current = FlextInfraWorkspaceNativeReference.authority_current(
-            request.source_authority
-        )
-        if current.failure:
-            return result_type.from_failure(current)
-        code = (
-            "import importlib, json, sys\n"
-            "payload = json.loads(sys.stdin.read())\n"
-            "sys.path[:0] = payload['import_roots']\n"
-            "from flext_infra import m\n"
-            "from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native\n"
-            "request = m.Infra.NativeImportRequest.model_validate(payload)\n"
-            "native.authority_current(request.source_authority).unwrap()\n"
-            "for name in request.modules:\n"
-            "    importlib.import_module(name)\n"
-            "reference = native.capture(request.modules, authority=request.source_authority).unwrap()\n"
-            "native.authority_current(request.source_authority).unwrap()\n"
-            "sys.stdout.write(reference.model_dump_json())\n"
-        )
-        # -B forbids writes; a fresh native cache prefix also forbids stale reads.
-        with TemporaryDirectory() as cache:
-            observed = u.Cli.run_raw(
-                [str(runtime), "-B", "-X", f"pycache_prefix={cache}", "-c", code],
-                cwd=request.repository_root,
-                options=m.Cli.ProcessOptions(input_data=request.model_dump_json()),
-            )
-        if observed.failure:
-            return result_type.from_failure(observed)
-        if not u.Cli.process_succeeded(observed.value.outcome):
-            return result_type.fail(
-                "native reference import failed: "
-                + observed.value.stderr
-                + observed.value.stdout,
-            )
-        reference = m.Infra.NativeImportReference.model_validate_json(
-            observed.value.stdout,
-        )
-        current = FlextInfraWorkspaceNativeReference.capture(
-            request.modules, authority=request.source_authority
-        )
-        if current.failure:
-            return result_type.from_failure(current)
-        compared = FlextInfraWorkspaceNativeReference.compare(current.value, reference)
-        if compared.failure:
-            return result_type.from_failure(compared)
-        unchanged = FlextInfraWorkspaceNativeReference.authority_current(
-            request.source_authority
-        )
-        if unchanged.failure:
-            return result_type.from_failure(unchanged)
-        return result_type.ok(reference)
 
     packages: Annotated[
         t.StrSequence,

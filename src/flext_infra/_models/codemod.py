@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 from typing_extensions import TypeForm
@@ -71,6 +71,32 @@ class FlextInfraModelsCodemod:
                     msg = f"binding source snapshots disagree: {state.path}"
                     raise ValueError(msg)
             return tuple(indexed.values())
+
+    class CodemodSourceEpoch(m.ArbitraryTypesModel):
+        """One shared authenticated text view for an immutable capture operation."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        snapshot: FlextInfraModelsCodemod.CodemodBindingSnapshot
+        sources: MappingProxyType[Path, str]
+
+        @m.model_validator(mode="after")
+        def _validate_sources(self) -> Self:
+            expected = {
+                state.path
+                for state in self.snapshot.states
+                if state.content is not None
+            }
+            if self.sources.keys() != expected:
+                msg = "source epoch must contain every present captured input"
+                raise ValueError(msg)
+            for state in self.snapshot.states:
+                if (
+                    state.content is not None
+                    and self.sources[state.path].encode("utf-8") != state.content
+                ):
+                    msg = f"source epoch differs from authenticated bytes: {state.path}"
+                    raise ValueError(msg)
+            return self
 
     class CodemodBindingProject(m.ArbitraryTypesModel):
         """One selected project's lexical roots within a shared input capture."""

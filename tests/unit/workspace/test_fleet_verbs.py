@@ -1,4 +1,8 @@
-"""Fleet execution through installed editables and generated native member verbs."""
+"""Fleet execution through installed editables and generated native member verbs.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -20,7 +24,12 @@ class TestsFlextInfraWorkspaceFleetVerbs:
 
     @staticmethod
     def _run(root: Path, verb: c.Infra.FleetVerb) -> int:
-        """Invoke the public fleet CLI without replacing any member recipe."""
+        """Invoke the public fleet CLI without replacing any member recipe.
+
+        Returns:
+            The resulting CLI exit code.
+
+        """
         return main([
             c.Infra.CLI_GROUP_WORKSPACE,
             c.Infra.FLEET_ROUTE_NAME,
@@ -32,14 +41,24 @@ class TestsFlextInfraWorkspaceFleetVerbs:
 
     @staticmethod
     def _report(root: Path) -> m.Infra.LifecycleReport:
-        """Read the invocation's native process receipts."""
+        """Read the invocation's native process receipts.
+
+        Returns:
+            The validated native lifecycle report.
+
+        """
         return m.Infra.LifecycleReport.model_validate_json(
             (root / c.Infra.FLEET_REPORT_RELATIVE_PATH).read_bytes(),
         )
 
     @staticmethod
     def _members(root: Path) -> tuple[m.Infra.RepositoryRef, ...]:
-        """Authenticate installed sources before observing their runtime order."""
+        """Authenticate installed sources before observing their runtime order.
+
+        Returns:
+            The installed members in declared workspace dependency order.
+
+        """
         members = tm.ok(
             FlextInfraWorkspaceEnvironmentProvenance.editable_members(root),
         )

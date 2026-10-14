@@ -555,26 +555,36 @@ class FlextInfraUtilitiesCodemodProject(
         return True
 
     @staticmethod
+    def codemod_source_epoch(
+        snapshot: m.Infra.CodemodBindingSnapshot,
+    ) -> m.Infra.CodemodSourceEpoch:
+        """Decode each captured source once for the complete selected-project pass."""
+        sources = {
+            state.path: state.content.decode("utf-8")
+            for state in snapshot.states
+            if state.content is not None
+        }
+        return m.Infra.CodemodSourceEpoch(
+            snapshot=snapshot, sources=MappingProxyType(sources)
+        )
+
+    @staticmethod
     @contextmanager
     def codemod_binding_project(
         root: Path,
-        snapshot: m.Infra.CodemodBindingSnapshot,
+        epoch: m.Infra.CodemodSourceEpoch,
     ) -> Generator[t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]]]:
         """Own one immutable binding graph for the complete admission pass.
 
         Yields:
             The frozen Rope graph and its complete authenticated source closure.
         """
-        sources = MappingProxyType({
-            state.path.resolve(): state.content.decode("utf-8")
-            for state in snapshot.states
-            if state.content is not None
-        })
+        sources = epoch.sources
         with (
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
                 FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    live, sources, captured=snapshot
+                    live, sources, captured=epoch.snapshot
                 )
             ) as project,
             project.frozen_layout(),

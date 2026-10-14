@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import sys
+import sysconfig
 from functools import lru_cache
+from importlib.machinery import BuiltinImporter, FrozenImporter, PathFinder
 from inspect import getfile, isclass, isfunction, unwrap
 from json import dumps
 from pathlib import Path
@@ -29,6 +31,92 @@ if TYPE_CHECKING:
 
 class FlextInfraWorkspaceEnvironmentProvenance:
     """Bind installed packages to live local or immutable CI workspace sources."""
+
+    @staticmethod
+    def _module_source(module_name: str) -> p.Result[Path]:
+        """Authenticate cold supplier election before any source observation."""
+        module = modules.get(module_name)
+        if module is None:
+            return r[Path].fail(
+                f"producer source module is not registered: {module_name}",
+            )
+        native = vars(module).get("__spec__")
+        if (
+            native is None
+            or modules.get(native.name) is not module
+            or (
+                native.name != module_name
+                and (
+                    native.origin not in {"built-in", "frozen"}
+                    or module_name.partition(".")[0] not in sys.stdlib_module_names
+                )
+            )
+        ):
+            return r[Path].fail(
+                f"producer module lacks its native spec: {module_name}",
+            )
+        components = module_name.split(".")
+        interpreter = Path(sys.executable).resolve()
+        if components[0] in sys.stdlib_module_names:
+            standard = Path(
+                sysconfig.get_path(
+                    "stdlib",
+                    vars={
+                        "base": sys.base_prefix,
+                        "platbase": sys.base_exec_prefix,
+                    },
+                ),
+            ).resolve()
+            extension = sysconfig.get_config_var("DESTSHARED")
+            if type(extension) is not str:
+                return r[Path].fail(
+                    "producer Python base has no native extension directory",
+                )
+            base = Path(sys.base_prefix).resolve()
+            extensions = Path(extension).resolve()
+            if any(
+                not path.is_relative_to(base)
+                for path in (interpreter, standard, extensions)
+            ):
+                return r[Path].fail(
+                    "producer standard library differs from native Python base",
+                )
+            if native.origin == "built-in":
+                spec = BuiltinImporter.find_spec(native.name)
+            elif native.origin == "frozen":
+                spec = FrozenImporter.find_spec(native.name)
+            else:
+                spec = PathFinder.find_spec(
+                    components[0], [str(standard), str(extensions)],
+                )
+        else:
+            spec = PathFinder.find_spec(components[0])
+        if native.origin not in {"built-in", "frozen"}:
+            for index in range(1, len(components)):
+                if spec is None or not spec.submodule_search_locations:
+                    return r[Path].fail(
+                        f"producer module has no cold parent: {module_name}",
+                    )
+                spec = PathFinder.find_spec(
+                    ".".join(components[: index + 1]),
+                    spec.submodule_search_locations,
+                )
+        if (
+            spec is None
+            or spec.origin != native.origin
+            or type(spec.loader) is not type(native.loader)
+            or vars(module).get("__loader__") is not native.loader
+        ):
+            return r[Path].fail(
+                f"producer module election differs from loaded spec: {module_name}",
+            )
+        if spec.origin in {"built-in", "frozen"}:
+            return r[Path].ok(interpreter)
+        if spec.origin is None or vars(module).get("__file__") != spec.origin:
+            return r[Path].fail(
+                f"producer physical module differs from cold origin: {module_name}",
+            )
+        return r[Path].ok(Path(spec.origin).absolute())
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -136,7 +224,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         distribution: Distribution,
         receipt: m.Infra.DirectUrlReceipt,
     ) -> p.Result[bool]:
-        """Authenticate installation ownership without importing member code."""
+        """Authenticate installation ownership without importing member code.
+
+        Args:
+            repository: The repository reference to validate.
+            resolved_root: The resolved root path of the repository.
+            distribution: The distribution object representing the installed package.
+            receipt: The direct URL receipt for the editable installation.
+
+        Returns:
+            A result indicating whether the installation is authenticated.
+        """
         expected_root = (resolved_root / repository.path).resolve()
         origin = cls._editable_url_verdict(
             repository.distribution,
@@ -229,7 +327,15 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         root: Path,
         repositories: t.VariadicTuple[m.Infra.RepositoryRef],
     ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
-        """Read package facts exclusively through the elected physical runtime."""
+        """Read package facts exclusively through the elected physical runtime.
+
+        Args:
+            root: The root path of the repository.
+            repositories: The repository references to observe.
+
+        Returns:
+            A result containing the observed Python environment.
+        """
         context = FlextInfraWorkspaceDetector.resolution_context(root)
         if context.failure:
             return r[m.Infra.PythonEnvironmentObservation].from_failure(context)

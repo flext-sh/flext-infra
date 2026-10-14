@@ -600,13 +600,14 @@ class FlextInfraModGateEngine:
         )
         sys.stderr.flush()
         admitted: list[m.Infra.ModScanFinding] = []
+        epoch = u.Infra.codemod_source_epoch(snapshot)
         for project, entries in grouped.items():
             selected = FlextInfraModGateEngine._admitted_project(
                 project,
                 FlextInfraModGateEngine.recounted(tuple(entries)),
                 rules_by_id,
                 facts[project],
-                snapshot,
+                epoch,
             )
             admitted.extend(
                 entry.model_copy(
@@ -624,7 +625,7 @@ class FlextInfraModGateEngine:
         report: m.Infra.ModScanReport,
         rules_by_id: t.MappingKV[str, m.Infra.CodemodRule],
         facts: m.Infra.CodemodProjectFacts,
-        snapshot: m.Infra.CodemodBindingSnapshot,
+        epoch: m.Infra.CodemodSourceEpoch,
     ) -> m.Infra.ModScanReport:
         """Keep the findings whose rule's project context holds, recounted.
 
@@ -641,7 +642,8 @@ class FlextInfraModGateEngine:
             f"mod: admit repository={root.name} findings={report.findings}\n"
         )
         sys.stderr.flush()
-        with u.Infra.codemod_binding_project(root, snapshot) as (project, sources):
+        snapshot = epoch.snapshot
+        with u.Infra.codemod_binding_project(root, epoch) as (project, sources):
             entries = tuple(
                 entry.model_copy(update={"binding_states": snapshot.states})
                 if entry.rule_id in facts.binding_rule_ids

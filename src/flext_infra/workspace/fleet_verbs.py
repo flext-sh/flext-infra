@@ -110,8 +110,8 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
             ),
         )
 
+    @staticmethod
     def _published_report(
-        self,
         root: Path,
         members: t.SequenceOf[m.Infra.RepositoryRef],
         pending: t.SequenceOf[m.Infra.LifecycleReceipt],

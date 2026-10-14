@@ -92,12 +92,20 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         pyproject: Path,
         upstream: str,
     ) -> t.VariadicTuple[str]:
-        """Author marker variants and a direct source in the target declaration."""
+        """Author marker variants and a direct source in the target declaration.
+
+        Returns:
+            The declared requirement variants and the direct source.
+
+        """
         declared = (
             u.Tests.flext_source(upstream.replace("_", "-")),
             "custom-runtime[feature]>=2; python_version < '3.14'",
             "custom-runtime[feature]>=3; python_version >= '3.14'",
-            "custom-artifact[extra] @ https://example.invalid/pkg.whl ; sys_platform == 'linux'",
+            (
+                "custom-artifact[extra] @ https://example.invalid/pkg.whl ;"
+                " sys_platform == 'linux'"
+            ),
         )
         payload = tm.ok(u.Cli.json_dumps(list(declared)))
         pyproject.write_text(
@@ -140,10 +148,14 @@ class TestsFlextInfraCodegenRuntimeProfiles:
     def _assert_render_retains_requirements(
         self,
         rendered: str,
-        member: Path,
         declared: t.VariadicTuple[str],
     ) -> str:
-        """Public generation retains requirement variants and injects only dev policy."""
+        """Public generation retains requirement variants, injecting only dev policy.
+
+        Returns:
+            The rendered text, returned unchanged once the assertions pass.
+
+        """
         tm.that(
             Counter(
                 Requirement(item)
@@ -188,7 +200,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         *,
         composed: bool,
     ) -> None:
-        """Real standalone and parent plans consume the same member-owned requirements."""
+        """Standalone and parent plans consume the same member-owned requirements."""
         root, member, pyproject = self._seed_member_workspace(
             tmp_path,
             upstream,
@@ -220,7 +232,6 @@ class TestsFlextInfraCodegenRuntimeProfiles:
             u.Tests.codegen_file_text(
                 next(item for item in first.files if item.path == pyproject),
             ),
-            member,
             declared,
         )
         tm.that(first.workspace.repository, eq=before.repository)

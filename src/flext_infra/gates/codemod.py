@@ -201,7 +201,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 if facts.binding_rule_ids
                 else m.Infra.CodemodBindingSnapshot(states=())
             )
-            with u.Infra.codemod_binding_project(project_dir, snapshot) as (
+            with u.Infra.codemod_binding_project(
+                project_dir, u.Infra.codemod_source_epoch(snapshot)
+            ) as (
                 project,
                 sources,
             ):

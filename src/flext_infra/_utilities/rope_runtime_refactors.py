@@ -20,6 +20,28 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     """Load Rope refactor helpers behind protocols."""
 
     @classmethod
+    def ignored_regions(
+        cls,
+        source: str,
+    ) -> t.VariadicTuple[t.Triple[int, int, t.MappingKV[str, str | None]]]:
+        """Read complete literal and comment ranges from Rope's native lexer.
+
+        Returns:
+            Strictly validated native source coordinates and token metadata.
+        """
+        adapter: t.ValueAdapter[
+            t.SequenceOf[t.Triple[int, int, t.MappingKV[str, str | None]]]
+        ] = u.type_adapter(
+            Sequence[tuple[int, int, dict[str, str | None]]],
+        )
+        return tuple(
+            adapter.validate_python(
+                cls.runtime_callable("rope.base.simplify", "ignored_regions")(source),
+                strict=True,
+            ),
+        )
+
+    @classmethod
     def patched_ast(cls, source: str) -> ast.AST:
         """Parse the real SDK patched AST and validate its native result.
 
@@ -103,17 +125,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         if not isinstance(lines, p.Infra.RopeSourceLines):
             msg = "Rope SourceLinesAdapter does not satisfy its public contract"
             raise TypeError(msg)
-        regions_adapter: t.ValueAdapter[
-            t.SequenceOf[t.Triple[int, int, t.MappingKV[str, str | None]]]
-        ] = u.type_adapter(
-            Sequence[tuple[int, int, dict[str, str | None]]],
-        )
-        regions = tuple(
-            regions_adapter.validate_python(
-                cls.runtime_callable("rope.base.simplify", "ignored_regions")(source),
-                strict=True,
-            ),
-        )
+        regions = cls.ignored_regions(source)
         start = lines.get_line_start(layout.header_start)
         end = min(lines.get_line_end(layout.header_end) + 1, len(source))
         comments = "".join(

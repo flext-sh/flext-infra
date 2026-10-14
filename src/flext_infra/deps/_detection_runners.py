@@ -36,22 +36,87 @@ class FlextInfraDependencyDetectionRunnersMixin:
         """
         result_type = r[t.Pair[t.SequenceOf[t.JsonMapping], int]]
         settings = config_path or project_path / c.PYPROJECT_FILENAME
-        settings_state = u.Cli.atomic_read_binary_file_state(settings, required=True)
-        if settings_state.failure:
-            return result_type.from_failure(settings_state)
-        source = project_path / c.Infra.DEFAULT_SRC_DIR
-        if not source.is_dir():
-            return result_type.fail(f"deptry production source is missing: {source}")
         out_file = json_output_path or (
             project_path / f".deptry-report-{u.generate_id()}.json"
         )
+        settings_state = self._deptry_preflight(project_path, settings, out_file)
+        if settings_state.failure:
+            return result_type.from_failure(settings_state)
+        cmd_result = self._ran_deptry_process(
+            venv_bin,
+            project_path,
+            settings,
+            out_file,
+        )
+        if cmd_result.failure:
+            return result_type.from_failure(cmd_result)
+        analyzed = self._verified_deptry_report(
+            settings_state.value,
+            out_file,
+            cmd_result.value,
+        )
+        if analyzed.failure:
+            return result_type.from_failure(analyzed)
+        issues, raw_return_code = analyzed.value
+        cleaned = self._cleanup_deptry_output(out_file, json_output_path)
+        if cleaned.failure:
+            return result_type.from_failure(cleaned)
+        return result_type.ok((
+            issues,
+            raw_return_code,
+        ))
+
+    @staticmethod
+    def _deptry_preflight(
+        project_path: Path,
+        settings: Path,
+        out_file: Path,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Authenticate the deptry settings and reserve its report destination.
+
+        Args:
+            project_path: Project root holding the production source.
+            settings: Resolved deptry configuration file path.
+            out_file: Resolved native report destination.
+
+        Returns:
+            The authenticated settings state, or the first preflight failure.
+        """
+        settings_state = u.Cli.atomic_read_binary_file_state(settings, required=True)
+        if settings_state.failure:
+            return r[m.Cli.AtomicFileState].from_failure(settings_state)
+        source = project_path / c.Infra.DEFAULT_SRC_DIR
+        if not source.is_dir():
+            return r[m.Cli.AtomicFileState].fail(
+                f"deptry production source is missing: {source}",
+            )
         before = u.Cli.atomic_read_binary_file_state(out_file, required=False)
         if before.failure:
-            return result_type.from_failure(before)
+            return r[m.Cli.AtomicFileState].from_failure(before)
         if before.value.content is not None:
-            return result_type.fail(
-                f"deptry report destination already exists: {out_file}"
+            return r[m.Cli.AtomicFileState].fail(
+                f"deptry report destination already exists: {out_file}",
             )
+        return r[m.Cli.AtomicFileState].ok(settings_state.value)
+
+    @staticmethod
+    def _ran_deptry_process(
+        venv_bin: Path,
+        project_path: Path,
+        settings: Path,
+        out_file: Path,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Run native deptry once and reject a failed or interrupted process.
+
+        Args:
+            venv_bin: Virtual environment binary directory owning deptry.
+            project_path: Working directory of the deptry process.
+            settings: Resolved deptry configuration file path.
+            out_file: Resolved native report destination.
+
+        Returns:
+            The completed command output, or the native process failure.
+        """
         result = u.Cli.run_raw(
             [
                 str(venv_bin / c.Infra.DEPTRY),
@@ -66,7 +131,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if result.failure:
-            return result_type.from_failure(result)
+            return r[p.Cli.CommandOutput].from_failure(result)
         cmd_result: p.Cli.CommandOutput = result.value
         outcome = cmd_result.outcome
         if (
@@ -75,10 +140,30 @@ class FlextInfraDependencyDetectionRunnersMixin:
             or outcome.raw_return_code not in {0, 1}
         ):
             failure = m.Cli.ProcessOutcome.model_validate(outcome, from_attributes=True)
-            return result_type.fail(
+            return r[p.Cli.CommandOutput].fail(
                 f"deptry process failed: {failure.model_dump_json()}\n"
                 f"stdout:\n{cmd_result.stdout}\nstderr:\n{cmd_result.stderr}"
             )
+        return r[p.Cli.CommandOutput].ok(cmd_result)
+
+    @staticmethod
+    def _verified_deptry_report(
+        settings_state: m.Cli.AtomicFileState,
+        out_file: Path,
+        cmd_result: p.Cli.CommandOutput,
+    ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
+        """Parse the native report and prove its consistency with the process.
+
+        Args:
+            settings_state: Authenticated settings state of the run.
+            out_file: Resolved native report destination.
+            cmd_result: Completed deptry command output.
+
+        Returns:
+            The native issues with the process return code, or the first
+            parse, verification or consistency failure.
+        """
+        result_type = r[t.Pair[t.SequenceOf[t.JsonMapping], int]]
         report_state = u.Cli.atomic_read_binary_file_state(out_file, required=True)
         if report_state.failure:
             return result_type.from_failure(report_state)
@@ -97,20 +182,17 @@ class FlextInfraDependencyDetectionRunnersMixin:
         if report.failure:
             return result_type.from_failure(report)
         verified = u.Cli.atomic_verify_binary_file_states((
-            settings_state.value,
+            settings_state,
             report_state.value,
         ))
         if verified.failure:
             return result_type.from_failure(verified)
         issues = tuple(item.model_dump(mode="json") for item in report.value.root)
-        if outcome.raw_return_code != int(bool(issues)):
+        if cmd_result.outcome.raw_return_code != int(bool(issues)):
             return result_type.fail("deptry exit status contradicts its native report")
-        cleaned = self._cleanup_deptry_output(out_file, json_output_path)
-        if cleaned.failure:
-            return result_type.from_failure(cleaned)
         return result_type.ok((
             issues,
-            outcome.raw_return_code,
+            cmd_result.outcome.raw_return_code,
         ))
 
     @staticmethod

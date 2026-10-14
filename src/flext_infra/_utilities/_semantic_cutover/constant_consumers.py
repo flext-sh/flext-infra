@@ -248,6 +248,13 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         structure = FlextInfraUtilitiesRopeStructure
         found: list[t.Pair[str, str]] = []
+        declarations: t.MutableMappingKV[
+            Path,
+            t.Pair[
+                p.Infra.RopePyModule,
+                list[t.Pair[p.Infra.RopePyName, int]],
+            ],
+        ] = {}
         for reference, candidate in public.items():
             binding = cls._constant_terminal(project, candidate, reference)
             if (
@@ -261,59 +268,67 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             resource = module.get_resource()
             if resource is None:
                 continue
+            declarations.setdefault(Path(resource.real_path), (module, []))[1].append(
+                (binding, line)
+            )
+        for path, (module, bindings) in declarations.items():
             source = module.source_code
-            for statement in structure.logical_statements(source):
-                if (
-                    statement.line != line
-                    or statement.enclosing_kind != c.Infra.RopeScopeKind.CLASS
-                    or statement.category
-                    not in {
-                        c.Infra.StatementCategory.ASSIGN,
-                        c.Infra.StatementCategory.ANN_ASSIGN,
-                    }
-                ):
-                    continue
-                target = structure.target_name(statement)
-                if not target or not runtime.same_name(
-                    binding,
-                    runtime.expression_name(
-                        runtime.scope_at(module, statement.start_offset), target
-                    ),
-                ):
-                    continue
-                for start, end in refactors.semantic_regions(
-                    module,
-                    "${literal}",
-                    arguments={"literal": "type=builtins.str"},
-                    start=statement.start_offset,
-                    end=statement.end_offset,
-                ):
-                    literal = source[start:end]
-                    if not literal.startswith(("'", '"')):
-                        continue
-                    if refactors.word_primary_range(source, start + 1) != (
-                        start,
-                        end,
+            literal_regions = {
+                (start, end)
+                for start, end, _metadata in refactors.ignored_regions(source)
+            }
+            statements = structure.logical_statements(source)
+            for binding, line in bindings:
+                for statement in statements:
+                    if (
+                        statement.line != line
+                        or statement.enclosing_kind != c.Infra.RopeScopeKind.CLASS
+                        or statement.category
+                        not in {
+                            c.Infra.StatementCategory.ASSIGN,
+                            c.Infra.StatementCategory.ANN_ASSIGN,
+                        }
                     ):
                         continue
-                    pattern = (
-                        f"${{target}}: ${{annotation}} = {literal}"
-                        if statement.category == c.Infra.StatementCategory.ANN_ASSIGN
-                        else f"${{target}} = {literal}"
-                    )
-                    if not refactors.semantic_regions(
+                    target = structure.target_name(statement)
+                    if not target or not runtime.same_name(
+                        binding,
+                        runtime.expression_name(
+                            runtime.scope_at(module, statement.start_offset), target
+                        ),
+                    ):
+                        continue
+                    for start, end in refactors.semantic_regions(
                         module,
-                        pattern,
-                        arguments={},
+                        "${literal}",
+                        arguments={"literal": "type=builtins.str"},
                         start=statement.start_offset,
                         end=statement.end_offset,
                     ):
-                        continue
-                    canonical = cls._constant_reference(
-                        public, binding, Path(resource.real_path)
-                    )
-                    if canonical is not None:
-                        found.append((literal, canonical))
+                        literal = source[start:end]
+                        if (
+                            not literal.startswith(("'", '"'))
+                            or literal[-1] != literal[0]
+                            or (start, end) not in literal_regions
+                        ):
+                            continue
+                        pattern = (
+                            f"${{target}}: ${{annotation}} = {literal}"
+                            if statement.category
+                            == c.Infra.StatementCategory.ANN_ASSIGN
+                            else f"${{target}} = {literal}"
+                        )
+                        if not refactors.semantic_regions(
+                            module,
+                            pattern,
+                            arguments={},
+                            start=statement.start_offset,
+                            end=statement.end_offset,
+                        ):
+                            continue
+                        canonical = cls._constant_reference(public, binding, path)
+                        if canonical is not None:
+                            found.append((literal, canonical))
         return tuple(found)
 
     @classmethod

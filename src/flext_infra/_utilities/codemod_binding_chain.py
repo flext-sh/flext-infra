@@ -102,6 +102,37 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 project, module, text, (start, end), sources
             ):
                 return False
+            return cls._predicate_binding_verdict(
+                (project, module, scope),
+                condition,
+                capture.text,
+                start,
+                sources,
+            )
+
+        @classmethod
+        def _predicate_binding_verdict(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            condition: m.Infra.CodemodContextCondition,
+            capture_text: str,
+            start: int,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Grade one admitted occurrence through its configured predicate.
+
+            Args:
+                frame: Rope project, module and lexical scope of the occurrence.
+                condition: The codemod context condition to evaluate.
+                capture_text: Exact captured expression text.
+                start: Occurrence start offset inside its source.
+                sources: Mapping of source file paths to their content.
+
+            Returns:
+                Whether the occurrence satisfies its binding predicate.
+            """
             if (
                 condition.predicate
                 is c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE
@@ -109,15 +140,15 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 return True
             if condition.predicate is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL:
                 return cls._emitted_symbol_holds(
-                    (project, module, scope),
+                    frame,
                     condition,
                     start,
                     sources,
                 )
             return cls._resolved_expression_holds(
-                (project, module, scope),
+                frame,
                 condition,
-                capture.text,
+                capture_text,
                 start,
                 sources,
             )

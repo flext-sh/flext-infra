@@ -94,14 +94,16 @@ class TestsFlextInfraModEvidenceInputs:
         )
         paths = [state.path for state in snapshot.states]
         tm.that(len(paths), eq=len(set(paths)))
+        epoch = u.Infra.codemod_source_epoch(snapshot)
         for selection in selections:
             owner = selection.root / "owner.py"
             tm.that(owner in paths)
             owner.write_text("invalid syntax !!!\n", encoding="utf-8")
-            with u.Infra.codemod_binding_project(selection.root, snapshot) as (
+            with u.Infra.codemod_binding_project(selection.root, epoch) as (
                 project,
                 sources,
             ):
+                tm.that(sources is epoch.sources)
                 consumer = selection.source_paths[0]
                 module = project.get_pymodule(project.get_resource(consumer.name))
                 offset = sources[consumer].rindex("Public")
@@ -238,7 +240,10 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(closure[-1] is closure[0])
         owner.write_text("invalid syntax !!!\n", encoding="utf-8")
         with u.Infra.codemod_binding_project(
-            mod_workspace, m.Infra.CodemodBindingSnapshot(states=closure)
+            mod_workspace,
+            u.Infra.codemod_source_epoch(
+                m.Infra.CodemodBindingSnapshot(states=closure)
+            ),
         ) as (project, sources):
             module = project.get_pymodule(project.get_resource(source.name))
             tm.that(

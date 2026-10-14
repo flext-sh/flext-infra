@@ -141,6 +141,11 @@ Mod evidence publishes authenticated input bodies and binding graphs once.
 Each occurrence references its source and a graph index. Graphs retain path order
 and multiplicity; JSON hydration resolves each graph once and shares its immutable
 inputs across occurrences. Missing sources or graph references fail validation.
+Admission constructs one authenticated source epoch for the whole selected
+project set. Its decoded text mapping is immutable and reused by each project;
+Rope projects retain their own mutable scopes and identity graphs. A subsequent
+capture constructs a new epoch. No decoded source survives through an ambient
+process cache.
 This removes repeated graph serialization; native JSONL ingestion and semantic
 admission still require their own measured performance evidence.
 
