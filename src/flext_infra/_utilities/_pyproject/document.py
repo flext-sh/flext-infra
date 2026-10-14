@@ -173,11 +173,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         """Retain all declared member extras and groups in the root environment.
 
         Args:
-            workspace: The workspace specification containing subprojects and integration details.
-            options: The options for pyproject conformity, including repository root and other settings.
+            workspace: The workspace specification containing subprojects and
+                integration details.
+            options: The options for pyproject conformity, including repository
+                root and other settings.
 
         Returns:
-            A result containing a triple of string sequences representing the member environment requirements.
+            A result containing a triple of string sequences representing the
+                member environment requirements.
         """
         result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
         members = (

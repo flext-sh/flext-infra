@@ -122,7 +122,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             receiver: The name of the class being resolved.
 
         Returns:
-            A tuple of pairs representing the lineage of the behavior, where each pair contains the module and class name.
+            A tuple of pairs representing the lineage of the behavior, where each
+            pair contains the module and class name.
 
         Raises:
             TypeError: If an unsupported facade inheritance identity is encountered.

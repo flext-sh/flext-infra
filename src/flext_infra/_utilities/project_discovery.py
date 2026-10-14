@@ -20,9 +20,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     FlextInfraUtilitiesWorkspaceManifest,
 )
-from flext_infra._utilities._project_discovery_candidates import (
-    FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
-)
 
 if TYPE_CHECKING:
     from flext_infra import t

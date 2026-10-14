@@ -245,9 +245,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     root,
                     sources,
                 )
-                resolved = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_settings_export(
-                    alias_context
-                )
+                relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
+                resolved = relocation._resolve_settings_export(alias_context)
                 if resolved is not None:
                     exports[resolved[0]] = resolved[1]
         return exports

@@ -144,11 +144,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
         resolutions when no candidate is declared (flext-oe420).
         """
         overrides = [
-            f"{name}{FlextInfraUtilitiesDependencies.dependency_extras(requirements, name)}"
+            f"{name}"
+            f"{FlextInfraUtilitiesDependencies.dependency_extras(requirements, name)}"
             for name in sorted(local_members)
         ]
         overrides.extend(
-            f"{name}{FlextInfraUtilitiesDependencies.dependency_extras(requirements, name)} @ {source}"
+            f"{name}"
+            f"{FlextInfraUtilitiesDependencies.dependency_extras(requirements, name)}"
+            f" @ {source}"
             for name, source in sorted(candidate_sources.items())
         )
         if overrides:

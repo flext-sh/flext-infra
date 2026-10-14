@@ -315,7 +315,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             (
                 "--timeout=0"
                 if self.unbounded
-                else f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"
+                else (
+                    "--timeout="
+                    f"{config.Infra.tooling.tools.pytest.case_timeout_seconds}"
+                )
             ),
             "-o",
             "filterwarnings=",

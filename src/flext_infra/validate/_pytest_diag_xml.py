@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 
     from flext_infra import t
 
+_RECEIVED_TEST_PROPERTY_COUNT = 4
+
 
 class FlextInfraPytestDiagXmlMixin:
     """JUnit-XML parsing helpers for pytest diagnostics."""
@@ -124,7 +126,7 @@ class FlextInfraPytestDiagXmlMixin:
         names[-1] += bracket + params
         skipped = case.find("skipped")
         return (
-            len(properties) == len(receipt) == 4
+            len(properties) == len(receipt) == _RECEIVED_TEST_PROPERTY_COUNT
             and len(names) > 1
             and receipt.get("flext_connectivity_prerequisite") == reason
             and bool(reason)

@@ -146,11 +146,11 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Raises:
             ValueError: If the surface is not a declared conformance surface.
-
+            TypeError: If unsupported codegen conform surface.
         """
         if not isinstance(surface, c.Infra.CodegenConformSurface):
             message = f"unsupported codegen conform surface: {surface}"
-            raise ValueError(message)
+            raise TypeError(message)
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
                 return m.Infra.CodegenConformSurfaceContract(complete_governed=True)
