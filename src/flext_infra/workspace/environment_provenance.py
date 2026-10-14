@@ -6,7 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import re
+import sys
+from functools import lru_cache
 from inspect import getfile, isclass, isfunction, unwrap
 from json import dumps
 from pathlib import Path
@@ -24,6 +27,35 @@ if TYPE_CHECKING:
 
 class FlextInfraWorkspaceEnvironmentProvenance:
     """Bind installed packages to live local or immutable CI workspace sources."""
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def installed_toolchain_identity() -> str:
+        """Fingerprint the interpreter and installed distribution provenance.
+
+        PEP 610 records distinguish Git revisions with equal package versions.
+        Editable source paths are excluded because consumers track their source
+        files independently. Registry distributions have no direct-URL receipt.
+
+        Returns:
+            The installed environment's deterministic SHA-256 identity.
+        """
+        provenance: t.MutableSequenceOf[str] = []
+        for distribution in u.installed_distributions():
+            receipt = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+            dir_info = (
+                None
+                if receipt is None
+                else m.Infra.DirectUrlReceipt.model_validate_json(receipt).dir_info
+            )
+            identity = (
+                "editable" if dir_info is not None and dir_info.editable else receipt
+            )
+            provenance.append(
+                f"{distribution.name}={distribution.version}:{identity!r}",
+            )
+        fingerprint = "\n".join((sys.version, *sorted(provenance)))
+        return hashlib.sha256(fingerprint.encode()).hexdigest()
 
     @classmethod
     def execute_request(

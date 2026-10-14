@@ -69,7 +69,8 @@ class FlextInfraConfigModelsWorkspace:
 
         The effective codegen configuration composes this declaration from the
         library defaults, the selected repository and its local overlay. It
-        never declares another repository or a workspace participant.
+        never declares another runtime repository or workspace participant.
+        Recovery targets authorize bounded publication into existing worktrees.
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
@@ -91,6 +92,12 @@ class FlextInfraConfigModelsWorkspace:
         namespace_scan_dirs: Annotated[
             t.StrSequence,
             m.Field(description="Own namespace analysis roots"),
+        ] = ()
+        candidate_bootstrap_targets: Annotated[
+            t.VariadicTuple[
+                FlextInfraConfigModelsWorkspace.CandidateBootstrapTargetSpec
+            ],
+            m.Field(description="Declared candidate worktrees and recovery surfaces"),
         ] = ()
         workspace_inventory_command: Annotated[
             t.StrSequence,
