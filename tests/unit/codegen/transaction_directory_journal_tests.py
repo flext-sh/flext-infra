@@ -23,12 +23,72 @@ from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsSta
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 from tests import c, m, p, r, t, tm, u
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraTransactionDirectoryJournal:
     """Exercise creation and cleanup against real physical filesystem state."""
 
     _TRANSACTION_ID = "a" * 32
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_initial_invalid_source_dependencies_leave_no_staging_effects(
+        tmp_path: Path,
+    ) -> None:
+        """Initial staging recovery preserves the original files and first failure."""
+        root = u.Tests.git_repository(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(root)
+        target = root / "generated.md"
+        target.write_bytes(b"original document\n")
+        config_path = root / c.Infra.MISE_TOML_FILENAME
+        config_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(config_path, required=True),
+        )
+        target_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(target, required=True),
+        )
+        config_plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=config_path,
+            before=config_before,
+            desired_content=config_before.content,
+            desired_mode=config_before.mode,
+            owner="mise",
+        )
+        invalid = m.Infra.CodegenFilePlan(
+            project=root,
+            path=target,
+            before=target_before,
+            desired_content=b"generated document\n",
+            desired_mode=target_before.mode,
+            source_states=(config_before, config_before),
+            owner="conform",
+        )
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        before = TestsFlextInfraConformSupport.project_tree(root)
+        failed = owner.run_locked(
+            prepare=True,
+            operation=lambda scope_root: owner.begin_locked(
+                scope_root,
+                (config_plan,),
+                (config_plan, invalid),
+            ),
+        )
+        tm.fail(failed, has="journal entry source dependencies must be unique")
+        tm.that(
+            TestsFlextInfraConformSupport.project_tree(root),
+            eq=before,
+        )
+        tm.that((root / ".state").exists(), eq=False)
+        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
+        tm.that(
+            FlextInfraMiseWorkspacePlanner.journal_path(identity).exists(),
+            eq=False,
+        )
+        tm.ok(owner.run_locked(prepare=True, operation=r[Path].ok))
 
     @staticmethod
     def test_mise_snapshot_separates_render_inputs_from_local_config_sources(

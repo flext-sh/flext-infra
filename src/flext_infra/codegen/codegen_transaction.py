@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
@@ -26,10 +25,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenTransaction(
-    FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
-):
+class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     """Keep every generation phase recoverable until one final fixed point."""
 
     def preview_sources[T](
