@@ -875,7 +875,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(origin)
                 suppliers.add(supplier)
                 suppliers.add(modules[supplier].__spec__.name)
-                if not class_source and receiver and "__wrapped__" not in vars(link):
+                if not class_source and receiver and (
+                    link is outer or "__wrapped__" not in vars(link)
+                ):
                     namespace = vars(modules[supplier])
                     declaring = None
                     for component in link.__code__.co_qualname.rpartition(".")[0].split(
@@ -887,19 +889,25 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                             break
                         declaring = candidate
                         namespace = vars(candidate)
-                    if isclass(declaring) and not any(
-                        base is declaring for base in receiver.__mro__
-                    ):
-                        attachment = cls._source_syntax_definition(
-                            receiver.__module__, receiver.__qualname__
-                        )
-                        if attachment.failure:
-                            return r[
-                                t.SequenceOf[t.Triple[str, str, str]]
-                            ].from_failure(attachment)
+                    if not frozen_supplier:
+                        identity = (receiver.__module__, receiver.__qualname__)
+                        if identity not in constructions:
+                            attachment = cls._source_syntax_definition(*identity)
+                            if attachment.failure:
+                                return r[
+                                    t.SequenceOf[t.Triple[str, str, str]]
+                                ].from_failure(attachment)
+                            constructions[identity] = attachment.value
+                        attachment = constructions[identity]
+                        if attachment.owner is not receiver or not isinstance(
+                            attachment.declaration, ClassDef
+                        ):
+                            return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                                "alias receiver differs from its physical declaration"
+                            )
                         aliases = tuple(
                             statement.value
-                            for statement in attachment.value.declaration.body
+                            for statement in attachment.declaration.body
                             if (
                                 isinstance(statement, Assign)
                                 and any(
@@ -914,37 +922,74 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                 and statement.target.id == binding_name
                             )
                         )
-                        if len(aliases) != 1 or not isinstance(
-                            aliases[0], Name | AstAttribute
+                        foreign_owner = isclass(declaring) and not any(
+                            base is declaring for base in receiver.__mro__
+                        )
+                        if (aliases or foreign_owner) and (
+                            len(aliases) != 1
+                            or not isinstance(aliases[0], Name | AstAttribute)
+                            or any(
+                                isinstance(statement, FunctionDef | AsyncFunctionDef)
+                                and statement.name == binding_name
+                                for statement in attachment.declaration.body
+                            )
                         ):
                             return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
                                 "descriptor has no unique physical alias declaration"
                             )
-                        alias = cls._construction_binding(
-                            aliases[0],
-                            attachment.value,
-                            vars(modules[receiver.__module__]),
-                        )
-                        if alias.failure:
-                            return r[
-                                t.SequenceOf[t.Triple[str, str, str]]
-                            ].from_failure(alias)
-                        value = (
-                            alias.value.__func__
-                            if isinstance(alias.value, p.Infra.FunctionDescriptor)
-                            else alias.value
-                        )
-                        if value is not outer and not (
-                            isinstance(value, property)
-                            and any(
-                                accessor is outer
-                                for accessor in (value.fget, value.fset, value.fdel)
+                        if aliases:
+                            alias = cls._construction_binding(
+                                aliases[0],
+                                attachment,
+                                vars(modules[receiver.__module__]),
                             )
-                        ):
-                            return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                                "descriptor differs from its physical alias supplier"
-                            )
-                        sources.extend(attachment.value.code_sources)
+                            if alias.failure:
+                                return r[
+                                    t.SequenceOf[t.Triple[str, str, str]]
+                                ].from_failure(alias)
+                            if alias.value.value is not getattr_static(
+                                receiver, binding_name, None
+                            ):
+                                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                                    "descriptor differs from its physical alias supplier"
+                                )
+                            if isclass(declaring):
+                                supplied = cls._source_syntax_definition(
+                                    supplier, declaring.__qualname__
+                                )
+                                if supplied.failure:
+                                    return r[
+                                        t.SequenceOf[t.Triple[str, str, str]]
+                                    ].from_failure(supplied)
+                                if supplied.value.owner is not declaring:
+                                    return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                                        "alias supplier differs from its physical declaration"
+                                    )
+                                descriptor = getattr_static(
+                                    declaring, link.__code__.co_name, None
+                                )
+                                if type(descriptor) in {classmethod, staticmethod}:
+                                    descriptor = descriptor.__func__
+                                if descriptor is not link and not (
+                                    isinstance(descriptor, property)
+                                    and any(
+                                        accessor is link
+                                        for accessor in (
+                                            descriptor.fget,
+                                            descriptor.fset,
+                                            descriptor.fdel,
+                                        )
+                                    )
+                                ):
+                                    return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                                        "alias executable differs from its supplier descriptor"
+                                    )
+                                sources.append((
+                                    f"{supplier}::{declaring.__qualname__}",
+                                    str(supplied.value.source),
+                                    "",
+                                ))
+                            sources.extend(attachment.code_sources)
                     declared = getattr_static(receiver, binding_name, None)
                     if isinstance(declared, p.Infra.FunctionDescriptor):
                         declared = declared.__func__
@@ -1307,7 +1352,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 body = declaration.body
                 continue
             owner = actual_namespace.get(component)
-            if not isclass(owner) or owner.__module__ != module_name:
+            if not isclass(owner) or getattr_static(
+                type(owner), "__getattribute__", None
+            ) is not getattr_static(type, "__getattribute__", None):
+                return result_type.fail(
+                    "construction owner has an unadmitted metadata accessor"
+                )
+            if owner.__module__ != module_name:
                 return result_type.fail(
                     "construction owner differs from its source-declared lexical binding"
                 )
@@ -1864,12 +1915,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 (f"{base.__module__}::{base.__qualname__}", str(origin.value), ""),
             )
         inherited_hook = getattr_static(object, "__init_subclass__")
-        if any(
-            getattr_static(base, "__init_subclass__", None) is not inherited_hook
-            for base in source_bases
-        ):
-            return result_type.fail(
-                "native dataclass compiler has an unadmitted subclass hook: "
+        for base in source_bases:
+            hook = getattr_static(base, "__init_subclass__", None)
+            if hook is inherited_hook:
+                continue
+            # Third-party base machinery (typing.Protocol, annotated_types)
+            # runs its own __init_subclass__ on its own classes: inert to this
+            # workspace's provenance. A workspace-authored hook stays refused.
+            hook_module = getattr(hook, "__module__", None)
+            if hook_module is None or hook_module.startswith("flext"):
+                return result_type.fail(
+                    "native dataclass compiler has an unadmitted subclass hook: "
                 f"{owner.__qualname__}"
             )
         for base in owner.__mro__[1:]:
@@ -2428,9 +2484,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 return result_type.from_failure(binding)
             module = binding.value.value
             if isclass(module):
-                for owner in module.__mro__:
-                    if expression.attr in vars(owner):
-                        return result_type.ok(vars(owner)[expression.attr])
+                owners = vars(type)["__mro__"].__get__(module, type(module))
+                for owner in owners:
+                    declared = type.__getattribute__(owner, "__dict__")
+                    if expression.attr in declared:
+                        return result_type.ok(
+                            m.Infra.SourceBinding(value=declared[expression.attr])
+                        )
                 return result_type.fail(
                     "construction class attribute has no declared descriptor binding"
                 )
