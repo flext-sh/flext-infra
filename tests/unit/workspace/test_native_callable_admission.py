@@ -15,6 +15,34 @@ class TestsNativeCallableAdmission:
     """Inherited dict and slots callables preserve behavior and binding evidence."""
 
     @staticmethod
+    def test_model_use_preserves_native_producer_identity(
+        real_python_package: t.DirectoryPath,
+    ) -> None:
+        """Using a real model must retain its declared producer identity."""
+        u.Tests.run_lazy_init_probe(
+            """from pathlib import Path
+from flext_infra import m, u
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+selection = (m.Infra.SourceClassReference(
+    target="flext_infra._models.codegen_toolchain",
+    attributes=("FlextInfraModelsCodegenToolchain", "CodegenParticipantPolicy"),
+),)
+before = native.capture(selection).unwrap()
+root = Path.cwd()
+policy = m.Infra.CodegenParticipantPolicy(
+    scope_root=root,
+    roots=(u.Cli.atomic_plan_directory_chain(root).unwrap(),),
+)
+assert policy.scope_root == root and policy.roots[0].target == root
+after = native.capture(selection).unwrap()
+compared = native.compare(before, after)
+assert compared.success, compared.error
+""",
+            python_paths=(),
+            cwd=real_python_package,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("storage", ["dict", "slots"])
     @pytest.mark.parametrize(
         ("defect", "expected"),

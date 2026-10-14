@@ -568,6 +568,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             u.Cli.atomic_write_binary_file_guarded(
                 plan.before,
                 document.as_string().encode(c.DEFAULT_ENCODING),
+                permission_mode=plan.before.mode,
             ).unwrap()
         return r[bool].ok(changed)
 
