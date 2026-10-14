@@ -190,6 +190,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectUvSources,
     )
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
+    from flext_infra._utilities._rope.restructure import FlextInfraRopeRestructure
     from flext_infra._utilities._rope_analysis.base import (
         FlextInfraUtilitiesRopeAnalysisBase,
     )
@@ -474,6 +475,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraFlextUtilitiesCodemodBindingChain",
     "FlextInfraRopeProject",
+    "FlextInfraRopeRestructure",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacades",
@@ -672,6 +674,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraFlextUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraRopeProject": "._rope.project",
+        "FlextInfraRopeRestructure": "._rope.restructure",
         "FlextInfraUtilitiesBase": ".base",
         "FlextInfraUtilitiesCodegen": ".codegen",
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",

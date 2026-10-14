@@ -657,9 +657,15 @@ class FlextInfraDocGeneratorBundleMixin:
         if inputs.failure:
             return result_type.from_failure(inputs)
         captured = {item.path: item for item in source_states}
-        if any(captured.get(item.path) != item for item in inputs.value.sources):
+        mismatched = tuple(
+            str(item.path)
+            for item in inputs.value.sources
+            if captured.get(item.path) != item
+        )
+        if mismatched:
             return result_type.fail(
                 "governance configuration differs from captured docs sources",
+                error_data={"mismatched_sources": mismatched},
             )
         ref = cls._governance_source_ref(repository_root, inputs.value)
         if ref.failure:

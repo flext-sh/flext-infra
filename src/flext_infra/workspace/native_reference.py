@@ -742,6 +742,7 @@ class FlextInfraWorkspaceNativeReference:
         construction: bool = False,
         references: list[t.Pair[str, p.AttributeProbe]] | None = None,
         binding: str = "",
+        paths: t.SequenceOf[t.Pair[Path, Path]] = (),
     ) -> str:
         """Serialize one structural observation without recursively escaping JSON."""
         return dumps(
@@ -751,6 +752,7 @@ class FlextInfraWorkspaceNativeReference:
                 construction=construction,
                 references=references,
                 binding=binding,
+                paths=paths,
             )
         )
 
@@ -763,6 +765,7 @@ class FlextInfraWorkspaceNativeReference:
         construction: bool,
         references: list[t.Pair[str, p.AttributeProbe]] | None = None,
         binding: str = "",
+        paths: t.SequenceOf[t.Pair[Path, Path]] = (),
     ) -> t.JsonValue:
         """Observe native slots as JSON data without authored accessors."""
         native = type(value)
@@ -797,6 +800,7 @@ class FlextInfraWorkspaceNativeReference:
             construction=construction,
             references=references,
             binding=binding,
+            paths=paths,
         )
         if any(native is kind for kind in (list, set, dict)) and not construction:
             return ["mutable", native.__name__]
@@ -825,6 +829,8 @@ class FlextInfraWorkspaceNativeReference:
                 )
             return ["mappingproxy", observe(backing[0])]
         if native is CodeType:
+            if paths:
+                value = cls._relocate_code(value, paths)
             return [
                 "code",
                 [
@@ -1096,20 +1102,27 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _class_state_writers(
+        owner: p.AttributeProbe,
         namespace: t.MappingKV[str, p.AttributeProbe],
         declarations: frozenset[str],
     ) -> t.VariadicTuple[t.Triple[str, p.AttributeProbe, frozenset[str]]]:
-        """Prove class state writes through an unchanged native classmethod receiver."""
+        """Prove state writes through the exact native class or global receiver."""
         writers: list[t.Triple[str, p.AttributeProbe, frozenset[str]]] = []
         for name, member in sorted(namespace.items()):
-            if type(member) is not classmethod:
+            if type(member) not in {classmethod, staticmethod}:
                 continue
             function = member.__func__
-            if type(function) is not FunctionType or not function.__code__.co_argcount:
+            if type(function) is not FunctionType:
                 continue
-            receiver = function.__code__.co_varnames[0]
+            if type(member) is classmethod and not function.__code__.co_argcount:
+                continue
+            receiver = (
+                function.__code__.co_varnames[0]
+                if type(member) is classmethod
+                else None
+            )
             instructions = tuple(get_instructions(function.__code__))
-            if any(
+            if receiver is not None and any(
                 (
                     instruction.opname.startswith("STORE_FAST")
                     or instruction.opname == "DELETE_FAST"
@@ -1124,6 +1137,18 @@ class FlextInfraWorkspaceNativeReference:
                 for instruction in instructions
             ):
                 continue
+            global_receivers = {
+                instruction.argval
+                for instruction in instructions
+                if instruction.opname == "LOAD_GLOBAL"
+                and isinstance(instruction.argval, str)
+                and function.__globals__.get(instruction.argval) is owner
+            }
+            rebound_globals = {
+                instruction.argval
+                for instruction in instructions
+                if instruction.opname in {"STORE_GLOBAL", "DELETE_GLOBAL"}
+            }
             fields = frozenset(
                 instruction.argval
                 for previous, instruction in zip(
@@ -1133,11 +1158,21 @@ class FlextInfraWorkspaceNativeReference:
                 and isinstance(instruction.argval, str)
                 and instruction.argval in declarations
                 and (
-                    (previous.opname == "LOAD_FAST" and previous.argval == receiver)
+                    (
+                        receiver is not None
+                        and previous.opname == "LOAD_FAST"
+                        and previous.argval == receiver
+                    )
                     or (
+                        receiver is not None
+                        and
                         previous.opname == "LOAD_FAST_LOAD_FAST"
                         and type(previous.argval) is tuple
                         and previous.argval[-1] == receiver
+                    )
+                    or (
+                        previous.opname == "LOAD_GLOBAL"
+                        and previous.argval in global_receivers - rebound_globals
                     )
                 )
             )
@@ -1162,7 +1197,7 @@ class FlextInfraWorkspaceNativeReference:
         evidence: list[m.Infra.NativeBindingEvidence] = []
         compiled: dict[Path, t.VariadicTuple[p.Infra.NativeCodeIdentity]] = {}
         references: list[t.Pair[str, p.AttributeProbe]] = []
-        observe_value = partial(cls._value, references=references)
+        observe_value = partial(cls._value, references=references, paths=paths)
         pending = []
         nominations = tuple(
             m.Infra.SourceClassReference(target=item) if type(item) is str else item
@@ -1363,7 +1398,9 @@ class FlextInfraWorkspaceNativeReference:
                     and not cls._callable_storage(item)
                     and type(item) not in {property, classmethod, staticmethod}
                 }
-                writers = cls._class_state_writers(namespace, frozenset(declaration))
+                writers = cls._class_state_writers(
+                    value, namespace, frozenset(declaration)
+                )
                 operational = frozenset(
                     name for _, _, fields in writers for name in fields
                 )

@@ -542,10 +542,10 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         source = u.Cli.files_read_text(lock_path)
         if source.failure:
             return r[t.Pair[str, t.JsonMapping]].from_failure(source)
-        lock = u.Cli.toml_mapping_from_text(source.value)
-        if lock is None:
-            return r[t.Pair[str, t.JsonMapping]].fail(f"invalid TOML in {lock_path}")
-        return r[t.Pair[str, t.JsonMapping]].ok((source.value, lock))
+        lock = u.Cli.toml_mapping_from_text_result(source.value)
+        if lock.failure:
+            return r[t.Pair[str, t.JsonMapping]].from_failure(lock)
+        return r[t.Pair[str, t.JsonMapping]].ok((source.value, lock.value))
 
     def _prove_uv_consumer(self, mise_binary: Path) -> p.Result[bool]:
         """Compare the actual consumer to the one locked producer.

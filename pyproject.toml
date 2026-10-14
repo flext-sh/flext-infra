@@ -72,7 +72,6 @@ Repository = "https://github.com/flext-sh/flext-infra"
 "flext_infra._pytest_collection" = "flext_infra._pytest_collection:FlextInfraPytestCollection"
 
 [dependency-groups]
-codegen = []
 dev = [
   "actionlint-py>=1.7.12.24",
   "bandit>=1.9.4",
@@ -135,6 +134,7 @@ dev = [
   "types-tabulate>=0.10.0.20260508",
   "types-toml>=0.10.8.20260518",
 ]
+codegen = []
 
 [tool.codespell]
 check-filenames = true
@@ -159,8 +159,8 @@ omit = [
 ]
 
 [tool.deptry]
-known_first_party = ["flext_core", "flext_infra"]
-pep621_dev_dependency_groups = ["dev"]
+known_first_party = ["flext_infra"]
+optional_dependencies_dev_groups = ["dev"]
 
 [tool.flext.docs]
 package_name = "flext_infra"
@@ -177,8 +177,14 @@ include = ["/src/flext_infra/**"]
 [tool.hatch.build.targets.wheel.sources]
 "src/flext_infra" = "flext_infra"
 
+[tool.hatch.build.targets.wheel.force-include]
+"pyproject.toml" = "flext_infra/pyproject.toml"
+
 [tool.hatch.build.targets.sdist]
 include = ["/src/flext_infra/**"]
+
+[tool.hatch.build.targets.sdist.force-include]
+"pyproject.toml" = "pyproject.toml"
 
 [tool.mypy]
 mypy_path = ["src"]
@@ -436,13 +442,10 @@ extend-safe-fixes = [
   "relative-imports",
   "typing-only-first-party-import",
 ]
+extend-select = ["missing-blank-line-after-last-section"]
 ignore = [
   "camelcase-imported-as-lowercase",
-  "D","PLR", "PLC", "PLW","DOC",
   "implicit-namespace-package",
-  "docstring-missing-returns",
-  "complex-structure",
-  "line-too-long",
   "missing-required-import",
   "missing-trailing-comma",
   "runtime-import-in-type-checking-block",
@@ -452,15 +455,11 @@ ignore = [
 ]
 select = ["ALL"]
 unfixable = [
-  "duplicate-value",
   "multi-value-repeated-key-literal",
   "multi-value-repeated-key-variable",
-  "outdated-version-block",
   "p-print",
   "print",
   "pytest-duplicate-parametrize-test-cases",
-  "redefined-while-unused",
-  "unused-variable",
 ]
 
 [tool.ruff.lint.flake8-copyright]
@@ -485,6 +484,7 @@ runtime-evaluated-base-classes = [
   "flext_core.m.StrictBoundaryModel",
   "flext_infra.FlextInfraProjectSelectionServiceBase",
   "flext_infra.FlextInfraServiceBase",
+  "flext_infra._models.FlextInfraModelsBase.FrozenArbitrary",
   "flext_infra._models.FlextInfraModelsMixins.AbsoluteFilePathTextMixin",
   "flext_infra._models.FlextInfraModelsMixins.ErrorDetailMixin",
   "flext_infra._models.FlextInfraModelsMixins.FilePathMixin",
@@ -506,8 +506,10 @@ runtime-evaluated-base-classes = [
   "flext_infra._models._config.contract.DocsAuditOverridesSpec",
   "flext_infra._models._config.contract.FlextInfraConfigModelsContract.ConfigContract",
   "flext_infra._models._config.external_cache.FlextInfraExternalCacheDirectorySpec",
+  "flext_infra._models._config.workspace.CandidateDependenciesSpec",
   "flext_infra._models._config.workspace.DependencyGroupDeclarations",
   "flext_infra._models._config.workspace.FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations",
+  "flext_infra._models.base.FlextInfraModelsBase.FrozenArbitrary",
   "flext_infra._models.codegen_render.MkdocsRenderContext",
   "flext_infra._models.gates.GateExecutionFacts",
   "flext_infra._models.git.GitRemoteRequest",
@@ -519,8 +521,11 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.mixins.PositiveLineMixin",
   "flext_infra._models.mixins.ScopeMixin",
   "flext_infra._models.refactor.CensusOptions",
+  "flext_infra._models.scan.ModOccurrence",
+  "flext_infra._models.scan.ModOccurrenceReport",
   "flext_infra._models.scan.ModScanCounts",
   "flext_infra._models.scan.ModScanFinding",
+  "flext_infra._models.workspace.NativeImportObservation",
   "flext_infra.base.s",
   "flext_infra.base_selection.FlextInfraProjectSelectionServiceBase",
   "flext_infra.codegen.FlextInfraCodegenConform",
@@ -587,7 +592,7 @@ msg = "Use cli.create_app_with_common_params / cli.register_command from flext_c
 [tool.ruff.lint.isort]
 combine-as-imports = true
 force-single-line = false
-known-first-party = ["flext_core", "flext_infra"]
+known-first-party = ["flext_infra"]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]

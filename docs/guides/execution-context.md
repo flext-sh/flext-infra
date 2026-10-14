@@ -101,6 +101,18 @@ Installed-wheel acceptance must identify and exercise the actual distributed art
 an editable source read or a prior editable pass cannot retroactively prove wheel
 resources, template identity or consumer behavior.
 
+Editable Hatch declarations retain explicit package directories and package remappings
+from `tool.hatch.build.targets.wheel.sources`. Every installed `.pth` entry must expose
+a declared package at its physical source, and every declared package must be covered.
+A distribution containing the application package and an infrastructure namespace does
+not lose either declaration merely because it uses `include` and `sources` instead of
+`packages`.
+
+Infra owns the full workspace operation receipt and report. CLI's native qualification
+receipt and report are non-generic read projections of that original payload; they are
+not base classes for domain fields. Original execution, outcome, stage and completion
+remain observable when CLI reads the shared native-tool evidence.
+
 Upgrade installs the newly resolved lock through its existing frozen provisioning
 owner and verifies its runtime provenance before the next producer. Package election
 resolves the current physical import path independently of loaded-module caches;
@@ -140,6 +152,13 @@ Loaded-code checks bind physical declarations, function code, executable wrapper
 links, property accessors, and MRO suppliers. They do not require operational class
 variables, initialized settings singletons, or config data to equal class-body literals;
 the actual consumer captures typed config and resource inputs separately.
+
+Class cache writes require an unchanged classmethod receiver or an exact global class
+receiver whose native method writes the declared field. Receiver rebinding prevents
+that classification. The writer's executable code remains part of the proof, and
+changes to ordinary constants remain violations. Declared staging-path mappings apply
+to wrapper storage and nested code units as well as direct function evidence; a
+filename change outside those mappings remains observable.
 
 Producer authentication compiles pinned physical declarations without executing
 their callbacks, then compares loaded bindings with an isolated native import from

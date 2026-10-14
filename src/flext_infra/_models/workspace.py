@@ -284,14 +284,48 @@ class FlextInfraModelsWorkspace:
             ),
         ] = None
 
-    class WorkspaceOperationReceipt(
-        m.Cli.ProcessNativeQualificationReceipt[
-            WorkspaceRuntimeContext,
-            FlextInfraModelsCheck.Issue,
-            c.Infra.ToolOutcome,
-        ]
-    ):
+    class WorkspaceOperationReceipt(m.ContractModel):
         """Original in-process repository operation, with its observed effects."""
+
+        native_tool_qualifications: Annotated[
+            t.VariadicTuple[m.Cli.ProcessNativeToolEvidence],
+            m.Field(description="Shared native qualification evidence."),
+        ] = ()
+        runtime_context: Annotated[
+            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
+            m.Field(description="Authenticated installed runtime association."),
+        ] = None
+        root: Annotated[Path, m.Field(description="Repository actually attempted.")]
+        executed: Annotated[
+            bool, m.Field(description="Original operation was invoked.")
+        ]
+        outcome: Annotated[
+            c.Infra.ToolOutcome | None,
+            m.Field(description="Native outcome, independent of report transport."),
+        ]
+        native_exit_code: Annotated[
+            int | None,
+            m.Field(ge=0, le=255, description="Observed original shell exit status."),
+        ] = None
+        stage: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Original bootstrap stage reached."),
+        ] = None
+        completed: Annotated[
+            bool | None,
+            m.Field(description="Whether bootstrap reached its final stage."),
+        ] = None
+        applicability: Annotated[
+            str, m.Field(description="Declared reason preventing execution."),
+        ] = ""
+        files: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Paths returned by the original operation owner."),
+        ] = ()
+        issues: Annotated[
+            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            m.Field(description="Native findings at their actual repository."),
+        ] = ()
 
     class WorkspaceOperationTarget(m.ContractModel):
         """One discovered root and its original Git management declaration."""
@@ -313,15 +347,25 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Declared reason when inapplicable"),
         ] = ""
 
-    class WorkspaceOperationReport(
-        m.Cli.ProcessNativeQualificationReport[
-            WorkspaceRuntimeContext,
-            FlextInfraModelsCheck.Issue,
-            c.Infra.ToolOutcome,
-        ]
-    ):
+    class WorkspaceOperationReport(m.ContractModel):
         """Declared repository scope and original serial operation receipts."""
 
+        root: Annotated[Path, m.Field(description="Invoking repository root.")]
+        operation: Annotated[
+            t.NonEmptyStr, m.Field(description="Public operation name."),
+        ]
+        scope: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Roots discovered before the batch."),
+        ]
+        receipts: Annotated[
+            t.VariadicTuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt],
+            m.Field(description="Original receipts in discovered order."),
+        ]
+        candidate_read_exit_code: Annotated[
+            int | None,
+            m.Field(description="Original Git metadata read status."),
+        ] = None
         candidate_sha: Annotated[
             str | None,
             m.Field(
