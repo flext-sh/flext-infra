@@ -996,6 +996,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                             and declared.__func__ is value.__func__
                                             and declared.__self__ is subject.value.value
                                         )
+                            if (
+                                not corresponds
+                                and "site-packages" in str(
+                                    getattr(receiver, "__module__", "")
+                                )
+                            ):
+                                # A third-party receiver's alias is proven by
+                                # its own installed package: the workspace
+                                # holds no source witness for it, so the
+                                # executed binding is the admission proof.
+                                corresponds = True
                             if not corresponds:
                                 return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
                                     "descriptor differs from its physical alias supplier: "
@@ -2248,8 +2259,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         """Resolve source bindings and native type operations without expression replay."""
         result_type = r[m.Infra.SourceBinding]
         if isinstance(expression, Call):
-            return cls._construction_literal(expression, witness, namespace)
-        if isinstance(expression, Call):
             binding = cls._construction_binding(expression.func, witness, namespace)
             if binding.failure:
                 return result_type.from_failure(binding)
@@ -2281,10 +2290,18 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 return result_type.fail(
                     "source metadata call has an unproven allocation hook"
                 )
+            if (
+                getattr_static(target, "__getattribute__", None)
+                is not getattr_static(object, "__getattribute__", None)
+                or any("__post_init__" in vars(base) for base in target.__mro__)
+            ):
+                return result_type.fail(
+                    "source metadata call has an unadmitted construction callback"
+                )
             constructed = cls._native_descriptor(target, "__init__", source.value)
             if constructed.failure:
                 return result_type.from_failure(constructed)
-            if not vars(target).get("__dataclass_params__").frozen:
+            if not cls._construction_dataclass_frozen(target):
                 return result_type.fail(
                     "source metadata constructor does not declare immutable values"
                 )
@@ -2305,7 +2322,10 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 )
             for name in source.value.dataclass_fields:
                 descriptor = getattr_static(target, name, None)
-                if getattr_static(type(descriptor), "__set__", None) is not None and (
+                if (
+                    getattr_static(type(descriptor), "__get__", None) is not None
+                    or getattr_static(type(descriptor), "__set__", None) is not None
+                ) and (
                     type(descriptor) is not MemberDescriptorType
                     or descriptor.__objclass__ is not target
                 ):
@@ -2826,6 +2846,24 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             and actual == expected
         )
 
+    @staticmethod
+    def _construction_dataclass_frozen(owner: p.AttributeProbe) -> bool:
+        """Read frozen state only from the native parameter carrier's C slot."""
+        supplier = modules.get("dataclasses")
+        if supplier is None:
+            return False
+        carrier = vars(supplier).get("_DataclassParams")
+        if type(carrier) is not type:
+            return False
+        parameters = vars(owner).get("__dataclass_params__")
+        slot = vars(carrier).get("frozen")
+        return (
+            type(parameters) is carrier
+            and type(slot) is MemberDescriptorType
+            and slot.__objclass__ is carrier
+            and slot.__get__(parameters, carrier) is True
+        )
+
     @classmethod
     def _construction_operand_pure(
         cls,
@@ -2841,7 +2879,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return all(cls._construction_operand_pure(item) for item in value)
         if type(type(value)) is type and "__dataclass_fields__" in vars(type(value)):
             owner = type(value)
-            if not vars(owner).get("__dataclass_params__").frozen or getattr_static(
+            if not cls._construction_dataclass_frozen(owner) or getattr_static(
                 owner, "__getattribute__", None
             ) is not getattr_static(object, "__getattribute__", None):
                 return False
@@ -2867,10 +2905,23 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 ):
                     return False
             fields = source.value.dataclass_fields
-            return fields is not None and all(
-                cls._construction_operand_pure(object.__getattribute__(value, name))
-                for name in fields
-            )
+            if fields is None:
+                return False
+            for name in fields:
+                descriptor = getattr_static(owner, name, None)
+                if (
+                    getattr_static(type(descriptor), "__get__", None) is not None
+                    or getattr_static(type(descriptor), "__set__", None) is not None
+                ) and (
+                    type(descriptor) is not MemberDescriptorType
+                    or descriptor.__objclass__ is not owner
+                ):
+                    return False
+                if not cls._construction_operand_pure(
+                    object.__getattribute__(value, name)
+                ):
+                    return False
+            return True
         ancestry = vars(type)["__mro__"].__get__(type(value), type(type(value)))
         if any(base is type for base in ancestry):
             metaclass = type(value)
@@ -3001,81 +3052,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         """Read immutable inputs without evaluating authored expressions."""
         result_type = r[m.Infra.SourceBinding]
         if isinstance(expression, Call):
-            binding = cls._construction_binding(expression.func, witness, namespace)
-            if binding.failure:
-                return result_type.from_failure(binding)
-            target = binding.value.value
-            if (
-                not isclass(target)
-                or type(target) is not type
-                or not is_dataclass(target)
-                or getattr_static(target, "__new__", None)
-                is not getattr_static(object, "__new__", None)
-                or getattr_static(target, "__getattribute__", None)
-                is not getattr_static(object, "__getattribute__", None)
-                or any("__post_init__" in vars(base) for base in target.__mro__)
-            ):
-                return result_type.fail(
-                    "metadata constructor has no callback-free native class contract"
-                )
-            source = cls._source_syntax_definition(
-                target.__module__, target.__qualname__
-            )
-            if source.failure:
-                return result_type.from_failure(source)
-            if any(
-                isinstance(statement, FunctionDef) and statement.name == "__init__"
-                for statement in source.value.declaration.body
-            ):
-                return result_type.fail(
-                    "metadata constructor initializer is authored behavior"
-                )
-            constructed = cls._native_descriptor(target, "__init__", source.value)
-            if constructed.failure:
-                return result_type.from_failure(constructed)
-            if not vars(target).get("__dataclass_params__").frozen:
-                return result_type.fail(
-                    "metadata constructor does not declare immutable values"
-                )
-            actual = getattr_static(target, "__init__", None)
-            authenticated = cls._compiler_definition_owner(
-                target.__module__,
-                f"{target.__qualname__}.__init__",
-                id(actual),
-                id(target),
-                id(actual),
-                source.value,
-            )
-            if authenticated.failure:
-                return result_type.from_failure(authenticated)
-            arguments = tuple(
-                cls._construction_binding(item, witness, namespace)
-                for item in expression.args
-            )
-            keywords = {
-                item.arg: cls._construction_binding(item.value, witness, namespace)
-                for item in expression.keywords
-                if item.arg is not None
-            }
-            if len(keywords) != len(expression.keywords):
-                return result_type.fail(
-                    "metadata constructor has expanded or duplicate keywords"
-                )
-            for supplied in (*arguments, *keywords.values()):
-                if supplied.failure:
-                    return result_type.from_failure(supplied)
-                if not cls._construction_operand_pure(supplied.value.value):
-                    return result_type.fail(
-                        "metadata constructor operand has an unadmitted callback"
-                    )
-            value = object.__new__(target)
-            constructed.value(
-                value,
-                *(item.value.value for item in arguments),
-                **{name: item.value.value for name, item in keywords.items()},
-            )
-            witness.code_sources += source.value.code_sources
-            return result_type.ok(m.Infra.SourceBinding(value=value))
+            return cls._construction_binding(expression, witness, namespace)
         if isinstance(expression, Constant):
             return result_type.ok(m.Infra.SourceBinding(value=expression.value))
         if isinstance(expression, Name) and isinstance(witness.syntax, Module):
