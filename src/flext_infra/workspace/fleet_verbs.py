@@ -1,4 +1,4 @@
-"""Fleet verbs: one mutating Make verb carried to every governed member at once.
+"""Fleet verbs: one mutating Make verb carried through runtime dependency waves.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,24 +7,21 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import t
-from flext_infra import c, config, m, p, r, s, u
+from flext_infra import c, m, p, r, s, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
-    """Run one mutating verb in every governed member, concurrently.
+    """Run one mutating verb serially in dependency-first member order.
 
-    Each member runs its own public Make verb in its own repository, so the
-    verb rewrites only that member and behaves exactly as a member-local run.
-    The members are independent git roots: they run in
-    ``Infra.codegen.fleet_workers`` concurrent processes, each captured in
-    its own receipt, and the report keeps declared order. The first failed
-    member in declared order fails the run with its captured output.
+    Each member's selected Makefile runs from the containing workspace root.
+    The runtime graph owns dependency waves and lexical ties within each wave.
+    A failed invocation stops subsequent members; the report retains the
+    complete declared scope and receipts only for attempted invocations.
     """
 
     verb: Annotated[
@@ -58,25 +55,43 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
             return r[m.Infra.LifecycleReport].fail(
                 f"fleet verbs require a workspace root: {root}",
             )
-        selected_members = self._selected_members(workspace)
+        selected_members = self._selected_members(workspace, root)
         if selected_members.failure:
             return r[m.Infra.LifecycleReport].from_failure(selected_members)
         scope = tuple(root / member.path for member in selected_members.value)
+        for member in selected_members.value:
+            makefile = root / member.path / c.Infra.MAKEFILE_FILENAME
+            if not makefile.is_file():
+                return r[m.Infra.LifecycleReport].fail(
+                    f"fleet member Makefile is missing: {makefile}",
+                )
         # The service contract stores enum values; str() reads either form.
         verb = str(self.verb)
         output_dir = root / c.Infra.FLEET_REPORT_RELATIVE_PATH.with_suffix("")
         pending = tuple(
             m.Infra.LifecycleReceipt(
-                command=(c.Infra.MAKE, verb),
-                cwd=cwd,
-                output_file=output_dir / f"{cwd.name}-{verb}.log",
+                command=(
+                    c.Infra.MAKE,
+                    "-f",
+                    (member.path / c.Infra.MAKEFILE_FILENAME).as_posix(),
+                    verb,
+                ),
+                cwd=root,
+                output_file=output_dir / f"{member.distribution}-{verb}.log",
             )
-            for cwd in scope
+            for member in selected_members.value
         )
-        workers = max(1, min(config.Infra.codegen.fleet_workers, len(pending)))
-        u.Cli.info(f"[fleet {verb}] {len(pending)} members, {workers} workers")
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            receipts = tuple(pool.map(self._run_member, pending))
+        u.Cli.info(f"[fleet {verb}] {len(pending)} members, serial dependency order")
+        attempted: list[m.Infra.LifecycleReceipt] = []
+        for receipt in pending:
+            observed = self._run_member(receipt)
+            attempted.append(observed)
+            if observed.error is not None:
+                break
+        receipts = tuple(attempted)
+        u.Cli.info(
+            f"[fleet {verb}] attempted={len(receipts)} declared={len(pending)}",
+        )
         report = m.Infra.LifecycleReport(
             workspace_root=root,
             scope=scope,
@@ -108,6 +123,7 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
 
         """
         started = time.monotonic()
+        member_name = Path(receipt.command[-2]).parent.name
         run = u.Cli.run_to_file(
             receipt.command,
             receipt.output_file,
@@ -119,12 +135,12 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
         elapsed = time.monotonic() - started
         if run.failure:
             u.Cli.status(
-                receipt.command[-1], receipt.cwd.name, result=False, elapsed=elapsed
+                receipt.command[-1], member_name, result=False, elapsed=elapsed
             )
             return receipt.model_copy(update={"error": run.error})
         succeeded = u.Cli.process_succeeded(run.value)
         u.Cli.status(
-            receipt.command[-1], receipt.cwd.name, result=succeeded, elapsed=elapsed
+            receipt.command[-1], member_name, result=succeeded, elapsed=elapsed
         )
         error = (
             None
@@ -161,24 +177,35 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
     def _selected_members(
         self,
         workspace: m.Infra.WorkspaceSpec,
+        root: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.RepositoryRef]]:
         """Apply the member filter to the declared mutable members.
 
         Returns:
-            The selected members in declared order, or the failure naming
+            The selected members in dependency order, or the failure naming
             every undeclared requested member.
         """
         declared = tuple(u.Infra.mutable_flext_members(workspace))
-        if not self.members:
-            return r[t.SequenceOf[m.Infra.RepositoryRef]].ok(declared)
-        selected = frozenset(self.members)
-        unknown = sorted(selected - {member.name for member in declared})
-        if unknown:
+        if not declared:
             return r[t.SequenceOf[m.Infra.RepositoryRef]].fail(
-                "fleet verbs: undeclared member name(s): " + ", ".join(unknown),
+                "fleet verbs require declared mutable members",
             )
+        requested = frozenset(self.members) if self.members else None
+        if requested is not None:
+            unknown = sorted(requested - {member.name for member in declared})
+            if unknown:
+                return r[t.SequenceOf[m.Infra.RepositoryRef]].fail(
+                    "fleet verbs: undeclared member name(s): " + ", ".join(unknown),
+                )
+        by_distribution = {member.distribution: member for member in declared}
+        ordered = tuple(
+            by_distribution[name]
+            for name in u.Infra.workspace_dependency_order(root, declared)
+        )
+        if requested is None:
+            return r[t.SequenceOf[m.Infra.RepositoryRef]].ok(ordered)
         return r[t.SequenceOf[m.Infra.RepositoryRef]].ok(
-            tuple(member for member in declared if member.name in selected),
+            tuple(member for member in ordered if member.name in requested),
         )
 
 

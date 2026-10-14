@@ -548,7 +548,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         own self-scoped runs). A layout no plan claims is therefore verified
         against its real on-disk contract: import it in the fresh runtime and
         resolve the exports it declares. A plan that does claim the layout
-        must still carry a usable importable WRITE/SKIP contract, and a
+        must still carry an importable, non-removal contract, and a
         broken live package fails on its import or on a declared name that
         cannot resolve.
 
@@ -566,8 +566,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 plan
                 for plan in layout_plans
                 if plan.context.importable
-                and plan.action
-                in {c.Infra.LazyInitAction.WRITE, c.Infra.LazyInitAction.SKIP}
+                and plan.action is not c.Infra.LazyInitAction.REMOVE
             )
             if not any(plan.context.pkg_dir == layout.package_dir for plan in owned):
                 return r[m.Infra.FreshImportProbe].fail(

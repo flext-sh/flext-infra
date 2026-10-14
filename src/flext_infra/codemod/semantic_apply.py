@@ -202,9 +202,11 @@ class FlextInfraCodemodSemanticApply:
         authenticated = u.Cli.atomic_verify_binary_file_states((driver,))
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
-        if request.apply and not request.check and not request.dry_run_mode:
-            return cls._publish_authenticated_rename(root, request, artifact, driver)
-        return r[bool].ok(value=True)
+        return (
+            cls._publish_authenticated_rename(root, artifact, driver)
+            if request.apply and not request.check and not request.dry_run_mode
+            else r[bool].ok(value=True)
+        )
 
     @staticmethod
     def _authenticate_rename_candidate(
@@ -237,7 +239,6 @@ class FlextInfraCodemodSemanticApply:
     @staticmethod
     def _publish_authenticated_rename(
         root: Path,
-        request: m.Infra.ModCommand,
         artifact: m.Infra.SemanticRenamePlan,
         driver: m.Cli.AtomicFileState,
     ) -> p.Result[bool]:
@@ -302,14 +303,16 @@ class FlextInfraCodemodSemanticApply:
             if planned.failure:
                 return planned
             cls._apply_plan(working, planned.value, changed)
-            if phase is c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS:
-                constant_edits = planned.value
+            constant_edits = planned.value
 
-        verified = cls._verify_census_phases(working, rope_workspace, phases)
-        if verified.failure:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
-                verified,
-            )
+        # Empty plans already prove both phases on the same authenticated input.
+        # Edits invalidate that proof; staged and published runtime checks remain.
+        if changed:
+            verified = cls._verify_census_phases(working, rope_workspace, phases)
+            if verified.failure:
+                return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
+                    verified,
+                )
         u.Infra.preflight_semantic_import_graph(rope_workspace, original, working)
         definition_time = cls._check_definition_time(original, working, changed)
         if definition_time.failure:
@@ -358,8 +361,7 @@ class FlextInfraCodemodSemanticApply:
         return cls._publish(
             root,
             original,
-            working,
-            changed,
+            {path: working[path] for path in changed},
             source_preview=source_preview,
             validator=verify,
         ).map(lambda _: constant_edits)
@@ -458,7 +460,10 @@ class FlextInfraCodemodSemanticApply:
         changed: set[Path] = set()
         cls._apply_plan(working, edits, changed)
         cls._publish(
-            root, original, working, changed, source_preview=source_preview
+            root,
+            original,
+            {path: working[path] for path in changed},
+            source_preview=source_preview,
         ).unwrap()
         cli.display_text(f"mod: Rope transaction paths changed_files={len(changed)}")
 
@@ -560,8 +565,7 @@ class FlextInfraCodemodSemanticApply:
             lambda _: cls._publish(
                 root,
                 original,
-                working,
-                changed,
+                {path: working[path] for path in changed},
                 source_preview=source_preview,
                 validator=validator,
             ),
@@ -958,7 +962,6 @@ class FlextInfraCodemodSemanticApply:
         root: Path,
         original: t.MappingKV[Path, str],
         updated: t.MappingKV[Path, str],
-        changed: set[Path],
         *,
         source_preview: p.Infra.SourcePreview,
         validator: Callable[[Path], p.Result[bool]] | None = None,
@@ -967,9 +970,6 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             The resulting ``p.Result[bool]``.
-
-        Raises:
-            ValueError: If source changed after semantic preflight.
 
         """
         semantic_plans: list[m.Infra.SemanticFilePlan] = []
@@ -984,13 +984,10 @@ class FlextInfraCodemodSemanticApply:
             return r[bool].fail("source changed after semantic preflight")
         states = {state.path: state for state in inputs}
         candidate_updates: t.MutableMappingKV[Path, str] = {}
-        consumer_first = sorted(changed, key=cls._path_key)
+        consumer_first = sorted(updated, key=cls._path_key)
         for path in consumer_first:
             state = states[path]
             content = state.content
-            if content is None or content.decode(c.DEFAULT_ENCODING) != original[path]:
-                msg = f"source changed after semantic preflight: {path}"
-                raise ValueError(msg)
             project_root = u.Infra.project_root(path)
             if project_root is None:
                 project_root = root

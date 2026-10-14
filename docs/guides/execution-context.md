@@ -113,12 +113,11 @@ Make and direnv restrict global and system configuration discovery to the
 elected runtime's `.mise` directory; unrelated host tool declarations never
 belong to project provisioning.
 
-If `mise.lock` has no self-managed Mise entry, `make setup` fails without
-changing it. `make upg` uses the installed host Mise to resolve the declared
-manifest first, then provisions the newly recorded release from its verified
-asset and continues the normal lifecycle. The generated `.mise.toml` must match
-the current toolchain owner before that recovery; `mise-config` conformance
-repairs this single declaration without regenerating unrelated project files.
+Setup provisions the available frozen toolchain without writing `mise.lock`;
+audit owns its pin and completeness verdicts. `make upg` resolves the declared
+manifest, provisions the recorded release from its verified asset and requalifies
+Mise before continuing. `mise-config` conformance repairs the generated tool
+declaration without resolving a lock or regenerating unrelated project files.
 
 When Beads tracking is configured, the generated `.envrc.local` carries its environment:
 `AGENTS_GAS_CITY_ROOT` selects the Gas City root, the Gas City runtime publication
@@ -132,6 +131,12 @@ by hand.
 
 ## Dependency locks
 
+Installed interpreter and distribution fingerprints belong to workspace
+environment provenance. Gate receipts and testmon consume that same identity;
+reading a gate identity does not load the pytest execution or collection owners.
+The producer declares the Markdown collection plugin as a runtime dependency
+because its shipped pytest collection implementation imports that plugin.
+
 An attached project inherits both locks and the physical environment of its
 Git superproject. Its `make setup` and `make upg` delegate to that root before
 installing tools or resolving dependencies. A standalone checkout owns those
@@ -141,18 +146,37 @@ exact committed lock without changing it.
 Every repository runs independently in remote CI, including a superproject.
 Remote checkout never initializes members. The CI gate token does not change
 physical Git attachment or local hook environment ownership.
+`Infra.codegen.make.uv_resolution` declares the local and standalone native UV
+project directories relative to the physical runtime owner. Its hosted runner
+variable selects the standalone view; the gate partition never selects a view
+or a different environment. Both views use the runtime owner's physical `.venv`.
+`FlextInfraWorkspaceDetector.resolution_context` exposes that single election to
+bootstrap consumers without loading member metadata, and the public project
+context carries the same typed runtime context.
 The existing native editable policy remains unchanged: local workspace source
 entries retain each member's declared `path` and `editable` values; CI installs
 with `--no-editable`. There is no second installer or post-install editable
 overlay. Shared lock ownership does not change those source declarations.
 
-The current project retains its native uv identity. Local source overrides apply
-to declared members, never to the current project itself. Sources, overrides and
-Make routing come from the generator and are never repaired in their projections.
+The project's authored dependency categories retain their identity. Native
+resolver views derive from those declarations without promoting dev or examples
+requirements to runtime dependencies. Sources, overrides and Make routing come
+from the generator and are never repaired in their projections.
+
+Fleet execution consumes the canonical runtime dependency waves, with names
+ordered within each wave. It invokes each selected member's public Makefile
+serially from the workspace root and stops at the first failure. Development
+and example dependencies remain resolver inputs rather than runtime ordering
+edges. Required member metadata and Makefiles are checked before any member
+executes; reports distinguish the declared scope from attempted commands.
 
 Configuration declares `latest`. `make upg` is the only verb that resolves newer
 releases and writes the committed `uv.lock` and `mise.lock`. `make setup` installs
 from committed locks; `make gen` and `make fmt` neither install nor upgrade tools.
+Conformance, member propagation and release version stamping preserve existing
+locks and do not create missing ones. External consumer propagation runs its
+declared generation and repair verbs; dependency resolution requires a separate,
+explicit `make upg` at the selected workspace or standalone owner.
 Git dependencies follow their declared integration branches, and `APPLY` stays removed.
 
 One `make upg` run converges. It resolves the Mise lock before provisioning,
@@ -186,19 +210,30 @@ When the projection carries no line, a hand-written `project.flext_source` in th
 manifest declares it, and a commit in a hand-written source fails. Fix the setup or
 `upg` owner and regenerate through `make gen`; manual installs do not replace the cycle.
 
-A workspace root preserves declared Git requirements and binds its package members
-through `[tool.uv.sources]` entries containing their declared local `path` and
-`editable` values. No repository declares a native `[tool.uv.workspace]`.
-Standalone repositories own their locks; attached members use their containing
-workspace's locks exclusively. Publishable members retain the same inline
-Git provenance whether attached or standalone; only the containing root owns the
-local source overlay and the shared runtime environment. Regenerate that root with
-`make gen` and reconcile its lock with `make upg` when the local binding changes.
-Every package checkout also overrides transitive requirements for its own
-distribution with its local project identity. A dependency that refers back to
-the checkout through Git must resolve to that checkout rather than introduce a
-second source for the same distribution. Generation derives this identity from
-the repository declaration in both workspace and standalone contexts.
+A package preserves its declared Git requirements and authored native UV policy.
+Generation places local package bindings in the configured resolution views.
+Each view has a distinct non-package identity; the real root's runtime requirements
+come from its package, while development groups, included groups, extras and
+markers remain represented from their declarations. Workspace package selection
+has its own binding group and does not turn those packages into runtime dependencies
+of the actual root.
+
+This distinction is required when a development dependency refers back to the
+root package. Replacing UV's synthetic root requirement with a global self
+override loses that requirement's groups and extras. The non-package resolution
+owner binds the actual root and its Git backedges without replacing a synthetic
+requirement for that root's group selection. For example, Infra's development
+dependency on Tests remains development-only even though Tests consumes Infra at
+runtime. Core's development and example dependencies remain in their declared
+categories as well.
+
+Both manifests are generated transactionally; their native locks are written
+only by `make upg`. The standalone view resolves Git dependencies without
+materialized workspace members. The local view binds declared package members
+with their existing editable policy. Authored native workspace declarations and
+custom sources are preserved rather than erased by a generic FLEXT rewrite.
+Regenerate the owner with `make gen` and update its locks with `make upg` when
+the declared composition changes.
 Dependency-floor updates select explicit `dependency_profiles` declarations or
 the infrastructure repository declared by the topology. A consumer configuration
 file containing only project metadata or editor settings does not declare another
@@ -233,6 +268,13 @@ worktree owns its physical `<RUNTIME_ROOT>/.venv`; it never resolves an environm
 from the primary checkout or Git common directory. The generated Makefile, generated
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
+
+Authenticated source previews keep their staged source root separate from this runtime
+owner. Candidate validation uses the same typed `RUNTIME_ROOT` selection as fresh-import;
+an explicitly declared root is not re-elected through Git attachment. Managed base
+interpreter symlinks inside a physical environment are valid, but the candidate process
+must retain that environment's `sys.prefix`. A symlinked environment or an interpreter
+borrowed from another checkout fails before candidate checks or publication.
 
 ## Mise toolchain
 

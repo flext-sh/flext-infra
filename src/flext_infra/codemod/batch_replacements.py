@@ -15,7 +15,10 @@ import libcst as cst
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
-from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
+from flext_infra.codemod._batch_orphan_import import (
+    FlextInfraOrphanImport,
+    type_checking_guarded,
+)
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -79,8 +82,6 @@ class FlextInfraModReplacements:
         Args:
             root: Repository root the finding paths are relative to.
             report: The scanned findings whose actionable fixes publish.
-            ensure_imports: Per rule ID, the module imports every applied
-                rewrite of that rule requires in the rewritten file.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -168,9 +169,6 @@ class FlextInfraModReplacements:
         updated = cls._apply_replacements(before.content, replacements, path)
         if updated.failure:
             return r[m.Infra.SemanticFilePlan].from_failure(updated)
-        completed = cls._complete_imports(updated.value, required_imports, path)
-        if completed.failure:
-            return r[m.Infra.SemanticFilePlan].from_failure(completed)
         bindings: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for finding in findings:
             for state in finding.binding_states:
@@ -343,7 +341,9 @@ class FlextInfraModReplacements:
                 return r[bytes].from_failure(normalized)
             module = cst.parse_module(normalized.value)
             stripped = module.visit(FlextInfraDeadScaffold())
-            orphaned = stripped.visit(FlextInfraOrphanImport())
+            orphaned = stripped.visit(
+                FlextInfraOrphanImport(guarded=type_checking_guarded(stripped))
+            )
             final = (
                 normalized
                 if orphaned.code == normalized.value

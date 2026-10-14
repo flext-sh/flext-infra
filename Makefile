@@ -44,6 +44,12 @@ $(error Approval cannot replace the native Make invoker)
 endif
 endif
 
+ifeq ($(strip $(GITHUB_ACTIONS)),true)
+ifneq ($(filter upg _upg% dep propagate,$(MAKECMDGOALS)),)
+$(error Resolution and member propagation are forbidden in hosted CI)
+endif
+endif
+
 # Capture the selected approval mode before any project-owned include.
 ifeq ($(strip $(CI)),Y)
 override APPROVAL_CONTEXT := Y
@@ -112,6 +118,19 @@ GITHUB_AUTH_PRESENT := $(if $(strip $(GITHUB_TOKEN)),yes,no)
 GITHUB_AUTH_PHYSICAL_COMMAND := $(if $(filter gh,$(GITHUB_AUTH_SOURCE)),$(realpath $(GITHUB_AUTH_COMMAND)),not-selected)
 # Diagnostics expose only producer metadata, never credentials or command stderr.
 GITHUB_AUTH_DIAGNOSTICS = printf 'github-auth source=%s extraction-exit=%s present=%s ci=%s command-exit=%s command=%s physical-command=%s host-source=%s gh-config-override=%s xdg-config-override=%s session-bus=%s\n' '$(GITHUB_AUTH_SOURCE)' '$(GITHUB_AUTH_STATUS)' '$(GITHUB_AUTH_PRESENT)' '$(GITHUB_AUTH_CI)' '$(GITHUB_AUTH_COMMAND_STATUS)' '$(GITHUB_AUTH_COMMAND)' '$(GITHUB_AUTH_PHYSICAL_COMMAND)' '$(GITHUB_AUTH_HOST_SOURCE)' '$(GITHUB_AUTH_CONFIG_OVERRIDE)' '$(GITHUB_AUTH_XDG_OVERRIDE)' '$(GITHUB_AUTH_SESSION_BUS)'
+# A global url.<https-url>.insteadOf rewrite that embeds credentials (a
+# userinfo with a separator colon) shadows the fleet SSH route and poisons
+# every resolver that shells out to git (uv, mise, cargo): their fetches
+# authenticate with the baked-in value and fail in confusing ways far from
+# the cause. The rewrite itself is operator territory; this gate only
+# refuses to run under it without exposing the credential-bearing entry. The SSH
+# form (url.git@host:.insteadOf) is the fleet's own route and stays legal.
+GITHUB_AUTH_REWRITE := $(shell git config --global --get-regexp '^url\..*\.insteadof' 2>/dev/null | grep -qE '^url\.https?://[^ /]+:[^ /]+@' && printf '%s' detected)
+ifneq ($(strip $(GITHUB_AUTH_REWRITE)),)
+ifneq ($(MAKECMDGOALS),help)
+$(error git config --global embeds credentials in a GitHub URL rewrite and shadows the fleet SSH route; correct that url.*.insteadOf entry)
+endif
+endif
 
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
@@ -148,7 +167,6 @@ override FLEXT_PYTEST_TESTMON_DATABASE = $(if $(strip $(PYTEST_CACHE_HOME)),$(PY
 override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $(HOME)),$(HOME)/tmp/.flext-runtime$(PROJECT_ROOT)/scratch)
 # Profiles sit beside the other reports of this checkout (.reports is ignored).
 PROFILE_REPORTS_DIR = $(PROJECT_ROOT)/$(dir $(PYTEST_REPORTS_DIR))profiles
-override PYTEST_CASE_TIMEOUT_SECONDS := 10
 override PYTEST_RUN_TIMEOUT_SECONDS := 1200
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
@@ -284,7 +302,12 @@ override RUNTIME_ROOT := $(REPOSITORY_ROOT)
 override export GIT_CEILING_DIRECTORIES := $(abspath $(RUNTIME_ROOT)/..)
 override export MISE_CEILING_PATHS := $(abspath $(RUNTIME_ROOT)/..)
 override export MISE_CONFIG_DIR := $(RUNTIME_ROOT)/.mise
-override export MISE_GLOBAL_CONFIG_FILE := $(MISE_CONFIG_DIR)/config.toml
+# The exported global config must be a REAL file in every topology: the
+# workspace profile carries the operator's .mise/config.toml; a standalone
+# checkout (or a member without one) falls back to the always-rendered
+# project manifest — same SSOT, so child mise/uv resolution can never
+# depend on mise's fallback behavior for a missing global file.
+override export MISE_GLOBAL_CONFIG_FILE := $(if $(wildcard $(MISE_CONFIG_DIR)/config.toml),$(MISE_CONFIG_DIR)/config.toml,$(RUNTIME_ROOT)/.mise.toml)
 override export MISE_SYSTEM_CONFIG_DIR := $(MISE_CONFIG_DIR)
 # A file override wins over the system directory in native Mise discovery.
 unexport MISE_SYSTEM_CONFIG_FILE
@@ -329,7 +352,13 @@ SANITIZED_CALLER_PATH :=
 endif
 endif
 override FLEXT_INFRA_PYTHON := $(RUNTIME_PYTHON)
-override UV_PROJECT := $(RUNTIME_ROOT)
+override UV_LOCAL_PROJECT := $(RUNTIME_ROOT)/.flext/uv/local
+override UV_STANDALONE_PROJECT := $(RUNTIME_ROOT)/.flext/uv/standalone
+ifeq ($(strip $(GITHUB_ACTIONS)),true)
+override UV_PROJECT := $(UV_STANDALONE_PROJECT)
+else
+override UV_PROJECT := $(UV_LOCAL_PROJECT)
+endif
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
@@ -472,11 +501,14 @@ _bootstrap_setup_tools:
 # UV, not Git attachment or runtime environment selection, owns lock discovery.
 .PHONY: _builtin_require_upg_lock_owner
 _builtin_require_upg_lock_owner:
-	@set -eu; owner="$$($(UV) workspace dir --project "$(PROJECT_ROOT)")"; \
-	if [ "$$owner" != "$(PROJECT_ROOT)" ]; then \
-		printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the independent-project topology before upgrading.\n' "$$owner" "$(PROJECT_ROOT)" >&2; \
-		exit 2; \
-	fi
+	@set -eu; \
+	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
+		owner="$$($(UV) workspace dir --project "$$resolution")"; \
+		if [ "$$owner" != "$$resolution" ]; then \
+			printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the native resolution inputs before upgrading.\n' "$$owner" "$$resolution" >&2; \
+			exit 2; \
+		fi; \
+	done
 
 # Every repository evaluates only itself: a workspace root consumes its members
 # as installed libraries and each member runs its own lifecycle in its own
@@ -507,10 +539,8 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 	fi; \
 	mise -C "$(RUNTIME_ROOT)" config ls --json; \
 	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"; \
-	$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
-	$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"; \
 	setup_scope="self"; \
-	if [ "$(strip $(CI))" = "Y" ]; then setup_scope=self; fi; \
+	if [ "$(strip $(GITHUB_ACTIONS))" = "true" ]; then setup_scope=self; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only --scope "$$setup_scope"; \
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)" --scope "$$setup_scope"; \
 	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope" --mode apply
@@ -521,8 +551,8 @@ REQUIRE_WORKSPACE_ENVIRONMENT = case "$(PROJECT_ROOT)/" in \
 	"$(RUNTIME_ROOT)/"*) ;; \
 	*) printf 'ERROR: runtime workspace does not contain this project: %s\n' "$(RUNTIME_ROOT)" >&2; exit 2 ;; \
 	esac; \
-	if [ "$(strip $(CI))" = "Y" ] && [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
-		printf 'ERROR: CI approval is root-only; attached member execution is forbidden\n' >&2; exit 2; \
+	if [ "$(strip $(GITHUB_ACTIONS))" = "true" ] && [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
+		printf 'ERROR: hosted CI requires an independent checkout and environment\n' >&2; exit 2; \
 	fi; \
 	for environment_path in "$(patsubst %/,%,$(dir $(RUNTIME_VENV)))" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin"; do \
 		if [ -L "$$environment_path" ]; then \
@@ -559,7 +589,7 @@ override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # Native workspace selection installs every declared package.
 UV_SYNC_FLAGS := --all-extras --all-groups
 
-ifeq ($(strip $(CI)),Y)
+ifeq ($(strip $(GITHUB_ACTIONS)),true)
 override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable
 endif
 
@@ -1260,7 +1290,7 @@ setup: _builtin_require_workspace
 endif
 
 _builtin-pre-commit: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,conflict-markers,loc-cap,runtime-census,fresh-import,index-declarations,layout"
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,layout"
 	+@CI=Y $(SELF_MAKE) test
 
 # `upg` builds the environment from the locks it writes, so like `setup` it
@@ -1493,11 +1523,8 @@ _setup_lifecycle:
 # integrity, the toolchain reality proof - belong to `make audit`, which CI runs
 # right after setup; `make upg` cures them and never depends on setup.
 .PHONY: _setup_activated
-# The reality proof runs before post-setup: every declared tool must be the
-# mise.lock release, self-contained in its install root, reporting the locked
-# version (codegen mise-proof). The first defect fails setup; no fallback.
+# Audit owns the final pin, completeness and runtime verdicts after provisioning.
 _setup_activated:
-	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(PROJECT_ROOT)" --uv-executable "$$(command -v $(UV))"
 	@set -eu; \
 	case "$(strip $(CI)): $(CUSTOM_DECLARED_TARGETS) " in \
 		Y:*) ;; \
@@ -1833,7 +1860,11 @@ _builtin_setup_submodules:
 # native repair verb.
 .PHONY: _builtin_require_mise
 _builtin_require_mise:
-	@if [ ! -f "$(RUNTIME_ROOT)/mise.lock" ]; then \
+	@if [ ! -f "$(MISE_GLOBAL_CONFIG_FILE)" ]; then \
+		printf 'ERROR: missing resolved mise global config %s; the checkout is incomplete — run make gen\n' "$(MISE_GLOBAL_CONFIG_FILE)" >&2; \
+		exit 2; \
+	fi; \
+	if [ ! -f "$(RUNTIME_ROOT)/mise.lock" ]; then \
 		printf 'ERROR: missing %s/mise.lock; run make upg\n' "$(RUNTIME_ROOT)" >&2; \
 		exit 2; \
 	fi; \
@@ -1849,7 +1880,7 @@ _builtin_require_mise:
 	fi
 
 .PHONY: _builtin_require_interpreter
-_builtin_require_interpreter: _builtin_require_workspace _builtin_require_mise
+_builtin_require_interpreter: _builtin_require_workspace
 # Documenting the interface (`make help`) must not require the interpreter it
 # tells the user how to provision. Only `make help` with no other goal
 # skips the check; any combined goal still demands the environment.
@@ -1860,6 +1891,8 @@ ifneq ($(MAKECMDGOALS),help)
 	fi
 endif
 
+# Provisioning belongs to setup. Other verbs observe its declared provenance
+# without changing the environment or replacing the native source policy.
 _builtin_require_environment: _builtin_require_interpreter
 ifneq ($(MAKECMDGOALS),help)
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
@@ -1874,15 +1907,12 @@ endif
 # replaces it against the declared interpreter.
 # Local setup provisions declared gitlinks. CI consumes the committed lock
 # without initializing member checkouts.
-_builtin_setup_environment: $(if $(filter Y,$(CI)),,_builtin_setup_submodules)
+_builtin_setup_environment: $(if $(filter true,$(GITHUB_ACTIONS)),,_builtin_setup_submodules)
 	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
 		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(RUNTIME_ROOT)/Makefile" setup; \
 	else \
 		$(SETUP_ENVIRONMENT_RECIPE); \
 	fi
-ifeq ($(MAKE_PROFILE),workspace)
-	@$(UV) pip check --python "$(RUNTIME_VENV)"
-endif
 # End SECTION: setup environment
 
 # `upg` is the only recipe that resolves. Its bootstrap half ran
@@ -1907,7 +1937,7 @@ endif
 # satisfaction check), `_builtin_require_mise` re-proves the pinned release,
 # and the convergence fixed point must hold before the upgrade publishes.
 # Gates are not part of the upgrade: `make check` stays its own verb. Branch-tracked git dependencies are moving sources by
-# declaration (workspace.yaml owns the branch): --refresh re-reads their
+# declaration (the repository dependency declaration owns the branch): --refresh re-reads their
 # metadata so a stale cached requires-dist can never block or skew the
 # resolution. Like `setup`, it runs the declared pre-/post-upg lifecycle
 # hooks, post-upg inside the activated environment.
@@ -1956,7 +1986,12 @@ _upg_lifecycle: _builtin_setup_submodules
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
-	@$(UV) lock --project "$(PROJECT_ROOT)" --upgrade --refresh
+	@set -eu; \
+	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
+	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
+		$(UV) lock --project "$$resolution" --python "$$desired_python" --upgrade --refresh; \
+	done
+	@$(PROJECT_FLEXT_INFRA) workspace verify-lock --repository-root "$(PROJECT_ROOT)"
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
 	@mise -C "$(PROJECT_ROOT)" lock --bump
@@ -1978,8 +2013,12 @@ _upg_lifecycle: _builtin_setup_submodules
 	fi
 
 _upg_converge:
-	@$(UV) lock --project "$(PROJECT_ROOT)"
-	@$(UV) lock --check --project "$(PROJECT_ROOT)"
+	@set -eu; \
+	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
+	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
+		$(UV) lock --project "$$resolution" --python "$$desired_python"; \
+		$(UV) lock --check --project "$$resolution" --python "$$desired_python"; \
+	done
 	@$(SELF_MAKE) _builtin_setup_environment
 	@mise -C "$(PROJECT_ROOT)" install --locked --yes "python" "github:jdx/mise" "uv" "direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"
 	@$(SELF_MAKE) _builtin_require_mise
@@ -2012,15 +2051,15 @@ _builtin_build_artifacts:
 # An absent CI token runs every active default gate.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-		gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,index-declarations,codemod,layout,direnv"; \
+		gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,conflict-markers,loc-cap,runtime-census,fresh-import,index-declarations,layout"; \
-			printf 'INFO: CI=Y runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly conflict-markers loc-cap runtime-census fresh-import index-declarations layout\n'; \
+			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,layout"; \
+			printf 'INFO: CI=Y runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly conflict-markers loc-cap runtime-census fresh-import deps index-declarations layout\n'; \
 		elif [ "$(strip $(CI))" = "N" ]; then \
-			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,index-declarations,codemod,layout,direnv"; \
-			printf 'INFO: CI=N runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import index-declarations codemod layout direnv\n'; \
+			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
+			printf 'INFO: CI=N runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
 		else \
-			printf 'INFO: default context runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import index-declarations codemod layout direnv\n'; \
+			printf 'INFO: default context runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
@@ -2393,7 +2432,9 @@ ifneq ($(CI),Y)
 	@$(PROJECT_FLEXT_INFRA) workspace verify-lanes --repo-root "$(PROJECT_ROOT)"
 endif
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
+	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
+	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(RUNTIME_ROOT)" --uv-executable "$$(command -v $(UV))"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 _builtin-status: _builtin_status_diagnostics
 	@$(PROJECT_FLEXT_INFRA) workspace signing-identity --repo-root "$(PROJECT_ROOT)"

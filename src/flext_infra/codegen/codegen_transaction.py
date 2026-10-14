@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
@@ -26,10 +25,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenTransaction(
-    FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
-):
+class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     """Keep every generation phase recoverable until one final fixed point."""
 
     def preview_sources[T](
@@ -159,8 +155,10 @@ class FlextInfraCodegenTransaction(
         """
         if runtime_root is None:
             return r[bool].ok(value=True)
-        environment = u.Infra.runtime_environment_dir(runtime_root)
-        interpreter = u.Infra.runtime_python(runtime_root)
+        environment = u.Infra.runtime_environment_dir(
+            plan.workspace, runtime_root=runtime_root
+        )
+        interpreter = u.Infra.runtime_python(plan.workspace, runtime_root=runtime_root)
         if environment.is_symlink() or not environment.is_dir():
             return r[bool].fail(f"candidate runtime must be physical: {environment}")
         observed = u.Cli.atomic_plan_directory_chain(environment)

@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
+from flext_infra.__version__ import __version__
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
@@ -247,11 +248,28 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         # this composition owner publishes the one generated-file header
         # (owner, adjustment rule, regeneration verb) on the final bytes.
         # A re-run reads the live file as data, so it never accumulates.
+        # The render-provenance line names the running generator's version:
+        # drift reports can then state both sides (rendered-by vs consumed)
+        # instead of a bare byte diff (aihub-l42it.11 consolidation postmortem).
+
         return result_type.ok(
             m.Infra.CodegenArtifactComposition(
-                rendered=f"{c.Infra.BANNER}\n{formatted.value.lstrip()}",
+                rendered=(
+                    f"{c.Infra.BANNER}"
+                    f"{cls.rendered_by_stamp()}\n"
+                    f"{formatted.value.lstrip()}"
+                ),
             ),
         )
+
+    @classmethod
+    def rendered_by_stamp(cls) -> str:
+        """Return the render-provenance line for the running generator.
+
+        Returns:
+            The resulting ``str``.
+        """
+        return f"{c.Infra.RENDERED_BY_MARKER}{__version__}"
 
     @classmethod
     def _composed_mise_overlay(
@@ -484,6 +502,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # A repository without one must not render ledger activation.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
+                    uv_resolution=codegen.make.uv_resolution,
                     repository_root_rel=self._repository_root_rel(workspace),
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends

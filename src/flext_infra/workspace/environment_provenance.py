@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -83,14 +83,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             The resulting ``p.Result[int]``.
 
         """
-        runtime_root = u.Infra.git_repository_root(
-            m.Infra.GitRepoRequest(repo_root=repository_root),
-        )
-        if runtime_root.failure:
-            return r[int].from_failure(runtime_root)
-        resolved_root = runtime_root.value.repository_root.resolve()
-        ci = config.Infra.codegen.make.ci
-        if u.Infra.env_value(ci.variable).strip() == ci.value:
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return r[int].from_failure(context)
+        resolved_root = context.value.runtime_root
+        if context.value.standalone:
             return cls.validate_locked(resolved_root, metadata_paths=metadata_paths)
         workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
             resolved_root,
@@ -428,19 +425,27 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         Returns:
             The resulting ``p.Result[int]``.
         """
-        repository_root = repository_root.resolve()
-        document = u.Cli.toml_read_json(repository_root / "uv.lock")
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return r[int].from_failure(context)
+        repository_root = context.value.runtime_root
+        document = u.Cli.toml_read_json(context.value.lock_path)
         if document.failure:
             return r[int].from_failure(document)
         # TOML arrays are wire arrays; JSON mode preserves the strict tuple contract.
         locked = m.Infra.LockedEnvironment.model_validate_json(dumps(document.value))
-        observed = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
+        observed = FlextInfraWorkspaceDetector.load_workspace_spec(
+            repository_root,
+            allow_unprovisioned_members=context.value.standalone,
+        )
         if observed.failure:
             return r[int].from_failure(observed)
         workspace = observed.value
         members = {
             repository.distribution: repository
-            for repository in workspace.subprojects
+            for repository in (
+                () if context.value.standalone else workspace.subprojects
+            )
             if repository.package
         }
         if workspace.repository.package or any(
@@ -468,6 +473,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 name,
                 locked,
                 repository_root,
+                resolution_root=context.value.resolution_root,
                 repository=members.get(name),
                 metadata_paths=metadata_paths,
             )
@@ -483,6 +489,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         locked: m.Infra.LockedEnvironment,
         repository_root: Path,
         *,
+        resolution_root: Path,
         repository: m.Infra.RepositoryRef | None,
         metadata_paths: t.StrSequence | None,
     ) -> p.Result[bool]:
@@ -520,6 +527,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 item,
                 repository,
                 repository_root,
+                resolution_root,
                 distribution,
             )
         origin = cls._locked_origin_verdict(
@@ -537,6 +545,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         item: m.Infra.LockedPackage,
         repository: m.Infra.RepositoryRef,
         repository_root: Path,
+        resolution_root: Path,
         distribution: Distribution,
     ) -> p.Result[bool]:
         """Authenticate a workspace checkout before accepting its installed build.
@@ -545,7 +554,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             The resulting ``p.Result[bool]``.
 
         """
-        checkout = cls._workspace_checkout_verdict(item, repository, repository_root)
+        checkout = cls._workspace_checkout_verdict(
+            item, repository, repository_root, resolution_root
+        )
         if checkout.failure:
             return r[bool].from_failure(checkout)
         origin = cls._workspace_origin_verdict(
@@ -563,6 +574,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         item: m.Infra.LockedPackage,
         repository: m.Infra.RepositoryRef,
         repository_root: Path,
+        resolution_root: Path,
     ) -> p.Result[bool]:
         """Bind the declared local lock source to a clean, committed checkout.
 
@@ -594,10 +606,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[bool].fail(
                 f"locked workspace source differs from declaration: {item.name}",
             )
-        if (
-            Path(local_source) != repository.path
-            or (repository_root / local_source).resolve() != expected_root
-        ):
+        if (resolution_root / local_source).resolve() != expected_root:
             return r[bool].fail(
                 f"locked workspace source differs from declaration: {item.name}",
             )

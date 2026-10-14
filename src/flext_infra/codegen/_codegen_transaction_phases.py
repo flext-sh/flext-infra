@@ -511,11 +511,50 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if aligned.failure:
             return result_type.from_failure(aligned)
         session = aligned.value
-        writes = self._phase_staging_writes(session, phase, changed)
+        prepared = self.prepare_phase_staging_journal_locked(
+            session.plan.layout,
+            session.journal,
+            session.journal_state,
+            phase,
+            changed,
+        )
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        journal, journal_state = prepared.value
+        return result_type.ok(
+            session.model_copy(
+                update={"journal": journal, "journal_state": journal_state},
+            ),
+        )
+
+    def prepare_phase_staging_journal_locked(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        journal_state: m.Cli.AtomicFileState,
+        phase: str,
+        changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+        """Authorize staging for the actual staging or prepared journal lifecycle.
+
+        Returns:
+            The persisted journal and its exact physical receipt.
+        """
+        result_type = r[
+            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
+        ]
+        current = FlextInfraMiseArtifactsJournal.read(layout)
+        if current.failure:
+            return result_type.from_failure(current)
+        if current.value != (journal, journal_state):
+            return result_type.fail(
+                "generation journal changed before staging intentions",
+            )
+        writes = self._phase_staging_writes(layout, phase, changed)
         if writes.failure:
             return result_type.from_failure(writes)
         planned = FlextInfraMiseArtifactsState.plan_directories(
-            session.plan.layout,
+            layout,
             phase=c.Infra.CodegenStagedFilePhase.TRANSACTION,
             requested=writes.value[1],
             disposition="temporary",
@@ -523,24 +562,23 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if planned.failure:
             return result_type.from_failure(planned)
         if planned.value:
-            recorded = self._persist_directories(session, "transaction", planned.value)
+            recorded = self._persist_directory_journal(
+                layout,
+                journal,
+                journal_state,
+                "transaction",
+                planned.value,
+            )
             if recorded.failure:
                 return result_type.from_failure(recorded)
-            session = m.Infra.CodegenTransactionSession(
-                plan=session.plan,
-                journal=recorded.value[0],
-                journal_state=recorded.value[1],
-                written_files=session.written_files,
-                published_files=session.published_files,
-                retained_files=session.retained_files,
-                issues=session.issues,
-                exception=session.exception,
-            )
-        return self._persist_staging_intents(session, phase, writes.value[0])
+            journal, journal_state = recorded.value
+        return self._persist_staging_journal(
+            layout, journal, journal_state, phase, writes.value[0],
+        )
 
     @staticmethod
     def _phase_staging_writes(
-        session: m.Infra.CodegenTransactionSession,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
         phase: str,
         changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[
@@ -555,7 +593,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         result_type = r[
             t.Pair[t.VariadicTuple[tuple[Path, bytes, int]], t.VariadicTuple[Path]]
         ]
-        layout = session.plan.layout
         checked = FlextInfraCodegenStaging.plan_file_staging(layout, phase, changed)
         if checked.failure:
             return result_type.from_failure(checked)
@@ -591,7 +628,39 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        intents = list(session.journal.staging_intents)
+        persisted = self._persist_staging_journal(
+            session.plan.layout,
+            session.journal,
+            session.journal_state,
+            phase,
+            writes,
+        )
+        if persisted.failure:
+            return result_type.from_failure(persisted)
+        journal, journal_state = persisted.value
+        return result_type.ok(
+            session.model_copy(
+                update={"journal": journal, "journal_state": journal_state},
+            ),
+        )
+
+    def _persist_staging_journal(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        current: m.Infra.CodegenTransactionJournal,
+        expected: m.Cli.AtomicFileState,
+        phase: str,
+        writes: t.VariadicTuple[tuple[Path, bytes, int]],
+    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+        """Persist absent leaf authority without inventing a prepared session.
+
+        Returns:
+            The journal with its durable staging intentions and physical receipt.
+        """
+        result_type = r[
+            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
+        ]
+        intents = list(current.staging_intents)
         for path, content, mode in writes:
             absent = FlextInfraMiseArtifactsFiles.read_state(path, required=False)
             if absent.failure:
@@ -608,31 +677,20 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 ),
             )
         journal = m.Infra.CodegenTransactionJournal.model_validate({
-            **session.journal.model_dump(),
+            **current.model_dump(),
             "staging_intents": tuple(intents),
         })
         persisted = self._write_journal(
-            session.plan.layout,
+            layout,
             journal,
-            expected=session.journal_state,
+            expected=expected,
         )
         if persisted.failure:
             return result_type.from_failure(persisted)
         u.Cli.info(
             f"phase={phase} staging-intentions={len(writes)} durable-before-write",
         )
-        return result_type.ok(
-            m.Infra.CodegenTransactionSession(
-                plan=session.plan,
-                journal=journal,
-                journal_state=persisted.value,
-                written_files=session.written_files,
-                published_files=session.published_files,
-                retained_files=session.retained_files,
-                issues=session.issues,
-                exception=session.exception,
-            ),
-        )
+        return result_type.ok((journal, persisted.value))
 
     def _authorize_phase_destinations(
         self,
@@ -985,9 +1043,31 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if unchanged.failure:
             return result_type.from_failure(unchanged)
         session = unchanged.value
-        extended = FlextInfraMiseArtifactsJournal.append_directories(
-            session.journal, planned
+        return self._persist_directory_journal(
+            layout,
+            session.journal,
+            session.journal_state,
+            phase,
+            planned,
         )
+
+    def _persist_directory_journal(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        journal_state: m.Cli.AtomicFileState,
+        phase: str,
+        planned: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
+    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+        """Materialize directory intentions after their journal CAS succeeds.
+
+        Returns:
+            The journal carrying every created directory's physical receipt.
+        """
+        result_type = r[
+            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
+        ]
+        extended = FlextInfraMiseArtifactsJournal.append_directories(journal, planned)
         if extended.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -1001,7 +1081,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         persisted = self._write_journal(
             layout,
             extended.value,
-            expected=session.journal_state,
+            expected=journal_state,
         )
         if persisted.failure:
             return result_type.from_failure(

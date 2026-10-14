@@ -71,7 +71,13 @@ class FlextInfraCandidateBootstrapService:
                 roots,
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(
-                    directories=(),
+                    directories=tuple(
+                        sorted({
+                            file.path.parent
+                            for file in changed
+                            if not file.path.parent.is_dir()
+                        }),
+                    ),
                     validator=lambda: self._verify(roots, targets, declaration_states),
                 ),
             )
@@ -98,7 +104,19 @@ class FlextInfraCandidateBootstrapService:
             state.path: state for state in declaration_states
         }
         for root, target in zip(roots.values(), targets, strict=True):
-            contract = self._planner.surface_contract(target.what)
+            captured = u.Infra.load_codegen_inputs(root)
+            if captured.failure:
+                return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
+            for state in captured.value.sources:
+                previous = inputs.setdefault(state.path, state)
+                if previous != state:
+                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                        f"candidate bootstrap observed two states for {state.path}",
+                    )
+            contract = self._planner.surface_contract(
+                target.what,
+                codegen=captured.value.spec,
+            )
             if contract.complete_governed:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"candidate bootstrap requires one declared surface: {root}",

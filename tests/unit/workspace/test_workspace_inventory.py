@@ -10,40 +10,34 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m
-from flext_infra._utilities.workspace_inventory import (
-    FlextInfraUtilitiesWorkspaceInventory,
-)
+from flext_infra import config, e, m, u
 from tests import tm
 
 
 class TestsFlextInfraWorkspaceInventory:
-    """An unselected host has no transport or external participant contract."""
+    """Host selection and typed ingress retain native failures."""
 
-    @pytest.mark.parametrize("declare_repository", [False, True])
-    def test_unselected_host_returns_no_external_participants(
+    @pytest.mark.parametrize("text", [None, '{"entries":[]}', "{", "[]", ""])
+    def test_host_selection_preserves_native_failures(
         self,
         tmp_path: Path,
-        *,
-        declare_repository: bool,
+        text: str | None,
     ) -> None:
-        """Both legitimate configuration absences remain usable standalone."""
-        declaration = (
-            m.Infra.RepositoryDeltaSpec(workspace_inventory_command=())
-            if declare_repository
-            else None
-        )
+        """Validate real host stdout and preserve native transport/ingress failures."""
+        command = ("printf", "%s", text) if text else ("false",) if text == "" else ()
         inputs = m.Infra.CodegenInputs(
-            spec=config.Infra.codegen.model_copy(
-                update={"repository": declaration},
+            spec=m.Infra.CodegenConfigSpec.model_validate(
+                config.Infra.codegen.model_dump(
+                    by_alias=True, exclude_computed_fields=True
+                )
+                | {"repository": {"workspace_inventory_command": command}},
             ),
         )
 
-        participants = tm.ok(
-            FlextInfraUtilitiesWorkspaceInventory.discover_external_consumers(
-                tmp_path,
-                inputs,
-            ),
-        )
-
-        tm.that(participants, empty=True)
+        discovered = u.Infra.discover_external_consumers(tmp_path, inputs)
+        if text in {"{", "[]", ""}:
+            tm.fail(discovered)
+            if text:
+                tm.that(discovered.exception, is_=e.PydanticValidationError)
+        else:
+            tm.that(tm.ok(discovered), empty=True)

@@ -411,9 +411,16 @@ class FlextInfra(
         captured = u.Infra.load_codegen_inputs(root)
         if captured.failure:
             return r[m.Infra.WorkspaceProjectContext].from_failure(captured)
+        runtime = FlextInfraWorkspaceDetector.resolution_context(resolved)
+        if runtime.failure:
+            return r[m.Infra.WorkspaceProjectContext].from_failure(runtime)
         if captured.value.spec.repository is None:
             return r[m.Infra.WorkspaceProjectContext].ok(
-                m.Infra.WorkspaceProjectContext(cwd=resolved, identity=identity.value),
+                m.Infra.WorkspaceProjectContext(
+                    cwd=resolved,
+                    identity=identity.value,
+                    runtime=runtime.value,
+                ),
             )
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             root,
@@ -435,6 +442,7 @@ class FlextInfra(
                 workspace=workspace.value,
                 target=target.value,
                 governed=True,
+                runtime=runtime.value,
             ),
         )
 

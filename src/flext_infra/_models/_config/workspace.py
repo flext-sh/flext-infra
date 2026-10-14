@@ -577,12 +577,6 @@ class FlextInfraConfigModelsWorkspace:
                 ),
             ),
         ] = None
-        advance_locks: Annotated[
-            bool,
-            m.Field(
-                description="Run the consumer's make upg so flext pins advance",
-            ),
-        ] = True
         fix_namespace: Annotated[
             bool,
             m.Field(description="Run the consumer's make fix-namespace verb"),

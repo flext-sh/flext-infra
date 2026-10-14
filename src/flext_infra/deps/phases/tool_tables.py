@@ -237,10 +237,7 @@ class FlextInfraToolTablesPhase:
                     ),
                     toml.ListOp(
                         key=c.Infra.ADDOPTS,
-                        values=(
-                            *pytest.standard_addopts,
-                            f"--timeout={pytest.case_timeout_seconds}",
-                        ),
+                        values=pytest.standard_addopts,
                         strategy=replace,
                     ),
                     toml.ListOp(

@@ -332,9 +332,7 @@ class TestsFlextInfraCodegenMain:
             )
             tm.that(
                 ini_options["addopts"],
-                has=(
-                    f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"
-                ),
+                eq=list(config.Infra.tooling.tools.pytest.standard_addopts),
             )
             tm.that(journal.exists(), eq=False)
             tm.that(transaction.exists(), eq=False)

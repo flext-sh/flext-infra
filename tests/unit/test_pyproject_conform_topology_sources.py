@@ -1,8 +1,7 @@
 """Tests for canonical dependency source selection by topology role.
 
-Workspace roots preserve Git requirements and select local paths independently.
-Members keep declared direct Git provenance and render identically attached
-or standalone: only the workspace root redirects fleet members to itself.
+Published project metadata preserves Git requirements in every topology.
+Generated native resolution views exclusively own development path bindings.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -126,11 +125,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(repeated, eq=rendered)
 
-    def test_root_members_use_local_path_sources_of_any_family(
+    def test_root_members_preserve_git_sources_of_any_family(
         self,
         tmp_path: Path,
     ) -> None:
-        """Local requirements use their declared native editable source policy."""
+        """Actual metadata remains portable while views own local editability."""
         workspace_line = u.Tests.integration().branch
         flext_member = self._member_ref("flext-core", "flext-core")
         other_member = self._member_ref("acme-charts", "apps/acme-charts")
@@ -180,15 +179,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
         tm.that(
             u.Tests.toml_mapping(uv.get("sources")),
-            eq={
-                **{
-                    ref.distribution: {
-                        "path": ref.path.as_posix(),
-                        "editable": ref.editable,
-                    }
-                    for ref in workspace.subprojects
-                },
-            },
+            eq={},
         )
         groups = u.Tests.toml_mapping(parsed.get("dependency-groups"))
         tm.that("workspace" not in groups, eq=True)
@@ -272,7 +263,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         self,
         tmp_path: Path,
     ) -> None:
-        """Local source overrides retain explicit bounds, markers and extras."""
+        """Portable metadata retains bounds, markers and extras without bindings."""
         provider = self._member_ref("acme-engine", "libraries/engine").model_copy(
             update={"editable": False},
         )
@@ -336,13 +327,12 @@ class TestsFlextInfraPyprojectConformTopologySources:
             eq=True,
         )
         tm.that(
-            f"{provider.distribution}[feature]"
-            in u.Tests.toml_strings_at(first, "tool", "uv", "override-dependencies"),
-            eq=True,
+            u.Tests.toml_strings_at(first, "tool", "uv", "override-dependencies"),
+            eq=(),
         )
         tm.that(
-            u.Tests.toml_mapping(uv["sources"])[provider.distribution],
-            eq={"path": provider.path.as_posix(), "editable": provider.editable},
+            u.Tests.toml_mapping(uv.get("sources")),
+            eq={},
         )
         tm.that(
             tm.ok(
@@ -417,7 +407,9 @@ class TestsFlextInfraPyprojectConformTopologySources:
             u.Tests.toml_strings_at(second, "dependency-groups", "codegen"),
             eq=("build>=1",),
         )
-        sources = u.Tests.toml_table_at(second, "tool", "uv", "sources")
+        sources = u.Tests.toml_mapping(
+            u.Tests.toml_table_at(second, "tool", "uv").get("sources"),
+        )
         tm.that(provider.distribution in sources, eq=False)
         tm.that(
             tm.ok(
@@ -736,10 +728,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(
             u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
-            eq=(
-                workspace.repository.distribution,
-                f"{cli.distribution} @ git+{cli.url}@{candidate_commit}",
-            ),
+            eq=(f"{cli.distribution} @ git+{cli.url}@{candidate_commit}",),
         )
         tm.that(
             tm.ok(
@@ -843,7 +832,12 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(result.error or "", contains="not declared requirements: flext-cli")
 
     def test_removing_candidate_removes_global_override(self) -> None:
-        """A normal branch resolution leaves no stale candidate override."""
+        """A normal branch resolution leaves no stale candidate override.
+
+        With the candidate gone and the SSOT override list empty, the whole
+        ``override-dependencies`` key is removed — never replaced by a
+        member-computed self-override.
+        """
         infra = self._member_ref("flext-infra", "flext-infra")
         stale_commit = "a" * 40
         source = (
@@ -864,10 +858,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 ),
             ),
         )
-        tm.that(
-            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
-            eq=(workspace.repository.distribution,),
-        )
+        uv_table = u.Tests.toml_table_at(rendered, "tool", "uv")
+        tm.that("override-dependencies" in uv_table, eq=False)
 
     def _assert_direct_source(self, rendered: str, ref: m.Infra.RepositoryRef) -> None:
         """Assert the canonical standalone output: one direct Git requirement."""
@@ -888,8 +880,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
     def test_member_render_is_context_independent(self) -> None:
         """A member renders identically attached or standalone, without nesting.
 
-        Workspace-root sources redirect every fleet member, so an attached
-        member carries no fleet source and its stale ones are pruned.
+        Authored native workspace and custom source declarations are retained;
+        their spelling never grants the generator ownership of their contents.
         """
         runtime = self._member_ref("flext-web", "flext-web")
         dev = self._member_ref("flext-tests", "flext-tests")
@@ -906,7 +898,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             f'dev = ["{self._inline_requirement(dev)}"]\n'
             "\n[tool.uv.workspace]\nmembers = []\n"
             "\n[tool.uv.sources]\n"
-            f"{unused.distribution} = {{workspace = true}}\n"
+            f'{unused.distribution} = {{path = "vendor/custom", editable = false}}\n'
         )
         rendered = tm.ok(
             u.Infra.pyproject_conform(
@@ -921,12 +913,20 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
-        tm.that("workspace" not in uv, eq=True)
+        tm.that(u.Tests.toml_mapping(uv["workspace"]), eq={"members": []})
         tm.that(
             uv.get("sources"),
-            eq=None,
+            eq={
+                unused.distribution: {
+                    "path": "vendor/custom",
+                    "editable": False,
+                },
+            },
         )
-        self._assert_direct_source(rendered, runtime)
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "project", "dependencies"),
+            eq=(self._inline_requirement(runtime),),
+        )
         detached = tm.ok(
             u.Infra.pyproject_conform(
                 rendered,

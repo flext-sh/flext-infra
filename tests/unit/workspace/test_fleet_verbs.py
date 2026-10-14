@@ -13,6 +13,7 @@ from signal import SIGTERM
 import pytest
 
 from flext_infra import main
+from flext_infra.workspace import FlextInfraWorkspaceFleetVerbs
 from tests import c, m, tm, u
 
 
@@ -74,6 +75,121 @@ class TestsFlextInfraWorkspaceFleetVerbs:
             (root / c.Infra.FLEET_REPORT_RELATIVE_PATH).read_bytes(),
         )
 
+    @staticmethod
+    def _runtime_graph(root: Path, *, provider_failure: bool = False) -> tuple[str, ...]:
+        """Compose real Make consumers with dev and examples backedges."""
+        identity = u.Tests.BeadsIdentity(
+            workspace="fleet-order",
+            database="fleet_order",
+            issue_prefix="fleet",
+        )
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root, "fixture-workspace", beads=identity
+        )
+        names = ("a-consumer", "z-provider", "b-ready")
+        log = quote(str(root / "fleet.log"))
+        for name in names:
+            member = root / name
+            u.Tests.WorktreeFixture.initialize_governed_project(
+                member, name, beads=identity
+            )
+            u.Tests.WorktreeFixture.attach_submodule(
+                root, member, distribution=name, relative_path=name
+            )
+            dependencies = ["z-provider"] if name == "a-consumer" else []
+            backedge = ["a-consumer"] if name == "z-provider" else []
+            (member / c.PYPROJECT_FILENAME).write_text(
+                f"[project]\nname = '{name}'\nversion = '1.0'\n"
+                f"dependencies = {dependencies!r}\n"
+                "[dependency-groups]\n"
+                f"dev = {backedge!r}\nexamples = {backedge!r}\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            status = 7 if name == "z-provider" and provider_failure else 0
+            (member / c.Infra.MAKEFILE_FILENAME).write_text(
+                ".PHONY: fix\nfix:\n"
+                f"\t@printf '%s|%s\\n' '{name}' '$(CURDIR)' >> {log}\n"
+                f"\t@printf 'member-output-{name}\\n'; exit {status}\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        u.Tests.commit_git_changes(root, "declare complete fleet runtime graph")
+        return ("b-ready", "z-provider", "a-consumer")
+
+    def test_executes_runtime_waves_serially_from_workspace_root(
+        self, tmp_path: Path
+    ) -> None:
+        """Actual Make executions follow runtime waves despite dev backedges."""
+        root = tmp_path / "workspace"
+        order = self._runtime_graph(root)
+
+        tm.that(self._run(root, c.Infra.FleetVerb.FIX), eq=0)
+
+        report = self._report(root)
+        tm.that(report.scope, eq=tuple(root / name for name in order))
+        tm.that(
+            tuple(row.command[-2] for row in report.receipts),
+            eq=tuple(f"{name}/Makefile" for name in order),
+        )
+        tm.that(
+            (root / "fleet.log").read_text(encoding=c.DEFAULT_ENCODING).splitlines(),
+            eq=[f"{name}|{root}" for name in order],
+        )
+
+    def test_provider_failure_prevents_later_member_execution(
+        self, tmp_path: Path
+    ) -> None:
+        """A failed provider preserves attempted receipts and stops the consumer."""
+        root = tmp_path / "workspace"
+        order = self._runtime_graph(root, provider_failure=True)
+
+        tm.that(self._run(root, c.Infra.FleetVerb.FIX) != 0, eq=True)
+
+        report = self._report(root)
+        tm.that(report.scope, eq=tuple(root / name for name in order))
+        tm.that(len(report.receipts), eq=2)
+        tm.that(report.receipts[-1].error is not None, eq=True)
+        tm.that(
+            (root / "fleet.log").read_text(encoding=c.DEFAULT_ENCODING).splitlines(),
+            eq=[f"{name}|{root}" for name in order[:2]],
+        )
+        tm.that(
+            report.receipts[-1].output_file.read_text(encoding=c.DEFAULT_ENCODING),
+            has="member-output-z-provider",
+        )
+
+    def test_missing_member_makefile_prevents_all_effects(self, tmp_path: Path) -> None:
+        """Every required Makefile is admitted before the first invocation."""
+        root = tmp_path / "workspace"
+        self._runtime_graph(root)
+        (root / "a-consumer" / c.Infra.MAKEFILE_FILENAME).unlink()
+
+        tm.that(self._run(root, c.Infra.FleetVerb.FIX) != 0, eq=True)
+
+        tm.that((root / "fleet.log").exists(), eq=False)
+
+    def test_runtime_cycle_prevents_all_member_effects(self, tmp_path: Path) -> None:
+        """The public fleet service preserves the canonical runtime-cycle failure."""
+        root = tmp_path / "workspace"
+        self._runtime_graph(root)
+        project = root / "z-provider" / c.PYPROJECT_FILENAME
+        project.write_text(
+            project.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                "dependencies = []",
+                "dependencies = ['a-consumer']",
+                1,
+            ),
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        service = FlextInfraWorkspaceFleetVerbs(
+            repository_root=root,
+            verb=c.Infra.FleetVerb.FIX,
+        )
+        with pytest.raises(ValueError, match="^cyclic dependency graph:"):
+            service.execute()
+
+        tm.that((root / "fleet.log").exists(), eq=False)
+
     @pytest.mark.parametrize("verb", tuple(c.Infra.FleetVerb))
     def test_runs_the_member_own_verb_without_inherited_make_flags(
         self,
@@ -94,7 +210,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         tm.that(report.scope, eq=(member,))
         tm.that(
             tuple((row.cwd, row.command) for row in report.receipts),
-            eq=((member, (c.Infra.MAKE, verb.value)),),
+            eq=((root, (c.Infra.MAKE, "-f", "sample-member/Makefile", verb.value)),),
         )
         for row in report.receipts:
             assert row.outcome is not None
@@ -112,7 +228,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
             (root / "fleet.log").read_text(encoding=c.DEFAULT_ENCODING).splitlines(),
             # A top-level Make exports MAKELEVEL=1 to its recipe; the
             # inherited level 3 would have produced 4.
-            eq=[f"{member}|{verb.value}|1"],
+            eq=[f"{root}|{verb.value}|1"],
         )
 
     def test_member_failure_fails_the_run_with_its_receipt(

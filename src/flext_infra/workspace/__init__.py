@@ -27,6 +27,9 @@ if TYPE_CHECKING:
     from flext_infra.workspace.fleet_verbs import FlextInfraWorkspaceFleetVerbs
     from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
     from flext_infra.workspace.lifecycle import FlextInfraWorkspaceLifecycle
+    from flext_infra.workspace.lock_completeness import (
+        FlextInfraWorkspaceLockCompleteness,
+    )
     from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
@@ -43,6 +46,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceFleetVerbs",
     "FlextInfraWorkspaceGovernanceMixin",
     "FlextInfraWorkspaceLifecycle",
+    "FlextInfraWorkspaceLockCompleteness",
     "FlextInfraWorkspacePropagation",
 )
 
@@ -61,6 +65,7 @@ install_lazy_exports(
         "FlextInfraWorkspaceFleetVerbs": ".fleet_verbs",
         "FlextInfraWorkspaceGovernanceMixin": "._governance",
         "FlextInfraWorkspaceLifecycle": ".lifecycle",
+        "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",
         "FlextInfraWorkspacePropagation": ".propagation",
     }),
     public_exports=__all__,

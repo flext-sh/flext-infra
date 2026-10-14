@@ -100,7 +100,7 @@ class TestsFlextInfraDepsDetectorMain:
     @staticmethod
     @pytest.mark.parametrize(
         "real_detector_project",
-        [("requests", "pytz"), ("requests", "pytz", "six")],
+        c.Tests.DETECTOR_MODULE_SCENARIOS[1:],
         indirect=True,
     )
     def test_apply_typings_follows_governed_policy_and_preserves_source(

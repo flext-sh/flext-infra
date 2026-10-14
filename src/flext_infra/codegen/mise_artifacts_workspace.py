@@ -11,7 +11,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, u
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsVerification,
+)
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -435,7 +438,7 @@ class FlextInfraMiseWorkspacePlanner:
             replacement_content = config_state.value.content
             declarations = tuple(
                 item
-                for item in config.Infra.codegen.managed_files
+                for item in config.Infra.codegen.managed_file_specs
                 if item.path == Path(c.Infra.CONFIG_SPEC[0])
             )
             if len(declarations) != 1:
@@ -455,7 +458,23 @@ class FlextInfraMiseWorkspacePlanner:
             and isinstance(config_plan.before, m.Cli.AtomicFileState)
             and config_plan.before.content is not None
         ):
-            config_sources = config_plan.source_states
+            authenticated = FlextInfraMiseArtifactsVerification.states_current(
+                config_plan.source_states,
+            )
+            if authenticated.failure:
+                return r[m.Infra.MiseToolchainProjectState].from_failure(authenticated)
+            # The complete render inputs remain authenticated, but set equality
+            # owns only this project's direct configuration sources.
+            config_sources = tuple(
+                sorted(
+                    (
+                        source
+                        for source in config_plan.source_states
+                        if u.Infra.direct_config_source(layout.root, source.path)
+                    ),
+                    key=lambda source: source.path,
+                )
+            )
         else:
             # A first publication (scaffold or newly governed project) has no
             # pre-publication provenance: the transaction itself publishes the

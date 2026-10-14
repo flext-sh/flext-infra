@@ -12,7 +12,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, p
 
 from flext_infra import c, t
 from flext_infra._models import (
@@ -166,6 +166,28 @@ class FlextInfraModelsScan:
             t.JsonMapping,
             m.Field(
                 description="Complete validated ast-grep finding without field loss",
+            ),
+        ]
+
+    class ModScanSourceContext(m.ArbitraryTypesModel):
+        """One scan's per-file authentication and ownership indexes."""
+
+        source_states: Annotated[
+            t.MappingKV[Path, m.Cli.AtomicFileState],
+            m.Field(description="Exact sources captured before the native scan"),
+        ]
+        repository_roots: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Governed roots in nearest-owner precedence"),
+        ]
+        authenticated: Annotated[
+            t.MutableMappingKV[str, p.Result[t.Pair[Path, m.Cli.AtomicFileState]]],
+            m.Field(default_factory=dict, description="One authentication per file"),
+        ]
+        repositories: Annotated[
+            t.MutableMappingKV[Path, str],
+            m.Field(
+                default_factory=dict, description="One ownership election per file"
             ),
         ]
 
@@ -418,26 +440,25 @@ class FlextInfraModelsScan:
                     msg = f"mod scan {field} differs from authenticated entries"
                     raise ValueError(msg)
             indexed = {state.path: state for state in self.inputs.states}
-            entries = tuple(
-                entry.model_copy(
-                    update={
-                        "source_state": (
-                            indexed[entry.source_path]
-                            if entry.source_path is not None
-                            else None
-                        ),
-                        "binding_states": tuple(
-                            indexed[path] for path in entry.binding_paths
-                        ),
-                    }
+            bindings: dict[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]] = {}
+            entries = []
+            for entry in self.entries:
+                source = (
+                    None if entry.source_path is None else indexed[entry.source_path]
                 )
-                for entry in self.entries
-            )
-            return (
-                self
-                if entries == self.entries
-                else self.model_copy(update={"entries": entries})
-            )
+                if entry.binding_paths not in bindings:
+                    bindings[entry.binding_paths] = tuple(
+                        indexed[path] for path in entry.binding_paths
+                    )
+                entries.append(
+                    entry.model_copy(
+                        update={
+                            "source_state": source,
+                            "binding_states": bindings[entry.binding_paths],
+                        }
+                    )
+                )
+            return self.model_copy(update={"entries": tuple(entries)})
 
     class ModScanEvidenceReceipt(m.ArbitraryTypesModel):
         """Authenticated publication identity and its exact evidence payload."""

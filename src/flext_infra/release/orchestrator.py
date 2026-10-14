@@ -127,12 +127,12 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
     ) -> p.Result[bool]:
         """Write the version SSOT, settle its projections, then the release notes.
 
-        Ordering version -> conform -> lock -> notes makes each step a pure
+        Ordering version -> conform -> notes makes each step a pure
         function of the SSOT already on disk: conform settles pyproject.toml's
         dependencies and every rendered projection (docs render the version),
-        the lock then matches them without upgrading anything, and the
-        packaged-project list the notes name is the settled tree's. A rerun
-        against an unchanged SSOT regenerates identical bytes.
+        and the packaged-project list the notes name is the settled tree's.
+        Locks remain unchanged; explicit ``make upg`` owns their resolution.
+        A rerun against an unchanged SSOT regenerates identical bytes.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -142,12 +142,16 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
         stamped = u.Infra.replace_project_version(root, plan.next)
         if stamped.failure:
             return stamped
-        settled = FlextInfraCodegenConform.settle_repository(
-            root,
+        settled = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.ALL,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            ),
             ports=self.conform_collaborators,
         )
         if settled.failure:
-            return settled
+            return r[bool].from_failure(settled)
         projects = u.Infra.resolve_projects(root, ctx.project_names)
         if projects.failure:
             return r[bool].from_failure(projects)

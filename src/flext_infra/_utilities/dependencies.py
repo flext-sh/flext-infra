@@ -406,11 +406,14 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             )
             for name, repository in by_name.items()
         }
-        order = cls.dependency_order(
-            tuple(sorted(by_name)),
-            dependencies=lambda name: graph[name],
+        waves = cls.dependency_waves(graph)
+        if waves.failure:
+            raise ValueError(waves.error)
+        return tuple(
+            by_name[name].distribution
+            for wave in waves.value
+            for name in wave
         )
-        return tuple(by_name[name].distribution for name in order)
 
     @staticmethod
     def dependency_waves(
