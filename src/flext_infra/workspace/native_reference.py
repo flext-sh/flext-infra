@@ -78,6 +78,21 @@ class FlextInfraWorkspaceNativeReference:
             return r[t.Triple[str, str, str]].fail(
                 "extension callback lacks its registered native supplier",
             )
+        supplier_root = metadata["__module__"].split(".")[0]
+        if supplier_root not in {
+            "flext",
+            "flext_core",
+            "flext_infra",
+            "flext_api",
+            "flext_cli",
+            "ai_hub",
+        }:
+            # Ecosystem extensions (yaml._yaml, bcrypt, ...) are observations
+            # of third-party compiled code: the fleet cannot prove their
+            # internal descriptors and the walk records nothing it cannot own.
+            return r[t.Triple[str, str, str]].fail(
+                f"extension callback is ecosystem-owned: {metadata['__module__']}",
+            )
         if not isinstance(supplier.__spec__.loader, ExtensionFileLoader):
             return r[t.Triple[str, str, str]].fail(
                 "extension callback supplier is not a native extension",
