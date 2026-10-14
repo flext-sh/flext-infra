@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import sys
 import sysconfig
+from inspect import getsourcefile
 from base64 import urlsafe_b64encode
 from functools import lru_cache
 from importlib.machinery import BuiltinImporter, FrozenImporter
@@ -108,15 +109,16 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         if locked_payload is None:
             return result.fail("captured member artifact lock is not a mapping")
         locked = r[m.Infra.LockedEnvironment].create_from_callable(
-            lambda: m.Infra.LockedEnvironment.model_validate_json(dumps(locked_payload)),
+            lambda: m.Infra.LockedEnvironment.model_validate_json(
+                dumps(locked_payload)
+            ),
         )
         if locked.failure:
             return result.from_failure(locked)
         candidates = tuple(
             item
             for item in locked.value.package
-            if u.Infra.dep_name(item.name)
-            == u.Infra.dep_name(repository.distribution)
+            if u.Infra.dep_name(item.name) == u.Infra.dep_name(repository.distribution)
             and item.version == distribution.version
         )
         if len(candidates) != 1 or candidates[0].source.git is None:
@@ -131,9 +133,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
         if origin.failure:
             return result.from_failure(origin)
-        if u.Infra.git_remote_identity(receipt.value.url) != u.Infra.git_remote_identity(
-            repository.url
-        ):
+        if u.Infra.git_remote_identity(
+            receipt.value.url
+        ) != u.Infra.git_remote_identity(repository.url):
             return result.fail(
                 "member artifact origin differs from declared repository: "
                 f"{repository.distribution}",
