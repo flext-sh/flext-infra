@@ -280,16 +280,23 @@ class FlextInfraMisePublication:
             if ready.success and journal is not None and journal.generator_trees:
                 authority = {item.path: item for item in journal.outputs}
                 for staged in ordered:
-                    if staged.replacement is None or staged.before.path in published_states:
+                    if (
+                        staged.replacement is None
+                        or staged.before.path in published_states
+                    ):
                         continue
-                    encoded = FlextInfraMiseArtifactsJournal.source_record("staging", staged.replacement)
+                    encoded = FlextInfraMiseArtifactsJournal.source_record(
+                        "staging", staged.replacement
+                    )
                     if encoded.failure:
                         ready = r[bool].from_failure(encoded)
                         break
                     authority[encoded.value.path] = encoded.value
                 if ready.success:
                     for _before, after in published_states.values():
-                        encoded = FlextInfraMiseArtifactsJournal.source_record("output", after)
+                        encoded = FlextInfraMiseArtifactsJournal.source_record(
+                            "output", after
+                        )
                         if encoded.failure:
                             ready = r[bool].from_failure(encoded)
                             break

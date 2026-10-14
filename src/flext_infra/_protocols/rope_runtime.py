@@ -388,8 +388,18 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         new_contents: str
 
     @runtime_checkable
+    class RopeContractMatch(Protocol):
+        """Native Rope match coordinates without exposing syntax trees."""
+
+        def get_region(self) -> t.Pair[int, int]: ...
+
+    @runtime_checkable
     class RopeSimilarFinder(Protocol):
-        """Rope-owned semantic pattern regions, without exposing syntax nodes."""
+        """One native Rope matcher for identity-bound matches and source regions."""
+
+        def get_matches(
+            self, code: str, args: t.MappingKV[str, str] | None = None
+        ) -> Iterator[FlextInfraProtocolsRopeRuntime.RopeContractMatch]: ...
 
         def get_match_regions(
             self,
@@ -399,20 +409,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             start: int = 0,
             end: int | None = None,
         ) -> Iterator[tuple[int, int]]: ...
-
-    @runtime_checkable
-    class RopeContractMatch(Protocol):
-        """Native Rope match coordinates without exposing syntax trees."""
-
-        def get_region(self) -> t.Pair[int, int]: ...
-
-    @runtime_checkable
-    class RopeSimilarFinder(Protocol):
-        """Native identity-aware Rope matching boundary."""
-
-        def get_matches(
-            self, code: str, args: t.MappingKV[str, str] | None = None
-        ) -> Iterator[FlextInfraProtocolsRopeRuntime.RopeContractMatch]: ...
 
     @runtime_checkable
     class RopeRestructure(Protocol):

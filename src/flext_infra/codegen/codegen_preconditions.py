@@ -470,6 +470,36 @@ class FlextInfraCodegenPreconditions:
             tuple(source for plan in plans for source in plan.source_states)
         ).map(lambda sources: tuple((phase, source) for source in sources))
 
+    @classmethod
+    def bind_producer_analysis(
+        cls,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        producer: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Bind each staged consumer to the exact pre-planning producer inputs."""
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
+        current = cls.producer_current(producer)
+        if current.failure:
+            return result_type.from_failure(current)
+        inputs = cls.unique_states((*analysis.inputs, *producer.inputs))
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        files: list[m.Infra.CodegenFilePlan] = []
+        for plan in analysis.files:
+            sources = cls.unique_states((*plan.source_states, *producer.inputs))
+            if sources.failure:
+                return result_type.from_failure(sources)
+            files.append(plan.model_copy(update={"source_states": sources.value}))
+        return result_type.ok(
+            analysis.model_copy(
+                update={
+                    "inputs": inputs.value,
+                    "files": tuple(files),
+                    "generator_trees": producer.generator_trees,
+                }
+            )
+        )
+
     @staticmethod
     def unique_states(
         states: t.VariadicTuple[m.Cli.AtomicFileState],

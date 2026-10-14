@@ -637,34 +637,12 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         result_type = r[t.VariadicTuple[Path]]
         if self._producer.failure:
             return result_type.from_failure(self._producer)
-        producer_current = FlextInfraCodegenPreconditions.producer_current(
-            self._producer.value
+        bound = FlextInfraCodegenPreconditions.bind_producer_analysis(
+            analysis, self._producer.value
         )
-        if producer_current.failure:
-            return result_type.from_failure(producer_current)
-        producer = self._producer.value
-        combined = FlextInfraCodegenPreconditions.unique_states((
-            *analysis.inputs,
-            *producer.inputs,
-        ))
-        if combined.failure:
-            return result_type.from_failure(combined)
-        files: list[m.Infra.CodegenFilePlan] = []
-        for plan in analysis.files:
-            sources = FlextInfraCodegenPreconditions.unique_states((
-                *plan.source_states,
-                *producer.inputs,
-            ))
-            if sources.failure:
-                return result_type.from_failure(sources)
-            files.append(plan.model_copy(update={"source_states": sources.value}))
-        analysis = analysis.model_copy(
-            update={
-                "inputs": combined.value,
-                "files": tuple(files),
-                "generator_trees": producer.generator_trees,
-            }
-        )
+        if bound.failure:
+            return result_type.from_failure(bound)
+        analysis = bound.value
         if batch_admission is not None and batch_admission.analysis != analysis:
             return result_type.fail(
                 "external batch admission differs from captured producer context"

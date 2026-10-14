@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
@@ -363,6 +363,45 @@ class FlextInfraModelsGit(
             t.NonEmptyStr | None,
             m.Field(description="Remote tip the mutation is leased on"),
         ] = None
+
+    class GitLaneVerificationRequest(GitRemoteRequest):
+        """Read-only admission and census against the live integration tip."""
+
+        declared: Annotated[
+            str | None, m.Field(description="Governing integration declaration")
+        ] = None
+        evidence_file: Annotated[
+            Path | None, m.Field(description="Coordinator ownership receipt")
+        ] = None
+        governance_file: Annotated[
+            Path | None, m.Field(description="Coordination governance SSOT")
+        ] = None
+        read_pull_requests: Annotated[
+            bool, m.Field(description="Authorize public PR ownership reads")
+        ] = False
+        read_beads: Annotated[
+            bool, m.Field(description="Authorize declared Beads ownership reads")
+        ] = False
+        operation: Annotated[
+            Literal["verify", "create", "retire"],
+            m.Field(description="Boundary being verified, not an effect selector"),
+        ] = "verify"
+        candidate: Annotated[
+            t.NonEmptyStr, m.Field(description="Commit requiring integration ancestry")
+        ] = "HEAD"
+        expected_tip: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Previously observed tip")
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _validate_ownership_selection(self) -> Self:
+            """Reject competing receipt and live ownership evidence sources."""
+            if self.evidence_file is not None and (
+                self.read_pull_requests or self.read_beads
+            ):
+                msg = "select either an ownership receipt or authorized live sources"
+                raise ValueError(msg)
+            return self
 
     class GitRefHeadsRequest(m.ContractModel):
         """List every ref below one namespace.

@@ -85,9 +85,6 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         result_type = r[m.Infra.CodegenTransactionSession]
         if self._producer.failure:
             return result_type.from_failure(self._producer)
-        producer = FlextInfraCodegenPreconditions.producer_current(self._producer.value)
-        if producer.failure:
-            return result_type.from_failure(producer)
         by_path = {item.path: item for item in file_plans}
         if any(by_path.get(item.path) != item for item in config_plans):
             return result_type.fail(
@@ -98,13 +95,20 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         )
         if sources.failure:
             return result_type.from_failure(sources)
-        destinations = FlextInfraMisePublication.admit_batch(
+        bound = FlextInfraCodegenPreconditions.bind_producer_analysis(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
                 inputs=sources.value,
                 files=file_plans,
-            )
+            ),
+            self._producer.value,
         )
+        if bound.failure:
+            return result_type.from_failure(bound)
+        file_plans = bound.value.files
+        by_path = {item.path: item for item in file_plans}
+        config_plans = tuple(by_path[item.path] for item in config_plans)
+        destinations = FlextInfraMisePublication.admit_batch(bound.value)
         if destinations.failure:
             return result_type.from_failure(destinations)
         settled = self._stage_generation_transaction(

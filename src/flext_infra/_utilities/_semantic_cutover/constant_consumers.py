@@ -331,6 +331,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 binding = bindings.get(name)
                 if binding is None or (imported == "c" and alias is None):
                     continue
+                binding = cls._constant_terminal(
+                    project, binding, f"{info.module_name}.{imported}"
+                )
                 reference = cls._constant_reference(paths, binding, path)
                 if reference is None:
                     continue
@@ -342,6 +345,51 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 rewrites.extend(changes)
                 removals.setdefault(statement.start_line, set()).add(name)
         return tuple(rewrites), removals
+
+    @staticmethod
+    def _constant_terminal(
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        qualified: str,
+    ) -> p.Infra.RopePyName:
+        """Prove each reaching import declaration before evaluating its terminal.
+
+        Returns:
+            The unique terminal binding at the end of the import chain.
+
+        Raises:
+            ValueError: If the chain is cyclic, ambiguous or lacks its target.
+            TypeError: If an imported Python module has no inspectable Rope source.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        visited: set[t.Pair[Path, str]] = set()
+        while isinstance(binding, p.Infra.RopeImportedName):
+            path = runtime.imported_module_path(project, binding)
+            key = path, binding.imported_name
+            if key in visited:
+                message = f"cyclic constant import chain: {qualified}"
+                raise ValueError(message)
+            visited.add(key)
+            module = binding.imported_module.get_object()
+            if not isinstance(module, p.Infra.RopePyModule):
+                message = f"constant import has no Python module source: {qualified}"
+                raise TypeError(message)
+            imports = runtime.module_imports_for_pymodule(project, module)
+            declarations = sum(
+                alias == binding.imported_name
+                or (alias is None and name == binding.imported_name)
+                for statement in imports.imports
+                for name, alias in statement.import_info.names_and_aliases
+            )
+            if declarations > 1:
+                message = f"ambiguous constant import chain: {qualified}"
+                raise ValueError(message)
+            terminal = module.get_attributes().get(binding.imported_name)
+            if terminal is None:
+                message = f"unresolved constant import chain: {qualified}"
+                raise ValueError(message)
+            binding = terminal
+        return binding
 
     @classmethod
     def _constant_reference(
