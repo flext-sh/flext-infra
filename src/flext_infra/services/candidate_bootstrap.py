@@ -71,7 +71,13 @@ class FlextInfraCandidateBootstrapService:
                 roots,
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(
-                    directories=(),
+                    directories=tuple(
+                        sorted({
+                            file.path.parent
+                            for file in changed
+                            if not file.path.parent.is_dir()
+                        }),
+                    ),
                     validator=lambda: self._verify(roots, targets, declaration_states),
                 ),
             )
@@ -124,7 +130,17 @@ class FlextInfraCandidateBootstrapService:
             planned = self._planner.plan(request)
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            if not contract.destinations and not planned.value.files:
+            if planned.value.exception is not None:
+                raise planned.value.exception
+            if planned.value.issues:
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    planned.value.issues[0].formatted,
+                )
+            if (
+                contract.destinations is not None
+                and not contract.destinations
+                and not planned.value.files
+            ):
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"candidate bootstrap has no declared destinations: {root}",
                 )
