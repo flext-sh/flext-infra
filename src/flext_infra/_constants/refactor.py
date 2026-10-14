@@ -299,7 +299,6 @@ class FlextInfraConstantsRefactor:
         CLASS_NESTING = "class-nesting"
         CONSTANT_CONSUMERS = FlextInfraConstantsCensus.CensusRule.CONSTANT_CONSUMERS
         CONTRACT_NORMALIZATION = "contract-normalization"
-        ROPE_CONTRACTS = "rope-contracts"
         COMPAT_ALIAS = "compat-alias"
         PRIVATE_IMPORT = "private-import"
         FACADE_BASE = "facade-base"
