@@ -184,6 +184,36 @@ class TestsFlextInfraRopeContracts:
         tm.that(remaining, empty=True)
 
     @staticmethod
+    def test_factory_migration_cannot_repeat_annotation_effects(
+        tmp_path: Path,
+    ) -> None:
+        """A repeated type expression must not run an authored callback twice."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from pydantic import BaseModel, Field\n"
+            "events = []\n"
+            "def element_type():\n"
+            "    events.append('annotation')\n"
+            "    return str\n"
+            "class Payload(BaseModel):\n"
+            "    values: list[element_type()] = Field(default_factory=list)\n"
+            "evidence = (tuple(events), Payload().model_dump_json())\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match="annotation.*repeat"),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=rope,
+                sources={path: source},
+            )
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+
+    @staticmethod
     def test_unrelated_field_factory_is_not_a_pydantic_field(tmp_path: Path) -> None:
         """Same-spelled functions do not establish a Pydantic identity."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)

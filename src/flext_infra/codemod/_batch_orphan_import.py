@@ -22,16 +22,32 @@ class FlextInfraTypeCheckingGuardScanner(cst.CSTVisitor):
         """Start unguarded."""
         self.guarded = False
 
-    def visit_If(self, node: cst.If) -> None:
-        """Flag the first surviving guard test."""
-        test = node.test
-        if (isinstance(test, cst.Name) and test.value == "TYPE_CHECKING") or (
+    @override
+    def on_visit(self, node: cst.CSTNode) -> bool:
+        """Flag the first surviving guard test.
+
+        Returns:
+            Always ``True`` so descendant nodes stay on the scan path.
+
+        """
+        if isinstance(node, cst.If) and self._is_type_checking_test(node.test):
+            self.guarded = True
+        return True
+
+    @staticmethod
+    def _is_type_checking_test(test: cst.BaseExpression) -> bool:
+        """Recognize a bare or ``typing``-qualified ``TYPE_CHECKING`` test.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        return (isinstance(test, cst.Name) and test.value == "TYPE_CHECKING") or (
             isinstance(test, cst.Attribute)
             and test.attr == "TYPE_CHECKING"
             and isinstance(test.value, cst.Name)
             and test.value.value == "typing"
-        ):
-            self.guarded = True
+        )
 
 
 def type_checking_guarded(module: cst.Module) -> bool:
@@ -51,7 +67,7 @@ class FlextInfraOrphanImport(cst.CSTTransformer):
     (F821); keeping it after the block is gone leaves a dead import.
     """
 
-    def __init__(self, guarded: bool) -> None:
+    def __init__(self, *, guarded: bool) -> None:
         """Bind whether a surviving guard still reads the name."""
         self._guarded = guarded
 

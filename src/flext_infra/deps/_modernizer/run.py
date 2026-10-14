@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.deps import FlextInfraDepsFloorProfileWriter
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -56,6 +56,17 @@ class FlextInfraPyprojectModernizerRun:
             dry_run: bool,
             skip_comments: bool,
             source_migration: m.Infra.GitSourceReferenceMigration | None = None,
+        ) -> p.Result[t.StrSequence]: ...
+
+        def _render_document_state(
+            self,
+            state: m.Infra.PyprojectDocumentState,
+            changes: t.StrSequence,
+            *,
+            dry_run: bool,
+            skip_comments: bool,
+            format_source: bool = True,
+            preserve_layout: bool = False,
         ) -> p.Result[t.StrSequence]: ...
 
     def _selected_project_paths(self) -> p.Result[t.SequenceOf[Path]]:
@@ -351,7 +362,7 @@ class FlextInfraPyprojectModernizerRun:
         *,
         dry_run: bool,
     ) -> int:
-        """Write runtime-resolved floors to the codegen SSOT.
+        """Write resolved floors to the target's own requirement declarations.
 
         Returns:
             The resulting ``int``.
@@ -367,24 +378,69 @@ class FlextInfraPyprojectModernizerRun:
             return 2
         if dry_run:
             return 0
-        profile_changes = (
-            FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_resolution(
-                root=self.root,
-                resolved_versions=u.Infra.resolved_dependency_versions(),
-                internal_names=tuple(
-                    sorted({
-                        *u.Infra.workspace_project_paths(self.root),
-                        root_project_name,
-                    }),
-                ),
-            )
+        versions = u.Infra.resolved_dependency_versions()
+        internal_names = (*u.Infra.workspace_project_paths(self.root), root_project_name)
+        project = u.Cli.toml_mapping_child(root_state.payload, c.Infra.PROJECT)
+        if project is None:
+            raise ValueError(f"project declaration is absent: {root_state.pyproject_path}")
+        sections = (
+            ("project", {c.Infra.DEPENDENCIES: project.get(c.Infra.DEPENDENCIES, [])}),
+            (
+                "project.optional-dependencies",
+                u.Cli.toml_mapping_child(project, c.Infra.OPTIONAL_DEPENDENCIES) or {},
+            ),
+            (
+                c.Infra.DEPENDENCY_GROUPS,
+                u.Cli.toml_mapping_child(root_state.payload, c.Infra.DEPENDENCY_GROUPS) or {},
+            ),
         )
-        if profile_changes:
-            u.Cli.info(
-                "deps: dependency_profiles floors updated from the provisioned runtime",
+        changes: list[str] = []
+        for section, groups in sections:
+            for name, entries in groups.items():
+                if not isinstance(entries, list):
+                    raise TypeError(f"{section}.{name} must be a requirement array")
+                for index, requirement in enumerate(entries):
+                    if isinstance(requirement, Mapping):
+                        if section == c.Infra.DEPENDENCY_GROUPS:
+                            continue
+                        raise TypeError(f"{section}.{name} requires requirement strings")
+                    if not isinstance(requirement, str):
+                        raise TypeError(f"{section}.{name} requires requirement strings")
+                    rewritten = u.Infra.rewrite_requirement_constraint(
+                        requirement,
+                        resolved_versions=versions,
+                        internal_names=internal_names,
+                    )
+                    if rewritten is not None:
+                        entries[index] = rewritten
+                        changes.append(f"{section}.{name}: {requirement} -> {rewritten}")
+        if not changes:
+            return 0
+        before = u.Cli.atomic_read_binary_file_state(
+            root_state.pyproject_path, required=True,
+        ).unwrap()
+        if before.content != root_state.original_rendered.encode(c.DEFAULT_ENCODING):
+            raise ValueError(
+                f"dependency owner changed during read: {root_state.pyproject_path}",
             )
-            for change in profile_changes:
-                u.Cli.info(f"  - {change}")
+        rendered = self._render_document_state(
+            root_state,
+            tuple(changes),
+            dry_run=True,
+            skip_comments=True,
+            format_source=False,
+            preserve_layout=True,
+        )
+        if rendered.failure:
+            rendered.unwrap()
+        u.Cli.atomic_write_binary_file_guarded(
+            before,
+            root_state.rendered.encode(c.DEFAULT_ENCODING),
+            permission_mode=before.mode,
+        ).unwrap()
+        u.Cli.info("deps: target requirement floors updated from the provisioned runtime")
+        for change in changes:
+            u.Cli.info(f"  - {change}")
         return 0
 
     @staticmethod

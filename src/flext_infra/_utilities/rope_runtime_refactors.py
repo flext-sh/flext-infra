@@ -307,9 +307,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         Returns:
             Matched character ranges from the module's immutable source snapshot.
-
-        Raises:
-            TypeError: If Rope does not expose its semantic region contract.
         """
         finder = cls.semantic_finder(module)
         return tuple(finder.get_match_regions(pattern, arguments, start=start, end=end))
@@ -418,6 +415,31 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             case _:
                 msg = "rope Worder returned invalid primary range"
                 raise TypeError(msg)
+
+    @classmethod
+    def word_call_regions(
+        cls, source: str, region: t.Pair[int, int]
+    ) -> t.SequenceOf[t.Pair[int, int]]:
+        """Collect native call facts using one Rope word finder for the region.
+
+        Returns:
+            Distinct called-word regions, with strings and comments ignored.
+
+        Raises:
+            TypeError: When Rope cannot provide its declared word facts.
+        """
+        finder = cls._word_finder(source)
+        if not isinstance(finder, p.Infra.RopeWorder):
+            message = "Rope word finder does not satisfy its source fact contract"
+            raise TypeError(message)
+        regions: set[t.Pair[int, int]] = set()
+        offset, limit = region
+        while offset < limit:
+            start, end = finder.get_word_range(offset)
+            if start <= offset < end and finder.is_a_function_being_called(start):
+                regions.add((start, end))
+            offset = max(offset + 1, end)
+        return tuple(sorted(regions))
 
     @classmethod
     def word_is_function_call(cls, source: str, offset: int) -> bool:

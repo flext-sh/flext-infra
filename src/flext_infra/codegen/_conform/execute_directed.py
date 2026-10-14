@@ -30,7 +30,12 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
     def _observe_publication(
         request: m.Infra.CodegenConformRequest,
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Consume authenticated publication evidence without invoking a planner."""
+        """Consume authenticated publication evidence without invoking a planner.
+
+        Returns:
+            The verified publication result, or the verification failure.
+
+        """
         with FlextInfraCodegenFileLeases.mutation_lease(request.root):
             observed = FlextInfraMiseArtifactsVerification.publication_current(request)
             if observed.failure:
@@ -46,7 +51,12 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         roots: t.MappingKV[str, Path],
         publisher: Callable[[Path], p.Result[m.Infra.CodegenResult]],
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Bind the request to its actual completed batch outside the batch lease."""
+        """Bind the request to its actual completed batch outside the batch lease.
+
+        Returns:
+            The published result, or the receipt, publication, or batch failure.
+
+        """
         scope_roots = tuple(
             path for name, path in roots.items() if not name.startswith("@stage-inputs")
         )

@@ -59,7 +59,6 @@ class FlextInfraDepsGate(FlextInfraGate):
 
         Raises:
             FileExistsError: If the report directory cannot be created.
-            ValueError: If the deptry command fails unexpectedly.
         """
         started = time.monotonic()
         raw_output = ""
@@ -123,15 +122,13 @@ class FlextInfraDepsGate(FlextInfraGate):
                     out_file,
                     required=True,
                 ).unwrap()
-                if state.content is None:
-                    message = f"deptry did not produce its native report: {out_file}"
-                    raise ValueError(message)
+                content = self._report_content(state.content, out_file)
                 report = m.Infra.DeptryNativeReport.model_validate_json(
-                    state.content,
+                    content,
                     strict=True,
                 )
                 u.Cli.atomic_verify_binary_file_states((settings, state)).unwrap()
-                raw_output += f"\nreport-sha256={u.Cli.sha256_bytes(state.content)}"
+                raw_output += f"\nreport-sha256={u.Cli.sha256_bytes(content)}"
                 issues = tuple(
                     m.Infra.Issue(
                         file=item.location.file,
@@ -149,9 +146,10 @@ class FlextInfraDepsGate(FlextInfraGate):
                     )
                     for item in report.root
                 )
-                if native.outcome.raw_return_code != int(bool(issues)):
-                    message = "deptry exit status contradicts its native report"
-                    raise ValueError(message)
+                self._require_exit_report_agreement(
+                    native.outcome.raw_return_code,
+                    len(issues),
+                )
                 outcome = u.Infra.tool_outcome(
                     native.outcome,
                     findings=len(issues),
@@ -184,6 +182,42 @@ class FlextInfraDepsGate(FlextInfraGate):
                 started=started,
             ),
         )
+
+    @staticmethod
+    def _report_content(content: bytes | None, out_file: Path) -> bytes:
+        """Return the native report bytes, or raise when deptry wrote none.
+
+        Args:
+            content: The captured report bytes, None without a native report.
+            out_file: The report path named by the failure message.
+
+        Returns:
+            The native report bytes.
+
+        Raises:
+            ValueError: If deptry did not produce its native report.
+
+        """
+        if content is None:
+            msg = f"deptry did not produce its native report: {out_file}"
+            raise ValueError(msg)
+        return content
+
+    @staticmethod
+    def _require_exit_report_agreement(return_code: int, findings: int) -> None:
+        """Raise when deptry's exit status contradicts its native report.
+
+        Args:
+            return_code: The native deptry process return code.
+            findings: The number of issues the native report declares.
+
+        Raises:
+            ValueError: If the exit status contradicts the native report.
+
+        """
+        if return_code != int(bool(findings)):
+            msg = "deptry exit status contradicts its native report"
+            raise ValueError(msg)
 
 
 __all__: list[str] = ["FlextInfraDepsGate"]

@@ -192,17 +192,17 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         runtime_names = {
             name for item in pep621.dependencies if (name := u.Infra.dep_name(item))
         }
-        direct = u.Infra.dependency_profile_upstreams(
-            codegen.scaffold.project.dependency_profiles,
-            distribution=repository.distribution,
-            runtime_names=runtime_names,
+        candidates = tuple(
+            base
+            for base in codegen.scaffold.project.config_bases
+            if base.distribution == repository.distribution
+            or base.distribution in runtime_names
         )
-        if len(direct) != 1:
+        if not candidates:
             return r[m.Infra.ProjectSpec].fail(
-                "scaffold.project.dependency_profiles.upstream must match live "
-                f"dependencies exactly once at {repository_root}: {tuple(direct)}",
+                f"declared dependencies expose no config base at {repository_root}",
             )
-        upstream = direct[0]
+        upstream = candidates[0].module
         licenses = codegen.scaffold.project.supported_licenses
         return r[m.Infra.ProjectSpec].ok(
             m.Infra.ProjectSpec(
@@ -291,35 +291,22 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _validated_scaffold_project(
         project: m.Infra.ProjectSpec,
         render_inputs: m.Infra.CodegenRenderInputs,
-    ) -> p.Result[t.Pair[m.Infra.ProjectSpec, m.Infra.ScaffoldDependencyProfileSpec]]:
-        """Validate the project's upstream and license against the scaffold.
+    ) -> p.Result[m.Infra.ProjectSpec]:
+        """Validate the target's own license against supported artifact templates.
 
         Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.ProjectSpec,
-            m.Infra.ScaffoldDependencyProfileSpec]]`` with the composed
-            dependency profile.
+            The original target declaration, with no runtime requirement injection.
 
         """
         codegen = render_inputs.codegen
-        result_type = r[
-            t.Pair[m.Infra.ProjectSpec, m.Infra.ScaffoldDependencyProfileSpec]
-        ]
-        dependency_profile = u.Infra.composed_dependency_profile(
-            codegen.scaffold.project.dependency_profiles,
-            upstream=project.upstream,
-            distribution=render_inputs.target.repository.distribution,
-        )
-        if dependency_profile is None:
-            return result_type.fail(
-                f"unsupported scaffold upstream: {project.upstream}",
-            )
+        result_type = r[m.Infra.ProjectSpec]
         if project.license not in codegen.scaffold.project.supported_licenses:
             supported = ", ".join(codegen.scaffold.project.supported_licenses)
             return result_type.fail(
                 f"unsupported scaffold license: {project.license}; "
                 f"supported licenses: {supported}",
             )
-        return result_type.ok((project, dependency_profile))
+        return result_type.ok(project)
 
     @classmethod
     def _integration_facts(
@@ -399,7 +386,27 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         validated = self._validated_scaffold_project(project.value, render_inputs)
         if validated.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(validated)
-        project, dependency_profile = validated.value
+        project = validated.value
+        if (repository_root / c.PYPROJECT_FILENAME).is_file():
+            metadata = u.Infra.read_project_metadata_result(repository_root)
+            if metadata.failure:
+                return r[m.Infra.ProjectRenderContext].from_failure(metadata)
+            project_dependencies = metadata.value.project.dependencies
+            payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
+            groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
+            declared_dev = (
+                *t.Infra.STR_SEQ_ADAPTER.validate_python(groups.get(c.Infra.DEV, [])),
+                *u.Infra.canonical_dev_dependencies_from_payload(payload),
+            )
+        else:
+            project_dependencies = project.runtime_dependency_overlay
+            declared_dev = ()
+        development_dependencies = u.Infra.project_development_requirements(
+            codegen.scaffold.project,
+            distribution=repository.distribution,
+            kind=repository.kind,
+            declared=declared_dev,
+        )
         profile = target.make_profile
         make_context = self.make_render_context(render_inputs)
         if make_context.failure:
@@ -449,7 +456,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     workspace=workspace,
                     project_patterns=project_patterns,
                 ),
-                dependency_profile=dependency_profile,
+                project_dependencies=project_dependencies,
+                development_dependencies=development_dependencies,
                 tooling=config.Infra.tooling,
                 # The in-place pyproject edit and this render read the same
                 # fleet exemption map, unchanged for every project.

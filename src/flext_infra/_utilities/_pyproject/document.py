@@ -467,7 +467,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         *,
         lock_state: m.Cli.AtomicFileState | None = None,
     ) -> p.Result[m.Cli.AtomicFileState]:
-        """Elect the authenticated live or installed producer declaration."""
+        """Elect the authenticated live or installed producer declaration.
+
+        Returns:
+            The authenticated declaration state, captured from the live
+            editable checkout or from the installed artifact whose RECORD
+            provenance matches the declaration.
+
+        """
         from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 
         result = r[m.Cli.AtomicFileState]
@@ -629,7 +636,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         state: m.Cli.AtomicFileState,
         distribution: str,
     ) -> p.Result[t.Pair[m.Infra.DepsToml.MemberRequirements, t.StrSequence]]:
-        """Parse complete member requirements from the exact captured declaration."""
+        """Parse complete member requirements from the exact captured declaration.
+
+        Returns:
+            The validated member requirements and its declared uv-source
+            requirement lines.
+
+        """
         result = r[t.Pair[m.Infra.DepsToml.MemberRequirements, t.StrSequence]]
         path = state.path
         if state.content is None:

@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import os
 from collections.abc import Iterator
+from functools import partial
 from pathlib import Path
 from shlex import quote
 
@@ -121,7 +122,11 @@ _CONSUMER_UPGRADE_RECEIPT = "upgrade-receipt.json"
 _CONSUMER_BUILD_RECEIPT = "build-receipt.json"
 
 
-def _provision_consumer_template(parent: Path) -> Path:
+def _provision_consumer_template(
+    parent: Path,
+    *,
+    member_dependencies: t.MappingKV[str, t.StrSequence] | None = None,
+) -> Path:
     """Upgrade and set up the shared worker consumer once through real Make.
 
     The installed session owner keeps this physical checkout at a stable path,
@@ -186,9 +191,51 @@ def _provision_consumer_template(parent: Path) -> Path:
     u.Tests.copy_tracked_mise_seeds(root)
     repository = u.Tests.repository_ref(
         root.name,
-        role=c.Infra.MakeProfile.STANDALONE,
+        role=(
+            c.Infra.MakeProfile.WORKSPACE
+            if member_dependencies
+            else c.Infra.MakeProfile.STANDALONE
+        ),
     ).model_copy(update={"editable": True})
     u.Tests.initialize_git_repo(root, origin_url=repository.url)
+    if member_dependencies:
+        beads = u.Tests.BeadsIdentity(
+            workspace=distribution,
+            database=distribution.replace("-", "_"),
+            issue_prefix="fleet",
+        )
+        for name, requirements in member_dependencies.items():
+            member = root / name
+            u.Tests.WorktreeFixture.initialize_governed_project(
+                member,
+                name,
+                beads=beads,
+            )
+            manifest = member / c.PYPROJECT_FILENAME
+            payload = u.Tests.toml_payload(manifest.read_text(encoding="utf-8"))
+            project = u.Tests.toml_mapping(payload["project"])
+            tm.ok(
+                u.Cli.toml_write_mapping(
+                    manifest,
+                    {
+                        **payload,
+                        "project": {
+                            **project,
+                            "dependencies": [
+                                *u.Tests.toml_strings(project["dependencies"]),
+                                *requirements,
+                            ],
+                        },
+                    },
+                ),
+            )
+            u.Tests.commit_git_changes(member, "declare fleet runtime requirements")
+            u.Tests.WorktreeFixture.attach_submodule(
+                root,
+                member,
+                distribution=name,
+                relative_path=name,
+            )
     workspace = u.Tests.workspace_spec(
         repository,
         project=u.Tests.project_spec(root.name),
@@ -246,6 +293,46 @@ def _provision_consumer_template(parent: Path) -> Path:
     tm.that(environment.is_symlink(), eq=False)
     tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
     return root
+
+
+_FLEET_PROVISION = partial(
+    _provision_consumer_template,
+    member_dependencies={
+        "fleet-provider": (),
+        "fleet-consumer": ("fleet-provider",),
+    },
+)
+
+
+@pytest.fixture(scope="session")
+def fleet_session_runtime(
+    tmp_path_factory: pytest.TempPathFactory,
+    run_namespace: m.Tests.TestNamespace,
+) -> Iterator[p.Tests.SessionRuntime]:
+    """Own the distinct installed workspace seed through the shared runtime owner.
+
+    A runtime accepts one provision callback. This topology has Git members,
+    while the ordinary consumer seed deliberately remains standalone.
+    """
+    runtime = u.Tests.SessionRuntime(
+        tmp_path_factory.mktemp(f"{run_namespace.token}-fleet"),
+    )
+    try:
+        yield runtime
+    finally:
+        runtime.close()
+
+
+@pytest.fixture
+def installed_fleet_workspace(
+    fleet_session_runtime: p.Tests.SessionRuntime,
+) -> Iterator[Path]:
+    """Lease actual generated members and frozen installed metadata at stable paths."""
+    with fleet_session_runtime.lease(
+        _FLEET_PROVISION,
+        mutable_environment=True,
+    ) as root:
+        yield root
 
 
 _MAKE_UPGRADE_RECEIPT = c.Tests.MAKE_TEMPLATE_UPG_RECEIPT

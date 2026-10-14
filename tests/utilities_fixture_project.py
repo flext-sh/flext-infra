@@ -249,7 +249,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             author_name="FLEXT Team",
             author_email="team@flext.dev",
             upstream=(
-                config.Infra.codegen.scaffold.project.dependency_profiles[0].upstream
+                config.Infra.codegen.scaffold.project.config_bases[-1].module
             ),
             homepage=homepage,
             documentation=homepage,

@@ -221,6 +221,10 @@ class FlextInfraModelsCodemod:
             default=(),
             description="Native lexical names required to be interpreter builtins",
         )
+        repeats_annotation: bool = m.Field(
+            default=False,
+            description="Whether the replacement evaluates the annotation again",
+        )
         families: t.StrSequence = m.Field(
             default=(),
             description="Declared facade families admitting the source module",

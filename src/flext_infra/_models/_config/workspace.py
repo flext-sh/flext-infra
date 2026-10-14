@@ -253,7 +253,12 @@ class FlextInfraConfigModelsWorkspace:
         @m.model_validator(mode="before")
         @classmethod
         def toml_array(cls, value: t.JsonValue) -> t.JsonPayload:
-            """Freeze an array while retaining each native inclusion table."""
+            """Freeze an array while retaining each native inclusion table.
+
+            Returns:
+                The array frozen as a tuple, or the untouched payload.
+
+            """
             return tuple(value) if isinstance(value, list) else value
 
     class DependencyGroupDeclarations(m.ContractModel):
@@ -276,7 +281,13 @@ class FlextInfraConfigModelsWorkspace:
         @m.field_validator("dependency_groups", mode="before")
         @classmethod
         def toml_group_arrays(cls, value: t.JsonValue) -> t.JsonPayload:
-            """Freeze TOML containers without converting inclusion tables to strings."""
+            """Freeze TOML containers without converting inclusion tables to strings.
+
+            Returns:
+                The mapping with every group array frozen as a tuple, or the
+                untouched payload.
+
+            """
             if isinstance(value, dict):
                 return {
                     name: tuple(entries) if isinstance(entries, list) else entries
@@ -300,7 +311,17 @@ class FlextInfraConfigModelsWorkspace:
                 str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
             ],
         ]:
-            """Reject missing, ambiguous or cyclic local group inclusions."""
+            """Reject missing, ambiguous or cyclic local group inclusions.
+
+            Returns:
+                The validated group entries with their inclusion graph.
+
+            Raises:
+                ValueError: If dependency group names have colliding normalized
+                    identities; or if a group includes an undeclared group; or
+                    if the local group inclusions form a cycle.
+
+            """
             names = {canonicalize_name(name, validate=True): name for name in groups}
             if len(names) != len(groups):
                 msg = "dependency group names have colliding normalized identities"

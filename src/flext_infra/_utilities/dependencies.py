@@ -140,139 +140,38 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         )
 
     @staticmethod
-    def dependency_profile_upstreams(
-        profiles: t.SequenceOf[m.Infra.ScaffoldDependencyProfileSpec],
+    def project_development_requirements(
+        scaffold: m.Infra.ScaffoldProjectSpec,
         *,
         distribution: str,
-        runtime_names: t.Infra.StrSet,
+        kind: c.Infra.ProjectKind,
+        declared: t.StrSequence = (),
     ) -> t.StrSequence:
-        """Return the most specific shared profile upstreams one project selects.
+        """Compose development policy over the target's own requirement declarations.
 
-        The root of the dependency tree declares no upstream distribution: a
-        distribution that IS a profile's upstream owns that profile. Otherwise
-        every shared profile whose upstream is a runtime dependency is a
-        candidate, and a candidate implied by another candidate's runtime is
-        dropped. One entry is the governed selection; none means no declared
-        profile governs the project; several are an ambiguous declaration.
+        Existing requirement spellings, marker variants and sources stay intact.
+        FLEXT suppliers apply only to the declared FLEXT kind and never to their
+        own distribution; installed packages and project names do not elect policy.
 
         Returns:
-            The most specific shared profile upstreams one project selects.
-
+            Authored requirements followed by missing applicable suppliers.
         """
-        shared = tuple(item for item in profiles if item.project is None)
-        own = next(
-            (
-                item
-                for item in shared
-                if item.upstream.replace("_", "-") == distribution
+        own = canonicalize_name(distribution)
+        authored = tuple(dict.fromkeys(
+            item for item in declared if canonicalize_name(Requirement(item).name) != own
+        ))
+        names = {canonicalize_name(Requirement(item).name) for item in authored}
+        policy = (
+            *scaffold.dev,
+            *(scaffold.required_flext_dev if kind is c.Infra.ProjectKind.INTERNAL_FLEXT else ()),
+        )
+        return (
+            *authored,
+            *(
+                requirement
+                for requirement in policy
+                if canonicalize_name(Requirement(requirement).name) not in {*names, own}
             ),
-            None,
-        )
-        candidates = (
-            (own,)
-            if own is not None
-            else tuple(
-                item
-                for item in shared
-                if item.upstream.replace("_", "-") in runtime_names
-            )
-        )
-        runtime_of = {
-            item.upstream: {
-                name
-                for dependency in item.runtime
-                if (
-                    name := FlextInfraUtilitiesDependencies.dep_name(
-                        dependency,
-                    )
-                )
-            }
-            for item in candidates
-        }
-        return tuple(
-            item.upstream
-            for item in candidates
-            if not any(
-                item.upstream.replace("_", "-") in runtime_of[other.upstream]
-                for other in candidates
-                if other is not item
-            )
-        )
-
-    @staticmethod
-    def dependency_profile_rows(
-        profiles: t.SequenceOf[m.Infra.ScaffoldDependencyProfileSpec],
-        *,
-        upstream: str,
-        distribution: str,
-    ) -> t.SequenceOf[m.Infra.ScaffoldDependencyProfileSpec]:
-        """Return the shared upstream profile followed by the project's additions.
-
-        Empty when the upstream declares no shared profile.
-
-        Returns:
-            The shared upstream profile followed by the project's additions.
-
-        """
-        base = next(
-            (
-                item
-                for item in profiles
-                if item.project is None and item.upstream == upstream
-            ),
-            None,
-        )
-        if base is None:
-            return ()
-        return (base, *(item for item in profiles if item.project == distribution))
-
-    @classmethod
-    def composed_dependency_profile(
-        cls,
-        profiles: t.SequenceOf[m.Infra.ScaffoldDependencyProfileSpec],
-        *,
-        upstream: str,
-        distribution: str,
-    ) -> m.Infra.ScaffoldDependencyProfileSpec | None:
-        """Compose the shared upstream and project-specific dependency rows once.
-
-        Returns:
-            The resulting ``m.Infra.ScaffoldDependencyProfileSpec | None``.
-        """
-        rows = cls.dependency_profile_rows(
-            profiles,
-            upstream=upstream,
-            distribution=distribution,
-        )
-        if not rows:
-            return None
-        profile, *additions = rows
-        if not additions:
-            return profile
-        return m.Infra.ScaffoldDependencyProfileSpec.model_validate(
-            {
-                **profile.model_dump(),
-                "runtime": tuple(
-                    dict.fromkeys((
-                        *profile.runtime,
-                        *(
-                            requirement
-                            for item in additions
-                            for requirement in item.runtime
-                        ),
-                    )),
-                ),
-                "codegen": tuple(
-                    dict.fromkeys((
-                        *profile.codegen,
-                        *(
-                            requirement
-                            for item in additions
-                            for requirement in item.codegen
-                        ),
-                    )),
-                ),
-            },
         )
 
     @classmethod

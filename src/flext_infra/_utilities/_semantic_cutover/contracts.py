@@ -47,7 +47,15 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
 
     @staticmethod
     def declared_contract_rules() -> t.SequenceOf[m.Infra.RopeContractRule]:
-        """Load typed policy; reject duplicate identities and undeclared families."""
+        """Load typed policy; reject duplicate identities and undeclared families.
+
+        Returns:
+            Declared Rope contract rules in configuration order.
+
+        Raises:
+            ValueError: If two rules share an identity or a rule names an
+                undeclared facade family.
+        """
         rules = m.Infra.RopeContractRules.model_validate(
             u.Cli.yaml_safe_load(
                 type(config).ssot_config_dir().parent
@@ -172,6 +180,16 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             for name in rule.model_bases
         ):
             return False
+        if rule.repeats_annotation:
+            calls = FlextInfraUtilitiesRopeRuntimeRefactors.word_call_regions(
+                module.source_code, match.get_region()
+            )
+            if len(calls) != 1:
+                message = (
+                    f"{rule.id}: annotation evaluation cannot repeat authored calls "
+                    f"in {module.get_name()}:{scope.get_start()}"
+                )
+                raise ValueError(message)
         for name in rule.unshadowed_builtins:
             lexical = runtime.lexical_scope(scope, name)
             if (

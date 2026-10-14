@@ -279,11 +279,7 @@ class TestsFlextInfraModernizerPyrefly:
                     package_name="flext_consumer",
                     path=project_dir / c.PYPROJECT_FILENAME,
                     scaffold_project=scaffold_project,
-                    upstream=next(
-                        profile.upstream
-                        for profile in scaffold_project.dependency_profiles
-                        if profile.project is None
-                    ),
+                    upstream=scaffold_project.config_bases[-1].module,
                     runtime_dependency_overlay=(),
                     declared_project_dependencies=(),
                     topology=m.Infra.PyprojectDeclaredTopology(

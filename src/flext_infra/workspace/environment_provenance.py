@@ -2643,9 +2643,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     return result_type.from_failure(captured)
                 if captured.value.content is None:
                     return result_type.fail("native typing runtime contract has no source bytes")
+                try:
+                    native_syntax = parse(captured.value.content, filename=str(elected.value))
+                except (SyntaxError, UnicodeDecodeError, ValueError):
+                    return result_type.fail("native typing runtime source cannot be parsed")
                 flags = tuple(
                     node.value
-                    for node in parse(captured.value.content, filename=str(elected.value)).body
+                    for node in native_syntax.body
                     if isinstance(node, Assign)
                     and any(isinstance(target, Name) and target.id == "TYPE_CHECKING" for target in node.targets)
                 )
@@ -2780,17 +2784,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if type(current) in {classmethod, staticmethod, property}
             else "value"
         )
-        factory_module = modules.get(module_name) if type(module_name) is str else None
-        if (
-            current is not None
-            and factory_module is not None
-            and "site-packages" in str(getattr(factory_module, "__file__", ""))
-        ):
-            # A third-party factory (PIL.Image._ExifBase and friends) is
-            # proven by its own installed package: the executed value is the
-            # binding, admitted opaquely — the workspace holds no source
-            # witness the package cannot carry.
-            return result_type.ok(m.Infra.SourceBinding(value=current))
         return result_type.fail(
             "construction factory has no authenticated source binding: "
             f"identifier={dumps(expression.id[:160])}; "
@@ -2833,41 +2826,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     ) -> bool:
         if actual is expected:
             return True
-        # Type expressions re-materialize per import: a typing alias (Union,
-        # Annotated, GenericAlias) whose identity differs is the same type
-        # expression when its structure matches, so descend instead of
-        # rejecting re-evaluated annotations.
-        observed_type = type(actual)
-        if observed_type is not type(expected):
-            return False
-        modules_sys = vars(__import__("sys")).get("modules")
-        typing_module = modules_sys.get("typing") if modules_sys else None
-        if typing_module is not None:
-            annotated_alias = vars(typing_module).get("_AnnotatedAlias")
-            union_type = vars(typing_module).get("UnionType")
-            generic_alias = vars(typing_module).get("_GenericAlias")
-            if observed_type is union_type or (
-                generic_alias is not None
-                and isinstance(actual, annotated_alias or generic_alias)
-            ):
-                actual_args = getattr(actual, "__args__", ())
-                expected_args = getattr(expected, "__args__", ())
-                actual_origin = getattr(actual, "__origin__", None)
-                expected_origin = getattr(expected, "__origin__", None)
-                if (
-                    actual_origin is not None
-                    and (
-                        actual_origin is expected_origin
-                        or cls._construction_value_matches(
-                            actual_origin, expected_origin
-                        )
-                    )
-                    and len(actual_args) == len(expected_args)
-                ):
-                    return all(
-                        map(cls._construction_value_matches, actual_args, expected_args)
-                    )
-                return False
         if type(actual) is type(expected) and type(actual) in {tuple, list}:
             return len(actual) == len(expected) and all(
                 map(cls._construction_value_matches, actual, expected)

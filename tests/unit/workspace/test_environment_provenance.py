@@ -32,6 +32,89 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
 
     @staticmethod
+    @pytest.mark.parametrize("condition", ["TC", "typing_alias.TYPE_CHECKING", "not TC"])
+    @pytest.mark.parametrize(
+        "defect", ["none", "alias", "supplier", "source", "flag", "condition", "ambiguous", "code", "cycle"]
+    )
+    def test_native_typing_branch_retains_runtime_metaclass_alias(
+        tmp_path: Path,
+        condition: str,
+        defect: str,
+    ) -> None:
+        """Typing-only shadows never replace the physical runtime supplier proof."""
+        package = tmp_path / "conditional_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "supplier.py",
+                "effects = []\n"
+                "class NativeMeta(type):\n"
+                "    def __new__(cls, name, bases, namespace):\n"
+                "        effects.append('native-construction')\n"
+                "        return super().__new__(cls, name, bases, namespace)\n"
+                "class OtherMeta(type): pass\n",
+            )
+        )
+        shadow = (
+            "    @shadow_decorator\n"
+            "    class RuntimeMeta(supplier.NativeMeta): pass\n"
+        )
+        alias = "    RuntimeMeta = supplier.NativeMeta\n"
+        body, otherwise = (alias, shadow) if condition == "not TC" else (shadow, alias)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from typing import TYPE_CHECKING as TC\n"
+                "import typing as typing_alias\n"
+                "from . import supplier\n"
+                "effects = []\n"
+                "def shadow_decorator(cls):\n"
+                "    effects.append('typing-shadow')\n"
+                "    return cls\n"
+                f"if {condition}:\n{body}else:\n{otherwise}"
+                "class Payload(metaclass=RuntimeMeta):\n"
+                "    def operation(self): return 'physical'\n",
+            )
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('conditional_provider')\n"
+            "supplier = module.supplier\n"
+            "assert type(module.Payload) is module.RuntimeMeta is supplier.NativeMeta\n"
+            "assert not module.effects\n"
+            "before = tuple(supplier.effects)\n"
+            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "defect = sys.argv[2]\n"
+            "source = pathlib.Path(module.__file__)\n"
+            "if defect == 'alias': module.RuntimeMeta = supplier.OtherMeta\n"
+            "elif defect == 'supplier': supplier.NativeMeta = supplier.OtherMeta\n"
+            "elif defect == 'source':\n"
+            "    source.write_text(source.read_text().replace('RuntimeMeta = supplier.NativeMeta', 'RuntimeMeta = supplier.OtherMeta'))\n"
+            "elif defect == 'flag':\n"
+            "    if sys.argv[3] == 'typing_alias.TYPE_CHECKING': module.typing_alias.TYPE_CHECKING = True\n"
+            "    else: module.TC = True\n"
+            "elif defect == 'condition':\n"
+            "    source.write_text(source.read_text().replace('if ' + sys.argv[3] + ':', 'if unproven_condition:'))\n"
+            "elif defect == 'ambiguous':\n"
+            "    source.write_text(source.read_text().replace('class Payload', 'RuntimeMeta = supplier.NativeMeta\nclass Payload'))\n"
+            "elif defect == 'code':\n"
+            "    supplier.NativeMeta.__new__.__code__ = supplier.NativeMeta.__new__.__code__.replace(co_name='replaced')\n"
+            "elif defect == 'cycle':\n"
+            "    source.write_text(source.read_text().replace('RuntimeMeta = supplier.NativeMeta', 'RuntimeMeta = Loop').replace('class Payload', 'Loop = RuntimeMeta\nclass Payload'))\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "assert observed.success == (defect == 'none'), observed\n"
+            "assert tuple(supplier.effects) == before\n"
+            "assert not module.effects\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect, condition], cwd=tmp_path
+            )
+        )
+
+    @staticmethod
     def test_core_nested_presets_have_authenticated_lexical_bases(
         tmp_path: Path,
     ) -> None:
@@ -910,7 +993,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "defect", ["none", "descriptor", "wrapped", "code", "defaults"]
+        "defect",
+        ["none", "descriptor", "wrapped", "code", "defaults", "parameters"],
     )
     @pytest.mark.parametrize("options", ["", "frozen=True, slots=True"])
     @pytest.mark.parametrize("base", ["object", "Parent"])
@@ -959,6 +1043,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__.replace(co_name='foreign')\n"
             "elif defect == 'defaults':\n"
             "    module.Payload.__init__.__defaults__ = ('foreign',)\n"
+            "elif defect == 'parameters':\n"
+            "    class ForeignParameters:\n"
+            "        @property\n"
+            "        def frozen(self):\n"
+            "            raise AssertionError('unadmitted parameter accessor ran')\n"
+            "    module.Payload.__dataclass_params__ = ForeignParameters()\n"
             "if defect == 'none':\n"
             "    assert repr(module.Payload('authenticated')) == \"Payload(value='authenticated')\"\n"
             "    observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
@@ -973,6 +1063,53 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 [executable, "-c", consumer, str(tmp_path), defect],
                 cwd=tmp_path,
             ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "constructor", "getter"])
+    def test_annotation_metadata_constructor_is_admitted_before_callbacks(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """Real immutable metadata preserves operands and rejects authored callbacks."""
+        package = tmp_path / "metadata_provider"
+        package.mkdir()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from dataclasses import dataclass\n"
+                "from typing import Annotated\n"
+                "from annotated_types import Ge\n"
+                "@dataclass\n"
+                "class Payload:\n"
+                "    value: Annotated[int, Ge(0)]\n",
+            )
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('metadata_provider')\n"
+            "defect = sys.argv[2]\n"
+            "def forbidden(*args, **kwargs):\n"
+            "    raise AssertionError('unadmitted metadata callback ran')\n"
+            "if defect == 'constructor':\n"
+            "    module.Ge.__init__ = forbidden\n"
+            "elif defect == 'getter':\n"
+            "    module.Ge.ge = property(forbidden)\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "if defect == 'none':\n"
+            "    assert module.Payload(3).value == 3\n"
+            "    assert observed.unwrap()\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect],
+                cwd=tmp_path,
+            )
         )
 
     @staticmethod

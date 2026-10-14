@@ -144,7 +144,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
     def test_provider_failure_prevents_later_member_execution(
         self, tmp_path: Path
     ) -> None:
-        """A failed provider preserves attempted receipts and stops the consumer."""
+        """A failed provider preserves pending receipts and stops the consumer."""
         root = tmp_path / "workspace"
         order = self._runtime_graph(root, provider_failure=True)
 
@@ -152,14 +152,16 @@ class TestsFlextInfraWorkspaceFleetVerbs:
 
         report = self._report(root)
         tm.that(report.scope, eq=tuple(root / name for name in order))
-        tm.that(len(report.receipts), eq=2)
-        tm.that(report.receipts[-1].error is not None, eq=True)
+        tm.that(len(report.receipts), eq=len(order))
+        tm.that(report.receipts[1].error is not None, eq=True)
+        tm.that(report.receipts[-1].outcome, eq=None)
+        tm.that(report.unreached_commands, eq=1)
         tm.that(
             (root / "fleet.log").read_text(encoding=c.DEFAULT_ENCODING).splitlines(),
             eq=[f"{name}|{root}" for name in order[:2]],
         )
         tm.that(
-            report.receipts[-1].output_file.read_text(encoding=c.DEFAULT_ENCODING),
+            report.receipts[1].output_file.read_text(encoding=c.DEFAULT_ENCODING),
             has="member-output-z-provider",
         )
 

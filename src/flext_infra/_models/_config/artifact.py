@@ -541,7 +541,13 @@ class FlextInfraConfigModelsArtifact:
         def managed_file_specs(
             self,
         ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec]:
-            """Compose native resolver artifacts from the one path policy."""
+            """Compose native resolver artifacts from the one path policy.
+
+            Raises:
+                ValueError: If managed files do not declare exactly one root
+                    ``pyproject.toml`` owner, or if a derived resolver artifact
+                    collides with an already declared managed file.
+            """
             roots = tuple(
                 item
                 for item in self.managed_files

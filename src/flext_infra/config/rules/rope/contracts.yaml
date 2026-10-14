@@ -41,6 +41,7 @@ rules:
       field: name=pydantic.Field
   - id: pydantic-empty-list-factory
     phase: contract-normalization
+    repeats_annotation: true
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${collection}[${element}] = ${field}(default_factory=${collection})'
     goal: '${name}: ${collection}[${element}] = ${field}(default_factory=u.empty(TypeForm(${collection}[${element}])))'
@@ -55,6 +56,7 @@ rules:
       TypeForm: typing_extensions.TypeForm
   - id: pydantic-empty-dict-factory
     phase: contract-normalization
+    repeats_annotation: true
     model_bases: [pydantic.BaseModel]
     unshadowed_builtins: [dict]
     pattern: '${name}: dict[${parameters}] = ${field}(default_factory=dict)'
