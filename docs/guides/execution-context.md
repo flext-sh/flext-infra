@@ -108,6 +108,22 @@ a retired wheel origin does not
 prove the source tree that a new producer will execute. Native provisioning failure
 stops that producer without rewriting the resolved lock or undoing published files.
 
+Conformance captures producer identity before request prelude, planning, staging,
+or journal effects. Cold package election and loaded function/class provenance must
+agree. The retained native file states and physical tree manifests include provider
+code, package resources, distribution metadata, editable pointer files, and project
+metadata read during ownership election. Distribution names and namespace names are
+separate identities; ambiguous ownership is a failure.
+
+Every phase binds that same captured context to its staged consumer inputs. Journal
+transitions preserve it instead of rediscovering loaded origins after publication.
+Native tree authentication precedes source filtering; derived interpreter bytecode is
+not a source input. Added resources or directories, changed bytes, retired roots, and
+changed import election invalidate admission. Only exact journal output or staging
+receipts authorize membership changes. Publication observation authenticates the full
+producer closure before selecting the requested consumer scope. None of this proves
+an earlier process whose source context was not captured.
+
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from

@@ -320,12 +320,18 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Proven edits and obsolete bindings by their import declaration line.
+
+        Raises:
+            TypeError: If an import plan contains an unsupported declaration.
         """
         bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
         rewrites: list[m.Infra.SourceRewrite] = []
         removals: t.MutableMappingKV[int, set[str]] = {}
         for statement in statements:
             info = statement.import_info
+            if not isinstance(info, p.Infra.RopeFromImport):
+                message = "constant import plan requires a from-import declaration"
+                raise TypeError(message)
             for imported, alias in info.names_and_aliases:
                 name = alias or imported
                 binding = bindings.get(name)

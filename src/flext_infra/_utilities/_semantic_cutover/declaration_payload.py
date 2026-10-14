@@ -166,7 +166,7 @@ class FlextInfraUtilitiesDeclarationPayload:
                 if tuple(
                     finder.get_match_regions(
                         "${decorator}",
-                        {"decorator": f"name={identity}"},
+                        {"decorator": f"object={identity}"},
                         start=statement.start_offset,
                         end=statement.end_offset,
                     )

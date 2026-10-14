@@ -203,7 +203,12 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         """
         roots, scope_root = scope
         plan, analysis, changed = candidate
-        staged = self._directed_stage_inputs(request, analysis)
+        if self.producer is None:
+            return r[m.Infra.CodegenResult].fail("directed phase lacks pre-planning producer context")
+        bound = FlextInfraCodegenPreconditions.bind_producer_analysis(analysis, self.producer)
+        if bound.failure:
+            return r[m.Infra.CodegenResult].from_failure(bound)
+        staged = self._directed_stage_inputs(request, bound.value)
         if staged.failure:
             return r[m.Infra.CodegenResult].from_failure(staged)
         analysis, stage_plan = staged.value
@@ -285,7 +290,10 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
                 ),
             },
         )
-        return result_type.ok((authenticated, stage_plan))
+        return result_type.ok((
+            authenticated,
+            stage_plan.model_copy(update={"inputs": source_states.value}),
+        ))
 
     @staticmethod
     def _validate_directed_stage(

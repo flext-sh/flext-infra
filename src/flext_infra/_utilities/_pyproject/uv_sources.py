@@ -817,22 +817,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
         uv: Table,
         repositories: t.SequenceOf[m.Infra.RepositoryRef],
     ) -> None:
-        """Elect declared editable members in the native UV workspace.
+        """Retire authenticated generated local bindings from package metadata.
 
         Native workspace declarations and custom sources remain owned by
         their author. A source outside the authenticated declarations is
         never inferred to be generated from its name or source type.
         """
-        editable_members = tuple(member for member in members if member.editable)
-        if editable_members:
-            workspace = u.Cli.toml_ensure_table(uv, "workspace")
-            u.Cli.toml_sync_string_list(
-                workspace,
-                "members",
-                tuple(member.path.as_posix() for member in editable_members),
-            )
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None:
             return
@@ -856,16 +846,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
             )
             if not has_native_workspace and (entry == generated_path or generated_self):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
-        for member in members:
-            u.Cli.toml_sync_value(
-                sources,
-                member.distribution,
-                (
-                    {"workspace": True}
-                    if member.editable
-                    else {"path": member.path.as_posix(), "editable": False}
-                ),
-            )
         if not tuple(sources):
             u.Cli.toml_remove_key_if_present(uv, "sources")
 

@@ -122,7 +122,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
         )
         return f"toolchain-{toolchain[:12]}-{self._config_testmon_digest()}-{scope}"
-        return f"toolchain-{toolchain[:12]}-{self._config_testmon_digest()}-{scope}"
 
     def _config_testmon_digest(self) -> str:
         """Fingerprint the project's current ``config/*.yaml`` behavior inputs.
@@ -279,14 +278,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *self._plugin_policy_args(execution_mode=execution_mode),
             "--benchmark-disable",
             "--strict-markers",
-            (
-                "--timeout=0"
-                if self.unbounded
-                else (
-                    "--timeout="
-                    f"{config.Infra.tooling.tools.pytest.case_timeout_seconds}"
-                )
-            ),
+            *self._UNBOUNDED_LIMITS,
             "-o",
             "filterwarnings=",
             "-p",
@@ -427,7 +419,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             serial=workers == "0",
             execution_mode=execution_mode,
         )
-        return (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
+        return (
+            *self._UNBOUNDED_LIMITS,
+            f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
+        )
 
     def _suite_argv(
         self,
