@@ -140,6 +140,76 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             project.close()
 
     @classmethod
+    def _constant_consumer_module(
+        cls,
+        path: Path,
+        source: str,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        project: p.Infra.RopeProject,
+    ) -> t.Pair[m.Infra.RopeModuleConvention, p.Infra.RopePyModule] | None:
+        """Admit one consumer module and parse its source for constant reuse.
+
+        Returns:
+            The module convention and its parsed Rope module, or ``None`` when
+            the module declares the constants family, bootstraps the layer-zero
+            facades, or has no project layout.
+        """
+        convention = workspace.convention(path)
+        if (
+            cls._constant_definition_source(workspace, convention)
+            or path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
+            or convention.module_policy.expected_alias in {"config", "settings"}
+            or convention.project_layout is None
+        ):
+            return None
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        resource = cls._constant_module_resource(path, project)
+        return convention, runtime.build_string_module(
+            project, source, resource=resource
+        )
+
+    @staticmethod
+    def _constant_module_resource(
+        path: Path,
+        project: p.Infra.RopeProject,
+    ) -> p.Infra.RopeResource | None:
+        """Resolve one consumer path into its closed-project Rope resource.
+
+        Returns:
+            The project resource of the consumer module, or ``None`` when the
+            project reports no resource for the relative path.
+        """
+        return project.get_resource(
+            path.relative_to(Path(project.root.real_path)).as_posix()
+        )
+
+    @classmethod
+    def _constant_public_registry(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        layout_package: str,
+        path: Path,
+        paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
+    ) -> t.Pair[str, t.MappingKV[str, p.Infra.RopePyName]] | None:
+        """Resolve the constants facade package and its public paths once.
+
+        Returns:
+            The package name and its public reference mapping, or ``None``
+            when the package declares no constants module or no public paths.
+        """
+        package = cls._constant_facade_package(
+            cls._constant_imports(project, module),
+            layout_package,
+            path,
+        )
+        if project.find_module(f"{package}.constants") is None:
+            return None
+        if package not in paths:
+            paths[package] = cls._constant_public_paths(project, package)
+        return package, paths[package]
+
+    @classmethod
     def _reuse_literal_returns(
         cls,
         path: Path,
@@ -156,24 +226,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Source edits preserving the literal's exact scalar type and value.
-
-        Raises:
-            ValueError: If a return has competing owners or a shadowed facade.
+            Competing return owners or a shadowed facade fail through the
+            admission guard with ``ValueError``.
         """
-        convention = workspace.convention(path)
-        if (
-            cls._constant_definition_source(workspace, convention)
-            or path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
-            or convention.module_policy.expected_alias in {"config", "settings"}
-            or convention.project_layout is None
-        ):
+        admitted = cls._constant_consumer_module(path, source, workspace, project)
+        if admitted is None:
             return source, ()
+        convention, module = admitted
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        resource = project.get_resource(
-            path.relative_to(Path(project.root.real_path)).as_posix()
-        )
-        module = runtime.build_string_module(project, source, resource=resource)
         returns_by_type = {
             literal_type: refactors.semantic_regions(
                 module,
@@ -184,46 +245,22 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         }
         if not any(returns_by_type.values()):
             return source, ()
-        package = cls._constant_facade_package(
-            cls._constant_imports(project, module),
+        registry = cls._constant_public_registry(
+            project,
+            module,
             convention.project_layout.package_name,
             path,
+            paths,
         )
-        if project.find_module(f"{package}.constants") is None:
+        if registry is None:
             return source, ()
-        if package not in paths:
-            paths[package] = cls._constant_public_paths(project, package)
-        public = paths[package]
-        if not public:
-            return source, ()
-        matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
-        for literal_type, returns in returns_by_type.items():
-            for literal, reference in cls._literal_constant_patterns(
-                project, public, literal_type=literal_type
-            ):
-                if cls._constant_derives_from(project, public[reference], "enum.Enum"):
-                    continue
-                for start, end in refactors.semantic_regions(
-                    module, f"return {literal}", arguments={}
-                ):
-                    if (start, end) not in returns:
-                        continue
-                    if (
-                        runtime.scope_at(module, start).get_kind()
-                        != c.Infra.RopeScopeKind.FUNCTION
-                    ):
-                        continue
-                    cls._admit_literal_facade(project, module, public["c"], start, path)
-                    previous = matched.get((start, end))
-                    if previous is not None and previous != reference:
-                        message = (
-                            f"literal return has ambiguous public constant owners "
-                            f"in {path}: {previous}, {reference}"
-                        )
-                        raise ValueError(message)
-                    matched[start, end] = reference
+        package, public = registry
+        matched = cls._literal_return_matches(
+            project, module, public, returns_by_type, path
+        )
         if not matched:
             return source, ()
+        resource = cls._constant_module_resource(path, project)
         changed = refactors.content_change(
             resource,
             source,
@@ -243,13 +280,57 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         )
 
     @classmethod
+    def _literal_return_matches(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        public: t.MappingKV[str, p.Infra.RopePyName],
+        returns_by_type: t.MappingKV[str, t.VariadicTuple[t.Pair[int, int]]],
+        path: Path,
+    ) -> t.MappingKV[t.Pair[int, int], str]:
+        """Match admitted public constants onto native return regions.
+
+        Returns:
+            The return regions and their admitted public references. Regions
+            with competing public owners fail through the admission guard
+            with ``ValueError``.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        scope = f"literal return has ambiguous public constant owners in {path}"
+        matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
+        for literal_type, returns in returns_by_type.items():
+            for literal, reference in cls._literal_constant_patterns(
+                project, public, literal_type=literal_type
+            ):
+                if cls._constant_derives_from(project, public[reference], "enum.Enum"):
+                    continue
+                for start, end in refactors.semantic_regions(
+                    module, f"return {literal}", arguments={}
+                ):
+                    if (start, end) not in returns:
+                        continue
+                    if (
+                        runtime.scope_at(module, start).get_kind()
+                        != c.Infra.RopeScopeKind.FUNCTION
+                    ):
+                        continue
+                    cls._admit_literal_facade(project, module, public["c"], start, path)
+                    cls._record_matched_region(matched, (start, end), reference, scope)
+        return matched
+
+    @classmethod
     def _constant_derives_from(
         cls,
         project: p.Infra.RopeProject,
         candidate: p.Infra.RopePyName,
         qualified: str,
     ) -> bool:
-        """Resolve a member's declaring ancestry through native class identity."""
+        """Resolve a member's declaring ancestry through native class identity.
+
+        Returns:
+            Whether the member's owner declares the qualified enum ancestry.
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding = cls._constant_terminal(project, candidate, "enum member")
         module, line = binding.get_definition_location()
@@ -274,7 +355,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         offset: int,
         path: Path,
     ) -> None:
-        """Reject a competing or conditionally imported constants binding."""
+        """Reject a competing or conditionally imported constants binding.
+
+        Raises:
+            ValueError: If the facade is shadowed or lacks a preceding
+                unconditional import at the occurrence offset.
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         existing = runtime.scope_at(module, offset).lookup("c")
         if existing is not None and not runtime.same_name(facade, existing):
@@ -288,6 +374,24 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 f"unconditional import in {path}"
             )
             raise ValueError(message)
+
+    @staticmethod
+    def _record_matched_region(
+        matched: t.MutableMappingKV[t.Pair[int, int], str],
+        region: t.Pair[int, int],
+        reference: str,
+        scope: str,
+    ) -> None:
+        """Record one matched region, refusing ambiguous public owners.
+
+        Raises:
+            ValueError: If the region already maps to a different reference.
+        """
+        previous = matched.get(region)
+        if previous is not None and previous != reference:
+            message = f"{scope}: {previous}, {reference}"
+            raise ValueError(message)
+        matched[region] = reference
 
     @classmethod
     def _reuse_frozenset_membership(
@@ -303,25 +407,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Construction and return contexts retain their observable object identity.
 
         Returns:
-            Edits to identity-proven builtin calls in ``in``/``not in`` predicates.
-
-        Raises:
-            ValueError: If a membership predicate has competing constants owners.
+            Edits to identity-proven builtin calls in ``in``/``not in``
+            predicates. Membership predicates with competing constants owners
+            fail through the admission guard with ``ValueError``.
         """
-        convention = workspace.convention(path)
-        if (
-            cls._constant_definition_source(workspace, convention)
-            or path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
-            or convention.module_policy.expected_alias in {"config", "settings"}
-            or convention.project_layout is None
-        ):
+        admitted = cls._constant_consumer_module(path, source, workspace, project)
+        if admitted is None:
             return source, ()
+        convention, module = admitted
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        resource = project.get_resource(
-            path.relative_to(Path(project.root.real_path)).as_posix()
-        )
-        module = runtime.build_string_module(project, source, resource=resource)
         arguments = {"frozen": "name=__builtin__.frozenset"}
         if not any(
             refactors.semantic_regions(module, pattern, arguments=arguments)
@@ -331,54 +426,22 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             )
         ):
             return source, ()
-        package = cls._constant_facade_package(
-            cls._constant_imports(project, module),
+        registry = cls._constant_public_registry(
+            project,
+            module,
             convention.project_layout.package_name,
             path,
+            paths,
         )
-        if project.find_module(f"{package}.constants") is None:
+        if registry is None:
             return source, ()
-        if package not in paths:
-            paths[package] = cls._constant_public_paths(project, package)
-        public = paths[package]
-        if not public:
-            return source, ()
-        matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
-        for literal_type in ("__builtin__.str", "__builtin__.int"):
-            for expression, reference in cls._literal_constant_patterns(
-                project, public, literal_type=literal_type, frozen=True
-            ):
-                if cls._constant_derives_from(project, public[reference], "enum.Enum"):
-                    continue
-                for pattern in (
-                    f"${{subject}} in {expression}",
-                    f"${{subject}} not in {expression}",
-                ):
-                    for start, end in refactors.semantic_regions(
-                        module, pattern, arguments=arguments
-                    ):
-                        cls._admit_literal_facade(
-                            project, module, public["c"], start, path
-                        )
-                        constructors = refactors.semantic_regions(
-                            module,
-                            expression,
-                            arguments=arguments,
-                            start=start,
-                            end=end,
-                        )
-                        if constructors:
-                            region = max(constructors, key=operator.itemgetter(0))
-                            previous = matched.get(region)
-                            if previous is not None and previous != reference:
-                                message = (
-                                    f"frozenset predicate has ambiguous public owners "
-                                    f"in {path}: {previous}, {reference}"
-                                )
-                                raise ValueError(message)
-                            matched[region] = reference
+        package, public = registry
+        matched = cls._frozenset_membership_matches(
+            project, module, public, arguments, path
+        )
         if not matched:
             return source, ()
+        resource = cls._constant_module_resource(path, project)
         changed = refactors.content_change(
             resource,
             source,
@@ -398,6 +461,56 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         )
 
     @classmethod
+    def _frozenset_membership_matches(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        public: t.MappingKV[str, p.Infra.RopePyName],
+        arguments: t.StrMapping,
+        path: Path,
+    ) -> t.MappingKV[t.Pair[int, int], str]:
+        """Match identity-proven frozenset literals in membership predicates.
+
+        Returns:
+            The predicate regions and their admitted public references.
+            Regions with competing public owners fail through the admission
+            guard with ``ValueError``.
+        """
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        scope = f"frozenset predicate has ambiguous public owners in {path}"
+        matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
+        for literal_type in ("__builtin__.str", "__builtin__.int"):
+            for expression, reference in cls._literal_constant_patterns(
+                project, public, literal_type=literal_type, frozen=True
+            ):
+                if cls._constant_derives_from(project, public[reference], "enum.Enum"):
+                    continue
+                candidates = (
+                    (start, end)
+                    for pattern in (
+                        f"${{subject}} in {expression}",
+                        f"${{subject}} not in {expression}",
+                    )
+                    for start, end in refactors.semantic_regions(
+                        module, pattern, arguments=arguments
+                    )
+                )
+                for start, end in candidates:
+                    cls._admit_literal_facade(project, module, public["c"], start, path)
+                    constructors = refactors.semantic_regions(
+                        module,
+                        expression,
+                        arguments=arguments,
+                        start=start,
+                        end=end,
+                    )
+                    if not constructors:
+                        continue
+                    region = max(constructors, key=operator.itemgetter(0))
+                    cls._record_matched_region(matched, region, reference, scope)
+        return matched
+
+    @classmethod
     def _reuse_literal_enums(
         cls,
         path: Path,
@@ -409,25 +522,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """Reuse declared StrEnum members in singleton Literal field annotations.
 
         Returns:
-            Native source-region edits retaining the annotation's Literal owner.
-
-        Raises:
-            ValueError: If an enum owner or the consumer facade is ambiguous.
+            Native source-region edits retaining the annotation's Literal
+            owner. Ambiguous enum owners or consumer facades fail through the
+            admission guard with ``ValueError``.
         """
-        convention = workspace.convention(path)
-        if (
-            cls._constant_definition_source(workspace, convention)
-            or path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
-            or convention.module_policy.expected_alias in {"config", "settings"}
-            or convention.project_layout is None
-        ):
+        admitted = cls._constant_consumer_module(path, source, workspace, project)
+        if admitted is None:
             return source, ()
+        convention, module = admitted
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        resource = project.get_resource(
-            path.relative_to(Path(project.root.real_path)).as_posix()
-        )
-        module = runtime.build_string_module(project, source, resource=resource)
         if not any(
             refactors.semantic_regions(
                 module, pattern, arguments={"literal": "name=typing.Literal"}
@@ -438,18 +542,56 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             )
         ):
             return source, ()
-        package = cls._constant_facade_package(
-            cls._constant_imports(project, module),
+        registry = cls._constant_public_registry(
+            project,
+            module,
             convention.project_layout.package_name,
             path,
+            paths,
         )
-        if project.find_module(f"{package}.constants") is None:
+        if registry is None:
             return source, ()
-        if package not in paths:
-            paths[package] = cls._constant_public_paths(project, package)
-        public = paths[package]
-        if not public:
+        package, public = registry
+        matched = cls._enum_annotation_matches(project, module, public, source, path)
+        if not matched:
             return source, ()
+        resource = cls._constant_module_resource(path, project)
+        changed = refactors.content_change(
+            resource,
+            source,
+            tuple(
+                m.Infra.SourceRewrite(start=start, end=end, text=reference)
+                for (start, end), reference in matched.items()
+            ),
+        )
+        proposed = runtime.build_string_module(
+            project, changed.new_contents, resource=resource
+        )
+        imports = runtime.module_imports_for_pymodule(project, proposed)
+        imports.add_import(runtime.from_import(package, 0, [("c", None)]))
+        imports.remove_duplicates()
+        return imports.get_changed_source(), (
+            f"singleton Literal fields -> {package}.c: {len(matched)} references",
+        )
+
+    @classmethod
+    def _enum_annotation_matches(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        public: t.MappingKV[str, p.Infra.RopePyName],
+        source: str,
+        path: Path,
+    ) -> t.MappingKV[t.Pair[int, int], str]:
+        """Match declared StrEnum members onto singleton Literal annotations.
+
+        Returns:
+            The annotation literal regions and their admitted enum references.
+            Regions with competing enum owners fail through the admission
+            guard with ``ValueError``.
+        """
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        scope = f"literal annotation has ambiguous enum owners in {path}"
         matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
         for literal, reference in cls._literal_constant_patterns(project, public):
@@ -478,62 +620,46 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                         start=start,
                         end=end,
                     )
-                    if annotations:
-                        begin, finish = min(annotations, key=operator.itemgetter(0))
-                        regions = refactors.semantic_regions(
-                            module, literal, arguments={}, start=begin, end=finish
-                        )
-                        for region in regions:
-                            previous = matched.get(region)
-                            if previous is not None and previous != reference:
-                                message = (
-                                    f"literal annotation has ambiguous enum owners "
-                                    f"in {path}: {previous}, {reference}"
-                                )
-                                raise ValueError(message)
-                            matched[region] = reference
-        if not matched:
-            return source, ()
-        changed = refactors.content_change(
-            resource,
-            source,
-            tuple(
-                m.Infra.SourceRewrite(start=start, end=end, text=reference)
-                for (start, end), reference in matched.items()
-            ),
-        )
-        proposed = runtime.build_string_module(
-            project, changed.new_contents, resource=resource
-        )
-        imports = runtime.module_imports_for_pymodule(project, proposed)
-        imports.add_import(runtime.from_import(package, 0, [("c", None)]))
-        imports.remove_duplicates()
-        return imports.get_changed_source(), (
-            f"singleton Literal fields -> {package}.c: {len(matched)} references",
+                    for region in cls._enum_annotation_regions(
+                        module, literal, annotations
+                    ):
+                        cls._record_matched_region(matched, region, reference, scope)
+        return matched
+
+    @staticmethod
+    def _enum_annotation_regions(
+        module: p.Infra.RopePyModule,
+        literal: str,
+        annotations: t.VariadicTuple[t.Pair[int, int]],
+    ) -> t.VariadicTuple[t.Pair[int, int]]:
+        """Read the literal regions inside one matched annotation.
+
+        Returns:
+            The literal source regions recorded for the annotation's enum
+            owner, or an empty tuple when the annotation region is absent.
+        """
+        if not annotations:
+            return ()
+        begin, finish = min(annotations, key=operator.itemgetter(0))
+        return FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
+            module, literal, arguments={}, start=begin, end=finish
         )
 
     @classmethod
-    def _literal_constant_patterns(
+    def _constant_declaration_bindings(
         cls,
         project: p.Infra.RopeProject,
         public: t.MappingKV[str, p.Infra.RopePyName],
-        *,
-        literal_type: str = "__builtin__.str",
-        frozen: bool = False,
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
-        """Read proven literals at uniquely assigned public c bindings.
-
-        Strings require exact native literal boundaries. Integer declarations
-        admit decimal tokens only. Frozen candidates additionally require the
-        native builtin constructor around one such literal in a singleton set.
+    ) -> t.MappingKV[
+        Path,
+        t.Pair[p.Infra.RopePyModule, list[t.Pair[p.Infra.RopePyName, int]]],
+    ]:
+        """Group uniquely assigned public constants by their defining module.
 
         Returns:
-            Raw source patterns and their identity-proven public references.
+            Each defining module with its uniquely assigned constant bindings
+            and definition lines.
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        structure = FlextInfraUtilitiesRopeStructure
-        found: list[t.Pair[str, str]] = []
         declarations: t.MutableMappingKV[
             Path,
             t.Pair[
@@ -558,6 +684,64 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 binding,
                 line,
             ))
+        return declarations
+
+    @classmethod
+    def _binding_statement_matches(
+        cls,
+        module: p.Infra.RopePyModule,
+        statement: m.Infra.LogicalStatement,
+        binding: p.Infra.RopePyName,
+        line: int,
+    ) -> bool:
+        """Report whether one class-level assignment declares the binding.
+
+        Returns:
+            Whether the statement's target resolves to the chased binding at
+            its definition line.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        structure = FlextInfraUtilitiesRopeStructure
+        if (
+            statement.line != line
+            or statement.enclosing_kind != c.Infra.RopeScopeKind.CLASS
+            or statement.category
+            not in {
+                c.Infra.StatementCategory.ASSIGN,
+                c.Infra.StatementCategory.ANN_ASSIGN,
+            }
+        ):
+            return False
+        target = structure.target_name(statement)
+        return bool(target) and runtime.same_name(
+            binding,
+            runtime.expression_name(
+                runtime.scope_at(module, statement.start_offset), target
+            ),
+        )
+
+    @classmethod
+    def _literal_constant_patterns(
+        cls,
+        project: p.Infra.RopeProject,
+        public: t.MappingKV[str, p.Infra.RopePyName],
+        *,
+        literal_type: str = "__builtin__.str",
+        frozen: bool = False,
+    ) -> t.VariadicTuple[t.Pair[str, str]]:
+        """Read proven literals at uniquely assigned public c bindings.
+
+        Strings require exact native literal boundaries. Integer declarations
+        admit decimal tokens only. Frozen candidates additionally require the
+        native builtin constructor around one such literal in a singleton set.
+
+        Returns:
+            Raw source patterns and their identity-proven public references.
+        """
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        structure = FlextInfraUtilitiesRopeStructure
+        found: list[t.Pair[str, str]] = []
+        declarations = cls._constant_declaration_bindings(project, public)
         for path, (module, bindings) in declarations.items():
             source = module.source_code
             literal_regions = {
@@ -569,22 +753,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             statements = structure.logical_statements(source)
             for binding, line in bindings:
                 for statement in statements:
-                    if (
-                        statement.line != line
-                        or statement.enclosing_kind != c.Infra.RopeScopeKind.CLASS
-                        or statement.category
-                        not in {
-                            c.Infra.StatementCategory.ASSIGN,
-                            c.Infra.StatementCategory.ANN_ASSIGN,
-                        }
-                    ):
-                        continue
-                    target = structure.target_name(statement)
-                    if not target or not runtime.same_name(
-                        binding,
-                        runtime.expression_name(
-                            runtime.scope_at(module, statement.start_offset), target
-                        ),
+                    if not cls._binding_statement_matches(
+                        module, statement, binding, line
                     ):
                         continue
                     for start, end in refactors.semantic_regions(
