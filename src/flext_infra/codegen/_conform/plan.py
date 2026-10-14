@@ -272,19 +272,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 or c.PYPROJECT_FILENAME in contract.destinations
             )
         ):
-            for repository in selected:
-                if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
-                    continue
-                extended = self._extended_pyproject_views(
-                    root,
-                    selected,
-                    workspace,
-                    inputs,
-                    files,
-                )
-                if extended.failure:
-                    return r[m.Infra.CodegenPlan].from_failure(extended)
-                files.extend(extended.value)
+            extended = self._extended_pyproject_views(
+                root,
+                selected,
+                workspace,
+                inputs,
+                files,
+            )
+            if extended.failure:
+                return r[m.Infra.CodegenPlan].from_failure(extended)
+            files.extend(extended.value)
         return r[m.Infra.CodegenPlan].ok(
             m.Infra.CodegenPlan(
                 request=request,

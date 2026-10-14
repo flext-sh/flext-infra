@@ -169,7 +169,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
             owned = cls._sync_root_environment_provenance(
                 source,
-                custom_groups,
+                custom_groups.value,
                 source_context,
             )
             if owned.failure:

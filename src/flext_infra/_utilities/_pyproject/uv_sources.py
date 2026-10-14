@@ -352,7 +352,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 if root and not project.repository.package
                 else [
                     (
-                        renamed[canonicalize_name(group)],
+                        renamed.value[canonicalize_name(group)],
                         cls._resolution_group_requirement_names(declared_groups, group),
                         group,
                     )
