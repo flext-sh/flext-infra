@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -29,9 +28,7 @@ class TestsFlextInfraLiteralEnums:
     )
     def test_singleton_enum_fields_preserve_discriminator_json(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
         infra_subprocess: p.Cli.CommandRunner,
         imports: str,
         qualifier: str,
@@ -116,9 +113,7 @@ class TestsFlextInfraLiteralEnums:
     @staticmethod
     def test_literal_homonym_does_not_acquire_enum_semantics(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
     ) -> None:
         """A user-owned Literal class retains its actual subscription behavior."""
         _root, package = constants_workspace
@@ -147,9 +142,7 @@ class TestsFlextInfraLiteralEnums:
     @pytest.mark.parametrize("case", ["shadowed", "ambiguous"])
     def test_competing_enum_bindings_fail_before_publication(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
         case: str,
     ) -> None:
         """A singleton annotation never selects an arbitrary member or facade."""

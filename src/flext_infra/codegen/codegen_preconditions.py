@@ -609,18 +609,16 @@ class FlextInfraCodegenPreconditions:
             parsed = FlextInfraMiseArtifactsFiles.editable_project_source(state)
             if parsed.failure:
                 return result_type.from_failure(parsed)
-            if parsed.value is None:
-                continue
-            project_source, metadata = parsed.value
-            states[project_source.path] = project_source
-            namespace = metadata.package_name
-            if namespace in roots:
-                if not roots[namespace].is_relative_to(project_source.path.parent):
-                    return result_type.fail(
-                        "producer source is outside declared editable root: "
-                        f"{namespace}"
-                    )
-                namespaces.add(namespace)
+            for project_source, metadata in parsed.value:
+                states[project_source.path] = project_source
+                namespace = metadata.package_name
+                if namespace in roots:
+                    if not roots[namespace].is_relative_to(project_source.path.parent):
+                        return result_type.fail(
+                            "producer source is outside declared editable root: "
+                            f"{namespace}"
+                        )
+                    namespaces.add(namespace)
         return result_type.ok(
             dict.fromkeys(namespaces, tuple(tree.root for tree in captured.value[0]))
         )

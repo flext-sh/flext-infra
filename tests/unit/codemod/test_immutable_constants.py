@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 from tests import c, m, p, t, tm
@@ -19,9 +18,7 @@ class TestsFlextInfraImmutableConstants:
     @staticmethod
     def test_integer_returns_and_frozenset_predicates_reach_fixed_point(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
         infra_subprocess: p.Cli.CommandRunner,
     ) -> None:
         """Immutable reuse preserves types, membership and fresh construction."""
@@ -130,9 +127,7 @@ class TestsFlextInfraImmutableConstants:
     @staticmethod
     def test_reassigned_and_mutable_owners_are_not_candidates(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
     ) -> None:
         """Reassignment, mutable containers and call-produced values stay local."""
         _root, package = constants_workspace

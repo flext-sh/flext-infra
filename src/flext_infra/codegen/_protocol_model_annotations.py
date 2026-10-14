@@ -7,6 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable
+from inspect import getmembers_static
+from sys import stdlib_module_names
 from types import UnionType
 from typing import (
     Annotated,
@@ -18,7 +20,10 @@ from typing import (
     get_origin,
 )
 
-from flext_infra import p, t
+from flext_infra import c, p, t, u
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
 from flext_infra._utilities._semantic_cutover.declaration_relocation import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
 )
@@ -43,34 +48,106 @@ class FlextInfraCodegenProtocolModelAnnotations:
             self._identity(declaration.get_object()): name
             for name, declaration in declarations.items()
         }
+        self.public_names: dict[int, str] = {}
+        for letter, facade in facades.items():
+            if letter == "m":
+                continue
+            pending = [("", facade)]
+            visited: set[int] = set()
+            while pending:
+                prefix, namespace = pending.pop()
+                if id(namespace) in visited:
+                    continue
+                visited.add(id(namespace))
+                for name, member in getmembers_static(namespace):
+                    if name.startswith("_") or not isinstance(member, type):
+                        continue
+                    self.public_names.setdefault(
+                        id(member), f"_public.{letter}.{prefix}{name}"
+                    )
+                    if not hasattr(member, "model_fields"):
+                        pending.append((f"{prefix}{name}.", member))
 
     @staticmethod
     def _identity(value: p.Infra.RopePyObject) -> str:
         module = value.get_module()
+        if module is None:
+            msg = f"model declaration has no native module: {value.get_name()}"
+            raise ValueError(msg)
         scope = value.get_scope()
         names = [value.get_name()]
         while scope is not None and scope.parent is not None:
             scope = scope.parent
-            if scope.get_kind() == "Class":
+            if scope.get_kind() == c.Infra.RopeScopeKind.CLASS:
                 names.append(scope.pyobject.get_name())
-        return f"{module.get_name() if module is not None else ''}.{'.'.join(reversed(names))}"
+        return f"{module.get_name()}.{'.'.join(reversed(names))}"
 
     def source(self, annotation: str, scope: p.Infra.RopeScope) -> str:
         """Rewrite bound type identities without changing literal payloads."""
-        owner = FlextInfraUtilitiesSemanticDeclarationRelocation
+        roots: list[str] = []
+
+        def replacement(lexical: p.Infra.RopeScope, expression: str) -> str | None:
+            changed = self._source_reference(lexical, expression)
+            roots.append((expression if changed is None else changed).partition(".")[0])
+            return changed
+
+        rendered = FlextInfraUtilitiesSemanticFamilyTypeReferences.rewrite_type_source(
+            annotation, self.workspace.rope_project, scope, replacement
+        )
+        self.record_imports(rendered, scope, roots)
+        return rendered
+
+    def _source_reference(
+        self, scope: p.Infra.RopeScope, expression: str
+    ) -> str | None:
+        """Select the declared replacement through its Rope binding."""
+        binding = u.Infra.expression_name(scope, expression)
         for name, declaration in self.declarations.items():
-            annotation = owner.quoted_identity_source(
-                self.workspace.rope_project,
-                scope,
-                annotation,
-                declaration,
-                f"_public.p.{name}",
+            if u.Infra.same_name(declaration, binding):
+                return f"_public.p.{name}"
+        return None
+
+    def record_imports(
+        self,
+        source: str,
+        scope: p.Infra.RopeScope,
+        required: t.SequenceOf[str] = (),
+    ) -> None:
+        """Reuse native import records for the names retained in a signature."""
+        module = scope.pyobject.get_module()
+        if module is None:
+            msg = "protocol annotation has no declaring module"
+            raise ValueError(msg)
+        references = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        roots = {
+            *required,
+            *(
+                source[begin:end].partition(".")[0]
+                for begin, end in references.reference_regions(source)
+            ),
+        }
+        owner = FlextInfraUtilitiesSemanticDeclarationRelocation
+        for information in owner._native_import_infos(
+            self.workspace.rope_project, module
+        ):
+            aliases = tuple(
+                (name, alias)
+                for name, alias in information.names_and_aliases
+                if (alias or name.partition(".")[0]) in roots
             )
-        return annotation
+            if not aliases:
+                continue
+            imported = (
+                u.Infra.from_import(information.module_name, information.level, aliases)
+                if isinstance(information, p.Infra.RopeFromImport)
+                else owner._normal_import(aliases)
+            )
+            statement = imported.get_import_statement()
+            self.imports[statement] = statement
 
     def render(
         self,
-        annotation: t.TypeHintSpecifier | None,
+        annotation: t.TypeFormSpecifier | None,
         scope: p.Infra.RopeScope,
     ) -> str:
         """Render native annotation forms; unsupported forms fail unchanged."""
@@ -116,6 +193,8 @@ class FlextInfraCodegenProtocolModelAnnotations:
             self.imports["collections.abc"] = "import collections.abc"
             return f"collections.abc.Callable[{arguments_text}, {self.render(result, scope)}]"
         if origin is not None:
+            if origin is tuple and not arguments:
+                return "tuple[()]"
             rendered = ", ".join(
                 "..." if argument is Ellipsis else self.render(argument, scope)
                 for argument in arguments
@@ -125,31 +204,18 @@ class FlextInfraCodegenProtocolModelAnnotations:
             msg = f"unsupported protocol annotation: {annotation!r}"
             raise TypeError(msg)
         identity = f"{annotation.__module__}.{annotation.__qualname__}"
-        if identity in self.names:
-            return f"_public.p.{self.names[identity]}"
-        for letter, facade in self.facades.items():
-            if letter == "m":
-                continue
-            namespaces = [("", facade)]
-            while namespaces:
-                prefix, namespace = namespaces.pop()
-                for name, member in vars(namespace).items():
-                    if member is annotation:
-                        return f"_public.{letter}.{prefix}{name}"
-                    if (
-                        isinstance(member, type)
-                        and member.__module__.startswith(
-                            f"{self.project.package_name}."
-                        )
-                        and not hasattr(member, "model_fields")
-                        and not name.startswith("_")
-                    ):
-                        namespaces.append((f"{prefix}{name}.", member))
         if identity in {"builtins.object", "typing.Any"}:
             msg = f"forbidden generated protocol annotation: {identity}"
             raise TypeError(msg)
         if annotation.__module__ == "builtins":
             return annotation.__qualname__
+        if identity in self.names:
+            return f"_public.p.{self.names[identity]}"
+        if id(annotation) in self.public_names:
+            return self.public_names[id(annotation)]
+        if annotation.__module__.partition(".")[0] not in stdlib_module_names:
+            msg = f"annotation has no declared public facade: {identity}"
+            raise TypeError(msg)
         self.imports[annotation.__module__] = f"import {annotation.__module__}"
         return identity
 

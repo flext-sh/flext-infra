@@ -22,48 +22,6 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
-    class ProtocolModelTarget(Protocol):
-        """Declared facade surface consumed by protocol generation."""
-
-        package_name: str
-        facade_container: str
-        package_module_prefix: str
-        protocol_ref_prefix: str
-        models_facade_name: str
-        facade_probes: t.VariadicTuple[t.Pair[str, str]]
-        protocol_directory: Path
-
-    class PydanticField(Protocol):
-        """Validated field metadata read by the structural renderer."""
-
-        @property
-        def annotation(self) -> t.TypeHintSpecifier | None: ...
-
-        @property
-        def frozen(self) -> bool | None: ...
-
-    class FrozenModelConfiguration(Protocol):
-        """The model configuration capability used for field mutability."""
-
-        def get(
-            self, key: Literal["frozen"], *, default: bool = False
-        ) -> bool | None: ...
-
-    class ProtocolModel(Protocol):
-        """A validated model class, consumed without constructing a mirror."""
-
-        __name__: str
-        __module__: str
-        __qualname__: str
-
-        @property
-        def model_fields(
-            self,
-        ) -> Mapping[str, FlextInfraProtocolsBase.PydanticField]: ...
-
-        @property
-        def model_config(self) -> FlextInfraProtocolsBase.FrozenModelConfiguration: ...
-
     @runtime_checkable
     class FunctionDescriptor(Protocol):
         """Native descriptor capability used to authenticate its defining function."""

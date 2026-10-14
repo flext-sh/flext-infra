@@ -315,6 +315,17 @@ class FlextInfraWorkspaceNativeReference:
                     for index, pair in enumerate(entries)
                     for part, child in enumerate(pair)
                 )
+            elif any(owner is GenericAlias for owner in _native_mro(type(item))):
+                storage = vars(GenericAlias)
+                pending.extend(
+                    (
+                        f"{name}.{attribute}",
+                        storage[attribute].__get__(item, type(item)),
+                    )
+                    for attribute in ("__origin__", "__args__")
+                )
+                if type(item) is not GenericAlias:
+                    pending.append((f"{name}.type", type(item)))
             elif cls._is_class(item) or cls._callable_storage(item):
                 result.append((name, item))
         return tuple(result)
@@ -626,6 +637,21 @@ class FlextInfraWorkspaceNativeReference:
             name = _type_attr("__qualname__", type(value), type(type(value)))
         if type(module) is str:
             return f"{module}::{name}"
+        if module is None and cls._native_builtin(value) and type(name) is str:
+            registered: p.AttributeProbe | None = sys.modules.get("builtins")
+            for component in name.split("."):
+                namespace = (
+                    cls._class_namespace(registered)
+                    if cls._is_class(registered)
+                    else vars(registered)
+                    if type(registered) is ModuleType
+                    else {}
+                )
+                registered = namespace.get(component)
+            if type(registered) is staticmethod:
+                registered = registered.__func__
+            if registered is value:
+                return f"builtins::{name}"
         if type(module) in {GetSetDescriptorType, MemberDescriptorType}:
             owner = value if cls._is_class(value) else type(value)
             builtin_module = sys.modules.get("builtins")
@@ -1051,6 +1077,22 @@ class FlextInfraWorkspaceNativeReference:
                 )
                 continue
             visited[id(value)] = binding
+            if any(owner is GenericAlias for owner in _native_mro(type(value))):
+                evidence.append(
+                    m.Infra.NativeBindingEvidence(
+                        binding=binding,
+                        kind="generic_alias",
+                        supplier=supplier,
+                        name="",
+                        qualname="",
+                        operands=(("value", cls._value(value)),),
+                    ),
+                )
+                pending.extend(
+                    (edge, item, supplier, owner_source)
+                    for edge, item in cls._executable_operands(binding, value)
+                )
+                continue
             if cls._is_class(value):
                 namespace = cls._class_namespace(value)
                 actual_supplier = _type_attr("__module__", value, type(value))
@@ -1329,15 +1371,26 @@ class FlextInfraWorkspaceNativeReference:
                             break
                     if type(implementation) in {classmethod, staticmethod}:
                         implementation = implementation.__func__
-                    if type(implementation) is FunctionType:
-                        receiver_type = type(value)
+                    receiver_type = type(value)
+                    reduction = cls._class_namespace(receiver_type).get("__reduce__")
+                    native_reduction = (
+                        reduction
+                        if type(reduction) is MethodDescriptorType
+                        and reduction.__objclass__ is receiver_type
+                        and type(implementation)
+                        in {MethodDescriptorType, WrapperDescriptorType}
+                        else None
+                    )
+                    if (
+                        type(implementation) is FunctionType
+                        or native_reduction is not None
+                    ):
                         actual_supplier = _type_attr(
                             "__module__", receiver_type, type(receiver_type)
                         )
                         if type(actual_supplier) is not str:
                             return r[m.Infra.NativeImportObservation].fail(
-                                f"Python callable receiver has no source supplier: "
-                                f"{binding}",
+                                f"callable receiver has no source supplier: {binding}",
                             )
                         origin = FlextInfraWorkspaceEnvironmentProvenance.module_source(
                             actual_supplier,
@@ -1358,7 +1411,14 @@ class FlextInfraWorkspaceNativeReference:
                                 operands=(
                                     (
                                         "receiver",
-                                        cls._value(value, construction=True),
+                                        cls._value(
+                                            native_reduction.__get__(
+                                                value, receiver_type
+                                            )()
+                                            if native_reduction is not None
+                                            else value,
+                                            construction=True,
+                                        ),
                                     ),
                                 ),
                             ),
@@ -1527,9 +1587,17 @@ class FlextInfraWorkspaceNativeReference:
                             None,
                         )
                         if found is None:
-                            return r[m.Infra.NativeImportObservation].fail(
-                                f"required executable attribute has no native binding: {edge}.{instruction.argval}",
+                            evidence.append(
+                                m.Infra.NativeBindingEvidence(
+                                    binding=f"{edge}.{instruction.argval}",
+                                    kind="absent",
+                                    supplier=actual_supplier,
+                                    name=instruction.argval,
+                                    qualname=edge,
+                                ),
                             )
+                            receiver = None
+                            continue
                         receiver = found[instruction.argval]
                         edge += f".{instruction.argval}"
                         if (
@@ -1596,6 +1664,7 @@ class FlextInfraWorkspaceNativeReference:
                                 }
                                 or cls._native_builtin(item)
                                 or cls._native_wrapper_kind(item) is not None
+                                or cls._callable_storage(item)
                             ):
                                 pending.append((
                                     f"{binding}.descriptor.{cls._symbol(ancestor)}.{name}",

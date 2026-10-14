@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -33,9 +32,7 @@ class TestsFlextInfraConstantDeclarations:
     )
     def test_class_constants_do_not_become_pydantic_fields(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
         infra_subprocess: p.Cli.CommandRunner,
         imports: str,
         qualifier: str,
@@ -81,9 +78,7 @@ class TestsFlextInfraConstantDeclarations:
     @pytest.mark.parametrize("relative", ["_constants/values.py", "consumer.py"])
     def test_nonconstant_final_bindings_keep_their_contract(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
         relative: str,
     ) -> None:
         """Module values, locals and non-typing homonyms do not acquire ClassVar."""
@@ -109,9 +104,7 @@ class TestsFlextInfraConstantDeclarations:
     @staticmethod
     def test_shadowed_classvar_fails_before_a_source_edit(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
     ) -> None:
         """An occupied binding cannot silently change an annotation's meaning."""
         _root, package = constants_workspace

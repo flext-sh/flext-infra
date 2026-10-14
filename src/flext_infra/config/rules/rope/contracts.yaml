@@ -1,4 +1,15 @@
 rules:
+  - id: ldif-helper-internal-oid
+    families: [u]
+    pattern: '${extractor}(${definition})'
+    goal: 'FlextLdifUtilitiesOID.extract_from_definition(${definition}, patterns=(c.Ldif.SCHEMA_OID_LEADING_RE,), empty_error=c.Ldif.SCHEMA_OID_EMPTY_ERROR)'
+    arguments:
+      extractor: name=flext_ldif._utilities._parser_schema_fields.FlextLdifParserSchemaFields.extract_oid
+    imports:
+      FlextLdifUtilitiesOID: from flext_ldif._utilities.oid import FlextLdifUtilitiesOID
+      c: from flext_ldif import c
+    bindings:
+      FlextLdifUtilitiesOID.extract_from_definition: flext_ldif._utilities.oid.FlextLdifUtilitiesOID.extract_from_definition
   - id: ldif-helper-must-may
     pattern: '${extractor}(${definition})'
     goal: 'u.Ldif.extract_objectclass_must_may(${definition}, must_separator=c.Ldif.SCHEMA_MUST_SEPARATOR, may_separator=c.Ldif.SCHEMA_MAY_SEPARATOR)'

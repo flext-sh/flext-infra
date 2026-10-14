@@ -82,7 +82,9 @@ class FlextInfraProtocolsCheck(Protocol):
 
         def replace(
             self,
-            **changes: p.AttributeProbe | None,
+            *,
+            co_filename: str,
+            co_consts: tuple[p.AttributeProbe | None, ...],
         ) -> FlextInfraProtocolsCheck.NativeCodeIdentity: ...
 
     class NativeClosureCell(Protocol):

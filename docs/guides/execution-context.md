@@ -206,6 +206,9 @@ producer closure before selecting the requested consumer scope. None of this pro
 an earlier process whose source context was not captured.
 
 Native callback identity follows the elected supplier's actual registrations.
+Conditional attribute references record native absence as binding evidence;
+the cold comparison detects later appearance instead of rejecting an untaken
+platform-specific branch. Explicitly selected entrypoints must still exist.
 An extension can export a callback at module level while its qualified name
 describes a class. Observation checks those native namespaces by object identity;
 the qualified name alone does not establish or invalidate registration.

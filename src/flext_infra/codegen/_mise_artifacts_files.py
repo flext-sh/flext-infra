@@ -12,12 +12,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlsplit
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, p, r, t, u
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
-
-    from flext_infra import p
 
 
 class FlextInfraMiseArtifactsFiles:
@@ -27,13 +25,15 @@ class FlextInfraMiseArtifactsFiles:
     def editable_project_source(
         cls,
         direct_url: m.Cli.AtomicFileState,
-    ) -> p.Result[t.Pair[m.Cli.AtomicFileState, p.ProjectMetadata] | None]:
+    ) -> p.Result[t.VariadicTuple[t.Pair[m.Cli.AtomicFileState, p.ProjectMetadata]]]:
         """Parse captured PEP 610 bytes and authenticate its declared project input.
 
         Returns:
-            The exact editable project source and its typed metadata, if editable.
+            The editable source and metadata, or no entries for a noneditable source.
         """
-        result_type = r[t.Pair[m.Cli.AtomicFileState, p.ProjectMetadata] | None]
+        result_type = r[
+            t.VariadicTuple[t.Pair[m.Cli.AtomicFileState, p.ProjectMetadata]]
+        ]
         content = direct_url.content
         if content is None:
             return result_type.fail(
@@ -46,7 +46,7 @@ class FlextInfraMiseArtifactsFiles:
             return result_type.from_failure(parsed)
         receipt = parsed.value
         if receipt.dir_info is None or not receipt.dir_info.editable:
-            return result_type.ok(None)
+            return result_type.ok(())
         location = urlsplit(receipt.url)
         if location.scheme != "file" or location.netloc not in {"", "localhost"}:
             return result_type.fail(
@@ -57,7 +57,7 @@ class FlextInfraMiseArtifactsFiles:
         if captured.failure:
             return result_type.from_failure(captured)
         return u.Infra.read_project_metadata_result(project).map(
-            lambda metadata: (captured.value, metadata)
+            lambda metadata: ((captured.value, metadata),)
         )
 
     @classmethod

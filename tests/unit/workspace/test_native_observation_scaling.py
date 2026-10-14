@@ -13,6 +13,37 @@ class TestsNativeObservationScaling:
     """Nested declaration inputs remain complete without repeated JSON escaping."""
 
     @staticmethod
+    def test_optional_attribute_presence_remains_observable(
+        real_python_package: t.DirectoryPath,
+    ) -> None:
+        """Conditional native lookups retain absence and detect later injection."""
+        root = real_python_package / "src"
+        u.Tests.write_package_init(
+            root / "test_pkg",
+            "import sys\n"
+            "module = sys.modules[__name__]\n"
+            "def execute():\n"
+            "    return module.optional if hasattr(module, 'optional') else None\n",
+        )
+        u.Tests.run_lazy_init_probe(
+            """from flext_infra import m
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+import test_pkg as module
+selection = (m.Infra.SourceClassReference(target=module.__name__, attributes=('execute',)),)
+assert module.execute() is None
+before = native.capture(selection).unwrap()
+assert native.compare(before, native.capture(selection).unwrap()).unwrap() is True
+module.optional = 'available'
+assert module.execute() == 'available'
+assert native.compare(before, native.capture(selection).unwrap()).failure
+del module.optional
+assert native.compare(before, native.capture(selection).unwrap()).unwrap() is True
+""",
+            python_paths=(str(root),),
+            cwd=real_python_package,
+        )
+
+    @staticmethod
     def test_nested_values_scale_linearly_and_detect_leaf_changes(
         real_python_package: t.DirectoryPath,
     ) -> None:

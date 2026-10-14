@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -32,9 +31,7 @@ class TestsFlextInfraLiteralConstants:
     )
     def test_literal_return_reuses_owner_and_reaches_fixed_point(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
         infra_subprocess: p.Cli.CommandRunner,
         literal_source: str,
         return_source: str,
@@ -103,9 +100,7 @@ class TestsFlextInfraLiteralConstants:
     @pytest.mark.parametrize("case", ["shadowed", "ambiguous"])
     def test_unproven_literal_owner_fails_before_publication(
         constants_workspace: t.Pair[Path, Path],
-        constant_candidate: Callable[
-            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
-        ],
+        constant_candidate: t.Tests.SourceCandidate,
         case: str,
     ) -> None:
         """Lexical facade collisions and competing string owners fail closed."""

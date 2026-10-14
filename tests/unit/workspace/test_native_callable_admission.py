@@ -102,3 +102,71 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
             python_paths=(str(root),),
             cwd=real_python_package,
         )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("factory", "replacement", "expression", "expected", "changed"),
+        [
+            (
+                "itemgetter(slice(2, None))",
+                "itemgetter(slice(3, None))",
+                "module.operation('abcdef')",
+                "'cdef'",
+                "'def'",
+            ),
+            (
+                "attrgetter('real')",
+                "attrgetter('imag')",
+                "module.operation(3 + 4j)",
+                "3.0",
+                "4.0",
+            ),
+            (
+                "methodcaller('lower')",
+                "methodcaller('upper')",
+                "module.operation('NaTiVe')",
+                "'native'",
+                "'NATIVE'",
+            ),
+            (
+                "partial(bytes.maketrans, b'a', b'b')",
+                "partial(bytes.maketrans, b'a', b'c')",
+                "b'a'.translate(module.operation())",
+                "b'b'",
+                "b'c'",
+            ),
+        ],
+    )
+    def test_native_callable_state_retains_real_behavior(
+        real_python_package: t.DirectoryPath,
+        factory: t.StrictStr,
+        replacement: t.StrictStr,
+        expression: t.StrictStr,
+        expected: t.StrictStr,
+        changed: t.StrictStr,
+    ) -> None:
+        """Observe native callable arguments without invoking their operations."""
+        root = real_python_package / "src"
+        u.Tests.write_package_init(
+            root / "test_pkg",
+            "from functools import partial\n"
+            "from operator import attrgetter, itemgetter, methodcaller\n"
+            f"operation = {factory}\n",
+        )
+        u.Tests.run_lazy_init_probe(
+            f"""from flext_infra import m
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+import test_pkg as module
+assert {expression} == {expected}
+selection = (m.Infra.SourceClassReference(target=module.__name__, attributes=('operation',)),)
+original = native.capture(selection).unwrap()
+repeated = native.capture(selection).unwrap()
+assert native.compare(original, repeated).unwrap() is True
+module.operation = module.{replacement}
+observed = native.capture(selection).unwrap()
+assert native.compare(original, observed).failure
+assert {expression} == {changed}
+""",
+            python_paths=(str(root),),
+            cwd=real_python_package,
+        )

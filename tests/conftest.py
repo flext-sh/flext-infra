@@ -9,7 +9,7 @@ from __future__ import annotations
 import importlib
 import sys
 import tempfile
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -45,20 +45,33 @@ def rope_workspace(tmp_path: Path) -> Iterator[p.Infra.RopeWorkspaceDsl]:
 
 @pytest.fixture
 def constants_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
-    """Use the shared real project factory for constants phase consumers."""
+    """Use the shared real project factory for constants phase consumers.
+
+    Returns:
+        The governed workspace root and its package directory.
+    """
     return u.Tests.create_lazy_init_workspace(tmp_path)
 
 
 @pytest.fixture
 def constant_candidate(
     constants_workspace: t.Pair[Path, Path],
-) -> Callable[[t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]]:
-    """Publish a public constants plan only after its complete fixed-point check."""
+) -> t.Tests.SourceCandidate:
+    """Publish a public constants plan only after its complete fixed-point check.
+
+    Returns:
+        A factory that checks and publishes the complete source candidate.
+    """
     root, _package = constants_workspace
 
     def candidate(
         sources: t.MappingKV[Path, str], expected_paths: t.VariadicTuple[Path]
     ) -> t.MappingKV[Path, str]:
+        """Validate the phase through its public entry point.
+
+        Returns:
+            The published sources after a proven fixed point.
+        """
         for path, source in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(path, source))
         with infra.rope_workspace(root) as workspace:

@@ -146,7 +146,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             if (start, end) not in (
                 FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
                     module,
-                    "${binding_occurrence}",
+                    text,
                     arguments={},
                     start=start,
                     end=end,

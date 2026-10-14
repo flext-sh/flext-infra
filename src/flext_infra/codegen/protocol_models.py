@@ -51,6 +51,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
     ) -> p.Result[t.MappingKV[Path, str]]:
         """Plan the elected project's protocol sources without writing files."""
         facades: dict[str, p.Infra.RopePyName] = {}
+        runtime_facades: dict[str, p.ModuleOwned] = {}
         package_dir: Path | None = None
         for entry in workspace.modules():
             if entry.package_name != project.package_name:
@@ -65,6 +66,9 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             facades[owner[0]] = u.Infra.resolve_pymodule(
                 workspace.rope_project, resource
             ).get_attribute(owner[1])
+            runtime_facades[owner[0]] = getattr(
+                import_module(entry.module_name), owner[1]
+            )
             package_dir = entry.package_dir
         if package_dir is None or not {"m", "p"}.issubset(facades):
             return r[t.MappingKV[Path, str]].fail(
@@ -73,13 +77,6 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         directory = (
             package_dir / u.Infra.facade_families()["p"].directory
         ).relative_to(workspace.repository_root)
-        runtime_facades: dict[str, p.ModuleOwned] = {
-            letter: getattr(
-                import_module(binding.get_object().get_module().get_name()),
-                binding.get_object().get_name(),
-            )
-            for letter, binding in facades.items()
-        }
         models: dict[str, p.ModelType] = {}
         declarations: dict[str, p.Infra.RopePyName] = {}
         aliases: dict[str, tuple[str, ...]] = {}
