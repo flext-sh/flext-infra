@@ -66,7 +66,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(workspace.candidate_dependencies, eq=(candidate,))
         tm.that(workspace.integration, eq=line)
-        requirement = f"{self._inline_requirement(dependency)}; implementation_name == 'cpython'"
+        requirement = (
+            f"{self._inline_requirement(dependency)} ; "
+            "implementation_name == 'cpython'"
+        )
+        declared_requirement = Requirement(requirement)
         quoted = tm.ok(u.Cli.json_dumps(requirement))
         source = (
             f'[project]\nname = "{workspace.repository.distribution}"\n'
@@ -101,7 +105,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         ):
             actual = Requirement(u.Tests.toml_strings_at(rendered, *path)[0])
             tm.that(actual.url, eq=f"git+{candidate.url}@{candidate.commit}")
-            tm.that(actual.marker, eq=Requirement(requirement).marker)
+            tm.that(actual.marker, eq=declared_requirement.marker)
         tm.that(
             tm.ok(
                 u.Infra.pyproject_conform(

@@ -18,6 +18,207 @@ class TestsNativeCompilerAdmission:
     """Observe native consumers and unchanged effects during provenance rejection."""
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "feature",
+        [
+            "field-factory",
+            "class-decorator",
+            "metaclass",
+            "set-name",
+            "validator",
+            "converter",
+            "default-factory",
+            "pre-init",
+            "post-init",
+            "field-transformer",
+        ],
+    )
+    def test_attrs_callback_capabilities_authenticate_without_replay(
+        tmp_path: Path,
+        feature: str,
+    ) -> None:
+        """Authenticating native methods preserves legitimate construction callbacks."""
+        package = tmp_path / "callback_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        options = "slots=True, unsafe_hash=True"
+        declaration = "class Payload:\n"
+        decorator = f"@attrs({options})\n"
+        field = "    _value = attrib()\n"
+        extra = ""
+        if feature == "field-factory":
+            field = "    _value = make_field()\n"
+        elif feature == "class-decorator":
+            decorator = "@decorate\n"
+        elif feature == "metaclass":
+            declaration = "class Payload(metaclass=Meta):\n"
+        elif feature == "set-name":
+            extra = "    marker = Descriptor()\n"
+        elif feature == "validator":
+            field = "    _value = attrib(validator=validate)\n"
+        elif feature == "converter":
+            field = "    _value = attrib(converter=convert)\n"
+        elif feature == "default-factory":
+            field = "    _value = attrib(factory=default_value)\n"
+        elif feature == "pre-init":
+            extra = (
+                "    def __attrs_pre_init__(self):\n"
+                "        record('pre-init')\n"
+            )
+        elif feature == "post-init":
+            extra = (
+                "    def __attrs_post_init__(self):\n"
+                "        record('post-init')\n"
+            )
+        elif feature == "field-transformer":
+            decorator = f"@attrs({options}, field_transformer=transform)\n"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from attr import attrs, attrib\n"
+                "from pathlib import Path\n"
+                "effects = []\n"
+                "marker = Path(__file__).with_suffix('.effects')\n"
+                "marker.write_text('', encoding='utf-8')\n"
+                "def record(effect):\n"
+                "    effects.append(effect)\n"
+                "    with marker.open('a', encoding='utf-8') as stream:\n"
+                "        stream.write(effect + '\\n')\n"
+                "def make_field():\n"
+                "    record('field-factory')\n"
+                "    return attrib()\n"
+                "def decorate(cls):\n"
+                "    record('class-decorator')\n"
+                f"    return attrs({options})(cls)\n"
+                "class Meta(type):\n"
+                "    def __new__(cls, name, bases, namespace):\n"
+                "        record('metaclass')\n"
+                "        return super().__new__(cls, name, bases, namespace)\n"
+                "class Descriptor:\n"
+                "    def __set_name__(self, owner, name):\n"
+                "        record('set-name')\n"
+                "def validate(instance, attribute, value):\n"
+                "    record('validator')\n"
+                "    assert value >= 0\n"
+                "def convert(value):\n"
+                "    record('converter')\n"
+                "    return int(value)\n"
+                "def default_value():\n"
+                "    record('default-factory')\n"
+                "    return 1\n"
+                "def transform(cls, attributes):\n"
+                "    record('field-transformer')\n"
+                "    return attributes\n"
+                + decorator
+                + declaration
+                + field
+                + extra,
+            ),
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from attr import attrib\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('callback_provider')\n"
+            "feature = sys.argv[2]\n"
+            "payload = module.Payload() if feature == 'default-factory' "
+            "else module.Payload(1)\n"
+            "assert payload._value == 1\n"
+            "assert feature in module.effects\n"
+            "before = tuple(module.effects)\n"
+            "marker = module.marker.read_bytes()\n"
+            "counter = attrib().counter\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "assert attrib().counter == counter + 1\n"
+            "assert tuple(module.effects) == before\n"
+            "assert module.marker.read_bytes() == marker\n"
+            "observed.unwrap()\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), feature],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "defect",
+        ["none", "field", "layout", "options", "alias", "code", "globals"],
+    )
+    def test_native_attrs_methods_preserve_fields_layout_and_factory_counter(
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """Slotted native methods authenticate without replaying field construction."""
+        package = tmp_path / "attrs_provider"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "from attr import attrs, attrib\n"
+                "@attrs(slots=True, unsafe_hash=True)\n"
+                "class Payload:\n"
+                "    _validators = attrib()\n",
+            ),
+        )
+        consumer = (
+            "import importlib, sys, types\n"
+            "from attr import attrib\n"
+            "from attrs import evolve, fields, inspect\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('attrs_provider')\n"
+            "payload = module.Payload((1, 2))\n"
+            "assert payload._validators == (1, 2)\n"
+            "assert repr(payload) == 'Payload(_validators=(1, 2))'\n"
+            "assert payload == module.Payload((1, 2))\n"
+            "assert hash(payload) == hash(module.Payload((1, 2)))\n"
+            "assert evolve(payload, validators=(3,))._validators == (3,)\n"
+            "defect = sys.argv[2]\n"
+            "if defect == 'field':\n"
+            "    module.Payload.__attrs_attrs__ = "
+            "(fields(module.Payload)[0].evolve(default=('foreign',)),)\n"
+            "elif defect == 'layout':\n"
+            "    module.Payload.__slots__ = ('foreign',)\n"
+            "elif defect == 'options':\n"
+            "    inspect(module.Payload).is_slotted = False\n"
+            "elif defect == 'alias':\n"
+            "    module.Payload.__attrs_attrs__ = "
+            "(fields(module.Payload)[0].evolve(alias='foreign'),)\n"
+            "elif defect == 'code':\n"
+            "    supplier = module.Payload.__init__\n"
+            "    supplier.__code__ = supplier.__code__.replace(co_name='foreign')\n"
+            "elif defect == 'globals':\n"
+            "    supplier = module.Payload.__init__\n"
+            "    foreign_globals = dict(supplier.__globals__)\n"
+            "    foreign_globals['__name__'] = 'foreign_supplier'\n"
+            "    foreign = types.FunctionType(\n"
+            "        supplier.__code__, foreign_globals,\n"
+            "        supplier.__name__, supplier.__defaults__, supplier.__closure__)\n"
+            "    foreign.__module__ = supplier.__module__\n"
+            "    foreign.__qualname__ = supplier.__qualname__\n"
+            "    foreign.__kwdefaults__ = supplier.__kwdefaults__\n"
+            "    module.Payload.__init__ = foreign\n"
+            "counter = attrib().counter\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "assert attrib().counter == counter + 1\n"
+            "if defect == 'none':\n"
+            "    observed.unwrap()\n"
+            "    assert module.Payload((4,))._validators == (4,)\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), defect],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("defect", ["none", "code", "globals"])
     def test_reexported_native_function_retains_physical_supplier(
         tmp_path: Path,

@@ -149,10 +149,12 @@ the native MRO without invoking descriptor callbacks. The receiver alias must re
 that descriptor identity, and the actual supplier declaration and executed function
 must match physical source. Replacing either side, its source, or its code fails;
 membership of the supplier in the receiver's MRO does not waive alias authentication.
-An alias to a method declared in the same class resolves from that class's physical
-namespace before the module namespace. A module-level name does not replace the
-class-local binding. An absent binding remains a failure; authentication never
-manufactures an operand from a path or a missing name.
+An alias assigned after a method declaration in the same class resolves from
+that class's physical namespace before the module namespace. An assignment
+before that declaration retains its source-bound module reference. A later
+class-local name never changes an earlier binding. An absent binding remains a
+failure; authentication never manufactures an operand from a path or a missing
+name.
 An unresolved factory binding reports bounded, escaped identifier, module/package
 registration, receiver/declaration, physical source path, and supplier-kind context.
 Diagnostics never render the operand, its material values, or a source excerpt; they
@@ -274,6 +276,11 @@ The project's authored dependency categories retain their identity. Native
 resolver views derive from those declarations without promoting dev or examples
 requirements to runtime dependencies. Sources, overrides and Make routing come
 from the generator and are never repaired in their projections.
+In particular, Infra consumes Tests through its development requirements; Core
+consumes Infra and Tests through development and example requirements. These
+reciprocal development requirements remain resolver inputs and do not create
+runtime dependency cycles. Tests' runtime use of Infra keeps its declared
+category.
 
 Fleet execution consumes the canonical runtime dependency waves, with names
 ordered within each wave. It invokes each selected member's public Makefile
