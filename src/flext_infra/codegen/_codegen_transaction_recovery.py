@@ -284,10 +284,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
         with cls.mutation_lease(root):
             if completed:
-                current = (
-                    FlextInfraMiseArtifactsVerification.publication_states_current(
-                        outcome,
-                    )
+                current = FlextInfraMiseArtifactsVerification.publication_states_current(
+                    outcome,
+                    producer_verifier=FlextInfraCodegenPreconditions.producer_trees_current,
                 )
                 if current.failure:
                     return r[m.Infra.CodegenPhaseOutcome].from_failure(current)

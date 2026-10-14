@@ -1081,14 +1081,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return result_type.from_failure(extended)
         return result_type.ok((extended.value, owned_lazy_analysis))
 
+    @staticmethod
     def _publish_docs_batches(
-        self,
         request: m.Infra.CodegenConformRequest,
         result: m.Infra.CodegenResult,
         ports: m.Infra.CodegenConformPorts,
         batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Publish only invocation-owned docs after the managed batch releases."""
+        """Publish only invocation-owned docs after the managed batch releases.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+        """
         if result.plan is None:
             return r[m.Infra.CodegenResult].fail(
                 "docs publication requires its actual generation plan",

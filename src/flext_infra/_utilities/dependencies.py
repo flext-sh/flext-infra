@@ -157,13 +157,21 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             Authored requirements followed by missing applicable suppliers.
         """
         own = canonicalize_name(distribution)
-        authored = tuple(dict.fromkeys(
-            item for item in declared if canonicalize_name(Requirement(item).name) != own
-        ))
+        authored = tuple(
+            dict.fromkeys(
+                item
+                for item in declared
+                if canonicalize_name(Requirement(item).name) != own
+            )
+        )
         names = {canonicalize_name(Requirement(item).name) for item in authored}
         policy = (
             *scaffold.dev,
-            *(scaffold.required_flext_dev if kind is c.Infra.ProjectKind.INTERNAL_FLEXT else ()),
+            *(
+                scaffold.required_flext_dev
+                if kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+                else ()
+            ),
         )
         return (
             *authored,

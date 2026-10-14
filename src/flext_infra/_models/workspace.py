@@ -13,7 +13,7 @@ from flext_cli import m
 from typing_extensions import TypeForm
 
 from flext_core import u
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
@@ -50,13 +50,15 @@ class FlextInfraModelsWorkspace:
         """One immutable runtime epoch, shared by every selected namespace."""
 
         runtime: Path = m.Field(description="Exact native interpreter")
-        modules: t.StrSequence = m.Field(description="Ordered elected loaded modules")
+        modules: t.VariadicTuple[str] = m.Field(
+            description="Ordered elected loaded modules"
+        )
         sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
             description="Physical supplier and generated declaration origins",
         )
-        bindings: t.VariadicTuple[
-            FlextInfraModelsWorkspace.NativeBindingEvidence
-        ] = m.Field(description="Static native import observations")
+        bindings: t.VariadicTuple[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
+            m.Field(description="Static native import observations")
+        )
 
     class NativeImportRequest(m.ArbitraryTypesModel):
         """Explicit target, runtime and pinned inputs for isolated reference import."""
@@ -64,20 +66,19 @@ class FlextInfraModelsWorkspace:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         repository_root: Path = m.Field(description="Declared source workspace")
         runtime_root: Path = m.Field(description="Declared physical runtime root")
-        modules: t.StrSequence = m.Field(description="Loaded modules elected for this epoch")
+        modules: t.VariadicTuple[str] = m.Field(
+            description="Loaded modules elected for this epoch"
+        )
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             description="Original immutable source observations",
         )
+        resolved_exports: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+            default=(),
+            description="Declared public exports already resolved in this epoch",
+        )
 
-    class WorkspaceEnvironmentRequest(m.ContractModel):
-        """Read-only request for validating the active workspace environment."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-        repository_root: Annotated[Path, m.Field(description="Repository root path")]
-
-    class WorkspaceLockRequest(m.ContractModel):
-        """Read-only request for validating the committed uv.lock completeness."""
+    class WorkspaceRequest(m.ContractModel):
+        """Read-only workspace selection shared by native validation operations."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 

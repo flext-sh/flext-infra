@@ -573,10 +573,12 @@ class FlextInfraRenameSymbols:
                     continue
                 changes = u.Infra.restructure_changes(
                     project,
-                    f"${{owner}}.{old_suffix}",
-                    f"${{owner}}.{new_suffix}",
-                    arguments={"owner": "instance=" + owner},
-                    resources=elected,
+                    m.Infra.RopeRestructureRequest(
+                        pattern=f"${{owner}}.{old_suffix}",
+                        goal=f"${{owner}}.{new_suffix}",
+                        arguments={"owner": "instance=" + owner},
+                        resources=elected,
+                    ),
                 )
                 for change in changes.changes:
                     cls._record_campaign_change(

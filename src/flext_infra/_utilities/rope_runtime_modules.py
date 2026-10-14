@@ -7,9 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import sys
+import sysconfig
+from importlib.machinery import BuiltinImporter, FrozenImporter, ModuleSpec, PathFinder
+from inspect import getsourcefile
 from pathlib import Path
 
-from flext_infra import c, config, m, p, t
+from flext_cli import u
+
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -18,6 +24,131 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
     """Load Rope project/module/import objects behind protocols."""
+
+    @classmethod
+    def native_module_source(cls, module_name: str) -> p.Result[Path]:
+        """Authenticate native module election without calling an upper service.
+
+        Returns:
+            The physical supplier source, or the authenticated native interpreter.
+        """
+        module = sys.modules[module_name]
+        native = module.__spec__
+        if (
+            native is None
+            or sys.modules.get(native.name) is not module
+            or (
+                native.name != module_name
+                and (
+                    native.origin not in {"built-in", "frozen"}
+                    or module_name.partition(".")[0] not in sys.stdlib_module_names
+                )
+            )
+        ):
+            return r[Path].fail(f"producer module lacks its native spec: {module_name}")
+        components = module_name.split(".")
+        interpreter = Path(sys.executable).resolve()
+        if components[0] in sys.stdlib_module_names:
+            base = Path(sys.base_prefix).resolve()
+            standard = Path(
+                sysconfig.get_path(
+                    "stdlib",
+                    vars={"base": sys.base_prefix, "platbase": sys.base_exec_prefix},
+                )
+            ).resolve()
+            extension = sysconfig.get_config_var("DESTSHARED")
+            if not isinstance(extension, str):
+                return r[Path].fail(
+                    "producer Python base lacks its native extension directory"
+                )
+            extension_root = Path(extension).resolve()
+            if (
+                not interpreter.is_relative_to(base)
+                or not standard.is_relative_to(base)
+                or not extension_root.is_relative_to(base)
+            ):
+                return r[Path].fail(
+                    "producer standard library differs from native Python base"
+                )
+            physical = u.Cli.atomic_plan_directory_chain(standard)
+            if physical.failure:
+                return r[Path].from_failure(physical)
+            if native.origin == "built-in":
+                spec = BuiltinImporter.find_spec(native.name)
+            elif native.origin == "frozen":
+                spec = FrozenImporter.find_spec(native.name)
+            else:
+                spec = PathFinder.find_spec(
+                    components[0], [str(standard), str(extension_root)]
+                )
+        else:
+            spec = PathFinder.find_spec(components[0])
+        parent_path = None
+        if native.origin not in {"built-in", "frozen"}:
+            for index in range(1, len(components)):
+                if spec is None or not spec.submodule_search_locations:
+                    return r[Path].fail(
+                        f"producer module has no cold parent: {module_name}"
+                    )
+                parent_path = spec.submodule_search_locations
+                spec = PathFinder.find_spec(
+                    ".".join(components[: index + 1]),
+                    parent_path,
+                )
+            registered = cls.runtime_callable("importlib._bootstrap", "_find_spec")(
+                module_name, parent_path
+            )
+            if (
+                not isinstance(registered, ModuleSpec)
+                or spec is None
+                or registered.origin != spec.origin
+                or registered.submodule_search_locations
+                != spec.submodule_search_locations
+            ):
+                return r[Path].fail(
+                    f"registered producer importer disagrees with physical election: "
+                    f"{module_name}"
+                )
+            spec = registered
+        if (
+            spec is None
+            or spec.origin != native.origin
+            or type(spec.loader) is not type(native.loader)
+            or module.__loader__ is not native.loader
+        ):
+            return r[Path].fail(
+                f"producer module election differs from loaded spec: {module_name}; "
+                f"loaded_origin={native.origin!r}; "
+                f"cold_origin={None if spec is None else spec.origin!r}; "
+                f"loaded_loader={type(native.loader).__module__}."
+                f"{type(native.loader).__qualname__}; "
+                f"cold_loader={type(None if spec is None else spec.loader).__module__}."
+                f"{type(None if spec is None else spec.loader).__qualname__}"
+            )
+        if spec.origin == "frozen" and (
+            native.loader is not spec.loader
+            or native.loader_state.origname != spec.loader_state.origname
+            or (
+                native.loader_state.filename is not None
+                and native.loader_state.filename != spec.loader_state.filename
+            )
+            or (
+                spec.loader_state.filename is not None
+                and getsourcefile(module) != spec.loader_state.filename
+            )
+        ):
+            return r[Path].fail(
+                f"producer frozen declaration source differs from native loader: "
+                f"{module_name}; loaded_state={native.loader_state!r}; "
+                f"cold_state={spec.loader_state!r}; source={getsourcefile(module)!r}"
+            )
+        if spec.origin in {"built-in", "frozen"}:
+            return r[Path].ok(interpreter)
+        if spec.origin is None or getattr(module, "__file__", None) != spec.origin:
+            return r[Path].fail(
+                f"producer loaded module differs from cold origin: {module_name}"
+            )
+        return r[Path].ok(Path(spec.origin).absolute())
 
     @classmethod
     def native_class(

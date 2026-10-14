@@ -119,12 +119,10 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_module_to_types_package_with_custom_limits() -> None:
         """Verify module to types package with custom limits."""
         service = FlextInfraDependencyDetectionService()
-        inner = FlextInfraDependencyDetectionService.to_infra_value({
-            "custom_module": "types-custom",
-        })
-        tm.that(inner, none=False)
         limits: t.MappingKV[str, t.JsonValue] = {
-            "typing_libraries": {"module_to_package": inner},
+            "typing_libraries": {
+                "module_to_package": {"custom_module": "types-custom"},
+            },
         }
         tm.that(
             service.module_to_types_package("custom_module", limits),

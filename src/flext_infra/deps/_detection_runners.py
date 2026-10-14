@@ -20,14 +20,6 @@ if TYPE_CHECKING:
 class FlextInfraDependencyDetectionRunnersMixin:
     """Mixin holding raw-run contract plus external analysis-tool runners."""
 
-    if TYPE_CHECKING:
-        # Conversion helper provided by the concrete analyzer; declared for static
-        # resolution only (runtime impl lives on the concrete via FLEXT).
-        def _to_toml_config(
-            self,
-            payload: t.MappingKV[str, t.JsonValue],
-        ) -> t.JsonMapping: ...
-
     def run_deptry(
         self,
         project_path: Path,
@@ -58,7 +50,9 @@ class FlextInfraDependencyDetectionRunnersMixin:
         if before.failure:
             return result_type.from_failure(before)
         if before.value.content is not None:
-            return result_type.fail(f"deptry report destination already exists: {out_file}")
+            return result_type.fail(
+                f"deptry report destination already exists: {out_file}"
+            )
         result = u.Cli.run_raw(
             self._deptry_command(venv_bin, settings, out_file, extend_exclude),
             cwd=project_path,
@@ -82,15 +76,22 @@ class FlextInfraDependencyDetectionRunnersMixin:
             return result_type.from_failure(report_state)
         report_bytes = report_state.value.content
         if report_bytes is None:
-            return result_type.fail(f"deptry did not produce its native report: {out_file}")
+            return result_type.fail(
+                f"deptry did not produce its native report: {out_file}"
+            )
         report = r[m.Infra.DeptryNativeReport].create_from_callable(
-            partial(m.Infra.DeptryNativeReport.model_validate_json, report_bytes, strict=True)
+            partial(
+                m.Infra.DeptryNativeReport.model_validate_json,
+                report_bytes,
+                strict=True,
+            )
         )
         if report.failure:
             return result_type.from_failure(report)
-        verified = u.Cli.atomic_verify_binary_file_states(
-            (settings_state.value, report_state.value)
-        )
+        verified = u.Cli.atomic_verify_binary_file_states((
+            settings_state.value,
+            report_state.value,
+        ))
         if verified.failure:
             return result_type.from_failure(verified)
         issues = tuple(item.model_dump(mode="json") for item in report.value.root)

@@ -30,7 +30,7 @@ class FlextInfraWorkspaceLockCompleteness:
     @classmethod
     def execute_request(
         cls,
-        request: p.Infra.WorkspaceLockRequest,
+        request: p.Infra.WorkspaceRequest,
     ) -> p.Result[int]:
         """Validate one CLI request against the checkout's committed lock.
 
@@ -342,6 +342,7 @@ class FlextInfraWorkspaceLockCompleteness:
         """
         result_type = r[int]
         visited: dict[int, frozenset[str]] = {}
+        pending = list(pending)
         while pending:
             edge = pending.pop()
             matches = tuple(

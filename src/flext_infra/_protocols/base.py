@@ -215,6 +215,18 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class CodegenProducerVerifier(Protocol):
+        """Authenticate producer trees through a composed source authority."""
+
+        def __call__(
+            self,
+            trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            outputs: t.VariadicTuple[m.Infra.CodegenJournalSource] = (),
+            *,
+            modules: t.VariadicTuple[t.Pair[str, Path]],
+        ) -> p.Result[bool]: ...
+
+    @runtime_checkable
     class CodegenParticipantPolicyFactory(Protocol):
         """Composition-root authorization for one generation request."""
 
@@ -544,8 +556,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceEnvironmentRequest(Protocol):
-        """Read-only workspace environment validation request."""
+    class WorkspaceRequest(Protocol):
+        """Read-only workspace selection consumed by native validators."""
 
         @property
         def repository_root(self) -> Path:

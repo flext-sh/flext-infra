@@ -293,7 +293,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         originals = FlextInfraStagedPackage.source_inputs_current(plan)
         if originals.failure:
             return r[bool].from_failure(originals)
-        journal = FlextInfraCodegenPreconditions.unchanged_journal(
+        journal = FlextInfraMiseArtifactsState.unchanged_journal(
             session,
             "source preview journal changed during validation",
         )

@@ -9,12 +9,16 @@ from __future__ import annotations
 import marshal
 import sys
 from base64 import b64decode, b64encode
+from importlib.machinery import FrozenImporter
 from inspect import getattr_static, getclosurevars, isbuiltin, isclass, isfunction
 from json import dumps
 from pathlib import Path
 from types import CodeType, MemberDescriptorType, ModuleType
 
 from flext_infra import m, p, r, t
+from flext_infra._utilities.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
 
 
 class FlextInfraWorkspaceNativeReference:
@@ -45,7 +49,11 @@ class FlextInfraWorkspaceNativeReference:
         value: p.AttributeProbe | None,
         seen: frozenset[int] = frozenset(),
     ) -> str:
-        """Encode native value slots without authored repr/hash/equality callbacks."""
+        """Encode native value slots without authored repr/hash/equality callbacks.
+
+        Returns:
+            The resulting ``str``.
+        """
         native = type(value)
         if native in {str, int, bool, type(None)}:
             return dumps((native.__name__, value), ensure_ascii=True)
@@ -57,7 +65,7 @@ class FlextInfraWorkspaceNativeReference:
             return dumps(("ellipsis",))
         if id(value) in seen:
             return dumps(("cycle", cls._symbol(value)))
-        seen = seen | {id(value)}
+        seen |= {id(value)}
         if native in {tuple, list, set, frozenset}:
             items = tuple(cls._value(item, seen) for item in value)
             return dumps((
@@ -90,7 +98,11 @@ class FlextInfraWorkspaceNativeReference:
         code: CodeType,
         paths: t.SequenceOf[t.Pair[Path, Path]],
     ) -> CodeType:
-        """Translate authenticated staging paths using native CodeType.replace."""
+        """Translate authenticated staging paths using native CodeType.replace.
+
+        Returns:
+            The resulting ``CodeType``.
+        """
         filename = code.co_filename
         if not filename.startswith("<"):
             source = Path(filename)
@@ -106,6 +118,16 @@ class FlextInfraWorkspaceNativeReference:
         )
         return code.replace(co_filename=filename, co_consts=constants)
 
+    @staticmethod
+    def _source_path(
+        source: Path,
+        paths: t.SequenceOf[t.Pair[Path, Path]],
+    ) -> Path:
+        for staged, original in paths:
+            if source.is_relative_to(staged):
+                return original / source.relative_to(staged)
+        return source
+
     @classmethod
     def capture(
         cls,
@@ -113,11 +135,11 @@ class FlextInfraWorkspaceNativeReference:
         *,
         paths: t.SequenceOf[t.Pair[Path, Path]] = (),
     ) -> p.Result[m.Infra.NativeImportReference]:
-        """Capture already-imported native definitions once for the complete epoch."""
-        from flext_infra.workspace.environment_provenance import (
-            FlextInfraWorkspaceEnvironmentProvenance,
-        )
+        """Capture already-imported native definitions once for the complete epoch.
 
+        Returns:
+            The resulting ``p.Result[m.Infra.NativeImportReference]``.
+        """
         origins: dict[str, Path] = {}
         sources: set[t.Triple[str, str, str]] = set()
         evidence: list[m.Infra.NativeBindingEvidence] = []
@@ -128,11 +150,11 @@ class FlextInfraWorkspaceNativeReference:
                 return r[m.Infra.NativeImportReference].fail(
                     f"native reference lacks an elected module: {name}",
                 )
-            origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(name)
+            origin = FlextInfraUtilitiesRopeRuntimeModules.native_module_source(name)
             if origin.failure:
                 return r[m.Infra.NativeImportReference].from_failure(origin)
-            origins[name] = origin.value
-            sources.add((name, str(origin.value), ""))
+            origins[name] = cls._source_path(origin.value, paths)
+            sources.add((name, str(origins[name]), ""))
             pending.extend(
                 (f"{name}::{key}", value, name, "")
                 for key, value in sorted(vars(module).items())
@@ -162,12 +184,17 @@ class FlextInfraWorkspaceNativeReference:
                 actual_supplier = type.__getattribute__(value, "__module__")
                 origin = origins.get(actual_supplier)
                 if origin is None:
-                    observed = FlextInfraWorkspaceEnvironmentProvenance._module_source(
-                        actual_supplier,
+                    observed = (
+                        FlextInfraUtilitiesRopeRuntimeModules.native_module_source(
+                            actual_supplier,
+                        )
                     )
                     if observed.failure:
                         return r[m.Infra.NativeImportReference].from_failure(observed)
-                    origin = origins[actual_supplier] = observed.value
+                    origin = origins[actual_supplier] = cls._source_path(
+                        observed.value,
+                        paths,
+                    )
                 source = str(origin)
                 qualname = type.__getattribute__(value, "__qualname__")
                 sources.add((f"{actual_supplier}::{qualname}", source, ""))
@@ -182,12 +209,15 @@ class FlextInfraWorkspaceNativeReference:
                             ("metaclass", cls._symbol(type(value))),
                             (
                                 "bases",
-                                dumps(tuple(
-                                    cls._symbol(base)
-                                    for base in vars(type)["__bases__"].__get__(
-                                        value, type(value),
+                                dumps(
+                                    tuple(
+                                        cls._symbol(base)
+                                        for base in vars(type)["__bases__"].__get__(
+                                            value,
+                                            type(value),
+                                        )
                                     )
-                                )),
+                                ),
                             ),
                             (
                                 "annotations",
@@ -196,24 +226,29 @@ class FlextInfraWorkspaceNativeReference:
                         ),
                     ),
                 )
-                pending.extend(
-                    (f"{binding}.{key}", item, actual_supplier, source)
-                    for key, item in sorted(namespace.items())
-                    if isclass(item)
-                    or isfunction(item)
-                    or isbuiltin(item)
-                    or type(item) in {property, classmethod, staticmethod}
-                )
+                if actual_supplier in names:
+                    pending.extend(
+                        (f"{binding}.{key}", item, actual_supplier, source)
+                        for key, item in sorted(namespace.items())
+                        if isclass(item)
+                        or isfunction(item)
+                        or isbuiltin(item)
+                        or type(item) in {property, classmethod, staticmethod}
+                    )
                 continue
             if type(value) is property:
                 evidence.append(
                     m.Infra.NativeBindingEvidence(
-                        binding=binding, kind="property", supplier=supplier,
-                        name="", qualname="",
+                        binding=binding,
+                        kind="property",
+                        supplier=supplier,
+                        name="",
+                        qualname="",
                         operands=tuple(
                             (name, str(accessor is not None))
                             for name, accessor in (
-                                ("get", value.fget), ("set", value.fset),
+                                ("get", value.fget),
+                                ("set", value.fset),
                                 ("delete", value.fdel),
                             )
                         ),
@@ -222,7 +257,8 @@ class FlextInfraWorkspaceNativeReference:
                 pending.extend(
                     (f"{binding}.{name}", accessor, supplier, owner_source)
                     for name, accessor in (
-                        ("get", value.fget), ("set", value.fset),
+                        ("get", value.fget),
+                        ("set", value.fset),
                         ("delete", value.fdel),
                     )
                     if accessor is not None
@@ -234,14 +270,30 @@ class FlextInfraWorkspaceNativeReference:
             if not isfunction(value):
                 evidence.append(
                     m.Infra.NativeBindingEvidence(
-                        binding=binding, kind=kind,
+                        binding=binding,
+                        kind=kind,
                         supplier=value.__module__ or supplier,
-                        name=value.__name__, qualname=value.__qualname__,
+                        name=value.__name__,
+                        qualname=value.__qualname__,
                     ),
                 )
                 continue
+            code = cls._relocate_code(value.__code__, paths)
             actual_supplier = value.__globals__.get("__name__")
-            if isinstance(actual_supplier, str):
+            native_module = sys.modules.get(actual_supplier)
+            frozen = (
+                native_module is not None
+                and native_module.__spec__ is not None
+                and native_module.__spec__.loader is FrozenImporter
+            )
+            generated = code.co_filename.startswith("<") and not frozen
+            if generated:
+                if not owner_source or supplier not in sys.modules:
+                    return r[m.Infra.NativeImportReference].fail(
+                        f"generated producer has no native declaration owner: {binding}",
+                    )
+                actual_supplier = supplier
+            elif isinstance(actual_supplier, str):
                 module = sys.modules.get(actual_supplier)
                 if module is None or value.__globals__ is not vars(module):
                     return r[m.Infra.NativeImportReference].fail(
@@ -251,17 +303,18 @@ class FlextInfraWorkspaceNativeReference:
                 actual_supplier = supplier
             origin = origins.get(actual_supplier)
             if origin is None:
-                observed = FlextInfraWorkspaceEnvironmentProvenance._module_source(
+                observed = FlextInfraUtilitiesRopeRuntimeModules.native_module_source(
                     actual_supplier,
                 )
                 if observed.failure:
                     return r[m.Infra.NativeImportReference].from_failure(observed)
-                origin = origins[actual_supplier] = observed.value
-            code = cls._relocate_code(value.__code__, paths)
-            generated = code.co_filename.startswith("<")
+                origin = origins[actual_supplier] = cls._source_path(
+                    observed.value,
+                    paths,
+                )
             sources.add((
                 f"{actual_supplier}::{value.__qualname__}",
-                str(origin) if generated else code.co_filename,
+                str(origin) if generated or frozen else code.co_filename,
                 owner_source if generated else "",
             ))
             closure = getclosurevars(value)
@@ -274,17 +327,29 @@ class FlextInfraWorkspaceNativeReference:
                     f"producer wrapper has no executable link: {binding}",
                 )
             if wrapped is not None:
-                pending.append((f"{binding}.wrapped", wrapped, actual_supplier, owner_source))
+                pending.append((
+                    f"{binding}.wrapped",
+                    wrapped,
+                    actual_supplier,
+                    owner_source,
+                ))
             evidence.append(
                 m.Infra.NativeBindingEvidence(
-                    binding=binding, kind=kind, supplier=actual_supplier,
-                    name=value.__name__, qualname=value.__qualname__,
+                    binding=binding,
+                    kind=kind,
+                    supplier=actual_supplier,
+                    name=value.__name__,
+                    qualname=value.__qualname__,
                     code=b64encode(marshal.dumps(code)).decode("ascii"),
                     operands=(
                         ("module", cls._value(value.__module__)),
                         ("defaults", cls._value(value.__defaults__)),
                         ("keyword_defaults", cls._value(value.__kwdefaults__)),
                         ("closure", cls._value(closure.nonlocals)),
+                        (
+                            "generated_globals",
+                            cls._value(closure.globals) if generated else "",
+                        ),
                         ("wrapped", cls._value(wrapped)),
                     ),
                 ),
@@ -292,7 +357,8 @@ class FlextInfraWorkspaceNativeReference:
         return r[m.Infra.NativeImportReference].ok(
             m.Infra.NativeImportReference(
                 runtime=Path(sys.executable).resolve(),
-                modules=tuple(names), sources=tuple(sorted(sources)),
+                modules=tuple(names),
+                sources=tuple(sorted(sources)),
                 bindings=tuple(sorted(evidence, key=lambda item: item.binding)),
             ),
         )
@@ -302,19 +368,43 @@ class FlextInfraWorkspaceNativeReference:
         observed: m.Infra.NativeImportReference,
         reference: m.Infra.NativeImportReference,
     ) -> p.Result[bool]:
-        """Compare executable code using CPython equality, never serialized hashes."""
-        if observed.runtime != reference.runtime or observed.modules != reference.modules:
-            return r[bool].fail("native reference epoch/runtime differs")
+        """Compare executable code using CPython equality, never serialized hashes.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+        """
+        if observed.runtime != reference.runtime:
+            return r[bool].fail(
+                f"native reference runtime differs: {observed.runtime} "
+                f"!= {reference.runtime}"
+            )
+        if observed.modules != reference.modules:
+            return r[bool].fail("native reference elected module epoch differs")
+        if observed.sources != reference.sources:
+            extra = sorted(set(observed.sources).difference(reference.sources))
+            missing = sorted(set(reference.sources).difference(observed.sources))
+            return r[bool].fail(
+                "native reference source epoch differs: "
+                f"extra={extra[:1]} missing={missing[:1]}"
+            )
         expected = {item.binding: item for item in reference.bindings}
-        if set(expected) != {item.binding for item in observed.bindings}:
-            return r[bool].fail("producer executable binding inventory differs")
+        actual = {item.binding for item in observed.bindings}
+        if set(expected) != actual:
+            extra = sorted(actual.difference(expected))
+            missing = sorted(set(expected).difference(actual))
+            return r[bool].fail(
+                "producer executable binding inventory differs: "
+                f"extra={extra[:1]} missing={missing[:1]}"
+            )
         for item in observed.bindings:
             native = expected[item.binding]
             if item.model_dump(exclude={"code"}) != native.model_dump(exclude={"code"}):
                 return r[bool].fail(f"producer native binding differs: {item.binding}")
             if item.code is None or native.code is None:
                 if item.code != native.code:
-                    return r[bool].fail(f"producer native code presence differs: {item.binding}")
+                    return r[bool].fail(
+                        f"producer native code presence differs: {item.binding}"
+                    )
                 continue
             actual_code = marshal.loads(b64decode(item.code, validate=True))
             expected_code = marshal.loads(b64decode(native.code, validate=True))
@@ -323,5 +413,7 @@ class FlextInfraWorkspaceNativeReference:
                 or not isinstance(expected_code, CodeType)
                 or actual_code != expected_code
             ):
-                return r[bool].fail(f"producer executed code differs from native import: {item.binding}")
+                return r[bool].fail(
+                    f"producer executed code differs from native import: {item.binding}"
+                )
         return r[bool].ok(value=True)

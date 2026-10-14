@@ -17,14 +17,14 @@ class TestsFlextInfraWorkspaceLifecycle:
     """Observe real topology and process boundaries without substitute recipes."""
 
     @staticmethod
-    def _request(root: Path) -> m.Infra.WorkspaceEnvironmentRequest:
+    def _request(root: Path) -> m.Infra.WorkspaceRequest:
         """Construct the same typed request the public CLI validates.
 
         Returns:
             The repository request.
 
         """
-        return m.Infra.WorkspaceEnvironmentRequest(repository_root=root)
+        return m.Infra.WorkspaceRequest(repository_root=root)
 
     def test_plan_uses_root_cwd_and_declared_steps_without_duplicate_fanout(
         self,

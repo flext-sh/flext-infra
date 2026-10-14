@@ -25,7 +25,10 @@ from flext_infra._utilities._semantic_cutover.edits import (
 )
 
 
-class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdits):
+class FlextInfraUtilitiesSemanticContracts(
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutoverEdits,
+):
     """Reuse the joint semantic loop and immutable Rope source inventory."""
 
     @classmethod
@@ -105,13 +108,14 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 )
                 changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
                     project,
-                    rule.pattern,
-                    rule.goal,
-                    arguments=rule.arguments,
-                    resources=resources,
-                    imports=tuple(rule.imports.values()),
-                    import_bindings=rule.imports,
-                    match_filter=partial(cls._admit_contract_match, project, rule),
+                    m.Infra.RopeRestructureRequest(
+                        pattern=rule.pattern,
+                        goal=rule.goal,
+                        arguments=rule.arguments,
+                        resources=resources,
+                        imports=rule.imports,
+                        match_filter=partial(cls._admit_contract_match, project, rule),
+                    ),
                 )
                 members = FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
                     changes.changes, f"{rule.id}: invalid Rope content changes"
@@ -140,8 +144,9 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             )
         )
 
-    @staticmethod
+    @classmethod
     def _admit_contract_match(
+        cls,
         project: p.Infra.RopeProject,
         rule: m.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
@@ -157,47 +162,32 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         scope = runtime.scope_at(module, match.get_region()[0])
-        if rule.scope_kinds and scope.get_kind() not in rule.scope_kinds:
+        if not cls._admit_contract_scope(project, rule, module, scope):
             return False
-        if rule.families:
-            resource = module.get_resource()
-            if resource is None:
-                message = f"{rule.id}: source module has no declared resource"
-                raise ValueError(message)
-            families = (
-                FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
-                    parent.name
-                )
-                for parent in Path(resource.real_path).parents
-                if parent.is_relative_to(Path(project.root.real_path))
-            )
-            family = next((value for value in families if value is not None), None)
-            if family not in rule.families:
-                return False
-        ancestry = FlextInfraUtilitiesDeclarationPayload._class_ancestry(scope.pyobject)
+        ancestry = cls._class_ancestry(scope.pyobject)
         if rule.model_bases and not any(
             runtime.qualified_name(project, name).get_object() in ancestry
             for name in rule.model_bases
         ):
             return False
-        if rule.repeats_annotation:
+        if rule.repeats_annotation or rule.reorders_annotation:
             calls = FlextInfraUtilitiesRopeRuntimeRefactors.word_call_regions(
                 module.source_code, match.get_region()
             )
             if len(calls) != 1:
                 message = (
-                    f"{rule.id}: annotation evaluation cannot repeat authored calls "
+                    f"{rule.id}: annotation evaluation cannot repeat or reorder "
+                    f"authored calls "
                     f"in {module.get_name()}:{scope.get_start()}"
                 )
                 raise ValueError(message)
-        for name in rule.unshadowed_builtins:
-            lexical = runtime.lexical_scope(scope, name)
-            if (
-                lexical is None
-                or lexical.get_kind() != c.Infra.RopeScopeKind.MODULE
-                or name in lexical.get_defined_names()
-            ):
-                return False
+        if any(
+            (lexical := runtime.lexical_scope(scope, name)) is None
+            or lexical.get_kind() != c.Infra.RopeScopeKind.MODULE
+            or name in lexical.get_defined_names()
+            for name in rule.unshadowed_builtins
+        ):
+            return False
         for expression, expected in rule.bindings.items():
             identity = runtime.qualified_name(project, expected)
             root = expression.split(".", 1)[0]
@@ -222,6 +212,37 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 )
                 raise ValueError(message)
         return True
+
+    @staticmethod
+    def _admit_contract_scope(
+        project: p.Infra.RopeProject,
+        rule: m.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScope,
+    ) -> bool:
+        """Admit a declared scope through the configured facade family owner.
+
+        Returns:
+            Whether the native scope belongs to the configured rule domain.
+
+        Raises:
+            ValueError: If a family-constrained occurrence has no source resource.
+        """
+        if rule.scope_kinds and scope.get_kind() not in rule.scope_kinds:
+            return False
+        if not rule.families:
+            return True
+        resource = module.get_resource()
+        if resource is None:
+            message = f"{rule.id}: source module has no declared resource"
+            raise ValueError(message)
+        families = (
+            FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(parent.name)
+            for parent in Path(resource.real_path).parents
+            if parent.is_relative_to(Path(project.root.real_path))
+        )
+        family = next((value for value in families if value is not None), None)
+        return family in rule.families
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticContracts"]

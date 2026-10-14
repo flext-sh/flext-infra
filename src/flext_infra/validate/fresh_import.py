@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, ClassVar, override
@@ -19,13 +20,103 @@ from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, 
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     """Verify consumers and publication contracts without inherited import state."""
+
+    @classmethod
+    def capture_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Compare executing bindings with an isolated import of pinned sources.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.NativeImportReference]``.
+        """
+        result_type = r[m.Infra.NativeImportReference]
+        exports = tuple(
+            (name, exported)
+            for name in request.modules
+            for exported in vars(sys.modules[name]).get("__all__", ())
+            if exported in vars(sys.modules[name])
+        )
+        transport = m.Infra.NativeImportRequest(
+            repository_root=request.repository_root,
+            runtime_root=request.runtime_root,
+            modules=request.modules,
+            inputs=request.inputs,
+            resolved_exports=exports,
+        )
+        for state in request.inputs:
+            current = u.Cli.atomic_read_binary_file_state(state.path, required=True)
+            if current.failure:
+                return result_type.from_failure(current)
+            if current.value != state:
+                return result_type.fail(
+                    f"native import source changed before admission: {state.path}",
+                )
+        code = (
+            "import importlib, sys\n"
+            "from flext_infra import m\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference\n"
+            "request = m.Infra.NativeImportRequest.model_validate_json(\n"
+            "        sys.stdin.read()\n"
+            "    )\n"
+            "for name in request.modules:\n"
+            "    importlib.import_module(name)\n"
+            "for name, exported in request.resolved_exports:\n"
+            "    getattr(sys.modules[name], exported)\n"
+            "reference = "
+            "FlextInfraWorkspaceNativeReference.capture(request.modules).unwrap()\n"
+            "print(reference.model_dump_json())\n"
+        )
+        # The request carries every elected source file's content: argv has a
+        # 128 KiB per-argument ceiling (E2BIG), stdin does not.
+        observed = u.Cli.run_raw(
+            [
+                str(u.Infra.runtime_python(request.runtime_root)),
+                "-c",
+                code,
+            ],
+            cwd=request.repository_root,
+            options=m.Cli.ProcessOptions(input_data=transport.model_dump_json()),
+        )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        if not u.Cli.process_succeeded(observed.value.outcome):
+            return result_type.fail(
+                "native reference import failed: "
+                + observed.value.stderr
+                + observed.value.stdout,
+            )
+        reference = m.Infra.NativeImportReference.model_validate_json(
+            observed.value.stdout,
+        )
+        current = FlextInfraWorkspaceNativeReference.capture(request.modules)
+        if current.failure:
+            return result_type.from_failure(current)
+        compared = FlextInfraWorkspaceNativeReference.compare(current.value, reference)
+        if compared.failure:
+            return result_type.from_failure(compared)
+        for state in request.inputs:
+            current_state = u.Cli.atomic_read_binary_file_state(
+                state.path,
+                required=True,
+            )
+            if current_state.failure:
+                return result_type.from_failure(current_state)
+            if current_state.value != state:
+                return result_type.fail(
+                    f"native import source changed during admission: {state.path}",
+                )
+        return result_type.ok(reference)
 
     packages: Annotated[
         t.StrSequence,
@@ -128,7 +219,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         Returns:
             The destination proof or the first journal authority failure.
         """
-        authority = FlextInfraCodegenPreconditions.unchanged_journal(
+        authority = FlextInfraMiseArtifactsState.unchanged_journal(
             session, "staged view journal authority changed"
         )
         if authority.failure:
@@ -357,7 +448,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             return r[bool].from_failure(after)
         if after.value != view.manifest:
             return r[bool].fail("candidate tree identity changed during public import")
-        journal_barrier = FlextInfraCodegenPreconditions.unchanged_journal(
+        journal_barrier = FlextInfraMiseArtifactsState.unchanged_journal(
             session, "staged view journal changed during consumer"
         )
         if journal_barrier.failure:

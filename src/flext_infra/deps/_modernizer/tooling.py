@@ -123,7 +123,6 @@ class FlextInfraPyprojectModernizerTooling:
             (
                 request.runtime_dependency_overlay,
                 request.declared_project_dependencies,
-                request.upstream,
             ),
         )
         if conformed.failure:
@@ -292,7 +291,7 @@ class FlextInfraPyprojectModernizerTooling:
         topology: m.Infra.PyprojectDeclaredTopology,
         scaffold_project: m.Infra.ScaffoldProjectSpec,
         names: t.Pair[t.NonEmptyStr, t.NonEmptyStr],
-        overlays: t.Triple[t.StrSequence, t.StrSequence, t.NonEmptyStr],
+        overlays: t.Pair[t.StrSequence, t.StrSequence],
     ) -> p.Result[t.Pair[m.Infra.ToolingConformedTools, t.MappingKV[str, t.JsonValue]]]:
         """Conform a seeded document and validate its derived tool tables.
 
@@ -301,7 +300,7 @@ class FlextInfraPyprojectModernizerTooling:
 
         """
         project_name, package_name = names
-        runtime_dependency_overlay, declared_project_dependencies, _upstream = overlays
+        runtime_dependency_overlay, declared_project_dependencies = overlays
         result_type = r[
             t.Pair[m.Infra.ToolingConformedTools, t.MappingKV[str, t.JsonValue]]
         ]
@@ -322,12 +321,14 @@ class FlextInfraPyprojectModernizerTooling:
                 ],
             },
             c.Infra.DEPENDENCY_GROUPS: {
-                c.Infra.DEV: list(u.Infra.project_development_requirements(
-                    scaffold_project,
-                    distribution=project_name,
-                    kind=declaration.value.spec.kind,
-                    declared=live_dev,
-                )),
+                c.Infra.DEV: list(
+                    u.Infra.project_development_requirements(
+                        scaffold_project,
+                        distribution=project_name,
+                        kind=declaration.value.spec.kind,
+                        declared=live_dev,
+                    )
+                ),
             },
             c.Infra.TOOL: {"flext": {"docs": {"package_name": package_name}}},
         }

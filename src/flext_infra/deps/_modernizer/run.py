@@ -367,6 +367,12 @@ class FlextInfraPyprojectModernizerRun:
         Returns:
             The resulting ``int``.
 
+        Raises:
+            TypeError: If ``not isinstance(entries, list)``; or if
+                ``isinstance(requirement, Mapping)``; or if ``not
+                isinstance(requirement, str)``.
+            ValueError: If project declaration is absent; or if dependency owner changed
+                during read.
         """
         try:
             root_project_name = u.Infra.project_name_from_payload(
@@ -379,10 +385,14 @@ class FlextInfraPyprojectModernizerRun:
         if dry_run:
             return 0
         versions = u.Infra.resolved_dependency_versions()
-        internal_names = (*u.Infra.workspace_project_paths(self.root), root_project_name)
+        internal_names = (
+            *u.Infra.workspace_project_paths(self.root),
+            root_project_name,
+        )
         project = u.Cli.toml_mapping_child(root_state.payload, c.Infra.PROJECT)
         if project is None:
-            raise ValueError(f"project declaration is absent: {root_state.pyproject_path}")
+            msg = f"project declaration is absent: {root_state.pyproject_path}"
+            raise ValueError(msg)
         sections = (
             ("project", {c.Infra.DEPENDENCIES: project.get(c.Infra.DEPENDENCIES, [])}),
             (
@@ -391,21 +401,25 @@ class FlextInfraPyprojectModernizerRun:
             ),
             (
                 c.Infra.DEPENDENCY_GROUPS,
-                u.Cli.toml_mapping_child(root_state.payload, c.Infra.DEPENDENCY_GROUPS) or {},
+                u.Cli.toml_mapping_child(root_state.payload, c.Infra.DEPENDENCY_GROUPS)
+                or {},
             ),
         )
         changes: list[str] = []
         for section, groups in sections:
             for name, entries in groups.items():
                 if not isinstance(entries, list):
-                    raise TypeError(f"{section}.{name} must be a requirement array")
+                    msg = f"{section}.{name} must be a requirement array"
+                    raise TypeError(msg)
                 for index, requirement in enumerate(entries):
                     if isinstance(requirement, Mapping):
                         if section == c.Infra.DEPENDENCY_GROUPS:
                             continue
-                        raise TypeError(f"{section}.{name} requires requirement strings")
+                        msg = f"{section}.{name} requires requirement strings"
+                        raise TypeError(msg)
                     if not isinstance(requirement, str):
-                        raise TypeError(f"{section}.{name} requires requirement strings")
+                        msg = f"{section}.{name} requires requirement strings"
+                        raise TypeError(msg)
                     rewritten = u.Infra.rewrite_requirement_constraint(
                         requirement,
                         resolved_versions=versions,
@@ -413,15 +427,19 @@ class FlextInfraPyprojectModernizerRun:
                     )
                     if rewritten is not None:
                         entries[index] = rewritten
-                        changes.append(f"{section}.{name}: {requirement} -> {rewritten}")
+                        changes.append(
+                            f"{section}.{name}: {requirement} -> {rewritten}"
+                        )
         if not changes:
             return 0
         before = u.Cli.atomic_read_binary_file_state(
-            root_state.pyproject_path, required=True,
+            root_state.pyproject_path,
+            required=True,
         ).unwrap()
         if before.content != root_state.original_rendered.encode(c.DEFAULT_ENCODING):
+            msg = f"dependency owner changed during read: {root_state.pyproject_path}"
             raise ValueError(
-                f"dependency owner changed during read: {root_state.pyproject_path}",
+                msg,
             )
         rendered = self._render_document_state(
             root_state,
@@ -438,7 +456,9 @@ class FlextInfraPyprojectModernizerRun:
             root_state.rendered.encode(c.DEFAULT_ENCODING),
             permission_mode=before.mode,
         ).unwrap()
-        u.Cli.info("deps: target requirement floors updated from the provisioned runtime")
+        u.Cli.info(
+            "deps: target requirement floors updated from the provisioned runtime"
+        )
         for change in changes:
             u.Cli.info(f"  - {change}")
         return 0

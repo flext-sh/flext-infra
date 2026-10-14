@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import traceback
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
@@ -68,25 +67,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
         """
-        try:
-            return cls._plan_dispatch(phase, rope_workspace, sources, findings)
-        except Exception:
-            traceback.print_exc()
-            raise
-
-    @classmethod
-    def _plan_dispatch(
-        cls,
-        phase: c.Infra.SemanticCutoverPhase,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding] = (),
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        try:
-            return cls._plan_phases(phase, rope_workspace, sources, findings)
-        except Exception:
-            traceback.print_exc()
-            raise
+        return cls._plan_phases(phase, rope_workspace, sources, findings)
 
     @classmethod
     def _plan_phases(

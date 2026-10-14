@@ -21,12 +21,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencyRequirements,
     FlextInfraUtilitiesGit,
 )
-from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectUvSources
+from flext_infra._utilities._pyproject import (
+    FlextInfraUtilitiesPyprojectOverlay,
+    FlextInfraUtilitiesPyprojectUvSources,
+)
 from flext_infra._utilities._pyproject._requirements_provenance import (
     FlextInfraUtilitiesPyprojectRequirementsProvenance,
-)
-from flext_infra._utilities._pyproject.overlay import (
-    FlextInfraUtilitiesPyprojectOverlay,
 )
 
 

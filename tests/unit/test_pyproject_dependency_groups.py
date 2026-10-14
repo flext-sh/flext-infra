@@ -1,4 +1,8 @@
-"""Public conformance preserves native PEP 735 group structure and tiers."""
+"""Public conformance preserves native PEP 735 group structure and tiers.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -387,6 +391,7 @@ class TestsPyprojectDependencyGroups:
         tm.that(result.failure, eq=True)
 
     def test_runtime_dependencies_keep_pep508_string_grammar(self) -> None:
+        """PEP 621 runtime dependency arrays reject PEP 735 inclusion tables."""
         source = self._source("dev = []").replace(
             "dependencies = []",
             'dependencies = [{include-group = "dev"}]',
@@ -408,10 +413,14 @@ class TestsPyprojectDependencyGroups:
     ) -> None:
         """The typed parser exposes malformed tables before they can be rewritten."""
         source = self._source(f"dev = [{entry}]\nexamples = []")
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="validation errors for DependencyGroupEntries",
+        ):
             self._conform(source, c.Infra.MakeProfile.STANDALONE)
 
     def test_empty_native_groups_remain_available_for_inclusion(self) -> None:
+        """Conform preserves the empty native groups its inclusions reference."""
         source = self._source(
             'dev = []\ncodegen = []\nexamples = [{include-group = "dev"}, '
             '{include-group = "codegen"}]',

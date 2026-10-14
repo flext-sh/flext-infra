@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping
 from pathlib import Path
-from typing import override
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.deps import FlextInfraDependencyDetectionRunnersMixin
@@ -31,64 +30,6 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         return r[t.JsonMapping].ok(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value),
         )
-
-    @override
-    def _to_toml_config(self, payload: t.MappingKV[str, t.JsonValue]) -> t.JsonMapping:
-        """To toml config.
-
-        Returns:
-            The resulting ``t.JsonMapping``.
-
-        """
-        normalized: MutableMapping[str, t.JsonValue] = {}
-        for key, value in payload.items():
-            if value is None:
-                normalized[key] = None
-                continue
-            converted = FlextInfraDependencyDetectionAnalysis.to_infra_value(value)
-            if converted is None:
-                continue
-            normalized[key] = converted
-        return normalized
-
-    @staticmethod
-    def to_infra_value(value: t.JsonValue | None) -> t.JsonValue | None:
-        """Convert container value to namespaced infra value.
-
-        Returns:
-            The resulting ``t.JsonValue | None``.
-
-        """
-        if value is None:
-            return None
-        if isinstance(value, c.PRIMITIVES_TYPES):
-            primitive: t.JsonValue = value
-            return primitive
-        scalar_types = c.PRIMITIVES_TYPES
-        if isinstance(value, list):
-            sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
-            converted: t.MutableSequenceOf[t.JsonValue] = []
-            for item in sequence:
-                if item is None:
-                    converted.append(None)
-                    continue
-                conv = FlextInfraDependencyDetectionAnalysis.to_infra_value(item)
-                if conv is None or not isinstance(conv, scalar_types):
-                    return None
-                converted.append(conv)
-            return list(t.Cli.JSON_LIST_ADAPTER.validate_python(converted))
-        mapping_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        converted_map: MutableMapping[str, t.JsonValue] = {}
-        for key, map_item in mapping_value.items():
-            if map_item is None:
-                converted_map[key] = None
-                continue
-            conv = FlextInfraDependencyDetectionAnalysis.to_infra_value(map_item)
-            if conv is None or not isinstance(conv, scalar_types):
-                return None
-            converted_map[key] = conv
-        mapping: t.JsonValue = u.json_dict_adapter().validate_python(converted_map)
-        return mapping
 
     def read_current_typings_from_pyproject(
         self,

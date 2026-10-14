@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra
-from tests import c, m, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -45,11 +45,10 @@ class TestsFlextInfraRopeContracts:
         ],
     )
     def test_real_defaults_preserve_runtime_and_converge(
-        tmp_path: Path, declaration: str
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        declaration: str,
     ) -> None:
         """Native Rope retains independent instances and public JSON roundtrips."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
         source = (
             "from typing import Annotated as Meta\n"
             "from pydantic import BaseModel, Field\n"
@@ -64,37 +63,13 @@ class TestsFlextInfraRopeContracts:
             "evidence = (first.model_dump_json(), second.model_dump_json(), "
             "restored.model_dump_json())\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
-            )
-            tm.that(len(edits), eq=1)
-            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-            updated = edits[0].updated_source
-            path.write_text(updated, encoding=c.DEFAULT_ENCODING)
-            tm.that(runpy.run_path(str(path))["evidence"], eq=before)
-            remaining = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: updated},
-                )
-            )
-            tm.that(remaining, empty=True)
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
     def test_strict_json_boundary_and_validator_modes_survive_factory_migration(
-        tmp_path: Path,
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """A safe factory migration must preserve distinct validation contracts."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
         source = (
             "from datetime import date\n"
             "from json import loads\n"
@@ -106,7 +81,7 @@ class TestsFlextInfraRopeContracts:
             "    when: date\n"
             "    where: tuple[int, int]\n"
             "    values: list[str] = Field(default_factory=list)\n"
-            "    @field_validator('where', mode='before')\n"
+            "    @field_validator('where', mode='after')\n"
             "    @classmethod\n"
             "    def observe(cls, value, info):\n"
             "        events.append((info.mode, info.context))\n"
@@ -121,28 +96,13 @@ class TestsFlextInfraRopeContracts:
             "context={'consumer': 'json'})\n"
             "evidence = (rejected, accepted.model_dump_json(), tuple(events))\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        tm.that(before[0], empty=False)
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
-            )
-            tm.that(len(edits), eq=1)
-            path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
     def test_dependent_factory_preserves_call_order_and_instance_isolation(
-        tmp_path: Path,
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Moving sole Field metadata preserves data-dependent factory effects."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
         source = (
             "from typing import Annotated\n"
             "from pydantic import BaseModel, Field\n"
@@ -160,28 +120,29 @@ class TestsFlextInfraRopeContracts:
             "evidence = (tuple(calls), first.model_dump_json(), "
             "second.model_dump_json(), explicit.model_dump_json())\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
-            )
-            tm.that(len(edits), eq=1)
-            updated = edits[0].updated_source
-            path.write_text(updated, encoding=c.DEFAULT_ENCODING)
-            tm.that(runpy.run_path(str(path))["evidence"], eq=before)
-            remaining = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: updated},
-                )
-            )
-        tm.that(remaining, empty=True)
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "namespace",
+        ["flext_tap_ldif", "flext_target_ldif", "flext_dbt_ldif"],
+    )
+    def test_outer_facades_preserve_nested_contracts(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        namespace: str,
+    ) -> None:
+        """Real outer model presets and utilities retain their inherited contracts."""
+        source = (
+            f"from {namespace} import m, t, u\n"
+            "class Payload(m.BaseModel):\n"
+            "    values: list[dict[str, int | None]] = m.Field(default_factory=list)\n"
+            "first, second = Payload(), Payload()\n"
+            "first.values.append({'present': 1, 'absent': None})\n"
+            "restored = Payload.model_validate_json(first.model_dump_json())\n"
+            "evidence = (first.model_dump_json(), second.model_dump_json(), "
+            "restored.model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
     def test_factory_migration_cannot_repeat_annotation_effects(
@@ -204,7 +165,49 @@ class TestsFlextInfraRopeContracts:
         before = runpy.run_path(str(path))["evidence"]
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="annotation.*repeat"),
+            pytest.raises(ValueError, match=r"annotation.*repeat"),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=rope,
+                sources={path: source},
+            )
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "field_argument",
+        ["default=default_value()", "default_factory=factory_value()"],
+    )
+    def test_metadata_migration_cannot_reorder_authored_effects(
+        tmp_path: Path,
+        field_argument: str,
+    ) -> None:
+        """Assignment syntax must not reverse callbacks in an Annotated field."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from typing import Annotated\n"
+            "from pydantic import BaseModel, Field\n"
+            "events = []\n"
+            "def contract():\n"
+            "    events.append('annotation')\n"
+            "    return int\n"
+            "def default_value():\n"
+            "    events.append('default')\n"
+            "    return 7\n"
+            "def factory_value():\n"
+            "    events.append('factory')\n"
+            "    return lambda: 7\n"
+            "class Payload(BaseModel):\n"
+            f"    value: Annotated[contract(), Field({field_argument})]\n"
+            "evidence = (tuple(events), Payload().model_dump_json())\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match=r"annotation.*reorder"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
@@ -266,86 +269,64 @@ class TestsFlextInfraRopeContracts:
         tm.that(runpy.run_path(str(path))["evidence"], eq=True)
 
     @staticmethod
-    def test_competing_utility_binding_refuses_publication(tmp_path: Path) -> None:
-        """A new public utility import must not capture an existing consumer."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
-        source = (
-            "from pydantic import BaseModel, Field\n"
-            "u = 'existing consumer binding'\n"
-            "class Payload(BaseModel):\n"
-            "    values: list[str] = Field(default_factory=list)\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"destination u.empty is shadowed"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                rope_workspace=rope,
-                sources={path: source},
-            )
-        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-
-    @staticmethod
-    def test_function_parameter_cannot_capture_adapter_destination(
-        tmp_path: Path,
+    @pytest.mark.parametrize(
+        ("source", "diagnostic"),
+        [
+            (
+                (
+                    "from pydantic import BaseModel, Field\n"
+                    "u = 'existing consumer binding'\n"
+                    "class Payload(BaseModel):\n"
+                    "    values: list[str] = Field(default_factory=list)\n"
+                    "evidence = (u, Payload().model_dump_json())\n"
+                ),
+                r"destination u.empty is shadowed",
+            ),
+            (
+                (
+                    "from pydantic import TypeAdapter\n"
+                    "def consume(u):\n"
+                    "    return TypeAdapter(list[int]).validate_python([1])\n"
+                    "evidence = consume('existing parameter')\n"
+                ),
+                r"destination u.type_adapter is shadowed",
+            ),
+            (
+                (
+                    "from pydantic import BaseModel, Field\n"
+                    "class Payload(BaseModel):\n"
+                    "    values: list[str] = Field(default_factory=list)\n"
+                    "from flext_core import u\n"
+                    "evidence = Payload().model_dump_json()\n"
+                ),
+                "no preceding unconditional import",
+            ),
+        ],
+        ids=["module-shadow", "parameter-shadow", "late-import"],
+    )
+    def test_destination_binding_refuses_invalid_publication(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        source: str,
+        diagnostic: str,
     ) -> None:
-        """A native function parameter must take precedence over module imports."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
-        source = (
-            "from pydantic import TypeAdapter\n"
-            "def consume(u):\n"
-            "    return TypeAdapter(list[int]).validate_python([1])\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"destination u.type_adapter is shadowed"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                rope_workspace=rope,
-                sources={path: source},
-            )
-        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-
-    @staticmethod
-    def test_late_destination_import_cannot_change_class_execution(
-        tmp_path: Path,
-    ) -> None:
-        """A late utility binding cannot become a new class-definition failure."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
-        source = (
-            "from pydantic import BaseModel, Field\n"
-            "class Payload(BaseModel):\n"
-            "    values: list[str] = Field(default_factory=list)\n"
-            "from flext_core import u\n"
-            "evidence = Payload().model_dump_json()\n"
-        )
+        """Module, parameter and execution-order bindings preserve public behavior."""
+        rope, path = rope_contract_consumer
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="no preceding unconditional import"),
-        ):
+        with pytest.raises(ValueError, match=diagnostic):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
                 rope_workspace=rope,
                 sources={path: source},
             )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
     def test_existing_cli_facade_and_unrelated_field_info_are_preserved(
-        tmp_path: Path,
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Valid model fields migrate independently without capturing richer u."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
         source = (
             "from flext_cli import u\n"
             "from pydantic import BaseModel, Field\n"
@@ -356,27 +337,13 @@ class TestsFlextInfraRopeContracts:
             "info.default_factory is list, "
             "u.Cli.env_read('consumer_key', {'consumer_key': 'value'}).unwrap())\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
-            )
-            tm.that(len(edits), eq=1)
-            path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
     def test_aliased_adapter_preserves_validation_and_failure_modes(
-        tmp_path: Path,
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """The public constructor preserves native coercion and rejection."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
         source = (
             "from pydantic import TypeAdapter as Parse, ValidationError\n"
             "def consume():\n"
@@ -389,27 +356,4 @@ class TestsFlextInfraRopeContracts:
             "    raise AssertionError('invalid input was accepted')\n"
             "evidence = consume()\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
-            )
-            tm.that(len(edits), eq=1)
-            updated = edits[0].updated_source
-            path.write_text(updated, encoding=c.DEFAULT_ENCODING)
-            tm.that(runpy.run_path(str(path))["evidence"], eq=before)
-            tm.that(
-                tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                        rope_workspace=rope,
-                        sources={path: updated},
-                    )
-                ),
-                empty=True,
-            )
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)

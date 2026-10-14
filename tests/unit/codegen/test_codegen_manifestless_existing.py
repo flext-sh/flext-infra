@@ -215,7 +215,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
 
     @staticmethod
-    def test_root_distribution_owns_its_dependency_profile(
+    def test_root_distribution_preserves_its_runtime_requirements(
         tmp_path: Path,
     ) -> None:
         """The tree's root declares no flext runtime dependency and still conforms.
@@ -285,4 +285,3 @@ class TestsFlextInfraCodegenManifestlessExisting:
             u.Tests.toml_strings_at(rendered, "project", "dependencies"),
             eq=(),
         )
-

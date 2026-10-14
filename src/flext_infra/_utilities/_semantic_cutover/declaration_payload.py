@@ -132,12 +132,12 @@ class FlextInfraUtilitiesDeclarationPayload:
                 for start, stop in subscriptions_in_header
                 if argument_start <= start - header.start_offset
                 and stop - header.start_offset <= argument_end
-                and not header.text[
-                    argument_start : start - header.start_offset
-                ].strip("() \t\r\n")
-                and not header.text[
-                    stop - header.start_offset : argument_end
-                ].strip("() \t\r\n")
+                and not header.text[argument_start : start - header.start_offset].strip(
+                    "() \t\r\n"
+                )
+                and not header.text[stop - header.start_offset : argument_end].strip(
+                    "() \t\r\n"
+                )
             )
             if len(native_subscriptions) != 1:
                 continue
