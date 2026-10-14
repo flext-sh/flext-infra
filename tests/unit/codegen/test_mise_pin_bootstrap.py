@@ -41,7 +41,12 @@ class TestsFlextInfraMisePinBootstrap:
 
     @staticmethod
     def _environment(root: Path) -> t.StrMapping:
-        """Confine native Mise configuration, installs, state and caches."""
+        """Confine native Mise configuration, installs, state and caches.
+
+        Returns:
+            The resulting ``t.StrMapping``.
+
+        """
         return {
             "HOME": str(root / "home"),
             "XDG_CONFIG_HOME": str(root / "xdg-config"),
@@ -61,7 +66,12 @@ class TestsFlextInfraMisePinBootstrap:
 
     @staticmethod
     def _system_path_without_mise(root: Path) -> Path:
-        """Expose real system executables with the host Mise deliberately absent."""
+        """Expose real system executables with the host Mise deliberately absent.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
         destination = root / "system-bin"
         destination.mkdir()
         for directory in dict.fromkeys(os.defpath.split(os.pathsep)):

@@ -367,6 +367,11 @@ class FlextInfraPyprojectModernizerRun:
         Returns:
             The resulting ``int``.
 
+        Raises:
+            TypeError: If a declared requirement group entry is not a string.
+            ValueError: If the project table is absent or the dependency owner
+                changed between the read and the write.
+
         """
         try:
             root_project_name = u.Infra.project_name_from_payload(

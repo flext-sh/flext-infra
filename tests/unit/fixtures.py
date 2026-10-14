@@ -315,6 +315,10 @@ def fleet_session_runtime(
 
     A runtime accepts one provision callback. This topology has Git members,
     while the ordinary consumer seed deliberately remains standalone.
+
+    Yields:
+        The leased ``p.Tests.SessionRuntime``.
+
     """
     runtime = u.Tests.SessionRuntime(
         tmp_path_factory.mktemp(f"{run_namespace.token}-fleet"),
@@ -329,7 +333,12 @@ def fleet_session_runtime(
 def installed_fleet_workspace(
     fleet_session_runtime: p.Tests.SessionRuntime,
 ) -> Iterator[Path]:
-    """Lease actual generated members and frozen installed metadata at stable paths."""
+    """Lease actual generated members and frozen installed metadata at stable paths.
+
+    Yields:
+        The leased workspace root ``Path``.
+
+    """
     with fleet_session_runtime.lease(
         _FLEET_PROVISION,
         mutable_environment=True,
@@ -344,6 +353,10 @@ def native_fleet_signal_hook(installed_fleet_workspace: Path) -> Path:
     The procfs ancestry contract belongs only to this fault-injection fixture.
     Other native platforms require their own equivalent proof, never a skip
     reported as successful signal handling.
+
+    Returns:
+        The leased workspace root ``Path``.
+
     """
     if sys.platform != "linux":
         pytest.fail(
