@@ -910,7 +910,9 @@ class FlextInfraWorkspaceNativeReference:
             lexical_owner = owner
             namespace = cls._class_namespace(owner)
         registered = namespace.get(components[-1])
-        if registered is not value:
+        # Native initialization may publish the same callback under aliases while
+        # retaining its compiled name. Only the authenticated lexical owner counts.
+        if not any(descriptor is value for descriptor in namespace.values()):
             descriptor_owner = (
                 registered.__objclass__
                 if type(registered) in {
