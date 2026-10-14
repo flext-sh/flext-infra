@@ -228,10 +228,29 @@ class FlextInfraMisePublication:
             return result_type.from_failure(inputs)
         if declared.failure:
             return result_type.from_failure(declared)
-        if {item.path: item for item in inputs.value} != {
-            item.path: item for item in declared.value
-        }:
-            return result_type.fail("batch inputs differ from publication dependencies")
+        input_states = {item.path: item for item in inputs.value}
+        declared_states = {item.path: item for item in declared.value}
+        if input_states != declared_states:
+            differing = tuple(
+                (
+                    str(path),
+                    tuple(
+                        field
+                        for field in m.Cli.AtomicFileState.model_fields
+                        if getattr(input_states[path], field)
+                        != getattr(declared_states[path], field)
+                    ),
+                )
+                for path in sorted(input_states.keys() & declared_states.keys())
+                if input_states[path] != declared_states[path]
+            )
+            return result_type.fail(
+                "batch inputs differ from publication dependencies: "
+                f"phase={analysis.phase}; "
+                f"analysis_only={sorted(map(str, input_states.keys() - declared_states.keys()))}; "
+                f"publication_only={sorted(map(str, declared_states.keys() - input_states.keys()))}; "
+                f"differing_fields={differing}"
+            )
         return result_type.ok(inputs.value)
 
     @staticmethod

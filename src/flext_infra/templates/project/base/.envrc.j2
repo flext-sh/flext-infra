@@ -14,15 +14,19 @@ strict_env
 
 # === SECTION: repository environment (managed) ===
 # Source: computed:nearest-pyproject-via-direnv-find_up + template
-PROJECT_ROOT="$(find_up pyproject.toml)"
+PROJECT_ROOT="$(find_up pyproject.toml)" || return $?
+case "${PROJECT_ROOT}" in
+  /*) ;;
+  *) printf 'ERROR: project discovery did not return an absolute manifest path: %s\n' "${PROJECT_ROOT}" >&2; return 2 ;;
+esac
 PROJECT_ROOT="${PROJECT_ROOT%/*}"
 # Physical paths only: the Makefile resolves its roots with realpath and
 # `pwd -P`, so a checkout entered through a symlink keeps one runtime path.
-PROJECT_ROOT="$(cd "${PROJECT_ROOT}" && pwd -P)"
+PROJECT_ROOT="$(cd "${PROJECT_ROOT}" && pwd -P)" || return $?
 # The shared native reader authenticates Git scope and asks governed UV about
 # membership. Activation observes the reader; it never provisions it.
 GIT_DISCOVERY_ROOT="$( {{ git_root_reader('"${PROJECT_ROOT}"') }} )"
-RUNTIME_ROOT="$( {{ runtime_root_reader('"${PROJECT_ROOT}"', uv_tool) }} )"
+RUNTIME_ROOT="$( {{ runtime_root_reader('"${PROJECT_ROOT}"', uv_tool, uv_resolution) }} )"
 watch_file "${PROJECT_ROOT}/pyproject.toml"
 watch_file "${RUNTIME_ROOT}/pyproject.toml"
 {% for directory in (uv_resolution.local_directory, uv_resolution.standalone_directory) %}

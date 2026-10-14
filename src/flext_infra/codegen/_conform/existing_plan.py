@@ -15,6 +15,7 @@ from typing import Literal
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services import FlextInfraCodegenVscodeMixin
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
@@ -463,37 +464,32 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 f"{destination} requires exactly one managed-file declaration",
             )
         template = u.Infra.codegen_templates_root(codegen) / entries[0].source
-        sources: t.VariadicTuple[m.Cli.AtomicFileState] = ()
-        if destination in {c.Infra.MISE_TOML_FILENAME, c.Infra.ENVRC_FILENAME}:
-            authenticated = u.Cli.template_render_authenticated(template, context)
-            rendered = authenticated.map(lambda value: value.rendered)
-            if authenticated.success:
-                sources = authenticated.value.source_states
-        else:
-            rendered = u.Cli.template_render(template, context)
+        rendered = u.Cli.template_render_authenticated(template, context)
         if rendered.failure:
             return result_type.from_failure(rendered)
-        conflict_marker = u.Infra.first_merge_conflict_marker(rendered.value)
+        content = rendered.value.rendered
+        sources = rendered.value.source_states
+        conflict_marker = u.Infra.first_merge_conflict_marker(content)
         if conflict_marker is not None:
             return result_type.fail(
                 f"rendered {destination} contains a merge conflict marker: "
                 f"{conflict_marker}",
             )
         if destination == c.Infra.MISE_TOML_FILENAME:
-            composed = self._composed_mise_overlay(target.root, rendered.value, None)
-            rendered = composed.map(lambda value: value.rendered)
-            if composed.success:
-                sources = (*sources, *composed.value.source_states)
-        return (
-            result_type.from_failure(rendered)
-            if rendered.failure
-            else self.file_plan(
-                target.root,
-                destination,
-                rendered.value,
-                mode=managed[0].mode,
-                source_states=sources,
-            )
+            composed = self._composed_mise_overlay(target.root, content, None)
+            if composed.failure:
+                return result_type.from_failure(composed)
+            content = composed.value.rendered
+            sources = (*sources, *composed.value.source_states)
+        captured = FlextInfraCodegenPreconditions.unique_states(sources)
+        if captured.failure:
+            return result_type.from_failure(captured)
+        return self.file_plan(
+            target.root,
+            destination,
+            content,
+            mode=managed[0].mode,
+            source_states=captured.value,
         )
 
     def _plan_existing_docs_config(
@@ -527,21 +523,18 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 f"and owner: {destination}",
             )
         template = u.Infra.codegen_templates_root(codegen) / entries[0].source
-        source = u.Cli.atomic_read_binary_file_state(template, required=True)
-        if source.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(source)
-        rendered = u.Cli.template_render(template, workspace)
+        rendered = u.Cli.template_render_authenticated(template, workspace)
         if rendered.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
-        parsed = u.Cli.json_loads(rendered.value)
+        parsed = u.Cli.json_loads(rendered.value.rendered)
         if parsed.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(parsed)
         plan = self.file_plan(
             target.root,
             destination,
-            rendered.value,
+            rendered.value.rendered,
             mode=managed[0].mode,
-            source_states=(source.value,),
+            source_states=rendered.value.source_states,
         )
         if plan.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(plan)
@@ -779,7 +772,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         result_type = r[t.Pair[m.Infra.CodegenRenderInputs, m.Infra.CodegenFilePlan]]
         root = render_inputs.target.root
         rendered = (
-            r[str].fail(
+            r[m.Infra.CodegenArtifactComposition].fail(
                 f"managed render entry has no template source: {entry.destination}",
             )
             if entry.source is None
@@ -796,8 +789,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         composed = self.compose_project_artifact(
             root,
             entry.destination,
-            rendered.value,
+            rendered.value.rendered,
             render_inputs=render_inputs,
+            source_states=rendered.value.source_states,
         )
         if composed.failure:
             return result_type.from_failure(composed)

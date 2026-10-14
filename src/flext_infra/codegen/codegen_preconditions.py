@@ -291,12 +291,17 @@ class FlextInfraCodegenPreconditions:
             return result_type.from_failure(captured)
         trees.update((tree.root.path, tree) for tree in captured.value[0])
         states.update((item.path, item) for item in captured.value[1])
+        root_depths = {len(root.parts) for root in roots.values()}
+        # Native prefixes preserve anchor, case and lexical parent semantics.
+        ownership_prefixes = {
+            Path(*parts[:depth])
+            for parts in (path.parts for path in captured.value[2])
+            for depth in root_depths
+        }
         namespaces = {
             namespace
             for namespace, root in roots.items()
-            if any(
-                path == root or path.is_relative_to(root) for path in captured.value[2]
-            )
+            if root in ownership_prefixes
         }
         for tree in captured.value[0]:
             state = states.get(tree.root.path / c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
@@ -323,14 +328,66 @@ class FlextInfraCodegenPreconditions:
 
     @classmethod
     def producer_current(cls, producer: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
-        """Authenticate every captured input before selecting a consumer scope.
-
-        Returns:
-            Success only for the complete unchanged producer closure.
-        """
+        """Authenticate every captured input before selecting a consumer scope."""
         if not producer.inputs or not producer.generator_trees:
             return r[bool].fail("producer context lacks authenticated source closure")
-        current = FlextInfraMiseArtifactsVerification.states_current(producer.inputs)
+        states = cls.unique_states(producer.inputs)
+        if states.failure:
+            return r[bool].from_failure(states)
+        by_path = {state.path: state for state in states.value}
+        covered: set[Path] = set()
+        representatives: set[Path] = set()
+        for tree in producer.generator_trees:
+            representative: Path | None = None
+            for entry in tree.entries:
+                if (
+                    entry.kind != "file"
+                    or c.Infra.DUNDER_PYCACHE in entry.path.parts
+                ):
+                    continue
+                state = by_path.get(entry.path)
+                if state is None or state.content is None:
+                    continue
+                if (
+                    u.Cli.sha256_bytes(state.content),
+                    len(state.content),
+                    state.mode,
+                    state.device,
+                    state.inode,
+                    state.link_count,
+                    state.parent_device,
+                    state.parent_inode,
+                    state.file_attributes,
+                    state.reparse_tag,
+                ) != (
+                    entry.sha256,
+                    entry.size,
+                    entry.mode,
+                    entry.device,
+                    entry.inode,
+                    entry.link_count,
+                    entry.parent_device,
+                    entry.parent_inode,
+                    entry.file_attributes,
+                    entry.reparse_tag,
+                ):
+                    return r[bool].fail(
+                        f"producer input differs from captured tree: {state.path}"
+                    )
+                covered.add(state.path)
+                if representative is None:
+                    representative = state.path
+            if representative is not None:
+                representatives.add(representative)
+        # Native inventory authenticates every covered file. Keep one complete
+        # file snapshot per tree and every input outside that proof, including
+        # optional absence and editable bindings captured outside package roots.
+        retained = tuple(
+            state
+            for state in states.value
+            if state.path not in covered or state.path in representatives
+        )
+        current = FlextInfraMiseArtifactsVerification.states_current(retained)
         if current.failure:
             return current
         return cls.producer_trees_current(

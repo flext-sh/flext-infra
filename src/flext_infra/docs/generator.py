@@ -194,7 +194,9 @@ class FlextInfraDocGenerator(
                 The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
 
             """
-            bound = self._recorded_publication_session(transaction, bundle, session)
+            bound = self._recorded_publication_session(
+                transaction, bundle, session, prepared.value[0],
+            )
             if bound.failure:
                 return report_type.from_failure(bound)
             staged = self._staged_session(transaction, bundle, roots, bound.value)
@@ -278,8 +280,9 @@ class FlextInfraDocGenerator(
         transaction: FlextInfraCodegenTransaction,
         bundle: m.Infra.DocsGenerationBundle,
         session: m.Infra.CodegenTransactionSession,
+        analysis: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Bind the empty proof and record the docs publication phase.
+        """Bind planned destinations and record the docs publication phase.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
@@ -288,7 +291,7 @@ class FlextInfraDocGenerator(
         result_type = r[m.Infra.CodegenTransactionSession]
         bound = transaction.bind_publication_proof(
             session,
-            (),
+            analysis.files,
             source_topology=bundle.source_directories,
             scope_roots=bundle.source_roots,
             source_scope=bundle.source_scope,

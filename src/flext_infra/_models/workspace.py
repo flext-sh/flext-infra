@@ -560,7 +560,8 @@ class FlextInfraModelsWorkspace:
             str | None, m.Field(description="Environment condition for this edge")
         ] = None
         extra: Annotated[
-            t.StrSequence, m.Field(description="Requested extras; absent means none")
+            t.VariadicTuple[str],
+            m.Field(description="Requested extras; absent means none"),
         ] = ()
 
     class LockedPackage(m.ContractModel):
@@ -616,7 +617,7 @@ class FlextInfraModelsWorkspace:
             )
         )
         resolution_markers: Annotated[
-            t.StrSequence,
+            t.VariadicTuple[str],
             m.Field(
                 alias="resolution-markers",
                 description="Package fork conditions; absent means no fork restriction",
@@ -632,7 +633,7 @@ class FlextInfraModelsWorkspace:
             m.Field(min_length=1, description="Nonempty lock-owned package inventory"),
         ]
         members: Annotated[
-            t.StrSequence,
+            t.VariadicTuple[str],
             m.Field(
                 validation_alias=m.AliasPath("manifest", "members"),
                 description="Native workspace members; absent outside a workspace",

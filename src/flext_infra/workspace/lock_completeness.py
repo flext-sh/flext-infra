@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from json import dumps
 from pathlib import Path
 
 from packaging.markers import Marker
@@ -115,7 +116,9 @@ class FlextInfraWorkspaceLockCompleteness:
         payload = u.Cli.toml_read_json(lock_path)
         if payload.failure:
             return r[m.Infra.LockedEnvironment].from_failure(payload)
-        locked = m.Infra.LockedEnvironment.model_validate(payload.value)
+        locked = m.Infra.LockedEnvironment.model_validate_json(
+            dumps(payload.value),
+        )
         if lock_path.name != c.Infra.UV_LOCK_FILENAME:
             return r[m.Infra.LockedEnvironment].fail(
                 f"{lock_path}: not a native UV lock path",
@@ -246,7 +249,7 @@ class FlextInfraWorkspaceLockCompleteness:
             return result_type.fail(
                 f"{lock_path}: lock has no local manifest roots; run make upg",
             )
-        return result_type.ok(pending)
+        return result_type.ok(tuple(pending))
 
     @classmethod
     def _locked_item_edges(
@@ -325,7 +328,7 @@ class FlextInfraWorkspaceLockCompleteness:
             if edge.marker is None
             or Marker(edge.marker).evaluate(environment=dict(facts))
         )
-        return result_type.ok(edges)
+        return result_type.ok(tuple(edges))
 
     @staticmethod
     def _resolved_closure_size(
@@ -342,8 +345,9 @@ class FlextInfraWorkspaceLockCompleteness:
         """
         result_type = r[int]
         visited: dict[int, frozenset[str]] = {}
-        while pending:
-            edge = pending.pop()
+        worklist = list(pending)
+        while worklist:
+            edge = worklist.pop()
             matches = tuple(
                 index
                 for index, item in enumerate(packages)
@@ -362,7 +366,7 @@ class FlextInfraWorkspaceLockCompleteness:
                 continue
             visited[index] = extras
             item = packages[index]
-            pending.extend(
+            worklist.extend(
                 dependency
                 for dependency in (
                     *item.dependencies,

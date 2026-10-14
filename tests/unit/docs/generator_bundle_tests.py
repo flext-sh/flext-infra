@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m
+from flext_infra import FlextInfraConfig, c, m
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
 )
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import tm, u
@@ -82,7 +83,8 @@ class TestsFlextInfraDocsGeneratorBundle:
         resources = tuple(
             state.path
             for state in prepared.source_states
-            if not u.Infra.docs_source_path_is_input(
+            if state.content is not None
+            and not u.Infra.docs_source_path_is_input(
                 state.path,
                 prepared.source_roots,
                 source_scope=prepared.source_scope,
@@ -117,6 +119,31 @@ class TestsFlextInfraDocsGeneratorBundle:
 
         tm.fail(changed)
         tm.that(changed.error or "", has=str(added))
+
+    def test_publication_rejects_declared_optional_layer_creation(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An absent optional input remains part of the admitted source census."""
+        workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+        _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
+            workspace,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        tm.that(local_layer.exists(), eq=False)
+        generator = self._generator(workspace)
+        prepared = tm.ok(generator.prepare_bundle())
+        captured = next(
+            state for state in prepared.source_states if state.path == local_layer
+        )
+        tm.that(captured.content, eq=None)
+        local_layer.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.yaml_dump(local_layer, {"Infra": {"codegen": {}}}))
+
+        published = generator.publish_batch(prepared)
+
+        tm.fail(published)
+        tm.that(published.error or "", has=str(local_layer))
 
     def test_publication_rejects_source_topology_addition_after_bundle(
         self,
@@ -209,11 +236,15 @@ class TestsFlextInfraDocsGeneratorBundle:
                 ),
             ),
         )
-        admission = tm.ok(FlextInfraMisePublication.admit_batch(analysis))
-        source.write_bytes(b"value = 2\n")
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root)
         )
+        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        analysis = tm.ok(
+            FlextInfraCodegenPreconditions.bind_producer_analysis(analysis, producer)
+        )
+        admission = tm.ok(FlextInfraMisePublication.admit_batch(analysis))
+        source.write_bytes(b"value = 2\n")
         roots = {"@docs": root}
 
         published = transaction.run_files_locked(

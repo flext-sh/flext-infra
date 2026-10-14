@@ -210,9 +210,10 @@ happens before activation.
 Both setup and upgrade resolve the executable through `mise which python` at the
 shared environment-sync boundary and pass that exact path to uv. Recursive Make
 calls do not require a caller-provided `SETUP_PYTHON` environment variable.
-Make and direnv restrict global and system configuration discovery to the
-elected runtime's `.mise` directory; unrelated host tool declarations never
-belong to project provisioning.
+Make provisioning and the shared workspace reader restrict global and system
+configuration discovery to the elected runtime's `.mise` directory; unrelated
+host tool declarations never belong to project provisioning. Direnv activation
+also exposes operator-owned host tools, without installing or resolving them.
 
 Setup provisions the available frozen toolchain without writing `mise.lock`;
 audit owns its pin and completeness verdicts. `make upg` resolves the declared
@@ -240,10 +241,19 @@ because its shipped pytest collection implementation imports that plugin.
 
 An associated project inherits the locks and physical environment of its
 authenticated Git or native UV workspace. Its `make setup` and `make upg`
-delegate to that root before
-installing tools or resolving dependencies. A standalone checkout owns those
+delegate full toolchain provisioning and dependency resolution to that root.
+A standalone checkout owns those
 operations itself. Only `upg` resolves moving Git branches; `setup` installs the
 exact committed lock without changing it.
+
+`help` and `.envrc` only observe association and never install its reader.
+Before native association is known, public `setup` and `upg` may provision
+exclusively the UV reader from the existing lock of the authenticated containing
+Git scope. This uses the same Mise release qualifier, checksum verification and
+staging cleanup as full bootstrap. It neither resolves nor upgrades an ancestral
+lock. Native UV then elects the runtime owner before normal delegation proceeds.
+The hosted-provider branch selects standalone execution before this reader
+provisioning or ancestor discovery.
 
 Every repository runs independently in remote CI, including a superproject.
 Remote checkout never initializes members. The CI gate token does not change
@@ -393,12 +403,20 @@ borrowed from another checkout fails before candidate checks or publication.
 ## Mise toolchain
 
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
-release as a `[tools]` entry, and `mise.lock` pins it like every other tool. One host
-Mise provisions that entry; setup enters the recursive Make lifecycle through the
-verified executable. Without a self-pin, setup qualifies the installed host Mise;
-the absent pin remains an audit defect, never an invented release. Every
-later `mise` resolved through the shims is the pinned release, and `make audit`
+release as a `[tools]` entry, and `mise.lock` pins it like every other tool. Setup
+provisions its recorded release asset and verifies the checksum before entering
+the recursive Make lifecycle. A complete self-pin does not require a host Mise.
+Without that pin, setup stops before provisioning; `make upg` can establish it
+using an available native Mise. Upgrade qualifies the final self-pin again
+before installing tools and entering the lifecycle. Every later `mise` resolved
+through the release's own shims is the pinned release, and `make audit`
 (`codegen mise-proof`) fails when the running Mise differs from the lock.
+
+The runtime's `.mise.toml` remains a native project configuration. The optional
+global configuration has the distinct path `.mise/config.toml` under that same
+runtime owner; its absence does not select the operator's global configuration.
+Project resolution writes the project lock in project scope. It never classifies
+the project manifest as global or updates unrelated host tools.
 
 `make upg` publishes the Makefile through the producer half of `gen`. When that
 publication changes the Makefile, the running recipe stops naming its own
