@@ -511,7 +511,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if origin.failure:
                 return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(origin)
             source_files.append((name, str(origin.value), ""))
-            definitions = cls._declaration_sources(name)
+            definitions = cls._declaration_sources(name, name)
             if definitions.failure:
                 return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
                     definitions
@@ -561,7 +561,14 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if not (
                 isclass(value)
                 and getattr(value, "__module__", "").split(".")[0]
-                not in cls._first_party_roots()
+                not in {
+                    "flext",
+                    "flext_core",
+                    "flext_infra",
+                    "flext_api",
+                    "flext_cli",
+                    "ai_hub",
+                }
             )
         ]
         if selected is not None:
