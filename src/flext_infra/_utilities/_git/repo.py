@@ -113,18 +113,65 @@ class FlextInfraUtilitiesGitRepo:
                 "--git-dir",
             ).strip(),
         ).resolve()
+        primary_repo = repo
+        configured_primary: Path | None = None
         if git_dir != common_dir:
-            msg = (
-                "primary checkout is unproven for storage-only registry row: "
-                f"{common_dir}"
-            )
-            raise ValueError(msg)
-        checkout = Path(repo.git.rev_parse("--show-toplevel").strip()).resolve()
+            try:
+                configured = repo.git.config(
+                    "--file",
+                    str(common_dir / "config"),
+                    "--path",
+                    "--get",
+                    "core.worktree",
+                ).strip()
+            except GitCommandError as exc:
+                if exc.status != c.Infra.GIT_EXIT_NEGATIVE:
+                    raise
+                msg = (
+                    "primary checkout is unproven for storage-only registry row: "
+                    f"{common_dir}; common config declares no core.worktree"
+                )
+                raise ValueError(msg) from exc
+            if not configured:
+                msg = (
+                    "primary checkout is unproven for storage-only registry row: "
+                    f"{common_dir}; common config declares an empty core.worktree"
+                )
+                raise ValueError(msg)
+            configured_primary = cls._primary_from_config(
+                common_dir, configured
+            ).unwrap()
+            primary_repo = cls._repo(configured_primary)
+        checkout = Path(
+            primary_repo.git.rev_parse("--show-toplevel").strip(),
+        ).resolve()
+        primary_git_dir = Path(
+            primary_repo.git.rev_parse(
+                c.Infra.GIT_REV_PARSE_ABSOLUTE_PATHS,
+                "--git-dir",
+            ).strip(),
+        ).resolve()
+        primary_common_dir = Path(
+            primary_repo.git.rev_parse(
+                c.Infra.GIT_REV_PARSE_ABSOLUTE_PATHS,
+                "--git-common-dir",
+            ).strip(),
+        ).resolve()
+        primary_backpointer = Path(
+            repo.git.rev_parse(
+                "--resolve-git-dir",
+                str(checkout / c.Infra.GIT_DIR),
+            ).strip(),
+        ).resolve()
         if (
-            repo.working_tree_dir is None
+            primary_repo.working_tree_dir is None
             or checkout == common_dir
-            or Path(repo.working_tree_dir).resolve() != checkout
-            or repo.git.rev_parse("--is-inside-work-tree").strip() != "true"
+            or Path(primary_repo.working_tree_dir).resolve() != checkout
+            or primary_git_dir != common_dir
+            or primary_common_dir != common_dir
+            or primary_backpointer != common_dir
+            or (configured_primary is not None and checkout != configured_primary)
+            or primary_repo.git.rev_parse("--is-inside-work-tree").strip() != "true"
         ):
             msg = f"Git checkout identity disagrees with shared storage: {common_dir}"
             raise ValueError(msg)
