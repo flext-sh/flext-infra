@@ -164,6 +164,87 @@ class FlextInfraWorkspaceNativeReference:
             f"{code.co_qualname}; source={witness.source}",
         )
 
+    @classmethod
+    def _native_class_alias(
+        cls,
+        value: p.AttributeProbe,
+        qualified: str,
+        witness: m.Infra.NativeSourceWitness,
+    ) -> p.Result[t.Triple[str, str, str]]:
+        """Authenticate a source-imported native export with interpreter descriptors."""
+        components = qualified.split(".")
+        binding = witness.module.get_attributes().get(components[0])
+        if binding is None:
+            return r[t.Triple[str, str, str]].fail(
+                f"native class has no source import binding: {qualified}",
+            )
+        for component in components[1:]:
+            binding = binding.get_object().get_attributes().get(component)
+            if binding is None:
+                return r[t.Triple[str, str, str]].fail(
+                    f"native class import path is absent: {qualified}",
+                )
+        native = binding.get_object()
+        if (
+            not isinstance(native, p.Infra.RopeBuiltinClass)
+            or native.builtin is not value
+            or not isinstance(binding, p.Infra.RopeImportedName)
+        ):
+            return r[t.Triple[str, str, str]].fail(
+                f"class has no identity-matched native source import: {qualified}",
+            )
+        supplier = binding.imported_module.module_name
+        if supplier is None:
+            return r[t.Triple[str, str, str]].fail(
+                f"native class import has no elected supplier: {qualified}",
+            )
+        exported = sys.modules.get(supplier)
+        if (
+            type(exported) is not ModuleType
+            or vars(exported).get(binding.imported_name) is not value
+        ):
+            return r[t.Triple[str, str, str]].fail(
+                f"native class export differs from its source import: {qualified}",
+            )
+        elected = FlextInfraWorkspaceEnvironmentProvenance._module_source(supplier)
+        if elected.failure:
+            return r[t.Triple[str, str, str]].from_failure(elected)
+        specification = vars(exported)["__spec__"]
+        if (
+            specification.origin not in {"built-in", "frozen"}
+            and type(specification.loader).__module__ != "_frozen_importlib_external"
+        ):
+            return r[t.Triple[str, str, str]].fail(
+                f"native class supplier is not an interpreter extension: {supplier}",
+            )
+        native_descriptors = (
+            descriptor
+            for descriptor in cls._class_namespace(value).values()
+            if type(descriptor) in {
+                MethodDescriptorType, ClassMethodDescriptorType,
+                WrapperDescriptorType,
+            }
+        )
+        if not any(
+            descriptor.__objclass__ is value
+            for descriptor in native_descriptors
+        ):
+            return r[t.Triple[str, str, str]].fail(
+                f"native class has no interpreter-owned callable descriptor: {qualified}",
+            )
+        if any(
+            type(descriptor) is FunctionType
+            for descriptor in cls._class_namespace(value).values()
+        ):
+            return r[t.Triple[str, str, str]].fail(
+                f"native class export carries an authored executable: {qualified}",
+            )
+        return r[t.Triple[str, str, str]].ok((
+            f"{supplier}::{binding.imported_name}",
+            str(elected.value),
+            str(witness.source),
+        ))
+
     @staticmethod
     def _capture_text(
         witness: m.Infra.NativeSourceWitness,
@@ -620,9 +701,13 @@ class FlextInfraWorkspaceNativeReference:
                     if captured.failure:
                         return result.from_failure(captured)
                     if qualified not in captured.value.scopes:
-                        return result.fail(
-                            f"producer class has no native source scope: {qualified}"
+                        alias = cls._native_class_alias(
+                            value, qualified, captured.value,
                         )
+                        if alias.failure:
+                            return result.from_failure(alias)
+                        sources.add(alias.value)
+                        continue
                     pending.extend(
                         (item, value, module_name, name)
                         for name, item in namespace.items()
