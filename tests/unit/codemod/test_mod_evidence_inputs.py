@@ -213,8 +213,10 @@ class TestsFlextInfraModEvidenceInputs:
         mod_workspace: Path, occurrences: int, resources: int
     ) -> None:
         """Distinct binding groups share inputs through both JSON publication paths."""
-        report, inputs, source, owner, marker = (
-            self._scanned_shared_occurrences(mod_workspace, occurrences, resources)
+        report, snapshot, inputs, source, owner, marker = (
+            TestsFlextInfraModEvidenceInputs._scanned_shared_occurrences(
+                mod_workspace, occurrences, resources
+            )
         )
         for index in range(resources):
             resource = mod_workspace / f"binding_{index}.py"
@@ -295,22 +297,9 @@ class TestsFlextInfraModEvidenceInputs:
                 state.path for state in (*tm.not_none(report.source_states), *inputs)
             }),
         )
-        nested_path = tm.ok(
-            u.Infra.publish_refactor_report_evidence(
-                mod_workspace, receipt, relative_path=Path("nested-evidence.json")
-            )
+        nested = self._verified_nested_evidence(
+            mod_workspace, receipt, restored, inputs
         )
-        nested = m.Infra.ModScanEvidenceReceipt.model_validate_json(
-            nested_path.read_bytes()
-        )
-        tm.that(nested.evidence, eq=restored)
-        tm.that(nested.sha256, eq=u.Cli.sha256_bytes(nested.path.read_bytes()))
-        indexed = {state.path: state for state in nested.evidence.inputs.states}
-        for occurrence in nested.evidence.entries:
-            if occurrence.source_path is not None:
-                tm.that(occurrence.source_state is indexed[occurrence.source_path])
-            for state in occurrence.binding_states:
-                tm.that(state is indexed[state.path])
         closure = nested.evidence.entries[0].binding_states
         tm.that(closure[-1] is closure[0])
         owner.write_text("invalid syntax !!!\n", encoding="utf-8")
@@ -364,6 +353,154 @@ class TestsFlextInfraModEvidenceInputs:
                     ),
                 },
                 missing_binding,
+            ),
+        ):
+            tampered = restored.model_copy(update=updates)
+            with pytest.raises(KeyError) as missing:
+                m.Infra.ModScanEvidence.model_validate_json(
+                    tampered.model_dump_json(round_trip=True)
+                )
+            tm.that(missing.value.args, eq=(expected_key,))
+        TestsFlextInfraModEvidenceInputs._rejected_tampered_evidence(
+            restored, snapshot
+        )
+
+    @staticmethod
+    def _scanned_shared_occurrences(
+        mod_workspace: Path,
+        occurrences: int,
+        resources: int,
+    ) -> tuple[
+        m.Infra.ModScanReport,
+        m.Infra.CodemodBindingSnapshot,
+        list[m.Cli.AtomicFileState],
+        Path,
+        Path,
+        str,
+    ]:
+        """Scan the shared-occurrence workspace with its authenticated inputs.
+
+        Args:
+            mod_workspace: The governed mod workspace root.
+            occurrences: The expected native finding count.
+            resources: The number of additional resource files to capture.
+
+        Returns:
+            The scanned report, its binding snapshot, the captured inputs,
+            the consumer source, the binding owner and the evidence marker.
+        """
+        source = mod_workspace / "consumer.py"
+        owner = mod_workspace / "binding_owner.py"
+        owner.write_text("class Public:\n    value = 'captured'\n", encoding="utf-8")
+        marker = "descriptor evidence sentinel"
+        source.write_text(
+            f"# {marker}\nfrom __future__ import annotations\n"
+            "from binding_owner import Public\n"
+            + "".join(
+                f"def call_{index}(value: str) -> str:\n    return str(value)\n"
+                for index in range(occurrences)
+            ),
+            encoding="utf-8",
+        )
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+            )
+        )
+        tm.that(report.findings, eq=occurrences)
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace, (tm.not_none(report.entries[0].source_state),)
+        )
+        return report, snapshot, list(snapshot.states), source, owner, marker
+
+    @staticmethod
+    def _verified_nested_evidence(
+        mod_workspace: Path,
+        receipt: m.Infra.ModScanEvidenceReceipt,
+        restored: m.Infra.ModScanEvidence,
+        inputs: list[m.Cli.AtomicFileState],
+    ) -> m.Infra.ModScanEvidenceReceipt:
+        """Publish the evidence again and prove nested identity sharing.
+
+        Args:
+            mod_workspace: The governed mod workspace root.
+            receipt: The original evidence publication receipt.
+            restored: The restored evidence payload.
+            inputs: Every captured input state of the run.
+
+        Returns:
+            The nested evidence receipt with its identity proof.
+        """
+        nested_path = tm.ok(
+            u.Infra.publish_refactor_report_evidence(
+                mod_workspace, receipt, relative_path=Path("nested-evidence.json")
+            )
+        )
+        nested = m.Infra.ModScanEvidenceReceipt.model_validate_json(
+            nested_path.read_bytes()
+        )
+        tm.that(nested.evidence, eq=restored)
+        tm.that(nested.sha256, eq=u.Cli.sha256_bytes(nested.path.read_bytes()))
+        indexed = {state.path: state for state in nested.evidence.inputs.states}
+        for occurrence in nested.evidence.entries:
+            if occurrence.source_path is not None:
+                tm.that(occurrence.source_state is indexed[occurrence.source_path])
+            for state in occurrence.binding_states:
+                tm.that(state is indexed[state.path])
+        tm.that(
+            len(restored.inputs.states),
+            eq=len({
+                state.path for state in (*tm.not_none(restored.source_states), *inputs)
+            }),
+        )
+        return nested
+
+    @staticmethod
+    def _rejected_tampered_evidence(
+        restored: m.Infra.ModScanEvidence,
+        snapshot: m.Infra.CodemodBindingSnapshot,
+    ) -> None:
+        """Reject every tampered evidence projection at its validation boundary.
+
+        Args:
+            restored: The restored evidence payload to tamper with.
+            snapshot: The binding snapshot whose duplicate states are invalid.
+        """
+        for updates, expected_key in (
+            (
+                {
+                    "entries": (
+                        restored.entries[0].model_copy(
+                            update={"source_path": Path("absent_source.py")}
+                        ),
+                        *restored.entries[1:],
+                    )
+                },
+                Path("absent_source.py"),
+            ),
+            (
+                {
+                    "binding_graphs": (
+                        (Path("absent_binding.py"),),
+                        *restored.binding_graphs[1:],
+                    )
+                },
+                Path("absent_binding.py"),
+            ),
+            (
+                {
+                    "binding_graphs": (
+                        (Path("absent_binding.py"),),
+                        *restored.binding_graphs[1:],
+                    ),
+                    "entries": (
+                        restored.entries[0].model_copy(
+                            update={"source_path": Path("absent_source.py")}
+                        ),
+                        *restored.entries[1:],
+                    ),
+                },
+                Path("absent_binding.py"),
             ),
         ):
             tampered = restored.model_copy(update=updates)

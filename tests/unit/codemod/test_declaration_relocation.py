@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import importlib.util
 import sys
 from pathlib import Path
@@ -271,19 +270,6 @@ class TestsFlextInfraDeclarationRelocation:
             proposed.update({
                 edit.file_path: edit.updated_source for edit in planned.value
             })
-            trees = {
-                path.name + path.parent.name: ast.parse(source)
-                for path, source in proposed.items()
-            }
-            consumer = next(
-                tree for name, tree in trees.items() if name.startswith("consumer.py")
-            )
-            constants = [
-                node.value
-                for node in ast.walk(consumer)
-                if isinstance(node, ast.Constant)
-            ]
-            tm.that(constants.count("Original.Payload"), eq=3)
             remaining = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                 rope_workspace=rope,
@@ -307,17 +293,38 @@ class TestsFlextInfraDeclarationRelocation:
             raise RuntimeError(msg)
         loaded = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(loaded)
-        owner = next(
-            node.name
-            for node in ast.parse(sources[target]).body
-            if isinstance(node, ast.ClassDef)
-        )
+        owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
         payload = getattr(loaded, owner).Payload
         tm.that(
             payload.model_validate({"value": "consumer"}).model_dump(),
             eq={"value": "consumer"},
         )
         tm.that(payload.model_validate({}).model_dump(), eq={"value": "payload"})
+        for path, source in proposed.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        consumer = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-B",
+                    "-c",
+                    (
+                        "from typing import get_args, get_type_hints; "
+                        f"from {target.parent.parent.name} import m; "
+                        f"from {target.parent.parent.name} import consumer; "
+                        "assert consumer.build().__class__ is m.Payload; "
+                        "assert get_type_hints(consumer.build)['return'] is m.Payload; "
+                        "assert consumer.text == 'Original.Payload'; "
+                        "hints = get_type_hints(consumer, include_extras=True); "
+                        "assert get_args(hints['literal']) == ('Original.Payload',); "
+                        "assert get_args(hints['metadata']) == (str, 'Original.Payload')"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(target.parent.parent.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -471,11 +478,7 @@ class TestsFlextInfraDeclarationRelocation:
         sys.modules[spec.name] = loaded
         try:
             spec.loader.exec_module(loaded)
-            owner = next(
-                node.name
-                for node in ast.parse(target.original_source).body
-                if isinstance(node, ast.ClassDef)
-            )
+            owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
             payload = getattr(loaded, owner).Payload
             tm.that(
                 payload.model_validate({"amount": "2.5"}).model_dump_json(),
@@ -934,11 +937,7 @@ class TestsFlextInfraDeclarationRelocation:
             raise RuntimeError(msg)
         loaded = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(loaded)
-        owner = next(
-            node.name
-            for node in ast.parse(target.original_source).body
-            if isinstance(node, ast.ClassDef)
-        )
+        owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
         tm.that(
             getattr(loaded, owner).Payload.model_validate({"value": 3}).model_dump(),
             eq={"value": 6, "derived": 7},

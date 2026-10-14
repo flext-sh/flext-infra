@@ -13,6 +13,7 @@ from flext_infra.__version__ import __version__
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
@@ -351,7 +352,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         source_states: list[m.Cli.AtomicFileState] = [locked.value]
         declarations: list[m.Cli.AtomicFileState] = []
         for member in members:
-            declaration = u.Infra.member_project_declaration(
+            declaration = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
                 repository_root,
                 member,
                 lock_state=locked.value,

@@ -1873,7 +1873,9 @@ class FlextInfraWorkspaceNativeReference:
         for receipt in authority.inputs:
             if receipt.path in output_paths and receipt.path != authority.runtime:
                 continue
-            current = u.Cli.atomic_read_binary_file_receipt(receipt.path, required=True)
+            current = u.Cli.atomic_read_binary_file_receipt(
+                receipt.path, required=receipt.device is not None
+            )
             if current.failure:
                 return r[bool].from_failure(current)
             if current.value != receipt:
@@ -1884,7 +1886,7 @@ class FlextInfraWorkspaceNativeReference:
 
         return FlextInfraCodegenPreconditions.source_trees_current(
             authority.generator_trees,
-            outputs,
+            tuple(outputs),
             modules=authority.generator_modules,
         )
 
