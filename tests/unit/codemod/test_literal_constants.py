@@ -19,8 +19,19 @@ class TestsFlextInfraLiteralConstants:
     """Exercise the constants phase through its public planning boundary."""
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("literal_source", "return_source"),
+        [
+            ("'wire-value'", '"wire-value"'),
+            ("'wire\\u002dvalue'", '"wire-value"'),
+            ('"""wire-value"""', '"wire-value"'),
+            ("'''wire-value'''", '"wire-value"'),
+            ("r'wire-value'", 'r"wire-value"'),
+            ("u'wire-value'", 'u"wire-value"'),
+        ],
+    )
     def test_literal_return_reuses_owner_and_reaches_fixed_point(
-        tmp_path: Path,
+        tmp_path: Path, literal_source: str, return_source: str
     ) -> None:
         """Equivalent quote forms reuse c while computed strings keep behavior."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -31,7 +42,8 @@ class TestsFlextInfraLiteralConstants:
             owner: (
                 "from typing import ClassVar\n"
                 "class Values:\n"
-                "    TOKEN: ClassVar[str] = 'wire-value'\n"
+                f"    TOKEN: ClassVar[str] = {literal_source}\n"
+                "    COMPUTED: ClassVar[str] = 'wire-value'.upper()\n"
                 "c = Values\n"
                 "__all__ = ['c']\n"
             ),
@@ -41,9 +53,11 @@ class TestsFlextInfraLiteralConstants:
                 '"""wire-value"""\n'
                 "def value() -> str:\n"
                 '    """wire-value"""\n'
-                '    return "wire-value"  # Preserve the wire contract.\n'
+                f"    return {return_source}  # Preserve the wire contract.\n"
                 "def computed(suffix: str = 'value') -> str:\n"
                 "    return 'wire-' + suffix\n"
+                "def computed_owner() -> str:\n"
+                "    return 'WIRE-VALUE'\n"
                 "def metadata(value: Annotated[str, 'wire-value'] = 'wire-value') "
                 "-> Literal['wire-value']:\n"
                 "    return value\n"
@@ -84,14 +98,17 @@ class TestsFlextInfraLiteralConstants:
                     (
                         f"from {package.name} import c; "
                         f"from {package.name}.consumer import "
-                        "value, computed, metadata; "
+                        "value, computed, computed_owner, metadata; "
                         "assert value() == c.TOKEN; "
                         "assert computed() == c.TOKEN; "
+                        "assert computed_owner() == c.COMPUTED; "
                         "assert metadata() == c.TOKEN; "
                         "assert value.__doc__ == c.TOKEN; "
                         "c.TOKEN = 'updated-wire'; "
+                        "c.COMPUTED = 'updated-computed'; "
                         "assert value() == c.TOKEN; "
                         "assert computed() == 'wire-value'; "
+                        "assert computed_owner() == 'WIRE-VALUE'; "
                         "assert metadata() == 'wire-value'"
                     ),
                 ),

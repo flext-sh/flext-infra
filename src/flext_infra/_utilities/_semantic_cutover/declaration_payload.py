@@ -43,8 +43,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         scope: p.Infra.RopeScope,
         module: p.Infra.RopePyModule,
     ) -> (
-        t.Pair[m.Infra.LogicalStatement, t.Triple[p.Infra.RopeWorder, int, int]]
-        | None
+        t.Pair[m.Infra.LogicalStatement, t.Triple[p.Infra.RopeWorder, int, int]] | None
     ):
         """Locate the class header base list through Rope's native reader.
 
@@ -82,7 +81,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     @staticmethod
     def _native_subscription_bindings(
         project: p.Infra.RopeProject,
-    ) -> t.SequenceOf[p.Infra.RopePyObject]:
+    ) -> t.SequenceOf[p.Infra.RopePyName]:
         """Collect the native subscription contracts of declared generic owners.
 
         Args:
@@ -118,7 +117,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     ) -> t.Triple[
         t.SequenceOf[t.Pair[int, int]],
         p.Infra.RopeScope,
-        t.SequenceOf[p.Infra.RopePyObject],
+        t.SequenceOf[p.Infra.RopePyName],
     ]:
         """Resolve header subscription matches, scope, and native bindings.
 
@@ -132,19 +131,25 @@ class FlextInfraUtilitiesDeclarationPayload:
             and the native subscription bindings of declared generic owners.
         """
         finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
-        subscriptions_in_header = tuple(
-            finder.get_match_regions(
-                "${generic_owner}[${generic_arguments}]",
-                {},
-                start=header.start_offset,
-                end=header.end_offset,
-            )
-        )
         parent = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
             module,
             header.start_offset,
             declaration_line=scope.get_start(),
         )
+        try:
+            subscriptions_in_header = tuple(
+                finder.get_match_regions(
+                    "${generic_owner}[${generic_arguments}]",
+                    {},
+                    start=header.start_offset,
+                    end=header.end_offset,
+                )
+            )
+        except AttributeError:
+            # Rope's similarfinder cannot region every header shape (a
+            # Subscript node inside the matched span carries no region): a
+            # header it cannot region simply has no matchable subscription.
+            return (), parent, ()
         subscriptions = cls._native_subscription_bindings(module.pycore.project)
         return subscriptions_in_header, parent, subscriptions
 
@@ -185,7 +190,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     def _specialization_owner(
         cls,
         parent: p.Infra.RopeScope,
-        subscriptions: t.SequenceOf[p.Infra.RopePyObject],
+        subscriptions: t.SequenceOf[p.Infra.RopePyName],
         bases: t.SequenceOf[p.Infra.RopePyObject],
         specialization: str,
     ) -> p.Infra.RopePyObject | None:
@@ -203,7 +208,9 @@ class FlextInfraUtilitiesDeclarationPayload:
         """
         argument_words = cls._worder(specialization)
         owner_first, _last = argument_words.code_finder.get_word_parens_range(
-            0, "[", "]",
+            0,
+            "[",
+            "]",
         )
         expression = argument_words.get_primary_at(owner_first - 1)
         binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
@@ -232,7 +239,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         context: t.Triple[
             t.SequenceOf[t.Pair[int, int]],
             p.Infra.RopeScope,
-            t.SequenceOf[p.Infra.RopePyObject],
+            t.SequenceOf[p.Infra.RopePyName],
         ],
         bases: t.SequenceOf[p.Infra.RopePyObject],
     ) -> p.Infra.RopePyObject | None:
@@ -282,7 +289,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         context: t.Triple[
             t.SequenceOf[t.Pair[int, int]],
             p.Infra.RopeScope,
-            t.SequenceOf[p.Infra.RopePyObject],
+            t.SequenceOf[p.Infra.RopePyName],
         ],
     ) -> None:
         """Extend direct bases with proven generic declaration owners.

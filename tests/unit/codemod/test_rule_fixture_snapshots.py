@@ -105,14 +105,18 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 )
             )
             names: list[str] = []
-            for finding in report.entries:
-                tm.that(finding.rule_id, eq=elected.id)
-                tm.that(finding.file, eq=sample.relative_to(tmp_path))
-                mapping = u.type_adapter(t.JsonMapping)
-                captures = mapping.validate_python(finding.payload["metaVariables"])
-                single = mapping.validate_python(captures["single"])
-                capture = mapping.validate_python(single[elected.context[0].variable])
-                names.append(u.type_adapter(str).validate_python(capture["text"]))
+            with u.Infra.mod_native_readers(report.native_artifacts) as readers:
+                for finding in report.entries:
+                    tm.that(finding.rule_id, eq=elected.id)
+                    tm.that(finding.file, eq=sample.relative_to(tmp_path))
+                    mapping = u.type_adapter(t.JsonMapping)
+                    native = u.Infra.mod_native_payload(finding, readers)
+                    captures = mapping.validate_python(native["metaVariables"])
+                    single = mapping.validate_python(captures["single"])
+                    capture = mapping.validate_python(
+                        single[elected.context[0].variable]
+                    )
+                    names.append(u.type_adapter(str).validate_python(capture["text"]))
             tm.that(sorted(names), eq=sorted(expected))
             tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 

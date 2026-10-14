@@ -125,20 +125,17 @@ class TestsMakeBootstrapPublication:
         self,
         tmp_path: Path,
     ) -> None:
-        """A foreign caller uses workspace installs and publishes every root once."""
+        """Every requested target publishes its own independent bootstrap receipt."""
         root, members = self._workspace(tmp_path)
 
-        tm.that(self._run(root).outcome.raw_return_code, eq=0)
-
-        receipt = self._receipt(root)
-        tm.that(receipt.scope_roots, eq=(root, *members))
-        tm.that(receipt.surface, eq=c.Infra.CodegenConformSurface.MAKEFILE)
-        tm.that(receipt.scope, eq=c.Infra.CodegenConformScope.ALL)
-        expected = tuple(path / c.Infra.MAKEFILE_FILENAME for path in (root, *members))
-        tm.that(receipt.written_files, eq=expected)
-        tm.that(len(receipt.batches), eq=len(expected))
-        tm.that(self._run(root, check_only=True).outcome.raw_return_code, eq=0)
         for path in (root, *members):
+            tm.that(self._run(path).outcome.raw_return_code, eq=0)
+            receipt = self._receipt(path)
+            tm.that(receipt.scope_roots, eq=(path,))
+            tm.that(receipt.surface, eq=c.Infra.CodegenConformSurface.MAKEFILE)
+            tm.that(receipt.scope, eq=c.Infra.CodegenConformScope.SELF)
+            tm.that(receipt.written_files, eq=(path / c.Infra.MAKEFILE_FILENAME,))
+            tm.that(self._run(path, check_only=True).outcome.raw_return_code, eq=0)
             tm.ok(
                 infra.codegen_conform(
                     u.Tests.conform_request(
@@ -267,23 +264,20 @@ class TestsMakeBootstrapPublication:
         self,
         tmp_path: Path,
     ) -> None:
-        """A member's invalid declaration escapes and leaves no completed aggregate."""
+        """A failed member request cannot overwrite another target's receipt."""
         root, members = self._workspace(tmp_path)
+        tm.that(self._run(root).outcome.raw_return_code, eq=0)
+        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        root_before = receipt_path.read_bytes()
         foreign = members[-1] / "unowned.mk"
         foreign.write_text("# authored fixture\n", encoding=c.DEFAULT_ENCODING)
         target = members[-1] / c.Infra.MAKEFILE_FILENAME
         target.symlink_to(foreign)
 
-        result = self._run(root)
+        result = self._run(members[-1])
         tm.that(result.outcome.raw_return_code != 0, eq=True)
         tm.that(result.stderr + result.stdout, has=str(target))
-        receipt = self._receipt(root)
-        tm.that(
-            receipt.completed
-            and receipt.surface is c.Infra.CodegenConformSurface.MAKEFILE
-            and receipt.scope is c.Infra.CodegenConformScope.ALL,
-            eq=False,
-        )
+        tm.that(receipt_path.read_bytes(), eq=root_before)
 
     def test_workspace_bootstrap_rejects_an_editable_from_another_checkout(
         self,
@@ -335,5 +329,5 @@ class TestsMakeBootstrapPublication:
         tm.that(self._run(root, hosted=hosted).outcome.raw_return_code, eq=0)
         tm.that(
             self._receipt(root).scope_roots,
-            eq=(root,) if hosted else (root, *members),
+            eq=(root,),
         )

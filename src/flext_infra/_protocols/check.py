@@ -34,6 +34,8 @@ class FlextInfraProtocolsCheck(Protocol):
         co_freevars: tuple[str, ...]
         co_cellvars: tuple[str, ...]
         co_code: bytes
+        co_linetable: bytes
+        co_exceptiontable: bytes
         co_flags: int
 
         def replace(

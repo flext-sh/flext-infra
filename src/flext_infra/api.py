@@ -19,6 +19,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenFixer,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenPipeline,
+    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import (
@@ -82,12 +83,20 @@ class FlextInfra(
         )
         if workspace.failure:
             return r[bool].from_failure(workspace)
+        producer = FlextInfraCodegenPreconditions.capture_producer()
+        if producer.failure:
+            return r[bool].from_failure(producer)
         return FlextInfraCandidateBootstrapService(
             # The campaign only plans through conform; it publishes through its
             # own transaction and never runs the complete surface.
-            planner=FlextInfraCodegenConform(repository_root=source_root, ports=None),
+            planner=FlextInfraCodegenConform(
+                repository_root=source_root,
+                ports=None,
+                producer=producer.value,
+            ),
             transaction=FlextInfraCodegenTransaction(
                 FlextInfraCodegenMiseArtifacts(repository_root=source_root),
+                producer=producer.value,
             ),
         ).execute(source_root, workspace.value, request, inputs.value.sources)
 

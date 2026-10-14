@@ -187,6 +187,7 @@ print('physical-provider-proof=' + mutation)
             "mode",
             "timestamp",
             "link",
+            "intermediate-input",
         ],
     )
     def test_full_producer_authentication_precedes_source_selection(
@@ -197,13 +198,16 @@ print('physical-provider-proof=' + mutation)
         producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
         resource_root = tmp_path / "declared-resource-root"
         resource_root.mkdir()
+        anchor = resource_root / "anchor.json"
+        tm.ok(u.Cli.atomic_write_text_file(anchor, "{}"))
+        anchor_state = tm.ok(u.Cli.atomic_read_binary_file_state(anchor, required=True))
         resource = resource_root / "resource.json"
         tm.ok(u.Cli.atomic_write_text_file(resource, '{"value":"before"}'))
         state = tm.ok(u.Cli.atomic_read_binary_file_state(resource, required=True))
         inventory = tm.ok(u.Cli.atomic_inventory_physical_tree(resource_root))
         context = producer.model_copy(
             update={
-                "inputs": (*producer.inputs, state),
+                "inputs": (*producer.inputs, anchor_state, state),
                 "generator_trees": (*producer.generator_trees, inventory),
             }
         )
@@ -224,12 +228,40 @@ print('physical-provider-proof=' + mutation)
             os.utime(resource, ns=(before.st_atime_ns, before.st_mtime_ns + 1))
         elif mutation == "link":
             resource.with_suffix(".alias").hardlink_to(resource)
+        elif mutation == "intermediate-input":
+            # Real in-place writes preserve the inode while the captured bytes
+            # disagree with the earlier tree and the final restored contents.
+            resource.write_bytes(b'{"value":"intermediate"}')
+            state = tm.ok(u.Cli.atomic_read_binary_file_state(resource, required=True))
+            resource.write_bytes(b'{"value":"before"}')
+            context = context.model_copy(
+                update={"inputs": (*producer.inputs, anchor_state, state)},
+            )
         observed = FlextInfraCodegenPreconditions.producer_current(context)
         tm.that(observed.success, eq=mutation == "unchanged")
         if observed.failure:
             tm.that(observed.error, has=str(resource_root))
         tm.that(context.inputs[-1], eq=state)
         tm.that(context.generator_trees[-1], eq=inventory)
+
+    @staticmethod
+    def test_optional_external_producer_input_retains_exact_absence(
+        tmp_path: Path,
+    ) -> None:
+        """An optional path outside inventoried trees stays an authenticated input."""
+        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        optional = tmp_path / "not-materialized" / "optional-source.json"
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(optional, required=False))
+        context = producer.model_copy(
+            update={"inputs": (*producer.inputs, state)},
+        )
+        tm.ok(FlextInfraCodegenPreconditions.producer_current(context))
+        optional.parent.mkdir()
+        tm.ok(u.Cli.atomic_write_text_file(optional, '{"value":"now-present"}'))
+        observed = FlextInfraCodegenPreconditions.producer_current(context)
+        tm.that(observed.failure, eq=True)
+        tm.that(observed.error, has=str(optional))
+        tm.that(context.inputs[-1], eq=state)
 
     @staticmethod
     def test_phase_binds_exact_preplanning_producer_inputs(tmp_path: Path) -> None:

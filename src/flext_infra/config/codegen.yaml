@@ -741,7 +741,7 @@ Infra:
         description: Inspect the pending generation journal and declared physical effect footprint without leases, recovery, or publication.
         produces_activation: true
       - name: initialize
-        description: Materialize the declared package initializer graph.
+        description: Bootstrap this target's own declaration and canonical Makefile.
       - name: mod
         description: Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
       - name: mod-rules

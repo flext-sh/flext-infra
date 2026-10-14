@@ -39,9 +39,6 @@ class TestsFlextInfraNativeModelProvenance:
         ).unwrap()
         tm.that(sources, empty=False)
         tm.that(
-            any(
-                Path(source).resolve() == expected_source
-                for _, source, _ in sources
-            ),
+            any(Path(source).resolve() == expected_source for _, source, _ in sources),
             eq=True,
         )

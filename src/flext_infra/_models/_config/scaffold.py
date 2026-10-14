@@ -88,7 +88,9 @@ class FlextInfraConfigModelsScaffold:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
-                description="Development suppliers required only by internal FLEXT projects",
+                description=(
+                    "Development suppliers required only by internal FLEXT projects"
+                ),
             ),
         ]
         config_bases: Annotated[

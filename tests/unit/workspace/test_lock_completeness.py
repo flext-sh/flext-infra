@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from json import dumps
 from pathlib import Path
 
 import pytest
@@ -125,7 +126,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         lock = self._selected_lock(duplicate_project)
         document = tm.ok(u.Cli.toml_read_document(lock))
         payload = tm.ok(u.Cli.toml_read_json(lock))
-        inventory = m.Infra.LockedEnvironment.model_validate(payload)
+        inventory = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
         name = c.Tests.CONSUMER_MODULES[0]
         tm.that(any(item.name == name for item in inventory.package), eq=True)
         u.Cli.toml_sync_value(
@@ -154,7 +155,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         """Metadata for inactive markers/extras does not create phantom packages."""
         lock = self._selected_lock(duplicate_project)
         payload = tm.ok(u.Cli.toml_read_json(lock))
-        inventory = m.Infra.LockedEnvironment.model_validate(payload)
+        inventory = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
         supplier = next(item for item in inventory.package if item.source.registry)
         rows = [
             {

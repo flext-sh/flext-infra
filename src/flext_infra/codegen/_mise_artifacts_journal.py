@@ -24,7 +24,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
     @classmethod
     def _generator_source_records(
         cls,
-        producer: m.Infra.CodegenPhaseAnalysis | None,
+        producer: m.Infra.CodegenPhaseAnalysis | m.Infra.CodegenSourceAuthority | None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]:
         """Encode one producer's generator inputs with their module roles.
 
@@ -42,8 +42,19 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         result_type = r[t.VariadicTuple[m.Infra.CodegenJournalSource]]
         if producer is None:
             return result_type.ok(value=())
+        if isinstance(producer, m.Infra.CodegenSourceAuthority):
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
+            )
+
+            pinned = FlextInfraCodegenPreconditions.authority_inputs(producer)
+            if pinned.failure:
+                return result_type.from_failure(pinned)
+            source_inputs = pinned.value
+        else:
+            source_inputs = producer.inputs
         generator_sources: list[m.Infra.CodegenJournalSource] = []
-        for source in producer.inputs:
+        for source in source_inputs:
             role: Literal[
                 "layer0", "family", "consumer", "resource", "distribution"
             ] = "distribution"

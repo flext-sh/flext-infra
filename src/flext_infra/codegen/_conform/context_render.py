@@ -380,27 +380,14 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         codegen = render_inputs.codegen
         repository = target.repository
         repository_root = target.root
-        project = self._resolved_render_project(render_inputs)
+        project = self._validated_render_project(render_inputs)
         if project.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(project)
-        validated = self._validated_scaffold_project(project.value, render_inputs)
-        if validated.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(validated)
-        project = validated.value
-        if (repository_root / c.PYPROJECT_FILENAME).is_file():
-            metadata = u.Infra.read_project_metadata_result(repository_root)
-            if metadata.failure:
-                return r[m.Infra.ProjectRenderContext].from_failure(metadata)
-            project_dependencies = metadata.value.project.dependencies
-            payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
-            groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
-            declared_dev = (
-                *t.Infra.STR_SEQ_ADAPTER.validate_python(groups.get(c.Infra.DEV, [])),
-                *u.Infra.canonical_dev_dependencies_from_payload(payload),
-            )
-        else:
-            project_dependencies = project.runtime_dependency_overlay
-            declared_dev = ()
+        project = project.value
+        declared = self._declared_dependency_facts(repository_root, project)
+        if declared.failure:
+            return r[m.Infra.ProjectRenderContext].from_failure(declared)
+        project_dependencies, declared_dev = declared.value
         development_dependencies = u.Infra.project_development_requirements(
             codegen.scaffold.project,
             distribution=repository.distribution,
@@ -414,18 +401,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         integration = self._integration_facts(render_inputs)
         if integration.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(integration)
-        packaged_data_paths = (
-            FlextInfraEnsurePackagingPhase.resolve_data_paths(
-                repository_root,
-                project.package_name,
-                project.packaged_data_paths,
-                planned_data_files,
-            )
-            if profile is not c.Infra.MakeProfile.WORKSPACE
-            else m.Infra.PackagedDataSelection()
-        )
-        project_patterns: t.StrSequence = (
-            render_inputs.managed_artifacts.resolution.artifacts.Gitignore.patterns
+        packaged_data_paths = self._resolved_packaged_data(
+            repository_root,
+            project,
+            profile,
+            planned_data_files,
         )
         # The repository's own pyproject.toml is the version SSOT; the release
         # protocol is its only writer, so conform reads it and never syncs it.
@@ -454,7 +434,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     # render never reads it back from disk.
                     project_name=repository.distribution,
                     workspace=workspace,
-                    project_patterns=project_patterns,
+                    project_patterns=(
+                        render_inputs.managed_artifacts.resolution.artifacts.Gitignore.patterns
+                    ),
                 ),
                 project_dependencies=project_dependencies,
                 development_dependencies=development_dependencies,
@@ -538,6 +520,95 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 repository_branch=integration.value[1],
                 year=project.year,
             ),
+        )
+
+    @staticmethod
+    def _declared_dependency_facts(
+        repository_root: Path,
+        project: m.Infra.ProjectSpec,
+    ) -> p.Result[t.Pair[t.SequenceOf[str], t.VariadicTuple[str]]]:
+        """Read the declared dependency facts of one render project.
+
+        An existing ``pyproject.toml`` owns the declared runtime dependencies
+        and development extras; a scaffold render falls back to the project
+        declaration's runtime overlay without declared extras.
+
+        Args:
+            repository_root: Project root whose pyproject declares the facts.
+            project: Resolved render project used before the pyproject exists.
+
+        Returns:
+            The project dependencies with their declared development extras,
+            or the first metadata failure.
+        """
+        result_type = r[t.Pair[t.SequenceOf[str], t.VariadicTuple[str]]]
+        if (repository_root / c.PYPROJECT_FILENAME).is_file():
+            metadata = u.Infra.read_project_metadata_result(repository_root)
+            if metadata.failure:
+                return result_type.from_failure(metadata)
+            payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
+            groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
+            declared_dev = (
+                *t.Infra.STR_SEQ_ADAPTER.validate_python(groups.get(c.Infra.DEV, [])),
+                *u.Infra.canonical_dev_dependencies_from_payload(payload),
+            )
+            return result_type.ok(
+                (metadata.value.project.dependencies, declared_dev),
+            )
+        return result_type.ok((project.runtime_dependency_overlay, ()))
+
+    def _validated_render_project(
+        self,
+        render_inputs: m.Infra.CodegenRenderInputs,
+    ) -> p.Result[m.Infra.ProjectSpec]:
+        """Resolve and validate the render project of one conform request.
+
+        Args:
+            render_inputs: Typed render inputs of the conform request.
+
+        Returns:
+            The validated scaffold project, or the first resolution or
+            validation failure.
+        """
+        resolved = self._resolved_render_project(render_inputs)
+        if resolved.failure:
+            return r[m.Infra.ProjectSpec].from_failure(resolved)
+        validated = self._validated_scaffold_project(
+            resolved.value,
+            render_inputs,
+        )
+        if validated.failure:
+            return r[m.Infra.ProjectSpec].from_failure(validated)
+        return r[m.Infra.ProjectSpec].ok(validated.value)
+
+    @staticmethod
+    def _resolved_packaged_data(
+        repository_root: Path,
+        project: m.Infra.ProjectSpec,
+        profile: c.Infra.MakeProfile,
+        planned_data_files: t.StrSequence,
+    ) -> m.Infra.PackagedDataSelection:
+        """Resolve the packaged data selection of the target make profile.
+
+        A workspace-profile render owns no packaged data selection: workspace
+        aggregation renders no installable project payload of its own.
+
+        Args:
+            repository_root: Project root holding the declared data paths.
+            project: Resolved render project declaring packaged data.
+            profile: Make profile of the conformance target.
+            planned_data_files: Planned shared data files of the render.
+
+        Returns:
+            The resolved packaged data selection of the render.
+        """
+        if profile is c.Infra.MakeProfile.WORKSPACE:
+            return m.Infra.PackagedDataSelection()
+        return FlextInfraEnsurePackagingPhase.resolve_data_paths(
+            repository_root,
+            project.package_name,
+            project.packaged_data_paths,
+            planned_data_files,
         )
 
     @staticmethod

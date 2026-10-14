@@ -37,7 +37,6 @@ class FlextInfraToolTablesPhase:
 
         """
         return sorted({
-            *config.Infra.tooling.tools.deptry.known_first_party,
             *FlextInfraToolTablesPhase.deptry_first_party_namespaces(
                 path=path,
                 planned_sources=planned_sources,

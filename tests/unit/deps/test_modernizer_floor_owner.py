@@ -31,7 +31,12 @@ class TestsFlextInfraModernizerFloorOwner:
 
     @staticmethod
     def _resolved_requirement() -> t.Pair[str, str]:
-        """Select an actually provisioned package with a valid release floor."""
+        """Select an actually provisioned package with a valid release floor.
+
+        Returns:
+            The resolved ``(name, version)`` requirement pair.
+
+        """
         return next(
             (name, version)
             for name, version in u.Infra.resolved_dependency_versions().items()

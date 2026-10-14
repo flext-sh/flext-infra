@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import m, u
+from flext_infra.docs.collector import FlextInfraDocCollector
 from tests import tm
 
 
@@ -66,6 +67,51 @@ class TestsFlextInfraPlanCollection:
                     publication="plan-artifacts",
                 ),
             ),
+        )
+
+    def test_public_collector_authenticates_configuration_and_repeats(
+        self,
+        infra_git_repo: Path,
+    ) -> None:
+        """The public collector publishes verified plans without policy callbacks."""
+        root = infra_git_repo
+        configuration = self._config()
+        configuration_path = root / "collection.yaml"
+        self._write(
+            configuration_path,
+            tm.ok(u.Cli.yaml_dump_str(configuration.model_dump(mode="json"))),
+        )
+        self._write(root / "input" / "plan.md", "# Collected plan\n\nOwned input.\n")
+        configuration_state = tm.ok(
+            u.Cli.atomic_read_binary_file_state(configuration_path, required=True),
+        )
+        bundle = u.Infra.docs_collect_plan_files(root, configuration)
+        request = m.Infra.DocsCollectRequest(
+            repository_root=root,
+            configuration=configuration_path,
+        )
+
+        tm.ok(FlextInfraDocCollector.collect(request))
+        u.Infra.verify_plan_collection_publication(root, configuration, bundle)
+        outputs = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(plan.path, required=True))
+            for plan in bundle.files
+            if plan.desired_content is not None
+        )
+        tm.ok(FlextInfraDocCollector.collect(request))
+
+        tm.that(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(configuration_path, required=True),
+            ),
+            eq=configuration_state,
+        )
+        tm.that(
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(state.path, required=True))
+                for state in outputs
+            ),
+            eq=outputs,
         )
 
     @staticmethod

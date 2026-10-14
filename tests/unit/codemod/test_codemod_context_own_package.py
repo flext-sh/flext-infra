@@ -276,7 +276,8 @@ class TestsFlextInfraCodemodContextOwnPackage:
             (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
             (module_name,),
         )
-        with u.Infra.codemod_binding_project(mod_workspace, closed) as (
+        epoch = u.Infra.codemod_source_epoch(closed)
+        with u.Infra.codemod_binding_project(mod_workspace, epoch) as (
             project,
             sources,
         ):
@@ -336,7 +337,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
             "class Public:\n    pass\nclass Independent:\n    pass\nu = Independent\n",
             encoding="utf-8",
         )
-        with u.Infra.codemod_binding_project(mod_workspace, closed) as (
+        with u.Infra.codemod_binding_project(mod_workspace, epoch) as (
             project,
             sources,
         ):
@@ -360,7 +361,9 @@ class TestsFlextInfraCodemodContextOwnPackage:
             (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
             (module_name,),
         )
-        with u.Infra.codemod_binding_project(mod_workspace, changed) as (
+        with u.Infra.codemod_binding_project(
+            mod_workspace, u.Infra.codemod_source_epoch(changed)
+        ) as (
             project,
             sources,
         ):

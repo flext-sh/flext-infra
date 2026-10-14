@@ -282,7 +282,7 @@ class FlextInfraCodemodSemanticApply:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
         """
-        inventory = m.Infra.ModScanReport(
+        inventory = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset(),
             entries=(),
         )
@@ -395,7 +395,7 @@ class FlextInfraCodemodSemanticApply:
     def source_fingerprint(
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
     ) -> t.VariadicTuple[t.Pair[str, str]]:
         """Identify the complete governed source state between mod phases.
 
@@ -412,7 +412,7 @@ class FlextInfraCodemodSemanticApply:
     def relocation_findings(
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> t.VariadicTuple[m.Infra.DeclarationRelocationFinding]:
         """Return every payload declaration whose relocation owner is unresolved.
@@ -430,7 +430,7 @@ class FlextInfraCodemodSemanticApply:
     def plan_transaction_paths(
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Return one immutable Rope callback for the mod loop's progress identity.
@@ -471,7 +471,7 @@ class FlextInfraCodemodSemanticApply:
     def apply(
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         source_preview: p.Infra.SourcePreview,
@@ -604,7 +604,7 @@ class FlextInfraCodemodSemanticApply:
         cls,
         root: Path,
         *,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
         reports_root: Path,
     ) -> p.Result[bool]:
@@ -620,7 +620,7 @@ class FlextInfraCodemodSemanticApply:
     def _validate_published(
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         reports_root: Path,
     ) -> p.Result[bool]:
@@ -711,7 +711,7 @@ class FlextInfraCodemodSemanticApply:
     @staticmethod
     def _phase_future_annotations(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
         working: MutableMapping[Path, str],
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan the future-annotations phase; the pipeline applies the edits.
@@ -813,7 +813,7 @@ class FlextInfraCodemodSemanticApply:
         cls,
         root: Path,
         working: MutableMapping[Path, str],
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Replan every phase against the proposed or reread published sources.
@@ -849,7 +849,7 @@ class FlextInfraCodemodSemanticApply:
     @staticmethod
     def _source_inventory(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
     ) -> t.MappingKV[Path, str]:
         """Read governed sources and every Python path reported by preflight.
 

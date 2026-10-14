@@ -18,6 +18,45 @@ class TestsNativeCompilerAdmission:
     """Observe native consumers and unchanged effects during provenance rejection."""
 
     @staticmethod
+    def test_source_proof_never_replays_an_absolute_import_effect(
+        tmp_path: Path,
+    ) -> None:
+        """A source proof preserves effects even when staging cannot relocate them."""
+        package = tmp_path / "absolute_effect_provider"
+        marker = tmp_path / "absolute-import-effects"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "marker = __import__('pathlib').Path(" + repr(str(marker)) + ")\n"
+                "with marker.open('a', encoding='utf-8') as stream:\n"
+                "    stream.write('import\\n')\n"
+                "class Payload:\n"
+                "    def operation(self): return 'native'\n",
+            ),
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('absolute_effect_provider')\n"
+            "assert module.marker.read_text(encoding='utf-8') == 'import\\n'\n"
+            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "assert module.marker.read_text(encoding='utf-8') == 'import\\n'\n"
+            "method = module.Payload.operation\n"
+            "method.__code__ = method.__code__.replace(co_name='foreign')\n"
+            "assert provenance.loaded_import_sources(module.__name__).failure\n"
+            "assert module.marker.read_text(encoding='utf-8') == 'import\\n'\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path)],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("fields", [1, 3])
     @pytest.mark.parametrize("defect", ["none", "code", "filename", "closure"])
     def test_frozen_methods_authenticate_across_native_batch_positions(

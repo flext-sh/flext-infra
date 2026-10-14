@@ -24,6 +24,71 @@ class TestsFlextInfraFileParticipantRecovery:
     """Recover prepared file-only journals through their physical owners."""
 
     @staticmethod
+    def _injected_validator_verdict(
+        failure_kind: str,
+        cause: RuntimeError,
+        targets: tuple[Path, ...],
+        current: m.Infra.CodegenTransactionSession,
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Inject the parametrized validator failure into the staged phase.
+
+        Args:
+            failure_kind: The parametrized failure injection kind.
+            cause: The explicit rejection cause.
+            targets: The governed publication target paths.
+            current: The staged session admitted when no failure applies.
+
+        Returns:
+            The validator verdict for the staged session.
+        """
+        if failure_kind == "target":
+            targets[1].write_bytes(b"concurrent\n")
+        if failure_kind == "exception":
+            raise cause
+        if failure_kind == "validator":
+            return r[m.Infra.CodegenTransactionSession].fail(
+                str(cause), exception=cause
+            )
+        return r[m.Infra.CodegenTransactionSession].ok(current)
+
+    @staticmethod
+    def _replaced_report_directory(root: Path) -> None:
+        """Replace the publication report file with a same-named directory.
+
+        Args:
+            root: Repository root owning the publication report path.
+        """
+        report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        report.unlink()
+        report.mkdir()
+
+    @staticmethod
+    def _corrupted_journal_state(
+        journal: Path,
+        journal_change: str,
+    ) -> p.Result[m.Cli.AtomicFileState] | None:
+        """Corrupt the journaled authority per the parametrized change kind.
+
+        Args:
+            journal: The transaction journal file path.
+            journal_change: The parametrized journal corruption kind.
+
+        Returns:
+            The observed journal state after the corruption, or ``None`` when
+            the journal path became a directory.
+        """
+        saved = journal.with_suffix(".preserved")
+        if journal_change != "unchanged":
+            journal.rename(saved)
+        if journal_change == "replaced":
+            journal.write_bytes(saved.read_bytes())
+            journal.chmod(saved.stat().st_mode)
+        if journal_change == "directory":
+            journal.mkdir()
+            return None
+        return tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False))
+
+    @staticmethod
     def _validate_failed_publication(
         session: m.Infra.CodegenTransactionSession,
         failure_kind: str,
@@ -95,15 +160,11 @@ class TestsFlextInfraFileParticipantRecovery:
                 current: m.Infra.CodegenTransactionSession,
                 _files: t.VariadicTuple[m.Infra.CodegenStagedFile],
             ) -> p.Result[m.Infra.CodegenTransactionSession]:
-                if failure_kind == "target":
-                    targets[1].write_bytes(b"concurrent\n")
-                if failure_kind == "exception":
-                    raise cause
-                if failure_kind == "validator":
-                    return r[m.Infra.CodegenTransactionSession].fail(
-                        str(cause), exception=cause
+                return (
+                    TestsFlextInfraFileParticipantRecovery._injected_validator_verdict(
+                        failure_kind, cause, targets, current
                     )
-                return r[m.Infra.CodegenTransactionSession].ok(current)
+                )
 
             appended = owner.append_phase_locked(
                 session,
@@ -115,9 +176,9 @@ class TestsFlextInfraFileParticipantRecovery:
                 return r[t.VariadicTuple[Path]].from_failure(appended)
             session = appended.value
             if failure_kind == "evidence":
-                report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
-                report.unlink()
-                report.mkdir()
+                TestsFlextInfraFileParticipantRecovery._replaced_report_directory(
+                    root,
+                )
 
             tm.ok(
                 TestsFlextInfraFileParticipantRecovery._validate_failed_publication(
@@ -135,6 +196,28 @@ class TestsFlextInfraFileParticipantRecovery:
             tm.fail(failed)
             if failure_kind == "validator":
                 tm.that(failed.exception is cause, eq=True)
+        TestsFlextInfraFileParticipantRecovery._verified_retained_receipts(
+            receipts, originals, targets, failure_kind, deleted=deleted
+        )
+
+    @staticmethod
+    def _verified_retained_receipts(
+        receipts: list[m.Infra.CodegenStagedFile],
+        originals: tuple[m.Cli.AtomicFileState, ...],
+        targets: tuple[Path, ...],
+        failure_kind: str,
+        *,
+        deleted: bool,
+    ) -> None:
+        """Assert the retained receipts match their authenticated originals.
+
+        Args:
+            receipts: The retained publication receipts of the failed commit.
+            originals: The authenticated pre-publication states of the targets.
+            targets: The governed publication target paths.
+            failure_kind: The parametrized failure injection kind.
+            deleted: Whether the publication planned deletions.
+        """
         expected = (
             ()
             if failure_kind in {"validator", "exception"}
@@ -663,18 +746,8 @@ class TestsFlextInfraFileParticipantRecovery:
             session = tm.ok(owner.append_phase_locked(session, "docs", (plan,)))
             before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
             journal = session.journal_state.path
-            saved = journal.with_suffix(".preserved")
-            if journal_change != "unchanged":
-                journal.rename(saved)
-            if journal_change == "replaced":
-                journal.write_bytes(saved.read_bytes())
-                journal.chmod(saved.stat().st_mode)
-            if journal_change == "directory":
-                journal.mkdir()
-            foreign = (
-                None
-                if journal_change == "directory"
-                else tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False))
+            foreign = TestsFlextInfraFileParticipantRecovery._corrupted_journal_state(
+                journal, journal_change
             )
             if failure_kind == "exception":
                 with pytest.raises(OSError, match=str(cause)) as raised:

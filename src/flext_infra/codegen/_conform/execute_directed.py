@@ -133,9 +133,43 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         if topology.failure:
             return r[m.Infra.CodegenResult].from_failure(topology)
         workspace, _target, repository = topology.value
+        roots = self._lazy_init_roots(request, root, workspace, repository)
+        if roots.failure:
+            return r[m.Infra.CodegenResult].from_failure(roots)
+        return self._run_publication(
+            request,
+            transaction,
+            roots.value,
+            lambda scope_root: self._execute_lazy_init_locked(
+                request,
+                transaction,
+                roots.value,
+                scope_root,
+            ),
+        )
+
+    def _lazy_init_roots(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        repository: m.Infra.RepositoryRef,
+    ) -> p.Result[t.MappingKV[str, Path]]:
+        """Namespace the selected initializer participants under pseudo-roots.
+
+        Args:
+            request: Conform request selecting the participant scope.
+            root: Resolved repository root of the request.
+            workspace: Loaded planning workspace specification.
+            repository: Current repository reference of the checkout.
+
+        Returns:
+            The pseudo-root mapping of the initializer publication, or the
+            first selection or staging failure.
+        """
         selected = self._select_repositories(request, workspace, repository)
         if selected.failure:
-            return r[m.Infra.CodegenResult].from_failure(selected)
+            return r[t.MappingKV[str, Path]].from_failure(selected)
         roots = {
             f"@{request.what}-{index}": (root / participant.path).resolve()
             for index, participant in enumerate(selected.value)
@@ -144,20 +178,10 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         if request.what == c.Infra.CodegenConformSurface.FACADES:
             stage_workspace = FlextInfraStagedPackage.workspace_root(request.root)
             if stage_workspace.failure:
-                return r[m.Infra.CodegenResult].from_failure(stage_workspace)
+                return r[t.MappingKV[str, Path]].from_failure(stage_workspace)
             if stage_workspace.value != request.root.expanduser().resolve():
                 roots["@stage-inputs-0"] = stage_workspace.value
-        return self._run_publication(
-            request,
-            transaction,
-            roots,
-            lambda scope_root: self._execute_lazy_init_locked(
-                request,
-                transaction,
-                roots,
-                scope_root,
-            ),
-        )
+        return r[t.MappingKV[str, Path]].ok(roots)
 
     def _execute_lazy_init_locked(
         self,

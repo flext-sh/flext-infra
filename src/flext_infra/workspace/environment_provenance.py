@@ -10,8 +10,7 @@ import hashlib
 import sys
 import sysconfig
 from functools import lru_cache
-from importlib.machinery import BuiltinImporter, FrozenImporter, PathFinder
-from inspect import getsourcefile
+from importlib.machinery import BuiltinImporter, FrozenImporter
 from json import dumps
 from pathlib import Path
 from sys import modules
@@ -31,6 +30,81 @@ if TYPE_CHECKING:
 
 class FlextInfraWorkspaceEnvironmentProvenance:
     """Bind installed packages to live local or immutable CI workspace sources."""
+
+    @staticmethod
+    def _module_source(module_name: str) -> p.Result[Path]:
+        """Observe native module origin; the isolated import authenticates election."""
+        module = modules.get(module_name)
+        if module is None:
+            return r[Path].fail(
+                f"producer source module is not registered: {module_name}"
+            )
+        namespace = vars(module)
+        native = namespace.get("__spec__")
+        if native is None or modules.get(native.name) is not module:
+            return r[Path].fail(f"producer module lacks its native spec: {module_name}")
+        if namespace.get("__loader__") is not native.loader:
+            return r[Path].fail(
+                f"producer module loader differs from native spec: {module_name}"
+            )
+        interpreter = Path(sys.executable).resolve()
+        if native.origin in {"built-in", "frozen"}:
+            importer = (
+                BuiltinImporter if native.origin == "built-in" else FrozenImporter
+            )
+            expected = importer.find_spec(native.name)
+            if expected is None or native.loader is not expected.loader:
+                return r[Path].fail(
+                    f"producer native interpreter loader differs: {module_name}"
+                )
+            if native.origin == "frozen" and (
+                native.loader_state != expected.loader_state
+                or getsourcefile(module) != native.loader_state.filename
+            ):
+                return r[Path].fail(
+                    f"producer frozen source differs from interpreter: {module_name}"
+                )
+            return r[Path].ok(interpreter)
+        if native.origin is None:
+            locations = native.submodule_search_locations
+            if locations is None or tuple(namespace.get("__path__", ())) != tuple(
+                locations
+            ):
+                return r[Path].fail(
+                    f"producer namespace paths differ from native spec: {module_name}"
+                )
+            if len(locations) != 1:
+                return r[Path].fail(
+                    f"producer namespace requires explicit multiple physical origins: {module_name}={tuple(locations)}",
+                )
+            root = Path(locations[0]).absolute()
+            physical = u.Cli.atomic_plan_directory_chain(root)
+            if physical.failure:
+                return r[Path].from_failure(physical)
+            return r[Path].ok(root)
+        if namespace.get("__file__") != native.origin:
+            return r[Path].fail(
+                f"producer module file differs from native origin: {module_name}"
+            )
+        origin = Path(native.origin).absolute()
+        if native.name.partition(".")[0] in sys.stdlib_module_names:
+            base = Path(sys.base_prefix).resolve()
+            standard = Path(
+                sysconfig.get_path(
+                    "stdlib",
+                    vars={
+                        "base": sys.base_prefix,
+                        "platbase": sys.base_exec_prefix,
+                    },
+                )
+            ).resolve()
+            if not interpreter.is_relative_to(
+                base
+            ) or not origin.resolve().is_relative_to(standard):
+                return r[Path].fail(
+                    f"producer standard library differs from interpreter base: {module_name}"
+                )
+        return r[Path].ok(origin)
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -138,7 +212,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         distribution: Distribution,
         receipt: m.Infra.DirectUrlReceipt,
     ) -> p.Result[bool]:
-        """Authenticate installation ownership without importing member code."""
+        """Authenticate installation ownership without importing member code.
+
+        Args:
+            repository: The repository reference to validate.
+            resolved_root: The resolved root path of the repository.
+            distribution: The distribution object representing the installed package.
+            receipt: The direct URL receipt for the editable installation.
+
+        Returns:
+            A result indicating whether the installation is authenticated.
+        """
         expected_root = (resolved_root / repository.path).resolve()
         origin = cls._editable_url_verdict(
             repository.distribution,
@@ -231,7 +315,15 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         root: Path,
         repositories: t.VariadicTuple[m.Infra.RepositoryRef],
     ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
-        """Read package facts exclusively through the elected physical runtime."""
+        """Read package facts exclusively through the elected physical runtime.
+
+        Args:
+            root: The root path of the repository.
+            repositories: The repository references to observe.
+
+        Returns:
+            A result containing the observed Python environment.
+        """
         context = FlextInfraWorkspaceDetector.resolution_context(root)
         if context.failure:
             return r[m.Infra.PythonEnvironmentObservation].from_failure(context)
@@ -443,12 +535,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         expected_root: Path | None = None,
         reference: m.Infra.NativeImportReference | None = None,
     ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Authenticate loaded bindings against one isolated native import epoch.
+        """Consume one pinned cold-native epoch, never a source-only admission."""
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
+        )
 
-        A coordinator passes the same reference to every selected namespace.
-        An independent public call creates its own complete immutable epoch.
-        Mutable configuration and model instances remain their owners' concern.
-        """
         names = tuple(
             sorted(
                 name
@@ -459,161 +550,81 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         if not names:
             return r[t.SequenceOf[t.Triple[str, str, str]]].ok(())
         if reference is None:
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
+            )
             from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
-            inputs: dict[Path, m.Cli.AtomicFileState] = {}
-            for name in names:
-                elected = cls._module_source(name)
-                if elected.failure:
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
-                        elected
-                    )
-                observed = u.Cli.atomic_read_binary_file_state(
-                    elected.value, required=True
+            cold = FlextInfraCodegenPreconditions.capture_source_authority(
+                nominated=names
+            )
+            if cold.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(cold)
+            inputs = FlextInfraCodegenPreconditions.authority_inputs(cold.value)
+            if inputs.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(inputs)
+            roots = [root.parent for _name, root in cold.value.generator_modules]
+            for namespace in dict.fromkeys(name.partition(".")[0] for name in names):
+                origin = cls._module_source(namespace)
+                if origin.failure:
+                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(origin)
+                spec = modules[namespace].__spec__
+                roots.append(
+                    origin.value.parent.parent
+                    if spec and spec.submodule_search_locations
+                    else origin.value.parent
                 )
-                if observed.failure:
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
-                        observed
-                    )
-                inputs[elected.value] = observed.value
             captured = FlextInfraValidateFreshImport.capture_native_reference(
                 m.Infra.NativeImportRequest(
-                    repository_root=Path.cwd(),
-                    runtime_root=Path(sys.prefix).parent,
                     modules=names,
-                    inputs=tuple(inputs.values()),
-                ),
+                    source_authority=cold.value,
+                    inputs=inputs.value,
+                    import_roots=tuple(dict.fromkeys(roots)),
+                )
             )
             if captured.failure:
                 return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(captured)
-            reference = captured.value
-        if not set(names).issubset(reference.modules):
-            return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                f"native reference does not cover selected namespace: {package_name}",
+            source_files = captured.value.sources
+        else:
+            if not set(names).issubset(reference.modules):
+                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                    f"native reference does not cover selected namespace: {package_name}",
+                )
+            if reference.runtime != Path(sys.executable).resolve():
+                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                    "native reference runtime differs",
+                )
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
             )
-        if reference.runtime != Path(sys.executable).resolve():
-            return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                "native reference belongs to another runtime",
-            )
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
 
-        observed = FlextInfraWorkspaceNativeReference.capture(names)
-        if observed.failure:
-            return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(observed)
-        authenticated = FlextInfraWorkspaceNativeReference.compare(
-            observed.value,
-            reference,
-        )
-        if authenticated.failure:
-            return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
-                authenticated,
+            current = FlextInfraCodegenPreconditions.source_authority_current(
+                reference.source_authority
             )
+            if current.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(current)
+            observed = FlextInfraWorkspaceNativeReference.capture(reference.modules)
+            if observed.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(observed)
+            matched = FlextInfraWorkspaceNativeReference.compare(
+                observed.value,
+                reference,
+            )
+            if matched.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(matched)
+            source_files = reference.sources
         if expected_root is not None:
-            for name, origin, declaration in reference.sources:
-                supplier = name.partition("::")[0]
+            for identity, source, declaration in source_files:
+                supplier = identity.partition("::")[0]
                 if (
                     supplier == package_name or supplier.startswith(f"{package_name}.")
                 ) and not Path(
-                    declaration or origin,
-                ).is_relative_to(expected_root):
+                    declaration or source,
+                ).resolve().is_relative_to(expected_root.resolve()):
                     return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                        f"producer loaded code escapes declared root: {name}={declaration or origin}",
+                        f"producer loaded source escapes declared checkout: {identity}={declaration or source}",
                     )
-        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(reference.sources)
-
-    @staticmethod
-    def _module_source(module_name: str) -> p.Result[Path]:
-        """Authenticate cold supplier election and the native Python base."""
-        module = modules[module_name]
-        native = module.__spec__
-        if (
-            native is None
-            or modules.get(native.name) is not module
-            or (
-                native.name != module_name
-                and (
-                    native.origin not in {"built-in", "frozen"}
-                    or module_name.partition(".")[0] not in sys.stdlib_module_names
-                )
-            )
-        ):
-            return r[Path].fail(f"producer module lacks its native spec: {module_name}")
-        components = module_name.split(".")
-        interpreter = Path(sys.executable).resolve()
-        if components[0] in sys.stdlib_module_names:
-            base = Path(sys.base_prefix).resolve()
-            standard = Path(
-                sysconfig.get_path(
-                    "stdlib",
-                    vars={
-                        "base": sys.base_prefix,
-                        "platbase": sys.base_exec_prefix,
-                    },
-                )
-            ).resolve()
-            extension = sysconfig.get_config_var("DESTSHARED")
-            if not isinstance(extension, str):
-                return r[Path].fail(
-                    "producer Python base lacks its native extension directory"
-                )
-            extension_root = Path(extension).resolve()
-            if (
-                not interpreter.is_relative_to(base)
-                or not standard.is_relative_to(base)
-                or not extension_root.is_relative_to(base)
-            ):
-                return r[Path].fail(
-                    "producer standard library differs from native Python base"
-                )
-            physical = u.Cli.atomic_plan_directory_chain(standard)
-            if physical.failure:
-                return r[Path].from_failure(physical)
-            if native.origin == "built-in":
-                spec = BuiltinImporter.find_spec(native.name)
-            elif native.origin == "frozen":
-                spec = FrozenImporter.find_spec(native.name)
-            else:
-                spec = PathFinder.find_spec(
-                    components[0], [str(standard), str(extension_root)]
-                )
-        else:
-            spec = PathFinder.find_spec(components[0])
-        if native.origin not in {"built-in", "frozen"}:
-            for index in range(1, len(components)):
-                if spec is None or not spec.submodule_search_locations:
-                    return r[Path].fail(
-                        f"producer module has no cold parent: {module_name}"
-                    )
-                spec = PathFinder.find_spec(
-                    ".".join(components[: index + 1]),
-                    spec.submodule_search_locations,
-                )
-        if (
-            spec is None
-            or spec.origin != native.origin
-            or type(spec.loader) is not type(native.loader)
-            or module.__loader__ is not native.loader
-        ):
-            return r[Path].fail(
-                f"producer module election differs from loaded spec: {module_name}"
-            )
-        if spec.origin == "frozen" and (
-            native.loader is not spec.loader
-            or native.loader_state != spec.loader_state
-            or getsourcefile(module) != spec.loader_state.filename
-        ):
-            return r[Path].fail(
-                f"producer frozen declaration source differs from native loader: {module_name}"
-            )
-        if spec.origin in {"built-in", "frozen"}:
-            return r[Path].ok(interpreter)
-        if spec.origin is None or getattr(module, "__file__", None) != spec.origin:
-            return r[Path].fail(
-                f"producer loaded module differs from cold origin: {module_name}"
-            )
-        return r[Path].ok(Path(spec.origin).absolute())
+        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(source_files)
 
     @classmethod
     def validate_locked(
