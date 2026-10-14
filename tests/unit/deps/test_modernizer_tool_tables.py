@@ -358,23 +358,23 @@ class TestsFlextInfraDepsModernizerToolTables:
             eq=list(arbitrary_source),
         )
 
-    def test_deptry_first_party_is_the_base_namespaces_and_the_live_package(
+    def test_deptry_first_party_contains_only_the_target_package(
         self,
         tmp_path: Path,
     ) -> None:
-        """Deptry's first party is the config base plus the live project package."""
-        payload, _ = self._applied(tmp_path, 'dependencies = ["flext-core>=0.1.0"]\n')
+        """A stale peer name cannot survive regeneration as a local module."""
+        payload, _ = self._applied(
+            tmp_path,
+            'dependencies = ["flext-core>=0.1.0"]\n'
+            '[tool.deptry]\nknown_first_party = ["flext_core"]\n',
+        )
         tm.that(
             set(
                 u.Tests.toml_strings(
                     self._table(payload, "deptry")["known_first_party"],
                 ),
             ),
-            eq={
-                *config.Infra.tooling.tools.deptry.known_first_party,
-                "flext_core",
-                "flext_sample",
-            },
+            eq={"flext_sample"},
         )
 
     @staticmethod

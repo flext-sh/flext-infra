@@ -174,6 +174,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             convention.project_layout.package_name,
             path,
         )
+        if project.find_module(f"{package}.constants") is None:
+            return source, ()
         if package not in paths:
             paths[package] = cls._constant_public_paths(project, package)
         public = paths[package]

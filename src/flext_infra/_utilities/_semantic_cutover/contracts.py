@@ -253,9 +253,6 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
 
         Returns:
             Whether the native occurrence belongs to this rule's model domain.
-
-        Raises:
-            ValueError: When a destination name has a competing lexical identity.
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         scope = runtime.scope_at(module, match.get_region()[0])
@@ -263,7 +260,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             return False
         if rule.families and not cls._admitted_family(project, rule, module):
             return False
-        ancestry = FlextInfraUtilitiesDeclarationPayload._class_ancestry(scope.pyobject)
+        ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(scope.pyobject)
         if rule.model_bases and not any(
             runtime.qualified_name(project, name).get_object() in ancestry
             for name in rule.model_bases

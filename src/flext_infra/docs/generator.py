@@ -180,7 +180,7 @@ class FlextInfraDocGenerator(
         started = transaction.begin_files_locked(
             scope_root,
             roots,
-            analysis.inputs,
+            prepared.value[0].inputs,
         )
         if started.failure:
             return report_type.from_failure(started)

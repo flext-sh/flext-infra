@@ -50,6 +50,10 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
         """
+        if self._source_authority is not None and updates:
+            return r[T].fail(
+                "cold source authority permits an unchanged reference view only",
+            )
         planned = FlextInfraStagedPackage.plan_sources(
             workspace,
             updates,
@@ -461,11 +465,16 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        if self._producer.failure:
-            return result_type.from_failure(self._producer)
-        producer_current = FlextInfraCodegenPreconditions.producer_current(
-            self._producer.value
-        )
+        if self._source_authority is not None:
+            producer_current = FlextInfraCodegenPreconditions.source_authority_current(
+                self._source_authority,
+            )
+        else:
+            if self._producer.failure:
+                return result_type.from_failure(self._producer)
+            producer_current = FlextInfraCodegenPreconditions.producer_current(
+                self._producer.value,
+            )
         if producer_current.failure:
             return result_type.from_failure(producer_current)
         if set(roots.values()) - self._file_leases.keys():
@@ -577,7 +586,11 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             transaction_id=transaction_id,
             sources=tuple(("docs", source) for source in inputs),
             directories=directories,
-            producer=self._producer.value,
+            producer=(
+                self._source_authority
+                if self._source_authority is not None
+                else self._producer.value
+            ),
         )
         if journal.failure:
             return result_type.from_failure(journal)

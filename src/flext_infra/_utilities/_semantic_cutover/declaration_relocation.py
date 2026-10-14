@@ -187,7 +187,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             .get_attribute(owner)
             .get_object()
         )
-        return declared in cls._class_ancestry(public.get_object())
+        return declared in cls.class_ancestry(public.get_object())
 
     @staticmethod
     def _source_family(path: Path) -> str | None:
@@ -480,7 +480,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 continue
             value = module.get_attribute(owner).get_object()
             for composed, route in routes:
-                if value in cls._class_ancestry(composed):
+                if value in cls.class_ancestry(composed):
                     targets.append((path, owner, route))
         targets = cls._preset_owned_targets(project, declaration, targets)
         if len(targets) != 1:
@@ -540,7 +540,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             # Split-source ancestry is part of the authored declaration graph.
             if any(
                 child.pyobject in bases
-                for ancestor in cls._class_ancestry(value)
+                for ancestor in cls.class_ancestry(value)
                 if (scope := ancestor.get_scope()) is not None
                 for child in scope.get_scopes()
                 if child.get_kind() == "Class"
@@ -1139,7 +1139,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             ValueError: If multiple authored owners declare the dependency.
         """
         owners: list[t.Triple[p.Infra.RopePyModule, str, str]] = []
-        for ancestor in cls._class_ancestry(composed):
+        for ancestor in cls.class_ancestry(composed):
             scope = ancestor.get_scope()
             provider = ancestor.get_module()
             resource = provider.get_resource() if provider is not None else None

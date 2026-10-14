@@ -1127,7 +1127,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "defect", ["none", "filename", "annotation", "parameters"],
+        "defect",
+        ["none", "filename", "annotation", "parameters"],
     )
     def test_native_reference_compares_static_metadata_without_callbacks(
         tmp_path: Path,

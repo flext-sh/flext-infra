@@ -84,7 +84,7 @@ class FlextInfraCodegenPreconditions:
         return r[t.VariadicTuple[t.Pair[str, Path]]].ok(tuple(elected))
 
     @classmethod
-    def capture_producer(cls) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+    def capture_source_authority(cls) -> p.Result[m.Infra.CodegenSourceAuthority]:
         """Elect physical providers and pin their code, resources and metadata.
 
         Loaded names nominate providers; cold import resolution and native
@@ -93,7 +93,7 @@ class FlextInfraCodegenPreconditions:
         Returns:
             The authenticated immutable producer closure.
         """
-        result_type = r[m.Infra.CodegenPhaseAnalysis]
+        result_type = r[m.Infra.CodegenSourceAuthority]
         elected = cls.elected_producer_modules()
         if elected.failure:
             return result_type.from_failure(elected)
@@ -103,9 +103,45 @@ class FlextInfraCodegenPreconditions:
         owners: MutableMapping[str, set[m.Cli.AtomicPhysicalTreeEntry]] = {
             name: set() for name in roots
         }
-        imported = cls._capture_import_sources(elected.value, states, trees)
-        if imported.failure:
-            return result_type.from_failure(imported)
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
+        )
+
+        names = tuple(
+            sorted(
+                name
+                for name in tuple(sys.modules)
+                if any(
+                    name == namespace or name.startswith(f"{namespace}.")
+                    for namespace in roots
+                )
+            )
+        )
+        observed = FlextInfraWorkspaceNativeReference.capture(names)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        for namespace, root in elected.value:
+            if root.is_dir():
+                captured_tree = FlextInfraMiseArtifactsFiles.capture_tree_sources(root)
+                if captured_tree.failure:
+                    return result_type.from_failure(captured_tree)
+                trees[root] = captured_tree.value[0]
+                states.update((item.path, item) for item in captured_tree.value[1])
+        captured_sources = FlextInfraMiseArtifactsFiles.capture_sources(
+            tuple(
+                Path(declaration or origin)
+                for _, origin, declaration in observed.value.sources
+            ),
+        )
+        if captured_sources.failure:
+            return result_type.from_failure(captured_sources)
+        states.update((item.path, item) for item in captured_sources.value)
+        authored = FlextInfraWorkspaceNativeReference.authored_sources_current(
+            observed.value,
+            tuple(states.values()),
+        )
+        if authored.failure:
+            return result_type.from_failure(authored)
         for distribution in u.installed_distributions():
             captured = cls._distribution_providers(distribution, roots, states, trees)
             if captured.failure:
@@ -121,12 +157,75 @@ class FlextInfraCodegenPreconditions:
                     "producer namespace has ambiguous physical distribution ownership: "
                     f"{namespace}: {ownership}"
                 )
-        snapshot = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-            files=(),
+        authority = m.Infra.CodegenSourceAuthority(
+            runtime=Path(sys.executable).resolve(),
             inputs=tuple(states.values()),
             generator_trees=tuple(trees.values()),
             generator_modules=elected.value,
+        )
+        return cls.source_authority_current(authority).map(lambda _current: authority)
+
+    @classmethod
+    def source_authority_current(
+        cls, authority: m.Infra.CodegenSourceAuthority
+    ) -> p.Result[bool]:
+        """Re-prove cold election and physical state without executing providers."""
+        if authority.runtime != Path(sys.executable).resolve():
+            return r[bool].fail("cold producer runtime changed")
+        elected = cls.elected_producer_modules()
+        if elected.failure:
+            return r[bool].from_failure(elected)
+        if elected.value != authority.generator_modules:
+            return r[bool].fail("cold producer module election changed")
+        states = FlextInfraMiseArtifactsVerification.states_current(authority.inputs)
+        if states.failure:
+            return states
+        for tree in authority.generator_trees:
+            observed = u.Cli.atomic_inventory_physical_tree(tree.root.path)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != tree:
+                return r[bool].fail(
+                    f"cold producer resource tree changed: {tree.root.path}"
+                )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def capture_producer(cls) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Strengthen cold authority with the actual isolated native producer."""
+        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+
+        cold = cls.capture_source_authority()
+        if cold.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(cold)
+        namespaces = tuple(name for name, _ in cold.value.generator_modules)
+        names = tuple(
+            sorted(
+                name
+                for name in tuple(sys.modules)
+                if any(
+                    name == namespace or name.startswith(f"{namespace}.")
+                    for namespace in namespaces
+                )
+            )
+        )
+        reference = FlextInfraValidateFreshImport.capture_native_reference(
+            m.Infra.NativeImportRequest(
+                repository_root=Path.cwd(),
+                runtime_root=Path(sys.prefix).parent,
+                modules=names,
+                inputs=cold.value.inputs,
+                source_authority=cold.value,
+            ),
+        )
+        if reference.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(reference)
+        snapshot = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+            files=(),
+            inputs=cold.value.inputs,
+            generator_trees=cold.value.generator_trees,
+            generator_modules=cold.value.generator_modules,
         )
         return cls.producer_current(snapshot).map(lambda _current: snapshot)
 

@@ -70,6 +70,10 @@ class FlextInfraDepsGate(FlextInfraGate):
                 project_dir / c.PYPROJECT_FILENAME,
                 required=True,
             ).unwrap()
+            source = project_dir / c.Infra.DEFAULT_SRC_DIR
+            if not source.is_dir():
+                msg = f"deptry production source is missing: {source}"
+                raise FileNotFoundError(msg)
             # An exclusive run path cannot inherit a previous command's report.
             report_dir = ctx.reports_dir.absolute() / (
                 f"{project_dir.name}-{self.gate_id}-{uuid4().hex}"
@@ -84,7 +88,7 @@ class FlextInfraDepsGate(FlextInfraGate):
             out_file = report_dir / "deptry.json"
             command = self._python_console_script_command(
                 c.Infra.DEPTRY,
-                ".",
+                str(c.Infra.DEFAULT_SRC_DIR),
                 "--config",
                 str(settings.path),
                 "--json-output",

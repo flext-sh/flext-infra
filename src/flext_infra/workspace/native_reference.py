@@ -23,7 +23,7 @@ from types import (
     UnionType,
 )
 
-from flext_infra import m, p, r, t
+from flext_infra import m, p, r, t, u
 
 
 class FlextInfraWorkspaceNativeReference:
@@ -32,6 +32,192 @@ class FlextInfraWorkspaceNativeReference:
     @staticmethod
     def _class_namespace(value: p.AttributeProbe) -> t.MappingKV[str, p.AttributeProbe]:
         return vars(type)["__dict__"].__get__(value, type(value))
+
+    @classmethod
+    def _source_witness(
+        cls,
+        name: str,
+        project: p.Infra.RopeProject,
+        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+    ) -> p.Result[m.Infra.NativeSourceWitness]:
+        """Capture and compile each supplier once without importing or replaying it."""
+        if name in witnesses:
+            return r[m.Infra.NativeSourceWitness].ok(witnesses[name])
+        module = sys.modules.get(name)
+        if type(module) is not ModuleType:
+            return r[m.Infra.NativeSourceWitness].fail(
+                f"producer source supplier is not registered: {name}",
+            )
+        from flext_infra.workspace.environment_provenance import (
+            FlextInfraWorkspaceEnvironmentProvenance,
+        )
+
+        elected = FlextInfraWorkspaceEnvironmentProvenance._module_source(name)
+        if elected.failure:
+            return r[m.Infra.NativeSourceWitness].from_failure(elected)
+        source = elected.value
+        if module.__spec__ is not None and module.__spec__.origin == "frozen":
+            source = Path(module.__spec__.loader_state.filename).absolute()
+        captured = u.Cli.atomic_read_binary_file_state(source, required=True)
+        if captured.failure:
+            return r[m.Infra.NativeSourceWitness].from_failure(captured)
+        state = captured.value
+        if state.content is None:
+            return r[m.Infra.NativeSourceWitness].fail(
+                f"producer captured source bytes are absent: {name}",
+            )
+        no_project = u.Infra.runtime_callable(
+            "rope.base.project",
+            "get_no_project",
+        )()
+        resource = u.Infra.runtime_callable(
+            "rope.base.resources",
+            "File",
+        )(no_project, str(source))
+        if not isinstance(resource, p.Infra.RopeFile):
+            msg = "Native source resource violates Rope's file contract"
+            raise TypeError(msg)
+        native = u.Infra.build_string_module(
+            project,
+            state.content.decode("utf-8"),
+            resource=resource,
+            force_errors=True,
+        )
+        if not isinstance(native, p.Infra.RopeSourceModule):
+            msg = "Native source module lost its shared Rope graph"
+            raise TypeError(msg)
+        root = native.get_scope()
+        if not isinstance(root, p.Infra.RopeScope):
+            msg = "Native source module has no semantic scope"
+            raise TypeError(msg)
+        scopes: dict[str, p.Infra.RopeScope] = {}
+        pending = [(root, "")]
+        while pending:
+            current, qualified = pending.pop()
+            if qualified in scopes:
+                return r[m.Infra.NativeSourceWitness].fail(
+                    f"producer declaration identity is ambiguous: {name}::{qualified}",
+                )
+            scopes[qualified] = current
+            for child in current.get_scopes():
+                component = child.pyobject.get_name()
+                prefix = (
+                    f"{qualified}.<locals>"
+                    if current.get_kind() == "Function"
+                    else qualified
+                )
+                child_name = f"{prefix}.{component}" if prefix else component
+                pending.append((child, child_name))
+        compiled = compile(state.content, str(source), "exec", dont_inherit=True)
+        if module.__spec__ is not None and module.__spec__.origin == "frozen":
+            compiled = FrozenImporter.get_code(module.__spec__.name)
+        if not isinstance(compiled, CodeType):
+            msg = "Native compiler did not return a Python code object"
+            raise TypeError(msg)
+        witness = m.Infra.NativeSourceWitness(
+            source=source,
+            state=state,
+            module=native,
+            code=compiled,
+            scopes=scopes,
+            statements=u.Infra.logical_statements(native.source_code),
+            finder=u.Infra.semantic_finder(native),
+        )
+        witnesses[name] = witness
+        return r[m.Infra.NativeSourceWitness].ok(witness)
+
+    @staticmethod
+    def _compiled_function(
+        witness: m.Infra.NativeSourceWitness,
+        code: p.Infra.NativeCodeIdentity,
+    ) -> p.Result[bool]:
+        """Compare a physical executable against the captured module compilation."""
+        if not isinstance(witness.code, CodeType):
+            msg = "Source witness contains no native compiler result"
+            raise TypeError(msg)
+        pending = [witness.code]
+        candidates = []
+        while pending:
+            current = pending.pop()
+            if current.co_qualname == code.co_qualname:
+                candidates.append(current)
+            pending.extend(
+                value for value in current.co_consts if isinstance(value, CodeType)
+            )
+        if not any(candidate == code for candidate in candidates):
+            return r[bool].fail(
+                "producer executable differs from captured native compilation: "
+                f"{code.co_qualname}; source={witness.source}",
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _source_binding(
+        cls,
+        scope: p.Infra.RopeScope,
+        expression: str,
+        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+        project: p.Infra.RopeProject,
+    ) -> p.Result[p.AttributeProbe]:
+        """Bridge a native lexical identity to its statically stored runtime value."""
+        binding = u.Infra.expression_name(scope, expression)
+        if binding is None:
+            return r[p.AttributeProbe].fail(
+                f"producer has no native lexical source binding: {expression}",
+            )
+        target = binding.get_object()
+        provider = target.get_module()
+        if provider is None:
+            if isinstance(target, p.Infra.RopeBuiltinClass):
+                return r[p.AttributeProbe].ok(target.builtin)
+            return r[p.AttributeProbe].fail(
+                f"producer binding has no native declaration supplier: {expression}",
+            )
+        provider_name = provider.get_name()
+        registered = sys.modules.get(provider_name)
+        if type(registered) is not ModuleType:
+            return r[p.AttributeProbe].fail(
+                f"producer source binding supplier is not loaded: {provider_name}",
+            )
+        declaration = target.get_scope()
+        if declaration is None:
+            if isinstance(target, p.Infra.RopeBuiltinClass):
+                return r[p.AttributeProbe].ok(target.builtin)
+            return r[p.AttributeProbe].fail(
+                f"producer lexical value has no native declaration scope: {expression}",
+            )
+        components = []
+        current = declaration
+        while current.parent is not None:
+            components.append(current.pyobject.get_name())
+            current = current.parent
+        value: p.AttributeProbe = registered
+        for component in reversed(components):
+            namespace = (
+                cls._class_namespace(value)
+                if cls._is_class(value)
+                else vars(value)
+                if type(value) is ModuleType
+                else None
+            )
+            if namespace is None or component not in namespace:
+                return r[p.AttributeProbe].fail(
+                    f"producer source binding has no static runtime slot: {expression}",
+                )
+            value = namespace[component]
+        if cls._is_class(value):
+            if type.__getattribute__(value, "__module__") != provider_name:
+                return r[p.AttributeProbe].fail(
+                    f"producer class supplier differs from native source: {expression}",
+                )
+        elif type(value) is FunctionType:
+            captured = cls._source_witness(provider_name, project, witnesses)
+            if captured.failure:
+                return r[p.AttributeProbe].from_failure(captured)
+            authenticated = cls._compiled_function(captured.value, value.__code__)
+            if authenticated.failure:
+                return r[p.AttributeProbe].from_failure(authenticated)
+        return r[p.AttributeProbe].ok(value)
 
     @staticmethod
     def _is_class(value: p.AttributeProbe) -> bool:
@@ -182,6 +368,22 @@ class FlextInfraWorkspaceNativeReference:
             if source.is_relative_to(staged):
                 return original / source.relative_to(staged)
         return source
+
+    @staticmethod
+    def _code_locations(code: CodeType) -> str:
+        """Retain physical locations for every nested native compiler code unit."""
+        return dumps((
+            code.co_qualname,
+            code.co_filename,
+            code.co_firstlineno,
+            b64encode(code.co_linetable).decode("ascii"),
+            b64encode(code.co_exceptiontable).decode("ascii"),
+            tuple(
+                FlextInfraWorkspaceNativeReference._code_locations(value)
+                for value in code.co_consts
+                if type(value) is CodeType
+            ),
+        ))
 
     @classmethod
     def capture(
@@ -453,6 +655,8 @@ class FlextInfraWorkspaceNativeReference:
                 or actual_code.co_firstlineno != expected_code.co_firstlineno
                 or actual_code.co_linetable != expected_code.co_linetable
                 or actual_code.co_exceptiontable != expected_code.co_exceptiontable
+                or FlextInfraWorkspaceNativeReference._code_locations(actual_code)
+                != FlextInfraWorkspaceNativeReference._code_locations(expected_code)
             ):
                 return r[bool].fail(
                     f"producer executed code differs from native import: {item.binding}"
