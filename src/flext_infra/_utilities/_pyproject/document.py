@@ -110,49 +110,25 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             Canonical TOML with autonomous dependencies and uv policy.
 
         """
-        parsed = cls.parsed_pyproject(pyproject_content)
-        if parsed.failure:
-            return r[str].from_failure(parsed)
-        source, project_name = parsed.value[0], parsed.value[1]
-        provenance = options if options is not None else cls.PyprojectConformOptions()
-        environment = cls._member_environment_requirements(
-            source,
-            workspace,
-            provenance,
-        )
-        if environment.failure:
-            return r[str].from_failure(environment)
-        member_requests, member_groups, member_requirements = environment.value
-        member_groups = cls.active_development_requirements(member_groups)
-        origins = cls._declared_requirement_sources(
-            project_name=project_name,
+        prepared = cls._conformed_provenance(
+            pyproject_content,
             workspace=workspace,
             required_dev_dependencies=required_dev_dependencies,
-            flext_line=provenance.flext_line,
+            options=options,
         )
-        if origins.failure:
-            return r[str].from_failure(origins)
-        declared_sources, candidate_sources = origins.value
-        source_context = FlextInfraUtilitiesPyprojectRequirementsProvenance(
-            declared_sources=declared_sources,
-            candidate_sources=candidate_sources,
-            family_line=provenance.flext_line.branch
-            if provenance.flext_line is not None
-            else None,
+        if prepared.failure:
+            return r[str].from_failure(prepared)
+        source, project_name, (source_context, member_environment) = prepared.value
+        member_requests, member_groups, member_requirements = member_environment
+        member_groups = cls.active_development_requirements(member_groups)
+        custom_groups = cls._workspace_custom_groups(
+            source,
+            pyproject_content=pyproject_content,
+            member_groups=member_groups,
+            workspace=workspace,
         )
-        custom_groups: t.Pair[
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-        ] = ((), ())
-        if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
-            custom = cls._sync_root_environment_groups(
-                source,
-                pyproject_content,
-                member_groups,
-            )
-            if custom.failure:
-                return r[str].from_failure(custom)
-            custom_groups = custom.value
+        if custom_groups.failure:
+            return r[str].from_failure(custom_groups)
         grouped = cls._sync_dependency_groups(
             source,
             project_name=project_name,
@@ -173,7 +149,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return r[str].from_failure(requirement_sources)
         (
             local_requirements,
-            declared_sources,
+            _superseded_sources,
             candidate_sources,
         ) = requirement_sources.value
         if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
@@ -192,6 +168,107 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             local_requirements=(*local_requirements, *member_requirements),
             workspace=workspace,
         ).flat_map(lambda _synced: cls._render_pyproject(source))
+
+    @classmethod
+    def _conformed_provenance(
+        cls,
+        pyproject_content: str,
+        *,
+        workspace: m.Infra.WorkspaceSpec,
+        required_dev_dependencies: t.StrSequence,
+        options: PyprojectConformOptions | None,
+    ) -> p.Result[
+        t.Triple[
+            t.Cli.TomlDocument,
+            str,
+            t.Pair[
+                FlextInfraUtilitiesPyprojectRequirementsProvenance,
+                t.Triple[t.StrSequence, t.StrSequence, t.StrSequence],
+            ],
+        ]
+    ]:
+        """Parse the source and compose its provenance and member environment.
+
+        Returns:
+            The parsed document, its project name, the composed requirement
+            provenance, and the member environment requirement triple.
+        """
+        result = r[
+            t.Triple[
+                t.Cli.TomlDocument,
+                str,
+                t.Pair[
+                    FlextInfraUtilitiesPyprojectRequirementsProvenance,
+                    t.Triple[t.StrSequence, t.StrSequence, t.StrSequence],
+                ],
+            ]
+        ]
+        parsed = cls.parsed_pyproject(pyproject_content)
+        if parsed.failure:
+            return result.from_failure(parsed)
+        source, project_name = parsed.value[0], parsed.value[1]
+        provenance = options if options is not None else cls.PyprojectConformOptions()
+        environment = cls._member_environment_requirements(
+            source,
+            workspace,
+            provenance,
+        )
+        if environment.failure:
+            return result.from_failure(environment)
+        member_requests, member_groups, member_requirements = environment.value
+        origins = cls._declared_requirement_sources(
+            project_name=project_name,
+            workspace=workspace,
+            required_dev_dependencies=required_dev_dependencies,
+            flext_line=provenance.flext_line,
+        )
+        if origins.failure:
+            return result.from_failure(origins)
+        declared_sources, candidate_sources = origins.value
+        source_context = FlextInfraUtilitiesPyprojectRequirementsProvenance(
+            declared_sources=declared_sources,
+            candidate_sources=candidate_sources,
+            family_line=provenance.flext_line.branch
+            if provenance.flext_line is not None
+            else None,
+        )
+        return result.ok((
+            source,
+            project_name,
+            (source_context, (member_requests, member_groups, member_requirements)),
+        ))
+
+    @classmethod
+    def _workspace_custom_groups(
+        cls,
+        source: t.Cli.TomlDocument,
+        *,
+        pyproject_content: str,
+        member_groups: t.StrSequence,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> p.Result[
+        t.Pair[
+            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        ]
+    ]:
+        """Synchronize root environment groups for workspace-role repositories.
+
+        Returns:
+            The synchronized custom group pair, empty outside the workspace role.
+        """
+        if workspace.repository.role != c.Infra.MakeProfile.WORKSPACE:
+            return r[
+                t.Pair[
+                    t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+                    t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+                ]
+            ].ok(((), ()))
+        return cls._sync_root_environment_groups(
+            source,
+            pyproject_content,
+            member_groups,
+        )
 
     @classmethod
     def _normalized_requirement_sources(
@@ -386,79 +463,164 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         )
         if declared_lines.failure:
             return result.from_failure(declared_lines)
-        requests: list[str] = []
-        groups: list[str] = []
-        requirements: list[str] = []
+        declarations = FlextInfraUtilitiesPyprojectDocument._matched_declarations(
+            options,
+            members,
+        )
+        if declarations.failure:
+            return result.from_failure(declarations)
+        aggregated = FlextInfraUtilitiesPyprojectDocument._aggregated_member_rows(
+            members,
+            declarations.value,
+            declared_lines.value,
+            workspace.integration.branch,
+        )
+        if aggregated.failure:
+            return result.from_failure(aggregated)
+        return aggregated
+
+    @staticmethod
+    def _matched_declarations(
+        options: PyprojectConformOptions,
+        members: t.SequenceOf[m.Infra.Contexts.RepositoryRef],
+    ) -> p.Result[t.SequenceOf[m.Cli.AtomicFileState]]:
+        """Match captured member declarations to the elected packaged members.
+
+        Args:
+            options: Conformity options carrying the captured declarations.
+            members: Elected packaged workspace members in declaration order.
+
+        Returns:
+            The captured declarations aligned with the elected members.
+        """
         declarations = options.member_declarations
         if declarations is None:
-            return result.fail(
+            return r[t.SequenceOf[m.Cli.AtomicFileState]].fail(
                 "member provisioning requires captured authenticated declarations"
             )
         if len(declarations) != len(members):
-            return result.fail(
+            return r[t.SequenceOf[m.Cli.AtomicFileState]].fail(
                 "captured member declarations differ from declared members"
             )
+        return r[t.SequenceOf[m.Cli.AtomicFileState]].ok(declarations)
+
+    @staticmethod
+    def _aggregated_member_rows(
+        members: t.SequenceOf[m.Infra.WorkspaceSubprojectSpec],
+        declarations: t.SequenceOf[m.Cli.AtomicFileState],
+        declared_lines: t.StrSequence,
+        integration_branch: str | None,
+    ) -> p.Result[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]:
+        """Render and aggregate one requirement row set per declared member.
+
+        Args:
+            members: Declared workspace members owning a package.
+            declarations: Captured authenticated declarations, member order.
+            declared_lines: Root requirement lines declaring direct sources.
+            integration_branch: Workspace integration branch for member URLs.
+
+        Returns:
+            The aggregated requests, groups, and declared requirement lines.
+        """
+        result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
+        requests: list[str] = []
+        groups: list[str] = []
+        requirements: list[str] = []
         for index, member in enumerate(members):
-            state = declarations[index]
-            parsed = (
-                FlextInfraUtilitiesPyprojectDocument.member_declaration_requirements(
-                    state,
-                    member.distribution,
-                )
+            row = FlextInfraUtilitiesPyprojectDocument._member_requirement_row(
+                member,
+                declarations[index],
+                declared_lines,
+                integration_branch,
             )
-            if parsed.failure:
-                return result.from_failure(parsed)
-            metadata, declared = parsed.value
-            name = FlextInfraUtilitiesDependencies.dep_name(member.distribution)
-            if name is None:
-                return result.fail(
-                    "member distribution is not a requirement name: "
-                    f"{member.distribution}",
-                )
-            explicit = tuple(
-                line
-                for line in declared_lines.value
-                if FlextInfraUtilitiesDependencies.dep_name(line) == name
-                and FlextInfraUtilitiesPyprojectDocument._declares_direct_source(line)
-            )
-            extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
-                (
-                    *explicit,
-                    *(
-                        f"{member.distribution}[{extra}]"
-                        for extra in metadata.optional_dependencies
-                    ),
-                ),
-                name,
-            )
-            canonical_provenance = (
-                FlextInfraUtilitiesPyprojectDocument._parsed_canonical_provenance
-            )
-            if explicit:
-                for line in explicit:
-                    origin = canonical_provenance(line)
-                    if origin.failure:
-                        return result.from_failure(origin)
-                    _head, marker, source_origin = origin.value
-                    request = FlextInfraUtilitiesPyprojectDocument._rendered_canonical(
-                        f"{member.distribution}{extras}",
-                        member.distribution,
-                        (source_origin, None),
-                        marker,
-                        pins_commit=False,
-                    )
-                    if request.failure:
-                        return result.from_failure(request)
-                    requests.append(request.value)
-            else:
-                requests.append(
-                    f"{member.distribution}{extras} @ "
-                    f"git+{member.url}@{workspace.integration.branch}",
-                )
-            for entries in metadata.dependency_groups.values():
-                groups.extend(entry for entry in entries if isinstance(entry, str))
+            if row.failure:
+                return result.from_failure(row)
+            member_requests, member_groups, declared = row.value
+            requests.extend(member_requests)
+            groups.extend(member_groups)
             requirements.extend(declared)
         return result.ok((tuple(requests), tuple(groups), tuple(requirements)))
+
+    @staticmethod
+    def _member_requirement_row(
+        member: m.Infra.WorkspaceSubprojectSpec,
+        state: m.Cli.AtomicFileState,
+        declared_lines: t.StrSequence,
+        integration_branch: str | None,
+    ) -> p.Result[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]:
+        """Render one member's requests, groups, and declared requirements.
+
+        Args:
+            member: The declared workspace member under composition.
+            state: The member's captured authenticated declaration.
+            declared_lines: Root requirement lines declaring direct sources.
+            integration_branch: Workspace integration branch for the member URL.
+
+        Returns:
+            The member's rendered requests, dependency groups, and declared
+            requirement lines.
+        """
+        result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
+        parsed = FlextInfraUtilitiesPyprojectDocument.member_declaration_requirements(
+            state,
+            member.distribution,
+        )
+        if parsed.failure:
+            return result.from_failure(parsed)
+        metadata, declared = parsed.value
+        name = FlextInfraUtilitiesDependencies.dep_name(member.distribution)
+        if name is None:
+            return result.fail(
+                f"member distribution is not a requirement name: {member.distribution}",
+            )
+        explicit = tuple(
+            line
+            for line in declared_lines
+            if FlextInfraUtilitiesDependencies.dep_name(line) == name
+            and FlextInfraUtilitiesPyprojectDocument._declares_direct_source(line)
+        )
+        extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
+            (
+                *explicit,
+                *(
+                    f"{member.distribution}[{extra}]"
+                    for extra in metadata.optional_dependencies
+                ),
+            ),
+            name,
+        )
+        canonical_provenance = (
+            FlextInfraUtilitiesPyprojectDocument._parsed_canonical_provenance
+        )
+        member_requests: list[str] = []
+        if explicit:
+            for line in explicit:
+                origin = canonical_provenance(line)
+                if origin.failure:
+                    return result.from_failure(origin)
+                _head, marker, source_origin = origin.value
+                request = FlextInfraUtilitiesPyprojectDocument._rendered_canonical(
+                    f"{member.distribution}{extras}",
+                    member.distribution,
+                    (source_origin, None),
+                    marker,
+                    pins_commit=False,
+                )
+                if request.failure:
+                    return result.from_failure(request)
+                member_requests.append(request.value)
+        else:
+            member_requests.append(
+                f"{member.distribution}{extras} @ "
+                f"git+{member.url}@{integration_branch}",
+            )
+        member_groups = tuple(
+            entry
+            for entries in metadata.dependency_groups.values()
+            for entry in entries
+            if isinstance(entry, str)
+        )
+        return result.ok((tuple(member_requests), member_groups, declared))
 
     @staticmethod
     def member_declaration_requirements(
@@ -484,19 +646,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         document, _name, payload = parsed_document.value
         if payload is None:
             return result.fail(f"member metadata is not a TOML mapping: {path}")
-        project = payload.get(c.Infra.PROJECT)
-        if not isinstance(project, Mapping):
-            return result.fail(
-                f"member metadata identity differs from declaration: {path}",
-            )
-        parsed = u.validate_value(
-            m.Infra.DepsToml.MemberRequirements,
-            {
-                "name": project.get(c.Infra.NAME),
-                "dependencies": project.get(c.Infra.DEPENDENCIES, ()),
-                "optional_dependencies": project.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
-                "dependency_groups": payload.get(c.Infra.DEPENDENCY_GROUPS, {}),
-            },
+        parsed = FlextInfraUtilitiesPyprojectDocument._validated_member_requirements(
+            payload,
+            path,
         )
         if parsed.failure:
             return result.from_failure(parsed)
@@ -510,6 +662,35 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             document,
         ).unwrap()
         return result.ok((parsed.value, declared))
+
+    @staticmethod
+    def _validated_member_requirements(
+        payload: t.JsonMapping,
+        path: Path,
+    ) -> p.Result[m.Infra.DepsToml.MemberRequirements]:
+        """Validate one member project table into its typed requirements.
+
+        Args:
+            payload: The member's parsed metadata mapping.
+            path: Declaration path used in failure messages.
+
+        Returns:
+            The validated member requirements, or the first validation failure.
+        """
+        project = payload.get(c.Infra.PROJECT)
+        if not isinstance(project, Mapping):
+            return r[m.Infra.DepsToml.MemberRequirements].fail(
+                f"member metadata identity differs from declaration: {path}",
+            )
+        return u.validate_value(
+            m.Infra.DepsToml.MemberRequirements,
+            {
+                "name": project.get(c.Infra.NAME),
+                "dependencies": project.get(c.Infra.DEPENDENCIES, ()),
+                "optional_dependencies": project.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
+                "dependency_groups": payload.get(c.Infra.DEPENDENCY_GROUPS, {}),
+            },
+        )
 
     @staticmethod
     def _declared_floor_sources(

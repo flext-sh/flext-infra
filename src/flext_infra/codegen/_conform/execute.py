@@ -248,37 +248,82 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
+        inputs = self._capture_current_codegen_inputs(request)
+        if inputs.failure:
+            return r[m.Infra.CodegenResult].from_failure(inputs)
+        blocked = self._migrate_declarations_for_apply(request, inputs.value.spec)
+        if blocked is not None:
+            return blocked
+        return self._dispatch_conform_surface(request)
+
+    def _capture_current_codegen_inputs(
+        self,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Capture the verified provenance producer and the current inputs.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenInputs]``.
+
+        """
         if self.producer is None:
             producer = FlextInfraCodegenPreconditions.capture_producer(
                 self.repository_root,
                 entrypoint=self.execute,
             )
             if producer.failure:
-                return r[m.Infra.CodegenResult].from_failure(producer)
+                return r[m.Infra.CodegenInputs].from_failure(producer)
             self.producer = producer.value
         verified_producer = FlextInfraCodegenPreconditions.producer_current(
             self.producer
         )
         if verified_producer.failure:
-            return r[m.Infra.CodegenResult].from_failure(verified_producer)
-        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
-        if inputs.failure:
-            return r[m.Infra.CodegenResult].from_failure(inputs)
-        if c.Infra.CodegenConformMode(
-            request.mode
-        ) is c.Infra.CodegenConformMode.APPLY and (
+            return r[m.Infra.CodegenInputs].from_failure(verified_producer)
+        return u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+
+    def _migrate_declarations_for_apply(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        spec: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[m.Infra.CodegenResult] | None:
+        """Migrate repository declarations on governed apply surfaces.
+
+        Returns:
+            The failing conform result when a migration fails without a
+            retained planning receipt, or ``None`` to continue the run.
+
+        """
+        if (
+            c.Infra.CodegenConformMode(request.mode)
+            is not c.Infra.CodegenConformMode.APPLY
+        ):
+            return None
+        if not (
             self.surface_contract(
                 c.Infra.CodegenConformSurface(request.what),
-                codegen=inputs.value.spec,
+                codegen=spec,
             ).complete_governed
             or request.declaration_kind is not None
         ):
-            migrated = self._migrate_repository_declarations(request)
-            if migrated.failure and (
-                migrated.error_code != c.Infra.ToolOutcome.ERROR.value
-                or not self.planning_issues
-            ):
-                return r[m.Infra.CodegenResult].from_failure(migrated)
+            return None
+        migrated = self._migrate_repository_declarations(request)
+        if migrated.failure and (
+            migrated.error_code != c.Infra.ToolOutcome.ERROR.value
+            or not self.planning_issues
+        ):
+            return r[m.Infra.CodegenResult].from_failure(migrated)
+        return None
+
+    def _dispatch_conform_surface(
+        self,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Dispatch the request's conform surface to its owning executor.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
         surface = c.Infra.CodegenConformSurface(request.what)
         if surface in {
             c.Infra.CodegenConformSurface.LAZY_INIT,
@@ -346,65 +391,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
 
         def publish(scope_root: Path) -> p.Result[bool]:
-            files: list[m.Infra.CodegenFilePlan] = []
-            inputs: list[m.Cli.AtomicFileState] = []
-            issues: list[m.Infra.Issue] = []
-            first_exception: BaseException | None = None
-            for target in selected:
-                captured = u.Infra.load_codegen_inputs(target.root)
-                if captured.failure:
-                    planned: p.Result[m.Infra.CodegenPhaseAnalysis] = r[
-                        m.Infra.CodegenPhaseAnalysis
-                    ].from_failure(captured)
-                elif request.declaration_kind is not None:
-                    planned = self.repository_kind_declaration_plans(
-                        target.root,
-                        captured.value,
-                        request.declaration_kind,
-                    )
-                else:
-                    planned = self.repository_declaration_migration_plans(
-                        target.root,
-                        captured.value,
-                    )
-                if planned.failure:
-                    issues.append(
-                        m.Infra.Issue(
-                            file=str(u.Infra.workspace_manifest_path(target.root)),
-                            line=0,
-                            column=0,
-                            code=c.Infra.ToolOutcome.ERROR.value,
-                            message=planned.error
-                            or "repository declaration migration failed",
-                        ),
-                    )
-                    if first_exception is None:
-                        first_exception = planned.exception
-                    continue
-                files.extend(planned.value.files)
-                inputs.extend(planned.value.inputs)
-                issues.extend(planned.value.issues)
-                if first_exception is None:
-                    first_exception = planned.value.exception
-            snapshots = FlextInfraCodegenPreconditions.unique_states(tuple(inputs))
-            if snapshots.failure:
-                return r[bool].from_failure(snapshots)
-            analysis = m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-                files=tuple(files),
-                inputs=snapshots.value,
-                issues=tuple(issues),
-                exception=first_exception,
-            )
+            analysis = self._collect_declaration_migration_plans(request, selected)
+            if analysis.failure:
+                return r[bool].from_failure(analysis)
             published = transaction.publish_file_phase_locked(
                 scope_root,
                 roots,
-                analysis,
+                analysis.value,
                 m.Infra.CodegenPhasePublicationPolicy(
                     directories=tuple(
                         sorted({
                             file.path.parent
-                            for file in files
+                            for file in analysis.value.files
                             if not file.path.parent.is_dir()
                         }),
                     ),
@@ -419,6 +417,71 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[bool].ok(value=True)
 
         return transaction.run_files_locked(roots, publish)
+
+    def _collect_declaration_migration_plans(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        selected: t.SequenceOf[m.Infra.WorkspaceOperationTarget],
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Plan every selected target's declaration migration into one analysis.
+
+        Returns:
+            The combined bootstrap-phase analysis, retaining per-file
+            failures and gains.
+
+        """
+        files: list[m.Infra.CodegenFilePlan] = []
+        inputs: list[m.Cli.AtomicFileState] = []
+        issues: list[m.Infra.Issue] = []
+        first_exception: BaseException | None = None
+        for target in selected:
+            captured = u.Infra.load_codegen_inputs(target.root)
+            if captured.failure:
+                planned: p.Result[m.Infra.CodegenPhaseAnalysis] = r[
+                    m.Infra.CodegenPhaseAnalysis
+                ].from_failure(captured)
+            elif request.declaration_kind is not None:
+                planned = self.repository_kind_declaration_plans(
+                    target.root,
+                    captured.value,
+                    request.declaration_kind,
+                )
+            else:
+                planned = self.repository_declaration_migration_plans(
+                    target.root,
+                    captured.value,
+                )
+            if planned.failure:
+                issues.append(
+                    m.Infra.Issue(
+                        file=str(u.Infra.workspace_manifest_path(target.root)),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=planned.error
+                        or "repository declaration migration failed",
+                    ),
+                )
+                if first_exception is None:
+                    first_exception = planned.exception
+                continue
+            files.extend(planned.value.files)
+            inputs.extend(planned.value.inputs)
+            issues.extend(planned.value.issues)
+            if first_exception is None:
+                first_exception = planned.value.exception
+        snapshots = FlextInfraCodegenPreconditions.unique_states(tuple(inputs))
+        if snapshots.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                files=tuple(files),
+                inputs=snapshots.value,
+                issues=tuple(issues),
+                exception=first_exception,
+            ),
+        )
 
     def _retain_completed_migration_issues(
         self,
@@ -509,17 +572,22 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             for index, repository in enumerate(plan.repositories)
         }
         receipts: list[m.Infra.CodegenPhaseOutcome] = []
-        published = transaction.run_files_locked(
-            roots,
-            lambda scope_root: self._publish_bootstrap_locked(
+
+        def publish(scope_root: Path) -> p.Result[m.Infra.CodegenResult]:
+            written = self._publish_bootstrap_phase(
                 request,
                 plan,
                 transaction,
-                roots,
-                scope_root,
-                receipts,
-            ),
-        )
+                (scope_root, roots),
+                publication_receipts=receipts,
+            )
+            if written.failure:
+                return r[m.Infra.CodegenResult].from_failure(written)
+            return r[m.Infra.CodegenResult].ok(
+                m.Infra.CodegenResult(plan=plan, written_files=written.value),
+            )
+
+        published = transaction.run_files_locked(roots, publish)
         if published.failure:
             return published
         qualified = transaction.publish_operation_receipt(
@@ -534,33 +602,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             published.value.model_copy(
                 update={"publication_receipt": qualified.value},
             ),
-        )
-
-    def _publish_bootstrap_locked(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        plan: m.Infra.CodegenPlan,
-        transaction: FlextInfraCodegenTransaction,
-        roots: t.MappingKV[str, Path],
-        scope_root: Path,
-        receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Publish the entire declared bootstrap surface in one journaled phase.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
-        """
-        written = self._publish_bootstrap_phase(
-            request,
-            plan,
-            transaction,
-            (scope_root, roots),
-            publication_receipts=receipts,
-        )
-        if written.failure:
-            return r[m.Infra.CodegenResult].from_failure(written)
-        return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=plan, written_files=written.value),
         )
 
     def _publish_bootstrap_phase(
@@ -581,60 +622,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         scope_root, roots = publication_scope
         surface = c.Infra.CodegenConformSurface(request.what)
-        expected_owners: t.MutableMappingKV[Path, Path] = {}
-        for repository in plan.repositories:
-            repository_root = (
-                request.root.expanduser().resolve() / repository.path
-            ).resolve()
-            inputs = u.Infra.load_codegen_inputs(repository_root)
-            if inputs.failure:
-                return r[t.VariadicTuple[Path]].from_failure(inputs)
-            destinations = self.surface_contract(
-                surface,
-                codegen=inputs.value.spec,
-            ).destinations
-            if not destinations:
-                return r[t.VariadicTuple[Path]].fail(
-                    f"bootstrap requires declared destinations for {surface}",
-                )
-            expected_owners.update(
-                {
-                    (repository_root / path).resolve(): repository_root
-                    for path in destinations
-                },
-            )
-        expected_paths = set(expected_owners)
-        dependencies = {
-            path
-            for file in plan.files
-            if file.index_before is not None
-            for path in file.tracking_dependencies
-        }
-        if dependencies:
-            permitted = {
-                path
-                for repository in plan.repositories
-                for path in FlextInfraConfig.config_layer_paths_for_repository(
-                    (request.root.expanduser().resolve() / repository.path).resolve(),
-                    filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-                )[1:]
-            }
-            if (
-                surface is not c.Infra.CodegenConformSurface.RUNTIME_BINDINGS
-                or not dependencies.issubset(permitted)
-            ):
-                error = ValueError(
-                    "runtime tracking dependencies escape declared config layers"
-                )
-                return r[t.VariadicTuple[Path]].fail(str(error), exception=error)
-            expected_paths.update(dependencies)
-            expected_owners.update(
-                {
-                    dependency: file.project
-                    for file in plan.files
-                    for dependency in file.tracking_dependencies
-                },
-            )
+        expected = self._bootstrap_expected_surface(request, plan, surface)
+        if expected.failure:
+            return r[t.VariadicTuple[Path]].from_failure(expected)
+        expected_paths, expected_owners = expected.value
         planned_paths = {file.path for file in plan.files}
         failed_paths = {Path(issue.file).resolve() for issue in plan.issues}
         unaccounted = {
@@ -689,6 +680,81 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 else None
             ),
             publication_receipts=publication_receipts,
+        )
+
+    def _bootstrap_expected_surface(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        plan: m.Infra.CodegenPlan,
+        surface: c.Infra.CodegenConformSurface,
+    ) -> p.Result[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]]:
+        """Resolve the bootstrap surface's expected paths and their owning roots.
+
+        Returns:
+            The expected destination paths paired with each path's owning
+            repository root.
+
+        """
+        expected_owners: t.MutableMappingKV[Path, Path] = {}
+        for repository in plan.repositories:
+            repository_root = (
+                request.root.expanduser().resolve() / repository.path
+            ).resolve()
+            inputs = u.Infra.load_codegen_inputs(repository_root)
+            if inputs.failure:
+                return r[
+                    t.Pair[set[Path], t.MutableMappingKV[Path, Path]]
+                ].from_failure(inputs)
+            destinations = self.surface_contract(
+                surface,
+                codegen=inputs.value.spec,
+            ).destinations
+            if not destinations:
+                return r[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]].fail(
+                    f"bootstrap requires declared destinations for {surface}",
+                )
+            expected_owners.update(
+                {
+                    (repository_root / path).resolve(): repository_root
+                    for path in destinations
+                },
+            )
+        expected_paths = set(expected_owners)
+        dependencies = {
+            path
+            for file in plan.files
+            if file.index_before is not None
+            for path in file.tracking_dependencies
+        }
+        if dependencies:
+            permitted = {
+                path
+                for repository in plan.repositories
+                for path in FlextInfraConfig.config_layer_paths_for_repository(
+                    (request.root.expanduser().resolve() / repository.path).resolve(),
+                    filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+                )[1:]
+            }
+            if (
+                surface is not c.Infra.CodegenConformSurface.RUNTIME_BINDINGS
+                or not dependencies.issubset(permitted)
+            ):
+                error = ValueError(
+                    "runtime tracking dependencies escape declared config layers"
+                )
+                return r[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]].fail(
+                    str(error), exception=error
+                )
+            expected_paths.update(dependencies)
+            expected_owners.update(
+                {
+                    dependency: file.project
+                    for file in plan.files
+                    for dependency in file.tracking_dependencies
+                },
+            )
+        return r[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]].ok(
+            (expected_paths, expected_owners),
         )
 
     @staticmethod
@@ -822,7 +888,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 request,
                 scope_root,
                 transaction,
-                ports,
                 batches,
             ),
         )
@@ -840,7 +905,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request: m.Infra.CodegenConformRequest,
         scope_root: Path,
         transaction: FlextInfraCodegenTransaction,
-        ports: m.Infra.CodegenConformPorts,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
         """Materialize scaffold parents, then run one locked generation cycle.
@@ -858,7 +922,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             request,
             scope_root,
             transaction,
-            ports,
             publication_receipts,
         )
 
@@ -964,7 +1027,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request: m.Infra.CodegenConformRequest,
         scope_root: Path,
         transaction: FlextInfraCodegenTransaction,
-        ports: m.Infra.CodegenConformPorts,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
         """Plan, publish, and validate one prepared locked generation cycle.
@@ -1008,7 +1070,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 plan,
                 transaction=transaction,
                 session=current,
-                ports=ports,
                 publication_receipts=publication_receipts,
             ),
         )
@@ -1019,7 +1080,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         plan: m.Infra.CodegenPlan,
         transaction: FlextInfraCodegenTransaction,
         session: m.Infra.CodegenTransactionSession,
-        ports: m.Infra.CodegenConformPorts,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
         """Complete every post-begin phase through prepared-state recovery.
@@ -1100,14 +1160,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return result_type.from_failure(extended)
         return result_type.ok((extended.value, owned_lazy_analysis))
 
+    @classmethod
     def _publish_docs_batches(
-        self,
+        cls,
         request: m.Infra.CodegenConformRequest,
         result: m.Infra.CodegenResult,
         ports: m.Infra.CodegenConformPorts,
         batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Publish only invocation-owned docs after the managed batch releases."""
+        """Publish only invocation-owned docs after the managed batch releases.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
         if result.plan is None:
             return r[m.Infra.CodegenResult].fail(
                 "docs publication requires its actual generation plan",

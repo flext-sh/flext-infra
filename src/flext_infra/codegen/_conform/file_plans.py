@@ -36,33 +36,16 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         effective = inputs.spec.repository
         if "kind" in effective.model_fields_set and effective.kind != kind:
             return result_type.fail(
-                f"bootstrap kind conflicts with the target's effective declaration: {root}",
+                "bootstrap kind conflicts with the target's effective "
+                f"declaration: {root}",
             )
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
         )
-        own = next((state for state in inputs.sources if state.path == layers[1]), None)
-        if own is not None and own.content is not None:
-            document = u.Infra.read_codegen_config_document(own.content)
-            if document.failure:
-                return result_type.from_failure(document)
-            declared = u.Cli.json_walk_path(
-                document.value,
-                ("Infra", "codegen", "repository", "kind"),
-            )
-            if declared is not None:
-                if declared != kind.value:
-                    return result_type.fail(
-                        f"bootstrap kind conflicts with the target's declaration: {layers[1]}",
-                    )
-                return result_type.ok(
-                    m.Infra.CodegenPhaseAnalysis(
-                        phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-                        files=(),
-                        inputs=inputs.sources,
-                    )
-                )
+        declared = cls._declared_kind_analysis(layers[1], inputs, kind)
+        if declared is not None:
+            return declared
         values: t.JsonMapping = {"repository": {"kind": kind.value}}
         composed = u.Infra.project_codegen_inputs(
             root,
@@ -94,6 +77,45 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 files=(declaration.value,),
                 inputs=inputs.sources,
             )
+        )
+
+    @classmethod
+    def _declared_kind_analysis(
+        cls,
+        own_path: Path,
+        inputs: m.Infra.CodegenInputs,
+        kind: c.Infra.ProjectKind,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis] | None:
+        """Guard the target's own captured ``kind`` declaration.
+
+        Returns:
+            The conflict failure, the idempotent no-op analysis when the same
+            kind is already declared, or ``None`` when no own declaration
+            exists to guard.
+
+        """
+        own = next((state for state in inputs.sources if state.path == own_path), None)
+        if own is None or own.content is None:
+            return None
+        document = u.Infra.read_codegen_config_document(own.content)
+        if document.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(document)
+        declared = u.Cli.json_walk_path(
+            document.value,
+            ("Infra", "codegen", "repository", "kind"),
+        )
+        if declared is None:
+            return None
+        if declared != kind.value:
+            return r[m.Infra.CodegenPhaseAnalysis].fail(
+                f"bootstrap kind conflicts with the target's declaration: {own_path}",
+            )
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                files=(),
+                inputs=inputs.sources,
+            ),
         )
 
     @classmethod
@@ -173,10 +195,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         legacy_path = u.Infra.workspace_manifest_path(root)
-        captured = u.Cli.atomic_read_binary_file_state(legacy_path, required=False)
-        if captured.failure:
-            return result_type.from_failure(captured)
-        if captured.value.content is None:
+        captured = cls._captured_declaration_migration(legacy_path)
+        if captured is None:
             return result_type.ok(
                 m.Infra.CodegenPhaseAnalysis(
                     phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
@@ -184,15 +204,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                     inputs=inputs.sources,
                 ),
             )
-        parsed = u.Infra.read_codegen_config_document(captured.value.content)
-        if parsed.failure:
-            return result_type.from_failure(parsed)
-        legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
-        if legacy.failure:
-            return result_type.from_failure(legacy)
-        delta = u.Infra.repository_declaration_delta(legacy.value)
-        if delta.failure:
-            return result_type.from_failure(delta)
+        if captured.failure:
+            return result_type.from_failure(captured)
+        state, delta, legacy = captured.value
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -206,19 +220,101 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             (state for state in inputs.sources if state.path == layers[1]),
             None,
         )
-        if own_source is not None and own_source.content is not None:
-            compatible = cls._repository_declaration_compatible(
-                own_source.content,
-                delta.value,
-            )
-            if compatible.failure:
-                return result_type.from_failure(compatible)
+        compatible = cls._repository_declaration_admits(own_source, delta)
+        if compatible is not None and compatible.failure:
+            return result_type.from_failure(compatible)
         return cls._repository_declaration_retirement_plans(
             root,
             inputs,
-            captured.value,
-            delta.value,
-            legacy.value,
+            state,
+            delta,
+            legacy,
+        )
+
+    @classmethod
+    def _captured_declaration_migration(
+        cls,
+        legacy_path: Path,
+    ) -> (
+        p.Result[
+            t.Triple[
+                m.Cli.AtomicFileState,
+                m.Infra.RepositoryDeltaSpec,
+                m.Infra.WorkspaceManifestSpec,
+            ]
+        ]
+        | None
+    ):
+        """Read and validate the captured manifest with its declaration delta.
+
+        Returns:
+            The captured state with its validated declaration delta, or
+            ``None`` when no manifest content is captured.
+
+        """
+        captured = u.Cli.atomic_read_binary_file_state(legacy_path, required=False)
+        if captured.failure:
+            return r[
+                t.Triple[
+                    m.Cli.AtomicFileState,
+                    m.Infra.RepositoryDeltaSpec,
+                    m.Infra.WorkspaceManifestSpec,
+                ]
+            ].from_failure(captured)
+        if captured.value.content is None:
+            return None
+        parsed = u.Infra.read_codegen_config_document(captured.value.content)
+        if parsed.failure:
+            return r[
+                t.Triple[
+                    m.Cli.AtomicFileState,
+                    m.Infra.RepositoryDeltaSpec,
+                    m.Infra.WorkspaceManifestSpec,
+                ]
+            ].from_failure(parsed)
+        legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
+        if legacy.failure:
+            return r[
+                t.Triple[
+                    m.Cli.AtomicFileState,
+                    m.Infra.RepositoryDeltaSpec,
+                    m.Infra.WorkspaceManifestSpec,
+                ]
+            ].from_failure(legacy)
+        delta = u.Infra.repository_declaration_delta(legacy.value)
+        if delta.failure:
+            return r[
+                t.Triple[
+                    m.Cli.AtomicFileState,
+                    m.Infra.RepositoryDeltaSpec,
+                    m.Infra.WorkspaceManifestSpec,
+                ]
+            ].from_failure(delta)
+        return r[
+            t.Triple[
+                m.Cli.AtomicFileState,
+                m.Infra.RepositoryDeltaSpec,
+                m.Infra.WorkspaceManifestSpec,
+            ]
+        ].ok((captured.value, delta.value, legacy.value))
+
+    @staticmethod
+    def _repository_declaration_admits(
+        own_source: m.Cli.AtomicFileState | None,
+        delta: m.Infra.RepositoryDeltaSpec,
+    ) -> p.Result[bool] | None:
+        """Check a captured own declaration against the migration delta.
+
+        Returns:
+            The compatibility verdict, or ``None`` when no own declaration
+            content is captured.
+
+        """
+        if own_source is None or own_source.content is None:
+            return None
+        return FlextInfraCodegenConformFilePlans._repository_declaration_compatible(
+            own_source.content,
+            delta,
         )
 
     @staticmethod
@@ -533,7 +629,6 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             if loaded.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(loaded)
             inputs = loaded.value
-        planned: list[m.Infra.CodegenFilePlan] = []
         destinations: list[str] = [
             entry.destination
             for entry in inputs.spec.templates.entries
@@ -544,6 +639,32 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(collected)
         extra_destinations, evidence_by_path = collected.value
         destinations.extend(extra_destinations)
+        retired = cls._retired_destination_plans(
+            root,
+            destinations,
+            evidence_by_path,
+            sources=inputs.sources,
+        )
+        if retired.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(retired)
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(retired.value)
+
+    @classmethod
+    def _retired_destination_plans(
+        cls,
+        root: Path,
+        destinations: t.SequenceOf[str],
+        evidence_by_path: t.MappingKV[str, str],
+        *,
+        sources: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Plan removal of every still-present retired destination file.
+
+        Returns:
+            The absence plans carrying the captured source states.
+
+        """
+        planned: list[m.Infra.CodegenFilePlan] = []
         for destination in destinations:
             path = root / Path(destination)
             if not path.is_file():
@@ -565,9 +686,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                     absent_plan,
                 )
             planned.append(
-                absent_plan.value.model_copy(
-                    update={"source_states": inputs.sources},
-                ),
+                absent_plan.value.model_copy(update={"source_states": sources}),
             )
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 

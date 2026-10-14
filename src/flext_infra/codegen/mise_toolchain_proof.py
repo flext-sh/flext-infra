@@ -29,13 +29,64 @@ import re
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, Protocol, override
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from flext_infra import p
+
+
+class _DeclaredProofOptions(m.ArbitraryTypesModel):
+    """Frozen inputs proving one declared tool against the Mise resolution."""
+
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+
+    entry: m.Infra.MiseToolEntry = m.Field(
+        description="Declared tool entry currently under proof.",
+    )
+    lock: t.JsonMapping = m.Field(
+        description="Authenticated Mise lock mapping.",
+    )
+    platform_name: str = m.Field(
+        description="Resolved platform identity of the running host.",
+    )
+    mise_binary: Path = m.Field(
+        description="Managed Mise executable answering read-only queries.",
+    )
+    declared: t.SequenceOf[m.Infra.MiseToolEntry] = m.Field(
+        description="All declared tool entries electable as probe owners.",
+    )
+    proven: frozenset[str] = m.Field(
+        description="Selectors already proven before this entry.",
+    )
+
+
+class _DeclaredProofSpec(Protocol):
+    """Read-only structural contract for one declared tool proof."""
+
+    @property
+    def entry(self) -> m.Infra.MiseToolEntry: ...
+
+    @property
+    def lock(self) -> t.JsonMapping: ...
+
+    @property
+    def platform_name(self) -> str: ...
+
+    @property
+    def mise_binary(self) -> Path: ...
+
+    @property
+    def declared(self) -> t.SequenceOf[m.Infra.MiseToolEntry]: ...
+
+    @property
+    def proven(self) -> frozenset[str]: ...
 
 
 class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
@@ -235,17 +286,9 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
                 f"{entry.name}: probe location does not match its declared owner"
             )
         root = install_root.resolve(strict=True)
-        resources: list[m.Cli.AtomicFileState] = []
-        for relative in entry.version_probe.resources:
-            resource = root.joinpath(*relative.split("/")).resolve(strict=True)
-            if not resource.is_relative_to(root):
-                return r[str].fail(
-                    f"{entry.name}: installed resource escapes its tool root: {resource}"
-                )
-            captured = u.Cli.atomic_read_binary_file_state(resource, required=True)
-            if captured.failure:
-                return r[str].from_failure(captured)
-            resources.append(captured.value)
+        resources = cls._captured_tool_resources(entry, root)
+        if resources.failure:
+            return r[str].from_failure(resources)
         executable = cls._contained_binary(
             entry, root if probe_root is None else probe_root, binary
         )
@@ -254,11 +297,38 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         reported = cls._reported_version(entry, version, executable.value, root)
         if reported.failure:
             return r[str].from_failure(reported)
-        if resources:
-            current = u.Cli.atomic_verify_binary_file_states(tuple(resources))
+        if resources.value:
+            current = u.Cli.atomic_verify_binary_file_states(tuple(resources.value))
             if current.failure:
                 return r[str].from_failure(current)
         return r[str].ok(f"{entry.name} {version} {root}")
+
+    @classmethod
+    def _captured_tool_resources(
+        cls,
+        entry: m.Infra.MiseToolEntry,
+        root: Path,
+    ) -> p.Result[list[m.Cli.AtomicFileState]]:
+        """Capture every declared probe resource inside its tool root.
+
+        Returns:
+            The captured resource states in declaration order, or the first
+            containment or capture failure.
+        """
+        result_type = r[list[m.Cli.AtomicFileState]]
+        resources: list[m.Cli.AtomicFileState] = []
+        for relative in entry.version_probe.resources:
+            resource = root.joinpath(*relative.split("/")).resolve(strict=True)
+            if not resource.is_relative_to(root):
+                return result_type.fail(
+                    f"{entry.name}: installed resource escapes its tool root:"
+                    f" {resource}",
+                )
+            captured = u.Cli.atomic_read_binary_file_state(resource, required=True)
+            if captured.failure:
+                return result_type.from_failure(captured)
+            resources.append(captured.value)
+        return result_type.ok(resources)
 
     @classmethod
     def prove(
@@ -310,63 +380,29 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             )
         return r[str].ok(line)
 
-    def _prove_declared(
-        self,
-        entry: m.Infra.MiseToolEntry,
-        lock: t.JsonMapping,
-        platform_name: str,
-        mise_binary: Path,
-        *,
-        declared: t.SequenceOf[m.Infra.MiseToolEntry],
-        proven: set[str],
-    ) -> p.Result[str]:
+    def _prove_declared(self, options: _DeclaredProofSpec) -> p.Result[str]:
         """Prove one declared tool against the real Mise resolution.
 
         Returns:
             The receipt line, or the first defect.
 
         """
-        identity = self.lock_identity(entry, lock, platform_name)
+        entry = options.entry
+        identity = self.lock_identity(entry, options.lock, options.platform_name)
         if identity.failure:
             return r[str].from_failure(identity)
         version, checksum = identity.value
         root = self._mise_line(
-            mise_binary, "where", f"{entry.selector or entry.name}@{version}"
+            options.mise_binary, "where", f"{entry.selector or entry.name}@{version}"
         )
         if root.failure:
             return r[str].from_failure(root)
-        probe_entry = entry
-        probe_root: Path | None = None
-        if entry.version_probe.tool is not None:
-            key = entry.version_probe.tool
-            if key not in proven:
-                return r[str].fail(
-                    f"{entry.name}: external probe prerequisite is unqualified: {key}"
-                )
-            matches = tuple(
-                candidate
-                for candidate in declared
-                if (candidate.selector or candidate.name) == key
-            )
-            if len(matches) != 1:
-                return r[str].fail(
-                    f"{entry.name}: external probe requires one declared owner: {key}"
-                )
-            probe_entry = matches[0]
-            probe_identity = self.lock_identity(probe_entry, lock, platform_name)
-            if probe_identity.failure:
-                return r[str].from_failure(probe_identity)
-            probe_location = self._mise_line(
-                mise_binary, "where", f"{key}@{probe_identity.value[0]}"
-            )
-            if probe_location.failure:
-                return r[str].from_failure(probe_location)
-            probe_root = Path(probe_location.value).resolve(strict=True)
-            probe_version = probe_identity.value[0]
-        else:
-            probe_version = version
+        probe = self._external_probe_context(options, version)
+        if probe.failure:
+            return r[str].from_failure(probe)
+        probe_entry, probe_root, probe_version = probe.value
         binary = self._mise_line(
-            mise_binary,
+            options.mise_binary,
             "which",
             entry.version_probe.binary,
             "--tool",
@@ -385,6 +421,50 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             return receipt
         return r[str].ok(f"{receipt.value} {checksum or 'checksum:none'}")
 
+    def _external_probe_context(
+        self,
+        options: _DeclaredProofSpec,
+        version: str,
+    ) -> p.Result[t.Triple[m.Infra.MiseToolEntry, Path | None, str]]:
+        """Resolve the declared external probe owner, root and version.
+
+        Returns:
+            The probe entry, its optional install root, and the probe version.
+        """
+        result_type = r[t.Triple[m.Infra.MiseToolEntry, Path | None, str]]
+        entry = options.entry
+        if entry.version_probe.tool is None:
+            return result_type.ok((entry, None, version))
+        key = entry.version_probe.tool
+        if key not in options.proven:
+            return result_type.fail(
+                f"{entry.name}: external probe prerequisite is unqualified: {key}"
+            )
+        matches = tuple(
+            candidate
+            for candidate in options.declared
+            if (candidate.selector or candidate.name) == key
+        )
+        if len(matches) != 1:
+            return result_type.fail(
+                f"{entry.name}: external probe requires one declared owner: {key}"
+            )
+        probe_entry = matches[0]
+        probe_identity = self.lock_identity(
+            probe_entry,
+            options.lock,
+            options.platform_name,
+        )
+        if probe_identity.failure:
+            return result_type.from_failure(probe_identity)
+        probe_location = self._mise_line(
+            options.mise_binary, "where", f"{key}@{probe_identity.value[0]}"
+        )
+        if probe_location.failure:
+            return result_type.from_failure(probe_location)
+        probe_root = Path(probe_location.value).resolve(strict=True)
+        return result_type.ok((probe_entry, probe_root, probe_identity.value[0]))
+
     @override
     def execute(self) -> p.Result[bool]:
         """Prove every declared tool, stopping at the first defect.
@@ -402,12 +482,10 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             sha256=u.Cli.sha256_bytes(mise_binary.value.read_bytes()),
         )
         lock_path = self.repository_root / c.Infra.MISE_LOCK_FILENAME
-        source = u.Cli.files_read_text(lock_path)
-        if source.failure:
-            return r[bool].from_failure(source)
-        lock = u.Cli.toml_mapping_from_text(source.value)
-        if lock is None:
-            return r[bool].fail(f"invalid TOML in {lock_path}")
+        executed = self._executed_lock(lock_path)
+        if executed.failure:
+            return r[bool].from_failure(executed)
+        source, lock = executed.value
         self.logger.info(
             "mise_proof_inputs",
             lock_path=str(lock_path),
@@ -453,25 +531,44 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         })
         if waves.failure:
             return r[bool].from_failure(waves)
-        proven: set[str] = set()
+        proven: frozenset[str] = frozenset()
         entries = {entry.selector or entry.name: entry for entry in declared}
         for key in (key for wave in waves.value for key in wave):
             entry = entries[key]
             receipt = self._prove_declared(
-                entry,
-                lock,
-                platform_name.value,
-                mise_binary.value,
-                declared=declared,
-                proven=proven,
+                _DeclaredProofOptions(
+                    entry=entry,
+                    lock=lock,
+                    platform_name=platform_name.value,
+                    mise_binary=mise_binary.value,
+                    declared=declared,
+                    proven=proven,
+                )
             )
             if receipt.failure:
                 return r[bool].from_failure(receipt)
             self.logger.info("mise_toolchain_proven", receipt=receipt.value)
-            proven.add(key)
+            proven |= {key}
         return self._prove_runtime(
             lock, runtime_entries[1], mise_binary.value, platform_name.value
         )
+
+    @staticmethod
+    def _executed_lock(
+        lock_path: Path,
+    ) -> p.Result[t.Pair[str, t.JsonMapping]]:
+        """Read and parse the committed Mise lock text.
+
+        Returns:
+            The raw lock text and its parsed mapping, or the first failure.
+        """
+        source = u.Cli.files_read_text(lock_path)
+        if source.failure:
+            return r[t.Pair[str, t.JsonMapping]].from_failure(source)
+        lock = u.Cli.toml_mapping_from_text(source.value)
+        if lock is None:
+            return r[t.Pair[str, t.JsonMapping]].fail(f"invalid TOML in {lock_path}")
+        return r[t.Pair[str, t.JsonMapping]].ok((source.value, lock))
 
     def _prove_uv_consumer(self, mise_binary: Path) -> p.Result[bool]:
         """Compare the actual consumer to the one locked producer.

@@ -12,7 +12,7 @@ from importlib.machinery import PathFinder
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._mise_artifacts_comparison import (
     FlextInfraMiseArtifactsComparison,
 )
@@ -24,10 +24,7 @@ from flext_infra.workspace.environment_provenance import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import MutableMapping
     from importlib.metadata import Distribution
-
-    from flext_infra import p
 
 _ENGINE_DISTRIBUTION = config.Infra.codegen.infra_repository.distribution
 
@@ -46,6 +43,10 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The complete elected namespace and physical-path pairs.
+
+        Raises:
+            TypeError: If an elected producer dependency resource is not a
+                file.
         """
         elected: dict[str, Path] = {}
         pending = [item.target for item in nominated]
@@ -60,23 +61,10 @@ class FlextInfraCodegenPreconditions:
                 if selected.failure:
                     return r[t.VariadicTuple[t.Pair[str, Path]]].from_failure(selected)
                 elected[namespace] = selected.value
-                spec = PathFinder.find_spec(namespace)
-                if spec is None:
-                    return r[t.VariadicTuple[t.Pair[str, Path]]].fail(
-                        f"producer import has no physical election: {namespace}",
-                    )
-                qualified = namespace
-                for component in module_name.split(".")[1:]:
-                    if spec.submodule_search_locations is None:
-                        break
-                    child = PathFinder.find_spec(
-                        f"{qualified}.{component}",
-                        spec.submodule_search_locations,
-                    )
-                    if child is None:
-                        break
-                    spec = child
-                    qualified += f".{component}"
+                refined = cls._refined_module_spec(namespace, module_name)
+                if refined.failure:
+                    return r[t.VariadicTuple[t.Pair[str, Path]]].from_failure(refined)
+                spec = refined.value
                 if spec.origin is None:
                     if spec.submodule_search_locations is not None:
                         # Namespace packages own physical portions, not an
@@ -104,8 +92,46 @@ class FlextInfraCodegenPreconditions:
         return r[t.VariadicTuple[t.Pair[str, Path]]].ok(tuple(sorted(elected.items())))
 
     @staticmethod
+    def _refined_module_spec(
+        namespace: str,
+        module_name: str,
+    ) -> p.Result[p.Infra.NativeModuleSpec]:
+        """Elect the physical module prefix of a qualified import binding.
+
+        Rope's declared imports include lexical symbols after the module path.
+        Native finder refinement ends at that boundary; native binding
+        observation authenticates the selected symbols separately.
+
+        Returns:
+            The native spec owning the import binding's physical module prefix.
+        """
+        result_type = r[p.Infra.NativeModuleSpec]
+        spec = PathFinder.find_spec(namespace)
+        if spec is None:
+            return result_type.fail(
+                f"producer import has no physical election: {namespace}",
+            )
+        qualified = namespace
+        for component in module_name.split(".")[1:]:
+            if spec.submodule_search_locations is None:
+                break
+            child = PathFinder.find_spec(
+                f"{qualified}.{component}",
+                spec.submodule_search_locations,
+            )
+            if child is None:
+                break
+            spec = child
+            qualified += f".{component}"
+        return result_type.ok(spec)
+
+    @staticmethod
     def _elect_namespace(namespace: str) -> p.Result[Path]:
-        """Resolve one required source provider without importing it."""
+        """Resolve one required source provider without importing it.
+
+        Returns:
+            The elected physical package root or module origin.
+        """
         result_type = r[Path]
         spec = PathFinder.find_spec(namespace)
         if spec is None:
@@ -138,15 +164,74 @@ class FlextInfraCodegenPreconditions:
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
         names = tuple(nominated)
+        rooted = cls._elected_source_roots(repository_root, names)
+        if rooted.failure:
+            return result_type.from_failure(rooted)
+        roots, owners = rooted.value
+        observed = cls._observed_source_roots(names, roots, owners)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        trees: t.MutableMappingKV[Path, m.Cli.AtomicPhysicalTreeManifest] = {}
+        captured = cls._captured_authority_states(roots, observed.value, trees, states)
+        if captured.failure:
+            return result_type.from_failure(captured)
+        owned = cls._authenticated_distribution_ownership(
+            names, roots, states, trees, owners
+        )
+        if owned.failure:
+            return result_type.from_failure(owned)
+        return cls._sealed_source_authority(names, roots, observed.value, trees, states)
+
+    @classmethod
+    def _elected_source_roots(
+        cls,
+        repository_root: Path,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
+    ) -> p.Result[
+        t.Pair[
+            dict[str, Path],
+            t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+        ]
+    ]:
+        """Elect the producer closure and seed its ownership registry.
+
+        Returns:
+            The elected namespace roots and their per-namespace ownership sets.
+        """
+        result_type = r[
+            t.Pair[
+                dict[str, Path],
+                t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+            ]
+        ]
         elected = cls.elected_producer_modules(repository_root, nominated=names)
         if elected.failure:
             return result_type.from_failure(elected)
         roots = dict(elected.value)
-        states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
-        trees: MutableMapping[Path, m.Cli.AtomicPhysicalTreeManifest] = {}
-        owners: MutableMapping[str, set[m.Cli.AtomicPhysicalTreeEntry]] = {
+        owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]] = {
             name: set() for name in roots
         }
+        return result_type.ok((roots, owners))
+
+    @classmethod
+    def _observed_source_roots(
+        cls,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
+        roots: t.MutableMappingKV[str, Path],
+        owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+    ) -> p.Result[m.Infra.NativeImportObservation]:
+        """Observe loaded bindings and elect any additional supplier namespaces.
+
+        Args:
+            names: The nominated producer selections under authentication.
+            roots: Elected namespace roots, extended with observed suppliers.
+            owners: Per-namespace ownership sets, extended to match ``roots``.
+
+        Returns:
+            The authenticated native observation of the loaded producer.
+        """
+        result_type = r[m.Infra.NativeImportObservation]
         from flext_infra.workspace.native_reference import (
             FlextInfraWorkspaceNativeReference,
         )
@@ -163,17 +248,39 @@ class FlextInfraCodegenPreconditions:
                 return result_type.from_failure(selected)
             roots[namespace] = selected.value
             owners[namespace] = set()
-        for namespace, root in roots.items():
-            if root.is_dir():
-                captured_tree = FlextInfraMiseArtifactsFiles.capture_tree_sources(root)
-                if captured_tree.failure:
-                    return result_type.from_failure(captured_tree)
-                trees[root] = captured_tree.value[0]
-                states.update((item.path, item) for item in captured_tree.value[1])
+        return observed
+
+    @classmethod
+    def _captured_authority_states(
+        cls,
+        roots: t.MappingKV[str, Path],
+        observed: m.Infra.NativeImportObservation,
+        trees: t.MutableMappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Capture every producer tree and loose source file state.
+
+        Args:
+            roots: Elected namespace roots owning captured directories.
+            observed: Native observation naming every declared source origin.
+            trees: Physical tree manifests, extended with each captured tree.
+            states: Atomic file states, extended with each captured entry.
+
+        Returns:
+            Success when every producer tree and source state is captured.
+        """
+        result_type = r[bool]
+        for root in roots.values():
+            if not root.is_dir():
+                continue
+            captured_tree = FlextInfraMiseArtifactsFiles.capture_tree_sources(root)
+            if captured_tree.failure:
+                return result_type.from_failure(captured_tree)
+            trees[root] = captured_tree.value[0]
+            states.update((item.path, item) for item in captured_tree.value[1])
         source_files: list[Path] = []
         for path in dict.fromkeys(
-            Path(declaration or origin)
-            for _, origin, declaration in observed.value.sources
+            Path(declaration or origin) for _, origin, declaration in observed.sources
         ):
             if path.is_dir():
                 captured_tree = FlextInfraMiseArtifactsFiles.capture_tree_sources(path)
@@ -187,6 +294,30 @@ class FlextInfraCodegenPreconditions:
         if captured_sources.failure:
             return result_type.from_failure(captured_sources)
         states.update((item.path, item) for item in captured_sources.value)
+        return result_type.ok(value=True)
+
+    @classmethod
+    def _authenticated_distribution_ownership(
+        cls,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
+        roots: t.MappingKV[str, Path],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        trees: t.MutableMappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
+        owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+    ) -> p.Result[bool]:
+        """Bind installed distributions to namespaces and refuse ambiguity.
+
+        Args:
+            names: The nominated producer selections under authentication.
+            roots: Elected namespace roots under ownership proof.
+            states: Captured atomic file states, extended per distribution.
+            trees: Captured tree manifests, extended per distribution.
+            owners: Per-namespace ownership sets, updated in place.
+
+        Returns:
+            Success when every producer namespace owns one physical identity.
+        """
+        result_type = r[bool]
         for distribution in u.installed_distributions():
             captured = cls._distribution_providers(distribution, roots, states, trees)
             if captured.failure:
@@ -206,6 +337,34 @@ class FlextInfraCodegenPreconditions:
                     "producer namespace has ambiguous physical distribution ownership: "
                     f"{namespace}: {ownership}"
                 )
+        return result_type.ok(value=True)
+
+    @classmethod
+    def _sealed_source_authority(
+        cls,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
+        roots: t.MappingKV[str, Path],
+        observed: m.Infra.NativeImportObservation,
+        trees: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
+        states: t.MappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[m.Infra.CodegenSourceAuthority]:
+        """Seal receipts into the cold authority and re-prove it current.
+
+        Args:
+            names: The nominated producer selections under authentication.
+            roots: Elected namespace roots sealed into the authority.
+            observed: Native observation authored against the sealed inputs.
+            trees: Captured physical tree manifests.
+            states: Captured atomic file states awaiting their receipts.
+
+        Returns:
+            The authenticated immutable producer closure.
+        """
+        result_type = r[m.Infra.CodegenSourceAuthority]
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
+        )
+
         receipts: list[m.Cli.AtomicFileReceipt] = []
         for state in states.values():
             measured = u.Cli.atomic_read_binary_file_receipt(
@@ -218,7 +377,8 @@ class FlextInfraCodegenPreconditions:
                 with u.Cli.atomic_binary_file_reader(measured.value) as reader:
                     if reader.read_range(0, measured.value.size) != state.content:
                         return result_type.fail(
-                            f"producer source changed while sealing authority: {state.path}",
+                            "producer source changed while sealing authority: "
+                            f"{state.path}",
                         )
             receipts.append(measured.value)
         authority = m.Infra.CodegenSourceAuthority(
@@ -230,7 +390,7 @@ class FlextInfraCodegenPreconditions:
             selections=names,
         )
         authored = FlextInfraWorkspaceNativeReference.authored_sources_current(
-            observed.value, authority.inputs
+            observed, authority.inputs
         )
         if authored.failure:
             return result_type.from_failure(authored)
@@ -240,41 +400,81 @@ class FlextInfraCodegenPreconditions:
     def source_authority_current(
         cls, authority: m.Infra.CodegenSourceAuthority
     ) -> p.Result[bool]:
-        """Re-prove cold election and physical state without executing providers."""
+        """Re-prove cold election and physical state without executing providers.
+
+        Returns:
+            Success only for an unchanged capturing runtime, module election,
+            pinned inputs and resource trees.
+        """
+        modules = cls._authority_modules_current(authority)
+        if modules.failure:
+            return r[bool].from_failure(modules)
+        return cls._authority_inputs_current(authority)
+
+    @classmethod
+    def _authority_modules_current(
+        cls,
+        authority: m.Infra.CodegenSourceAuthority,
+    ) -> p.Result[bool]:
+        """Re-prove the runtime, optimization and module election identities.
+
+        Returns:
+            Success only for the capturing runtime and unchanged elections.
+        """
+        result_type = r[bool]
         if authority.runtime != Path(sys.executable).resolve():
-            return r[bool].fail("cold producer runtime changed")
+            return result_type.fail("cold producer runtime changed")
         if authority.optimize != sys.flags.optimize:
-            return r[bool].fail("cold producer compiler optimization changed")
+            return result_type.fail("cold producer compiler optimization changed")
         for namespace, root in authority.generator_modules:
             elected = cls._elect_namespace(namespace)
             if elected.failure:
-                return r[bool].from_failure(elected)
+                return result_type.from_failure(elected)
             if elected.value != root:
-                return r[bool].fail("cold producer module election changed")
+                return result_type.fail("cold producer module election changed")
+        return result_type.ok(value=True)
+
+    @classmethod
+    def _authority_inputs_current(
+        cls,
+        authority: m.Infra.CodegenSourceAuthority,
+    ) -> p.Result[bool]:
+        """Re-prove every pinned receipt and captured resource tree.
+
+        Returns:
+            Success only for unchanged pinned inputs and resource trees.
+        """
+        result_type = r[bool]
         for expected in authority.inputs:
             observed = u.Cli.atomic_read_binary_file_receipt(
                 expected.path,
                 required=expected.device is not None,
             )
             if observed.failure:
-                return r[bool].from_failure(observed)
+                return result_type.from_failure(observed)
             if observed.value != expected:
-                return r[bool].fail(f"cold producer source changed: {expected.path}")
+                return result_type.fail(
+                    f"cold producer source changed: {expected.path}"
+                )
         for tree in authority.generator_trees:
             observed = u.Cli.atomic_inventory_physical_tree(tree.root.path)
             if observed.failure:
-                return r[bool].from_failure(observed)
+                return result_type.from_failure(observed)
             if observed.value != tree:
-                return r[bool].fail(
+                return result_type.fail(
                     f"cold producer resource tree changed: {tree.root.path}"
                 )
-        return r[bool].ok(value=True)
+        return result_type.ok(value=True)
 
     @staticmethod
     def authority_inputs(
         authority: m.Infra.CodegenSourceAuthority,
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-        """Read pinned payloads through the CLI receipt's authenticated descriptor."""
+        """Read pinned payloads through the CLI receipt's authenticated descriptor.
+
+        Returns:
+            The pinned atomic file states carrying their re-read payloads.
+        """
         states: list[m.Cli.AtomicFileState] = []
         for receipt in authority.inputs:
             if receipt.device is None:
@@ -313,7 +513,11 @@ class FlextInfraCodegenPreconditions:
         entrypoint: p.AttributeProbe,
         collaborators: t.SequenceOf[p.AttributeProbe] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Authenticate the loaded producer against its cold physical authority."""
+        """Authenticate the loaded producer against its cold physical authority.
+
+        Returns:
+            The authenticated producer phase analysis snapshot.
+        """
         from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
@@ -369,8 +573,8 @@ class FlextInfraCodegenPreconditions:
     def _distribution_providers(
         distribution: Distribution,
         roots: t.MappingKV[str, Path],
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
-        trees: MutableMapping[Path, m.Cli.AtomicPhysicalTreeManifest],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        trees: t.MutableMappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
     ) -> p.Result[t.MappingKV[str, t.VariadicTuple[m.Cli.AtomicPhysicalTreeEntry]]]:
         """Authenticate native metadata and derive physical namespace ownership.
 
@@ -422,16 +626,57 @@ class FlextInfraCodegenPreconditions:
 
     @classmethod
     def producer_current(cls, producer: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
-        """Authenticate every captured input before selecting a consumer scope."""
+        """Authenticate every captured input before selecting a consumer scope.
+
+        Returns:
+            Success only when every captured input, tree and native epoch is
+            unchanged since capture.
+        """
         if not producer.inputs or not producer.generator_trees:
             return r[bool].fail("producer context lacks authenticated source closure")
         states = cls.unique_states(producer.inputs)
         if states.failure:
             return r[bool].from_failure(states)
         by_path = {state.path: state for state in states.value}
+        authenticated = cls._authenticated_tree_files(by_path, producer.generator_trees)
+        if authenticated.failure:
+            return r[bool].from_failure(authenticated)
+        covered, representatives = authenticated.value
+        # Native inventory authenticates every covered file. Keep one complete
+        # file snapshot per tree and every input outside that proof, including
+        # optional absence and editable bindings captured outside package roots.
+        retained = tuple(
+            state
+            for state in states.value
+            if state.path not in covered or state.path in representatives
+        )
+        current = FlextInfraMiseArtifactsComparison.states_current(retained)
+        if current.failure:
+            return current
+        return cls.producer_trees_current(
+            producer.generator_trees,
+            modules=producer.generator_modules,
+            reference=producer.generator_reference,
+        )
+
+    @staticmethod
+    def _authenticated_tree_files(
+        by_path: t.MappingKV[Path, m.Cli.AtomicFileState],
+        trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+    ) -> p.Result[t.Pair[set[Path], set[Path]]]:
+        """Authenticate every tree entry against its captured file state.
+
+        Args:
+            by_path: Captured states indexed by their physical path.
+            trees: The captured physical tree manifests under authentication.
+
+        Returns:
+            The covered paths and one representative file path per tree.
+        """
+        result_type = r[t.Pair[set[Path], set[Path]]]
         covered: set[Path] = set()
         representatives: set[Path] = set()
-        for tree in producer.generator_trees:
+        for tree in trees:
             representative: Path | None = None
             for entry in tree.entries:
                 if entry.kind != "file" or c.Infra.DUNDER_PYCACHE in entry.path.parts:
@@ -462,7 +707,7 @@ class FlextInfraCodegenPreconditions:
                     entry.file_attributes,
                     entry.reparse_tag,
                 ):
-                    return r[bool].fail(
+                    return result_type.fail(
                         f"producer input differs from captured tree: {state.path}"
                     )
                 covered.add(state.path)
@@ -470,22 +715,7 @@ class FlextInfraCodegenPreconditions:
                     representative = state.path
             if representative is not None:
                 representatives.add(representative)
-        # Native inventory authenticates every covered file. Keep one complete
-        # file snapshot per tree and every input outside that proof, including
-        # optional absence and editable bindings captured outside package roots.
-        retained = tuple(
-            state
-            for state in states.value
-            if state.path not in covered or state.path in representatives
-        )
-        current = FlextInfraMiseArtifactsComparison.states_current(retained)
-        if current.failure:
-            return current
-        return cls.producer_trees_current(
-            producer.generator_trees,
-            modules=producer.generator_modules,
-            reference=producer.generator_reference,
-        )
+        return result_type.ok((covered, representatives))
 
     @staticmethod
     def producer_trees_current(
@@ -495,7 +725,12 @@ class FlextInfraCodegenPreconditions:
         modules: t.VariadicTuple[t.Pair[str, Path]],
         reference: m.Infra.NativeImportReference | None = None,
     ) -> p.Result[bool]:
-        """Check the original native epoch without minting namespace-local proofs."""
+        """Check the original native epoch without minting namespace-local proofs.
+
+        Returns:
+            Success only for the unchanged native epoch, its membership and
+            its re-captured loaded bindings.
+        """
         if reference is None:
             return r[bool].fail("producer closure lacks its pre-planning native epoch")
         if (
@@ -815,7 +1050,7 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[tuple[m.Cli.AtomicFileState, ...]]
-        by_path: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        by_path: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for file_state in states:
             if by_path.setdefault(file_state.path, file_state) != file_state:
                 return result_type.fail(
