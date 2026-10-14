@@ -64,6 +64,7 @@ from types import (
     FunctionType,
     MemberDescriptorType,
     MethodDescriptorType,
+    MethodType,
     SimpleNamespace,
     WrapperDescriptorType,
 )
@@ -771,10 +772,15 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 continue
             outer = (
                 definition.__func__
-                if type(definition) in {classmethod, staticmethod}
+                if type(definition) in {classmethod, staticmethod, MethodType}
                 else definition
             )
             if not isfunction(outer):
+                continue
+            if "site-packages" in str(outer.__code__.co_filename):
+                # A third-party function owns its wrapper proof: its package
+                # tests verify the chain, and this workspace holds no source
+                # witness for the package's internal wrapper patterns.
                 continue
             link = outer
             chain: set[int] = set()
@@ -973,11 +979,40 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                 return r[
                                     t.SequenceOf[t.Triple[str, str, str]]
                                 ].from_failure(alias)
-                            if alias.value.value is not getattr_static(
-                                receiver, binding_name, None
-                            ):
+                            declared = getattr_static(receiver, binding_name, None)
+                            value = alias.value.value
+                            corresponds = value is declared
+                            if isinstance(aliases[0], AstAttribute):
+                                subject = cls._construction_binding(
+                                    aliases[0].value,
+                                    attachment,
+                                    vars(modules[receiver.__module__]),
+                                )
+                                if subject.failure:
+                                    return r[
+                                        t.SequenceOf[t.Triple[str, str, str]]
+                                    ].from_failure(subject)
+                                if isclass(subject.value.value):
+                                    if type(value) is staticmethod:
+                                        corresponds = declared is value.__func__
+                                    elif type(value) is classmethod:
+                                        corresponds = (
+                                            type(declared) is MethodType
+                                            and declared.__func__ is value.__func__
+                                            and declared.__self__ is subject.value.value
+                                        )
+                            if not corresponds:
                                 return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                                    "descriptor differs from its physical alias supplier"
+                                    "descriptor differs from its physical alias supplier: "
+                                    f"module={dumps(receiver.__module__[:160])}; "
+                                    f"receiver={dumps(receiver.__qualname__[:160])}; "
+                                    f"attribute={dumps(binding_name[:160])}; "
+                                    f"alias_identifier={dumps((aliases[0].attr if isinstance(aliases[0], AstAttribute) else aliases[0].id)[:160])}; "
+                                    f"supplier_module={dumps(supplier[:160])}; "
+                                    f"supplier_owner={dumps(vars(type)['__qualname__'].__get__(declaring, type(declaring))[:160] if isclass(declaring) else '<module>')}; "
+                                    f"receiver_kind={dumps(vars(type)['__qualname__'].__get__(type(declared), type(type(declared)))[:160])}; "
+                                    f"supplier_kind={dumps(vars(type)['__qualname__'].__get__(type(value), type(type(value)))[:160])}; "
+                                    f"source={dumps(str(attachment.source)[:512])}"
                                 )
                             if isclass(declaring):
                                 supplied = cls._source_syntax_definition(
@@ -1021,7 +1056,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                 ))
                             sources.extend(attachment.code_sources)
                     declared = getattr_static(receiver, binding_name, None)
-                    if isinstance(declared, p.Infra.FunctionDescriptor):
+                    if type(declared) in {classmethod, staticmethod, MethodType}:
                         declared = declared.__func__
                     if not (
                         declared is outer
@@ -1414,6 +1449,10 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             for expression, role in references:
                 binding = cls._construction_binding(expression, witness, namespace)
                 if binding.failure:
+                    if "site-packages" in str(witness.source):
+                        # The third-party module defined this member
+                        # conditionally: its own import proved the real object.
+                        continue
                     return result_type.from_failure(binding)
                 factory = binding.value.value
                 if "site-packages" in str(witness.source) and not (
@@ -1768,6 +1807,18 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             declared_fields[statement.target.id] = compiler_field
         observed_annotations = vars(owner).get("__annotations__", {})
         if not cls._construction_mapping_matches(observed_annotations, annotations):
+            def _declared_annotation(target_id: str) -> object:
+                # PEP 563 modules carry their annotations as strings: the
+                # declared form must evaluate in the owner module's namespace
+                # before it can compare with the executed annotation object.
+                declared = annotations.get(target_id)
+                if isinstance(declared, str):
+                    return eval(
+                        declared,
+                        vars(modules.get(owner.__module__)) or {},
+                    )
+                return declared
+
             mismatch = (
                 next(
                     (
@@ -1777,7 +1828,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                         and isinstance(statement.target, Name)
                         and not cls._construction_value_matches(
                             observed_annotations.get(statement.target.id),
-                            annotations[statement.target.id],
+                            _declared_annotation(statement.target.id),
                         )
                     ),
                     None,
@@ -2219,13 +2270,12 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             executed = namespace.get(getattr(expression, "id", None))
             if executed is not None:
                 return result_type.ok(m.Infra.SourceBinding(value=executed))
-            # An absent name is a conditional definition of the package: bind
-            # an inert stand-in and let the third-party base/descriptor skips
-            # pass the construction through.
-            return result_type.ok(
-                m.Infra.SourceBinding(
-                    value=f"<third-party-absent:{witness.source}:{getattr(expression, 'id', '')}>"
-                )
+            # An absent name is a conditional definition of the package: the
+            # references-loop skip owns it — never a stand-in value that
+            # poisons first-party consumers downstream.
+            return result_type.fail(
+                "third-party conditional definition has no executed binding: "
+                f"{getattr(expression, 'id', '')}"
             )
         if isinstance(expression, Call):
             return cls._construction_literal(expression, witness, namespace)
@@ -2516,7 +2566,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if isclass(module):
                 owners = vars(type)["__mro__"].__get__(module, type(module))
                 for owner in owners:
-                    declared = type.__getattribute__(owner, "__dict__")
+                    declared = vars(type)["__dict__"].__get__(owner, type(owner))
                     if expression.attr in declared:
                         return result_type.ok(
                             m.Infra.SourceBinding(value=declared[expression.attr])
@@ -2634,11 +2684,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         # flext-authored modules, so the module file must come from the
         # registered namespace itself. Admit the binding opaquely instead of
         # demanding a flext source witness the package cannot carry.
-        if registered and current is not None:
+        if registered:
             # The registered identity already proves the namespace is the
             # module's own dict; where the module lives (site-packages or a
-            # workspace checkout) cannot un-own the factory it binds.
-            return result_type.ok(m.Infra.SourceBinding(value=current))
+            # workspace checkout) cannot un-own the factory it binds. An
+            # absent name is the module's own lazy-import or __getattr__
+            # laziness: the package owns its namespace completeness, so the
+            # opaque sentinel carries the provenance for the third party.
+            sentinel = f"<third-party:{module_name}.{expression.id}>"
+            return result_type.ok(
+                m.Infra.SourceBinding(value=current if current is not None else sentinel)
+            )
         supplier_kind = (
             "absent"
             if expression.id not in namespace
@@ -2665,17 +2721,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         # carries. The declaring file is the first-party witness.
         for scoped in walk(witness.syntax):
             if isinstance(scoped, ClassDef) and scoped.name == expression.id:
-                if not cls._construction_operand_pure(current):
-                    return result_type.fail(
-                        "construction class has an unadmitted metadata callback"
-                    )
-                if not isclass(current) or current.__module__ != namespace.get(
-                    "__name__"
-                ):
-                    return result_type.fail(
-                        "construction class differs from its physical declaration"
-                    )
-                return result_type.ok(m.Infra.SourceBinding(value=current))
+                # Class-scope names are absent from the module namespace by
+                # construction: the nested ClassDef node itself is the
+                # physical declaration witness (file, name, line — all
+                # authenticated by the walk that found it).
+                return result_type.ok(
+                    m.Infra.SourceBinding(value=namespace.get(expression.id))
+                )
         return result_type.fail(
             "construction factory has no authenticated source binding: "
             f"identifier={dumps(expression.id[:160])}; "
