@@ -63,18 +63,20 @@ class FlextInfraUtilitiesRepository:
             replacement = f"{replacement}#{fragment}"
         return r[str].ok(requirement.replace(parsed.url, replacement, 1))
 
-    @classmethod
-    def rewrite_git_source_references(
-        cls,
+    @staticmethod
+    def _dependency_requirement_arrays(
         payload: t.MutableJsonMapping,
-        migration: m.Infra.GitSourceReferenceMigration,
-    ) -> p.Result[t.StrSequence]:
-        """Migrate only dependency arrays and native UV/Poetry Git source tables.
+    ) -> list[t.JsonValue]:
+        """Collect every dependency array of the native project tables.
+
+        Args:
+            payload: Mutable parsed pyproject mapping.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            Every raw dependency array of project dependencies, optional
+            dependencies, dependency groups and UV override and constraint
+            tables.
         """
-        changes: list[str] = []
         project = u.Cli.toml_mapping_path(payload, (c.Infra.PROJECT,))
         if project is not None:
             requirements: list[t.JsonValue] = [project.get(c.Infra.DEPENDENCIES)]
@@ -92,6 +94,25 @@ class FlextInfraUtilitiesRepository:
                 uv.get(key)
                 for key in ("override-dependencies", "constraint-dependencies")
             )
+        return requirements
+
+    @classmethod
+    def _rewritten_requirement_arrays(
+        cls,
+        requirements: t.SequenceOf[t.JsonValue],
+        migration: m.Infra.GitSourceReferenceMigration,
+    ) -> p.Result[t.StrSequence]:
+        """Rewrite every selected Git reference inside the dependency arrays.
+
+        Args:
+            requirements: Raw dependency arrays collected from the payload.
+            migration: Source-reference migration to apply.
+
+        Returns:
+            The change notes of every rewritten requirement, or the first
+            rewrite failure.
+        """
+        changes: list[str] = []
         for entries in requirements:
             if not isinstance(entries, list):
                 continue
@@ -107,6 +128,20 @@ class FlextInfraUtilitiesRepository:
                         f"Git reference {migration.source_ref} -> "
                         f"{migration.target_ref}: {Requirement(original).name}"
                     )
+        return r[t.StrSequence].ok(tuple(changes))
+
+    @staticmethod
+    def _git_source_tables(
+        payload: t.MutableJsonMapping,
+    ) -> list[t.MutableJsonMapping]:
+        """Collect the native UV and Poetry Git source tables.
+
+        Args:
+            payload: Mutable parsed pyproject mapping.
+
+        Returns:
+            Every mutable source table that may carry Git source entries.
+        """
         tables: list[t.MutableJsonMapping] = []
         uv_sources = u.Cli.toml_mapping_path(payload, ("tool", "uv", "sources"))
         if uv_sources is not None:
@@ -125,6 +160,25 @@ class FlextInfraUtilitiesRepository:
                         )
                         if dependencies is not None:
                             tables.append(dependencies)
+        return tables
+
+    @classmethod
+    def _rewritten_git_source_tables(
+        cls,
+        tables: t.SequenceOf[t.MutableJsonMapping],
+        migration: m.Infra.GitSourceReferenceMigration,
+    ) -> p.Result[t.StrSequence]:
+        """Rewrite every selected Git reference inside the native source tables.
+
+        Args:
+            tables: Mutable source tables collected from the payload.
+            migration: Source-reference migration to apply.
+
+        Returns:
+            The change notes of every rewritten table entry, or the first
+            rewrite failure.
+        """
+        changes: list[str] = []
         for table in tables:
             for name, value in table.items():
                 for entry in value if isinstance(value, list) else (value,):
@@ -135,6 +189,33 @@ class FlextInfraUtilitiesRepository:
                         return r[t.StrSequence].from_failure(rewritten)
                     changes.extend(rewritten.value)
         return r[t.StrSequence].ok(tuple(changes))
+
+    @classmethod
+    def rewrite_git_source_references(
+        cls,
+        payload: t.MutableJsonMapping,
+        migration: m.Infra.GitSourceReferenceMigration,
+    ) -> p.Result[t.StrSequence]:
+        """Migrate only dependency arrays and native UV/Poetry Git source tables.
+
+        Returns:
+            The resulting ``p.Result[t.StrSequence]``.
+        """
+        rewritten_requirements = cls._rewritten_requirement_arrays(
+            cls._dependency_requirement_arrays(payload),
+            migration,
+        )
+        if rewritten_requirements.failure:
+            return r[t.StrSequence].from_failure(rewritten_requirements)
+        rewritten_tables = cls._rewritten_git_source_tables(
+            cls._git_source_tables(payload),
+            migration,
+        )
+        if rewritten_tables.failure:
+            return r[t.StrSequence].from_failure(rewritten_tables)
+        return r[t.StrSequence].ok(
+            (*rewritten_requirements.value, *rewritten_tables.value),
+        )
 
     @classmethod
     def _rewrite_git_source_table(

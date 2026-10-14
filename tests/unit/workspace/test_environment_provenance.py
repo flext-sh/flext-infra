@@ -28,6 +28,12 @@ if TYPE_CHECKING:
     from tests import p, t
 
 
+_PROVENANCE_IMPORT = (
+    "from flext_infra.workspace import "
+    "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+)
+
+
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
 
@@ -90,7 +96,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         consumer = (
             "import importlib, pathlib, sys\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('conditional_provider')\n"
             "supplier = module.supplier\n"
@@ -103,18 +108,26 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "if defect == 'alias': module.RuntimeMeta = supplier.OtherMeta\n"
             "elif defect == 'supplier': supplier.NativeMeta = supplier.OtherMeta\n"
             "elif defect == 'source':\n"
-            "    source.write_text(source.read_text().replace('RuntimeMeta = supplier.NativeMeta', 'RuntimeMeta = supplier.OtherMeta'))\n"
+            "    source.write_text(source.read_text().replace("
+            "'RuntimeMeta = supplier.NativeMeta',"
+            " 'RuntimeMeta = supplier.OtherMeta'))\n"
             "elif defect == 'flag':\n"
-            "    if sys.argv[3] == 'typing_alias.TYPE_CHECKING': module.typing_alias.TYPE_CHECKING = True\n"
+            "    if sys.argv[3] == 'typing_alias.TYPE_CHECKING':"
+            " module.typing_alias.TYPE_CHECKING = True\n"
             "    else: module.TC = True\n"
             "elif defect == 'condition':\n"
-            "    source.write_text(source.read_text().replace('if ' + sys.argv[3] + ':', 'if unproven_condition:'))\n"
+            "    source.write_text(source.read_text().replace("
+            "'if ' + sys.argv[3] + ':', 'if unproven_condition:'))\n"
             "elif defect == 'ambiguous':\n"
-            "    source.write_text(source.read_text().replace('class Payload', 'RuntimeMeta = supplier.NativeMeta\\nclass Payload'))\n"
+            "    source.write_text(source.read_text().replace('class Payload',"
+            " 'RuntimeMeta = supplier.NativeMeta\\nclass Payload'))\n"
             "elif defect == 'code':\n"
-            "    supplier.NativeMeta.__new__.__code__ = supplier.NativeMeta.__new__.__code__.replace(co_name='replaced')\n"
+            "    supplier.NativeMeta.__new__.__code__ ="
+            " supplier.NativeMeta.__new__.__code__.replace(co_name='replaced')\n"
             "elif defect == 'cycle':\n"
-            "    source.write_text(source.read_text().replace('RuntimeMeta = supplier.NativeMeta', 'RuntimeMeta = Loop').replace('class Payload', 'Loop = RuntimeMeta\\nclass Payload'))\n"
+            "    source.write_text(source.read_text()"
+            ".replace('RuntimeMeta = supplier.NativeMeta', 'RuntimeMeta = Loop')"
+            ".replace('class Payload', 'Loop = RuntimeMeta\\nclass Payload'))\n"
             "observed = provenance.loaded_import_sources(module.__name__)\n"
             "assert observed.success == (defect == 'none'), observed\n"
             "assert tuple(supplier.effects) == before\n"
@@ -151,7 +164,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         *,
         installed_layout: bool,
     ) -> None:
-        """An unproven binding fails with declaration context, never operand contents."""
+        """An unproven binding fails with declaration context,
+        never operand contents.
+        """
         import_root = tmp_path / "site-packages" if installed_layout else tmp_path
         package = import_root / "diagnostic_provider"
         tm.ok(u.Cli.ensure_dir(package))
@@ -168,7 +183,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         consumer = (
             "import importlib, json, pathlib, sys\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('diagnostic_provider')\n"
             "provenance.loaded_import_sources(module.__name__).unwrap()\n"
@@ -186,7 +200,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "result = provenance.loaded_import_sources(module.__name__)\n"
             "assert result.failure, result\n"
             "error = result.error\n"
-            "assert error.startswith('construction factory has no authenticated source binding:'), error\n"
+            "assert error.startswith("
+            "'construction factory has no authenticated source binding:'), error\n"
             "assert 'identifier=' + json.dumps('unproven') in error, error\n"
             "assert 'module=' + json.dumps(module.__name__) in error, error\n"
             "assert 'package=' + json.dumps(module.__package__) in error, error\n"
@@ -226,7 +241,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         consumer = (
             "import importlib, pathlib, sys\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "class Derived(provenance): pass\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module(sys.argv[2])\n"
@@ -360,7 +374,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         consumer = (
             "import importlib, pathlib, sys\n"
             "from contextlib import contextmanager\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('alias_provider')\n"
             "supplier = module.supplier\n"
@@ -426,7 +439,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "import sys\n"
             "from pydantic import BaseModel\n"
             "from pydantic._internal import _repr\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "descriptor = vars(BaseModel)['__rich_repr__']\n"
             "assert descriptor is vars(_repr.Representation)['__rich_repr__']\n"
             "provenance.loaded_import_sources(BaseModel.__module__).unwrap()\n"
@@ -457,7 +469,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "import annotated_types\n"
             "from collections.abc import Callable\n"
             "from typing import Any, get_args, get_origin\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "import sys\n"
             "predicate = annotated_types.Not(str.isalpha)\n"
             "assert predicate('123') is True\n"
@@ -479,7 +490,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     def test_fresh_native_source_authenticates_the_loaded_guard(tmp_path: Path) -> None:
         """The public guard accepts its own freshly imported native declarations."""
         consumer = (
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "observed = provenance.loaded_import_sources(provenance.__module__)\n"
             "assert observed.success, observed\n"
             "assert isinstance(observed.unwrap(), tuple)\n"
@@ -518,7 +528,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         consumer = (
             "import importlib, sys\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('descriptor_provider')\n"
             "if sys.argv[2] == 'foreign': module.Child.instance = module.Other.instance\n"
@@ -560,7 +569,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         consumer = (
             "import importlib, pathlib, sys\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('child_provider')\n"
             "ancestor = sys.modules['ancestor_provider']\n"
@@ -600,7 +608,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             )
         consumer = (
             "import importlib, sys\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('homonym_provider')\n"
             "observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
@@ -620,7 +627,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         consumer = (
             "import importlib, pathlib, sys\n"
             "from inspect import getsourcefile\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "module = importlib.import_module(sys.argv[1])\n"
             "sources = provenance.loaded_import_sources(sys.argv[1]).unwrap()\n"
             "paths = {pathlib.Path(item[2] or item[1]) for item in sources}\n"
@@ -688,7 +694,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         consumer = (
             "import importlib, pathlib, sys\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "from flext_core import FlextSettings\n"
             "assert FlextSettings.fetch_global() is FlextSettings.fetch_global()\n"
             "provenance.loaded_import_sources(FlextSettings.__module__).unwrap()\n"
@@ -1274,7 +1279,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "from collections import namedtuple\n"
             "from inspect import getfile\n"
             "from PIL import ImageMode\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "operation = ImageMode.ModeDescriptor.__new__\n"
             "defect = sys.argv[1]\n"
             "if defect == 'code':\n"
@@ -1355,7 +1359,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         consumer = (
             "import importlib, pathlib, sys\n"
-            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module(sys.argv[2])\n"
             "result = provenance.loaded_import_sources(module.__name__, expected_root=pathlib.Path(sys.argv[3]))\n"

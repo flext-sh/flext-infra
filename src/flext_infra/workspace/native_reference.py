@@ -220,6 +220,185 @@ class FlextInfraWorkspaceNativeReference:
         return r[p.AttributeProbe].ok(value)
 
     @staticmethod
+    def _capture_text(
+        witness: m.Infra.NativeSourceWitness,
+        match: p.Infra.RopeContractMatch,
+        variable: str,
+    ) -> str:
+        """Read a wildcard through Rope's native region contract."""
+        start, end = u.Infra.semantic_capture_region(match, variable)
+        return witness.module.source_code[start:end]
+
+    @classmethod
+    def _declared_fields(
+        cls,
+        witness: m.Infra.NativeSourceWitness,
+        scope: p.Infra.RopeScope,
+    ) -> t.VariadicTuple[t.Triple[str, str, str | None]]:
+        """Collect immediate annotated fields from native semantic matches."""
+        fields = []
+        patterns = (
+            ("${field_name}: ${field_annotation}", None),
+            (
+                "${field_default_name}: ${field_default_annotation} = ${field_default}",
+                "field_default",
+            ),
+        )
+        for pattern, default in patterns:
+            prefix = "field_" if default is None else "field_default_"
+            for match in witness.finder.get_matches(pattern):
+                start, _end = match.get_region()
+                if u.Infra.scope_at(witness.module, start) is not scope:
+                    continue
+                name = cls._capture_text(witness, match, f"{prefix}name")
+                if not name.isidentifier():
+                    continue
+                annotation = cls._capture_text(
+                    witness, match, f"{prefix}annotation",
+                )
+                value = (
+                    None
+                    if default is None
+                    else cls._capture_text(witness, match, default)
+                )
+                fields.append((start, name, annotation, value))
+        return tuple(
+            (name, annotation, value)
+            for _offset, name, annotation, value in sorted(fields)
+        )
+
+    @classmethod
+    def _literal(
+        cls,
+        source: str,
+        witness: m.Infra.NativeSourceWitness,
+        scope: p.Infra.RopeScope,
+        seen: frozenset[str] = frozenset(),
+    ) -> p.Result[p.AttributeProbe | None]:
+        """Resolve compiler-closed literals and their source-declared aliases."""
+        code = compile(source, str(witness.source), "eval", dont_inherit=True)
+        if not code.co_names and not code.co_freevars and not any(
+            isinstance(value, CodeType) for value in code.co_consts
+        ):
+            # With no names, closure or nested code, the native compiler unit
+            # has no capability to invoke an authored object or callback.
+            return r[p.AttributeProbe | None].ok(
+                eval(code, {"__builtins__": {}}, {}),
+            )
+        if not source.isidentifier() or source in seen:
+            return r[p.AttributeProbe | None].fail(
+                "producer construction input has no compiler-closed literal: "
+                f"source={witness.source}",
+            )
+        binding = u.Infra.expression_name(scope, source)
+        if binding is None:
+            return r[p.AttributeProbe | None].fail(
+                f"producer construction input has no lexical source binding: {source}",
+            )
+        assignments = []
+        for match in witness.finder.get_matches(
+            "${literal_name} = ${literal_value}",
+        ):
+            if cls._capture_text(witness, match, "literal_name") != source:
+                continue
+            start, _end = match.get_region()
+            assigned_scope = u.Infra.scope_at(witness.module, start)
+            if u.Infra.same_name(
+                binding,
+                u.Infra.expression_name(assigned_scope, source),
+            ):
+                assignments.append(match)
+        if len(assignments) != 1:
+            return r[p.AttributeProbe | None].fail(
+                f"producer construction input has no unique source assignment: {source}",
+            )
+        return cls._literal(
+            cls._capture_text(witness, assignments[0], "literal_value"),
+            witness,
+            scope,
+            seen | {source},
+        )
+
+    @classmethod
+    def _class_header(
+        cls,
+        owner: p.AttributeProbe,
+        witness: m.Infra.NativeSourceWitness,
+        project: p.Infra.RopeProject,
+        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+    ) -> p.Result[bool]:
+        """Bind class construction to its actual native lexical parent scope."""
+        qualified = type.__getattribute__(owner, "__qualname__")
+        scope = witness.scopes.get(qualified)
+        if scope is None or scope.get_kind() != "Class" or scope.parent is None:
+            return r[bool].fail(
+                f"producer class has no unique native declaration: {qualified}",
+            )
+        header = next(
+            statement
+            for statement in witness.statements
+            if statement.line == scope.get_start()
+        )
+        finder = u.Infra.runtime_callable(
+            "rope.base.worder", "Worder",
+        )(witness.module.source_code)
+        if not isinstance(finder, p.Infra.RopeWorder):
+            raise TypeError("Native header word finder violates Rope's contract")
+        name_offset = header.start_offset + header.indent + len("class ")
+        _start, name_end = finder.get_word_range(name_offset)
+        after = witness.module.source_code[name_end:header.end_offset].lstrip()
+        if after.startswith("["):
+            _parameters_start, name_end = finder.get_word_parens_range(
+                name_offset, opening="[", closing="]",
+            )
+            after = witness.module.source_code[name_end:header.end_offset].lstrip()
+        if not after.startswith("("):
+            return (
+                r[bool].ok(value=True)
+                if vars(type)["__bases__"].__get__(owner, type(owner)) == (object,)
+                else r[bool].fail(
+                    f"producer undeclared bases differ from native construction: {qualified}",
+                )
+            )
+        first, last = finder.get_word_parens_range(name_end - 1)
+        arguments, keywords = finder.get_parameters(first, last - 1)
+        expected = []
+        for expression in arguments:
+            base = cls._source_binding(
+                scope.parent,
+                expression,
+                witnesses,
+                project,
+            )
+            if base.failure:
+                return r[bool].from_failure(base)
+            expected.append(base.value)
+        actual = vars(type)["__bases__"].__get__(owner, type(owner))
+        if len(expected) != len(actual) or any(
+            declared is not observed
+            for declared, observed in zip(expected, actual, strict=True)
+        ):
+            return r[bool].fail(
+                f"producer bases differ from native lexical declaration: {qualified}",
+            )
+        for name, expression in keywords:
+            if name != "metaclass":
+                continue
+            declared = cls._source_binding(
+                scope.parent,
+                expression,
+                witnesses,
+                project,
+            )
+            if declared.failure:
+                return r[bool].from_failure(declared)
+            if declared.value is not type(owner):
+                return r[bool].fail(
+                    f"producer metaclass differs from native lexical declaration: {qualified}",
+                )
+        return r[bool].ok(value=True)
+
+    @staticmethod
     def _is_class(value: p.AttributeProbe) -> bool:
         """Recognize a class through native metaclass storage, never __class__."""
         return any(

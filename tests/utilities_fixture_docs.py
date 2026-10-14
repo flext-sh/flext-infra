@@ -65,8 +65,8 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             f"\n[tool.uv.workspace]\nmembers = [{members}]\n" if project_names else ""
         )
         infrastructure = config.Infra.codegen.infra_repository.distribution
-        infrastructure_ref = (
-            TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(infrastructure)
+        infrastructure_ref = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+            infrastructure
         )
         development = (
             "\n[dependency-groups]\n"

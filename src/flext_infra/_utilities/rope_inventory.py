@@ -101,6 +101,7 @@ class FlextInfraUtilitiesRopeInventory:
         scope: p.Infra.RopeScopeDsl,
         *,
         parent_options: m.Infra.RopeInventoryRecordInput,
+        include_local_scopes: bool = True,
         include_references: bool = True,
     ) -> t.VariadicTuple[m.Infra.Object]:
         """Scope objects.
@@ -120,6 +121,7 @@ class FlextInfraUtilitiesRopeInventory:
                 cls._recorded_objects(
                     record_options,
                     child_scope=child_scope,
+                    include_local_scopes=include_local_scopes,
                     include_references=include_references,
                 ),
             )
@@ -166,21 +168,25 @@ class FlextInfraUtilitiesRopeInventory:
         include_local_scopes: bool = True,
         include_references: bool = True,
     ) -> t.VariadicTuple[m.Infra.Object]:
-        """Child scope objects.
+        """Include nested class declarations while respecting function-local scope.
 
         Returns:
             The resulting ``t.VariadicTuple[m.Infra.Object]``.
 
         """
         if (
-            not include_local_scopes
-            or record.kind not in {"class", "function", "method"}
+            record.kind not in {"class", "function", "method"}
             or child_scope is None
+            or (
+                not include_local_scopes
+                and child_scope.get_kind() != c.Infra.RopeScopeKind.CLASS
+            )
         ):
             return ()
         return cls._scope_objects(
             scope=child_scope,
             parent_options=cls._descend_options(record_options, record),
+            include_local_scopes=include_local_scopes,
             include_references=include_references,
         )
 

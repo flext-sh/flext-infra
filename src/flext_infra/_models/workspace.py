@@ -249,14 +249,25 @@ class FlextInfraModelsWorkspace:
         environment_path: Annotated[
             Path, m.Field(description="Physical shared environment")
         ]
-        standalone: Annotated[bool, m.Field(description="Installed native resolution view; independent of later CI flags")]
+        standalone: Annotated[
+            bool,
+            m.Field(
+                description="Installed native resolution view; independent of later CI flags"
+            ),
+        ]
         installation_inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(description="Native lock and physical environment states captured after installation"),
+            m.Field(
+                description="Native lock and physical environment states captured after installation"
+            ),
         ] = ()
         native_install_exit_code: Annotated[
             int | None,
-            m.Field(description="Original frozen sync status; absent before installation", ge=0, le=255),
+            m.Field(
+                description="Original frozen sync status; absent before installation",
+                ge=0,
+                le=255,
+            ),
         ] = None
 
     class WorkspaceOperationReceipt(m.ContractModel):
@@ -264,7 +275,9 @@ class FlextInfraModelsWorkspace:
 
         runtime_context: Annotated[
             FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
-            m.Field(description="Authenticated installed association retained across later bootstrap failure"),
+            m.Field(
+                description="Authenticated installed association retained across later bootstrap failure"
+            ),
         ] = None
         root: Annotated[Path, m.Field(description="Repository actually attempted")]
         executed: Annotated[bool, m.Field(description="Original operation was invoked")]

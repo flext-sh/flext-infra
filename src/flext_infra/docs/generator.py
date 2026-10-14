@@ -195,7 +195,10 @@ class FlextInfraDocGenerator(
 
             """
             bound = self._recorded_publication_session(
-                transaction, bundle, session, prepared.value[0],
+                transaction,
+                bundle,
+                session,
+                prepared.value[0],
             )
             if bound.failure:
                 return report_type.from_failure(bound)

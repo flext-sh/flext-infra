@@ -13,8 +13,8 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
 )
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import tm, u

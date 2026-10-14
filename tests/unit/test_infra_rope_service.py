@@ -22,6 +22,63 @@ class TestsFlextInfraInfraRopeService:
     """Validate the public Rope workspace DSL through public methods only."""
 
     @staticmethod
+    @pytest.mark.parametrize("include_local_scopes", [False, True])
+    def test_workspace_dsl_keeps_nested_declarations_without_function_locals(
+        tmp_path: Path,
+        *,
+        include_local_scopes: bool,
+    ) -> None:
+        """Class families remain visible when function-local inventory is disabled."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "declarations.py"
+        source = (
+            "from pydantic import BaseModel\n"
+            "from typing import Protocol\n"
+            "class Namespace:\n"
+            "    class Payload(BaseModel):\n"
+            "        value: str\n"
+            "        def normalize(self, value: str) -> str:\n"
+            "            local = value.strip()\n"
+            "            return local\n"
+            "    class Reader(Protocol):\n"
+            "        value: str\n"
+            "def create():\n"
+            "    class FunctionLocal:\n"
+            "        value: str\n"
+            "    return FunctionLocal\n"
+        )
+        path.write_text(source, encoding="utf-8")
+        with flext_infra.infra.rope_workspace(root) as workspace:
+            objects = workspace.objects(
+                path,
+                include_local_scopes=include_local_scopes,
+                include_references=False,
+            )
+        paths = {item.scope_path for item in objects}
+        tm.that(
+            {
+                "Namespace",
+                "Namespace.Payload",
+                "Namespace.Payload.value",
+                "Namespace.Payload.normalize",
+                "Namespace.Reader",
+                "Namespace.Reader.value",
+                "create",
+            }.issubset(paths),
+            eq=True,
+        )
+        tm.that(
+            "Namespace.Payload.normalize.local" in paths,
+            eq=include_local_scopes,
+        )
+        tm.that("create.FunctionLocal" in paths, eq=include_local_scopes)
+        tm.that(
+            any(item.reference_evidence_collected for item in objects),
+            eq=False,
+        )
+        tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
     def _demo_module(
         tmp_path: Path,
         module_name: str,

@@ -99,7 +99,7 @@ class TestsFlextInfraMisePinBootstrap:
             '{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe %}'
             '{{ tool_bootstrap_recipe("bootstrap", "$(PROJECT_ROOT)", '
             "toolchain, [toolchain.mise_selector], "
-            '"sh -ec \'command -v mise > runtime-mise-path.txt; '
+            "\"sh -ec 'command -v mise > runtime-mise-path.txt; "
             "mise --version > runtime-mise-version.txt; "
             "printf recovered > recovered.txt'\", make, "
             "bootstrap_report_shell_literal, bootstrap_report_relative_path, false) }}",

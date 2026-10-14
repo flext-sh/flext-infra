@@ -299,9 +299,7 @@ class FlextInfraCodegenPreconditions:
             for depth in root_depths
         }
         namespaces = {
-            namespace
-            for namespace, root in roots.items()
-            if root in ownership_prefixes
+            namespace for namespace, root in roots.items() if root in ownership_prefixes
         }
         for tree in captured.value[0]:
             state = states.get(tree.root.path / c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
@@ -340,10 +338,7 @@ class FlextInfraCodegenPreconditions:
         for tree in producer.generator_trees:
             representative: Path | None = None
             for entry in tree.entries:
-                if (
-                    entry.kind != "file"
-                    or c.Infra.DUNDER_PYCACHE in entry.path.parts
-                ):
+                if entry.kind != "file" or c.Infra.DUNDER_PYCACHE in entry.path.parts:
                     continue
                 state = by_path.get(entry.path)
                 if state is None or state.content is None:

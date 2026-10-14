@@ -96,7 +96,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
     @staticmethod
     @pytest.mark.slow
-    def test_public_bootstrap_rewrites_own_pyproject_and_repeats(tmp_path: Path) -> None:
+    def test_public_bootstrap_rewrites_own_pyproject_and_repeats(
+        tmp_path: Path,
+    ) -> None:
         """A self target retains declarations while its own projection advances."""
         root, _ = u.Tests.render_make_environment(
             tmp_path / "self",
@@ -106,7 +108,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             root,
             (
                 m.Infra.CandidateBootstrapTargetSpec(
-                    path=Path("."),
+                    path=Path(),
                     what=c.Infra.CodegenConformSurface.PYPROJECT,
                 ),
             ),

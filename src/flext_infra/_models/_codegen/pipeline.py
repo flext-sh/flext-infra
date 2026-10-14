@@ -297,15 +297,20 @@ class FlextInfraModelsCodegenPipelineModels:
                 msg = "producer publication requires its actual generation plan"
                 raise ValueError(msg)
             for receipt in (self.verified_publication, self.publication_receipt):
-                if receipt is not None and (
+                if receipt is None:
+                    continue
+                incomplete = (
                     not receipt.completed
                     or receipt.error
                     or receipt.issues
                     or receipt.pending_files
-                    or receipt.root is None
+                )
+                unsettled = (
+                    receipt.root is None
                     or receipt.transaction_id is None
                     or not (receipt.outputs or receipt.batches)
-                ):
+                )
+                if incomplete or unsettled:
                     msg = "publication requires complete output evidence"
                     raise ValueError(msg)
             return self
