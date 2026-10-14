@@ -165,7 +165,9 @@ class TestsFlextInfraSymbolicTextCutover:
             (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
         )
         with (
-            u.Infra.codemod_binding_project(mod_workspace, snapshot) as (
+            u.Infra.codemod_binding_project(
+                mod_workspace, u.Infra.codemod_source_epoch(snapshot)
+            ) as (
                 project,
                 sources,
             ),

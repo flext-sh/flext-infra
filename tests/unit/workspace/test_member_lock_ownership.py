@@ -11,6 +11,10 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceLockCompleteness,
+)
 from tests import c, t, tm, u
 
 pytestmark = pytest.mark.slow
@@ -32,6 +36,27 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
             return root, member
         project = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "standalone")
         return project, project
+
+    @pytest.mark.parametrize("attached", [False, True])
+    def test_verification_uses_selected_owner_without_repair(
+        self,
+        tmp_path: Path,
+        attached: bool,
+    ) -> None:
+        """Attached and standalone validation name their own selected missing lock."""
+        root, project = self._repository(tmp_path, attached=attached)
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project))
+        tm.that(context.runtime_root, eq=root)
+        legacy = project / c.Infra.UV_LOCK_FILENAME
+        legacy.write_text("package = []\n", encoding="utf-8")
+
+        tm.fail(
+            FlextInfraWorkspaceLockCompleteness.validate(project),
+            has=str(context.lock_path),
+        )
+
+        tm.that(context.lock_path.exists(), eq=False)
+        tm.that(legacy.read_text(encoding="utf-8"), eq="package = []\n")
 
     @pytest.mark.parametrize("attached", [False, True])
     def test_conform_preserves_existing_locks(

@@ -33,7 +33,7 @@ class FlextInfraConstantsRefactor:
         / "mod-findings.json"
     )
     "Canonical single-file evidence snapshot for the latest mod scan."
-    MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[int] = 2
+    MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[int] = 4
     "Exact structured mod evidence schema version."
     MOD_SCAN_SOURCE_DRIFT_ERROR_CODE: ClassVar[str] = "MOD_SCAN_SOURCE_DRIFT"
     "Typed failure code: one finding's source bytes changed during scanning."
@@ -253,6 +253,7 @@ class FlextInfraConstantsRefactor:
         LAYER_ZERO_FILE = "layer-zero-file"
         COMPOSE_MODULE = "compose-module"
         PAYLOAD_DECLARATION = "payload-declaration"
+        PROTOCOL_DECLARATION = "protocol-declaration"
         RESOLVED_SYMBOL = "resolved-symbol"
         EMITTED_SYMBOL = "emitted-symbol"
         SAME_BINDING = "same-binding"
@@ -297,6 +298,7 @@ class FlextInfraConstantsRefactor:
         DECLARATION_RELOCATION = "declaration-relocation"
         CLASS_NESTING = "class-nesting"
         CONSTANT_CONSUMERS = FlextInfraConstantsCensus.CensusRule.CONSTANT_CONSUMERS
+        CONTRACT_NORMALIZATION = "contract-normalization"
         COMPAT_ALIAS = "compat-alias"
         PRIVATE_IMPORT = "private-import"
         FACADE_BASE = "facade-base"

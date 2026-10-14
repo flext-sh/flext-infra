@@ -6,30 +6,27 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models.check import FlextInfraModelsCheck
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
 class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
 
     class CodegenPhasePublicationPolicy(m.ArbitraryTypesModel):
-        """Caller-owned directories and final validation for one publication."""
+        """Caller-owned directories and native admission for one publication."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         directories: t.VariadicTuple[Path] = m.Field(
             description="Exact generated directories requested by the caller",
-        )
-        validator: Callable[[], p.Result[bool]] = m.Field(
-            description="Caller validation required before committing the phase",
         )
 
     class StagePackagePlan(m.ArbitraryTypesModel):
@@ -137,6 +134,38 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalSource],
             m.Field(description="Source identities used by staging"),
         ]
+        outputs: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Complete output proof, including no-ops")
+        generator_sources: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Captured loaded generator implementation")
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Producer resource membership before planning"
+        )
+        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+            default=(), description="Immutable producer module election"
+        )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None,
+                description="Immutable native producer epoch before effects",
+            )
+        )
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(),
+            description="Source-owner directory witnesses for observation",
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Source-owner roots for topology observation",
+        )
+        source_scope: Path | None = m.Field(
+            default=None, description="Member elected by the native docs source owner"
+        )
+        phase: c.Infra.CodegenStagedFilePhase | None = m.Field(
+            default=None, description="Actual publication phase"
+        )
         directories: Annotated[
             t.VariadicTuple[
                 FlextInfraModelsCodegenJournalModels.CodegenJournalDirectory

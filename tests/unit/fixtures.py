@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 from collections.abc import Iterator
+from functools import partial
 from pathlib import Path
 from shlex import quote
 
@@ -18,6 +20,7 @@ import pytest
 
 from flext_infra import config, infra
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 from tests import c, m, p, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
@@ -118,18 +121,18 @@ def tool_config_document() -> m.Infra.ToolConfigDocument:
 
 
 _CONSUMER_UPGRADE_RECEIPT = "upgrade-receipt.json"
+_CONSUMER_BUILD_RECEIPT = "build-receipt.json"
 
 
-def _provision_consumer_template(parent: Path) -> Path:
-    """Upgrade and set up the shared worker consumer once through real Make.
+def _consumer_pyproject_source(distribution: str) -> str:
+    """Render the governed consumer fixture's pyproject source.
 
-    The installed session owner keeps this physical checkout at a stable path,
-    preserving its editable source binding while restoring each case's data.
+    Args:
+        distribution: The consumer distribution name being provisioned.
 
     Returns:
-        The provisioned consumer with committed locks and a physical environment.
+        The pyproject source declaring the governed consumer contract.
     """
-    distribution = "flext-demo"
     modules = c.Tests.CONSUMER_MODULES
     # A governed FLEXT consumer declares exactly one runtime upstream profile;
     # conform derives its project spec from it (context_render.py).
@@ -156,38 +159,100 @@ def _provision_consumer_template(parent: Path) -> Path:
         for requirement in config.Infra.codegen.scaffold.project.dev
         if (name := u.Infra.dep_name(requirement)) is not None and name != distribution
     )
+    return (
+        '[build-system]\nrequires = ["hatchling"]\n'
+        'build-backend = "hatchling.build"\n'
+        f'[project]\nname = "{distribution}"\nversion = "0.1.0"\n'
+        f'description = "{distribution} governed fixture"\n'
+        'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+        f'requires-python = "{python_required}"\n'
+        f"dependencies = [{dependencies}]\n"
+        '[project.optional-dependencies]\nfeature = ["requests"]\n'
+        # A governed checkout declares every internal requirement with its
+        # own direct Git source; the scaffold dev SSOT includes flext-tests.
+        f'[dependency-groups]\ndev = [{development}, "pip", '
+        f'"{infrastructure_source}"]\n'
+        "[tool.hatch.metadata]\nallow-direct-references = true\n"
+        "[tool.mypy]\n"
+        '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
+    )
+
+
+def _provision_consumer_template(
+    parent: Path,
+    *,
+    member_dependencies: t.MappingKV[str, t.StrSequence] | None = None,
+) -> Path:
+    """Upgrade and set up the shared worker consumer once through real Make.
+
+    The installed session owner keeps this physical checkout at a stable path,
+    preserving its editable source binding while restoring each case's data.
+
+    Returns:
+        The provisioned consumer with committed locks and a physical environment.
+    """
+    distribution = "flext-demo"
     root = u.Tests.mk_project(
         parent,
         distribution,
         with_src=True,
-        pyproject=(
-            '[build-system]\nrequires = ["hatchling"]\n'
-            'build-backend = "hatchling.build"\n'
-            f'[project]\nname = "{distribution}"\nversion = "0.1.0"\n'
-            f'description = "{distribution} governed fixture"\n'
-            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
-            f'requires-python = "{python_required}"\n'
-            f"dependencies = [{dependencies}]\n"
-            '[project.optional-dependencies]\nfeature = ["requests"]\n'
-            # A governed checkout declares every internal requirement with its
-            # own direct Git source; the scaffold dev SSOT includes flext-tests.
-            f'[dependency-groups]\ndev = [{development}, "pip", '
-            f'"{infrastructure_source}"]\n'
-            "[tool.hatch.metadata]\nallow-direct-references = true\n"
-            "[tool.mypy]\n"
-            '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
-        ),
+        pyproject=_consumer_pyproject_source(distribution),
     )
     (root / "src" / distribution.replace("-", "_") / "__init__.py").write_text(
-        "\n".join(f"import {name}" for name in ("flext_core", *modules)) + "\n",
+        "\n".join(
+            f"import {name}" for name in ("flext_core", *c.Tests.CONSUMER_MODULES)
+        )
+        + "\n",
         encoding="utf-8",
     )
     u.Tests.copy_tracked_mise_seeds(root)
     repository = u.Tests.repository_ref(
         root.name,
-        role=c.Infra.MakeProfile.STANDALONE,
+        role=(
+            c.Infra.MakeProfile.WORKSPACE
+            if member_dependencies
+            else c.Infra.MakeProfile.STANDALONE
+        ),
     ).model_copy(update={"editable": True})
     u.Tests.initialize_git_repo(root, origin_url=repository.url)
+    if member_dependencies:
+        beads = u.Tests.BeadsIdentity(
+            workspace=distribution,
+            database=distribution.replace("-", "_"),
+            issue_prefix="fleet",
+        )
+        for name, requirements in member_dependencies.items():
+            member = root / name
+            u.Tests.WorktreeFixture.initialize_governed_project(
+                member,
+                name,
+                beads=beads,
+            )
+            manifest = member / c.PYPROJECT_FILENAME
+            payload = u.Tests.toml_payload(manifest.read_text(encoding="utf-8"))
+            project = u.Tests.toml_mapping(payload["project"])
+            tm.ok(
+                u.Cli.toml_write_mapping(
+                    manifest,
+                    {
+                        **payload,
+                        "project": {
+                            **project,
+                            "dependencies": [
+                                *u.Tests.toml_strings(project["dependencies"]),
+                                *requirements,
+                            ],
+                        },
+                    },
+                ),
+            )
+            u.Tests.commit_git_changes(member, "declare fleet runtime requirements")
+            u.Tests.WorktreeFixture.attach_submodule(
+                root,
+                member,
+                distribution=name,
+                relative_path=name,
+            )
     workspace = u.Tests.workspace_spec(
         repository,
         project=u.Tests.project_spec(root.name),
@@ -223,6 +288,7 @@ def _provision_consumer_template(parent: Path) -> Path:
     for verb, receipt in (
         ("upg", _CONSUMER_UPGRADE_RECEIPT),
         ("setup", _INFRA_SETUP_RECEIPT),
+        ("build", _CONSUMER_BUILD_RECEIPT),
     ):
         output = tm.ok(
             u.Tests.run_isolated_make(
@@ -246,6 +312,128 @@ def _provision_consumer_template(parent: Path) -> Path:
     return root
 
 
+_FLEET_PROVISION = partial(
+    _provision_consumer_template,
+    member_dependencies={
+        "fleet-provider": (),
+        "fleet-consumer": ("fleet-provider",),
+    },
+)
+
+
+@pytest.fixture(scope="session")
+def fleet_session_runtime(
+    tmp_path_factory: pytest.TempPathFactory,
+    run_namespace: m.Tests.TestNamespace,
+) -> Iterator[p.Tests.SessionRuntime]:
+    """Own the distinct installed workspace seed through the shared runtime owner.
+
+    A runtime accepts one provision callback. This topology has Git members,
+    while the ordinary consumer seed deliberately remains standalone.
+
+    Yields:
+        The leased ``p.Tests.SessionRuntime``.
+
+    """
+    runtime = u.Tests.SessionRuntime(
+        tmp_path_factory.mktemp(f"{run_namespace.token}-fleet"),
+    )
+    try:
+        yield runtime
+    finally:
+        runtime.close()
+
+
+@pytest.fixture
+def installed_fleet_workspace(
+    fleet_session_runtime: p.Tests.SessionRuntime,
+) -> Iterator[Path]:
+    """Lease actual generated members and frozen installed metadata at stable paths.
+
+    Yields:
+        The leased workspace root ``Path``.
+
+    """
+    with fleet_session_runtime.lease(
+        _FLEET_PROVISION,
+        mutable_environment=True,
+    ) as root:
+        yield root
+
+
+@pytest.fixture
+def native_fleet_signal_hook(installed_fleet_workspace: Path) -> Path:
+    """Inject SIGTERM through the generated hook on the Linux acceptance platform.
+
+    The procfs ancestry contract belongs only to this fault-injection fixture.
+    Other native platforms require their own equivalent proof, never a skip
+    reported as successful signal handling.
+
+    Returns:
+        The leased workspace root ``Path``.
+
+    """
+    if sys.platform != "linux":
+        pytest.fail(
+            "Linux procfs signal injection is inapplicable; this platform "
+            "requires its own configured native Make signal proof",
+        )
+    root = installed_fleet_workspace
+    members = tm.ok(
+        FlextInfraWorkspaceEnvironmentProvenance.editable_members(root),
+    )
+    ordered = u.Infra.workspace_dependency_order(root, members)
+    provider = next(member for member in members if member.distribution == ordered[0])
+    member_root = root / provider.path
+    fault = member_root / "scripts" / "fleet_signal_fault.py"
+    fault.parent.mkdir(parents=True, exist_ok=True)
+    fault.write_text(
+        """\
+import os
+import sys
+from pathlib import Path
+from signal import SIGTERM
+
+executable = Path(sys.argv[1]).resolve(strict=True)
+makefile = Path(sys.argv[2]).resolve(strict=True)
+pid = os.getppid()
+targets = []
+while pid > 1:
+    process = Path("/proc") / str(pid)
+    arguments = process.joinpath("cmdline").read_bytes().split(b"\\0")
+    arguments = [os.fsdecode(argument) for argument in arguments if argument]
+    if process.joinpath("exe").resolve(strict=True) == executable and "-f" in arguments:
+        selected = Path(arguments[arguments.index("-f") + 1])
+        selected = process.joinpath("cwd").resolve(strict=True) / selected
+        if selected.resolve(strict=True) == makefile:
+            targets.append(pid)
+    parent = next(
+        line for line in process.joinpath("status").read_text().splitlines()
+        if line.startswith("PPid:")
+    )
+    pid = int(parent.split()[1])
+if not targets:
+    raise RuntimeError("No exact fleet Make invocation owns this native hook")
+print("Native fleet hook sends SIGTERM to its exact Make ancestry", flush=True)
+for target in reversed(targets):
+    os.kill(target, SIGTERM)
+""",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    custom = member_root / c.Infra.CUSTOM_MAKE_FILENAME
+    content = custom.read_text(encoding=c.DEFAULT_ENCODING) if custom.exists() else ""
+    tm.that("pre-fmt:" in content, eq=False)
+    makefile = quote(str(member_root / c.Infra.MAKEFILE_FILENAME))
+    custom.write_text(
+        content
+        + "\n.PHONY: pre-fmt\npre-fmt:\n"
+        + f"\t@$(PROJECT_INFRA_RUN) {quote(str(fault))} "
+        + f'"$(SELF_MAKE_EXECUTABLE)" {makefile}\n',
+        encoding=c.DEFAULT_ENCODING,
+    )
+    return root
+
+
 _MAKE_UPGRADE_RECEIPT = c.Tests.MAKE_TEMPLATE_UPG_RECEIPT
 _MAKE_CI_SETUP_RECEIPT = c.Tests.MAKE_TEMPLATE_CI_RECEIPT
 _INFRA_SETUP_RECEIPT = "setup-receipt.json"
@@ -257,17 +445,6 @@ _INFRA_CHECKOUT_SCENARIOS = (
     "producer-failure",
     "activation-failure",
 )
-
-
-def _run_root(factory: pytest.TempPathFactory) -> Path:
-    """Use pytest's invocation directory, shared across xdist workers.
-
-    Returns:
-        The resulting ``Path``.
-
-    """
-    base = factory.getbasetemp()
-    return base.parent if os.environ.get("PYTEST_XDIST_WORKER") else base
 
 
 def _run_scoped(run_root: Path, kind: str, key: str) -> Path:
@@ -341,8 +518,7 @@ def _provision_make_template(
     (hostile_venv / "sentinel").write_text("untouched\n", encoding="utf-8")
     custom = root / c.Infra.CUSTOM_MAKE_FILENAME
     custom.write_text(
-        custom.read_text(encoding="utf-8")
-        + ".PHONY: post-upg post-status\n"
+        custom.read_text(encoding="utf-8") + ".PHONY: post-upg post-status\n"
         "post-upg:\n\t@printf '%s\\n' 'upg-hook-ran'\n"
         f"post-status:\n\t@$(PROJECT_INFRA_RUN) -I -c {quote(source_probe)}\n",
         encoding="utf-8",
@@ -453,6 +629,9 @@ def _ensure_provisioned(
     Testmon inventory and selection collect tests without network or writes.
     Provisioning belongs to the item that actually consumes the checkout, so
     its cost and failure remain visible to the test deadline and report.
+
+    Raises:
+        ValueError: If a Make profile is requested without its Git environment.
     """
     parent.mkdir(parents=True, exist_ok=True)
     with u.Infra.codegen_transaction_lease(parent / receipt):
@@ -468,8 +647,8 @@ def _ensure_provisioned(
                 _provision_infra_checkout(run_root, key)
 
 
-@pytest.fixture
-def hermetic_git_environment(tmp_path_factory: pytest.TempPathFactory) -> t.StrMapping:
+@pytest.fixture(scope="session")
+def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMapping:
     """Serve the fixture provider's Git sources from this run's local mirrors.
 
     The mirrors are built once per locked-source set under the canonical
@@ -486,7 +665,7 @@ def hermetic_git_environment(tmp_path_factory: pytest.TempPathFactory) -> t.StrM
         "@".join(source) for source in u.Tests.locked_git_sources(_PROJECT_ROOT)
     )
     parent = _run_scoped(
-        _run_root(tmp_path_factory),
+        session_runtime.directory,
         "git-mirrors",
         hashlib.sha256(sources.encode()).hexdigest()[:16],
     )
@@ -519,12 +698,12 @@ def generated_make_template(
     return profile, root
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def resolved_make_templates(
-    tmp_path_factory: pytest.TempPathFactory,
+    session_runtime: p.Tests.SessionRuntime,
     hermetic_git_environment: t.StrMapping,
 ) -> t.MappingKV[c.Infra.MakeProfile, Path]:
-    """Return every profile's committed ``make upg`` template for this run.
+    """Return committed templates owned by this isolated worker-session.
 
     Consumers clone a template rather than resolving inside their budget; the
     template directory also holds the upgrade and cold CI setup receipts.
@@ -535,7 +714,7 @@ def resolved_make_templates(
     """
     templates: t.MutableMappingKV[c.Infra.MakeProfile, Path] = {}
     for profile in c.Infra.MakeProfile:
-        run_root = _run_root(tmp_path_factory)
+        run_root = session_runtime.directory
         parent = _run_scoped(run_root, "make-templates", profile.value)
         _ensure_provisioned(
             run_root,
@@ -557,7 +736,7 @@ def resolved_make_templates(
 @pytest.fixture(params=_INFRA_CHECKOUT_SCENARIOS)
 def provisioned_infra_checkout(
     request: pytest.FixtureRequest,
-    tmp_path_factory: pytest.TempPathFactory,
+    session_runtime: p.Tests.SessionRuntime,
 ) -> t.Pair[str, Path]:
     """Return one scenario's candidate checkout, set up from committed locks.
 
@@ -566,7 +745,7 @@ def provisioned_infra_checkout(
 
     """
     scenario = str(request.param)
-    run_root = _run_root(tmp_path_factory)
+    run_root = session_runtime.directory
     parent = _run_scoped(run_root, "infra-checkouts", scenario)
     _ensure_provisioned(run_root, parent, _INFRA_SETUP_RECEIPT, scenario)
     setup = u.Tests.command_receipt(parent / _INFRA_SETUP_RECEIPT)
@@ -610,7 +789,10 @@ def real_detector_project(
             )
         )
         (root / "src" / root.name.replace("-", "_") / "__init__.py").write_text(
-            "\n".join(f"import {name}" for name in ("flext_core", *modules)) + "\n",
+            "\n".join(
+                f"import {name}" for name in ("flext_core", *c.Tests.CONSUMER_MODULES)
+            )
+            + "\n",
             encoding="utf-8",
         )
         runtime = u.Infra.runtime_environment_dir(root)
@@ -624,6 +806,22 @@ def real_detector_project(
         (root / "limits.toml").write_text(
             "[typing_libraries]\nexclude = []\n", encoding="utf-8"
         )
+        yield root
+
+
+@pytest.fixture
+def installed_artifact_consumer(
+    session_runtime: p.Tests.SessionRuntime,
+) -> Iterator[Path]:
+    """Lease the native consumer with its installed artifacts restored afterward.
+
+    Yields:
+        The leased consumer repository root.
+    """
+    with session_runtime.lease(
+        _provision_consumer_template,
+        mutable_environment=True,
+    ) as root:
         yield root
 
 

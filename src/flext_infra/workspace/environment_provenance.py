@@ -7,19 +7,23 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
-import re
 import sys
+import sysconfig
 from functools import lru_cache
-from inspect import getfile, isclass, isfunction, unwrap
+from importlib.machinery import BuiltinImporter, FrozenImporter
 from json import dumps
 from pathlib import Path
-from sys import modules, prefix
+from sys import modules
+from types import ModuleType
 from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import (
+    FlextInfraFlextBindingService,
+    FlextInfraWorkspaceDetector,
+)
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
@@ -27,6 +31,88 @@ if TYPE_CHECKING:
 
 class FlextInfraWorkspaceEnvironmentProvenance:
     """Bind installed packages to live local or immutable CI workspace sources."""
+
+    @staticmethod
+    def _module_source(module_name: str) -> p.Result[Path]:
+        """Observe native module origin; the isolated import authenticates election."""
+        module = modules.get(module_name)
+        if module is None:
+            return r[Path].fail(
+                f"producer source module is not registered: {module_name}"
+            )
+        ancestry = vars(type)["__mro__"].__get__(
+            type(module), type(type(module))
+        )
+        if not any(owner is ModuleType for owner in ancestry):
+            return r[Path].fail(
+                f"producer source supplier has no native module storage: {module_name}"
+            )
+        namespace = vars(ModuleType)["__dict__"].__get__(module, type(module))
+        native = namespace.get("__spec__")
+        if native is None or modules.get(native.name) is not module:
+            return r[Path].fail(f"producer module lacks its native spec: {module_name}")
+        if namespace.get("__loader__") is not native.loader:
+            return r[Path].fail(
+                f"producer module loader differs from native spec: {module_name}"
+            )
+        interpreter = Path(sys.executable).resolve()
+        if native.origin in {"built-in", "frozen"}:
+            importer = (
+                BuiltinImporter if native.origin == "built-in" else FrozenImporter
+            )
+            expected = importer.find_spec(native.name)
+            if expected is None or native.loader is not expected.loader:
+                return r[Path].fail(
+                    f"producer native interpreter loader differs: {module_name}"
+                )
+            if native.origin == "frozen" and (
+                native.loader_state != expected.loader_state
+                or namespace.get("__file__") != native.loader_state.filename
+            ):
+                return r[Path].fail(
+                    f"producer frozen source differs from interpreter: {module_name}"
+                )
+            return r[Path].ok(interpreter)
+        if native.origin is None:
+            locations = native.submodule_search_locations
+            if locations is None or tuple(namespace.get("__path__", ())) != tuple(
+                locations
+            ):
+                return r[Path].fail(
+                    f"producer namespace paths differ from native spec: {module_name}"
+                )
+            if len(locations) != 1:
+                return r[Path].fail(
+                    f"producer namespace requires explicit multiple physical origins: {module_name}={tuple(locations)}",
+                )
+            root = Path(locations[0]).absolute()
+            physical = u.Cli.atomic_plan_directory_chain(root)
+            if physical.failure:
+                return r[Path].from_failure(physical)
+            return r[Path].ok(root)
+        if namespace.get("__file__") != native.origin:
+            return r[Path].fail(
+                f"producer module file differs from native origin: {module_name}"
+            )
+        origin = Path(native.origin).absolute()
+        if native.name.partition(".")[0] in sys.stdlib_module_names:
+            base = Path(sys.base_prefix).resolve()
+            standard = Path(
+                sysconfig.get_path(
+                    "stdlib",
+                    vars={
+                        "base": sys.base_prefix,
+                        "platbase": sys.base_exec_prefix,
+                    },
+                )
+            ).resolve()
+            if not interpreter.is_relative_to(
+                base
+            ) or not origin.resolve().is_relative_to(standard):
+                return r[Path].fail(
+                    f"producer standard library differs from interpreter base: {module_name}"
+                )
+        return r[Path].ok(origin)
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -56,6 +142,116 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
         fingerprint = "\n".join((sys.version, *sorted(provenance)))
         return hashlib.sha256(fingerprint.encode()).hexdigest()
+
+    @classmethod
+    def editable_members(
+        cls,
+        repository_root: Path,
+        *,
+        metadata_paths: t.StrSequence | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]:
+        """Elect declared mutable members with authenticated installed editables.
+
+        Frozen or registry-installed dependencies remain libraries even when
+        their checkouts are present. The invocation's CI variable does not
+        change the observed installation's ownership.
+
+        Returns:
+            Members whose installed metadata and physical source match declaration.
+
+        """
+        root = repository_root.expanduser().resolve()
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        if workspace.failure:
+            return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(workspace)
+        repositories = tuple(
+            repository
+            for repository in u.Infra.mutable_flext_members(workspace.value)
+            if repository.package
+        )
+        observation: m.Infra.PythonEnvironmentObservation | None = None
+        if metadata_paths is None and repositories:
+            native = cls._observe_environment(root, repositories)
+            if native.failure:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(native)
+            observation = native.value
+            metadata_paths = tuple(str(path) for path in observation.metadata_paths)
+        selected: list[m.Infra.RepositoryRef] = []
+        for repository in repositories:
+            matches = u.installed_distributions(
+                name=repository.distribution,
+                path=metadata_paths,
+            )
+            if len(matches) != 1:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                    "member provenance distribution count mismatch: "
+                    f"distribution={repository.distribution} expected=1 "
+                    f"actual={len(matches)}",
+                )
+            raw = matches[0].read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+            if raw is None:
+                continue
+            receipt = m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True)
+            if receipt.dir_info is None or not receipt.dir_info.editable:
+                continue
+            if not repository.editable:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                    f"member is installed editable against declaration: "
+                    f"{repository.distribution}",
+                )
+            authenticated = cls.validate_editable_installation(
+                repository,
+                root,
+                matches[0],
+                receipt,
+            )
+            if authenticated.failure:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(
+                    authenticated,
+                )
+            selected.append(repository)
+        return r[t.VariadicTuple[m.Infra.RepositoryRef]].ok(tuple(selected))
+
+    @classmethod
+    def validate_editable_installation(
+        cls,
+        repository: m.Infra.RepositoryRef,
+        resolved_root: Path,
+        distribution: Distribution,
+        receipt: m.Infra.DirectUrlReceipt,
+    ) -> p.Result[bool]:
+        """Authenticate installation ownership without importing member code.
+
+        Args:
+            repository: The repository reference to validate.
+            resolved_root: The resolved root path of the repository.
+            distribution: The distribution object representing the installed package.
+            receipt: The direct URL receipt for the editable installation.
+
+        Returns:
+            A result indicating whether the installation is authenticated.
+        """
+        expected_root = (resolved_root / repository.path).resolve()
+        origin = cls._editable_url_verdict(
+            repository.distribution,
+            receipt,
+            expected_root,
+        )
+        if origin.failure:
+            return r[bool].from_failure(origin)
+        inventory = cls._validate_pth_inventory(
+            repository,
+            distribution,
+            expected_root,
+        )
+        if inventory.failure:
+            return r[bool].from_failure(inventory)
+        return cls._submodule_gitlink_verdict(
+            repository,
+            resolved_root,
+            expected_root,
+            r[bool].ok(value=True),
+        )
 
     @classmethod
     def execute_request(
@@ -102,17 +298,54 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
             if repository.package and repository.editable
         )
+        observation: m.Infra.PythonEnvironmentObservation | None = None
+        if metadata_paths is None and repositories:
+            native = cls._observe_environment(resolved_root, repositories)
+            if native.failure:
+                return r[int].from_failure(native)
+            observation = native.value
+            metadata_paths = tuple(str(path) for path in observation.metadata_paths)
         validated = 0
         for repository in repositories:
             provenance = cls._validate_editable_provenance(
                 repository,
                 resolved_root,
                 metadata_paths=metadata_paths,
+                observation=observation,
             )
             if provenance.failure:
                 return r[int].from_failure(provenance)
             validated += int(provenance.value)
         return r[int].ok(validated)
+
+    @staticmethod
+    def _observe_environment(
+        root: Path,
+        repositories: t.VariadicTuple[m.Infra.RepositoryRef],
+    ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
+        """Read package facts exclusively through the elected physical runtime.
+
+        Args:
+            root: The root path of the repository.
+            repositories: The repository references to observe.
+
+        Returns:
+            A result containing the observed Python environment.
+        """
+        context = FlextInfraWorkspaceDetector.resolution_context(root)
+        if context.failure:
+            return r[m.Infra.PythonEnvironmentObservation].from_failure(context)
+        return FlextInfraFlextBindingService.consumer_package_environment(
+            consumer_root=root,
+            python=u.Infra.runtime_python(
+                root,
+                runtime_root=context.value.runtime_root,
+            ),
+            packages=tuple(
+                u.Infra.project_package_name(root / repository.path)
+                for repository in repositories
+            ),
+        )
 
     @classmethod
     def _validate_editable_provenance(
@@ -121,6 +354,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         resolved_root: Path,
         *,
         metadata_paths: t.StrSequence | None,
+        observation: m.Infra.PythonEnvironmentObservation | None,
     ) -> p.Result[bool]:
         """Prove one editable member's PEP 610 and path metadata provenance.
 
@@ -139,6 +373,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"actual={len(matches)}",
             )
         distribution = matches[0]
+        if observation is not None and not Path(
+            str(distribution.locate_file("")),
+        ).resolve().is_relative_to(observation.prefix.resolve()):
+            return r[bool].fail(
+                "editable distribution is outside the owned environment: "
+                f"{repository.distribution}",
+            )
         expected_root = (resolved_root / repository.path).resolve()
         direct_url_result = cls._validate_direct_url(
             repository.distribution,
@@ -154,11 +395,30 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
         if inventory.failure:
             return r[bool].from_failure(inventory)
-        source_result = (
-            cls._validate_import_source(repository, expected_root)
-            if metadata_paths is None
-            else r[bool].ok(value=True)
-        )
+        if observation is None:
+            source_result = r[bool].ok(value=True)
+        else:
+            package_name = u.Infra.project_package_name(expected_root)
+            directories = observation.package_directories.get(package_name, ())
+            if (
+                len(directories) != 1
+                or not directories[0].is_dir()
+                or not directories[0].resolve().is_relative_to(expected_root)
+            ):
+                return r[bool].fail(
+                    "editable provenance import source differs from declaration: "
+                    f"distribution={repository.distribution} expected={expected_root} "
+                    f"actual={directories}",
+                )
+            if Path(sys.prefix).resolve() == observation.prefix.resolve():
+                source_result = cls._validate_import_source(repository, expected_root)
+            else:
+                u.Cli.info(
+                    f"environment distribution={repository.distribution} "
+                    f"import_source={directories[0].resolve()} "
+                    "loaded_code=unobserved resolver_only=True",
+                )
+                source_result = r[bool].ok(value=False)
         if source_result.failure:
             return r[bool].from_failure(source_result)
         return cls._submodule_gitlink_verdict(
@@ -264,7 +524,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             f"environment distribution={repository.distribution} "
             f"import_source={package.resolve()}",
         )
-        sources = cls._loaded_import_sources(package_name)
+        sources = cls.loaded_import_sources(package_name, expected_root=expected_root)
         if sources.failure:
             return r[bool].from_failure(sources)
         if not sources.value:
@@ -273,145 +533,106 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 "loaded_code=unobserved resolver_only=True",
             )
             return r[bool].ok(value=False)
-        for definition_name, source, class_source in sources.value:
-            if source.startswith("<") and source.endswith(">"):
-                if not class_source:
-                    return r[bool].fail(
-                        "editable provenance generated code has no class owner: "
-                        f"definition={definition_name} compiler={source}",
-                    )
-                # Compiler labels are not paths; authenticate their class owner.
-                u.Cli.info(
-                    f"environment generated_definition={definition_name} "
-                    f"compiler_label={source} class_source={class_source}",
-                )
-                actual = Path(class_source).resolve()
-            else:
-                actual = Path(source).resolve()
-            if not actual.is_relative_to(expected_root):
-                return r[bool].fail(
-                    "editable provenance loaded code differs from declaration: "
-                    f"distribution={repository.distribution} expected={expected_root} "
-                    f"actual={actual} definition={definition_name}",
-                )
         return r[bool].ok(value=True)
 
     @classmethod
-    def _loaded_import_sources(
+    def loaded_import_sources(
         cls,
         package_name: str,
+        *,
+        expected_root: Path | None = None,
+        reference: m.Infra.NativeImportReference | None = None,
     ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Collect actual module, function and generated class-owner sources.
-
-        Returns:
-            Observed sources without importing dormant package capabilities.
-        """
-        source_files: t.MutableSequenceOf[t.Triple[str, str, str]] = []
-        for name in tuple(modules):
-            if name != package_name and not name.startswith(f"{package_name}."):
-                continue
-            module = modules.get(name)
-            if module is None:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                    f"editable provenance module is unavailable: {name}",
-                )
-            if module.__file__ is not None:
-                source_files.append((name, module.__file__, ""))
-            definitions = cls._declaration_sources(name)
-            if definitions.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
-                    definitions
-                )
-            source_files.extend(definitions.value)
-        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(source_files)
-
-    @classmethod
-    def _declaration_sources(
-        cls,
-        module_name: str,
-    ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Walk loaded declarations without resolving attributes or capabilities.
-
-        Returns:
-            Code sources whose generated definitions have authenticated owners.
-        """
-        pending = [(value, 0) for value in tuple(vars(modules[module_name]).values())]
-        visited: set[int] = set()
-        sources: t.MutableSequenceOf[t.Triple[str, str, str]] = []
-        while pending:
-            definition, receiver = pending.pop()
-            if isclass(definition):
-                if (
-                    definition.__module__ == module_name
-                    and id(definition) not in visited
-                ):
-                    visited.add(id(definition))
-                    pending.extend(
-                        (value, id(definition))
-                        for value in tuple(vars(definition).values())
-                    )
-                continue
-            outer = (
-                definition.__func__
-                if type(definition) in {classmethod, staticmethod}
-                else definition
-            )
-            if not isfunction(outer) or outer.__module__ != module_name:
-                continue
-            function = unwrap(outer)
-            source = function.__code__.co_filename
-            class_source = ""
-            if source.startswith("<") and source.endswith(">"):
-                owner = cls._compiler_definition_owner(
-                    module_name,
-                    outer.__qualname__,
-                    id(outer),
-                    receiver,
-                )
-                if owner.failure:
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(owner)
-                class_source = owner.value
-            sources.append((outer.__qualname__, source, class_source))
-        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(sources)
-
-    @staticmethod
-    def _compiler_definition_owner(
-        module_name: str,
-        qualified_name: str,
-        definition_identity: int,
-        receiver_identity: int,
-    ) -> p.Result[str]:
-        """Authenticate the defining descriptor before trusting generated code.
-
-        Returns:
-            The physical declaration file of the identity-matched class owner.
-        """
-        namespace = vars(modules[module_name])
-        owner_path, separator, attribute = qualified_name.rpartition(".")
-        owner = None
-        for component in owner_path.split("."):
-            candidate = namespace.get(component)
-            if not isclass(candidate) or candidate.__module__ != module_name:
-                return r[str].fail(
-                    f"generated definition owner is unresolved: {qualified_name}",
-                )
-            owner = candidate
-            namespace = vars(candidate)
-        if not separator or owner is None or id(owner) != receiver_identity:
-            return r[str].fail(
-                f"generated definition owner differs from receiver: {qualified_name}",
-            )
-        descriptor = namespace.get(attribute)
-        outer = (
-            descriptor.__func__
-            if isinstance(descriptor, p.Infra.FunctionDescriptor)
-            else descriptor
+        """Consume one pinned cold-native epoch, never a source-only admission."""
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
         )
-        if not isfunction(outer) or id(outer) != definition_identity:
-            return r[str].fail(
-                f"generated definition descriptor identity differs: {qualified_name}",
+
+        names = tuple(
+            sorted(
+                name
+                for name in tuple(modules)
+                if name == package_name or name.startswith(f"{package_name}.")
             )
-        return r[str].ok(getfile(owner))
+        )
+        if not names:
+            return r[t.SequenceOf[t.Triple[str, str, str]]].ok(())
+        if reference is None:
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
+            )
+            from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+
+            cold = FlextInfraCodegenPreconditions.capture_source_authority(
+                nominated=names
+            )
+            if cold.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(cold)
+            inputs = FlextInfraCodegenPreconditions.authority_inputs(cold.value)
+            if inputs.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(inputs)
+            roots = [root.parent for _name, root in cold.value.generator_modules]
+            for namespace in dict.fromkeys(name.partition(".")[0] for name in names):
+                origin = cls._module_source(namespace)
+                if origin.failure:
+                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(origin)
+                spec = modules[namespace].__spec__
+                roots.append(
+                    origin.value.parent.parent
+                    if spec and spec.submodule_search_locations
+                    else origin.value.parent
+                )
+            captured = FlextInfraValidateFreshImport.capture_native_reference(
+                m.Infra.NativeImportRequest(
+                    modules=names,
+                    source_authority=cold.value,
+                    inputs=inputs.value,
+                    import_roots=tuple(dict.fromkeys(roots)),
+                )
+            )
+            if captured.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(captured)
+            source_files = captured.value.sources
+        else:
+            if not set(names).issubset(reference.modules):
+                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                    f"native reference does not cover selected namespace: {package_name}",
+                )
+            if reference.runtime != Path(sys.executable).resolve():
+                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                    "native reference runtime differs",
+                )
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
+            )
+
+            current = FlextInfraCodegenPreconditions.source_authority_current(
+                reference.source_authority
+            )
+            if current.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(current)
+            observed = FlextInfraWorkspaceNativeReference.capture(reference.modules)
+            if observed.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(observed)
+            matched = FlextInfraWorkspaceNativeReference.compare(
+                observed.value,
+                reference,
+            )
+            if matched.failure:
+                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(matched)
+            source_files = reference.sources
+        if expected_root is not None:
+            for identity, source, declaration in source_files:
+                supplier = identity.partition("::")[0]
+                if (
+                    supplier == package_name or supplier.startswith(f"{package_name}.")
+                ) and not Path(
+                    declaration or source,
+                ).resolve().is_relative_to(expected_root.resolve()):
+                    return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                        f"producer loaded source escapes declared checkout: {identity}={declaration or source}",
+                    )
+        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(source_files)
 
     @classmethod
     def validate_locked(
@@ -467,6 +688,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             or item.source.editable is not None
             or item.source.directory is not None
         )
+        if metadata_paths is None:
+            native = cls._observe_environment(repository_root, tuple(members.values()))
+            if native.failure:
+                return r[int].from_failure(native)
+            metadata_paths = tuple(str(path) for path in native.value.metadata_paths)
         validated = 0
         for name in sorted(required):
             provenance = cls._validate_locked_provenance(
@@ -476,6 +702,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 resolution_root=context.value.resolution_root,
                 repository=members.get(name),
                 metadata_paths=metadata_paths,
+                environment_root=context.value.environment_path,
             )
             if provenance.failure:
                 return r[int].from_failure(provenance)
@@ -492,6 +719,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         resolution_root: Path,
         repository: m.Infra.RepositoryRef | None,
         metadata_paths: t.StrSequence | None,
+        environment_root: Path,
     ) -> p.Result[bool]:
         """Prove one locked dependency's installed origin and path containment.
 
@@ -506,7 +734,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
         distribution = distributions[0]
         location = Path(str(distribution.locate_file(""))).resolve()
-        if not location.is_relative_to(Path(prefix).resolve()):
+        if not location.is_relative_to(environment_root.resolve()):
             return r[bool].fail(
                 f"locked dependency is outside the owned environment: {name}",
             )
@@ -529,15 +757,20 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 repository_root,
                 resolution_root,
                 distribution,
+                environment_root=environment_root,
             )
-        origin = cls._locked_origin_verdict(
+        origin = cls.locked_origin_verdict(
             name,
             matches[0],
             distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
         )
         if origin.failure:
             return r[bool].from_failure(origin)
-        return cls._locked_pth_verdict(name, distribution)
+        return cls._locked_pth_verdict(
+            name,
+            distribution,
+            environment_root=environment_root,
+        )
 
     @classmethod
     def _validate_workspace_build(
@@ -547,6 +780,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         repository_root: Path,
         resolution_root: Path,
         distribution: Distribution,
+        *,
+        environment_root: Path,
     ) -> p.Result[bool]:
         """Authenticate a workspace checkout before accepting its installed build.
 
@@ -566,7 +801,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
         if origin.failure:
             return r[bool].from_failure(origin)
-        return cls._locked_pth_verdict(item.name, distribution)
+        return cls._locked_pth_verdict(
+            item.name,
+            distribution,
+            environment_root=environment_root,
+        )
 
     @classmethod
     def _workspace_checkout_verdict(
@@ -714,7 +953,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _locked_origin_verdict(
+    def locked_origin_verdict(
         cls,
         name: str,
         item: m.Infra.LockedPackage,
@@ -766,6 +1005,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     def _locked_pth_verdict(
         name: str,
         distribution: Distribution,
+        *,
+        environment_root: Path,
     ) -> p.Result[bool]:
         """Prove one installed artifact's path inventory stays environment-owned.
 
@@ -783,7 +1024,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     if Path(line).is_absolute() and not Path(
                         line,
                     ).resolve().is_relative_to(
-                        Path(prefix).resolve(),
+                        environment_root.resolve(),
                     ):
                         return r[bool].fail(
                             f"CI artifact exposes an external source path: {name}",
@@ -818,6 +1059,15 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"editable provenance direct_url validation ({distribution})",
                 exc,
             )
+        return cls._editable_url_verdict(distribution, payload, expected_root)
+
+    @staticmethod
+    def _editable_url_verdict(
+        distribution: str,
+        payload: m.Infra.DirectUrlReceipt,
+        expected_root: Path,
+    ) -> p.Result[int]:
+        """Bind one parsed editable receipt to its declared physical source."""
         parsed = urlparse(payload.url)
         if (
             parsed.scheme != "file"
@@ -868,8 +1118,48 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 "editable provenance pth is empty: "
                 f"distribution={distribution} path={pth_file}",
             )
+        package_name = u.Infra.project_package_name(expected_root)
+        payload = u.Infra.pyproject_payload(expected_root / c.PYPROJECT_FILENAME)
+        wheel = payload
+        for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
+            child = u.Cli.toml_mapping_child(wheel, key)
+            if child is None:
+                wheel = {}
+                break
+            wheel = child
+        declared_paths = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            wheel.get("packages", ()),
+            strict=True,
+        )
+        if declared_paths.failure:
+            return r[bool].from_failure(declared_paths)
+        primary_parts = tuple(package_name.split("."))
+        packages: list[t.Pair[str, Path | None]] = []
+        for declared in declared_paths.value:
+            relative = Path(declared)
+            target = (expected_root / relative).resolve()
+            if (
+                relative.is_absolute()
+                or ".." in relative.parts
+                or not target.is_relative_to(expected_root)
+                or not target.is_dir()
+            ):
+                return r[bool].fail(
+                    "editable provenance declared package path is invalid: "
+                    f"distribution={distribution} package={declared}",
+                )
+            name = (
+                package_name
+                if relative.parts[-len(primary_parts) :] == primary_parts
+                else relative.name
+            )
+            packages.append((name, target))
+        if not packages:
+            packages.append((package_name, None))
+        exposed: set[t.Pair[str, Path | None]] = set()
         for entry in entries:
-            if re.match(r"^import\s", entry) or not Path(entry).is_absolute():
+            if not Path(entry).is_absolute():
                 return r[bool].fail(
                     "editable provenance pth entry is not an absolute source path: "
                     f"distribution={distribution} entry={entry}",
@@ -886,6 +1176,32 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     "editable provenance source directory is not live: "
                     f"distribution={distribution} path={actual_source}",
                 )
+            elected = {
+                (name, target)
+                for name, target in packages
+                if (
+                    (
+                        package := u.Infra.declared_package_dir(
+                            name,
+                            search_paths=(str(actual_source),),
+                        )
+                    )
+                    is not None
+                    and package.resolve().is_relative_to(expected_root)
+                    and (target is None or package.resolve() == target)
+                )
+            }
+            if not elected:
+                return r[bool].fail(
+                    "editable provenance pth exposes no declared package: "
+                    f"distribution={distribution} path={actual_source}",
+                )
+            exposed.update(elected)
+        if exposed != set(packages):
+            return r[bool].fail(
+                "editable provenance pth omits declared package sources: "
+                f"distribution={distribution}",
+            )
         return r[bool].ok(value=True)
 
 

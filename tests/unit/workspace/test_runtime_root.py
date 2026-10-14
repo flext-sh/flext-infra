@@ -20,6 +20,41 @@ class TestsFlextInfraRuntimeRoot:
     """The execution context elects exactly one lock and environment owner."""
 
     @staticmethod
+    @pytest.mark.parametrize("malformed_parent_git", [False, True])
+    def test_python_parent_does_not_invent_a_containing_git_owner(
+        tmp_path: Path,
+        malformed_parent_git: bool,
+    ) -> None:
+        """A Git child stays independent, while a malformed parent marker is red."""
+        parent = tmp_path / "python-parent"
+        parent.mkdir()
+        (parent / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'fixture-parent'\nversion = '1.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        root = parent / "standalone"
+        root.mkdir()
+        u.Tests.initialize_git_repo(root)
+        (root / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'fixture-child'\nversion = '1.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        if malformed_parent_git:
+            (parent / c.Infra.GIT_DIR).write_text(
+                "gitdir: absent-storage\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+
+        observed = FlextInfraWorkspaceDetector.resolution_context(root)
+
+        if malformed_parent_git:
+            tm.that(observed.failure, eq=True)
+        else:
+            context = tm.ok(observed)
+            tm.that(context.project_root, eq=root.resolve())
+            tm.that(context.runtime_root, eq=root.resolve())
+
+    @staticmethod
     def test_root_context_is_available_before_managed_toml_recovery(
         tmp_path: Path,
     ) -> None:
@@ -48,7 +83,7 @@ class TestsFlextInfraRuntimeRoot:
         hosted: bool,
         ci: bool,
     ) -> None:
-        """Native UV membership and exclusions elect runtime without flattening a child."""
+        """UV membership and exclusions elect runtime without flattening a child."""
         root = tmp_path / "monorepo"
         root.mkdir()
         u.Tests.initialize_git_repo(root)
@@ -79,7 +114,9 @@ class TestsFlextInfraRuntimeRoot:
             observed = tm.ok(FlextInfraWorkspaceDetector.resolution_context(child))
 
             owner = child if excluded else root
-            directory = policy.standalone_directory if hosted else policy.local_directory
+            directory = (
+                policy.standalone_directory if hosted else policy.local_directory
+            )
             tm.that(observed.project_root, eq=child.resolve())
             tm.that(observed.runtime_root, eq=owner.resolve())
             tm.that(observed.resolution_root, eq=owner / directory)
@@ -153,7 +190,7 @@ class TestsFlextInfraRuntimeRoot:
         hosted: bool,
         ci: bool,
     ) -> None:
-        """Hosted execution selects resolver input without changing physical ownership."""
+        """Hosted execution selects resolver input without changing ownership."""
         workspace = tmp_path / "runtime"
         workspace.mkdir()
         u.Tests.initialize_git_repo(workspace)
@@ -188,12 +225,16 @@ class TestsFlextInfraRuntimeRoot:
             )
             os.environ[gates.variable] = gates.value if ci else gates.local_value
             observed = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project))
-            directory = policy.standalone_directory if hosted else policy.local_directory
+            directory = (
+                policy.standalone_directory if hosted else policy.local_directory
+            )
             expected = workspace.resolve() / directory
 
             tm.that(observed.project_root, eq=project.resolve())
             tm.that(observed.runtime_root, eq=workspace.resolve())
-            tm.that(observed.environment_path, eq=workspace / c.Infra.ENVIRONMENT_DIRECTORY)
+            tm.that(
+                observed.environment_path, eq=workspace / c.Infra.ENVIRONMENT_DIRECTORY
+            )
             tm.that(observed.resolution_root, eq=expected)
             tm.that(observed.pyproject_path, eq=expected / c.PYPROJECT_FILENAME)
             tm.that(observed.lock_path, eq=expected / c.Infra.UV_LOCK_FILENAME)

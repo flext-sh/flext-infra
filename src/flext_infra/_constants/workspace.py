@@ -111,6 +111,29 @@ class FlextInfraConstantsWorkspace:
         ("--constraints", "constraints.txt"),
     )
     "UV resolution inputs written only inside the consumer environment."
+    BINDING_PACKAGE_SCRIPT: ClassVar[
+        str
+    ] = """import importlib.util, json, sys, sysconfig
+from pathlib import Path
+packages = {}
+for name in sys.argv[1:]:
+    spec = importlib.util.find_spec(name)
+    packages[name] = (
+        list(spec.submodule_search_locations)
+        if spec is not None and spec.submodule_search_locations is not None
+        else []
+    )
+print(json.dumps({
+    "prefix": sys.prefix,
+    "metadata_paths": list(dict.fromkeys(
+        str(Path(sysconfig.get_path(kind)).resolve(strict=True))
+        for kind in ("purelib", "platlib")
+    )),
+    "import_paths": sys.path,
+    "package_directories": packages,
+}))
+"""
+
     BINDING_MARKER_SCRIPT: ClassVar[str] = """import json, os, platform, sys
 version = sys.implementation.version
 implementation_version = '.'.join(str(part) for part in version[:3])
@@ -163,15 +186,6 @@ print(json.dumps({
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "fleet-verb.json"
     )
     "Typed receipts of the latest fleet verb run, one per governed member."
-    LIFECYCLE_VERBS: ClassVar[t.StrSequence] = (
-        "setup",
-        "gen",
-        "upg",
-        "setup",
-        "gen",
-        "gen",
-    )
-    "Fixed serial lifecycle, including the post-upgrade generation fixed point."
     LIFECYCLE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "validate-lifecycle.json"
     )

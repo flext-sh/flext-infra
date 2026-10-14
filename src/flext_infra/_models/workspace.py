@@ -9,14 +9,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m
+from flext_cli import m, u
+from typing_extensions import TypeForm
 
-from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra import c, p, t
+from flext_infra._models import (
+    FlextInfraModelsCheck,
+    FlextInfraModelsMixins,
+    FlextInfraModelsRope,
+)
+from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
-from flext_infra._models.check import FlextInfraModelsCheck
 
 
 class FlextInfraModelsWorkspace:
@@ -26,6 +30,103 @@ class FlextInfraModelsWorkspace:
     - ``ArbitraryTypesModel`` for mutable discovery payloads.
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
+
+    class NativeSourceWitness(m.ArbitraryTypesModel):
+        """One captured native scope graph and independent compiler evidence."""
+
+        source: Path = m.Field(description="Cold-elected physical Python source")
+        state: m.Cli.AtomicFileState = m.Field(
+            description="Bytes authenticated before and after observation",
+        )
+        module: p.Infra.RopeSourceModule = m.Field(
+            description="Native Rope module sharing the invocation's source graph",
+        )
+        code: p.Infra.NativeCodeIdentity = m.Field(
+            description="CPython compiler result, never executed",
+        )
+        scopes: t.MappingKV[str, p.Infra.RopeScope] = m.Field(
+            description="Native declaration scopes indexed by qualified identity",
+        )
+        statements: t.SequenceOf[FlextInfraModelsRope.LogicalStatement] = m.Field(
+            description="One native Rope logical-region pass over captured bytes",
+        )
+        finder: p.Infra.RopeSimilarFinder = m.Field(
+            description="Native semantic matcher shared across declarations",
+        )
+
+    class CodegenSourceAuthority(m.Value):
+        """Cold reference authority has no project publication capability."""
+
+        runtime: Path = m.Field(description="Authenticated native interpreter")
+        optimize: int = m.Field(ge=0, le=2, description="Native compiler optimization")
+        inputs: t.VariadicTuple[m.Cli.AtomicFileReceipt] = m.Field(
+            description="Pinned source/resource/distribution/runtime byte identities"
+        )
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            description="Authenticated physical producer membership"
+        )
+        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+            description="Cold-elected physical producer namespaces"
+        )
+
+    class NativeBindingEvidence(m.Value):
+        """Static binding and strict native executable transport."""
+
+        binding: str = m.Field(description="Module and lexical binding path")
+        kind: str = m.Field(description="Observed native descriptor category")
+        supplier: str = m.Field(description="Actual defining module")
+        name: str = m.Field(description="Advertised native name")
+        qualname: str = m.Field(description="Advertised qualified name")
+        code: str | None = m.Field(
+            default=None,
+            description="Native marshal transport compared through CodeType equality",
+        )
+        operands: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+            default=(),
+            description="Static executable links and native declaration inputs",
+        )
+        operational: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+            default=(),
+            description="Observable native cache state kept separate from executable links",
+        )
+
+    class NativeImportObservation(m.Value):
+        """Static physical and executable observations without publication authority."""
+
+        runtime: Path = m.Field(description="Exact observed native interpreter")
+        runtime_prefix: Path = m.Field(description="Physical interpreter environment")
+        modules: t.StrTuple = m.Field(description="Ordered elected loaded modules")
+        sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
+            description="Physical supplier and generated declaration origins",
+        )
+        bindings: t.VariadicTuple[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
+            m.Field(description="Complete static native binding observations")
+        )
+
+    class NativeImportReference(NativeImportObservation):
+        """One loaded epoch authenticated against its cold physical source."""
+
+        source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
+            description="Cold authority pinned by the capture call",
+        )
+
+    class NativeImportRequest(m.ArbitraryTypesModel):
+        """Loaded producer identities and pinned inputs for source authentication."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        modules: t.StrTuple = m.Field(
+            description="Loaded modules elected for this epoch"
+        )
+        source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
+            description="Cold authority for reference consumption, not publication",
+        )
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            description="Pinned payloads used exclusively by the source-view writer",
+            exclude=True,
+        )
+        import_roots: t.VariadicTuple[Path] = m.Field(
+            description="Physical import roots of all nominated and elected modules"
+        )
 
     class WorkspaceEnvironmentRequest(m.ContractModel):
         """Read-only request for validating the active workspace environment."""
@@ -40,6 +141,17 @@ class FlextInfraModelsWorkspace:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         repository_root: Annotated[Path, m.Field(description="Repository root path")]
+
+    class LifecycleFileObservation(m.ContractModel):
+        """Bounded physical file evidence without retaining source contents."""
+
+        path: Annotated[Path, m.Field(description="Observed physical leaf")]
+        sha256: Annotated[
+            str | None,
+            m.Field(description="Byte digest; absent for an absent leaf"),
+        ]
+        mode: Annotated[int | None, m.Field(description="Observed permission mode")]
+        size: Annotated[int, m.Field(ge=0, description="Observed byte count")]
 
     class LifecycleReceipt(m.ContractModel):
         """One public Make invocation; an absent outcome is never a green receipt."""
@@ -64,20 +176,133 @@ class FlextInfraModelsWorkspace:
         error: Annotated[
             str | None, m.Field(description="First execution failure, if observed")
         ] = None
+        repository_root: Annotated[
+            Path | None, m.Field(description="Repository whose public Makefile ran")
+        ] = None
+        environment_root: Annotated[
+            Path | None,
+            m.Field(description="Target environment resolved by canonical ownership"),
+        ] = None
+        before_files: Annotated[
+            t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleFileObservation],
+            m.Field(description="Config-declared file observations before execution"),
+        ] = ()
+        after_files: Annotated[
+            t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleFileObservation],
+            m.Field(description="Same bounded file observations after execution"),
+        ] = ()
+        elapsed_seconds: Annotated[
+            float | None, m.Field(ge=0, description="Measured invocation wall time")
+        ] = None
+        applicable: Annotated[
+            bool | None,
+            m.Field(
+                description="Observed applicability; absent for unreached commands"
+            ),
+        ] = None
+        applicability_reason: Annotated[
+            str | None,
+            m.Field(description="Observed reason a dependency stays a library"),
+        ] = None
+        execution_context: Annotated[
+            t.Infra.LifecycleContext | None,
+            m.Field(
+                description="Declared lifecycle context, absent for other receipts"
+            ),
+        ] = None
 
     class LifecycleReport(m.ContractModel):
         """Complete declared scope and ordered reached/unreached lifecycle receipts."""
 
         workspace_root: Annotated[Path, m.Field(description="Invoking workspace root")]
         scope: Annotated[t.VariadicTuple[Path], m.Field(description="Governed roots")]
+        observed_files: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Root-effective declared file observation scope"),
+        ] = ()
         receipts: Annotated[
             t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleReceipt],
             m.Field(description="Ordered public command receipts for the entire scope"),
         ]
 
+        @m.computed_field
+        @property
+        def executed_commands(self) -> int:
+            """Count only commands with a reaped native process outcome."""
+            return sum(receipt.outcome is not None for receipt in self.receipts)
+
+        @m.computed_field
+        @property
+        def failed_commands(self) -> int:
+            """Count causal execution or precondition failures."""
+            return sum(receipt.error is not None for receipt in self.receipts)
+
+        @m.computed_field
+        @property
+        def inapplicable_commands(self) -> int:
+            """Count explicit applicability decisions, never inferred passes."""
+            return sum(receipt.applicable is False for receipt in self.receipts)
+
+        @m.computed_field
+        @property
+        def unreached_commands(self) -> int:
+            """Count required commands whose execution has not been reached."""
+            return sum(
+                receipt.outcome is None
+                and receipt.error is None
+                and receipt.applicable is not False
+                for receipt in self.receipts
+            )
+
+    class WorkspaceRuntimeContext(m.ContractModel):
+        """Physical runtime ownership and its selected native resolution input."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        project_root: Annotated[
+            Path, m.Field(description="Submitted Git worktree root")
+        ]
+        runtime_root: Annotated[Path, m.Field(description="Physical runtime owner")]
+        resolution_root: Annotated[
+            Path, m.Field(description="Selected native UV project")
+        ]
+        pyproject_path: Annotated[
+            Path, m.Field(description="Selected resolution document")
+        ]
+        lock_path: Annotated[Path, m.Field(description="Selected immutable UV lock")]
+        environment_path: Annotated[
+            Path, m.Field(description="Physical shared environment")
+        ]
+        standalone: Annotated[
+            bool,
+            m.Field(
+                description="Installed native resolution view; independent of later CI flags"
+            ),
+        ]
+        installation_inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                description="Native lock and physical environment states captured after installation"
+            ),
+        ] = ()
+        native_install_exit_code: Annotated[
+            int | None,
+            m.Field(
+                description="Original frozen sync status; absent before installation",
+                ge=0,
+                le=255,
+            ),
+        ] = None
+
     class WorkspaceOperationReceipt(m.ContractModel):
         """Original in-process repository operation, with its observed effects."""
 
+        runtime_context: Annotated[
+            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
+            m.Field(
+                description="Authenticated installed association retained across later bootstrap failure"
+            ),
+        ] = None
         root: Annotated[Path, m.Field(description="Repository actually attempted")]
         executed: Annotated[bool, m.Field(description="Original operation was invoked")]
         outcome: Annotated[
@@ -237,19 +462,6 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Offending token when the contract is token-based"),
         ] = ""
 
-    class WorkspaceRuntimeContext(m.ContractModel):
-        """Physical runtime ownership and its selected native resolution input."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        project_root: Annotated[Path, m.Field(description="Submitted Git worktree root")]
-        runtime_root: Annotated[Path, m.Field(description="Physical runtime owner")]
-        resolution_root: Annotated[Path, m.Field(description="Selected native UV project")]
-        pyproject_path: Annotated[Path, m.Field(description="Selected resolution document")]
-        lock_path: Annotated[Path, m.Field(description="Selected immutable UV lock")]
-        environment_path: Annotated[Path, m.Field(description="Physical shared environment")]
-        standalone: Annotated[bool, m.Field(description="Actual hosted runner view")]
-
     class WorkspaceProjectContext(m.ContractModel):
         """Canonical context derived from one runtime working directory."""
 
@@ -310,6 +522,25 @@ class FlextInfraModelsWorkspace:
         vcs: Annotated[str, m.Field(description="Native VCS kind")]
         commit_id: Annotated[str, m.Field(description="Installed full commit identity")]
 
+    class PythonEnvironmentObservation(m.Value):
+        """Native metadata and package resolution from one elected interpreter."""
+
+        prefix: Annotated[Path, m.Field(description="Observed native sys.prefix")]
+        metadata_paths: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(
+                description="Native physical purelib and platlib install directories"
+            ),
+        ]
+        import_paths: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Native sys.path used for package resolution"),
+        ]
+        package_directories: Annotated[
+            t.MappingKV[str, t.VariadicTuple[Path]],
+            m.Field(description="Native package search locations by declared package"),
+        ]
+
     class DirectUrlReceipt(m.ContractModel):
         """Any installed distribution's PEP 610 receipt, read for its kind only.
 
@@ -346,17 +577,89 @@ class FlextInfraModelsWorkspace:
             default=None,
             description="Noneditable directory",
         )
+        virtual: str | None = m.Field(default=None, description="Virtual local project")
+        url: str | None = m.Field(default=None, description="Locked archive URL")
+
+    class LockedDependency(m.ContractModel):
+        """A native UV resolved edge, including its fork and requested extras."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
+        name: Annotated[t.NonEmptyStr, m.Field(description="Required distribution")]
+        version: Annotated[
+            str | None,
+            m.Field(description="Locked edge version when needed to disambiguate"),
+        ] = None
+        source: Annotated[
+            FlextInfraModelsWorkspace.LockedPackageSource | None,
+            m.Field(description="Locked edge source when needed to disambiguate"),
+        ] = None
+        marker: Annotated[
+            str | None, m.Field(description="Environment condition for this edge")
+        ] = None
+        extra: Annotated[
+            t.VariadicTuple[str],
+            m.Field(description="Requested extras; absent means none"),
+        ] = ()
 
     class LockedPackage(m.ContractModel):
         """Installed identity selected from the committed uv lock."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
-        name: Annotated[str, m.Field(description="Locked distribution name")]
-        version: Annotated[str, m.Field(description="Locked distribution version")]
+        name: Annotated[t.NonEmptyStr, m.Field(description="Locked distribution name")]
+        version: Annotated[
+            t.NonEmptyStr, m.Field(description="Locked distribution version")
+        ]
         source: Annotated[
             FlextInfraModelsWorkspace.LockedPackageSource,
             m.Field(description="Locked source identity"),
         ]
+        dependencies: Annotated[
+            t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+            m.Field(description="Resolved package edges; absent for a leaf package"),
+        ] = ()
+        optional_dependencies: Annotated[
+            t.MappingKV[
+                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
+            ],
+            m.Field(
+                alias="optional-dependencies",
+                description="Resolved edges by extra; absent when no extras exist",
+            ),
+        ] = u.Field(
+            default_factory=u.empty(
+                TypeForm(
+                    t.MappingKV[
+                        str,
+                        t.VariadicTuple["FlextInfraModelsWorkspace.LockedDependency"],
+                    ]
+                )
+            )
+        )
+        dev_dependencies: Annotated[
+            t.MappingKV[
+                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
+            ],
+            m.Field(
+                alias="dev-dependencies",
+                description="Resolved edges by development group; absent means none",
+            ),
+        ] = u.Field(
+            default_factory=u.empty(
+                TypeForm(
+                    t.MappingKV[
+                        str,
+                        t.VariadicTuple["FlextInfraModelsWorkspace.LockedDependency"],
+                    ]
+                )
+            )
+        )
+        resolution_markers: Annotated[
+            t.VariadicTuple[str],
+            m.Field(
+                alias="resolution-markers",
+                description="Package fork conditions; absent means no fork restriction",
+            ),
+        ] = ()
 
     class LockedEnvironment(m.ContractModel):
         """Typed installation identities, never a dependency resolver."""
@@ -364,8 +667,15 @@ class FlextInfraModelsWorkspace:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
         package: Annotated[
             t.VariadicTuple[FlextInfraModelsWorkspace.LockedPackage],
-            m.Field(description="Lock-owned package inventory"),
+            m.Field(min_length=1, description="Nonempty lock-owned package inventory"),
         ]
+        members: Annotated[
+            t.VariadicTuple[str],
+            m.Field(
+                validation_alias=m.AliasPath("manifest", "members"),
+                description="Native workspace members; absent outside a workspace",
+            ),
+        ] = ()
 
     class EditableDirectUrl(m.ContractModel):
         """Validated PEP 610 editable provenance payload."""

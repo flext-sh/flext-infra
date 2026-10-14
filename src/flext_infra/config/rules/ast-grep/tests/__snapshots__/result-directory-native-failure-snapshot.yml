@@ -1,0 +1,36 @@
+id: result-directory-native-failure
+snapshots:
+  ? |
+    if result.failure:
+        return compensate(layout, created, result.error or "directory failed", journal_write=True)
+  : fixed: |
+      if result.failure:
+          return compensate(layout, created, result, journal_write=True, context=result.error or "directory failed")
+    labels:
+    - source: compensate(layout, created, result.error or "directory failed", journal_write=True)
+      style: primary
+      start: 30
+      end: 113
+    - source: |-
+        if result.failure:
+            return compensate(layout, created, result.error or "directory failed", journal_write=True)
+      style: secondary
+      start: 0
+      end: 113
+  ? |
+    if result.failure:
+        return compensate(layout, created, result.error or f"directory {path}", journal_write=False)
+  : fixed: |
+      if result.failure:
+          return compensate(layout, created, result, journal_write=False, context=result.error or f"directory {path}")
+    labels:
+    - source: compensate(layout, created, result.error or f"directory {path}", journal_write=False)
+      style: primary
+      start: 30
+      end: 115
+    - source: |-
+        if result.failure:
+            return compensate(layout, created, result.error or f"directory {path}", journal_write=False)
+      style: secondary
+      start: 0
+      end: 115

@@ -241,6 +241,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
         class MakeEnvironmentShape:
             """Repository-shape knobs for the generated Make fixture."""
 
+            project_name: str = "fixture-project"
             package: bool = True
             examples_module: str | None = None
             extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = ()
@@ -263,7 +264,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             shape = u.Tests.MakeEnvironmentShape() if shape is None else shape
             role = c.Infra.MakeProfile(profile.value)
             repository = u.Tests.repository_ref(
-                "fixture-project",
+                shape.project_name,
                 role=role,
             ).model_copy(
                 update={
@@ -274,7 +275,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     "script_dispatch": shape.script_dispatch,
                 },
             )
-            project_root = tmp_path / profile.value / "fixture-project"
+            project_root = tmp_path / profile.value / shape.project_name
             u.Tests.WorktreeFixture.write_python_project(
                 project_root,
                 repository.distribution,
@@ -323,7 +324,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             repository_root = project_root
             workspace = u.Tests.workspace_spec(
                 repository,
-                project=u.Tests.project_spec("fixture-project"),
+                project=u.Tests.project_spec(shape.project_name),
             )
             request = u.Tests.conform_request(
                 project_root,

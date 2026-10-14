@@ -60,6 +60,59 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class SccReport(m.RootModel[tuple[SccLanguage, ...]]):
         """Native SCC groups, including an empty scan; malformed JSON fails."""
 
+    class DeptryError(m.ContractModel):
+        """Native deptry rule identity and complete diagnostic message."""
+
+        code: Annotated[
+            str,
+            m.Field(min_length=1, strict=True, description="Deptry rule code"),
+        ]
+        message: Annotated[
+            str,
+            m.Field(min_length=1, strict=True, description="Deptry diagnostic message"),
+        ]
+
+    class DeptryLocation(m.ContractModel):
+        """Native deptry location; dependency declarations have null positions."""
+
+        file: Annotated[
+            str,
+            m.Field(min_length=1, strict=True, description="Diagnostic file path"),
+        ]
+        line: Annotated[
+            int | None,
+            m.Field(
+                ge=0, strict=True, description="Source line, null for declarations"
+            ),
+        ]
+        column: Annotated[
+            int | None,
+            m.Field(
+                ge=0, strict=True, description="Source column, null for declarations"
+            ),
+        ]
+
+    class DeptryDiagnostic(m.ContractModel):
+        """Required deptry JSON record, never a partially recognized mapping."""
+
+        error: Annotated[
+            FlextInfraModelsGates.DeptryError,
+            m.Field(description="Deptry rule and diagnostic message"),
+        ]
+        module: Annotated[
+            str,
+            m.Field(
+                min_length=1, strict=True, description="Reported module or dependency"
+            ),
+        ]
+        location: Annotated[
+            FlextInfraModelsGates.DeptryLocation,
+            m.Field(description="Diagnostic file and nullable source positions"),
+        ]
+
+    class DeptryNativeReport(m.RootModel[tuple[DeptryDiagnostic, ...]]):
+        """Native deptry JSON array; only a valid empty array means no findings."""
+
     class GateContext(m.ContractModel):
         """Quality gate execution context and configuration."""
 

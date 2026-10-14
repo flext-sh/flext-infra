@@ -6,8 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import cast
 
 from flext_cli import u
@@ -20,42 +19,26 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     """Load Rope refactor helpers behind protocols."""
 
     @classmethod
-    def patched_ast(cls, source: str) -> ast.AST:
-        """Parse the real SDK patched AST and validate its native result.
+    def ignored_regions(
+        cls,
+        source: str,
+    ) -> t.VariadicTuple[t.Triple[int, int, t.MappingKV[str, str | None]]]:
+        """Read complete literal and comment ranges from Rope's native lexer.
 
         Returns:
-            The SDK AST with source-order information attached.
-
-        Raises:
-            TypeError: If the native parser does not return an AST.
+            Strictly validated native source coordinates and token metadata.
         """
-        value = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "get_patched_ast",
-        )(source, sorted_children=True)
-        if not isinstance(value, ast.AST):
-            msg = "Rope patched AST parser did not return an AST"
-            raise TypeError(msg)
-        return value
-
-    @classmethod
-    def write_patched_ast(cls, tree: ast.AST) -> str:
-        """Render the real SDK patched AST without replacing its writer.
-
-        Returns:
-            The source emitted by the native patched-AST writer.
-
-        Raises:
-            TypeError: If the native writer does not return source text.
-        """
-        value = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "write_ast",
-        )(tree)
-        if not isinstance(value, str):
-            msg = "Rope patched AST writer did not return source text"
-            raise TypeError(msg)
-        return value
+        adapter: t.ValueAdapter[
+            t.SequenceOf[t.Triple[int, int, t.MappingKV[str, str | None]]]
+        ] = u.type_adapter(
+            Sequence[tuple[int, int, dict[str, str | None]]],
+        )
+        return tuple(
+            adapter.validate_python(
+                cls.runtime_callable("rope.base.simplify", "ignored_regions")(source),
+                strict=True,
+            ),
+        )
 
     @staticmethod
     def change_set_members(
@@ -103,17 +86,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         if not isinstance(lines, p.Infra.RopeSourceLines):
             msg = "Rope SourceLinesAdapter does not satisfy its public contract"
             raise TypeError(msg)
-        regions_adapter: t.ValueAdapter[
-            t.SequenceOf[t.Triple[int, int, t.MappingKV[str, str | None]]]
-        ] = u.type_adapter(
-            Sequence[tuple[int, int, dict[str, str | None]]],
-        )
-        regions = tuple(
-            regions_adapter.validate_python(
-                cls.runtime_callable("rope.base.simplify", "ignored_regions")(source),
-                strict=True,
-            ),
-        )
+        regions = cls.ignored_regions(source)
         start = lines.get_line_start(layout.header_start)
         end = min(lines.get_line_end(layout.header_end) + 1, len(source))
         comments = "".join(
@@ -228,6 +201,10 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         *,
         arguments: t.MappingKV[str, str],
         resources: t.SequenceOf[p.Infra.RopeResource],
+        imports: t.StrSequence = (),
+        match_filter: Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool]
+        | None = None,
+        import_bindings: t.MappingKV[str, str] | None = None,
     ) -> p.Infra.RopeChangeSet:
         """Plan Rope 1.14 semantic changes without invoking Project.do.
 
@@ -239,12 +216,131 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
                 contract.
 
         """
-        factory = cls.runtime_callable("rope.refactor.restructure", "Restructure")
-        restructuring = factory(rope_project, pattern, goal, args=dict(arguments))
+        factory = cls.runtime_callable(
+            "flext_infra._utilities._rope.restructure", "FlextInfraRopeRestructure"
+        )
+        restructuring = factory(
+            rope_project,
+            pattern,
+            goal,
+            args=dict(arguments),
+            imports=list(imports),
+            match_filter=match_filter,
+            import_bindings=import_bindings,
+        )
         if not isinstance(restructuring, p.Infra.RopeRestructure):
             msg = "rope Restructure does not satisfy its public planning contract"
             raise TypeError(msg)
-        return restructuring.get_changes(resources=list(resources))
+        changes = restructuring.get_changes(resources=list(resources))
+        u.Cli.info(
+            "Rope restructuring "
+            f"matched={restructuring.matched_count} "
+            f"admitted={restructuring.admitted_count} pattern={pattern}"
+        )
+        return changes
+
+    @classmethod
+    def contract_matches(
+        cls,
+        module: p.Infra.RopePyModule,
+        pattern: str,
+        arguments: t.MappingKV[str, str],
+    ) -> t.VariadicTuple[p.Infra.RopeContractMatch]:
+        """Match native Rope patterns with declaration identity constraints.
+
+        Returns:
+            Native matches exposing only authenticated source coordinates.
+
+        Raises:
+            TypeError: When the SDK does not satisfy the matching contract.
+        """
+        finder = cls.runtime_callable("rope.refactor.similarfinder", "SimilarFinder")(
+            module
+        )
+        if not isinstance(finder, p.Infra.RopeSimilarFinder):
+            message = "Rope SimilarFinder does not satisfy its public contract"
+            raise TypeError(message)
+        matches = tuple(finder.get_matches(pattern, args=dict(arguments)))
+        if not all(isinstance(match, p.Infra.RopeContractMatch) for match in matches):
+            message = "Rope SimilarFinder returned an invalid match"
+            raise TypeError(message)
+        return matches
+
+    @classmethod
+    def semantic_regions(
+        cls,
+        module: p.Infra.RopePyModule,
+        pattern: str,
+        *,
+        arguments: t.MappingKV[str, str],
+        start: int = 0,
+        end: int | None = None,
+    ) -> t.VariadicTuple[t.Pair[int, int]]:
+        """Resolve source regions through Rope's identity-aware pattern matcher.
+
+        Returns:
+            Matched character ranges from the module's immutable source snapshot.
+        """
+        finder = cls.semantic_finder(module)
+        return tuple(finder.get_match_regions(pattern, arguments, start=start, end=end))
+
+    @classmethod
+    def semantic_finder(
+        cls,
+        module: p.Infra.RopePyModule,
+    ) -> p.Infra.RopeSimilarFinder:
+        """Reuse one native matcher across an immutable module's semantic queries.
+
+        Rope caches matches by pattern text. A reused pattern must retain its
+        identity arguments; distinct bindings require distinct wildcard names.
+
+        Returns:
+            Rope's identity-aware matcher for the supplied module.
+
+        Raises:
+            TypeError: If Rope does not expose its semantic region contract.
+        """
+        finder = cls.runtime_callable("rope.refactor.similarfinder", "SimilarFinder")(
+            module,
+        )
+        if not isinstance(finder, p.Infra.RopeSimilarFinder):
+            message = "Rope SimilarFinder does not expose semantic match regions"
+            raise TypeError(message)
+        return finder
+
+    @classmethod
+    def semantic_capture_region(
+        cls,
+        match: p.Infra.RopeContractMatch,
+        variable: str,
+    ) -> t.Pair[int, int]:
+        """Read a captured region through Rope's opaque native match boundary.
+
+        No syntax tree is parsed, inspected or traversed by this adapter.
+
+        Returns:
+            Native character coordinates of the named capture.
+
+        Raises:
+            ValueError: If the requested variable was not captured.
+            TypeError: If Rope returned an invalid region.
+        """
+        captured = match.get_ast(variable)
+        if captured is None:
+            message = f"Rope match has no captured variable: {variable}"
+            raise ValueError(message)
+        region = cls.runtime_callable(
+            "rope.refactor.patchedast",
+            "node_region",
+        )(captured)
+        if not isinstance(region, tuple) or len(region) != 2:
+            message = "Rope capture does not expose its native character region"
+            raise TypeError(message)
+        begin, end = region
+        if not isinstance(begin, int) or not isinstance(end, int):
+            message = "Rope capture region contains non-integer coordinates"
+            raise TypeError(message)
+        return begin, end
 
     @classmethod
     def create_move(
@@ -310,6 +406,26 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         if not isinstance(finder, p.Infra.RopeOccurrenceFinder):
             msg = "rope occurrence finder does not satisfy p.Infra.RopeOccurrenceFinder"
             raise TypeError(msg)
+        return finder
+
+    @classmethod
+    def lexical_occurrence_finder(
+        cls, project: p.Infra.RopeProject, name: str
+    ) -> p.Infra.RopeOccurrenceFinder:
+        """Find native lexical occurrences independently of last-binding inference.
+
+        Returns:
+            Rope's unfiltered finder, with strings and comments excluded.
+
+        Raises:
+            TypeError: If the finder does not satisfy its native contract.
+        """
+        finder = cls.runtime_callable("rope.refactor.occurrences", "Finder")(
+            project, name
+        )
+        if not isinstance(finder, p.Infra.RopeOccurrenceFinder):
+            message = "Rope lexical finder does not satisfy its native contract"
+            raise TypeError(message)
         return finder
 
     @classmethod

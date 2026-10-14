@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
@@ -21,6 +22,62 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
     """Durable transaction journal for Mise artifact generation."""
 
     @classmethod
+    def _generator_source_records(
+        cls,
+        producer: m.Infra.CodegenPhaseAnalysis | m.Infra.CodegenSourceAuthority | None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]:
+        """Encode one producer's generator inputs with their module roles.
+
+        A source inside one generator tree is a ``resource``; a Python source
+        inside it is graded further by its importable module role. Anything
+        outside every tree ships as a ``distribution`` input.
+
+        Args:
+            producer: Producer analysis whose inputs are encoded, or ``None``.
+
+        Returns:
+            The encoded generator sources, or the first encoding failure.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenJournalSource]]
+        if producer is None:
+            return result_type.ok(value=())
+        if isinstance(producer, m.Infra.CodegenSourceAuthority):
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
+            )
+
+            pinned = FlextInfraCodegenPreconditions.authority_inputs(producer)
+            if pinned.failure:
+                return result_type.from_failure(pinned)
+            source_inputs = pinned.value
+        else:
+            source_inputs = producer.inputs
+        generator_sources: list[m.Infra.CodegenJournalSource] = []
+        for source in source_inputs:
+            role: Literal[
+                "layer0", "family", "consumer", "resource", "distribution"
+            ] = "distribution"
+            for tree in producer.generator_trees:
+                if tree.root.path.name.endswith(
+                    ".dist-info"
+                ) or not source.path.is_relative_to(tree.root.path):
+                    continue
+                role = "resource"
+                if source.path.suffix == c.Infra.EXT_PYTHON:
+                    module = ".".join((
+                        tree.root.path.name,
+                        *source.path.relative_to(tree.root.path).with_suffix("").parts,
+                    ))
+                    role = u.Infra.import_module_role(module)
+                break
+            encoded = cls.source_record("generator", source)
+            if encoded.failure:
+                return result_type.from_failure(encoded)
+            generator_sources.append(encoded.value.model_copy(update={"role": role}))
+        return result_type.ok(value=tuple(generator_sources))
+
+    @classmethod
     def begin(
         cls,
         plan: m.Infra.MiseToolchainWorkspacePlan | m.Infra.CodegenFileSessionPlan,
@@ -28,6 +85,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         transaction_id: str,
         sources: t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]] = (),
         directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory] = (),
+        producer: m.Infra.CodegenPhaseAnalysis
+        | m.Infra.CodegenSourceAuthority
+        | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionJournal]:
         """Build staging authority before any disposable transaction root exists.
 
@@ -55,6 +115,11 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         encoded_sources = cls._merge_sources((), sources)
         if encoded_sources.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
+        generator_sources = cls._generator_source_records(producer)
+        if generator_sources.failure:
+            return r[m.Infra.CodegenTransactionJournal].from_failure(
+                generator_sources,
+            )
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
             {
@@ -66,6 +131,13 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 "projects": tuple(projects),
                 "file_participants": plan.layout.file_participants,
                 "sources": encoded_sources.value,
+                "generator_sources": tuple(generator_sources),
+                "generator_trees": producer.generator_trees
+                if producer is not None
+                else (),
+                "generator_modules": producer.generator_modules
+                if producer is not None
+                else (),
                 "directories": directories,
                 "entries": (),
             },
@@ -107,21 +179,17 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         encoded_sources = cls._merge_sources(journal.sources, sources)
         if encoded_sources.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
-        validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
-            m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
+        candidate = journal.model_copy(
+            update={
                 "state": "prepared",
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
                 "sources": encoded_sources.value,
-                "directories": journal.directories,
                 "entries": tuple(entries),
-                "staging_intents": journal.staging_intents,
-            },
+            }
+        )
+        validated = r[m.Infra.CodegenTransactionJournal].create_from_callable(
+            lambda: m.Infra.CodegenTransactionJournal.model_validate_json(
+                candidate.model_dump_json()
+            )
         )
         if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(
@@ -192,18 +260,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             )
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
-                "state": journal.state,
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
-                "sources": journal.sources,
+            journal.model_dump()
+            | {
                 "directories": (*journal.directories, *directories),
-                "entries": journal.entries,
-                "staging_intents": journal.staging_intents,
             },
         )
         if validated.failure:
@@ -306,19 +365,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 return result_type.from_failure(compared)
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
-                "state": journal.state,
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
-                "sources": journal.sources,
-                "directories": directories,
-                "entries": journal.entries,
-                "staging_intents": journal.staging_intents,
-            },
+            journal.model_dump() | {"directories": directories},
         )
         if validated.failure:
             return result_type.fail_op(
@@ -384,19 +431,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             )
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
-                "state": "committed",
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
-                "sources": journal.sources,
-                "directories": journal.directories,
-                "entries": journal.entries,
-                "staging_intents": journal.staging_intents,
-            },
+            journal.model_dump() | {"state": "committed"},
         )
         if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(
@@ -501,52 +536,6 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         if removed.failure:
             return r[bool].from_failure(removed)
         return r[bool].ok(value=True)
-
-    @classmethod
-    def source_record(
-        cls,
-        phase: str,
-        source: m.Cli.AtomicFileState,
-        previous: m.Infra.CodegenJournalSource | None = None,
-    ) -> p.Result[m.Infra.CodegenJournalSource]:
-        absent_parent = None
-        if source.parent_device is None or source.parent_inode is None:
-            if previous is not None:
-                absent_parent = previous.absent_parent
-            else:
-                witness = u.Cli.atomic_plan_directory_chain(source.path.parent)
-                if witness.failure:
-                    return r[m.Infra.CodegenJournalSource].from_failure(witness)
-                absent_parent = witness.value
-        incomplete_source = source.content is not None and any((
-            source.mode is None,
-            source.device is None,
-            source.inode is None,
-            source.link_count is None,
-            source.link_count is not None and source.link_count < 1,
-        ))
-        if incomplete_source:
-            return r[m.Infra.CodegenJournalSource].fail(
-                f"generation source identity is incomplete: {source.path}",
-            )
-        return r[m.Infra.CodegenJournalSource].ok(
-            m.Infra.CodegenJournalSource(
-                phase=phase,
-                path=source.path,
-                parent_device=source.parent_device,
-                parent_inode=source.parent_inode,
-                sha256=files.digest(source.content)
-                if source.content is not None
-                else None,
-                mode=source.mode,
-                device=source.device,
-                inode=source.inode,
-                link_count=source.link_count,
-                file_attributes=source.file_attributes,
-                reparse_tag=source.reparse_tag,
-                absent_parent=absent_parent,
-            ),
-        )
 
     @classmethod
     def _merge_sources(

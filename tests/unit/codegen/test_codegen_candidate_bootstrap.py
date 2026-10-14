@@ -14,8 +14,13 @@ import pytest
 from yaml.parser import ParserError
 
 from flext_infra import config, infra
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenPreconditions,
+    FlextInfraCodegenTransaction,
+)
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
@@ -23,7 +28,15 @@ def _write_candidate_targets(
     root: Path,
     targets: t.SequenceOf[m.Infra.CandidateBootstrapTargetSpec],
 ) -> Path:
-    """Declare recovery targets through the repository's current config owner."""
+    """Declare recovery targets through the repository's current config owner.
+
+    Args:
+        root: Workspace root whose conformed config file is rewritten.
+        targets: Candidate bootstrap target specs to declare.
+
+    Returns:
+        Path of the rewritten codegen config file declaring the targets.
+    """
     inputs = tm.ok(u.Infra.load_codegen_inputs(root))
     declaration = (inputs.spec.repository or m.Infra.RepositoryDeltaSpec()).model_copy(
         update={"candidate_bootstrap_targets": tuple(targets)},
@@ -83,6 +96,130 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
     @staticmethod
     @pytest.mark.slow
+    def test_public_bootstrap_rewrites_own_pyproject_and_repeats(
+        tmp_path: Path,
+    ) -> None:
+        """A self target retains declarations while its own projection advances."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "self",
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        declaration = _write_candidate_targets(
+            root,
+            (
+                m.Infra.CandidateBootstrapTargetSpec(
+                    path=Path(),
+                    what=c.Infra.CodegenConformSurface.PYPROJECT,
+                ),
+            ),
+        )
+        declared = tm.ok(
+            u.Cli.atomic_read_binary_file_state(declaration, required=True),
+        )
+        pyproject = root / c.PYPROJECT_FILENAME
+        regeneration_source = tm.ok(
+            u.Infra.pyproject_regeneration_source(
+                pyproject.read_text(encoding=c.DEFAULT_ENCODING),
+            ),
+        )
+        tm.ok(u.Cli.atomic_write_text_file(pyproject, regeneration_source))
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(pyproject, required=True),
+        )
+        command = m.Infra.CandidateBootstrapCommand(repository_root=root)
+
+        tm.ok(infra.bootstrap_candidate(command))
+        projected = tm.ok(
+            u.Cli.atomic_read_binary_file_state(
+                pyproject,
+                required=True,
+            ),
+        )
+        tm.that(projected.content, ne=before.content)
+        tm.ok(infra.bootstrap_candidate(command))
+
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(declaration, required=True)),
+            eq=declared,
+        )
+        tm.that(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(
+                    projected.path,
+                    required=True,
+                ),
+            ),
+            eq=projected,
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("foreign_change", [False, True])
+    def test_producer_continuation_requires_live_native_publication(
+        tmp_path: Path,
+        *,
+        foreign_change: bool,
+    ) -> None:
+        """A real journal receipt permits continuation only while sources are live."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "continuation",
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        source = root / "publication-input.txt"
+        source.write_text("captured producer input\n", encoding=c.DEFAULT_ENCODING)
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        destination = root / "publication-output.txt"
+        before = tm.ok(u.Infra.codegen_target_snapshot(destination))
+        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        planner = FlextInfraCodegenConform(
+            repository_root=root,
+            ports=None,
+            producer=producer,
+        )
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+            producer=producer,
+        )
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
+            files=(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=destination,
+                    before=before,
+                    desired_content=tm.not_none(state.content),
+                    desired_mode=state.mode,
+                    source_states=(state,),
+                ),
+            ),
+            inputs=(state,),
+        )
+        receipts: list[m.Infra.CodegenPhaseOutcome] = []
+        roots = {"@continuation": root}
+
+        def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
+            return transaction.publish_file_phase_locked(
+                scope_root,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
+                publication_receipts=receipts,
+            )
+
+        tm.ok(transaction.run_files_locked(roots, publish))
+        tm.that(bool(receipts), eq=True)
+        if foreign_change:
+            source.write_text("foreign source mutation\n", encoding=c.DEFAULT_ENCODING)
+
+        continued = planner.continue_after_publication(tuple(receipts))
+
+        tm.that(continued.success, eq=not foreign_change)
+        if foreign_change:
+            tm.that(continued.error, has=str(source))
+        tm.that(destination.read_bytes(), eq=state.content)
+
+    @staticmethod
+    @pytest.mark.slow
     def test_absent_resolution_parent_chains_publish_atomically_and_converge(
         tmp_path: Path,
     ) -> None:
@@ -92,7 +229,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             c.Infra.CodegenConformSurface.PYPROJECT,
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
-        views = tuple(candidate / relative for relative in inputs.spec.uv_resolution_pyprojects)
+        views = tuple(
+            candidate / relative for relative in inputs.spec.uv_resolution_pyprojects
+        )
         tm.that(bool(views), eq=True)
         for view in views:
             tm.that(view.parent.exists(), eq=False)
@@ -324,8 +463,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             encoding="utf-8",
         )
         initializer = package / c.Infra.INIT_PY
-        stale = f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n"
-        initializer.write_text(stale, encoding="utf-8")
+        initializer.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n",
+            encoding="utf-8",
+        )
         foreign = package / "authored"
         foreign.mkdir()
         authored = foreign / c.Infra.INIT_PY
@@ -349,15 +490,22 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         generated = tm.ok(
             u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
-        tm.that(generated.content, ne=stale.encode(c.DEFAULT_ENCODING))
+        tm.that(
+            generated.content,
+            ne=f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n".encode(
+                c.DEFAULT_ENCODING
+            ),
+        )
         observed = tm.ok(
             u.Cli.capture(
                 [
                     sys.executable,
                     "-c",
-                    "import importlib, sys; "
-                    "print(getattr(importlib.import_module(sys.argv[1]), "
-                    "sys.argv[2]).__name__)",
+                    (
+                        "import importlib, sys; "
+                        "print(getattr(importlib.import_module(sys.argv[1]), "
+                        "sys.argv[2]).__name__)"
+                    ),
                     package_name,
                     exported,
                 ],
@@ -426,7 +574,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(first_makefile, required=True),
         )
-        second_declaration = second / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+        second_declaration = (
+            second / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+        )
         original = second_declaration.read_text(encoding="utf-8")
         second_declaration.write_text("invalid: [\n", encoding="utf-8")
 
@@ -580,17 +730,15 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             candidate,
         )
         original = tm.ok(u.Infra.pyproject_regeneration_source(original))
-        conflict = "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
         corrupt = (
             original
             + "\n[tool."
             + tm.ok(u.Infra.pyproject_managed_file()).managed_tool_tables[0]
-            + "]\n"
-            + conflict
+            + "]\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
             if conflict_section == "tool"
             else original.replace(
                 "[dependency-groups]\n",
-                f"[dependency-groups]\n{conflict}",
+                "[dependency-groups]\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n",
                 1,
             )
         )
@@ -603,11 +751,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = TestsFlextInfraConformSupport.project_tree(candidate)
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
-        contract = FlextInfraCodegenConform.surface_contract(
+        destinations = FlextInfraCodegenConform.surface_contract(
             c.Infra.CodegenConformSurface.PYPROJECT,
             codegen=inputs.spec,
-        )
-        destinations = contract.destinations
+        ).destinations
         assert destinations is not None
 
         tm.ok(infra.bootstrap_candidate(command))

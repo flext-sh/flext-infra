@@ -45,6 +45,95 @@ class TestsFlextInfraRefactorViolationsSweep:
     """Behavior contract for the ``refactor violations-sweep`` verb."""
 
     @pytest.mark.parametrize("drift", ["none", "inode", "parent", "removed"])
+    def _assert_quiet_baseline(
+        self,
+        root: Path,
+        victim: Path,
+        quiet_before: m.Infra.ModScanReport,
+    ) -> None:
+        """Assert the single-rule baseline scans the victim without reporting it.
+
+        Args:
+            root: The sweep workspace root.
+            victim: The unrelated scanned source path.
+            quiet_before: The single-rule baseline scan report.
+        """
+        tm.that(
+            any(
+                entry.file == victim.relative_to(root) for entry in quiet_before.entries
+            ),
+            eq=False,
+        )
+        assert quiet_before.source_states is not None
+        tm.that(
+            any(state.path == victim for state in quiet_before.source_states),
+            eq=True,
+        )
+
+    def _inject_publication_drift(
+        self,
+        parent: Path,
+        sample: Path,
+        victim: Path,
+        drift: str,
+    ) -> None:
+        """Corrupt the published source identity for one drift scenario.
+
+        Args:
+            parent: The source parent directory of the sample.
+            sample: The admitted sample source path.
+            victim: The unrelated scanned source path.
+            drift: The declared drift scenario identifier.
+        """
+        if drift == "inode":
+            replacement = sample.with_suffix(".replacement")
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    replacement, sample.read_text(encoding=c.DEFAULT_ENCODING)
+                )
+            )
+            replacement.replace(sample)
+        elif drift == "parent":
+            preserved = parent.with_name("preserved-source")
+            parent.rename(preserved)
+            parent.mkdir()
+            for child in preserved.iterdir():
+                child.rename(parent / child.name)
+            preserved.rmdir()
+        elif drift == "removed":
+            victim.unlink()
+
+    def _assert_drift_rejected(
+        self,
+        root: Path,
+        before: m.Infra.ModScanReport,
+        chain: list[m.Infra.CodegenStagedFile],
+        quiet_before: m.Infra.ModScanReport | None,
+    ) -> None:
+        """Assert identity drift or unexplained removal rejects the deltas.
+
+        Args:
+            root: The sweep workspace root.
+            before: The baseline scan report.
+            chain: The published staged file chain.
+            quiet_before: The single-rule baseline scan, when drift removal.
+        """
+        changed = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        with pytest.raises(ValueError, match=r"identity drift|unexplained removal"):
+            u.Infra.rule_deltas(before, changed, publication_chain=tuple(chain))
+        if quiet_before is not None:
+            quiet_after = tm.ok(
+                FlextInfraModGateEngine.scan(
+                    root, fix=False, rule_ids=("repair-marker",)
+                )
+            )
+            with pytest.raises(ValueError, match="unexplained removal"):
+                u.Infra.rule_deltas(
+                    quiet_before,
+                    quiet_after,
+                    publication_chain=tuple(chain),
+                )
+
     def test_actual_publication_identity_and_complete_resolution_inventory(
         self, mod_workspace: Path, drift: str
     ) -> None:
@@ -90,18 +179,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             else None
         )
         if quiet_before is not None:
-            tm.that(
-                any(
-                    entry.file == victim.relative_to(root)
-                    for entry in quiet_before.entries
-                ),
-                eq=False,
-            )
-            assert quiet_before.source_states is not None
-            tm.that(
-                any(state.path == victim for state in quiet_before.source_states),
-                eq=True,
-            )
+            self._assert_quiet_baseline(root, victim, quiet_before)
         chain: list[m.Infra.CodegenStagedFile] = []
         observed = before
         for index, rule_id in enumerate(("repair-marker", "resolve-future")):
@@ -121,43 +199,9 @@ class TestsFlextInfraRefactorViolationsSweep:
                         item for item in observed.source_states if item.path == sample
                     ),
                 )
-                if drift == "inode":
-                    replacement = sample.with_suffix(".replacement")
-                    tm.ok(
-                        u.Cli.atomic_write_text_file(
-                            replacement, sample.read_text(encoding=c.DEFAULT_ENCODING)
-                        )
-                    )
-                    replacement.replace(sample)
-                elif drift == "parent":
-                    preserved = parent.with_name("preserved-source")
-                    parent.rename(preserved)
-                    parent.mkdir()
-                    for child in preserved.iterdir():
-                        child.rename(parent / child.name)
-                    preserved.rmdir()
-                elif drift == "removed":
-                    victim.unlink()
+                self._inject_publication_drift(parent, sample, victim, drift)
                 if drift != "none":
-                    changed = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
-                    with pytest.raises(
-                        ValueError, match=r"identity drift|unexplained removal"
-                    ):
-                        u.Infra.rule_deltas(
-                            before, changed, publication_chain=tuple(chain)
-                        )
-                    if quiet_before is not None:
-                        quiet_after = tm.ok(
-                            FlextInfraModGateEngine.scan(
-                                root, fix=False, rule_ids=("repair-marker",)
-                            )
-                        )
-                        with pytest.raises(ValueError, match="unexplained removal"):
-                            u.Infra.rule_deltas(
-                                quiet_before,
-                                quiet_after,
-                                publication_chain=tuple(chain),
-                            )
+                    self._assert_drift_rejected(root, before, chain, quiet_before)
         if drift == "none":
             rows = u.Infra.rule_deltas(before, observed, publication_chain=tuple(chain))
             future = next(row for row in rows if row.rule_id == "absent-future")

@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
+from types import MappingProxyType
 from typing import Self, override
 
 from rope.base.project import Project
@@ -38,11 +39,8 @@ class FlextInfraRopeProject(Project):
         are errors, never an invitation to consult a newer disk version.
         """
 
-        def __init__(self, sources: Mapping[Path, str]) -> None:
-            self._sources = {
-                path.resolve(): source.encode("utf-8")
-                for path, source in sources.items()
-            }
+        def __init__(self, sources: Mapping[Path, bytes]) -> None:
+            self._sources = MappingProxyType(dict(sources))
 
         def read(self, path: str) -> bytes:
             """Read the exact captured source, including proposed edits.
@@ -57,7 +55,7 @@ class FlextInfraRopeProject(Project):
     def from_snapshot(
         cls,
         root: str,
-        sources: Mapping[Path, str],
+        sources: Mapping[Path, bytes],
         source_folders: t.SequenceOf[str],
         ignored_resources: t.SequenceOf[str] = (),
     ) -> Self:

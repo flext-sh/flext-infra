@@ -20,7 +20,7 @@ from flext_infra.refactor import (
     FlextInfraImportNormalization,
 )
 from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import tm, u, c, m, p, r
+from tests import c, m, p, r, tm, u
 
 if TYPE_CHECKING:
     from tests import t
@@ -252,7 +252,7 @@ class TestsFlextInfraSemanticPublication:
         calls = 0
         accepted = False
 
-        def validate() -> p.Result[bool]:
+        def validate(_candidate_root: Path) -> p.Result[bool]:
             nonlocal calls
             calls += 1
             return r[bool].ok(accepted)
@@ -297,8 +297,13 @@ class TestsFlextInfraSemanticPublication:
         path.write_text(source, encoding="utf-8")
         failure = RuntimeError("consumer rejected")
 
-        def reject() -> p.Result[bool]:
-            consumer = tm.ok(u.Cli.run_raw((sys.executable, str(path))))
+        def reject(candidate_root: Path) -> p.Result[bool]:
+            consumer = tm.ok(
+                u.Cli.run_raw((
+                    sys.executable,
+                    str(candidate_root / path.relative_to(mod_workspace)),
+                ))
+            )
             tm.that(u.Cli.process_succeeded(consumer.outcome), eq=False)
             if raises:
                 raise failure
@@ -354,7 +359,7 @@ class TestsFlextInfraSemanticPublication:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text("", encoding="utf-8")
         original = initializer.read_bytes()
-        report = m.Infra.ModScanReport(
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset(),
             entries=(),
         )
@@ -455,19 +460,22 @@ class TestsFlextInfraSemanticPublication:
                 ),
             )
 
-        def validate() -> p.Result[bool]:
+        def validate(candidate_root: Path) -> p.Result[bool]:
+            candidate_consumer = candidate_root / consumer_path.relative_to(
+                mod_workspace
+            )
             normalized = tm.not_none(
                 FlextInfraImportNormalization.normalize_source(
-                    project_root=mod_workspace,
-                    file_path=consumer_path,
+                    project_root=candidate_root,
+                    file_path=candidate_consumer,
                     source=candidate,
                 ),
             )
             tm.that(normalized, eq=warmed)
             tm.that(
                 FlextInfraImportNormalization.normalize_source(
-                    project_root=mod_workspace,
-                    file_path=consumer_path,
+                    project_root=candidate_root,
+                    file_path=candidate_consumer,
                     source=normalized,
                 ),
                 eq=None,
@@ -484,8 +492,8 @@ class TestsFlextInfraSemanticPublication:
                             ")\n"
                             "normalized = FlextInfraImportNormalization"
                             ".normalize_source(\n"
-                            f"    project_root=Path({str(mod_workspace)!r}),\n"
-                            f"    file_path=Path({str(consumer_path)!r}),\n"
+                            f"    project_root=Path({str(candidate_root)!r}),\n"
+                            f"    file_path=Path({str(candidate_consumer)!r}),\n"
                             f"    source={candidate!r},\n"
                             ")\n"
                             f"assert normalized == {normalized!r}\n"
@@ -493,10 +501,13 @@ class TestsFlextInfraSemanticPublication:
                             f"assert run() == {current.stem!r}\n"
                         ),
                     ),
-                    cwd=mod_workspace,
+                    cwd=candidate_root,
                     options=m.Cli.ProcessOptions(
                         env={
-                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent),
+                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                                candidate_root
+                                / package.parent.relative_to(mod_workspace)
+                            ),
                         },
                     ),
                 ),
@@ -551,11 +562,20 @@ class TestsFlextInfraSemanticPublication:
             env={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent)},
         )
 
-        def validate() -> p.Result[bool]:
+        def validate(candidate_root: Path) -> p.Result[bool]:
+            candidate_options = options.model_copy(
+                update={
+                    "env": {
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                            candidate_root / package.parent.relative_to(mod_workspace)
+                        ),
+                    },
+                },
+            )
             consumer = u.Cli.run(
                 command,
-                cwd=mod_workspace,
-                options=options,
+                cwd=candidate_root,
+                options=candidate_options,
             )
             tm.ok(consumer)
             tm.that(u.Cli.process_succeeded(consumer.value.outcome), eq=True)
@@ -571,11 +591,11 @@ class TestsFlextInfraSemanticPublication:
             tm.ok(published)
         else:
             tm.fail(published, has="consumer rejected")
-        tm.that(initializer.read_bytes() != original, eq=True)
+        tm.that(initializer.read_bytes() != original, eq=accepted)
         consumer = tm.ok(
             u.Cli.run(command, cwd=mod_workspace, options=options),
         )
-        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=accepted)
         tm.that(declaration.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
@@ -601,19 +621,40 @@ class TestsFlextInfraSemanticPublication:
         return tuple(plans)
 
     @pytest.mark.parametrize("raises", [False, True])
-    def test_rejected_semantic_acceptance_preserves_published_files(
+    def test_rejected_semantic_acceptance_preserves_original_files(
         self,
         mod_workspace: Path,
         *,
         raises: bool,
     ) -> None:
-        """Consumer rejection reports failure without erasing successful writes."""
+        """The complete candidate is consumed before any original file changes."""
         plans = self._plans(mod_workspace)
         failure = RuntimeError("semantic acceptance rejected")
 
-        def reject() -> p.Result[bool]:
+        def reject(candidate_root: Path) -> p.Result[bool]:
             for plan in plans:
-                tm.that(plan.path.read_bytes(), eq=plan.desired_content)
+                candidate = candidate_root / plan.path.relative_to(mod_workspace)
+                tm.that(candidate.read_bytes(), eq=plan.desired_content)
+                tm.that(plan.path.read_bytes(), eq=plan.before.content)
+            consumer = tm.ok(
+                u.Cli.run_raw(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            "import runpy, sys; "
+                            "assert all(runpy.run_path(path)['value'] == 'after' "
+                            "for path in sys.argv[1:])"
+                        ),
+                        *(
+                            str(candidate_root / plan.path.relative_to(mod_workspace))
+                            for plan in plans
+                        ),
+                    ),
+                    cwd=candidate_root,
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
             if raises:
                 raise failure
             return r[bool].fail(str(failure))
@@ -636,7 +677,7 @@ class TestsFlextInfraSemanticPublication:
                 has=str(failure),
             )
         for plan in plans:
-            tm.that(plan.path.read_bytes(), eq=plan.desired_content)
+            tm.that(plan.path.read_bytes(), eq=plan.before.content)
         # A subsequent explicitly accepted operation can publish a new candidate.
         fresh = tuple(
             plan.model_copy(
@@ -658,13 +699,13 @@ class TestsFlextInfraSemanticPublication:
         )
 
     @pytest.mark.parametrize("linked", [False, True])
-    def test_changed_middle_identity_preserves_other_publications(
+    def test_changed_middle_identity_rejects_before_other_publications(
         self,
         mod_workspace: Path,
         *,
         linked: bool,
     ) -> None:
-        """A stale middle target never overwrites WIP or cancels valid writes."""
+        """Complete admission rejects stale identity before any file is changed."""
         first, second, third = self._plans(
             mod_workspace,
             ("first.py", "second.py", "third.py"),
@@ -682,8 +723,8 @@ class TestsFlextInfraSemanticPublication:
                 repository_root=mod_workspace,
             ),
         )
-        tm.that(first.path.read_bytes(), eq=first.desired_content)
-        tm.that(third.path.read_bytes(), eq=third.desired_content)
+        tm.that(first.path.read_bytes(), eq=first.before.content)
+        tm.that(third.path.read_bytes(), eq=third.before.content)
         tm.that(second.path.read_bytes(), eq=observed)
 
     @staticmethod

@@ -20,6 +20,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from flext_infra import config, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
@@ -34,7 +35,6 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         distribution: str,
         *,
         dependencies: t.StrSequence = (),
-        optional: t.StrSequence | None = None,
         groups: str = "",
         uv: str = "",
     ) -> None:
@@ -43,16 +43,12 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         These are actual local packages, rather than command stand-ins. Their
         build backend and supported Python range follow the production owner.
         No build or installation is performed by this metadata fixture.
+        ``groups`` carries any extra TOML text inserted after the ``[project]``
+        dependencies, such as optional feature tables and dependency groups.
         """
         root.mkdir(parents=True, exist_ok=True)
         build = config.Infra.codegen.scaffold.build
         python = config.Infra.codegen.toolchain.python_required_version
-        optional_table = (
-            "[project.optional-dependencies]\n"
-            f"feature = {json.dumps(list(optional))}\n"
-            if optional is not None
-            else ""
-        )
         (root / c.PYPROJECT_FILENAME).write_text(
             "[build-system]\n"
             f"requires = {json.dumps(list(build.requirements))}\n"
@@ -62,7 +58,6 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             'version = "1.0.0"\n'
             f"requires-python = {json.dumps(python)}\n"
             f"dependencies = {json.dumps(list(dependencies))}\n"
-            f"{optional_table}"
             f"{groups}\n{uv}\n",
             encoding="utf-8",
         )
@@ -84,6 +79,9 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         The caller is an owned test reached through the repository Make test
         surface. Its local Git origins remain real repositories; no resolver
         command, dependency metadata or failure is substituted.
+
+        Returns:
+            The raw resolver command outcome.
         """
         return u.Cli.run_raw(
             [
@@ -119,14 +117,15 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             Every ``(url, rev, sha)`` Git source the checkout lock pins.
 
         """
-        from flext_infra.workspace import FlextInfraWorkspaceDetector
-
-        toml = TestsFlextInfraUtilitiesTomlMixin
         context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project_root))
         lock = context.lock_path.read_text(encoding="utf-8")
         sources: t.MutableMappingKV[str, t.Triple[str, str, str]] = {}
-        for package in toml.toml_tables_at(lock, "package"):
-            source = toml.toml_mapping(package.get("source"))
+        for package in TestsFlextInfraUtilitiesTomlMixin.toml_tables_at(
+            lock, "package"
+        ):
+            source = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
+                package.get("source")
+            )
             locator = source.get("git")
             if isinstance(locator, str):
                 parts = urlsplit(locator)
@@ -137,26 +136,27 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             local = source.get("editable", source.get("directory"))
             if isinstance(local, str):
                 directory = (context.lock_path.parent / local).resolve()
-                workspace = tm.ok(
+                repository = tm.ok(
                     FlextInfraWorkspaceDetector.load_workspace_spec(directory),
-                )
-                repository = workspace.repository
+                ).repository
                 tm.that(repository.distribution, eq=package.get("name"))
-                line = tm.ok(
-                    u.Infra.flext_integration_line(
-                        codegen=tm.ok(u.Infra.load_codegen_inputs(directory)).spec,
-                        repository_root=directory,
-                    ),
-                )
                 head = tm.ok(
                     u.Cli.capture(
                         [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD],
                         cwd=directory,
                     ),
                 ).strip()
-                sources[repository.url] = (repository.url, line.branch, head)
-        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
-        infra = fixture.repository_ref(
+                sources[repository.url] = (
+                    repository.url,
+                    tm.ok(
+                        u.Infra.flext_integration_line(
+                            codegen=tm.ok(u.Infra.load_codegen_inputs(directory)).spec,
+                            repository_root=directory,
+                        ),
+                    ).branch,
+                    head,
+                )
+        infra = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
             config.Infra.codegen.infra_repository.distribution,
         ).url
         head = tm.ok(
@@ -165,7 +165,11 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
                 cwd=project_root,
             ),
         ).strip()
-        sources[infra] = (infra, fixture.provider_branch(), head)
+        sources[infra] = (
+            infra,
+            TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+            head,
+        )
         return tuple(sources.values())
 
     @staticmethod
@@ -194,8 +198,6 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
                 u.Cli.capture([c.Infra.UV, "cache", "dir"], cwd=project_root),
             ).strip(),
         )
-        from flext_infra.workspace import FlextInfraWorkspaceDetector
-
         context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project_root))
         workspace = tm.ok(
             FlextInfraWorkspaceDetector.load_workspace_spec(context.runtime_root),
@@ -273,21 +275,26 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
 
         Git may speak only the ``file`` protocol, uv makes no network request
         and skips its GitHub API shortcut, so a fixture that still reaches a
-        remote fails instead of passing on a live network.
+        remote fails instead of passing on a live network. Global, system and
+        inherited command configuration cannot add competing URL rewrites:
+        the numbered configuration consists only of these declared mirrors.
 
         Returns:
             The resulting ``t.StrMapping``.
 
         """
-        count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
         hosts = sorted(path.name for path in mirrors.iterdir() if path.is_dir())
         environment = {
-            "GIT_CONFIG_COUNT": str(count + len(hosts)),
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_SYSTEM": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_PARAMETERS": "",
+            "GIT_CONFIG_COUNT": str(len(hosts)),
             "GIT_ALLOW_PROTOCOL": "file",
             "UV_OFFLINE": "1",
             "UV_NO_GITHUB_FAST_PATH": "1",
         }
-        for index, host in enumerate(hosts, start=count):
+        for index, host in enumerate(hosts):
             environment[f"GIT_CONFIG_KEY_{index}"] = (
                 f"url.{(mirrors / host).as_uri()}/.insteadOf"
             )

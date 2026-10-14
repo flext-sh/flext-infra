@@ -581,10 +581,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             FlextInfraConfigModelsScaffold.ScaffoldProjectSpec,
             m.Field(description="Scaffold project specification"),
         ]
-        upstream: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Upstream branch the project integrates on"),
-        ]
         runtime_dependency_overlay: Annotated[
             t.StrSequence,
             m.Field(description="Runtime dependency overlay requirement lines"),

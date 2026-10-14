@@ -88,6 +88,123 @@ without another writer outside the journal. Initial provisioning remains the
 responsibility of `make setup`. Real commands work without wrapping each call in
 `direnv exec`.
 
+Library defaults resolve through the concrete config class's import-package resource,
+not its declaration file's depth or the checkout's `config/` directory. Editable and
+wheel consumers use the same namespace owner; a missing declared packaged file fails
+without borrowing repository or sibling defaults. Target and local overlays remain
+explicit repository inputs, separate from the frozen library singleton.
+
+The single-layer schema loader follows that same concrete-package resource contract
+through stdlib resource discovery. Parent-depth guesses, worktree paths and fallback
+searches are not default owners. Missing required defaults retain their native failure.
+Installed-wheel acceptance must identify and exercise the actual distributed artifact;
+an editable source read or a prior editable pass cannot retroactively prove wheel
+resources, template identity or consumer behavior.
+
+Upgrade installs the newly resolved lock through its existing frozen provisioning
+owner and verifies its runtime provenance before the next producer. Package election
+resolves the current physical import path independently of loaded-module caches;
+a retired wheel origin does not
+prove the source tree that a new producer will execute. Native provisioning failure
+stops that producer without rewriting the resolved lock or undoing published files.
+
+Conformance captures producer identity before request prelude, planning, staging,
+or journal effects. Cold package election and loaded function/class provenance must
+agree. The retained native file states and physical tree manifests include provider
+code, package resources, distribution metadata, editable pointer files, and project
+metadata read during ownership election. Distribution names and namespace names are
+separate identities; ambiguous ownership is a failure.
+
+The captured cold module election is retained with the same native manifests in
+phase inputs, journal transitions, and publication receipts. Revalidation uses the
+same registered-provider selector and compares the complete election, not only
+facade ancestors. Newly imported providers and changed physical bindings require
+fresh pre-planning authentication. Distinct metadata directory identities remain
+distinct even when their declared distribution names match. A Git-locked rendering
+engine is checked by the typed environment provenance owner against both URL and
+commit; absent PEP 610 provenance never becomes a version-only success.
+Registered distribution metadata and physical provider ownership remain the producer
+selection authority. Loaded declaration authentication has no separate first-party
+package inventory: elected third-party providers retain the same source, descriptor,
+and executed-code requirements. Namespace spelling or a `site-packages` path never
+authorizes omitting a declaration or accepting an otherwise unproven factory.
+Selecting writable editable members authenticates the installed PEP 610 receipt,
+editable pointer inventory, and declared Git checkout association. This election
+does not import member code or certify its execution. The normal environment
+verification separately authenticates the loaded code; producer capture also
+retains its own code and resource proof before generation.
+Loaded-code checks bind physical declarations, function code, executable wrapper
+links, property accessors, and MRO suppliers. They do not require operational class
+variables, initialized settings singletons, or config data to equal class-body literals;
+the actual consumer captures typed config and resource inputs separately.
+
+Producer authentication uses a shared native Rope declaration graph and compiles
+captured physical source without executing it. It does not import a second copy of
+an already loaded producer. Fresh-process imports remain publication-consumer
+checks; they cannot substitute for callback-free source authentication. Source
+receipts are checked again after observation, before an authenticated reference is
+returned.
+
+Native dataclass and named-tuple methods require a physical field-layout witness, native
+construction metadata and descriptor identity, and correspondence with code emitted
+by the authenticated generator. A compiler filename or cached field table alone is
+not evidence. A missing physical/native construction witness fails explicitly rather
+than evaluating arbitrary declaration expressions or importing dormant providers.
+Source-declared descriptor aliases authenticate the receiver's physical lexical
+declaration and the exact imported supplier binding. Relative imports resolve from
+the declaring module's package; class attributes are read as raw descriptors through
+the native MRO without invoking descriptor callbacks. The receiver alias must retain
+that descriptor identity, and the actual supplier declaration and executed function
+must match physical source. Replacing either side, its source, or its code fails;
+membership of the supplier in the receiver's MRO does not waive alias authentication.
+An alias assigned after a method declaration in the same class resolves from
+that class's physical namespace before the module namespace. An assignment
+before that declaration retains its source-bound module reference. A later
+class-local name never changes an earlier binding. An absent binding remains a
+failure; authentication never manufactures an operand from a path or a missing
+name.
+Native class attribute access preserves method/property identity, exposes a
+staticmethod's exact function, and binds a classmethod to the exact accessed class.
+Alias checks verify those source-declared forms against raw receiver storage without
+calling descriptor hooks. Bound methods enter the same supplier/source/code checks;
+matching functions with a different bound class are not equivalent. An alias mismatch
+retains its failure and reports bounded receiver/module/attribute, source identifier,
+supplier owner, and raw binding-kind metadata, never operand representations.
+An unresolved factory binding reports bounded, escaped identifier, module/package
+registration, receiver/declaration, physical source path, and supplier-kind context.
+Diagnostics never render the operand, its material values, or a source excerpt; they
+preserve the failed admission rather than authorizing an unknown factory.
+Native compiler inputs preserve the class's actual bases and its own declared
+descriptors. An inherited constructor is not an explicitly declared dataclass
+constructor. Authentication does not replay a class body, decorator, metaclass, or
+construction hook. Function compilation uses authenticated native suppliers and
+data-only attachment targets; alias operands and compiler constructor bindings
+require admission before invocation. Value comparison must not invoke authored
+equality, hashing, or attribute access.
+Compiler field defaults use the existing native operand-admission contract.
+Immutable scalar defaults are valid inputs; a default with a `__set_name__`
+callback remains inadmissible before native class assembly.
+Dataclass ancestry is compared with its source-declared bindings and retained as
+supplier evidence, not replayed to construct compiler data. Native assembly uses an
+object-rooted data-only class with authenticated declarations and fields; neither
+ABC ancestry nor a supplier namespace authorizes executing a receiver metaclass or
+inherited subclass hook again.
+Source bindings retain null literals inside a typed value; a null annotation or
+default never becomes a successful null `FlextResult` payload or a substituted type.
+Native generated methods are compiled in batches whose starting lines depend on
+other generated methods. Their comparison uses the same fixed starting line on
+immutable copies of both code objects, preserving compiler filenames, executable
+code, metadata and closure checks. Authored functions retain exact source positions.
+
+Every phase binds that same captured context to its staged consumer inputs. Journal
+transitions preserve it instead of rediscovering loaded origins after publication.
+Native tree authentication precedes source filtering; derived interpreter bytecode is
+not a source input. Added resources or directories, changed bytes, retired roots, and
+changed import election invalidate admission. Only exact journal output or staging
+receipts authorize membership changes. Publication observation authenticates the full
+producer closure before selecting the requested consumer scope. None of this proves
+an earlier process whose source context was not captured.
+
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from
@@ -104,14 +221,16 @@ installed tool directories ahead of the host's shared shims. This includes the
 self-managed Mise executable: a shim named `mise` otherwise invokes the host
 release instead of the project release. Activation does not install tools or
 write locks. The `.envrc` watches `.mise.toml` and `mise.lock` to reload after
-`make upg`. A missing pin requires `make upg`; a runtime that is not yet installed
-requires `make setup`, whose provisioning happens before activation.
+`make upg`. Audit reports a missing pin; only `make upg` may resolve and write it.
+A runtime that is not yet installed requires `make setup`, whose provisioning
+happens before activation.
 Both setup and upgrade resolve the executable through `mise which python` at the
 shared environment-sync boundary and pass that exact path to uv. Recursive Make
 calls do not require a caller-provided `SETUP_PYTHON` environment variable.
-Make and direnv restrict global and system configuration discovery to the
-elected runtime's `.mise` directory; unrelated host tool declarations never
-belong to project provisioning.
+Make provisioning and the shared workspace reader restrict global and system
+configuration discovery to the elected runtime's `.mise` directory; unrelated
+host tool declarations never belong to project provisioning. Direnv activation
+also exposes operator-owned host tools, without installing or resolving them.
 
 Setup provisions the available frozen toolchain without writing `mise.lock`;
 audit owns its pin and completeness verdicts. `make upg` resolves the declared
@@ -137,11 +256,21 @@ reading a gate identity does not load the pytest execution or collection owners.
 The producer declares the Markdown collection plugin as a runtime dependency
 because its shipped pytest collection implementation imports that plugin.
 
-An attached project inherits both locks and the physical environment of its
-Git superproject. Its `make setup` and `make upg` delegate to that root before
-installing tools or resolving dependencies. A standalone checkout owns those
+An associated project inherits the locks and physical environment of its
+authenticated Git or native UV workspace. Its `make setup` and `make upg`
+delegate full toolchain provisioning and dependency resolution to that root.
+A standalone checkout owns those
 operations itself. Only `upg` resolves moving Git branches; `setup` installs the
 exact committed lock without changing it.
+
+`help` and `.envrc` only observe association and never install its reader.
+Before native association is known, public `setup` and `upg` may provision
+exclusively the UV reader from the existing lock of the authenticated containing
+Git scope. This uses the same Mise release qualifier, checksum verification and
+staging cleanup as full bootstrap. It neither resolves nor upgrades an ancestral
+lock. Native UV then elects the runtime owner before normal delegation proceeds.
+The hosted-provider branch selects standalone execution before this reader
+provisioning or ancestor discovery.
 
 Every repository runs independently in remote CI, including a superproject.
 Remote checkout never initializes members. The CI gate token does not change
@@ -162,6 +291,11 @@ The project's authored dependency categories retain their identity. Native
 resolver views derive from those declarations without promoting dev or examples
 requirements to runtime dependencies. Sources, overrides and Make routing come
 from the generator and are never repaired in their projections.
+In particular, Infra consumes Tests through its development requirements; Core
+consumes Infra and Tests through development and example requirements. These
+reciprocal development requirements remain resolver inputs and do not create
+runtime dependency cycles. Tests' runtime use of Infra keeps its declared
+category.
 
 Fleet execution consumes the canonical runtime dependency waves, with names
 ordered within each wave. It invokes each selected member's public Makefile
@@ -179,8 +313,10 @@ declared generation and repair verbs; dependency resolution requires a separate,
 explicit `make upg` at the selected workspace or standalone owner.
 Git dependencies follow their declared integration branches, and `APPLY` stays removed.
 
-One `make upg` run converges. It resolves the Mise lock before provisioning,
-upgrades `uv.lock`, installs the upgraded generator and conforms dependency floors.
+One `make upg` run provisions the frozen producer before corrective pyproject
+projection, without requiring final runtime admission. The elected runtime
+owner resolves both native views; attached members delegate that operation
+to their workspace.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -190,11 +326,16 @@ native lock payloads or substitute manual installation commands.
 
 `codegen.scaffold.project.retired_dev` declares development distributions that
 must no longer reach managed `dev` or `codegen` groups. Conformance filters them
-from existing groups, optional development extras, and member contributions;
+from existing groups and member contributions;
 declaring the same distribution as a required development floor fails. Retire
 obsolete typing stubs here when their runtime SDK supplies inline typing, then
 regenerate and run `make upg` to reconcile locks and the installed environment.
 Do not uninstall packages manually or weaken the type checker.
+
+PEP 621 optional extras and PEP 735 dependency groups retain their separate
+categories, including when both declare a name such as `dev` or `codegen`.
+Conformance preserves each extra's requirement strings, bounds, markers and
+origins; a matching group name does not authorize moving or deleting the extra.
 
 Member contributions carry per-occurrence provenance in both managed development
 groups. CUSTOM entries retain their full constraints and origins; removing a
@@ -234,10 +375,22 @@ with their existing editable policy. Authored native workspace declarations and
 custom sources are preserved rather than erased by a generic FLEXT rewrite.
 Regenerate the owner with `make gen` and update its locks with `make upg` when
 the declared composition changes.
-Dependency-floor updates select explicit `dependency_profiles` declarations or
-the infrastructure repository declared by the topology. A consumer configuration
-file containing only project metadata or editor settings does not declare another
-floor owner.
+Runtime requirements are calculated from the target's import use through the native
+dependency analysis. Generation consumes the target's authenticated PEP 621
+projection; neither a project-name catalog nor an upstream dependency profile may
+inject runtime requirements. The typed `required_flext_dev` policy adds the shared
+development suppliers only to `internal_flext` targets and excludes their own
+distribution. Dependency-floor updates rewrite only the selected target's PEP 621
+requirements and dependency groups, retaining markers, extras, direct sources and
+comments. They never write the installed generator's configuration or another
+checkout's declarations.
+`make initialize KIND=internal_flext` supplies a declaration value to the native
+`codegen init` owner for that Makefile's target only. The owner plans the target's
+`config/codegen.yaml` through the existing guarded declaration transaction before
+rendering its Makefile. It rejects a conflicting existing kind and never broadcasts
+the root's value to members. Each member receives a separate explicit request from
+the invoking root. Omitting `KIND` consumes the target's own declaration; it never
+authorizes classification by project name or installed dependencies.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
 
@@ -250,8 +403,8 @@ are parsed by Git's native boolean GET operation. A malformed value fails before
 provisioning and preserves Git's diagnostic; it never becomes an exclusion.
 Run runtime actions through the root Make dispatcher. Its recipes use the
 setup-owned interpreter without selecting a member's lock for synchronization. Only
-setup and upgrade provision dependencies. A provenance failure is repaired through setup,
-not through a `--no-sync` override or a source-path injection.
+setup and upgrade provision dependencies. A stale Git binding requires canonical
+generation and `make upg`, then setup; never a manual installer or source override.
 
 ## Runtime environment
 
@@ -279,11 +432,20 @@ borrowed from another checkout fails before candidate checks or publication.
 ## Mise toolchain
 
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
-release as a `[tools]` entry, and `mise.lock` pins it like every other tool. One host
-Mise capable of reading the committed lock provisions that entry; setup verifies
-the installed release and enters the recursive Make lifecycle through it. Every
-later `mise` resolved through the shims is the pinned release, and `make audit`
+release as a `[tools]` entry, and `mise.lock` pins it like every other tool. Setup
+provisions its recorded release asset and verifies the checksum before entering
+the recursive Make lifecycle. A complete self-pin does not require a host Mise.
+Without that pin, setup stops before provisioning; `make upg` can establish it
+using an available native Mise. Upgrade qualifies the final self-pin again
+before installing tools and entering the lifecycle. Every later `mise` resolved
+through the release's own shims is the pinned release, and `make audit`
 (`codegen mise-proof`) fails when the running Mise differs from the lock.
+
+The runtime's `.mise.toml` remains a native project configuration. The optional
+global configuration has the distinct path `.mise/config.toml` under that same
+runtime owner; its absence does not select the operator's global configuration.
+Project resolution writes the project lock in project scope. It never classifies
+the project manifest as global or updates unrelated host tools.
 
 `make upg` publishes the Makefile through the producer half of `gen`. When that
 publication changes the Makefile, the running recipe stops naming its own
@@ -294,16 +456,20 @@ generate it with the current generator (`make gen`) before its first `make upg`.
 Separate `mise.version`, bootstrap launchers and staged lock-convergence scripts
 are not lifecycle owners.
 
-`toolchain.tools` in `config/codegen.yaml` declares every fleet tool. Each comes from a
-native, checksum-locked owner (aqua, GitHub releases, conda, or a Mise core backend);
-the toolchain model rejects an `npm:` selector at load (ADR-025). A tool whose upstream
+`toolchain.tools` in the packaged `config/codegen.yaml` owns native tool declarations;
+the toolchain model rejects a Mise `npm:` selector (ADR-025). A tool whose upstream
 release metadata publishes no checksum declares `lock_checksum: false`.
+ADR-025's October 9 amendment requires distributed JavaScript tools, including
+FLEXT's, to use one owned Bun project, `package.json` and a frozen lock. It does not
+restore Mise npm backends or retire native Node wrappers where used. Source-owner
+implementation and real installed-consumer proof are required before claiming this
+cutover complete; the amendment itself is not a runtime receipt.
 
 `make setup` and `make upg` pass the explicit declared key list
 (`toolchain.mise_install_keys`) to `mise install`. A bare `mise install` would also
 provision every tool of the operator's global Mise registry, so no generated recipe
-runs one. After the environment is provisioned, `make setup` runs the reality proof
-(`flext-infra codegen mise-proof`) before `post-setup`. For each declared tool, in
+runs one. After setup provisions the environment, `make audit` runs the reality proof
+(`flext-infra codegen mise-proof`). For each declared tool, in
 order, it stops at the first defect:
 
 1. the `mise.lock` entry exists, names a version the toolchain selector accepts, and
@@ -323,13 +489,13 @@ the shared shims to the first `mise` on PATH. Caches and installations stay out 
 
 Mise reaches GitHub to install a tool missing from its cache and to resolve
 releases during `make upg`. Only `make upg` writes `mise.lock` and `uv.lock`;
-`make setup` never writes either. A missing or incompatible Mise lock entry fails
-with its original diagnostic and exit status, without disabling lockfiles or
-retrying. Setup checks whether `uv.lock` agrees with the manifests. A matching lock uses
-`--locked`; a drifted lock emits its diagnostic and installs the committed lock
-with `--frozen`, without rewriting it. Drift and any resulting dependency
-incompatibility remain red until `make upg` produces matching locks. A missing
-lock fails with an actionable diagnostic. A failed native resolver or installer
+`make setup` never writes either. Setup provisions current committed locks without
+resolving them; audit owns missing, stale or incomplete lock verdicts, and CI runs
+audit after setup. Functional installation failures remain red with their original
+diagnostic and exit status, without disabling lockfiles or retrying. Setup installs
+`uv.lock` with `--frozen`, without an audit verdict or rewrite. Audit judges manifest
+satisfaction and lock integrity; drift remains red until canonical upgrade repairs
+it. A failed native resolver or installer
 retains its original failure; no downgrade, retry or disabled lock policy masks it.
 Only successful resolution, installation and generation establish alignment.
 The platforms declared by `toolchain.mise_lockfile_platforms` compose the lock
@@ -404,6 +570,36 @@ targets account for attempted effects; remaining targets stay pending. Final
 accounting cannot mark an invocation complete while any authorized effect is
 pending. This inventory covers publication effects, not unchanged files or a
 repository's unexecuted checks.
+
+The operation receipt separately records its requested surface, elected repository
+roots, and the actual completed transaction batches, including unchanged outputs.
+`initialize` qualifies only its Makefile bootstrap; its read-only verification does
+not require or certify complete generation. Complete generation qualifies its
+managed and documentation batches after each has settled. A complete `all` scope
+can verify the `self` subset only when that repository root is in its recorded
+coverage. Checks authenticate source, generator, output and physical identities
+without planning, rendering, repairing or replacing the receipt. Missing coverage
+and changed identities remain failures.
+
+Workspace Make bootstrap composes the root and eligible members' actual receipts
+after each has published once. A member failure prevents completed aggregate
+coverage. Member eligibility reads PEP 610 metadata, editable path inventory and
+package resolution from the elected physical Python environment. A foreign API
+caller does not lend its installed packages to that decision. Resolution observed
+in that Python is distinguished from loaded-code execution; loaded-code provenance
+remains checked when the caller is the elected interpreter. Hosted topology uses
+the declared hosted-provider flag independently of the local CI gate partition.
+
+Installed metadata comes from that Python's physical `purelib` and `platlib`
+directories. Its `sys.path` supplies separate import-resolution observations.
+Editable source-tree `egg-info` stays outside the installed inventory; duplicate
+installed metadata and directories outside the elected prefix remain failures.
+
+PEP 735 dependency groups retain string requirements and `include-group` tables
+in order, including repeated occurrences. Group references are local to their
+declaring project; absent references, cycles and normalized name collisions fail.
+Runtime and optional dependency metadata retain PEP 508 strings. Development
+groups remain groups and are never promoted into distribution runtime metadata.
 
 The pytest runner retains the native exit code when startup fails before a final
 JUnit report is produced. Its process-outcome receipt and raw log remain available,
@@ -503,6 +699,12 @@ planning report at `.reports/codegen-plan.json` records each selected repository
 outcome, exception type and original traceback. Generation reports failures at
 their affected files and retains successfully generated files. Changes made
 outside the generator do not authorize restoration of earlier workspace bytes.
+Transaction recovery and public `abort_locked` consume native `p.FailureLike` values,
+not error strings. A successful result is rejected before journal inspection or cleanup;
+an empty failure remains a failure. The initiating exception, error code and metadata
+survive recovery, while `cleanup_error`, `recovery_context` and exception notes record
+secondary diagnostics. A validator's `ok(False)` is an explicit publication rejection,
+not a native failure whose metadata may be reconstructed from its message.
 Lazy binding discovery parses package initializers only, so unrelated malformed
 consumer code cannot invalidate an otherwise valid declaration projection.
 
@@ -710,10 +912,22 @@ payloads and machine paths are not exported with these fingerprints.
 through the existing workspace CLI. The report names the declared signing format,
 file references and each setting's effective origin/scope and native process outcome.
 It does not read key/trust files, invoke signing/default-key commands or consult a
-keyring. A missing setting preserves Git's absent-key outcome. File references can
-point to unavailable files; discovery does not claim verified trust or an observed
-public fingerprint. The native signature verifier remains the authority for those
-claims.
+keyring. Undeclared settings preserve Git's absent-key outcome (`1`, with no stdout
+or stderr) and nullable references, not an empty path. Empty declarations, unsupported
+signing formats and native query failures remain errors. File references can point to
+unavailable files; discovery does not claim verified trust or an observed fingerprint.
+For SSH, Git's `key::` form and its accepted deprecated raw `ssh-` form are literal
+public declarations, never paths. Their base64 envelope and encoded key-type agreement
+are checked without reading files or contacting an agent; malformed declarations fail
+without exporting their payload. Algorithm usability and trust still require the
+selected native signing or verification action, not this observation.
+The CLI emits the typed report as JSON, excluding native values. Neither `status` nor
+original check/test capture selects signing: capture binds the typed target policy and
+producer evidence. Direct `u.Infra.git_create_gate_attestation` and
+`u.Infra.git_verify_gate_attestation` select signing/publication or signature verification;
+their required trust input and native key/signature failures remain fail-loud. A valid
+observation is never signed proof, and absent signing material does not gate unrelated
+offline producers.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The

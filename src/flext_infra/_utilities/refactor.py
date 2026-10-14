@@ -10,7 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import ExitStack, contextmanager
 from itertools import chain
 from pathlib import Path
 
@@ -33,7 +34,111 @@ class FlextInfraUtilitiesRefactor:
     """
 
     @staticmethod
-    def violations_totals(report: m.Infra.ModScanReport) -> m.Infra.ViolationsTotals:
+    def publish_mod_native_artifact(
+        root: Path, staged_path: Path
+    ) -> m.Cli.AtomicFileReceipt:
+        """Retain exact scanner bytes before disposing its operation staging."""
+        staged = u.Cli.atomic_read_binary_file_receipt(
+            staged_path, required=True
+        ).unwrap()
+        if staged.sha256 is None:
+            msg = "native artifact lacks its authenticated digest"
+            raise ValueError(msg)
+        directory = root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH.parent / "native"
+        u.Cli.ensure_dir(directory).unwrap()
+        before = u.Cli.atomic_read_binary_file_receipt(
+            directory / f"{staged.sha256}.jsonl"
+        ).unwrap()
+        if before.device is None:
+            return u.Cli.atomic_publish_staged_binary_file_receipt_guarded(
+                before, staged
+            ).unwrap()
+        if before.sha256 != staged.sha256 or before.size != staged.size:
+            msg = "native artifact digest path contains different bytes"
+            raise ValueError(msg)
+        return before
+
+    @staticmethod
+    @contextmanager
+    def mod_native_readers(
+        artifacts: tuple[m.Cli.AtomicFileReceipt, ...],
+    ) -> Generator[t.MappingKV[Path, p.Cli.AtomicFileReader]]:
+        """Retain one authenticated descriptor per artifact for one consumer pass.
+
+        Args:
+            artifacts: The authenticated artifact receipts being read.
+
+        Yields:
+            One authenticated binary reader per artifact path.
+
+        Raises:
+            ValueError: When the artifact inventory has duplicate paths.
+        """
+        with ExitStack() as stack:
+            readers = {
+                artifact.path: stack.enter_context(
+                    u.Cli.atomic_binary_file_reader(artifact)
+                )
+                for artifact in artifacts
+            }
+            if len(readers) != len(artifacts):
+                msg = "mod native artifact inventory has duplicate paths"
+                raise ValueError(msg)
+
+            yield readers
+
+    @staticmethod
+    def mod_native_payload(
+        finding: m.Infra.ModScanFinding,
+        readers: t.MappingKV[Path, p.Cli.AtomicFileReader],
+    ) -> t.JsonMapping:
+        """Hydrate one complete native record explicitly through its retained reader.
+
+        Args:
+            finding: The native scan finding owning the record.
+            readers: The retained authenticated readers by artifact path.
+
+        Returns:
+            The hydrated native record payload.
+
+        Raises:
+            ValueError: When the finding lacks its artifact or the hydrated
+                record differs from its captured evidence.
+        """
+        receipt = finding.native_receipt
+        if receipt is None:
+            msg = "mod finding lacks its authenticated native artifact"
+            raise ValueError(msg)
+        record = finding.native_record
+        content = readers[receipt.path].read_range(record.offset, record.length)
+        if u.Cli.sha256_bytes(content) != record.sha256:
+            msg = "mod native record digest differs from its captured evidence"
+            raise ValueError(msg)
+        payload = u.Cli.json_loads(content).unwrap()
+        if not isinstance(payload, Mapping):
+            msg = "mod native record is not a JSON object"
+            raise ValueError(msg)
+        if (
+            payload.get("ruleId") != finding.rule_id
+            or payload.get("text") != finding.text
+            or payload.get("range") != finding.range
+            or payload.get("replacement") != finding.replacement
+            or payload.get("severity") != finding.severity
+            or payload.get("replacementOffsets")
+            != (
+                None
+                if finding.replacement_offsets is None
+                else finding.replacement_offsets.model_dump()
+            )
+        ):
+            msg = "mod operational fields differ from their native record"
+            raise ValueError(msg)
+        return payload
+
+    @staticmethod
+    def violations_totals(
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+    ) -> m.Infra.ViolationsTotals:
         """Capture native totals without service behavior in data models.
 
         Returns:
@@ -48,179 +153,340 @@ class FlextInfraUtilitiesRefactor:
         )
 
     @staticmethod
-    def rule_deltas(
-        before: m.Infra.ModScanReport | m.Infra.ModTextReport,
-        after: m.Infra.ModScanReport | m.Infra.ModTextReport,
-        *,
-        inventory: tuple[tuple[str, str], ...] = (),
-        repository_root: Path | None = None,
-        projects: t.SequenceOf[Path] = (),
-        publication_chain: tuple[m.Infra.CodegenStagedFile, ...] | None = None,
-    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
-        """Compare lexical occurrences, or prove module absence through publication.
+    def _indexed_source_states(
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+    ) -> dict[Path, m.Cli.AtomicFileState]:
+        """Index one report's captured source states by path.
 
-        Without a publication chain the comparison is explicitly lexical. A supplied
-        chain is never replaced by guessed correspondence when authentication fails.
+        Args:
+            report: Completed native scan owning the captured states.
 
         Returns:
-            Per-repository and per-rule occurrence deltas.
+            Source states indexed exactly once per path.
 
         Raises:
-            ValueError: Native engines differ or a text finding lacks project ownership.
+            ValueError: When the scan lacks a complete source inventory or
+                two captured states disagree for one path.
         """
-        engine = "ast-grep" if isinstance(before, m.Infra.ModScanReport) else "text"
-        if isinstance(before, m.Infra.ModScanReport) != isinstance(
-            after, m.Infra.ModScanReport
-        ):
-            msg = "rule comparison requires the same native engine"
+        if report.source_states is None:
+            msg = "semantic correspondence lacks complete source inventory"
             raise ValueError(msg)
-        endpoints: dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]] = {}
-        sources: list[dict[Path, m.Cli.AtomicFileState]] = []
-        if publication_chain is not None:
-            if not isinstance(before, m.Infra.ModScanReport) or not isinstance(
-                after, m.Infra.ModScanReport
-            ):
-                msg = "semantic correspondence requires native AST findings"
+        indexed: dict[Path, m.Cli.AtomicFileState] = {}
+        for state in report.source_states:
+            if indexed.setdefault(state.path, state) != state:
+                msg = f"scan inventory identity disagrees: {state.path}"
                 raise ValueError(msg)
-            catalog: dict[tuple[str, str], tuple[str | None, bool]] = {}
-            for report in (before, after):
-                if report.source_states is None:
-                    msg = "semantic correspondence lacks complete source inventory"
-                    raise ValueError(msg)
-                indexed: dict[Path, m.Cli.AtomicFileState] = {}
-                for state in report.source_states:
-                    if indexed.setdefault(state.path, state) != state:
-                        msg = f"scan inventory identity disagrees: {state.path}"
-                        raise ValueError(msg)
-                for entry in report.entries:
-                    key = (entry.repository, entry.rule_id)
-                    descriptor = (entry.catalog_digest, entry.module_absence)
-                    if (
-                        not entry.catalog_digest
-                        or catalog.setdefault(key, descriptor) != descriptor
-                    ):
-                        msg = f"native catalog correspondence changed: {key}"
-                        raise ValueError(msg)
-                    if (
-                        entry.source_state is None
-                        or indexed.get(entry.source_state.path) != entry.source_state
-                    ):
-                        msg = (
-                            f"finding differs from complete scan inventory: "
-                            f"{entry.file}"
-                        )
-                        raise ValueError(msg)
-                sources.append(indexed)
-            for receipt in publication_chain:
-                path = receipt.before.path
-                previous = endpoints.get(path)
-                if previous is not None and previous[1] != receipt.before:
-                    msg = f"publication identity continuity broken: {path}"
-                    raise ValueError(msg)
-                if receipt.replacement is None or receipt.replacement.path != path:
-                    msg = f"publication receipt is not an admitted destination: {path}"
-                    raise ValueError(msg)
-                endpoints[path] = (
-                    previous[0] if previous else receipt.before,
-                    receipt.replacement,
+        return indexed
+
+    @staticmethod
+    def _admit_scan_entry(
+        entry: m.Infra.ModOccurrence | m.Infra.ModTextFinding,
+        catalog: dict[tuple[str, str], tuple[str | None, bool]],
+        indexed: dict[Path, m.Cli.AtomicFileState],
+    ) -> None:
+        """Admit one scan finding against the established catalog correspondence.
+
+        Args:
+            entry: Native scan finding being admitted.
+            catalog: Established repository and rule catalog correspondence.
+            indexed: The report's source states indexed by path.
+
+        Raises:
+            ValueError: When the catalog correspondence changed or the
+                finding differs from the complete scan inventory.
+        """
+        key = (entry.repository, entry.rule_id)
+        descriptor = (entry.catalog_digest, entry.module_absence)
+        if (
+            not entry.catalog_digest
+            or catalog.setdefault(key, descriptor) != descriptor
+        ):
+            msg = f"native catalog correspondence changed: {key}"
+            raise ValueError(msg)
+        if (
+            entry.source_state is None
+            or indexed.get(entry.source_state.path) != entry.source_state
+        ):
+            msg = f"finding differs from complete scan inventory: {entry.file}"
+            raise ValueError(msg)
+
+    @staticmethod
+    def _publication_endpoints(
+        publication_chain: tuple[m.Infra.CodegenStagedFile, ...],
+    ) -> dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]]:
+        """Fold the publication chain into per-path before/after endpoints.
+
+        Args:
+            publication_chain: Authenticated staged publication receipts.
+
+        Returns:
+            Before and after file endpoints for every published path.
+
+        Raises:
+            ValueError: When publication identity continuity is broken or a
+                receipt is not an admitted destination.
+        """
+        endpoints: dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]] = {}
+        for receipt in publication_chain:
+            path = receipt.before.path
+            previous = endpoints.get(path)
+            if previous is not None and previous[1] != receipt.before:
+                msg = f"publication identity continuity broken: {path}"
+                raise ValueError(msg)
+            if receipt.replacement is None or receipt.replacement.path != path:
+                msg = f"publication receipt is not an admitted destination: {path}"
+                raise ValueError(msg)
+            endpoints[path] = (
+                previous[0] if previous else receipt.before,
+                receipt.replacement,
+            )
+        return endpoints
+
+    @staticmethod
+    def _admit_publication_identity(
+        sources: t.SequenceOf[dict[Path, m.Cli.AtomicFileState]],
+        endpoints: dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]],
+    ) -> None:
+        """Prove each path's original and final source identity.
+
+        Args:
+            sources: Before and after source states indexed by path.
+            endpoints: Before and after file endpoints per published path.
+
+        Raises:
+            ValueError: When the original or final source identity drifted,
+                or a source was removed without authenticated provenance.
+        """
+        for path in sorted(sources[0].keys() | sources[1].keys() | endpoints.keys()):
+            original, final = endpoints.get(
+                path, (sources[0].get(path), sources[0].get(path))
+            )
+            expected_before = (
+                original
+                if original is not None and original.content is not None
+                else None
+            )
+            if sources[0].get(path) != expected_before or sources[1].get(path) != final:
+                cause = (
+                    "original source identity drift"
+                    if sources[0].get(path) != expected_before
+                    else "unexplained removal"
+                    if sources[1].get(path) is None
+                    else "final source identity drift"
                 )
-            for path in sorted(
-                sources[0].keys() | sources[1].keys() | endpoints.keys()
+                msg = f"publication {cause}: {path}"
+                raise ValueError(msg)
+
+    @classmethod
+    def _authenticated_endpoints(
+        cls,
+        before: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
+        after: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
+        publication_chain: tuple[m.Infra.CodegenStagedFile, ...],
+    ) -> t.Pair[
+        list[dict[Path, m.Cli.AtomicFileState]],
+        dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]],
+    ]:
+        """Authenticate scan inventories and the staged publication chain.
+
+        Args:
+            before: Baseline native report claiming provenance.
+            after: Final native report claiming provenance.
+            publication_chain: Authenticated staged publication receipts.
+
+        Returns:
+            The indexed source inventories and the publication endpoints.
+        """
+        sources: list[dict[Path, m.Cli.AtomicFileState]] = []
+        catalog: dict[tuple[str, str], tuple[str | None, bool]] = {}
+        for report in (before, after):
+            indexed = cls._indexed_source_states(report)
+            for entry in report.entries:
+                cls._admit_scan_entry(entry, catalog, indexed)
+            sources.append(indexed)
+        endpoints = cls._publication_endpoints(publication_chain)
+        cls._admit_publication_identity(sources, endpoints)
+        return sources, endpoints
+
+    @staticmethod
+    def _finding_repository(
+        entry: m.Infra.ModOccurrence | m.Infra.ModTextFinding,
+        repository_root: Path | None,
+        topology: t.SequenceOf[Path],
+    ) -> str:
+        """Resolve the repository owner of one native finding.
+
+        Args:
+            entry: Native scan or text finding being counted.
+            repository_root: Root resolving text finding paths into the
+                declared topology.
+            topology: Declared project topology ordered by path depth.
+
+        Returns:
+            The repository name owning the finding.
+
+        Raises:
+            ValueError: When a text finding lacks declared project topology
+                or falls outside it.
+        """
+        if isinstance(entry, m.Infra.ModOccurrence):
+            return entry.repository
+        if repository_root is None:
+            msg = "text comparison requires declared project topology"
+            raise ValueError(msg)
+        path = (repository_root / entry.file).resolve()
+        owner = next(
+            (project for project in topology if path.is_relative_to(project)),
+            None,
+        )
+        if owner is None:
+            msg = f"text finding outside declared topology: {entry.file}"
+            raise ValueError(msg)
+        return owner.name
+
+    @staticmethod
+    def _admit_module_absence_state(
+        entry: m.Infra.ModOccurrence,
+    ) -> m.Cli.AtomicFileState:
+        """Admit one module-absence finding's captured authentication.
+
+        Args:
+            entry: Native scan finding carrying the absence authentication.
+
+        Returns:
+            The captured source state backing the absence.
+
+        Raises:
+            ValueError: When the module occurrence lacks authentication.
+        """
+        state = entry.source_state
+        if state is None or state.content is None or not entry.catalog_digest:
+            msg = f"module occurrence lacks authentication: {entry.file}"
+            raise ValueError(msg)
+        return state
+
+    @staticmethod
+    def _module_absence_root(
+        entry: m.Infra.ModOccurrence,
+        state: m.Cli.AtomicFileState,
+        repository: str,
+        proven: set[tuple[str, str]],
+    ) -> str:
+        """Authenticate one module-absence root span and return its lexical text.
+
+        Args:
+            entry: Native scan finding carrying the absence authentication.
+            state: The captured source state admitted for the finding.
+            repository: Resolved repository owner of the finding.
+            proven: Repository and rule pairs proven absent, updated in place.
+
+        Returns:
+            The lexical occurrence text standing in for the absent module.
+
+        Raises:
+            ValueError: When the module occurrence is not the native root.
+        """
+        offsets = entry.range.get("byteOffset")
+        start, end = offsets.get("start"), offsets.get("end")
+        native_offsets = (
+            isinstance(start, int)
+            and not isinstance(start, bool)
+            and isinstance(end, int)
+            and not isinstance(end, bool)
+        )
+        # The Python module predicate owns the root; spans may omit trivia.
+        native_root = (
+            native_offsets
+            and 0 <= start <= end <= len(state.content)
+            and state.content[start:end] == entry.text.encode(c.DEFAULT_ENCODING)
+        )
+        if not native_root:
+            msg = f"module occurrence is not the native root: {entry.file}"
+            raise ValueError(msg)
+        proven.add((repository, entry.rule_id))
+        return f"module-absence:{entry.catalog_digest}"
+
+    @classmethod
+    def _report_occurrence_indexes(
+        cls,
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
+        repository_root: Path | None,
+        topology: t.SequenceOf[Path],
+        proven: set[tuple[str, str]],
+        publication_chain: tuple[m.Infra.CodegenStagedFile, ...] | None,
+    ) -> t.Pair[
+        t.MutableMappingKV[t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]],
+        t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]],
+    ]:
+        """Count one report's lexical occurrences and entry positions.
+
+        Args:
+            report: Native report whose entries are counted.
+            repository_root: Root resolving text finding paths into the
+                declared topology.
+            topology: Declared project topology ordered by path depth.
+            proven: Repository and rule pairs proven absent, updated in place.
+            publication_chain: Publication chain activating absence proof.
+
+        Returns:
+            The occurrence counter and entry position index per repository
+            and rule key.
+
+        Raises:
+            ValueError: When a text finding lacks project ownership or a
+                module absence lacks authentication or a native range.
+        """
+        occurrences: t.MutableMappingKV[
+            t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
+        ] = defaultdict(Counter)
+        positions: t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]] = defaultdict(
+            list
+        )
+        for index, entry in enumerate(report.entries):
+            repository = cls._finding_repository(entry, repository_root, topology)
+            text = entry.text
+            if (
+                publication_chain is not None
+                and isinstance(entry, m.Infra.ModOccurrence)
+                and entry.module_absence
             ):
-                original, final = endpoints.get(
-                    path, (sources[0].get(path), sources[0].get(path))
-                )
-                expected_before = (
-                    original
-                    if original is not None and original.content is not None
-                    else None
-                )
-                if (
-                    sources[0].get(path) != expected_before
-                    or sources[1].get(path) != final
-                ):
-                    cause = (
-                        "original source identity drift"
-                        if sources[0].get(path) != expected_before
-                        else "unexplained removal"
-                        if sources[1].get(path) is None
-                        else "final source identity drift"
-                    )
-                    msg = f"publication {cause}: {path}"
+                state = cls._admit_module_absence_state(entry)
+                if not isinstance(entry.range.get("byteOffset"), Mapping):
+                    msg = f"module occurrence lacks native range: {entry.file}"
                     raise ValueError(msg)
-        proven: set[tuple[str, str]] = set()
-        topology = sorted(projects, key=lambda item: len(item.parts), reverse=True)
-        counters: t.ListOf[
+                text = cls._module_absence_root(entry, state, repository, proven)
+            key = (repository, entry.rule_id)
+            occurrences[key][str(entry.file), text] += 1
+            positions[key].append(index)
+        return occurrences, positions
+
+    @staticmethod
+    def _rule_delta_rows(
+        engine: str,
+        counters: t.SequenceOf[
             t.MutableMappingKV[
                 t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
             ]
-        ] = []
-        indexes: t.ListOf[t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]]] = []
-        for report in (before, after):
-            occurrences: t.MutableMappingKV[
-                t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
-            ] = defaultdict(Counter)
-            positions: t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]] = (
-                defaultdict(list)
-            )
-            for index, entry in enumerate(report.entries):
-                if isinstance(entry, m.Infra.ModScanFinding):
-                    repository = entry.repository
-                else:
-                    if repository_root is None:
-                        msg = "text comparison requires declared project topology"
-                        raise ValueError(msg)
-                    path = (repository_root / entry.file).resolve()
-                    owner = next(
-                        (
-                            project
-                            for project in topology
-                            if path.is_relative_to(project)
-                        ),
-                        None,
-                    )
-                    if owner is None:
-                        msg = f"text finding outside declared topology: {entry.file}"
-                        raise ValueError(msg)
-                    repository = owner.name
-                text = entry.text
-                if (
-                    publication_chain is not None
-                    and isinstance(entry, m.Infra.ModScanFinding)
-                    and entry.module_absence
-                ):
-                    state = entry.source_state
-                    offsets = entry.range.get("byteOffset")
-                    if (
-                        state is None
-                        or state.content is None
-                        or not entry.catalog_digest
-                    ):
-                        msg = f"module occurrence lacks authentication: {entry.file}"
-                        raise ValueError(msg)
-                    if not isinstance(offsets, Mapping):
-                        msg = f"module occurrence lacks native range: {entry.file}"
-                        raise ValueError(msg)
-                    start, end = offsets.get("start"), offsets.get("end")
-                    # The Python module predicate owns the root; spans may omit trivia.
-                    if (
-                        not isinstance(start, int)
-                        or isinstance(start, bool)
-                        or not isinstance(end, int)
-                        or isinstance(end, bool)
-                        or not 0 <= start <= end <= len(state.content)
-                        or state.content[start:end]
-                        != entry.text.encode(c.DEFAULT_ENCODING)
-                    ):
-                        msg = f"module occurrence is not the native root: {entry.file}"
-                        raise ValueError(msg)
-                    text = f"module-absence:{entry.catalog_digest}"
-                    proven.add((repository, entry.rule_id))
-                key = (repository, entry.rule_id)
-                occurrences[key][str(entry.file), text] += 1
-                positions[key].append(index)
-            counters.append(occurrences)
-            indexes.append(positions)
+        ],
+        indexes: t.SequenceOf[t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]]],
+        inventory: tuple[tuple[str, str], ...],
+        proven: set[tuple[str, str]],
+    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
+        """Build the per-repository and per-rule occurrence deltas.
+
+        Args:
+            engine: Native engine name shared by both measured reports.
+            counters: Before and after occurrence counters per rule key.
+            indexes: Before and after entry position indexes per rule key.
+            inventory: Declared repository and rule pairs included.
+            proven: Repository and rule pairs with proven absence.
+
+        Returns:
+            One occurrence delta for every declared or observed rule key.
+        """
         before_entries, after_entries = counters
         deltas: list[m.Infra.ViolationsRuleDelta] = []
         for key in sorted(
@@ -251,6 +517,171 @@ class FlextInfraUtilitiesRefactor:
         return tuple(deltas)
 
     @staticmethod
+    def rule_deltas(
+        before: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
+        after: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+        | m.Infra.ModTextReport,
+        *,
+        inventory: tuple[tuple[str, str], ...] = (),
+        repository_root: Path | None = None,
+        projects: t.SequenceOf[Path] = (),
+        publication_chain: tuple[m.Infra.CodegenStagedFile, ...] | None = None,
+    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
+        """Compare lexical occurrences, or prove module absence through publication.
+
+        Without a publication chain the comparison is explicitly lexical. A supplied
+        chain is never replaced by guessed correspondence when authentication fails.
+
+        Args:
+            before: Baseline native report from the measured engine.
+            after: Final native report from the same engine.
+            inventory: Declared repository and rule pairs included in the delta.
+            repository_root: Root resolving text finding paths into the topology.
+            projects: Declared project topology owning text findings.
+            publication_chain: Authenticated staged publication receipts.
+
+        Returns:
+            Per-repository and per-rule occurrence deltas.
+
+        Raises:
+            ValueError: Native engines differ, a text finding lacks project
+                ownership, or the publication chain fails authentication.
+        """
+        engine = (
+            "ast-grep" if isinstance(before, m.Infra.ModOccurrenceReport) else "text"
+        )
+        if isinstance(before, m.Infra.ModOccurrenceReport) != isinstance(
+            after, m.Infra.ModOccurrenceReport
+        ):
+            msg = "rule comparison requires the same native engine"
+            raise ValueError(msg)
+        if publication_chain is not None:
+            if not isinstance(before, m.Infra.ModOccurrenceReport) or not isinstance(
+                after, m.Infra.ModOccurrenceReport
+            ):
+                msg = "semantic correspondence requires native AST findings"
+                raise ValueError(msg)
+            FlextInfraUtilitiesRefactor._authenticated_endpoints(
+                before, after, publication_chain
+            )
+        proven: set[tuple[str, str]] = set()
+        topology = sorted(projects, key=lambda item: len(item.parts), reverse=True)
+        measured = [
+            FlextInfraUtilitiesRefactor._report_occurrence_indexes(
+                report,
+                repository_root,
+                topology,
+                proven,
+                publication_chain,
+            )
+            for report in (before, after)
+        ]
+        return FlextInfraUtilitiesRefactor._rule_delta_rows(
+            engine,
+            [occurrences for occurrences, _positions in measured],
+            [positions for _occurrences, positions in measured],
+            inventory,
+            proven,
+        )
+
+    @staticmethod
+    def _project_scope_elected(
+        stage: m.Infra.ViolationsSweepStage,
+        project: Path,
+        before: m.Infra.ViolationsSweepSources,
+    ) -> bool:
+        """Whether the stage repository root falls inside the audited scope.
+
+        Args:
+            stage: Sweep stage owning the audited repository root.
+            project: Audited project repository root.
+            before: Baseline audit snapshot declaring the scope.
+
+        Returns:
+            Whether one scope target resolves to the audited project.
+        """
+        topology = sorted(
+            before.repository_roots, key=lambda item: len(item.parts), reverse=True
+        )
+        return any(
+            next(
+                (
+                    candidate
+                    for candidate in topology
+                    if (stage.repository_root / target).is_relative_to(candidate)
+                ),
+                None,
+            )
+            == project.resolve()
+            for target in before.scope
+        )
+
+    @staticmethod
+    def _engine_coverage(
+        project: Path,
+        before: m.Infra.ViolationsSweepSources,
+        after: m.Infra.ViolationsSweepSources,
+        lint_failures: t.SequenceOf[str],
+        *,
+        ast_observed: bool,
+    ) -> tuple[m.Infra.ViolationsEngineCoverage, ...]:
+        """Build the per-engine observation coverage receipts for one project.
+
+        Args:
+            project: Audited project repository root.
+            before: Baseline audit snapshot.
+            after: Final audit snapshot.
+            ast_observed: Whether elected AST rules were actually scanned.
+            lint_failures: Native lint execution failures joined into causes.
+
+        Returns:
+            Every engine's actual observation coverage disposition.
+        """
+        return (
+            m.Infra.ViolationsEngineCoverage(
+                repository=project.name,
+                engine="ast-grep",
+                status="incomplete" if ast_observed else "NOT_EXECUTED",
+                cause=(
+                    "elected rules scanned; wholly unelected catalog membership "
+                    "is not exposed by the native plan"
+                    if ast_observed
+                    else "effective plan or native scan unavailable"
+                ),
+            ),
+            m.Infra.ViolationsEngineCoverage(
+                repository=project.name,
+                engine="text",
+                status="incomplete"
+                if before.text_report is not None and after.text_report is not None
+                else "NOT_EXECUTED",
+                cause=(
+                    "native text report lacks effective per-project "
+                    "zero-rule audit metadata"
+                ),
+            ),
+            m.Infra.ViolationsEngineCoverage(
+                repository=project.name,
+                engine="ruff",
+                status="incomplete"
+                if before.lint is not None and after.lint is not None
+                else "NOT_EXECUTED",
+                cause=(
+                    "; ".join(lint_failures)
+                    or "lint snapshots lack complete native rule IDs "
+                    "and per-project zero-rule applicability metadata"
+                ),
+            ),
+            m.Infra.ViolationsEngineCoverage(
+                repository=project.name,
+                engine="census",
+                status="NOT_EXECUTED",
+                cause="no native census rule audit collected by violations-sweep",
+            ),
+        )
+
+    @staticmethod
     def violations_audit_comparison(
         project: Path,
         stage: m.Infra.ViolationsSweepStage,
@@ -262,10 +693,9 @@ class FlextInfraUtilitiesRefactor:
             The stage receipt with every rule's actual disposition and collateral.
         """
         if stage.audit_before is None or stage.audit_after is None:
-            cause = stage.error or "native audit snapshot unavailable"
             return stage.model_copy(
                 update={
-                    "error": cause,
+                    "error": stage.error or "native audit snapshot unavailable",
                     "rule_evaluations": tuple(
                         m.Infra.ViolationsRuleEvaluation(
                             repository=project.name,
@@ -276,7 +706,7 @@ class FlextInfraUtilitiesRefactor:
                             detection_only=not rule.fixable,
                             status="NOT_EXECUTED",
                             delta=None,
-                            error=cause,
+                            error=stage.error or "native audit snapshot unavailable",
                         )
                         for rule in inventory.rules
                     )
@@ -287,7 +717,7 @@ class FlextInfraUtilitiesRefactor:
                             repository=project.name,
                             engine=engine,
                             status="NOT_EXECUTED",
-                            cause=cause,
+                            cause=stage.error or "native audit snapshot unavailable",
                         )
                         for engine in ("ast-grep", "text", "ruff", "census")
                     ),
@@ -295,20 +725,8 @@ class FlextInfraUtilitiesRefactor:
             )
         before, after = stage.audit_before, stage.audit_after
         elected = before.plan.project_rule_ids.get(project.resolve())
-        topology = sorted(
-            before.repository_roots, key=lambda item: len(item.parts), reverse=True
-        )
-        has_sources = any(
-            next(
-                (
-                    candidate
-                    for candidate in topology
-                    if (stage.repository_root / target).is_relative_to(candidate)
-                ),
-                None,
-            )
-            == project.resolve()
-            for target in before.scope
+        has_sources = FlextInfraUtilitiesRefactor._project_scope_elected(
+            stage, project, before
         )
         catalog = {
             rule.id: rule
@@ -404,14 +822,6 @@ class FlextInfraUtilitiesRefactor:
             for row in deltas
             if row.engine == "text" and row.repository == project.name
         )
-        ast_observed = (
-            before.source_verified
-            and after.source_verified
-            and has_sources
-            and elected is not None
-            and before.ast_report is not None
-            and after.ast_report is not None
-        )
         lint_failures = tuple(
             f"{path}: {error}"
             for snapshot in (before, after)
@@ -420,46 +830,18 @@ class FlextInfraUtilitiesRefactor:
                 receipt
             )
         )
-        coverage = (
-            m.Infra.ViolationsEngineCoverage(
-                repository=project.name,
-                engine="ast-grep",
-                status="incomplete" if ast_observed else "NOT_EXECUTED",
-                cause=(
-                    "elected rules scanned; wholly unelected catalog membership "
-                    "is not exposed by the native plan"
-                    if ast_observed
-                    else "effective plan or native scan unavailable"
-                ),
-            ),
-            m.Infra.ViolationsEngineCoverage(
-                repository=project.name,
-                engine="text",
-                status="incomplete"
-                if before.text_report is not None and after.text_report is not None
-                else "NOT_EXECUTED",
-                cause=(
-                    "native text report lacks effective per-project "
-                    "zero-rule audit metadata"
-                ),
-            ),
-            m.Infra.ViolationsEngineCoverage(
-                repository=project.name,
-                engine="ruff",
-                status="incomplete"
-                if before.lint is not None and after.lint is not None
-                else "NOT_EXECUTED",
-                cause=(
-                    "; ".join(lint_failures)
-                    or "lint snapshots lack complete native rule IDs "
-                    "and per-project zero-rule applicability metadata"
-                ),
-            ),
-            m.Infra.ViolationsEngineCoverage(
-                repository=project.name,
-                engine="census",
-                status="NOT_EXECUTED",
-                cause="no native census rule audit collected by violations-sweep",
+        coverage = FlextInfraUtilitiesRefactor._engine_coverage(
+            project,
+            before,
+            after,
+            lint_failures,
+            ast_observed=(
+                before.source_verified
+                and after.source_verified
+                and has_sources
+                and elected is not None
+                and before.ast_report is not None
+                and after.ast_report is not None
             ),
         )
         lint = {
@@ -645,6 +1027,36 @@ class FlextInfraUtilitiesRefactor:
         return r[bool].ok(value=True)
 
     @staticmethod
+    def mod_scan_inputs(
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+    ) -> m.Infra.CodemodBindingSnapshot:
+        """Union captured sources and distinct binding graphs once per operation.
+
+        Args:
+            report: Completed mod scan whose entries carry captured states.
+
+        Returns:
+            One binding snapshot uniting the report's source states with each
+            distinct captured binding state.
+        """
+        bindings = {
+            id(entry.binding_states): entry.binding_states for entry in report.entries
+        }
+        return m.Infra.CodemodBindingSnapshot(
+            states=tuple(
+                chain(
+                    report.source_states or (),
+                    (
+                        entry.source_state
+                        for entry in report.entries
+                        if entry.source_state is not None
+                    ),
+                    chain.from_iterable(bindings.values()),
+                )
+            )
+        )
+
+    @staticmethod
     def publish_mod_scan_evidence(
         root: Path,
         report: m.Infra.ModScanReport,
@@ -661,6 +1073,9 @@ class FlextInfraUtilitiesRefactor:
         rule_totals = Counter(dict.fromkeys(publication.rule_ids, 0))
         class_totals = Counter(dict.fromkeys(c.Infra.ModScanFindingClass, 0))
         for entry in report.entries:
+            if entry.native_receipt is None:
+                msg = "mod evidence finding lacks its native artifact"
+                raise ValueError(msg)
             repository_totals[entry.repository] += 1
             rule_totals[entry.rule_id] += 1
             class_totals[entry.classification] += 1
@@ -671,21 +1086,22 @@ class FlextInfraUtilitiesRefactor:
             identity: tuple(state.path for state in states)
             for identity, states in bindings.items()
         }
+        graphs = {
+            paths: index
+            for index, paths in enumerate(dict.fromkeys(binding_paths.values()))
+        }
+        graph_ids = {
+            identity: graphs[paths] for identity, paths in binding_paths.items()
+        }
+        artifacts = {
+            artifact.path: index
+            for index, artifact in enumerate(report.native_artifacts)
+        }
         evidence = m.Infra.ModScanEvidence.model_validate({
             "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
-            "inputs": m.Infra.CodemodBindingSnapshot(
-                states=tuple(
-                    chain(
-                        report.source_states or (),
-                        (
-                            entry.source_state
-                            for entry in report.entries
-                            if entry.source_state is not None
-                        ),
-                        chain.from_iterable(bindings.values()),
-                    )
-                )
-            ),
+            "binding_graphs": tuple(graphs),
+            "native_artifacts": report.native_artifacts,
+            "inputs": FlextInfraUtilitiesRefactor.mod_scan_inputs(report),
             "command": publication.command,
             "root": root.resolve(),
             "scope": tuple(publication.scope),
@@ -700,7 +1116,8 @@ class FlextInfraUtilitiesRefactor:
                         if entry.source_state is not None
                         else None
                     ),
-                    binding_paths=binding_paths[id(entry.binding_states)],
+                    binding_graph=graph_ids[id(entry.binding_states)],
+                    native_artifact=artifacts[entry.native_receipt.path],
                 )
                 for entry in report.entries
             ),

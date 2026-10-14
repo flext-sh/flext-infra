@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import secrets
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -15,9 +16,11 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
+    FlextInfraMiseArtifactsVerification,
     FlextInfraMiseRecovery,
     FlextInfraMiseWorkspacePlanner,
 )
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
 
 if TYPE_CHECKING:
@@ -32,12 +35,32 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         owner: p.Infra.MiseArtifactsOwner,
         *,
         participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
+        producer: m.Infra.CodegenPhaseAnalysis | None = None,
+        source_authority: m.Infra.CodegenSourceAuthority | None = None,
     ) -> None:
-        """Initialize journal planning and recovery for one Mise artifact owner."""
+        """Initialize journal planning and recovery for one Mise artifact owner.
+
+        Raises:
+            ValueError: If reference staging and publication share one
+                authority.
+        """
         super().__init__(participant_policy)
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
         self._recovery = FlextInfraMiseRecovery()
         self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        if source_authority is not None and producer is not None:
+            msg = "reference staging and publication require distinct authorities"
+            raise ValueError(msg)
+        self._source_authority = source_authority
+        self._producer = (
+            r[m.Infra.CodegenPhaseAnalysis].fail(
+                "cold source authority cannot authorize project publication",
+            )
+            if source_authority is not None
+            else FlextInfraCodegenPreconditions.capture_producer()
+            if producer is None
+            else r[m.Infra.CodegenPhaseAnalysis].ok(producer)
+        )
 
     @staticmethod
     def record_publication(
@@ -51,6 +74,40 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         Returns:
             The session whose published paths and issues have been recorded.
         """
+        derived = FlextInfraCodegenTransactionRecovery.publication_outcome(
+            session,
+            phase=phase,
+            completed=completed,
+        )
+        if derived.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(derived)
+        outcome = derived.value
+        evidence = FlextInfraCodegenTransactionRecovery.publish_outcome(
+            session.plan.layout.scope_root,
+            outcome,
+        )
+        if evidence.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
+        if completed and outcome.pending_files:
+            return r[m.Infra.CodegenTransactionSession].fail(
+                "publication accounting is incomplete: "
+                + ", ".join(str(path) for path in outcome.pending_files),
+                error_code=c.Infra.ToolOutcome.ERROR.value,
+            )
+        return r[m.Infra.CodegenTransactionSession].ok(session)
+
+    @staticmethod
+    def publication_outcome(
+        session: m.Infra.CodegenTransactionSession,
+        *,
+        phase: str | None = None,
+        completed: bool = False,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Derive the receipt from the exact invocation's native journal state.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
+        """
         destinations: list[Path] = []
         for entry in session.journal.entries:
             destination = FlextInfraMiseArtifactsFiles.resolve_transaction(
@@ -59,7 +116,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 purpose="publication accounting",
             )
             if destination.failure:
-                return r[m.Infra.CodegenTransactionSession].from_failure(destination)
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(destination)
             destinations.append(destination.value)
         effect_targets = tuple(dict.fromkeys(destinations))
         observed_targets = {
@@ -73,10 +130,57 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         pending_files = tuple(
             path for path in effect_targets if path not in observed_targets
         )
+        sources = list(session.journal.sources)
+        for publication in session.published_files:
+            before = FlextInfraMiseArtifactsJournal.source_record(
+                publication.phase,
+                publication.before,
+            )
+            if before.failure:
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(before)
+            sources.append(before.value)
+        if session.journal.phase == c.Infra.CodegenStagedFilePhase.DOCS:
+            sources.extend(
+                output.model_copy(
+                    update={"phase": c.Infra.CodegenStagedFilePhase.DOCS},
+                )
+                for output in session.journal.outputs
+                if output.path in session.written_files
+                and u.Infra.docs_source_path_is_input(
+                    output.path,
+                    session.journal.scope_roots,
+                    source_scope=session.journal.source_scope,
+                )
+            )
+        created = {
+            item.created.path: item.created
+            for item in session.journal.directories
+            if item.created is not None
+        }
+        topology = tuple(
+            item.model_copy(
+                update={
+                    "anchor_path": item.target,
+                    "anchor_device": created[item.target].device,
+                    "anchor_inode": created[item.target].inode,
+                    "anchor_ancestry": (
+                        *item.anchor_ancestry,
+                        *(
+                            (created[path].device, created[path].inode)
+                            for path in item.directories
+                        ),
+                    ),
+                    "directories": (),
+                }
+            )
+            if item.directories and all(path in created for path in item.directories)
+            else item
+            for item in session.journal.source_topology
+        )
         outcome = m.Infra.CodegenPhaseOutcome(
             root=session.plan.layout.scope_root,
             transaction_id=session.journal.transaction_id,
-            phase=phase,
+            phase=phase or session.journal.phase,
             completed=completed and not pending_files,
             written_files=session.written_files,
             published_files=session.published_files,
@@ -86,34 +190,279 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             pending_files=pending_files,
             issues=session.issues,
             exception=session.exception,
+            sources=tuple(sources),
+            outputs=session.journal.outputs,
+            generator_sources=session.journal.generator_sources,
+            generator_trees=session.journal.generator_trees,
+            generator_modules=session.journal.generator_modules,
+            source_topology=topology,
+            scope_roots=session.journal.scope_roots,
+            source_scope=session.journal.source_scope,
         )
-        report_path = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        return r[m.Infra.CodegenPhaseOutcome].ok(outcome)
+
+    @staticmethod
+    def publish_outcome(
+        root: Path,
+        outcome: m.Infra.CodegenPhaseOutcome,
+    ) -> p.Result[bool]:
+        """Archive and publish the same typed native receipt through its owner.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+        """
+        if outcome.transaction_id is None or outcome.root != root:
+            return r[bool].fail("publication receipt lacks its actual scope identity")
+        path = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         digest = u.Cli.sha256_content(outcome.model_dump_json())
-        evidence = u.Infra.publish_refactor_report_evidence(
-            session.plan.layout.scope_root,
+        archived = u.Infra.publish_refactor_report_evidence(
+            root,
             outcome,
-            relative_path=(
-                report_path.with_suffix("")
-                / session.journal.transaction_id
-                / f"{digest}{report_path.suffix}"
+            relative_path=path.with_suffix("")
+            / outcome.transaction_id
+            / f"{digest}{path.suffix}",
+        )
+        if archived.failure:
+            return r[bool].from_failure(archived)
+        latest = u.Infra.publish_refactor_report_evidence(
+            root,
+            outcome,
+            relative_path=path,
+        )
+        if latest.failure:
+            return r[bool].from_failure(latest)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def publish_operation_receipt(
+        cls,
+        request: m.Infra.CodegenConformRequest,
+        batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        *,
+        scope_roots: t.VariadicTuple[Path],
+        operation: m.Infra.CodegenPhaseOutcome | None = None,
+        completed: bool = False,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Compose actual native batches without reopening their settled journals.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
+        """
+        root = request.root.expanduser().resolve()
+        mismatched = operation is not None and (
+            operation.root != root
+            or operation.surface != request.what
+            or operation.scope != request.scope
+            or operation.module != request.module
+        )
+        if not scope_roots or mismatched:
+            return r[m.Infra.CodegenPhaseOutcome].fail(
+                "operation receipt differs from its actual request",
+            )
+        if completed and (
+            not batches
+            or any(
+                not item.completed
+                or item.error
+                or item.issues
+                or item.pending_files
+                or item.root is None
+                or item.transaction_id is None
+                or not (item.outputs or item.batches)
+                for item in batches
+            )
+        ):
+            return r[m.Infra.CodegenPhaseOutcome].fail(
+                "operation completion requires every actual batch output proof",
+            )
+        outcome = m.Infra.CodegenPhaseOutcome(
+            root=root,
+            transaction_id=(
+                operation.transaction_id
+                if operation is not None
+                else secrets.token_hex(16)
+            ),
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM,
+            surface=request.what,
+            scope=request.scope,
+            module=request.module,
+            scope_roots=scope_roots,
+            completed=completed,
+            batches=batches,
+            written_files=tuple(
+                path for item in batches for path in item.written_files
+            ),
+            issues=tuple(issue for item in batches for issue in item.issues),
+        )
+        with cls.mutation_lease(root):
+            if completed:
+                current = (
+                    FlextInfraMiseArtifactsVerification.publication_states_current(
+                        outcome,
+                    )
+                )
+                if current.failure:
+                    return r[m.Infra.CodegenPhaseOutcome].from_failure(current)
+            written = cls.publish_outcome(root, outcome)
+        if written.failure:
+            return r[m.Infra.CodegenPhaseOutcome].from_failure(written)
+        return r[m.Infra.CodegenPhaseOutcome].ok(outcome)
+
+    def bind_publication_proof(
+        self,
+        session: m.Infra.CodegenTransactionSession,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
+        scope_roots: t.VariadicTuple[Path] = (),
+        source_scope: Path | None = None,
+        phase: c.Infra.CodegenStagedFilePhase | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Persist the complete native output set without rendering or byte copies.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
+        """
+        outputs = {item.path: item for item in session.journal.outputs}
+        if batch_admission is not None:
+            if (
+                batch_admission.analysis is None
+                or batch_admission.analysis.files != plans
+                or {item.path for item in batch_admission.outputs}
+                != {item.path for item in plans}
+            ):
+                return r[m.Infra.CodegenTransactionSession].fail(
+                    "output proof differs from its native admitted plan",
+                )
+            outputs.update({item.path: item for item in batch_admission.outputs})
+        admitted = {item.before.path: item for item in session.published_files}
+        for plan in plans:
+            state = FlextInfraCodegenTransactionRecovery._proof_output_state(
+                session, plan, admitted
+            )
+            if state.failure:
+                return r[m.Infra.CodegenTransactionSession].from_failure(state)
+            record = FlextInfraMiseArtifactsJournal.source_record(
+                "output",
+                state,
+                path=plan.path,
+            )
+            if record.failure:
+                return r[m.Infra.CodegenTransactionSession].from_failure(record)
+            outputs[plan.path] = record.value
+        if not session.journal.generator_sources or not session.journal.generator_trees:
+            return r[m.Infra.CodegenTransactionSession].fail(
+                "publication has no pre-planning producer authority"
+            )
+        journal = session.journal.model_copy(
+            update={
+                "outputs": tuple(outputs.values()),
+                "source_topology": source_topology or session.journal.source_topology,
+                "scope_roots": scope_roots or session.journal.scope_roots,
+                "source_scope": source_scope or session.journal.source_scope,
+                "phase": phase or session.journal.phase,
+            }
+        )
+        written = self._write_journal(
+            session.plan.layout,
+            journal,
+            expected=session.journal_state,
+        )
+        if written.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(written)
+        return r[m.Infra.CodegenTransactionSession].ok(
+            session.model_copy(
+                update={
+                    "journal": journal,
+                    "journal_state": written.value,
+                }
+            )
+        )
+
+    @staticmethod
+    def _observed_proof_state(
+        session: m.Infra.CodegenTransactionSession,
+        plan: m.Infra.CodegenFilePlan,
+    ) -> p.Result[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]:
+        """Prove one unplanned output against its authenticated preimage.
+
+        Args:
+            session: Locked transaction session binding the publication.
+            plan: The file plan requiring its proof output.
+
+        Returns:
+            The observed proof output state, or the first read, binding or
+            preimage failure.
+        """
+        result_type = r[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
+        observed = FlextInfraMiseArtifactsFiles.read_state(
+            plan.path,
+            required=(
+                isinstance(plan.before, m.Cli.AtomicFileState)
+                and plan.before.content is not None
             ),
         )
-        if evidence.failure:
-            return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
-        evidence = u.Infra.publish_refactor_report_evidence(
-            session.plan.layout.scope_root,
-            outcome,
-            relative_path=report_path,
+        if observed.failure:
+            return result_type.from_failure(observed)
+        expected = (
+            m.Cli.AtomicFileState(path=plan.path)
+            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+            else plan.before
         )
-        if evidence.failure:
-            return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
-        if completed and pending_files:
-            return r[m.Infra.CodegenTransactionSession].fail(
-                "publication accounting is incomplete: "
-                + ", ".join(str(path) for path in pending_files),
-                error_code=c.Infra.ToolOutcome.ERROR.value,
+        if expected.parent_device is None and observed.value.parent_device is not None:
+            rebound = FlextInfraMiseArtifactsVerification.bind_source_parent(
+                expected,
+                session.journal,
             )
-        return r[m.Infra.CodegenTransactionSession].ok(session)
+            if rebound.failure:
+                return result_type.from_failure(rebound)
+            expected = rebound.value
+        if observed.value != expected:
+            return result_type.fail(
+                "generation output differs from its authenticated preimage: "
+                f"{plan.path}",
+            )
+        return result_type.ok(
+            plan.before
+            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+            and observed.value.parent_device is None
+            else observed.value
+        )
+
+    @staticmethod
+    def _proof_output_state(
+        session: m.Infra.CodegenTransactionSession,
+        plan: m.Infra.CodegenFilePlan,
+        admitted: t.MappingKV[Path, m.Infra.CodegenStagedFile],
+    ) -> p.Result[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]:
+        """Resolve one plan's proof output state from its published record.
+
+        Args:
+            session: Locked transaction session binding the publication.
+            plan: The file plan requiring its proof output.
+            admitted: Published files keyed by their original path.
+
+        Returns:
+            The proof output state, or the first read or preimage failure.
+        """
+        result_type = r[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
+        actual = admitted.get(plan.path)
+        if actual is not None and actual.replacement is not None:
+            return result_type.ok(actual.replacement)
+        if actual is not None:
+            absent = FlextInfraMiseArtifactsFiles.read_state(
+                plan.path,
+                required=False,
+            )
+            if absent.failure:
+                return result_type.from_failure(absent)
+            if absent.value.content is not None:
+                return result_type.fail(
+                    f"published deletion changed before proof: {plan.path}",
+                )
+            return result_type.ok(absent.value)
+        return FlextInfraCodegenTransactionRecovery._observed_proof_state(session, plan)
 
     def participant_policy(
         self,
@@ -508,9 +857,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         created: m.Infra.CodegenJournalDirectory,
-        failure: str,
+        failure: p.FailureLike,
         *,
         journal_write: bool,
+        context: str | None = None,
     ) -> p.Result[bool]:
         """Compensate only this invocation's exact empty-directory effect.
 
@@ -518,15 +868,26 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             The resulting ``p.Result[bool]``.
 
         """
+        original = r[bool].from_failure(failure)
         compensated = FlextInfraMiseArtifactsState.compensate_created_directory(created)
         if compensated.failure:
+            if original.exception is not None:
+                original.exception.add_note(
+                    f"created-directory compensation failed: {compensated.error}"
+                )
             return r[bool].fail(
-                f"{failure}; created-directory compensation failed: "
-                f"{compensated.error}",
+                original.error,
+                exception=original.exception,
+                error_code=original.error_code,
+                error_data={
+                    **(original.error_data or {}),
+                    "cleanup_error": compensated.error,
+                    "recovery_context": context,
+                },
             )
         if journal_write:
-            return self._handle_journal_write_failure(layout, failure)
-        return self._recover_failure(layout, failure)
+            return self._handle_journal_write_failure(layout, original, context=context)
+        return self._recover_failure(layout, original, context=context)
 
     def _recover_prepared(
         self,
@@ -570,29 +931,42 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
     def _handle_journal_write_failure(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        failure: str,
+        failure: p.FailureLike,
+        *,
+        context: str | None = None,
     ) -> p.Result[bool]:
+        original = r[bool].from_failure(failure)
         observed = FlextInfraMiseArtifactsState.journal_state(layout)
         if observed.failure:
-            return r[bool].fail(
-                f"{failure}; journal inspection failed: {observed.error}",
+            secondary = f"journal inspection failed: {observed.error}"
+        else:
+            observed_snapshot = FlextInfraMiseArtifactsState.journal_snapshot(
+                observed.value
             )
-        observed_snapshot = FlextInfraMiseArtifactsState.journal_snapshot(
-            observed.value,
+            if observed_snapshot is not None and observed_snapshot.content is not None:
+                return self._recover_failure(layout, original, context=context)
+            secondary = "durable journal disappeared"
+        if original.exception is not None:
+            original.exception.add_note(secondary)
+        return r[bool].fail(
+            original.error,
+            exception=original.exception,
+            error_code=original.error_code,
+            error_data={
+                **(original.error_data or {}),
+                "cleanup_error": secondary,
+                "recovery_context": context,
+            },
         )
-        if observed_snapshot is None or observed_snapshot.content is None:
-            return r[bool].fail(f"{failure}; durable journal disappeared")
-        return self._recover_failure(layout, failure)
 
     def _recover_failure(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        failure: str,
+        failure: p.FailureLike,
         *,
-        exception: BaseException | None = None,
-        error_code: str | None = None,
-        error_data: t.JsonMapping | None = None,
+        context: str | None = None,
     ) -> p.Result[bool]:
+        original = r[bool].from_failure(failure)
         try:
             recovered = self._recover_prepared(layout)
         except Exception as cleanup_exception:
@@ -600,15 +974,18 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 "finalize failed generation publication",
                 cleanup_exception,
             )
-        if recovered.failure and exception is not None:
-            exception.add_note(f"generation recovery failed: {recovered.error}")
+        if recovered.failure and original.exception is not None:
+            original.exception.add_note(
+                f"generation recovery failed: {recovered.error}"
+            )
         return r[bool].fail(
-            failure,
-            exception=exception,
-            error_code=error_code,
+            original.error,
+            exception=original.exception,
+            error_code=original.error_code,
             error_data={
-                **(error_data or {}),
+                **(original.error_data or {}),
                 "cleanup_error": recovered.error if recovered.failure else None,
+                "recovery_context": context,
             },
         )
 

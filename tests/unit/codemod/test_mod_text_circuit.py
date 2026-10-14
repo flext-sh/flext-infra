@@ -741,17 +741,6 @@ class TestsFlextInfraModTextGateEngine:
             inputs=(identity, source, sibling),
         )
 
-        def validate_effects() -> p.Result[bool]:
-            """Consume the rejected dependency target and independent publication.
-
-            Returns:
-                The resulting ``p.Result[bool]``.
-            """
-            tm.that(first.read_bytes(), eq=original_source)
-            tm.that(second.read_bytes(), eq=b'value = "after"\n')
-            tm.that(document.read_text(encoding="utf-8"), eq=changed_document)
-            return r[bool].ok(value=True)
-
         def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
             tm.ok(u.Cli.atomic_write_text_file(document, changed_document))
             return transaction.publish_file_phase_locked(
@@ -760,14 +749,13 @@ class TestsFlextInfraModTextGateEngine:
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(
                     directories=(),
-                    validator=validate_effects,
                 ),
             )
 
         rejected = transaction.run_files_locked(roots, publish)
         tm.fail(rejected, has="generation authenticated state changed")
         tm.that(first.read_bytes(), eq=original_source)
-        tm.that(second.read_bytes(), eq=b'value = "after"\n')
+        tm.that(second.read_bytes(), eq=sibling.content)
         tm.that(document.read_text(encoding="utf-8"), eq=changed_document)
 
     def test_same_phase_dependency_uses_the_accepted_publication_receipt(
@@ -809,9 +797,6 @@ class TestsFlextInfraModTextGateEngine:
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(
                     directories=(),
-                    validator=lambda: transaction.validate_phase_analysis_locked(
-                        analysis
-                    ),
                 ),
             )
 
@@ -820,13 +805,13 @@ class TestsFlextInfraModTextGateEngine:
             tm.that(path.read_bytes(), eq=b'value = "after"\n')
 
     @pytest.mark.parametrize("raise_failure", [False, True])
-    def test_text_phase_validation_failure_preserves_published_files(
+    def test_text_phase_validation_failure_preserves_original_files(
         self,
         mod_workspace: Path,
         *,
         raise_failure: bool,
     ) -> None:
-        """Validation failures preserve accepted publication and the first cause."""
+        """A complete staged consumer fails before any live target is modified."""
         paths = self._publication_inputs(mod_workspace)
         states = tuple(
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
@@ -855,27 +840,46 @@ class TestsFlextInfraModTextGateEngine:
         roots = {"@mod-text": mod_workspace}
         failure = RuntimeError("text publication acceptance rejected")
 
-        def reject_published() -> p.Result[bool]:
-            for path in paths:
-                tm.that(path.read_bytes(), eq=b'value = "after"\n')
+        def reject_candidate(
+            session: m.Infra.CodegenTransactionSession,
+            staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            candidates = tuple(
+                tm.not_none(publication.replacement).path for publication in staged
+            )
+            consumed = tm.ok(
+                u.Cli.run_raw(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            "import runpy, sys; "
+                            "assert all(runpy.run_path(path)['value'] == 'after' "
+                            "for path in sys.argv[1:])"
+                        ),
+                        *(str(candidate) for candidate in candidates),
+                    ),
+                    cwd=session.plan.layout.scope_root,
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(consumed.outcome), eq=True)
+            for state in states:
+                tm.that(state.path.read_bytes(), eq=state.content)
             if raise_failure:
                 raise failure
-            return r[bool].fail("text publication acceptance rejected")
+            return r[m.Infra.CodegenTransactionSession].fail(
+                str(failure),
+                exception=failure,
+            )
 
         def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
-            session = transaction.begin_files_locked(scope, roots, states).unwrap()
-
-            def apply(
-                active: m.Infra.CodegenTransactionSession,
-            ) -> p.Result[t.VariadicTuple[Path]]:
-                updated = transaction.append_phase_locked(
-                    active,
-                    analysis.phase,
-                    plans,
-                ).unwrap()
-                return transaction.commit_locked(updated, reject_published)
-
-            return transaction.publish_prepared_locked(session, apply)
+            return transaction.publish_file_phase_locked(
+                scope,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
+                staged_validator=reject_candidate,
+            )
 
         if raise_failure:
             with pytest.raises(RuntimeError) as raised:
@@ -885,7 +889,7 @@ class TestsFlextInfraModTextGateEngine:
             result = transaction.run_files_locked(roots, publish)
             tm.fail(result, has="text publication acceptance rejected")
         for state in states:
-            tm.that(state.path.read_bytes(), eq=b'value = "after"\n')
+            tm.that(state.path.read_bytes(), eq=state.content)
         tm.that(tuple(mod_workspace.rglob("*.semantic-staging")), empty=True)
 
     @staticmethod

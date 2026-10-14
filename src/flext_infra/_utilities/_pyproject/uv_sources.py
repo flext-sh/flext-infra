@@ -11,19 +11,18 @@ from copy import deepcopy
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_cli import u
-
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesDependencyRequirements,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDependencies
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectRequirements,
     FlextInfraUtilitiesPyprojectSession,
+)
+from flext_infra._utilities.dependency_requirements import (
+    FlextInfraUtilitiesDependencyRequirements,
 )
 
 
@@ -48,6 +47,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
         with an installed project. Native path bindings therefore replace
         Git backedges without replacing any synthetic group requirement.
         Original package metadata and editable declarations remain unchanged.
+
+        Returns:
+            The resulting ``p.Result[t.Cli.TomlDocument]``.
+
         """
         if not directory.is_absolute():
             return r[t.Cli.TomlDocument].fail(
@@ -58,8 +61,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             *sorted(members, key=lambda item: item.repository.distribution),
         )
         names = [
-            canonicalize_name(project.repository.distribution)
-            for project in projects
+            canonicalize_name(project.repository.distribution) for project in projects
         ]
         if len(names) != len(set(names)):
             return r[t.Cli.TomlDocument].fail(
@@ -70,7 +72,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
         if virtual_name in names:
             return r[t.Cli.TomlDocument].fail(
-                f"resolution distribution collides with a declared project: {virtual_name}",
+                f"resolution distribution collides with a declared project:"
+                f" {virtual_name}",
             )
         root_payload = cls._resolution_project_payload(root)
         root_project = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
@@ -127,27 +130,28 @@ class FlextInfraUtilitiesPyprojectUvSources(
             )
             name = canonicalize_name(project.repository.distribution)
             metadata_name = metadata.get("name")
-            if (
-                project.repository.package or metadata_name is not None
-            ) and (
+            if (project.repository.package or metadata_name is not None) and (
                 not isinstance(metadata_name, str)
                 or canonicalize_name(metadata_name) != name
             ):
                 return r[t.Cli.TomlDocument].fail(
-                    f"resolution project identity differs from its declaration: {project.directory}",
+                    f"resolution project identity differs from its declaration:"
+                    f" {project.directory}",
                 )
             optional = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
                 metadata.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
             )
             selected_extras = tuple(sorted(optional))
-            for requirement in cls.document_requirement_lines(project.document).unwrap():
-                if FlextInfraUtilitiesDependencies.dep_name(requirement) in overridden:
-                    constraints.append(
-                        FlextInfraUtilitiesDependencies.dependency_constraint(
-                            requirement,
-                            replace_source=True,
-                        ),
-                    )
+            constraints.extend(
+                FlextInfraUtilitiesDependencies.dependency_constraint(
+                    requirement,
+                    replace_source=True,
+                )
+                for requirement in cls.document_requirement_lines(
+                    project.document
+                ).unwrap()
+                if FlextInfraUtilitiesDependencies.dep_name(requirement) in overridden
+            )
             request = name
             if selected_extras:
                 request += f"[{','.join(selected_extras)}]"
@@ -175,9 +179,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 ):
                     if not isinstance(requirement, str):
                         return r[t.Cli.TomlDocument].fail(
-                            "content-only runtime dependency is not a requirement string",
+                            "content-only runtime dependency is not a"
+                            " requirement string",
                         )
-                    dependencies.append(cls._resolution_requirement(requirement, project))
+                    dependencies.append(
+                        cls._resolution_requirement(requirement, project)
+                    )
             declared_groups = dict(
                 t.Cli.JSON_MAPPING_ADAPTER.validate_python(
                     payload.get(c.Infra.DEPENDENCY_GROUPS, {}),
@@ -192,6 +199,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 )
                 development.extend(t.Cli.JSON_LIST_ADAPTER.validate_python(legacy_dev))
                 declared_groups["dev"] = development
+            validated_groups = m.Infra.DependencyGroupDeclarations.model_validate(
+                {"dependency-groups": declared_groups},
+            )
+            declared_groups = {
+                group: cls.dependency_group_wire(entries)
+                for group, entries in validated_groups.dependency_groups.items()
+            }
             renamed = {
                 canonicalize_name(group): (
                     group
@@ -278,7 +292,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                         if (
                             "group" in source
                             or not isinstance(source_extra, str)
-                            or canonicalize_name(source_extra) != canonicalize_name(extra)
+                            or canonicalize_name(source_extra)
+                            != canonicalize_name(extra)
                         ):
                             continue
                         relocated = cls._resolution_source(
@@ -288,7 +303,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
                             group=None,
                         )
                         relocated["extra"] = target
-                        added = cls._resolution_add_source(sources, dependency, relocated)
+                        added = cls._resolution_add_source(
+                            sources, dependency, relocated
+                        )
                         if added.failure:
                             return r[t.Cli.TomlDocument].from_failure(added)
             for group, raw_entries in declared_groups.items():
@@ -298,16 +315,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     if isinstance(entry, str):
                         rewritten.append(cls._resolution_requirement(entry, project))
                     else:
-                        inclusion = t.Cli.JSON_MAPPING_ADAPTER.validate_python(entry)
-                        included = inclusion.get("include-group")
-                        if (
-                            len(inclusion) != 1
-                            or not isinstance(included, str)
-                            or canonicalize_name(included) not in renamed
-                        ):
-                            return r[t.Cli.TomlDocument].fail(
-                                f"invalid resolution group inclusion: {name}:{group}",
-                            )
+                        inclusion = m.Infra.DependencyGroupInclude.model_validate(entry)
+                        included = inclusion.include_group
                         rewritten.append({
                             "include-group": renamed[canonicalize_name(included)],
                         })
@@ -336,7 +345,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                         if (
                             "extra" in source
                             or not isinstance(source_group, str)
-                            or canonicalize_name(source_group) != canonicalize_name(group)
+                            or canonicalize_name(source_group)
+                            != canonicalize_name(group)
                         ):
                             continue
                         relocated = cls._resolution_source(
@@ -345,7 +355,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
                             directory=directory,
                             group=target,
                         )
-                        added = cls._resolution_add_source(sources, dependency, relocated)
+                        added = cls._resolution_add_source(
+                            sources, dependency, relocated
+                        )
                         if added.failure:
                             return r[t.Cli.TomlDocument].from_failure(added)
             for group, metadata_value in t.Cli.JSON_MAPPING_ADAPTER.validate_python(
@@ -355,7 +367,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     return r[t.Cli.TomlDocument].fail(
                         f"resolution group metadata has no declaration: {name}:{group}",
                     )
-                group_metadata[renamed[canonicalize_name(group)]] = deepcopy(metadata_value)
+                group_metadata[renamed[canonicalize_name(group)]] = deepcopy(
+                    metadata_value
+                )
             for raw_index in t.Cli.JSON_LIST_ADAPTER.validate_python(
                 project_uv.get("index", []),
             ):
@@ -379,7 +393,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
         if binding_requirements:
             if canonicalize_name(virtual_name) in seen_groups:
                 return r[t.Cli.TomlDocument].fail(
-                    f"resolution binding group collides with a declaration: {virtual_name}",
+                    f"resolution binding group collides with a declaration:"
+                    f" {virtual_name}",
                 )
             groups[virtual_name] = binding_requirements
         native_uv["sources"] = sources
@@ -403,10 +418,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
         groups: t.JsonMapping,
         group: str,
     ) -> t.StrSequence:
-        """Identify native source applicability without flattening output groups."""
+        """Identify native source applicability without flattening output groups.
+
+        Returns:
+            The resulting ``t.StrSequence``.
+
+        """
         normalized = {
-            canonicalize_name(name): entries
-            for name, entries in groups.items()
+            canonicalize_name(name): entries for name, entries in groups.items()
         }
         pending = [canonicalize_name(group)]
         visited: set[str] = set()
@@ -424,12 +443,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     if name is not None:
                         names.add(name)
                 else:
-                    inclusion = t.Cli.JSON_MAPPING_ADAPTER.validate_python(requirement)
-                    included = inclusion["include-group"]
-                    if not isinstance(included, str):
-                        msg = "dependency-group inclusion is not a group name"
-                        raise ValueError(msg)
-                    pending.append(canonicalize_name(included))
+                    inclusion = m.Infra.DependencyGroupInclude.model_validate(
+                        requirement
+                    )
+                    pending.append(canonicalize_name(inclusion.include_group))
         return tuple(sorted(names))
 
     @staticmethod
@@ -438,15 +455,18 @@ class FlextInfraUtilitiesPyprojectUvSources(
         dependency: str,
         entry: t.JsonDict,
     ) -> p.Result[bool]:
-        """Merge one context-qualified source without hiding source disagreement."""
+        """Merge one context-qualified source without hiding source disagreement.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         name = canonicalize_name(dependency)
         existing = t.Cli.JSON_LIST_ADAPTER.validate_python(sources.get(name, []))
         unscoped = [
             t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
             for item in existing
-            if isinstance(item, Mapping)
-            and "group" not in item
-            and "extra" not in item
+            if isinstance(item, Mapping) and "group" not in item and "extra" not in item
         ]
         if unscoped:
             unqualified = dict(entry)
@@ -464,7 +484,16 @@ class FlextInfraUtilitiesPyprojectUvSources(
     def _resolution_project_payload(
         project: m.Infra.UvResolutionProject,
     ) -> t.JsonDict:
-        """Detach native metadata without mutating its authenticated document."""
+        """Detach native metadata without mutating its authenticated document.
+
+        Returns:
+            The resulting ``t.JsonDict``.
+
+        Raises:
+            ValueError: If the document is not a TOML mapping or the project
+                directory is not absolute.
+
+        """
         payload = u.Cli.toml_as_mapping(project.document)
         if payload is None:
             msg = f"resolution input is not a TOML mapping: {project.directory}"
@@ -479,7 +508,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
         requirement: str,
         project: m.Infra.UvResolutionProject,
     ) -> str:
-        """Rebase relative direct file references while retaining PEP 508 fields."""
+        """Rebase relative direct file references while retaining PEP 508 fields.
+
+        Returns:
+            The resulting ``str`` requirement.
+
+        """
         parsed = Requirement(requirement)
         if parsed.url is None:
             return requirement
@@ -502,7 +536,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
         directory: Path,
         group: str | None,
     ) -> t.JsonDict:
-        """Relocate one native group source into its generated group context."""
+        """Relocate one native group source into its generated group context.
+
+        Returns:
+            The resulting ``t.JsonDict``.
+
+        """
         entry = deepcopy(dict(source))
         path = entry.get("path")
         if isinstance(path, str):
@@ -736,36 +775,21 @@ class FlextInfraUtilitiesPyprojectUvSources(
         uv = cls._resolved_uv_table(document)
         members = (
             tuple(member for member in workspace.subprojects if member.package)
-            if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
+            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         root_names = (
             (workspace.repository.distribution,) if workspace.repository.package else ()
         )
-        local_names = (
-            *root_names,
-            *(member.distribution for member in members),
-        )
+        local_names = (*root_names, *(member.distribution for member in members))
         conflicting = set(local_names) & candidate_sources.keys()
         if conflicting:
             return r[bool].fail(
                 "candidate source overrides local members: "
                 + ", ".join(sorted(conflicting)),
             )
-        # Source replacement must not discard declared version/marker bounds.
-        constraints = tuple(
-            sorted({
-                *resolution.constraint_dependencies,
-                *(
-                    FlextInfraUtilitiesDependencies.dependency_constraint(
-                        line,
-                        replace_source=True,
-                    )
-                    for line in local_requirements
-                    if FlextInfraUtilitiesDependencies.dep_name(line) in local_names
-                ),
-            }),
-        )
+        # Authored metadata retains declared policy. Native resolution views own
+        # local source overrides and the constraints preserving replaced sources.
         cls._sync_uv_candidates(
             uv,
             candidate_sources,
@@ -773,10 +797,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             resolution,
         )
         u.Cli.toml_remove_key_if_present(uv, "required-version")
-        cls._sync_uv_constraints(
-            uv,
-            resolution.model_copy(update={"constraint_dependencies": constraints}),
-        )
+        cls._sync_uv_constraints(uv, resolution)
         cls._sync_uv_environments(uv, resolution)
         u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         cls._retire_generated_local_sources(
@@ -802,10 +823,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         source_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             u.Cli.toml_unwrap_item(sources),
         )
-        declared = {
-            canonicalize_name(item.distribution): item
-            for item in repositories
-        }
+        declared = {canonicalize_name(item.distribution): item for item in repositories}
         has_native_workspace = u.Cli.toml_value(uv, "workspace") is not None
         for source_name, entry in source_names.items():
             repository = declared.get(canonicalize_name(source_name))
@@ -816,13 +834,11 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 "editable": repository.editable,
             }
             generated_self = (
-                repository.path == Path(".")
+                repository.path == Path()
                 and not has_native_workspace
                 and entry == {"workspace": True}
             )
-            if not has_native_workspace and (
-                entry == generated_path or generated_self
-            ):
+            if not has_native_workspace and (entry == generated_path or generated_self):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         if not sources:
             u.Cli.toml_remove_key_if_present(uv, "sources")

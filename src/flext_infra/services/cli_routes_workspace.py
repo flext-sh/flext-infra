@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import ClassVar
 
-from flext_infra import FlextInfraGitService, c, infra, m, p, t, u
+from flext_infra import FlextInfraGitService, c, infra, m, p, r, t, u
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_routes_refactor import FlextInfraRefactorRoutes
@@ -28,6 +28,25 @@ from flext_infra.workspace import (
 
 class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
     """Own refactor, release, and workspace routes."""
+
+    @staticmethod
+    def _editable_members(
+        params: m.Infra.WorkspaceEnvironmentRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Print eligible relative member paths from installed provenance.
+
+        Returns:
+            The eligible count or the original provenance failure.
+
+        """
+        selected = FlextInfraWorkspaceEnvironmentProvenance.editable_members(
+            params.repository_root,
+        )
+        if selected.failure:
+            return selected
+        for repository in selected.value:
+            u.Cli.emit_raw(f"{repository.path}\n")
+        return r[int].ok(len(selected.value))
 
     @staticmethod
     def _apply_flext_binding(
@@ -110,6 +129,9 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 help_text="Inspect native public signing references without key access",
                 model_cls=m.Infra.GitRepoRequest,
                 handler=u.Infra.git_signing_identity,
+                success_formatter=lambda report: report.model_dump_json(
+                    round_trip=True
+                ),
             ),
             m.Cli.ResultCommandRoute(
                 name="capture-gate",
@@ -158,6 +180,14 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 success_message=(
                     "workspace Git worktree is clean and has no stash entries"
                 ),
+            ),
+            m.Cli.ResultCommandRoute(
+                name="editable-members",
+                help_text=(
+                    "List declared members with authenticated installed editables"
+                ),
+                model_cls=m.Infra.WorkspaceEnvironmentRequest,
+                handler=_editable_members,
             ),
             m.Cli.ResultCommandRoute(
                 name="verify-environment",

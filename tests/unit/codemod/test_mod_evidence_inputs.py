@@ -19,6 +19,96 @@ class TestsFlextInfraModEvidenceInputs:
     """Validate public evidence round-trips without duplicated input bodies."""
 
     @staticmethod
+    def test_native_record_digest_and_operational_fields_fail_closed(
+        mod_workspace: Path,
+    ) -> None:
+        """Complete native evidence refuses altered references and mismatched fields."""
+        source = mod_workspace / "consumer.py"
+        source.write_text(
+            "def edge(value: str) -> str:\n    return str(value)\n",
+            encoding="utf-8",
+        )
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+            )
+        )
+        tm.that(report.findings, eq=1)
+        finding = report.entries[0]
+        with u.Infra.mod_native_readers(report.native_artifacts) as readers:
+            raw = u.Infra.mod_native_payload(finding, readers)
+            tm.that(raw["text"], eq=finding.text)
+            corrupted = finding.model_copy(
+                update={
+                    "native_record": m.Infra.ModNativeRecord(
+                        offset=finding.native_record.offset,
+                        length=finding.native_record.length,
+                        sha256=u.Cli.sha256_bytes(b"foreign record"),
+                    ),
+                }
+            )
+            with pytest.raises(ValueError, match="record digest"):
+                u.Infra.mod_native_payload(corrupted, readers)
+            changed = finding.model_copy(update={"text": "foreign source"})
+            with pytest.raises(ValueError, match="operational fields"):
+                u.Infra.mod_native_payload(changed, readers)
+
+    @staticmethod
+    def test_native_report_requires_output_even_when_no_occurrences(
+        mod_workspace: Path,
+    ) -> None:
+        """A zero report still records and authenticates the scanner's real output."""
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+            )
+        )
+        tm.that(report.findings, eq=0)
+        tm.that(bool(report.native_artifacts))
+        evidence = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes()
+        )
+        tm.that(evidence.native_artifacts, eq=report.native_artifacts)
+        with u.Infra.mod_native_readers(evidence.native_artifacts) as readers:
+            artifact = evidence.native_artifacts[0]
+            tm.that(
+                u.Cli.sha256_bytes(
+                    readers[artifact.path].read_range(0, tm.not_none(artifact.size))
+                ),
+                eq=artifact.sha256,
+            )
+
+    @staticmethod
+    def test_native_jsonl_preserves_large_unicode_record(mod_workspace: Path) -> None:
+        """A real native record spanning read blocks retains complete evidence."""
+        source = mod_workspace / "consumer.py"
+        content = (
+            'def edge(value: str = "'
+            + "é\u2028" * 600_000
+            + '") -> str:\n    return str(value)\n'
+        )
+        source.write_text(content, encoding="utf-8")
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+            )
+        )
+        tm.that(report.findings, eq=1)
+        finding = report.entries[0]
+        tm.that(finding.text, eq=content.rstrip("\n"))
+        with u.Infra.mod_native_readers(report.native_artifacts) as readers:
+            native = u.Infra.mod_native_payload(finding, readers)
+        tm.that(native["text"], eq=finding.text)
+        tm.that(tm.not_none(finding.source_state).content, eq=content.encode("utf-8"))
+        evidence = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes()
+        )
+        with u.Infra.mod_native_readers(evidence.native_artifacts) as readers:
+            restored = u.Infra.mod_native_payload(evidence.entries[0], readers)
+        tm.that(restored, eq=native)
+        tm.that(evidence.native_artifacts, eq=report.native_artifacts)
+
+    @staticmethod
     @pytest.mark.slow
     def test_full_diagnostic_runs_one_native_scan(
         mod_workspace: Path, capsys: pytest.CaptureFixture[str]
@@ -69,14 +159,16 @@ class TestsFlextInfraModEvidenceInputs:
         )
         paths = [state.path for state in snapshot.states]
         tm.that(len(paths), eq=len(set(paths)))
+        epoch = u.Infra.codemod_source_epoch(snapshot)
         for selection in selections:
             owner = selection.root / "owner.py"
             tm.that(owner in paths)
             owner.write_text("invalid syntax !!!\n", encoding="utf-8")
-            with u.Infra.codemod_binding_project(selection.root, snapshot) as (
+            with u.Infra.codemod_binding_project(selection.root, epoch) as (
                 project,
                 sources,
             ):
+                tm.that(sources is epoch.sources)
                 consumer = selection.source_paths[0]
                 module = project.get_pymodule(project.get_resource(consumer.name))
                 offset = sources[consumer].rindex("Public")
@@ -125,6 +217,7 @@ class TestsFlextInfraModEvidenceInputs:
             (inputs[0],),
             tuple(reversed(inputs)),
             (),
+            tuple(inputs[:1]),
         )
         report = report.model_copy(
             update={
@@ -163,20 +256,27 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(encoded.count(marker.encode("utf-8")), eq=1)
         tm.that(u.Cli.sha256_bytes(encoded), eq=receipt.sha256)
         tm.that(restored.deferred, eq=1)
-        shared: dict[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]] = {}
+        tm.that(
+            len(restored.binding_graphs),
+            eq=len({
+                tuple(state.path for state in entry.binding_states)
+                for entry in report.entries
+            }),
+        )
+        shared: dict[int, tuple[m.Cli.AtomicFileState, ...]] = {}
         for original, occurrence in zip(report.entries, restored.entries, strict=True):
-            tm.that(occurrence.payload, eq=original.payload)
+            tm.that(occurrence.native_record, eq=original.native_record)
             tm.that(occurrence.source_state, eq=original.source_state)
             tm.that(occurrence.binding_states, eq=original.binding_states)
             tm.that(
-                occurrence.binding_paths,
+                restored.binding_graphs[occurrence.binding_graph],
                 eq=tuple(state.path for state in original.binding_states),
             )
             tm.that(occurrence.classification, eq=original.classification)
             tm.that(
                 occurrence.binding_states
                 is shared.setdefault(
-                    occurrence.binding_paths, occurrence.binding_states
+                    occurrence.binding_graph, occurrence.binding_states
                 )
             )
         tm.that(
@@ -205,7 +305,10 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(closure[-1] is closure[0])
         owner.write_text("invalid syntax !!!\n", encoding="utf-8")
         with u.Infra.codemod_binding_project(
-            mod_workspace, m.Infra.CodemodBindingSnapshot(states=closure)
+            mod_workspace,
+            u.Infra.codemod_source_epoch(
+                m.Infra.CodemodBindingSnapshot(states=closure)
+            ),
         ) as (project, sources):
             module = project.get_pymodule(project.get_resource(source.name))
             tm.that(
@@ -216,30 +319,80 @@ class TestsFlextInfraModEvidenceInputs:
             )
         missing_source = mod_workspace / "absent_source.py"
         missing_binding = mod_workspace / "absent_binding.py"
-        for reference, expected_key in (
-            ({"source_path": missing_source}, missing_source),
-            ({"binding_paths": (missing_binding,)}, missing_binding),
+        for updates, expected_key in (
             (
                 {
-                    "source_path": missing_source,
-                    "binding_paths": (missing_binding,),
+                    "entries": (
+                        restored.entries[0].model_copy(
+                            update={"source_path": missing_source}
+                        ),
+                        *restored.entries[1:],
+                    )
                 },
                 missing_source,
             ),
-        ):
-            tampered = restored.model_copy(
-                update={
-                    "entries": (
-                        restored.entries[0].model_copy(update=reference),
-                        *restored.entries[1:],
+            (
+                {
+                    "binding_graphs": (
+                        (missing_binding,),
+                        *restored.binding_graphs[1:],
                     )
-                }
-            )
+                },
+                missing_binding,
+            ),
+            (
+                {
+                    "binding_graphs": (
+                        (missing_binding,),
+                        *restored.binding_graphs[1:],
+                    ),
+                    "entries": (
+                        restored.entries[0].model_copy(
+                            update={"source_path": missing_source}
+                        ),
+                        *restored.entries[1:],
+                    ),
+                },
+                missing_binding,
+            ),
+        ):
+            tampered = restored.model_copy(update=updates)
             with pytest.raises(KeyError) as missing:
                 m.Infra.ModScanEvidence.model_validate_json(
                     tampered.model_dump_json(round_trip=True)
                 )
             tm.that(missing.value.args, eq=(expected_key,))
+        tampered_graph = restored.model_copy(
+            update={
+                "entries": (
+                    restored.entries[0].model_copy(
+                        update={"binding_graph": len(restored.binding_graphs)}
+                    ),
+                    *restored.entries[1:],
+                )
+            }
+        )
+        with pytest.raises(m.ValidationError, match="binding graph is missing"):
+            m.Infra.ModScanEvidence.model_validate_json(
+                tampered_graph.model_dump_json(round_trip=True)
+            )
+        for field in ("totals_by_repository", "totals_by_rule"):
+            totals = dict(getattr(restored, field))
+            totals[next(iter(totals))] += 1
+            with pytest.raises(m.ValidationError, match="totals differ"):
+                m.Infra.ModScanEvidence.model_validate_json(
+                    restored.model_copy(update={field: totals}).model_dump_json(
+                        round_trip=True
+                    )
+                )
+        with pytest.raises(m.ValidationError):
+            m.Infra.ModScanEvidence.model_validate_json(
+                restored.model_copy(
+                    update={
+                        "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION - 1
+                    }
+                ).model_dump_json(round_trip=True)
+            )
         with pytest.raises(m.ValidationError):
             m.Infra.CodemodBindingSnapshot(
                 states=(
@@ -247,3 +400,34 @@ class TestsFlextInfraModEvidenceInputs:
                     snapshot.states[0].model_copy(update={"content": b"changed"}),
                 )
             )
+
+    @staticmethod
+    def test_empty_scan_retains_zero_inventory(mod_workspace: Path) -> None:
+        """An empty native result publishes a complete zero-count inventory."""
+        source = mod_workspace / "consumer.py"
+        source.write_text("value = 1\n", encoding="utf-8")
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+            )
+        )
+        tm.that(report.findings, eq=0)
+        receipt = tm.ok(
+            u.Infra.publish_mod_scan_evidence(
+                mod_workspace,
+                report,
+                publication=m.Infra.ModScanPublication(
+                    command=c.Infra.ModScanCommand.SCAN,
+                    scope=(str(source),),
+                    repositories=(mod_workspace.name,),
+                    rule_ids=("ban-pass-through-wrapper",),
+                ),
+            )
+        )
+        restored = m.Infra.ModScanEvidence.model_validate_json(
+            receipt.path.read_bytes()
+        )
+        tm.that(restored.entries, eq=())
+        tm.that(restored.binding_graphs, eq=())
+        tm.that(restored.totals_by_repository, eq={mod_workspace.name: 0})
+        tm.that(restored.totals_by_rule, eq={"ban-pass-through-wrapper": 0})

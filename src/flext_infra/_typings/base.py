@@ -185,6 +185,8 @@ class FlextInfraTypesBase:
     type PerFileIgnores = t.MappingKV[str, t.SequenceOf[RuffRule]]
     "Ruff per-file exemptions: {path_glob: [named_rule]}, never a blanket mask."
 
+    type LifecycleContext = Literal["local", "ci"]
+
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."
     type LayoutRule = Literal["move", "archive", "gitignore", "review"]

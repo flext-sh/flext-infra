@@ -145,7 +145,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"[{entry.text!r}]",
             )
         cli.display_text(
-            f"ast: scanned {len({rule.resource for rule in planned.rules})} rule file(s) from "
+            f"ast: scanned {len({rule.resource for rule in planned.rules})} rule "
+            f"file(s) from "
             f"{len(planned.rulesets)} provider(s); "
             f"{ast_report.findings} ast-grep finding(s) "
             f"({ast_report.actionable} actionable), "
@@ -178,9 +179,6 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
-
-        Raises:
-            ValueError: If ast.
         """
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
@@ -213,48 +211,16 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         )
         if rule_ids is None:
             return outcome
-        after = FlextInfraModGateEngine.scan(root, fix=False)
-        if after.failure:
-            sys.stderr.write(
-                f"ast: {'secondary ' if outcome.failure else ''}"
-                f"whole-catalog after scan failure: {after.error}; "
-                "accepted writes retained; no rollback performed\n",
-            )
-            return (
-                outcome if outcome.failure else r[t.Cli.ResultValue].from_failure(after)
-            )
-        receipt = u.Infra.publish_mod_scan_evidence(
-            root,
-            after.value,
-            publication=m.Infra.ModScanPublication(
-                command=c.Infra.ModScanCommand.SCAN,
-                scope=u.Infra.ast_grep_scan_targets(root),
-                relative_path=invocation / "after.json",
-            ),
-        )
-        if receipt.failure:
-            sys.stderr.write(
-                f"ast: {'secondary ' if outcome.failure else ''}"
-                f"after evidence publication failure: {receipt.error}; "
-                "accepted writes retained; no rollback performed\n",
-            )
-            return (
-                outcome
-                if outcome.failure
-                else r[t.Cli.ResultValue].from_failure(receipt)
-            )
+        observed = cls._observed_after_evidence(root, invocation, outcome)
+        if observed.failure:
+            return r[t.Cli.ResultValue].from_failure(observed)
+        receipt, after = observed.value
         cli.display_text(
-            f"ast: whole-catalog after evidence={receipt.value.path} "
-            f"sha256={receipt.value.sha256}",
+            f"ast: whole-catalog after evidence={receipt.path} sha256={receipt.sha256}",
         )
         try:
             catalog_after = u.Infra.codemod_rule_plan(root)
-            if catalog_after.failure:
-                msg = f"ast: whole-catalog observation failed: {catalog_after.error}"
-                raise ValueError(msg)
-            if catalog_before != catalog_after.value:
-                msg = "ast: whole-catalog identity changed during selected apply"
-                raise ValueError(msg)
+            cls._require_whole_catalog_correspondence(catalog_before, catalog_after)
             deltas = u.Infra.rule_deltas(
                 before, after.value, publication_chain=tuple(published_plans)
             )
@@ -284,6 +250,72 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 "accepted writes retained; no rollback performed",
             )
         return outcome
+
+    @classmethod
+    def _observed_after_evidence(
+        cls,
+        root: Path,
+        invocation: Path,
+        outcome: p.Result[t.Cli.ResultValue],
+    ) -> p.Result[t.Pair[m.Infra.ModScanEvidenceReceipt, m.Infra.ModScanReport]]:
+        """Scan the whole catalog after a selected apply and publish evidence.
+
+        A failed apply keeps its failure primary over any observation or
+        publication failure; accepted writes are never rolled back.
+
+        Args:
+            root: Governed repository root of the apply.
+            invocation: Evidence directory of this apply invocation.
+            outcome: Already-converged selected apply outcome.
+
+        Returns:
+            The published after evidence with its whole-catalog report, or the
+            observation or publication failure.
+        """
+        result_type = r[t.Pair[m.Infra.ModScanEvidenceReceipt, m.Infra.ModScanReport]]
+        after = FlextInfraModGateEngine.scan(root, fix=False)
+        if after.failure:
+            sys.stderr.write(
+                f"ast: {'secondary ' if outcome.failure else ''}"
+                f"whole-catalog after scan failure: {after.error}; "
+                "accepted writes retained; no rollback performed\n",
+            )
+            return result_type.from_failure(after)
+        receipt = u.Infra.publish_mod_scan_evidence(
+            root,
+            after.value,
+            publication=m.Infra.ModScanPublication(
+                command=c.Infra.ModScanCommand.SCAN,
+                scope=u.Infra.ast_grep_scan_targets(root),
+                relative_path=invocation / "after.json",
+            ),
+        )
+        if receipt.failure:
+            sys.stderr.write(
+                f"ast: {'secondary ' if outcome.failure else ''}"
+                f"after evidence publication failure: {receipt.error}; "
+                "accepted writes retained; no rollback performed\n",
+            )
+            return result_type.from_failure(receipt)
+        return result_type.ok((receipt.value, after.value))
+
+    @staticmethod
+    def _require_whole_catalog_correspondence(
+        catalog_before: m.Infra.CodemodRulePlan,
+        catalog_after: p.Result[m.Infra.CodemodRulePlan],
+    ) -> None:
+        """Fail loud when the whole catalog breaks the applied selected identity.
+
+        Raises:
+            ValueError: If the whole-catalog observation failed or the rule
+                plan changed during the selected apply.
+        """
+        if catalog_after.failure:
+            msg = f"ast: whole-catalog observation failed: {catalog_after.error}"
+            raise ValueError(msg)
+        if catalog_before != catalog_after.value:
+            msg = "ast: whole-catalog identity changed during selected apply"
+            raise ValueError(msg)
 
     @staticmethod
     def _selected_fixed_point(

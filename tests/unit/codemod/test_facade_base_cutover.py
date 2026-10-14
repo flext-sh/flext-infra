@@ -555,14 +555,14 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
         }
 
     @staticmethod
-    def _finding(file_path: Path) -> m.Infra.ModScanFinding:
+    def _finding(file_path: Path) -> m.Infra.ModOccurrence:
         """Build one detector finding for the facade module.
 
         Returns:
-            The resulting ``m.Infra.ModScanFinding``.
+            The resulting ``m.Infra.ModOccurrence``.
 
         """
-        return m.Infra.ModScanFinding(
+        return m.Infra.ModOccurrence(
             rule_file="facade-base-by-class-name.yml",
             rule_id="facade-base-by-class-name",
             repository="child",
@@ -571,7 +571,6 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             text="m = ChildModels",
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
 
     @classmethod

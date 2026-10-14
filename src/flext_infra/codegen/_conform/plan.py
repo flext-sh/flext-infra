@@ -13,6 +13,10 @@ from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
+from flext_infra.codegen._mise_artifacts_journal import FlextInfraMiseArtifactsJournal
+from flext_infra.codegen._mise_artifacts_verification import (
+    FlextInfraMiseArtifactsVerification,
+)
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -20,6 +24,129 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
+
+    def continue_after_publication(
+        self,
+        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[bool]:
+        """Advance producer capture only through this producer's live effect proof.
+
+        Returns:
+            Whether the recaptured producer still owns the published receipts.
+        """
+        if self.producer is None or not receipts:
+            return r[bool].fail(
+                "producer continuation requires its captured publication receipts",
+            )
+        expected = self._expected_producer_sources()
+        if expected.failure:
+            return r[bool].from_failure(expected)
+        matched = self._matched_producer_receipts(receipts, expected.value)
+        if matched.failure:
+            return matched
+        verified = self._verified_receipt_states(receipts)
+        if verified.failure:
+            return verified
+        return self._advanced_producer_capture(receipts)
+
+    def _expected_producer_sources(
+        self,
+    ) -> p.Result[t.MappingKV[Path, m.Infra.CodegenJournalSource]]:
+        """Encode the captured producer's inputs as expected journal sources.
+
+        Returns:
+            The expected generator sources keyed by path, or the first
+            encoding failure.
+        """
+        expected_sources: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource] = {}
+        for state in self.producer.inputs:
+            encoded = FlextInfraMiseArtifactsJournal.source_record("generator", state)
+            if encoded.failure:
+                return r[t.MappingKV[Path, m.Infra.CodegenJournalSource]].from_failure(
+                    encoded
+                )
+            expected_sources[state.path] = encoded.value
+        return r[t.MappingKV[Path, m.Infra.CodegenJournalSource]].ok(expected_sources)
+
+    def _matched_producer_receipts(
+        self,
+        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        expected_sources: t.MappingKV[Path, m.Infra.CodegenJournalSource],
+    ) -> p.Result[bool]:
+        """Reject publication receipts captured by a different producer.
+
+        Args:
+            receipts: Publication receipts of this producer's live effects.
+            expected_sources: Expected generator sources keyed by path.
+
+        Returns:
+            Whether every receipt belongs to the captured producer, or the
+            first mismatch failure.
+        """
+        expected_trees = {
+            tree.root.path: tree for tree in self.producer.generator_trees
+        }
+        for receipt in receipts:
+            if (
+                {
+                    source.path: source.model_copy(update={"role": None})
+                    for source in receipt.generator_sources
+                }
+                != expected_sources
+                or {tree.root.path: tree for tree in receipt.generator_trees}
+                != expected_trees
+                or receipt.generator_modules != self.producer.generator_modules
+            ):
+                return r[bool].fail(
+                    "publication receipt belongs to a different captured producer",
+                )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _verified_receipt_states(
+        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[bool]:
+        """Verify every publication receipt's source states remain current.
+
+        Args:
+            receipts: Publication receipts of this producer's live effects.
+
+        Returns:
+            Whether every receipt's states remain current, or the first
+            verification failure.
+        """
+        for receipt in receipts:
+            verified = FlextInfraMiseArtifactsVerification.publication_states_current(
+                receipt,
+            )
+            if verified.failure:
+                return verified
+        return r[bool].ok(value=True)
+
+    def _advanced_producer_capture(
+        self,
+        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[bool]:
+        """Recapture the producer and prove it still owns its live effects.
+
+        Args:
+            receipts: Publication receipts of this producer's live effects.
+
+        Returns:
+            Whether the recaptured producer is current, or the first capture,
+            verification or currency failure.
+        """
+        captured = FlextInfraCodegenPreconditions.capture_producer()
+        if captured.failure:
+            return r[bool].from_failure(captured)
+        reverified = self._verified_receipt_states(receipts)
+        if reverified.failure:
+            return reverified
+        current = FlextInfraCodegenPreconditions.producer_current(captured.value)
+        if current.failure:
+            return current
+        self.producer = captured.value
+        return r[bool].ok(value=True)
 
     def plan(
         self,
@@ -31,6 +158,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[m.Infra.CodegenPlan]``.
 
         """
+        producer = self._required_producer()
+        if producer.failure:
+            return r[m.Infra.CodegenPlan].from_failure(producer)
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenPlan].from_failure(inputs)
@@ -43,6 +173,23 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 return r[m.Infra.CodegenPlan].from_failure(planned)
             return r[m.Infra.CodegenPlan].ok(planned.value[0])
         return self._plan_repositories(request, inputs.value)
+
+    def _required_producer(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Return the current captured producer, capturing one when absent.
+
+        Returns:
+            The current captured producer, or the first capture or currency
+            failure.
+        """
+        if self.producer is None:
+            captured = FlextInfraCodegenPreconditions.capture_producer()
+            if captured.failure:
+                return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
+            self.producer = captured.value
+        verified = FlextInfraCodegenPreconditions.producer_current(self.producer)
+        if verified.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(verified)
+        return r[m.Infra.CodegenPhaseAnalysis].ok(self.producer)
 
     def _plan_single_surface(
         self,
@@ -83,7 +230,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         targets = self._planning_workspace(request, root, inputs=inputs)
         if targets.failure:
             return r[m.Infra.CodegenPlan].from_failure(targets)
-        workspace, current_target, current_repository = targets.value
+        workspace, _current_target, current_repository = targets.value
         selected_result = self._select_repositories(
             request,
             workspace,
@@ -98,8 +245,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         gathered = self._gathered_repository_plans(
             root,
-            workspace,
-            current_target,
+            targets.value,
             selected,
             c.Infra.CodegenConformSurface(request.what),
             inputs,
@@ -107,41 +253,27 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if gathered.failure:
             return r[m.Infra.CodegenPlan].from_failure(gathered)
         files, environments, issues = gathered.value
-        if contract.pyproject and (
-            contract.destinations is None
-            or c.PYPROJECT_FILENAME in contract.destinations
+        if (
+            not issues
+            and contract.pyproject
+            and (
+                contract.destinations is None
+                or c.PYPROJECT_FILENAME in contract.destinations
+            )
         ):
             for repository in selected:
                 if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
                     continue
-                project_root = (root / repository.path).resolve()
-                project_inputs = (
-                    r[m.Infra.CodegenInputs].ok(inputs)
-                    if project_root == root
-                    else u.Infra.load_codegen_inputs(project_root)
-                )
-                if project_inputs.failure:
-                    return r[m.Infra.CodegenPlan].from_failure(project_inputs)
-                project_workspace = (
-                    r[m.Infra.WorkspaceSpec].ok(workspace)
-                    if project_root == root
-                    else FlextInfraWorkspaceDetector.load_workspace_spec(
-                        project_root,
-                        inputs=project_inputs.value,
-                    )
-                )
-                if project_workspace.failure:
-                    return r[m.Infra.CodegenPlan].from_failure(project_workspace)
-                views = self.native_resolution_plans(
-                    project_root,
-                    project_workspace.value,
-                    project_inputs.value,
+                extended = self._extended_pyproject_views(
+                    root,
+                    selected,
+                    workspace,
+                    inputs,
                     files,
-                    rendered_by=self.rendered_by_stamp(),
                 )
-                if views.failure:
-                    return r[m.Infra.CodegenPlan].from_failure(views)
-                files.extend(views.value)
+                if extended.failure:
+                    return r[m.Infra.CodegenPlan].from_failure(extended)
+                files.extend(extended.value)
         return r[m.Infra.CodegenPlan].ok(
             m.Infra.CodegenPlan(
                 request=request,
@@ -155,6 +287,63 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ),
         )
 
+    def _extended_pyproject_views(
+        self,
+        root: Path,
+        selected: t.VariadicTuple[m.Infra.RepositoryRef],
+        workspace: m.Infra.WorkspaceSpec,
+        inputs: m.Infra.CodegenInputs,
+        files: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> p.Result[list[m.Infra.CodegenFilePlan]]:
+        """Resolve native topology views when the surface plans pyproject.
+
+        Args:
+            root: Resolved repository root of the request.
+            selected: Repository references selected for planning.
+            workspace: Loaded workspace specification of the request root.
+            inputs: Loaded codegen inputs of the request root.
+            files: Governed file plans planned so far.
+
+        Returns:
+            The native resolution views extending the planned files, or the
+            first resolution failure.
+        """
+        views: list[m.Infra.CodegenFilePlan] = []
+        for repository in selected:
+            if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
+                continue
+            project_root = (root / repository.path).resolve()
+            project_inputs = (
+                r[m.Infra.CodegenInputs].ok(inputs)
+                if project_root == root
+                else u.Infra.load_codegen_inputs(project_root)
+            )
+            if project_inputs.failure:
+                return r[list[m.Infra.CodegenFilePlan]].from_failure(project_inputs)
+            project_workspace = (
+                r[m.Infra.WorkspaceSpec].ok(workspace)
+                if project_root == root
+                else FlextInfraWorkspaceDetector.load_workspace_spec(
+                    project_root,
+                    inputs=project_inputs.value,
+                )
+            )
+            if project_workspace.failure:
+                return r[list[m.Infra.CodegenFilePlan]].from_failure(
+                    project_workspace,
+                )
+            resolved = self.native_resolution_plans(
+                project_root,
+                project_workspace.value,
+                project_inputs.value,
+                files,
+                rendered_by=self.rendered_by_stamp(),
+            )
+            if resolved.failure:
+                return r[list[m.Infra.CodegenFilePlan]].from_failure(resolved)
+            views.extend(resolved.value)
+        return r[list[m.Infra.CodegenFilePlan]].ok(views)
+
     def _plan_facade(
         self,
         request: m.Infra.CodegenConformRequest,
@@ -164,6 +353,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         Args:
             request: The conform request containing the root and destination module.
+            inputs: The effective codegen policy with its consulted input states.
 
         Returns:
             The plan and authenticated phase analysis, or the first failure.
@@ -601,8 +791,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     def _gathered_repository_plans(
         self,
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        current_target: m.Infra.RepositoryConformTarget,
+        planning: t.Triple[
+            m.Infra.WorkspaceSpec,
+            m.Infra.RepositoryConformTarget,
+            m.Infra.RepositoryRef,
+        ],
         selected: t.VariadicTuple[m.Infra.RepositoryRef],
         surface: c.Infra.CodegenConformSurface,
         inputs: m.Infra.CodegenInputs,
@@ -615,11 +808,20 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     ]:
         """Plan every selected repository and collect its governed file plans.
 
+        Args:
+            root: Resolved repository root of the request.
+            planning: The loaded workspace, its conform target and current
+                repository reference.
+            selected: Repository references selected for planning.
+            surface: Conform surface being planned.
+            inputs: Loaded codegen inputs of the request root.
+
         Returns:
             The resulting ``p.Result[t.Pair[list[m.Infra.CodegenFilePlan],
                 list[m.Infra.UvEnvironmentPlan]]]``.
 
         """
+        workspace, current_target, _current_repository = planning
         result_type = r[
             t.Triple[
                 list[m.Infra.CodegenFilePlan],
@@ -806,12 +1008,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             },
         )
         planned = planner._governed_repository_plans(
-            repository,
-            task.workspace,
             target,
             local_workspace,
-            planner.surface_contract(task.surface, codegen=inputs.spec),
+            planner.surface_contract(
+                c.Infra.CodegenConformSurface(task.surface),
+                codegen=inputs.spec,
+            ),
             inputs,
+            scaffold=(
+                task.initial_workspace is not None
+                and repository.name == task.workspace.repository.name
+            ),
         )
         if planned.failure:
             return m.Infra.CodegenRepositoryPlanOutcome(
@@ -978,14 +1185,22 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def _governed_repository_plans(
         self,
-        repository: m.Infra.RepositoryRef,
-        workspace: m.Infra.WorkspaceSpec,
         target: m.Infra.RepositoryConformTarget,
         local_workspace: m.Infra.WorkspaceSpec,
         contract: m.Infra.CodegenConformSurfaceContract,
         inputs: m.Infra.CodegenInputs,
+        *,
+        scaffold: bool,
     ) -> p.Result[t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]]:
         """Plan governed files and retirements using the target's elected config.
+
+        Args:
+            target: Conform target of the repository being planned.
+            local_workspace: The member's own local workspace specification.
+            contract: Elected conform surface contract.
+            inputs: Loaded codegen inputs of the repository.
+            scaffold: Whether the repository is the declared workspace
+                repository planning its initial scaffold.
 
         Returns:
             The resulting ``p.Result[t.Pair[list[m.Infra.CodegenFilePlan],
@@ -1002,10 +1217,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 config_spec,
                 codegen_inputs=inputs,
             )
-        elif (
-            self.initial_workspace is not None
-            and repository.name == workspace.repository.name
-        ):
+        elif scaffold:
             repository_plan = self._plan_scaffold_repository(
                 target=target,
                 workspace=local_workspace,

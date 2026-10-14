@@ -266,6 +266,44 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(item.script_reference_sites, eq=())
 
     @staticmethod
+    def test_census_multiline_parameters_keep_native_definition_positions(
+        tmp_path: Path,
+    ) -> None:
+        """Native parameter bindings retain positional and keyword signature lines."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-evidence",
+            package_name="flext_evidence",
+        )
+        definition = package / "helpers.py"
+        definition.write_text(
+            "def consume(\n"
+            "    first,\n"
+            "    /,\n"
+            "    second=None,\n"
+            "    *items,\n"
+            "    named=None,\n"
+            "    **options,\n"
+            "):\n"
+            "    return first, second, items, named, options\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with infra.rope_workspace(root) as rope:
+            parameters = {
+                item.name: item.line
+                for item in rope.objects(
+                    definition,
+                    include_local_scopes=True,
+                    include_references=False,
+                )
+                if item.kind == "parameter"
+            }
+        tm.that(
+            parameters,
+            eq={"first": 2, "second": 4, "items": 5, "named": 6, "options": 7},
+        )
+
+    @staticmethod
     def test_census_same_line_function_and_parameter_bindings_are_separate(
         tmp_path: Path,
     ) -> None:

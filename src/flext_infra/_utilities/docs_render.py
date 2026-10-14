@@ -16,11 +16,7 @@ from flext_cli import u
 
 from flext_infra import c, config, m, t
 from flext_infra._utilities import FlextInfraUtilitiesDocs
-from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -203,7 +199,7 @@ class FlextInfraUtilitiesDocsRender:
         path: str,
         *,
         is_dir: bool = False,
-        repository_root: Path,
+        governance_source: m.Infra.CodegenBootstrapSource | None,
     ) -> str:
         """Return a resolvable governance link for README or project docs.
 
@@ -220,30 +216,20 @@ class FlextInfraUtilitiesDocsRender:
         """
         if FlextInfraUtilitiesDocs.docs_is_secure_web_url(prefix):
             kind = "tree" if is_dir else "blob"
-            if prefix.rstrip("/") == c.Infra.GITHUB_REPO_URL.rstrip("/"):
-                inputs = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-                    repository_root,
-                ).unwrap()
-                branch = FlextInfraUtilitiesRepository.resolve_integration_branch(
-                    repository_root,
-                    policy_branch=inputs.spec.branch_policy.integration_branch,
-                    inputs=inputs,
-                ).unwrap()
-                return f"{prefix}/{kind}/{branch}/{path}"
-            branches = tuple(
-                repo.branch
-                for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(
-                    repository_root,
-                )
-                if prefix.rstrip("/").endswith(
-                    f"/{repo.organization}/{repo.repository}",
-                )
-            )
-            if len(branches) != 1:
-                msg = "documentation repository owner must resolve exactly once"
+            if governance_source is None:
+                msg = "governance link has no captured source and ref"
                 raise ValueError(msg)
-            (branch,) = branches
-            return f"{prefix}/{kind}/{branch}/{path}"
+            normalized = (
+                FlextInfraUtilitiesRepository
+                .validate_git_remote_url(governance_source.url)
+                .unwrap()
+                .rstrip("/")
+                .removesuffix(".git")
+            )
+            if normalized != prefix.rstrip("/"):
+                msg = "governance link differs from its captured owner"
+                raise ValueError(msg)
+            return f"{prefix}/{kind}/{governance_source.ref}/{path}"
         return f"{prefix}/{path}"
 
     @staticmethod
@@ -372,7 +358,7 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "AGENTS.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         return [
             "## Collection Rules",
@@ -401,7 +387,7 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "AGENTS.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         return [
             "## Quality Gates",
@@ -430,23 +416,23 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "AGENTS.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         skills_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             ".agents/skills/",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
             is_dir=True,
         )
         onboarding_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "docs/guides/onboarding.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         governance_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "docs/GOVERNANCE.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         return [
             "## Governance Pointer",
@@ -752,6 +738,8 @@ class FlextInfraUtilitiesDocsRender:
         scope: m.Infra.DocScope,
         contract: t.JsonMapping,
         modules: t.SequenceOf[str],
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> str:
         """Return the managed mkdocs.yml for a project scope.
 
@@ -802,7 +790,14 @@ class FlextInfraUtilitiesDocsRender:
             / c.Infra.TEMPLATE_MKDOCS_PROJECT
         )
         rendered: str = t.Infra.STR_ADAPTER.validate_python(
-            u.Cli.template_render(template_path, context).unwrap(),
+            u.Cli
+            .template_render_authenticated(
+                template_path,
+                context,
+                source_states=source_states,
+            )
+            .unwrap()
+            .rendered,
         )
         return rendered
 
@@ -932,6 +927,8 @@ class FlextInfraUtilitiesDocsRender:
     def docs_root_mkdocs(
         contract: t.JsonMapping,
         src_paths: t.SequenceOf[str] = (),
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> str:
         """Return the managed mkdocs.yml for the repository root.
 
@@ -977,7 +974,14 @@ class FlextInfraUtilitiesDocsRender:
             / c.Infra.TEMPLATE_MKDOCS_ROOT
         )
         rendered: str = t.Infra.STR_ADAPTER.validate_python(
-            u.Cli.template_render(template_path, context).unwrap(),
+            u.Cli
+            .template_render_authenticated(
+                template_path,
+                context,
+                source_states=source_states,
+            )
+            .unwrap()
+            .rendered,
         )
         return rendered
 

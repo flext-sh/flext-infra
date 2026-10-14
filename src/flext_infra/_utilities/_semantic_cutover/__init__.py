@@ -31,6 +31,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.constant_consumers import (
         FlextInfraUtilitiesSemanticConstantConsumers,
     )
+    from flext_infra._utilities._semantic_cutover.contracts import (
+        FlextInfraUtilitiesSemanticContracts,
+    )
     from flext_infra._utilities._semantic_cutover.declaration_payload import (
         FlextInfraUtilitiesDeclarationPayload,
     )
@@ -108,6 +111,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDeclarationPayload",
     "FlextInfraUtilitiesSemanticConstantConsumers",
+    "FlextInfraUtilitiesSemanticContracts",
     "FlextInfraUtilitiesSemanticCutoverAliasCst",
     "FlextInfraUtilitiesSemanticCutoverAliases",
     "FlextInfraUtilitiesSemanticCutoverBase",
@@ -144,6 +148,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraUtilitiesDeclarationPayload": ".declaration_payload",
         "FlextInfraUtilitiesSemanticConstantConsumers": ".constant_consumers",
+        "FlextInfraUtilitiesSemanticContracts": ".contracts",
         "FlextInfraUtilitiesSemanticCutoverAliasCst": ".alias_cst",
         "FlextInfraUtilitiesSemanticCutoverAliases": ".aliases",
         "FlextInfraUtilitiesSemanticCutoverBase": ".base",

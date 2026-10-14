@@ -1,0 +1,15 @@
+id: rewire-mod-scan-selection
+valid:
+  - Engine.scan(root, fix=False, selection=rules)
+  - Engine.scan(root, fix=False, rule_ids=rules, selection=rules)
+  - Engine.scan(root, fix=False, plan=plan, rule_ids=rules)
+  - Engine.scan(root, fix=False, selection=other(argument=rules))
+invalid:
+  - Engine.scan(root, fix=False, rule_ids=rules)
+  - Engine.scan(root, fix=False, plan=plan)
+  - |
+    Engine.scan(
+        root, fix=False,
+        rule_ids=rules,  # Keep the argument comment.
+    )
+  - Engine.scan(root, fix=False, rule_ids=choose(plan=plan))

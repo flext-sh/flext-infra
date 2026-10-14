@@ -99,4 +99,6 @@ class TestsFlextInfraDepsLockIntegrity:
         for filename in (c.Infra.MISE_LOCK_FILENAME, c.Infra.UV_LOCK_FILENAME):
             (tmp_path / filename).write_text("version = 1\n", encoding="utf-8")
 
-        tm.fail(self._verifier(tmp_path).execute(), has="missing committed generated lock")
+        tm.fail(
+            self._verifier(tmp_path).execute(), has="missing committed generated lock"
+        )

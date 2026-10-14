@@ -301,7 +301,7 @@ class TestsFlextInfraFailedInvocationProgress:
         tm.that(
             entries[0].classification, eq=c.Infra.ModScanFindingClass.DETECTION_ONLY
         )
-        tm.that(entries[0].payload["severity"], eq="warning")
+        tm.that(entries[0].severity, eq="warning")
         tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod

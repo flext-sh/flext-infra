@@ -60,45 +60,40 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         rule = self._cycle_rule()
         facts = u.Infra.codemod_project_facts(project, (rule,))
 
-        with u.Infra.codemod_binding_project(
-            project, m.Infra.CodemodBindingSnapshot(states=())
-        ) as (rope_project, sources):
-            verdict = u.Infra.codemod_context_admits(
+        verdict = u.Infra.codemod_context_admits(
+            m.Infra.CodemodAdmission(
+                root=project,
+                rule=rule,
+                file_path=legado,
+                captures={
+                    "MODULE": {"text": "demo.live"},
+                    "NAME": {"text": "value"},
+                },
+                facts=facts,
+            ),
+        )
+        tm.that(verdict, eq=False)
+        late = live.with_name("late.py")
+        late.write_text("from demo.live import value\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="absent from the project import graph"):
+            u.Infra.codemod_context_admits(
                 m.Infra.CodemodAdmission(
                     root=project,
                     rule=rule,
-                    file_path=legado,
+                    file_path=late,
                     captures={
                         "MODULE": {"text": "demo.live"},
                         "NAME": {"text": "value"},
                     },
                     facts=facts,
                 ),
-                project=rope_project,
-                sources=sources,
             )
-            tm.that(verdict, eq=False)
-            with pytest.raises(
-                ValueError, match="absent from the project import graph"
-            ):
-                u.Infra.codemod_context_admits(
-                    m.Infra.CodemodAdmission(
-                        root=project,
-                        rule=rule,
-                        file_path=live,
-                        captures={
-                            "MODULE": {"text": "demo.live"},
-                            "NAME": {"text": "value"},
-                        },
-                        facts=facts,
-                    ),
-                    project=rope_project,
-                    sources=sources,
-                )
 
     @staticmethod
+    @pytest.mark.parametrize("reuse_config", [False, True])
     def test_generated_source_tree_is_outside_the_scan_targets(
         tmp_path: Path,
+        reuse_config: bool,
     ) -> None:
         """`make mod` targets only the inventory its semantic phases index.
 
@@ -120,7 +115,12 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         generated.parent.mkdir(parents=True)
         generated.write_text("from grpc import _utilities\n", encoding="utf-8")
 
-        targets = u.Infra.ast_grep_scan_targets(project)
+        targets = u.Infra.ast_grep_scan_targets(
+            project,
+            refactor_config=(
+                u.Infra.load_refactor_config(project) if reuse_config else None
+            ),
+        )
 
         tm.that(targets, has=live.relative_to(project).as_posix())
         tm.that(targets, lacks=generated.relative_to(project).as_posix())

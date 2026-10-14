@@ -279,6 +279,14 @@ files:
 rule:
   all:
     - pattern: "assert $A == $B, $MSG"
+    # A textual fix re-emits $MSG one level deeper: a pre-wrapped multi-line
+    # message block would overflow E501 at its new depth and no formatter can
+    # re-wrap a string. Those asserts stay detection-only for a semantic cure.
+    - not:
+        has:
+          kind: string
+          regex: "\\n"
+          stopBy: end
     - not:
         all:
           - pattern: "assert $A == $A, $MSG"
@@ -326,6 +334,14 @@ files:
 rule:
   all:
     - pattern: "assert $A != $B, $MSG"
+    # Same multi-line message exclusion as the eq-message rule above: a
+    # textual fix re-emits $MSG one level deeper and no formatter re-wraps
+    # a string.
+    - not:
+        has:
+          kind: string
+          regex: "\\n"
+          stopBy: end
     - not:
         has:
           kind: comparison_operator

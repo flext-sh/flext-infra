@@ -236,6 +236,13 @@ class FlextInfraProtocolsBase(Protocol):
     class CandidateBootstrapPlanner(Protocol):
         """Conform plan boundary consumed by the candidate campaign."""
 
+        def continue_after_publication(
+            self,
+            receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        ) -> p.Result[bool]:
+            """Advance only through verified effects of the captured producer."""
+            ...
+
         def surface_contract(
             self,
             surface: c.Infra.CodegenConformSurface,
@@ -254,7 +261,23 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class DocsArtifactPlanner(Protocol):
-        """Docs render planner the complete conform transaction publishes."""
+        """Captured scope batches published by the owning docs service."""
+
+        def prepare_batches(
+            self,
+        ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
+            """Capture the next scope after the preceding batch settles."""
+            ...
+
+        def publish_batch(
+            self,
+            bundle: m.Infra.DocsGenerationBundle,
+            *,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
+        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+            """Admit, publish and settle one captured scope batch."""
+            ...
 
         def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
             """Freeze the configured render and its authenticated inputs."""
@@ -371,6 +394,9 @@ class FlextInfraProtocolsBase(Protocol):
             roots: t.MappingKV[str, Path],
             analysis: m.Infra.CodegenPhaseAnalysis,
             policy: m.Infra.CodegenPhasePublicationPolicy,
+            *,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
         ) -> p.Result[t.VariadicTuple[Path]]:
             """Publish one recoverable multi-root phase and verify before commit."""
             ...
@@ -646,7 +672,7 @@ class FlextInfraProtocolsBase(Protocol):
             destination: str,
             failure_prefix: str,
             project_context: m.Infra.ProjectRenderContext | None,
-        ) -> p.Result[str]: ...
+        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
         @classmethod
         def compose_project_artifact(
@@ -656,6 +682,7 @@ class FlextInfraProtocolsBase(Protocol):
             rendered: str,
             *,
             render_inputs: m.Infra.CodegenRenderInputs | None = None,
+            source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
         @staticmethod
@@ -892,14 +919,6 @@ class FlextInfraProtocolsBase(Protocol):
             venv_bin: Path,
         ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
             """Run deptry on a project and return issues."""
-            ...
-
-        def govern_deptry_issues(
-            self,
-            project_path: Path,
-            issues: t.SequenceOf[t.JsonMapping],
-        ) -> p.Result[t.SequenceOf[t.JsonMapping]]:
-            """Drop findings the governed dependency profile makes policy."""
             ...
 
         def build_project_report(

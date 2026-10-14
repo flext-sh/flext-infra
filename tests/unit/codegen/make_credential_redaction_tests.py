@@ -31,9 +31,9 @@ class TestsFlextInfraMakeCredentialRedaction:
             c.Infra.MakeProfile.STANDALONE,
         )
         global_config = tmp_path / "fixture-global.gitconfig"
-        secret = "fixture-only-password-for-redaction"
+        credential = "fixture-only-password-for-redaction"
         username = "fixture-only-git-user"
-        credential_url = f"https://{username}:{secret}@github.com/"
+        credential_url = f"https://{username}:{credential}@github.com/"
         environment = {
             "GIT_CONFIG_GLOBAL": str(global_config),
             "GIT_CONFIG_NOSYSTEM": "1",
@@ -69,7 +69,12 @@ class TestsFlextInfraMakeCredentialRedaction:
         tm.that(
             diagnostic,
             has="embeds credentials in a GitHub URL rewrite",
-            lacks=(secret, username, credential_url, environment["GITHUB_TOKEN"]),
+            lacks=(
+                credential,
+                username,
+                credential_url,
+                environment["GITHUB_TOKEN"],
+            ),
         )
         tm.that(
             TestsFlextInfraConformSupport.project_tree(root),

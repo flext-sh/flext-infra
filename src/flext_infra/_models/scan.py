@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
@@ -100,8 +101,46 @@ class FlextInfraModelsScan:
             m.Field(description="Name of the detector that produced this result"),
         ]
 
-    class ModScanFinding(m.ArbitraryTypesModel):
-        """One complete ast-grep JSONL finding with canonical evidence keys."""
+    class ModNativeRecord(m.ContractModel):
+        """Exact range of one complete record in an authenticated native artifact."""
+
+        offset: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                strict=True,
+                description="Record start byte in the native artifact",
+            ),
+        ]
+        length: Annotated[
+            int,
+            m.Field(
+                gt=0, strict=True, description="Complete native record byte length"
+            ),
+        ]
+        sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                strict=True,
+                description="Digest of the complete native record bytes",
+            ),
+        ]
+
+    class ModReplacementOffsets(m.ContractModel):
+        """UTF-8 byte coordinates supplied by the ast-grep JSON contract."""
+
+        start: Annotated[
+            int,
+            m.Field(ge=0, strict=True, description="Inclusive start byte"),
+        ]
+        end: Annotated[
+            int,
+            m.Field(ge=0, strict=True, description="Exclusive end byte"),
+        ]
+
+    class ModOccurrence(m.ArbitraryTypesModel):
+        """Operational rule occurrence consumed by semantic planning and transport."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
@@ -162,12 +201,28 @@ class FlextInfraModelsScan:
             c.Infra.ModScanFindingClass,
             m.Field(description="Rule mutability and byte-change classification"),
         ]
-        payload: Annotated[
-            t.JsonMapping,
+        replacement_offsets: FlextInfraModelsScan.ModReplacementOffsets | None = (
             m.Field(
-                description="Complete validated ast-grep finding without field loss",
+                default=None,
+                description="Native byte span for the proposed replacement",
+            )
+        )
+
+    class ModScanFinding(ModOccurrence):
+        """Native occurrence carrying the complete authenticated record's identity."""
+
+        severity: Literal["error", "warning", "info", "hint"] = m.Field(
+            description="Severity supplied by the native rule result"
+        )
+        native_record: FlextInfraModelsScan.ModNativeRecord = m.Field(
+            description="Authenticated range and digest of the complete finding record"
+        )
+        native_receipt: Annotated[
+            m.Cli.AtomicFileReceipt | None,
+            m.Field(
+                exclude=True, description="Shared native artifact; persisted by index"
             ),
-        ]
+        ] = None
 
     class ModScanSourceContext(m.ArbitraryTypesModel):
         """One scan's per-file authentication and ownership indexes."""
@@ -182,14 +237,12 @@ class FlextInfraModelsScan:
         ]
         authenticated: Annotated[
             t.MutableMappingKV[str, p.Result[t.Pair[Path, m.Cli.AtomicFileState]]],
-            m.Field(default_factory=dict, description="One authentication per file"),
-        ]
+            m.Field(description="One authentication per file"),
+        ] = m.Field(default_factory=dict)
         repositories: Annotated[
             t.MutableMappingKV[Path, str],
-            m.Field(
-                default_factory=dict, description="One ownership election per file"
-            ),
-        ]
+            m.Field(description="One ownership election per file"),
+        ] = m.Field(default_factory=dict)
 
     class ModScanFindingReference(ModScanFinding):
         """Serialized occurrence referencing the report's authenticated inventory."""
@@ -200,26 +253,20 @@ class FlextInfraModelsScan:
                 description="Authenticated source input, or absent on source drift"
             ),
         ]
-        binding_paths: Annotated[
-            tuple[Path, ...],
+        binding_graph: Annotated[
+            int,
             m.Field(
-                description="Every input in this occurrence's closed binding graph"
+                ge=0,
+                strict=True,
+                description="Index of this occurrence's authenticated binding graph",
             ),
         ]
-
-    class ModReplacementOffsets(m.ContractModel):
-        """UTF-8 byte coordinates supplied by the ast-grep JSON contract."""
-
-        start: Annotated[
+        native_artifact: Annotated[
             int,
-            m.Field(ge=0, strict=True, description="Inclusive start byte"),
-        ]
-        end: Annotated[
-            int,
-            m.Field(ge=0, strict=True, description="Exclusive end byte"),
+            m.Field(ge=0, strict=True, description="Complete native artifact index"),
         ]
 
-    class ModScanCounts[FindingT: ModScanFinding](m.ArbitraryTypesModel):
+    class ModScanCounts[FindingT: ModOccurrence](m.ArbitraryTypesModel):
         """Authenticated findings are the sole source of serialized scan counts."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
@@ -273,8 +320,8 @@ class FlextInfraModelsScan:
                 for entry in self.entries
             )
 
-    class ModScanReport(ModScanCounts[ModScanFinding]):
-        """Verified structural findings and actionable rewrite targets."""
+    class ModOccurrenceReport[FindingT: ModOccurrence](ModScanCounts[FindingT]):
+        """Operational occurrence inventory shared by planning and native scanning."""
 
         source_states: Annotated[
             tuple[m.Cli.AtomicFileState, ...] | None,
@@ -287,6 +334,33 @@ class FlextInfraModelsScan:
             frozenset[Path],
             m.Field(description="Files containing findings"),
         ]
+
+    class ModScanReport(ModOccurrenceReport[ModScanFinding]):
+        """Native scan inventory with complete durable output receipts."""
+
+        native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
+            min_length=1, description="Complete authenticated native output inventory"
+        )
+
+        @m.model_validator(mode="after")
+        def _validate_native_records(self) -> Self:
+            artifacts = {artifact.path: artifact for artifact in self.native_artifacts}
+            if len(artifacts) != len(self.native_artifacts):
+                msg = "native scan artifacts must have unique paths"
+                raise ValueError(msg)
+            for entry in self.entries:
+                artifact = entry.native_receipt
+                if artifact is None or artifacts.get(artifact.path) != artifact:
+                    msg = "native scan finding lacks its declared artifact"
+                    raise ValueError(msg)
+                if (
+                    artifact.size is None
+                    or entry.native_record.offset + entry.native_record.length
+                    > artifact.size
+                ):
+                    msg = "native scan finding escapes its declared artifact"
+                    raise ValueError(msg)
+            return self
 
     class ModTextRule(m.ArbitraryTypesModel):
         """One declarative sed-by-list entry with its exact rewrite receipt."""
@@ -399,6 +473,17 @@ class FlextInfraModelsScan:
             FlextInfraModelsCodemod.CodemodBindingSnapshot,
             m.Field(description="Single authenticated inventory for all occurrences"),
         ]
+        binding_graphs: Annotated[
+            tuple[tuple[Path, ...], ...],
+            m.Field(
+                description="Closed binding graphs stored once, retaining input order "
+                "and multiplicity",
+            ),
+        ]
+        native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
+            min_length=1,
+            description="Durable native artifacts stored once for all occurrence references",
+        )
         command: Annotated[
             c.Infra.ModScanCommand,
             m.Field(description="Public mod scan mode"),
@@ -439,22 +524,46 @@ class FlextInfraModelsScan:
                 if self.totals_by_class[classification] != getattr(self, field):
                     msg = f"mod scan {field} differs from authenticated entries"
                     raise ValueError(msg)
+            for field, totals in (
+                ("repository", self.totals_by_repository),
+                ("rule_id", self.totals_by_rule),
+            ):
+                counted = Counter(dict.fromkeys(totals, 0))
+                counted.update(getattr(entry, field) for entry in self.entries)
+                if dict(counted) != dict(totals):
+                    msg = f"mod scan {field} totals differ from authenticated entries"
+                    raise ValueError(msg)
             indexed = {state.path: state for state in self.inputs.states}
-            bindings: dict[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]] = {}
+            bindings = tuple(
+                tuple(indexed[path] for path in paths) for paths in self.binding_graphs
+            )
             entries = []
             for entry in self.entries:
                 source = (
                     None if entry.source_path is None else indexed[entry.source_path]
                 )
-                if entry.binding_paths not in bindings:
-                    bindings[entry.binding_paths] = tuple(
-                        indexed[path] for path in entry.binding_paths
+                if entry.binding_graph >= len(bindings):
+                    msg = f"mod scan binding graph is missing: {entry.binding_graph}"
+                    raise ValueError(msg)
+                if entry.native_artifact >= len(self.native_artifacts):
+                    msg = (
+                        f"mod scan native artifact is missing: {entry.native_artifact}"
                     )
+                    raise ValueError(msg)
+                artifact = self.native_artifacts[entry.native_artifact]
+                if (
+                    artifact.size is None
+                    or entry.native_record.offset + entry.native_record.length
+                    > artifact.size
+                ):
+                    msg_0 = "mod scan native record escapes its authenticated artifact"
+                    raise ValueError(msg_0)
                 entries.append(
                     entry.model_copy(
                         update={
                             "source_state": source,
-                            "binding_states": bindings[entry.binding_paths],
+                            "binding_states": bindings[entry.binding_graph],
+                            "native_receipt": artifact,
                         }
                     )
                 )

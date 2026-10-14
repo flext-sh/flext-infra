@@ -27,6 +27,8 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
+    PYTEST_CASE_TIMEOUT_DISABLED_SECONDS: ClassVar[int] = 0
+    """Native pytest-timeout sentinel disabling per-item deadlines."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_PROFILE_PROCESS_DIRECTORY_ENV: ClassVar[str] = (
         "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
@@ -308,6 +310,7 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         "**/api_cases/**",
         "**/_cases/**",
         "**/rules/ast-grep/tests/**",
+        "**/rules/ast-grep/rules/**",
         "**/_cov.py",
         "**/_parts/**",
         "**/package-lock.json",
@@ -317,6 +320,15 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     "fixtures mirror their rule pattern/fix text by design (the fix output IS "
     "the next stage's valid input), so jscpd would always report the fixture "
     "pair; the corpus is validated by `ast-grep test`, never by clone count. "
+    "The rules corpus joins it under the same authority: ast-grep's "
+    "declarative format mandates one document per rule id with the shared "
+    "files/ignores/constraints blocks repeated, per-verb and per-position "
+    "rule twins whose bodies differ only in offsets (transforms cannot branch "
+    "or capitalize inside replace templates), and no data sharing across "
+    "documents or files — the twin shape is the format, not authored "
+    "duplication; the corpus is likewise validated by `ast-grep test` "
+    "(operator per-change authorization under the 2026-09-24 suppression "
+    "ruling, granted 2026-10-13 after a deep engine review). "
     "package-lock.json is npm's emission, not authored code: sibling packages "
     "of one tool family share resolved dependency lines by construction, so "
     "their overlap is a data coincidence the resolver owns, never a clone to "

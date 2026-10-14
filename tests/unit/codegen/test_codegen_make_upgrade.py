@@ -27,7 +27,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
         """A newly rendered candidate admits both views before any resolution."""
         _profile, root = generated_make_template
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        views = tuple(root / relative for relative in inputs.spec.uv_resolution_pyprojects)
+        views = tuple(
+            root / relative for relative in inputs.spec.uv_resolution_pyprojects
+        )
         tool_lock = root / c.Infra.MISE_LOCK_FILENAME
         previous_tool_lock = tool_lock.read_bytes()
         for view in views:
@@ -64,7 +66,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding="utf-8",
         )
-        recipe = makefile.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split(
+        recipe = makefile.split("INSTALL_RUNTIME_RECIPE = ", 1)[1].split(
             "\n\n",
             1,
         )[0]
@@ -156,6 +158,49 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @staticmethod
     @pytest.mark.remote
     @pytest.mark.slow
+    def test_native_upg_repairs_the_generated_self_source_before_resolution(
+        tmp_path: Path,
+        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """A stale generated self override cannot block its own upgrade producer."""
+        profile = c.Infra.MakeProfile.STANDALONE
+        project_root = u.Tests.resolved_make_checkout(
+            resolved_make_templates[profile],
+            tmp_path / "stale-self-source",
+            profile,
+        )
+        pyproject = project_root / c.PYPROJECT_FILENAME
+        document = u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))
+        project = tm.not_none(u.Cli.toml_table_child(document, c.Infra.PROJECT))
+        distribution = str(project[c.Infra.NAME])
+        tool = tm.not_none(u.Cli.toml_table_child(document, c.Infra.TOOL))
+        uv = tm.not_none(u.Cli.toml_table_child(tool, "uv"))
+        u.Cli.toml_remove_key_if_present(uv, "sources")
+        u.Cli.toml_sync_string_list(uv, "override-dependencies", (distribution,))
+        tm.ok(u.Cli.atomic_write_text_file(pyproject, u.Cli.toml_dumps(document)))
+        upgraded = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "upg"],
+                cwd=project_root,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(upgraded.outcome),
+            eq=True,
+            msg=upgraded.stdout + upgraded.stderr,
+        )
+        source = u.Tests.toml_table_at(
+            pyproject.read_text(encoding="utf-8"),
+            "tool",
+            "uv",
+            "sources",
+            distribution,
+        )
+        tm.that(source, eq={"workspace": True})
+
+    @staticmethod
+    @pytest.mark.remote
+    @pytest.mark.slow
     def test_setup_rejects_invalid_lock_without_syncing_dependencies(
         tmp_path: Path,
         resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
@@ -183,7 +228,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
 
         tm.that(u.Cli.process_succeeded(provisioned.outcome), eq=False)
-        tm.that(provisioned.stderr, has="ERROR[setup] uv.lock does not match")
+        tm.that(provisioned.stderr, has=c.Infra.UV_LOCK_FILENAME)
         tm.that(lock.read_bytes(), eq=previous_lock)
         tm.that(
             tuple(sorted(environment.glob("lib/python*/site-packages/*.dist-info"))),
@@ -372,9 +417,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(
             self._recipe_targets_containing(
                 makefile,
-                '$(UV) lock --check --project "$(PROJECT_ROOT)"',
+                '$(UV) lock --check --project "$$project"',
             ),
-            eq={"_upg_converge"},
+            eq={"_upg_reconcile_locks"},
         )
         tm.that(makefile, lacks="--constraint-policy")
 
@@ -404,15 +449,14 @@ class TestsFlextInfraCodegenMakeUpgrade:
         upgraded = after(-1, "lock --project")
         bumped = after(upgraded, "lock --bump")
         projected = after(bumped, "$(call RUN_PUBLIC_PRODUCE,gen)")
-        relocked = after(projected, "lock --project")
-        checked = after(relocked, "lock --check")
-        installed = after(checked, "_builtin_setup_environment")
+        relocked = after(projected, "_upg_reconcile_locks")
+        installed = after(relocked, "_builtin_setup_environment")
         activated = after(installed, "$(call RUN_PUBLIC_ACTIVATE,gen)")
 
         tm.that(steps[upgraded], has="--upgrade")
         tm.that(steps[relocked], lacks="--upgrade")
         tm.that(
-            upgraded < bumped < projected < relocked < checked < installed,
+            upgraded < bumped < projected < relocked < installed,
             eq=True,
         )
         tm.that(installed < activated, eq=True)
@@ -435,7 +479,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 makefile,
                 'codegen conform --root "$(PROJECT_ROOT)" --mode check',
             ),
-            eq={"_upg_converge", "_builtin-verify-clean"},
+            empty=True,
         )
         tm.that(
             {"_upg_lifecycle", "_upg_converge"}
@@ -468,11 +512,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 "lock --bump",
                 "install --locked --yes",
                 "deps modernize",
-                "$(SELF_MAKE) _builtin_require_environment",
                 "$(call RUN_PUBLIC_PRODUCE,gen)",
                 "$(call RUN_PUBLIC_ACTIVATE,gen)",
                 "$(SELF_MAKE) gen",
-                'codegen conform --root "$(PROJECT_ROOT)" --mode check',
+                "deps verify-locks",
             )
         ]
         tm.that(order, eq=sorted(set(order)))
@@ -532,7 +575,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
     ) -> None:
         """Frozen setup provisions a stale native graph; audit reports the drift."""
         root = u.Tests.resolved_make_checkout(
-            resolved_make_templates[profile], tmp_path / "drifted-consumer", profile,
+            resolved_make_templates[profile],
+            tmp_path / "drifted-consumer",
+            profile,
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
         policy = inputs.spec.make.uv_resolution
@@ -540,7 +585,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         document = u.Tests.toml_doc(view.read_text(encoding="utf-8"))
         groups = u.Cli.toml_ensure_table(document, "dependency-groups")
         project = u.Tests.toml_table_at(
-            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"), "project",
+            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+            "project",
         )
         groups["fixture-native-lock-drift"] = [str(project["name"])]
         tm.ok(u.Cli.atomic_write_text_file(view, u.Cli.toml_dumps(document)))

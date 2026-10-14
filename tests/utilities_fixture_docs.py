@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import r
+from flext_infra import config
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import m, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
@@ -63,9 +64,19 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         workspace_table = (
             f"\n[tool.uv.workspace]\nmembers = [{members}]\n" if project_names else ""
         )
+        infrastructure = config.Infra.codegen.infra_repository.distribution
+        infrastructure_ref = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+            infrastructure
+        )
+        development = (
+            "\n[dependency-groups]\n"
+            f'dev = ["{infrastructure} @ git+{infrastructure_ref.url}@'
+            f'{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"]\n'
+        )
         _write(
             workspace / "pyproject.toml",
-            f'[project]\nname = "workspace"\nversion = "0.1.0"\n{workspace_table}',
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+            f"{development}{workspace_table}",
         )
 
         for name in project_names:
@@ -74,7 +85,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             pkg_name = name.replace("-", "_")
             _write(
                 project / "pyproject.toml",
-                (f'[project]\nname = "{name}"\nversion = "0.1.0"\n'),
+                (f'[project]\nname = "{name}"\nversion = "0.1.0"\n{development}'),
             )
             _write(
                 project / f"src/{pkg_name}/__init__.py",

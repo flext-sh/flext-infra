@@ -250,11 +250,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # through. Read those maps from disk so resolution can rewrite
         # ``<pkg>.<alias>`` targets to their provider modules.
         extra_module_aliases: t.StrDict = {}
-        owned = {path for path, _ in sources.values()}
         for init_path in sorted(root.rglob("__init__.py")):
-            resolved = init_path.resolve()
-            if resolved in owned or not init_path.is_file():
+            if not init_path.is_file():
                 continue
+            # Owned (planned) inits are intentionally INCLUDED here: the
+            # runtime instances that receive a partial captured-source set
+            # (per-repository plan workers) otherwise miss the analyzed
+            # checkout's own barrel aliases and resolve their re-exports
+            # through the builtins fallback (aihub-l42it.11: the services
+            # barrel re-export of AiHubWorkspaceAgentConfigRetirementService
+            # resolved to a BuiltinModule and the plan crashed). setdefault
+            # keeps a captured map authoritative over the disk map.
             init_module = cls.module_name_for_file(init_path, project_root=root)
             if not init_module:
                 continue

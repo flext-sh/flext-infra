@@ -74,7 +74,8 @@ class FlextInfraModelsGit(
             Path | None, m.Field(description="Declared file key reference, unread")
         ]
         inline_public_key: Annotated[
-            bool, m.Field(description="Git declares an inline key:: public reference")
+            bool,
+            m.Field(description="Git literal public reference: key:: or raw ssh-"),
         ]
         public_fingerprint: Annotated[
             str | None,
@@ -364,56 +365,44 @@ class FlextInfraModelsGit(
         ] = None
 
     class GitLaneVerificationRequest(GitRemoteRequest):
-        """Read-only lane admission and census against the live integration tip.
-
-        One request serves both the semantic publication boundary (operation,
-        candidate, expected tip) and the lane hygiene census (declaration and
-        coordinator ownership evidence).
-        """
+        """Read-only admission and census against the live integration tip."""
 
         declared: Annotated[
-            str | None,
-            m.Field(description="Governing integration declaration"),
+            str | None, m.Field(description="Governing integration declaration")
         ] = None
         evidence_file: Annotated[
-            Path | None,
-            m.Field(description="Typed Bead/PR evidence captured by the coordinator"),
+            Path | None, m.Field(description="Coordinator ownership receipt")
         ] = None
         governance_file: Annotated[
-            Path | None,
-            m.Field(description="Global coordination governance SSOT"),
+            Path | None, m.Field(description="Coordination governance SSOT")
         ] = None
         read_pull_requests: Annotated[
-            bool,
-            m.Field(description="Explicitly authorize public PR ownership reads"),
+            bool, m.Field(description="Authorize public PR ownership reads")
         ] = False
         read_beads: Annotated[
-            bool,
-            m.Field(description="Explicitly authorize declared Beads ownership reads"),
+            bool, m.Field(description="Authorize declared Beads ownership reads")
         ] = False
         operation: Annotated[
             Literal["verify", "create", "retire"],
-            m.Field(description="Boundary being verified, never an effect selector"),
+            m.Field(description="Boundary being verified, not an effect selector"),
         ] = "verify"
         candidate: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Commit whose integration ancestry must be proved"),
+            t.NonEmptyStr, m.Field(description="Commit requiring integration ancestry")
         ] = "HEAD"
         expected_tip: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Previously observed tip; drift refuses admission"),
+            t.NonEmptyStr | None, m.Field(description="Previously observed tip")
         ] = None
 
         @m.model_validator(mode="after")
         def _validate_ownership_selection(self) -> Self:
-            """Reject competing evidence sources instead of ignoring selection.
+            """Reject competing receipt and live ownership evidence sources.
 
             Returns:
-                The uniquely selected ownership request.
+                The validated instance.
 
             Raises:
-                ValueError: If receipt and live ownership are both selected.
-
+                ValueError: If an ownership receipt competes with authorized
+                    live sources.
             """
             if self.evidence_file is not None and (
                 self.read_pull_requests or self.read_beads

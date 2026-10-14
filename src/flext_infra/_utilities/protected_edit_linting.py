@@ -19,10 +19,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 import libcst as cst
+from flext_cli import u
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import RemoveImportsVisitor
-
-from flext_cli import u
 
 from flext_infra import c, config, m, r, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery

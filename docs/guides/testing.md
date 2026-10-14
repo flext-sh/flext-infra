@@ -105,16 +105,64 @@ mutating codemod lifecycle. The profile is written to the generated Make
 the CLI raises. A failed profiling invocation remains RED; its statistics
 identify the expensive owner and do not replace the required quality gates.
 
+`make profile-environment` measures the environment provenance guard itself.
+Its prerequisite checks only the interpreter, so the guard is measured once.
+`make profile-environment-report` reads the retained profile through the same
+report owner.
+
+Generated Python wheels include the producer's complete `pyproject.toml` inside
+their package namespace. Root dependency composition reads live declarations
+only from authenticated editable installations. Installed Git dependencies
+provide their wheel declaration instead: its distribution, immutable lock
+origin, RECORD digest and size, and producer packaging destination must agree.
+Missing resources require publishing the producer's generated artifact first;
+installed METADATA cannot reconstruct development groups or extras.
+
+Root member requests retain each explicit requirement's Git URL, ref and
+marker while adding the member's declared extras. The governed workspace
+integration line supplies a member request only when no explicit source
+request exists. This does not rewrite a member's independent lock or its
+transitive source declarations.
+
+Config lifecycle tests use the shared physical session consumer and its native
+Make upgrade, setup and build sequence. Artifact cases restore the installed
+environment after each case. They import installed packages through that
+environment's interpreter and reject modified declaration resources. These
+cases require producer artifacts containing the declaration contract, built and
+published through the native lifecycle.
+
 Use `make profile-mod-rules` followed by `make profile-mod-rules-report` to
 measure the complete read-only rule diagnostic. It runs the same `refactor ast`
 consumer as `make mod-rules`, including semantic admission and evidence
 publication. The profile checkpoint on SIGTERM retains measured progress while
 the interrupted command remains a failure.
 
-Mod evidence publishes authenticated input bodies once. Occurrences retain explicit
-ordered path references; publication and JSON hydration reuse each binding group
-within that receipt, preserving distinct closures and deferred findings. Path tokens
-remain per occurrence in JSON; tuple sharing is not an end-to-end linear-time claim.
+Mod evidence publishes authenticated input bodies and binding graphs once.
+Each occurrence references its source and a graph index. Graphs retain path order
+and multiplicity; JSON hydration resolves each graph once and shares its immutable
+inputs across occurrences. Missing sources or graph references fail validation.
+Admission constructs one authenticated source epoch for the whole selected
+project set. Its decoded text mapping is immutable and reused by each project;
+Rope projects retain their own mutable scopes and identity graphs. A subsequent
+capture constructs a new epoch. No decoded source survives through an ambient
+process cache.
+This removes repeated graph serialization; native JSONL ingestion and semantic
+admission still require their own measured performance evidence.
+
+The native scanner writes stdout and stderr to separate files through the CLI
+runner. JSONL admission consumes authenticated byte blocks and retains record
+boundaries across blocks, including Unicode and a final unterminated record.
+Schema 4 retains the original native JSONL once in a digest-addressed artifact.
+Each native occurrence records its byte offset, length, and record digest; the
+report stores the artifact receipt once. Explicit hydration uses an operation's
+scoped CLI readers and checks both the record digest and operational fields.
+Unknown native fields remain available in the original record. Candidate scans
+publish these artifacts outside their disposable source view before admission.
+Semantic planning consumes the shared operational occurrence model; it does not
+fabricate native artifact receipts.
+Immutable overlays use the same ruleset reader as the ordinary scan. Native
+finding exits require the complete parsed error count and exact stderr receipt;
+timeouts, forwarded signals and unrelated stderr remain failures.
 
 Codemod admission resolves the declared package namespace once in the typed facts
 of each pass. Findings consume that snapshot; a later pass reads the current

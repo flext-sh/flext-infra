@@ -145,7 +145,6 @@ class TestsFlextInfraDepsModernizerTooling:
                 ),
             ),
             eq=sorted({
-                *tool_config_document.tools.deptry.known_first_party,
                 "flext_sample",
             }),
         )

@@ -41,7 +41,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope_analysis.asthelpers import (
@@ -56,6 +55,9 @@ from flext_infra._utilities._rope_analysis.importstate import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+
+# A sanctioned compose module name is exactly ``<package>.<leaf>``.
+_COMPOSE_MODULE_SEGMENT_COUNT = 2
 
 
 class FlextInfraUtilitiesCodemodProject(
@@ -400,6 +402,8 @@ class FlextInfraUtilitiesCodemodProject(
             c.Infra.CodemodContextPredicate.SAME_BINDING,
             c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
             c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
+            c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
+            c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
         }
         selected = tuple(
             rule
@@ -430,8 +434,8 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         admission: m.Infra.CodemodAdmission,
         *,
-        project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        project: p.Infra.RopeProject | None = None,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> bool:
         """Return whether one finding satisfies its rule's project context.
 
@@ -464,12 +468,64 @@ class FlextInfraUtilitiesCodemodProject(
         source = cls.codemod_source_path(root, admission.file_path)
         for condition in rule.context:
             if condition.predicate in {
+                c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
+                c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
+            }:
+                if condition.variable not in captures:
+                    continue
+                if admission.snapshot is None or project is None or sources is None:
+                    msg = (
+                        f"{rule.id}: declaration context requires its binding snapshot"
+                    )
+                    raise ValueError(msg)
+                capture = m.Infra.AstGrepCapture.model_validate(
+                    captures[condition.variable],
+                )
+                _text, start, _end = cls._validated_capture_span(
+                    source,
+                    capture,
+                    sources[source].encode("utf-8"),
+                )
+                declarations = FlextInfraUtilitiesDeclarationPayload.declaration_names(
+                    project,
+                    source,
+                    capture.text,
+                    offset=start,
+                )
+                resolve = (
+                    FlextInfraUtilitiesDeclarationPayload.payload_declaration
+                    if condition.predicate
+                    is c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
+                    else FlextInfraUtilitiesDeclarationPayload.protocol_declaration
+                )
+                holds = (
+                    len(declarations) == 1
+                    and resolve(
+                        project,
+                        source,
+                        declarations[0],
+                    )
+                    is not None
+                )
+                if holds is not condition.holds:
+                    return False
+                continue
+            if condition.predicate in {
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
                 c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
                 c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
                 c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
             }:
+                snapshot = admission.snapshot
+                if snapshot is None or project is None or sources is None:
+                    msg = (
+                        f"{rule.id}: binding context requires its captured snapshot "
+                        "and active project sources: "
+                        f"snapshot={snapshot is not None} "
+                        f"project={project is not None} sources={sources is not None}"
+                    )
+                    raise ValueError(msg)
                 holds = cls._occurrence_binding_holds(
                     (root, source, project), condition, captures, sources
                 )
@@ -499,26 +555,40 @@ class FlextInfraUtilitiesCodemodProject(
         return True
 
     @staticmethod
+    def codemod_source_epoch(
+        snapshot: m.Infra.CodemodBindingSnapshot,
+    ) -> m.Infra.CodemodSourceEpoch:
+        """Decode each captured source once for the complete selected-project pass."""
+        contents = {
+            state.path: state.content
+            for state in snapshot.states
+            if state.content is not None
+        }
+        return m.Infra.CodemodSourceEpoch(
+            snapshot=snapshot,
+            sources=MappingProxyType({
+                path: content.decode("utf-8") for path, content in contents.items()
+            }),
+            contents=MappingProxyType(contents),
+        )
+
+    @staticmethod
     @contextmanager
     def codemod_binding_project(
         root: Path,
-        snapshot: m.Infra.CodemodBindingSnapshot,
+        epoch: m.Infra.CodemodSourceEpoch,
     ) -> Generator[t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]]]:
         """Own one immutable binding graph for the complete admission pass.
 
         Yields:
             The frozen Rope graph and its complete authenticated source closure.
         """
-        sources = MappingProxyType({
-            state.path.resolve(): state.content.decode("utf-8")
-            for state in snapshot.states
-            if state.content is not None
-        })
+        sources = epoch.sources
         with (
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
                 FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    live, sources, captured=snapshot
+                    live, sources, captured=epoch
                 )
             ) as project,
             project.frozen_layout(),
@@ -775,46 +845,14 @@ class FlextInfraUtilitiesCodemodProject(
             The imported module resource, or ``None`` when Rope cannot find it.
 
         """
-        modules_by_name = lookup.modules
-        folder = resource.parent
-        key = (name, folder.real_path, level)
-        if key in modules_by_name:
-            return modules_by_name[key]
-        if level:
-            modules_by_name[key] = project.find_relative_module(name, folder, level)
-            return modules_by_name[key]
-        # Source and Python-path folders are frozen for this snapshot. Their
-        # absolute-module lookup is shared by every importing module; only the
-        # final importing-folder lookup is local to the occurrence.
-        absolute = (name, None, 0)
-        if absolute not in modules_by_name:
-            imported = next(
-                (
-                    resource
-                    for folder in lookup.source_folders
-                    if (resource := project.find_relative_module(name, folder, 1))
-                    is not None
-                ),
-                None,
+        key = (name, resource.parent.real_path, level)
+        if key not in lookup.modules:
+            lookup.modules[key] = (
+                project.find_relative_module(name, resource.parent, level)
+                if level
+                else project.find_module(name, resource.parent)
             )
-            if imported is None:
-                for search_folder in lookup.python_folders:
-                    shared = (name, search_folder.real_path)
-                    if shared not in lookup.python_modules:
-                        lookup.python_modules[shared] = project.find_relative_module(
-                            name, search_folder, 1
-                        )
-                    imported = lookup.python_modules[shared]
-                    if imported is not None:
-                        break
-            modules_by_name[absolute] = imported
-        imported = modules_by_name[absolute]
-        modules_by_name[key] = (
-            imported
-            if imported is not None
-            else project.find_relative_module(name, folder, 1)
-        )
-        return modules_by_name[key]
+        return lookup.modules[key]
 
     @staticmethod
     def _captured_text(
@@ -867,32 +905,14 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the predicate is not one the engine declares.
-
+            TypeError: If predicate is not declared.
         """
         predicate = condition.predicate
+        if not isinstance(predicate, c.Infra.CodemodContextPredicate):
+            message = f"predicate is not declared: {predicate}"
+            raise TypeError(message)
+        own = FlextInfraUtilitiesPyproject.project_package_name(root)
         match predicate:
-            case c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION:
-                with FlextInfraUtilitiesRopeCore.open_project(root) as project:
-                    resource = FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                        project.get_resource(
-                            file_path.relative_to(root).as_posix(),
-                        ),
-                        file_path,
-                    )
-                    declarations = tuple(
-                        node
-                        for node in ast.walk(ast.parse(resource.read()))
-                        if isinstance(node, ast.ClassDef) and node.name == captured[0]
-                    )
-                    return (
-                        len(declarations) == 1
-                        and FlextInfraUtilitiesDeclarationPayload.payload_declaration(
-                            project,
-                            file_path,
-                            declarations[0],
-                        )
-                        is not None
-                    )
             case _ if predicate in c.Infra.CODEMOD_PACKAGE_CONTEXT_PREDICATES:
                 own = facts.own_package
                 if own is None:
@@ -1037,7 +1057,10 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         parts = value.split(".")
-        if len(parts) != 2 or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES:
+        if (
+            len(parts) != _COMPOSE_MODULE_SEGMENT_COUNT
+            or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES
+        ):
             return False
         top, leaf = parts
         if top == own:

@@ -11,7 +11,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import config, t
+from flext_infra import c, config, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
@@ -122,6 +122,8 @@ class FlextInfraUtilitiesRopeCore(
         """
         resolved = source_root.resolve()
         for parent in (resolved, *resolved.parents):
+            if not (parent / c.Infra.GITMODULES).exists():
+                continue
             declarations = FlextInfraUtilitiesGit.git_submodule_declarations(parent)
             if declarations.failure:
                 raise ValueError(declarations.error or "invalid .gitmodules")

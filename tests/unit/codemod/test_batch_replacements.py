@@ -28,8 +28,7 @@ class TestsFlextInfraBatchReplacements:
         generated: bool = False,
         replacement: bytes = b"after",
         matched: bytes = b"before",
-        rule_id: str = "fixture-rewrite",
-    ) -> m.Infra.ModScanReport:
+    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
         policy = path.parent / "pyproject.toml"
         if not policy.exists():
             policy.write_text(
@@ -40,9 +39,9 @@ class TestsFlextInfraBatchReplacements:
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
         start = content.index(matched)
         offsets: t.JsonDict = {"start": start, "end": start + len(matched)}
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file=str(path.parent / "rule.yaml"),
-            rule_id=rule_id,
+            rule_id="fixture-rewrite",
             repository=path.parent.name,
             file=path,
             source_owner="generator" if generated else "authored",
@@ -52,9 +51,9 @@ class TestsFlextInfraBatchReplacements:
             replacement=replacement.decode(),
             actionable=True,
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
-            payload={"replacementOffsets": offsets, "severity": "error"},
+            replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
         )
-        return m.Infra.ModScanReport(
+        return m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({path}),
             entries=(finding,),
         )
@@ -90,7 +89,9 @@ class TestsFlextInfraBatchReplacements:
                 "text": statement.decode(),
                 "replacement": 'value = "after"',
                 "range": {"byteOffset": offsets},
-                "payload": {"replacementOffsets": offsets, "severity": "error"},
+                "replacement_offsets": m.Infra.ModReplacementOffsets.model_validate(
+                    offsets
+                ),
             }
         )
         report = report.model_copy(update={"entries": (finding,)})
@@ -358,7 +359,7 @@ class TestsFlextInfraBatchReplacements:
         statement = b'__all__ = ["X"]'
         start = original.index(statement)
         offsets: t.JsonDict = {"start": start, "end": start + len(statement)}
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file=str(root / "rule.yaml"),
             rule_id="ban-test-suite-module-all",
             repository=root.name,
@@ -370,9 +371,9 @@ class TestsFlextInfraBatchReplacements:
             replacement="",
             actionable=True,
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
-            payload={"replacementOffsets": offsets, "severity": "error"},
+            replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
         )
-        report = m.Infra.ModScanReport(
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({path}),
             entries=(finding,),
         )

@@ -21,6 +21,89 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     """Desired-state file, environment, and retirement plans."""
 
     @classmethod
+    def repository_kind_declaration_plans(
+        cls,
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+        kind: c.Infra.ProjectKind,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Publish an explicit kind only into the requested target's own source.
+
+        Returns:
+            A guarded source declaration, or the original input conflict.
+        """
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
+        effective = inputs.spec.repository
+        if (
+            effective is not None
+            and "kind" in effective.model_fields_set
+            and effective.kind != kind
+        ):
+            return result_type.fail(
+                f"bootstrap kind conflicts with the target's effective declaration: {root}",
+            )
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        own = next((state for state in inputs.sources if state.path == layers[1]), None)
+        if own is not None and own.content is not None:
+            document = u.Infra.read_codegen_config_document(own.content)
+            if document.failure:
+                return result_type.from_failure(document)
+            declared = u.Cli.json_walk_path(
+                document.value,
+                ("Infra", "codegen", "repository", "kind"),
+            )
+            if declared is not None:
+                if declared != kind.value:
+                    return result_type.fail(
+                        f"bootstrap kind conflicts with the target's declaration: {layers[1]}",
+                    )
+                return result_type.ok(
+                    m.Infra.CodegenPhaseAnalysis(
+                        phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                        files=(),
+                        inputs=inputs.sources,
+                    )
+                )
+        values: t.JsonMapping = {"repository": {"kind": kind.value}}
+        composed = u.Infra.project_codegen_inputs(
+            root,
+            inputs,
+            projections=(
+                m.Infra.CodegenLayerProjection(
+                    path=layers[1],
+                    values={"Infra": {"codegen": dict(values)}},
+                ),
+            ),
+        )
+        if composed.failure:
+            return result_type.from_failure(composed)
+        if (
+            composed.value.spec.repository is None
+            or composed.value.spec.repository.kind != kind
+        ):
+            return result_type.fail(
+                f"bootstrap kind is overridden by the target's elected layers: {root}",
+            )
+        declaration = cls._codegen_declaration_plan(
+            root,
+            layers[1],
+            values,
+            sources=inputs.sources,
+        )
+        if declaration.failure:
+            return result_type.from_failure(declaration)
+        return result_type.ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                files=(declaration.value,),
+                inputs=inputs.sources,
+            )
+        )
+
+    @classmethod
     def _codegen_declaration_plan(
         cls,
         root: Path,
@@ -35,7 +118,12 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             A guarded source plan preserving all unrelated configuration values.
         """
         result_type = r[m.Infra.CodegenFilePlan]
-        captured = cls.file_plan(root, path.relative_to(root).as_posix(), "")
+        captured = cls.file_plan(
+            root,
+            path.relative_to(root).as_posix(),
+            "",
+            source_states=sources,
+        )
         if captured.failure:
             return result_type.from_failure(captured)
         before = captured.value.before
@@ -308,12 +396,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         """
         project = root.expanduser().absolute()
         path = (project / relative_path).absolute()
-        # Planning is read-only: an optional read of a destination whose parent
-        # chain is not materialized reports absence (no parent identity), and
-        # the generation transaction journals and creates every destination
-        # parent before staging. Creating directories here made a CHECK plan
-        # mutate the tree and the next plan diverge from the first.
-        before = u.Cli.atomic_read_binary_file_state(path, required=False)
+        before = u.Infra.codegen_target_snapshot(path)
         if before.failure:
             return r[m.Infra.CodegenFilePlan].from_failure(before)
         return r[m.Infra.CodegenFilePlan].ok(

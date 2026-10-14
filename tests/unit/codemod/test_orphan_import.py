@@ -26,6 +26,7 @@ class TestsFlextInfraOrphanImport:
         ).code
 
     def test_guarded_import_survives_a_populated_block(self) -> None:
+        """A populated TYPE_CHECKING block keeps its guarded import intact."""
         source = (
             "from typing import TYPE_CHECKING\n"
             "\n"
@@ -38,6 +39,7 @@ class TestsFlextInfraOrphanImport:
         tm.that(self._render(source), eq=source)
 
     def test_multi_name_import_keeps_the_surviving_names(self) -> None:
+        """A populated guard block retains its whole multi-name import line."""
         source = (
             "from typing import TYPE_CHECKING, ClassVar\n"
             "\n"
@@ -50,10 +52,14 @@ class TestsFlextInfraOrphanImport:
         tm.that(self._render(source), eq=source)
 
     def test_orphan_import_drops_after_the_block_is_gone(self) -> None:
-        source = "from typing import TYPE_CHECKING\n\ndef read() -> int:\n    return 0\n"
+        """An orphan import with no surviving guard block is stripped."""
+        source = (
+            "from typing import TYPE_CHECKING\n\ndef read() -> int:\n    return 0\n"
+        )
         tm.that(self._render(source), lacks="TYPE_CHECKING")
 
     def test_scanner_reads_the_guard_not_the_import(self) -> None:
+        """Guard detection follows the block's presence, not the import's."""
         guarded = cst.parse_module(
             "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    pass\n"
         )

@@ -541,7 +541,13 @@ class FlextInfraConfigModelsArtifact:
         def managed_file_specs(
             self,
         ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec]:
-            """Compose native resolver artifacts from the one path policy."""
+            """Compose native resolver artifacts from the one path policy.
+
+            Raises:
+                ValueError: If managed files do not declare exactly one root
+                    ``pyproject.toml`` owner, or if a derived resolver artifact
+                    collides with an already declared managed file.
+            """
             roots = tuple(
                 item
                 for item in self.managed_files
@@ -700,6 +706,7 @@ class FlextInfraConfigModelsArtifact:
     class CodegenConformRequest(FlextInfraConfigModelsContract.ConfigContract):
         """Validated public request for ``flext-infra codegen conform``."""
 
+        model_config = m.ConfigDict(use_enum_values=False)
         root: Annotated[Path, m.Field(description="Repository or workspace root")]
         what: Annotated[
             c.Infra.CodegenConformSurface,
@@ -717,6 +724,12 @@ class FlextInfraConfigModelsArtifact:
             str | None,
             m.Field(description="Exact package or module for a file-only surface"),
         ] = None
+        declaration_kind: Annotated[
+            c.Infra.ProjectKind | None,
+            m.Field(
+                description="Explicit self-owned kind supplied by native bootstrap"
+            ),
+        ] = None
 
         @m.model_validator(mode="after")
         def _validate_lazy_init_scope(self) -> Self:
@@ -733,6 +746,12 @@ class FlextInfraConfigModelsArtifact:
                 c.Infra.CodegenConformSurface.LAZY_INIT,
                 c.Infra.CodegenConformSurface.FACADES,
             }
+            if self.declaration_kind is not None and (
+                self.what != c.Infra.CodegenConformSurface.MAKEFILE
+                or self.scope != c.Infra.CodegenConformScope.SELF
+            ):
+                msg = "kind bootstrap requires the target's self Makefile surface"
+                raise ValueError(msg)
             facades = self.what == c.Infra.CodegenConformSurface.FACADES
             if self.module is not None and not file_only:
                 msg = "--module belongs only to lazy-init or facades"
@@ -977,7 +996,9 @@ class FlextInfraConfigModelsArtifact:
         ]
         surface: Annotated[
             FlextInfraConfigVocabulary.CodegenConformSurface,
-            m.Field(description="Requested surface resolved against each target policy"),
+            m.Field(
+                description="Requested surface resolved against each target policy"
+            ),
         ]
 
     class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):
@@ -1126,22 +1147,6 @@ class FlextInfraConfigModelsArtifact:
         issues: Annotated[
             t.VariadicTuple[FlextInfraModelsCheck.Issue],
             m.Field(description="Planning failures retained alongside valid outputs"),
-        ] = ()
-
-    class CodegenResult(FlextInfraConfigModelsContract.ConfigContract):
-        """Public conformance outcome for check and apply modes."""
-
-        plan: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenPlan,
-            m.Field(description="Plan that governed the operation"),
-        ]
-        written_files: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Files atomically replaced by apply"),
-        ] = ()
-        errors: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Fail-closed validation or write errors"),
         ] = ()
 
     class RenameCampaignSpec(FlextInfraConfigModelsContract.ConfigContract):
