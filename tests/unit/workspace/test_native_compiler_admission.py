@@ -18,6 +18,70 @@ class TestsNativeCompilerAdmission:
     """Observe native consumers and unchanged effects during provenance rejection."""
 
     @staticmethod
+    @pytest.mark.parametrize("dumper", ["CDumper", "CSafeDumper"])
+    @pytest.mark.parametrize("replace_binding", [False, True])
+    def test_native_extension_alias_retains_its_lexical_binding_proof(
+        tmp_path: Path,
+        dumper: str,
+        replace_binding: bool,
+    ) -> None:
+        """Real YAML emission admits native aliases and rejects replaced exports."""
+        package = tmp_path / "native_yaml_consumer"
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "import yaml\n"
+                "callback = yaml.CSafeDumper.__setstate__\n"
+                "def emit(value, dumper):\n"
+                "    return yaml.dump(value, Dumper=vars(yaml)[dumper])\n",
+            ),
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "import yaml\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as native\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('native_yaml_consumer')\n"
+            "assert module.emit({'native': 'emitted'}, sys.argv[2]) "
+            "== 'native: emitted\\n'\n"
+            "callback = yaml.CSafeDumper.__setstate__\n"
+            "owner = next(owner for owner in yaml.CSafeDumper.__mro__ "
+            "if vars(owner).get('__setstate__') is callback)\n"
+            "namespace = vars(type)['__dict__'].__get__(owner, type(owner))\n"
+            "assert module.callback is callback\n"
+            "assert namespace.get(callback.__name__) is not callback\n"
+            "observed = native.capture((module.__name__,)).unwrap()\n"
+            "assert any(item.supplier == callback.__module__ "
+            "and item.name == callback.__name__ "
+            "and item.qualname == callback.__qualname__ "
+            "for item in observed.bindings)\n"
+            "if sys.argv[3] == 'True':\n"
+            "    module.callback = yaml.CSafeLoader.__setstate__\n"
+            "    assert module.callback is not callback\n"
+            "    result = provenance.loaded_import_sources(module.__name__)\n"
+            "    assert result.failure, result\n"
+            "else:\n"
+            "    provenance.loaded_import_sources(module.__name__).unwrap()\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [
+                    executable,
+                    "-c",
+                    consumer,
+                    str(tmp_path),
+                    dumper,
+                    str(replace_binding),
+                ],
+                cwd=tmp_path,
+            ),
+        )
+
+    @staticmethod
     @pytest.mark.parametrize(
         "module_name",
         ["flext_native_module_provider", "vendor_native_module_provider"],
