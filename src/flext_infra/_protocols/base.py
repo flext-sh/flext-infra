@@ -236,6 +236,13 @@ class FlextInfraProtocolsBase(Protocol):
     class CandidateBootstrapPlanner(Protocol):
         """Conform plan boundary consumed by the candidate campaign."""
 
+        def continue_after_publication(
+            self,
+            receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        ) -> p.Result[bool]:
+            """Advance only through verified effects of the captured producer."""
+            ...
+
         def surface_contract(
             self,
             surface: c.Infra.CodegenConformSurface,
@@ -387,6 +394,9 @@ class FlextInfraProtocolsBase(Protocol):
             roots: t.MappingKV[str, Path],
             analysis: m.Infra.CodegenPhaseAnalysis,
             policy: m.Infra.CodegenPhasePublicationPolicy,
+            *,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
         ) -> p.Result[t.VariadicTuple[Path]]:
             """Publish one recoverable multi-root phase and verify before commit."""
             ...

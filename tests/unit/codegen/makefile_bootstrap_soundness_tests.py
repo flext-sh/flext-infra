@@ -17,9 +17,149 @@ import pytest
 from flext_infra import config
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, tm, u
+from tests.unit.codegen.test_mise_pin_bootstrap import (
+    TestsFlextInfraMisePinBootstrap as MisePinBootstrapFixture,
+)
 
 class TestsFlextInfraMakefileBootstrapSoundness:
     """Public Make preserves physical ownership and native tool configuration."""
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("verb", ["setup", "upg"])
+    @pytest.mark.parametrize("associated", [False, True])
+    def test_cold_reader_elects_before_runtime_admission_without_resolving_locks(
+        self,
+        tmp_path: Path,
+        verb: str,
+        *,
+        associated: bool,
+    ) -> None:
+        """Frozen UV establishes membership before the real environment guard."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "container",
+            c.Infra.MakeProfile.WORKSPACE,
+            bootstrap=True,
+            shape=u.Tests.MakeEnvironmentShape(project_name="reader-owner"),
+        )
+        seed, _ = u.Tests.render_make_environment(
+            tmp_path / "seed",
+            c.Infra.MakeProfile.STANDALONE,
+            bootstrap=True,
+            shape=u.Tests.MakeEnvironmentShape(project_name="reader-member"),
+        )
+        member = root / "packages" / seed.name
+        shutil.copytree(
+            seed,
+            member,
+            symlinks=True,
+            ignore=shutil.ignore_patterns(".git", c.Infra.ENVIRONMENT_DIRECTORY),
+        )
+        relative = member.relative_to(root).as_posix()
+        document = u.Tests.toml_doc(
+            (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING),
+        )
+        tool = u.Cli.toml_ensure_table(document, "tool")
+        uv = u.Cli.toml_ensure_table(tool, "uv")
+        uv["workspace"] = (
+            {"members": [relative]}
+            if associated
+            else {"members": [], "exclude": [relative]}
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.PYPROJECT_FILENAME,
+                u.Cli.toml_dumps(document),
+            ),
+        )
+        elected = root if associated else member
+        foreign = tmp_path / "foreign-environment"
+        foreign.mkdir()
+        environment = elected / c.Infra.ENVIRONMENT_DIRECTORY
+        environment.symlink_to(foreign, target_is_directory=True)
+        (member / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            "$(info reader-elected-root=$(RUNTIME_ROOT))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        isolation = tmp_path / "native-tools"
+        (isolation / "home").mkdir(parents=True)
+        native_env = MisePinBootstrapFixture._environment(isolation)
+        for project in (root, member):
+            tm.ok(
+                u.Cli.run_checked(
+                    ["mise", "trust", str(project / c.Infra.MISE_TOML_FILENAME)],
+                    options=m.Cli.ProcessOptions(env=native_env),
+                ),
+            )
+        policy = config.Infra.codegen.make.uv_resolution
+        lock_paths = tuple(
+            project / relative
+            for project in (root, member)
+            for relative in (
+                Path(c.Infra.MISE_LOCK_FILENAME),
+                Path(c.Infra.UV_LOCK_FILENAME),
+                policy.local_directory / c.Infra.UV_LOCK_FILENAME,
+                policy.standalone_directory / c.Infra.UV_LOCK_FILENAME,
+            )
+        )
+        locks = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in lock_paths
+        )
+        system_tools = MisePinBootstrapFixture._system_path_without_mise(isolation)
+        optional_credential_provider = system_tools / "gh"
+        if optional_credential_provider.is_symlink():
+            optional_credential_provider.unlink()
+        tm.that(shutil.which("gh", path=str(system_tools)), eq=None)
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["-f", str(member / c.Infra.MAKEFILE_FILENAME), verb],
+                cwd=root,
+                env={
+                    **native_env,
+                    "PATH": str(system_tools),
+                    policy.hosted_variable: "",
+                    config.Infra.codegen.make.ci.variable: (
+                        config.Infra.codegen.make.ci.local_value
+                    ),
+                },
+            ),
+        )
+
+        tm.that(
+            process.outcome.raw_return_code,
+            eq=2,
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(
+            process.stderr,
+            has="github-auth source=none extraction-exit=not-selected",
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(
+            process.stdout,
+            has=f"reader-elected-root={elected.resolve()}\n",
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(
+            process.stderr,
+            has=f"physical, not a symlink: {environment}",
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(path))
+                for path in lock_paths
+            ),
+            eq=locks,
+        )
+        tm.that(environment.is_symlink(), eq=True)
+        tm.that(tuple(foreign.iterdir()), eq=())
+        reader = tm.ok(
+            u.Cli.capture(
+                ["mise", "-C", str(root), "which", c.Infra.UV],
+                options=m.Cli.ProcessOptions(env=native_env),
+            ),
+        )
+        tm.that(Path(reader).is_relative_to(isolation), eq=True)
 
     @pytest.mark.parametrize(
         "entry",

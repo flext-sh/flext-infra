@@ -66,6 +66,7 @@ class FlextInfraCandidateBootstrapService:
             )
             if not changed:
                 return self._verify(roots, targets, declaration_states)
+            receipts: list[m.Infra.CodegenPhaseOutcome] = []
             committed = self._transaction.publish_file_phase_locked(
                 scope_root,
                 roots,
@@ -78,12 +79,24 @@ class FlextInfraCandidateBootstrapService:
                             if not file.path.parent.is_dir()
                         }),
                     ),
-                    validator=lambda: self._verify(roots, targets, declaration_states),
                 ),
+                publication_receipts=receipts,
             )
             if committed.failure:
                 return r[bool].from_failure(committed)
-            return r[bool].ok(value=True)
+            continued = self._planner.continue_after_publication(tuple(receipts))
+            if continued.failure:
+                return r[bool].from_failure(continued)
+            return self._verify(
+                roots,
+                targets,
+                declaration_states,
+                publications=tuple(
+                    publication
+                    for receipt in receipts
+                    for publication in receipt.published_files
+                ),
+            )
 
         return self._transaction.run_files_locked(roots, publish)
 
@@ -192,6 +205,8 @@ class FlextInfraCandidateBootstrapService:
         roots: t.MappingKV[str, Path],
         targets: m.Infra.CandidateBootstrapTargets,
         declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        *,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile] = (),
     ) -> p.Result[bool]:
         """Require unchanged declarations and a complete post-publication fixed point.
 
@@ -199,17 +214,28 @@ class FlextInfraCandidateBootstrapService:
             The resulting ``p.Result[bool]``.
 
         """
+        published = {item.before.path: item for item in publications}
+        expected_states: list[m.Cli.AtomicFileState] = []
         for state in declaration_states:
+            publication = published.get(state.path)
+            expected = state
+            if publication is not None:
+                if publication.before != state or publication.replacement is None:
+                    return r[bool].fail(
+                        "candidate bootstrap declaration lacks its captured publication",
+                    )
+                expected = publication.replacement
             observed = u.Cli.atomic_read_binary_file_state(
                 state.path,
             )
             if observed.failure:
                 return r[bool].from_failure(observed)
-            if observed.value != state:
+            if observed.value != expected:
                 return r[bool].fail(
                     "candidate bootstrap declaration changed during publication",
                 )
-        planned = self._plan(roots, targets, declaration_states)
+            expected_states.append(expected)
+        planned = self._plan(roots, targets, tuple(expected_states))
         if planned.failure:
             return r[bool].from_failure(planned)
         return u.Infra.codegen_fixed_point(

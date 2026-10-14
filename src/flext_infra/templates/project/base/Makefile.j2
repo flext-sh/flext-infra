@@ -213,14 +213,12 @@ endif
 GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
 ifeq ($(GITHUB_TOKEN),)
 ifneq ($(filter local unset,$(GITHUB_AUTH_CI)),)
-GITHUB_AUTH_SOURCE := gh
 override GITHUB_AUTH_COMMAND := $(shell command -v gh 2>/dev/null)
 override GITHUB_AUTH_COMMAND_STATUS := $(.SHELLSTATUS)
 ifeq ($(GITHUB_AUTH_COMMAND_STATUS),0)
+GITHUB_AUTH_SOURCE := gh
 GITHUB_TOKEN := $(shell "$(GITHUB_AUTH_COMMAND)" auth token 2>/dev/null)
 GITHUB_AUTH_STATUS := $(.SHELLSTATUS)
-else
-GITHUB_AUTH_STATUS := $(GITHUB_AUTH_COMMAND_STATUS)
 endif
 endif
 endif
@@ -338,7 +336,7 @@ override GIT_DISCOVERY_ROOT := $(shell {{ git_root_reader('"$(MAKEFILE_ROOT)"', 
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot authenticate the physical Git boundary for $(MAKEFILE_ROOT))
 endif
-override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', uv_tool, make.uv_resolution, true) }})
+override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', uv_tool, make.uv_resolution, true, toolchain) }})
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif

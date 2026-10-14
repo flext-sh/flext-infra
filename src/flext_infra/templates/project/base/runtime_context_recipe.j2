@@ -1,6 +1,8 @@
+{% from "tool_bootstrap_recipe.j2" import mise_locked_qualification, mise_staging_cleanup, mise_network_admission -%}
 {#- Native Git owns physical boundaries; native UV owns membership. The same
     shell readers serve Make parsing and direnv without importing Python or
-    inspecting workspace member patterns. Reading never installs a tool. -#}
+    inspecting workspace member patterns. Only public setup/upg may provision
+    their frozen native reader before association is known. -#}
 {% macro physical_file_reader(path, make_syntax=false) -%}
 {% set d = "$$" if make_syntax else "$" -%}
 set -eu; \
@@ -61,7 +63,7 @@ case "{{ d }}project_root/" in ("{{ d }}git_root/"*) ;; (*) printf 'ERROR: physi
 printf '%s\n' "{{ d }}git_root"
 {%- endmacro %}
 
-{% macro runtime_root_reader(project_root, uv_tool, uv_resolution, make_syntax=false) -%}
+{% macro runtime_root_reader(project_root, uv_tool, uv_resolution, make_syntax=false, toolchain=none) -%}
 {% set d = "$$" if make_syntax else "$" -%}
 {{ git_discovery_context(project_root, make_syntax) }} \
 if [ "{{ d ~ '{' ~ uv_resolution.hosted_variable ~ ':-}' }}" = "{{ uv_resolution.hosted_value }}" ]; then printf '%s\n' "{{ d }}project_root"; exit 0; fi; \
@@ -90,8 +92,20 @@ MISE_SYSTEM_CONFIG_DIR="{{ d }}MISE_CONFIG_DIR"; \
 MISE_GLOBAL_CONFIG_FILE="{{ d }}MISE_CONFIG_DIR/config.toml"; \
 MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}reader_root")"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
-uv_requested="{{ d }}(mise -C "{{ d }}reader_root" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
-uv_binary="{{ d }}(mise -C "{{ d }}reader_root" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@{{ d }}uv_requested")"; \
+reader_mise=mise; \
+{% if make_syntax and toolchain is not none %}case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
+	mise_stage=; \
+	trap 'bootstrap_status=$$?; trap - EXIT; {{ mise_staging_cleanup() }} exit "$$bootstrap_status"' EXIT; \
+	{ \
+		{{ mise_network_admission() }} \
+		{{ mise_locked_qualification('$$reader_root', toolchain) }} \
+		mise_qualify; \
+		"$$mise_bootstrap_bin" -C "$$reader_root" install --locked --yes "{{ uv_tool.selector or uv_tool.name }}"; \
+	} >&2; \
+	reader_mise="$$mise_bootstrap_bin"; \
+;; esac; \
+{% endif %}uv_requested="{{ d }}("{{ d }}reader_mise" -C "{{ d }}reader_root" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
+uv_binary="{{ d }}("{{ d }}reader_mise" -C "{{ d }}reader_root" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@{{ d }}uv_requested")"; \
 if [ ! -x "{{ d }}uv_binary" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
 owner="{{ d }}("{{ d }}uv_binary" workspace dir --project "{{ d }}project_root")"; \
 case "{{ d }}owner" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "{{ d }}owner" >&2; exit 2 ;; esac; \

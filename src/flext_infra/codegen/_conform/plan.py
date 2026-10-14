@@ -13,6 +13,10 @@ from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
+from flext_infra.codegen._mise_artifacts_journal import FlextInfraMiseArtifactsJournal
+from flext_infra.codegen._mise_artifacts_verification import (
+    FlextInfraMiseArtifactsVerification,
+)
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -20,6 +24,57 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
+
+    def continue_after_publication(
+        self,
+        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[bool]:
+        """Advance producer capture only through this producer's live effect proof."""
+        if self.producer is None or not receipts:
+            return r[bool].fail(
+                "producer continuation requires its captured publication receipts",
+            )
+        expected_sources: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource] = {}
+        for state in self.producer.inputs:
+            encoded = FlextInfraMiseArtifactsJournal.source_record("generator", state)
+            if encoded.failure:
+                return r[bool].from_failure(encoded)
+            expected_sources[state.path] = encoded.value
+        expected_trees = {
+            tree.root.path: tree for tree in self.producer.generator_trees
+        }
+        for receipt in receipts:
+            if (
+                {
+                    source.path: source.model_copy(update={"role": None})
+                    for source in receipt.generator_sources
+                }
+                != expected_sources
+                or {tree.root.path: tree for tree in receipt.generator_trees}
+                != expected_trees
+            ):
+                return r[bool].fail(
+                    "publication receipt belongs to a different captured producer",
+                )
+            verified = FlextInfraMiseArtifactsVerification.publication_states_current(
+                receipt,
+            )
+            if verified.failure:
+                return verified
+        captured = FlextInfraCodegenPreconditions.capture_producer()
+        if captured.failure:
+            return r[bool].from_failure(captured)
+        for receipt in receipts:
+            verified = FlextInfraMiseArtifactsVerification.publication_states_current(
+                receipt,
+            )
+            if verified.failure:
+                return verified
+        current = FlextInfraCodegenPreconditions.producer_current(captured.value)
+        if current.failure:
+            return current
+        self.producer = captured.value
+        return r[bool].ok(value=True)
 
     def plan(
         self,

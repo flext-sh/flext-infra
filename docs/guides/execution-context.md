@@ -177,10 +177,19 @@ because its shipped pytest collection implementation imports that plugin.
 
 An associated project inherits the locks and physical environment of its
 authenticated Git or native UV workspace. Its `make setup` and `make upg`
-delegate to that root before
-installing tools or resolving dependencies. A standalone checkout owns those
+delegate full toolchain provisioning and dependency resolution to that root.
+A standalone checkout owns those
 operations itself. Only `upg` resolves moving Git branches; `setup` installs the
 exact committed lock without changing it.
+
+`help` and `.envrc` only observe association and never install its reader.
+Before native association is known, public `setup` and `upg` may provision
+exclusively the UV reader from the existing lock of the authenticated containing
+Git scope. This uses the same Mise release qualifier, checksum verification and
+staging cleanup as full bootstrap. It neither resolves nor upgrades an ancestral
+lock. Native UV then elects the runtime owner before normal delegation proceeds.
+The hosted-provider branch selects standalone execution before this reader
+provisioning or ancestor discovery.
 
 Every repository runs independently in remote CI, including a superproject.
 Remote checkout never initializes members. The CI gate token does not change

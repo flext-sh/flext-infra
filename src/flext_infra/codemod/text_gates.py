@@ -1059,18 +1059,19 @@ class FlextInfraModTextGateEngine:
             )
         }
 
-        def validate_published() -> p.Result[bool]:
-            return transaction.validate_phase_analysis_locked(analysis)
-
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
-            return transaction.publish_file_phase_locked(
+            published = transaction.publish_file_phase_locked(
                 scope_root,
                 roots,
                 analysis,
-                m.Infra.CodegenPhasePublicationPolicy(
-                    directories=(), validator=validate_published
-                ),
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
             )
+            if published.failure:
+                return r[t.VariadicTuple[Path]].from_failure(published)
+            verified = transaction.validate_phase_analysis_locked(analysis)
+            if verified.failure:
+                return r[t.VariadicTuple[Path]].from_failure(verified)
+            return published
 
         return transaction.run_files_locked(roots, publish)
 
