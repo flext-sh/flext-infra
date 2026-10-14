@@ -12,9 +12,7 @@ import pytest
 
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.workspace import (
-    FlextInfraWorkspaceLockCompleteness,
-)
+from flext_infra.workspace import FlextInfraWorkspaceLockCompleteness
 from tests import c, t, tm, u
 
 pytestmark = pytest.mark.slow

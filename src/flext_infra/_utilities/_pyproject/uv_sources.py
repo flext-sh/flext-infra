@@ -22,6 +22,9 @@ from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectRequirements,
     FlextInfraUtilitiesPyprojectSession,
 )
+from flext_infra._utilities.dependency_requirements import (
+    FlextInfraUtilitiesDependencyRequirements,
+)
 
 if TYPE_CHECKING:
     from tomlkit.items import Table
@@ -636,6 +639,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         uv: Table,
         candidate_sources: t.StrMapping,
         requirements: t.StrSequence,
+        resolution: m.Infra.UvResolutionSpec,
     ) -> None:
         """Sync the staging candidate pins over every resolved requirement.
 
@@ -649,13 +653,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
         by the generated native resolution view.
         """
         overrides = list(resolution.override_dependencies)
-        for name in sorted(local_members):
-            extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
-                requirements, name
-            )
-            override = f"{name}{extras}"
-            if override not in overrides:
-                overrides.append(override)
         for name, source in sorted(candidate_sources.items()):
             extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
                 requirements,
@@ -796,12 +793,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 ),
             }),
         )
-        # Erase transitive direct Git origins so the topology's local sources win.
-        # Never override the root itself: that drops its native development group.
         cls._sync_uv_candidates(
             uv,
             candidate_sources=candidate_sources,
-            local_members=tuple(member.distribution for member in members),
             requirements=local_requirements,
             resolution=resolution,
         )

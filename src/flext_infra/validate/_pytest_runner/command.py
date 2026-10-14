@@ -27,6 +27,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """
 
     _NO_COVERAGE: ClassVar[t.VariadicTuple[str]] = ("--no-cov",)
+    _UNBOUNDED_LIMITS: ClassVar[t.VariadicTuple[str]] = (
+        f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}",
+    )
 
     def carries_slow_items(self, execution_mode: c.Infra.PytestExecutionMode) -> bool:
         """Whether this invocation may run slow-marked items.
@@ -118,6 +121,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         toolchain = (
             FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
         )
+        return f"toolchain-{toolchain[:12]}-{self._config_testmon_digest()}-{scope}"
         return f"toolchain-{toolchain[:12]}-{self._config_testmon_digest()}-{scope}"
 
     def _config_testmon_digest(self) -> str:
@@ -418,7 +422,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         if self.unbounded:
-            return ()
+            return self._UNBOUNDED_LIMITS
         suite_stop = self.suite_stop_monotonic(
             serial=workers == "0",
             execution_mode=execution_mode,
