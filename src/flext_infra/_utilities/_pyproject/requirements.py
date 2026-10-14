@@ -218,7 +218,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 if normalized.failure:
                     return r[bool].from_failure(normalized)
                 values.append(normalized.value)
-            u.Cli.toml_sync_value(section, group_name, cls.dependency_group_wire(values))
+            u.Cli.toml_sync_value(
+                section, group_name, cls.dependency_group_wire(values)
+            )
         return r[bool].ok(value=True)
 
     @classmethod
@@ -616,8 +618,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         sourced_live = tuple(
             requirement
             for requirement in live_dev
-            if isinstance(requirement, str)
-            and cls._declares_direct_source(requirement)
+            if isinstance(requirement, str) and cls._declares_direct_source(requirement)
         )
         required_dev: list[str] = []
         for requirement in FlextInfraUtilitiesDependencies.dedupe_specs(
@@ -628,10 +629,13 @@ class FlextInfraUtilitiesPyprojectRequirements:
             normalized = cls._canonical_requirement(requirement, provenance=provenance)
             if normalized.failure:
                 return r[bool].from_failure(normalized)
-            if cls._floor_yields_to_declared_source(
-                requirement,
-                sourced_live,
-            ) and normalized.value not in live_dev:
+            if (
+                cls._floor_yields_to_declared_source(
+                    requirement,
+                    sourced_live,
+                )
+                and normalized.value not in live_dev
+            ):
                 continue
             required_dev.append(normalized.value)
         dev = cls.merge_dependency_group_entries(

@@ -57,7 +57,7 @@ from inspect import (
 )
 from json import dumps
 from pathlib import Path
-from sys import modules, prefix
+from sys import modules
 from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
@@ -2902,9 +2902,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             native = cls._observe_environment(repository_root, tuple(members.values()))
             if native.failure:
                 return r[int].from_failure(native)
-            metadata_paths = tuple(
-                str(path) for path in native.value.metadata_paths
-            )
+            metadata_paths = tuple(str(path) for path in native.value.metadata_paths)
         validated = 0
         for name in sorted(required):
             provenance = cls._validate_locked_provenance(

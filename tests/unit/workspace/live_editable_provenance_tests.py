@@ -70,10 +70,12 @@ class TestsLiveEditableProvenance:
                     str(u.Infra.runtime_python(root)),
                     "-I",
                     "-c",
-                    "import importlib,pathlib,sys; "
-                    "module=importlib.import_module(sys.argv[1]); "
-                    "print(module.LIVE_VALUE); "
-                    "print(pathlib.Path(module.__file__).resolve())",
+                    (
+                        "import importlib,pathlib,sys; "
+                        "module=importlib.import_module(sys.argv[1]); "
+                        "print(module.LIVE_VALUE); "
+                        "print(pathlib.Path(module.__file__).resolve())"
+                    ),
                     package,
                 ),
                 cwd=root,

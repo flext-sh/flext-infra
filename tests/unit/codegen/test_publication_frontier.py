@@ -87,10 +87,14 @@ class TestsPublicationFrontier:
             tm.that(composed.error or "", has="differs from preceding output")
         else:
             tm.ok(composed)
-            tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq="VALUE := second\n")
+            tm.that(
+                target.read_text(encoding=c.DEFAULT_ENCODING), eq="VALUE := second\n"
+            )
             tm.ok(
                 infra.codegen_conform(
-                    request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
+                    request.model_copy(
+                        update={"mode": c.Infra.CodegenConformMode.CHECK}
+                    ),
                 ),
             )
             tm.that(

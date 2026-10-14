@@ -22,7 +22,9 @@ class FlextInfraModelsDepsToml:
     class DepsToml:
         """Declarative TOML sync model domain."""
 
-        class MemberRequirements(FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations):
+        class MemberRequirements(
+            FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations
+        ):
             """Typed dependency declarations needed to provision one member."""
 
             name: Annotated[
@@ -37,6 +39,7 @@ class FlextInfraModelsDepsToml:
                 t.MappingKV[str, t.StrTuple],
                 m.Field(description="Every declared optional requirement group"),
             ]
+
             @m.field_validator(
                 "dependencies",
                 "optional_dependencies",

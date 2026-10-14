@@ -91,8 +91,7 @@ class TestsFlextInfraTransactionStaging:
         )
         receiver = receiver_package / "__init__.py"
         receiver.write_text(
-            "from preview_provider import VALUE\n"
-            "def read():\n    return VALUE\n",
+            "from preview_provider import VALUE\ndef read():\n    return VALUE\n",
             encoding=c.DEFAULT_ENCODING,
         )
         (provider_package / "__init__.py").write_text(
@@ -109,9 +108,7 @@ class TestsFlextInfraTransactionStaging:
         else:
             directory = participant / c.Infra.CODEGEN_CONFIG_DIR
             directory.mkdir()
-            declaration = (
-                "codegen: none" if policy == "native" else "read_only: true"
-            )
+            declaration = "codegen: none" if policy == "native" else "read_only: true"
             (directory / "codegen.yaml").write_text(
                 f"Infra:\n  codegen:\n    repository:\n      {declaration}\n",
                 encoding=c.DEFAULT_ENCODING,
@@ -135,8 +132,7 @@ class TestsFlextInfraTransactionStaging:
             eq={"preview_receiver", "preview_provider"},
         )
         bindings = tuple(
-            (layout.package_name, str(layout.init_path))
-            for layout in planned.layouts
+            (layout.package_name, str(layout.init_path)) for layout in planned.layouts
         )
         code = (
             "import importlib.util, sys\n"

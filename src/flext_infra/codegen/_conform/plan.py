@@ -115,9 +115,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if gathered.failure:
             return r[m.Infra.CodegenPlan].from_failure(gathered)
         files, environments, issues = gathered.value
-        if not issues and contract.pyproject and (
-            contract.destinations is None
-            or c.PYPROJECT_FILENAME in contract.destinations
+        if (
+            not issues
+            and contract.pyproject
+            and (
+                contract.destinations is None
+                or c.PYPROJECT_FILENAME in contract.destinations
+            )
         ):
             for repository in selected:
                 if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:

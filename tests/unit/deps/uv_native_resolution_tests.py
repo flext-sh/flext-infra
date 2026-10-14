@@ -56,7 +56,9 @@ class TestsFlextInfraUvNativeResolution:
         ):
             profile = tm.not_none(
                 u.Infra.composed_dependency_profile(
-                    profiles, upstream=upstream, distribution=name,
+                    profiles,
+                    upstream=upstream,
+                    distribution=name,
                 ),
             )
             runtime = tuple(
@@ -121,7 +123,9 @@ class TestsFlextInfraUvNativeResolution:
         observed_runtime = {
             Requirement(requirement).name: Requirement(requirement)
             for requirement in u.Tests.toml_strings_at(
-                conformed, "project", "dependencies",
+                conformed,
+                "project",
+                "dependencies",
             )
         }
         tm.that(
@@ -143,7 +147,9 @@ class TestsFlextInfraUvNativeResolution:
             {
                 Requirement(requirement).name
                 for requirement in u.Tests.toml_strings_at(
-                    conformed, "dependency-groups", "codegen",
+                    conformed,
+                    "dependency-groups",
+                    "codegen",
                 )
             },
             eq={Requirement(requirement).name for requirement in codegen},
@@ -159,7 +165,9 @@ class TestsFlextInfraUvNativeResolution:
             {
                 Requirement(requirement).name
                 for requirement in u.Tests.toml_strings_at(
-                    conformed, "dependency-groups", str(c.Infra.DEV),
+                    conformed,
+                    "dependency-groups",
+                    str(c.Infra.DEV),
                 )
             },
             eq=expected_dev,
@@ -184,7 +192,8 @@ class TestsFlextInfraUvNativeResolution:
                     continue
                 extras = (
                     f"[{','.join(sorted(requirement.extras))}]"
-                    if requirement.extras else ""
+                    if requirement.extras
+                    else ""
                 )
                 marker = f" ; {requirement.marker}" if requirement.marker else ""
                 selected.append(
@@ -218,8 +227,7 @@ class TestsFlextInfraUvNativeResolution:
         complete = self._conformed_first_party_profiles(tmp_path / "complete")
         packages = {name: tmp_path / "native" / name for name in complete}
         original = {
-            name: u.Cli.toml_dumps(document)
-            for name, document in complete.items()
+            name: u.Cli.toml_dumps(document) for name, document in complete.items()
         }
         inputs: dict[str, m.Infra.UvResolutionProject] = {}
         for name, document in complete.items():
@@ -246,7 +254,9 @@ class TestsFlextInfraUvNativeResolution:
         )
         for name, project in inputs.items():
             runtime = u.Tests.toml_strings_at(
-                u.Cli.toml_dumps(project.document), "project", "dependencies",
+                u.Cli.toml_dumps(project.document),
+                "project",
+                "dependencies",
             )
             for requirement in runtime:
                 provider = Requirement(requirement).name
@@ -259,7 +269,8 @@ class TestsFlextInfraUvNativeResolution:
                     inputs[root_name],
                     members=(
                         tuple(
-                            project for name, project in inputs.items()
+                            project
+                            for name, project in inputs.items()
                             if name != root_name
                         )
                         if mode == "local"
@@ -430,9 +441,7 @@ class TestsFlextInfraUvNativeResolution:
                     link_mode=toolchain.uv_link_mode,
                     constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
                     environments=tuple(toolchain.uv_environments),
-                    override_dependencies=(
-                        f"{root_ref.distribution}>=1.0.0,<2.0.0",
-                    ),
+                    override_dependencies=(f"{root_ref.distribution}>=1.0.0,<2.0.0",),
                 ),
                 options=u.Infra.PyprojectConformOptions(
                     repository_root=root,
@@ -520,11 +529,15 @@ class TestsFlextInfraUvNativeResolution:
             msg=process.stdout + process.stderr,
         )
         packages = u.Tests.toml_tables_at(
-            (standalone_directory / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
+            (standalone_directory / c.Infra.UV_LOCK_FILENAME).read_text(
+                encoding="utf-8"
+            ),
             "package",
         )
         member_package = next(
-            package for package in packages if package["name"] == member_ref.distribution
+            package
+            for package in packages
+            if package["name"] == member_ref.distribution
         )
         tm.that(u.Tests.toml_mapping(member_package["source"]), has="git")
         tm.that((root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"), eq=conformed)
@@ -559,19 +572,17 @@ class TestsFlextInfraUvNativeResolution:
         }
         for name, path in leaves.items():
             u.Tests.write_native_resolution_project(path, name)
-        optional = (
-            ("resolution-feature>=1.0.0",)
-            if declares_extras
-            else None
-        )
+        optional = ("resolution-feature>=1.0.0",) if declares_extras else None
         member_bound = (
             f"{member_name}>=1.0.0; python_full_version >= "
             f'"{config.Infra.codegen.toolchain.python_version}"'
         )
         overrides = (
             (
-                f'{root_name}>=1.0.0,<2.0.0; python_full_version >= '
-                f'"{config.Infra.codegen.toolchain.python_version}"',
+                (
+                    f"{root_name}>=1.0.0,<2.0.0; python_full_version >= "
+                    f'"{config.Infra.codegen.toolchain.python_version}"'
+                ),
                 f"{member_name}>=1.0.0,<2.0.0",
             )
             if explicit_overrides and not content_only
@@ -751,14 +762,18 @@ class TestsFlextInfraUvNativeResolution:
             ("global-self", None, False),
             (
                 "scoped-self-unmapped",
-                "`identity-root` is included as a workspace member, "
-                "but is missing an entry in `tool.uv.sources`",
+                (
+                    "`identity-root` is included as a workspace member, "
+                    "but is missing an entry in `tool.uv.sources`"
+                ),
                 False,
             ),
             (
                 "scoped-self",
-                "Scoped override for `identity-provider` cannot use a URL "
-                "or path source for `identity-root`",
+                (
+                    "Scoped override for `identity-provider` cannot use a URL "
+                    "or path source for `identity-root`"
+                ),
                 False,
             ),
             ("virtual-root", None, True),
@@ -827,17 +842,18 @@ class TestsFlextInfraUvNativeResolution:
             f"{json.dumps(examples)}]\n"
         )
         optional = (
-            f"identity-extra @ {leaves['identity-extra'].as_uri()}"
-            " ; python_full_version >= "
-            f'"{config.Infra.codegen.toolchain.python_version}"',
-            f"identity-inactive @ {leaves['identity-inactive'].as_uri()}"
-            " ; python_full_version < "
-            f'"{config.Infra.codegen.toolchain.python_version}"',
+            (
+                f"identity-extra @ {leaves['identity-extra'].as_uri()}"
+                " ; python_full_version >= "
+                f'"{config.Infra.codegen.toolchain.python_version}"'
+            ),
+            (
+                f"identity-inactive @ {leaves['identity-inactive'].as_uri()}"
+                " ; python_full_version < "
+                f'"{config.Infra.codegen.toolchain.python_version}"'
+            ),
         )
-        policy = (
-            "[tool.uv]\n"
-            'constraint-dependencies = ["identity-runtime==1.0.0"]\n'
-        )
+        policy = '[tool.uv]\nconstraint-dependencies = ["identity-runtime==1.0.0"]\n'
         match identity:
             case "source-only":
                 policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
@@ -853,15 +869,11 @@ class TestsFlextInfraUvNativeResolution:
                     f'dependencies = ["{root_name}"]}}]\n'
                 )
                 if identity == "scoped-self":
-                    policy += (
-                        f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
-                    )
+                    policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
         u.Tests.write_native_resolution_project(
             root,
             root_name,
-            dependencies=(
-                f"identity-runtime @ {leaves['identity-runtime'].as_uri()}",
-            ),
+            dependencies=(f"identity-runtime @ {leaves['identity-runtime'].as_uri()}",),
             optional=optional,
             groups=groups,
             uv=policy,

@@ -190,7 +190,8 @@ class FlextInfraUtilitiesPyprojectOverlay:
             group,
         )
         values = FlextInfraUtilitiesPyprojectRequirements.read_dependency_group(
-            groups, group,
+            groups,
+            group,
         )
         if not values:
             return
@@ -231,9 +232,11 @@ class FlextInfraUtilitiesPyprojectOverlay:
         )
         groups = dict(rendered_groups)
         for name, entries in live_groups.items():
-            authored_name = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
-                tuple(live_groups),
-                name,
+            authored_name = (
+                FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                    tuple(live_groups),
+                    name,
+                )
             )
             previous = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
                 tuple(groups),
@@ -268,14 +271,19 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 )
                 if required.failure:
                     return r[bool].from_failure(required)
-                groups[selected] = FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
-                    FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
-                        required.value.root, custom.value,
-                    ),
+                groups[selected] = (
+                    FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
+                        FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
+                            required.value.root,
+                            custom.value,
+                        ),
+                    )
                 )
             else:
-                groups[selected] = FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
-                    custom.value,
+                groups[selected] = (
+                    FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
+                        custom.value,
+                    )
                 )
         validated = u.validate_value(
             m.Infra.DependencyGroupDeclarations,

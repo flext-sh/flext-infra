@@ -14,10 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, config, infra
-from flext_infra.codegen import (
-    FlextInfraCodegenConform,
-    FlextInfraCodegenMakeBootstrap,
-)
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenMakeBootstrap
 from flext_infra.services import FlextInfraCodegenRoutes
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport

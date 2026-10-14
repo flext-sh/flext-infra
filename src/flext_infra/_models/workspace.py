@@ -446,7 +446,9 @@ class FlextInfraModelsWorkspace:
         prefix: Annotated[Path, m.Field(description="Observed native sys.prefix")]
         metadata_paths: Annotated[
             t.VariadicTuple[Path],
-            m.Field(description="Native physical purelib and platlib install directories"),
+            m.Field(
+                description="Native physical purelib and platlib install directories"
+            ),
         ]
         import_paths: Annotated[
             t.VariadicTuple[Path],

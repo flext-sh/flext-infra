@@ -42,7 +42,14 @@ class TestsFlextInfraWorktreeRegistryIdentity:
         linked = tmp_path / "linked"
         tm.ok(
             u.Cli.run_checked(
-                (c.Infra.GIT, "worktree", "add", "--detach", str(linked), c.Infra.GIT_HEAD),
+                (
+                    c.Infra.GIT,
+                    "worktree",
+                    "add",
+                    "--detach",
+                    str(linked),
+                    c.Infra.GIT_HEAD,
+                ),
                 cwd=primary,
             ),
         )
@@ -124,7 +131,13 @@ class TestsFlextInfraWorktreeRegistryIdentity:
 
     @pytest.mark.parametrize(
         "defect",
-        ["missing-config", "empty-config", "foreign-storage", "missing-checkout", "gitfile"],
+        [
+            "missing-config",
+            "empty-config",
+            "foreign-storage",
+            "missing-checkout",
+            "gitfile",
+        ],
     )
     def test_unproven_storage_primary_remains_a_failure(
         self, tmp_path: Path, defect: str
@@ -183,7 +196,14 @@ class TestsFlextInfraWorktreeRegistryIdentity:
         linked = tmp_path / "linked"
         tm.ok(
             u.Cli.run_checked(
-                (c.Infra.GIT, "worktree", "add", "--detach", str(linked), c.Infra.GIT_HEAD),
+                (
+                    c.Infra.GIT,
+                    "worktree",
+                    "add",
+                    "--detach",
+                    str(linked),
+                    c.Infra.GIT_HEAD,
+                ),
                 cwd=owner,
             ),
         )

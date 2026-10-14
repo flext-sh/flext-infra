@@ -62,7 +62,11 @@ class TestsMakeBootstrapPublication:
                     "--no-deps",
                     "--python",
                     str(u.Infra.runtime_python(root)),
-                    *(item for member in members for item in ("--editable", str(member))),
+                    *(
+                        item
+                        for member in members
+                        for item in ("--editable", str(member))
+                    ),
                 ),
                 cwd=root,
             ),
@@ -183,7 +187,9 @@ class TestsMakeBootstrapPublication:
 
         tm.that(len(installed), eq=1)
         tm.that(
-            Path(str(installed[0].locate_file(""))).resolve().is_relative_to(facts.prefix),
+            Path(str(installed[0].locate_file("")))
+            .resolve()
+            .is_relative_to(facts.prefix),
             eq=True,
         )
         tm.that(len(facts.package_directories[package]), eq=1)

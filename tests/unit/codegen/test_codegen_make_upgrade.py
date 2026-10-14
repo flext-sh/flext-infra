@@ -27,7 +27,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
         """A newly rendered candidate admits both views before any resolution."""
         _profile, root = generated_make_template
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        views = tuple(root / relative for relative in inputs.spec.uv_resolution_pyprojects)
+        views = tuple(
+            root / relative for relative in inputs.spec.uv_resolution_pyprojects
+        )
         tool_lock = root / c.Infra.MISE_LOCK_FILENAME
         previous_tool_lock = tool_lock.read_bytes()
         for view in views:
@@ -573,7 +575,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
     ) -> None:
         """Frozen setup provisions a stale native graph; audit reports the drift."""
         root = u.Tests.resolved_make_checkout(
-            resolved_make_templates[profile], tmp_path / "drifted-consumer", profile,
+            resolved_make_templates[profile],
+            tmp_path / "drifted-consumer",
+            profile,
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
         policy = inputs.spec.make.uv_resolution
@@ -581,7 +585,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         document = u.Tests.toml_doc(view.read_text(encoding="utf-8"))
         groups = u.Cli.toml_ensure_table(document, "dependency-groups")
         project = u.Tests.toml_table_at(
-            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"), "project",
+            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+            "project",
         )
         groups["fixture-native-lock-drift"] = [str(project["name"])]
         tm.ok(u.Cli.atomic_write_text_file(view, u.Cli.toml_dumps(document)))

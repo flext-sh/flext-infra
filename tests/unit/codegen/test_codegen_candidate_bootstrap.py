@@ -92,7 +92,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             c.Infra.CodegenConformSurface.PYPROJECT,
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
-        views = tuple(candidate / relative for relative in inputs.spec.uv_resolution_pyprojects)
+        views = tuple(
+            candidate / relative for relative in inputs.spec.uv_resolution_pyprojects
+        )
         tm.that(bool(views), eq=True)
         for view in views:
             tm.that(view.parent.exists(), eq=False)
@@ -355,9 +357,11 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 [
                     sys.executable,
                     "-c",
-                    "import importlib, sys; "
-                    "print(getattr(importlib.import_module(sys.argv[1]), "
-                    "sys.argv[2]).__name__)",
+                    (
+                        "import importlib, sys; "
+                        "print(getattr(importlib.import_module(sys.argv[1]), "
+                        "sys.argv[2]).__name__)"
+                    ),
                     package_name,
                     exported,
                 ],

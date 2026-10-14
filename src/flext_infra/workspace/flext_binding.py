@@ -150,9 +150,13 @@ class FlextInfraFlextBindingService:
         if facts.prefix.resolve() != environment.value.resolve():
             return result_type.fail("package interpreter reports a foreign environment")
         if not facts.metadata_paths:
-            return result_type.fail("package interpreter has no installed metadata directories")
+            return result_type.fail(
+                "package interpreter has no installed metadata directories"
+            )
         for path in facts.metadata_paths:
-            if not path.is_absolute() or not path.is_relative_to(facts.prefix.resolve()):
+            if not path.is_absolute() or not path.is_relative_to(
+                facts.prefix.resolve()
+            ):
                 return result_type.fail(
                     f"installed metadata directory is outside the elected environment: {path}",
                 )
@@ -167,7 +171,9 @@ class FlextInfraFlextBindingService:
         if current.failure:
             return result_type.from_failure(current)
         if current.value != physical.value:
-            return result_type.fail("package environment identity changed during observation")
+            return result_type.fail(
+                "package environment identity changed during observation"
+            )
         u.Cli.info(
             f"environment python={python} prefix={facts.prefix} "
             f"metadata_paths={facts.metadata_paths}",

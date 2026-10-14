@@ -17,7 +17,6 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerificationManifest,
     FlextInfraMiseArtifactsVerificationTopology,
 )
-from flext_infra.codegen import FlextInfraMiseArtifactsJournal
 
 if TYPE_CHECKING:
     from flext_infra import p

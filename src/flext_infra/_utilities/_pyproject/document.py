@@ -298,7 +298,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             values = retained[group]
             if group == c.Infra.DependencyGroup.CODEGEN:
                 values = cls.merge_dependency_group_entries(
-                    tuple(sorted(set(member_groups))), values,
+                    tuple(sorted(set(member_groups))),
+                    values,
                 )
             u.Cli.toml_sync_value(
                 groups,
@@ -768,6 +769,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         members use their governed workspace line; generated bare ``flext-*``
         floors use the detected FLEXT line. Candidate dependencies must be
         declared requirements.
+
         Returns:
             The declared and candidate requirement sources.
 

@@ -332,8 +332,7 @@ def _provision_make_template(
     (hostile_venv / "sentinel").write_text("untouched\n", encoding="utf-8")
     custom = root / c.Infra.CUSTOM_MAKE_FILENAME
     custom.write_text(
-        custom.read_text(encoding="utf-8")
-        + ".PHONY: post-upg post-status\n"
+        custom.read_text(encoding="utf-8") + ".PHONY: post-upg post-status\n"
         "post-upg:\n\t@printf '%s\\n' 'upg-hook-ran'\n"
         f"post-status:\n\t@$(PROJECT_INFRA_RUN) -I -c {quote(source_probe)}\n",
         encoding="utf-8",
