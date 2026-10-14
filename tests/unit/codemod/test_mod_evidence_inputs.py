@@ -213,7 +213,7 @@ class TestsFlextInfraModEvidenceInputs:
         mod_workspace: Path, occurrences: int, resources: int
     ) -> None:
         """Distinct binding groups share inputs through both JSON publication paths."""
-        report, snapshot, inputs, source, owner, marker = (
+        report, snapshot, inputs, source, owner = (
             TestsFlextInfraModEvidenceInputs._scanned_shared_occurrences(
                 mod_workspace, occurrences
             )
@@ -265,7 +265,7 @@ class TestsFlextInfraModEvidenceInputs:
         )
         encoded = receipt.path.read_bytes()
         restored = m.Infra.ModScanEvidence.model_validate_json(encoded)
-        tm.that(encoded.count("descriptor evidence sentinel".encode("utf-8")), eq=1)
+        tm.that(encoded.count(b"descriptor evidence sentinel"), eq=1)
         tm.that(u.Cli.sha256_bytes(encoded), eq=receipt.sha256)
         tm.that(restored.deferred, eq=1)
         tm.that(
@@ -328,7 +328,6 @@ class TestsFlextInfraModEvidenceInputs:
         list[m.Cli.AtomicFileState],
         Path,
         Path,
-        str,
     ]:
         """Scan the shared-occurrence workspace with its authenticated inputs.
 
@@ -338,14 +337,13 @@ class TestsFlextInfraModEvidenceInputs:
 
         Returns:
             The scanned report, its binding snapshot, the captured inputs,
-            the consumer source, the binding owner and the evidence marker.
+            the consumer source and the binding owner.
         """
         source = mod_workspace / "consumer.py"
         owner = mod_workspace / "binding_owner.py"
         owner.write_text("class Public:\n    value = 'captured'\n", encoding="utf-8")
-        marker = "descriptor evidence sentinel"
         source.write_text(
-            f"# {marker}\nfrom __future__ import annotations\n"
+            "# descriptor evidence sentinel\nfrom __future__ import annotations\n"
             "from binding_owner import Public\n"
             + "".join(
                 f"def call_{index}(value: str) -> str:\n    return str(value)\n"
@@ -362,7 +360,7 @@ class TestsFlextInfraModEvidenceInputs:
         snapshot = u.Infra.codemod_binding_snapshot(
             mod_workspace, (tm.not_none(report.entries[0].source_state),)
         )
-        return report, snapshot, list(snapshot.states), source, owner, marker
+        return report, snapshot, list(snapshot.states), source, owner
 
     @staticmethod
     def _verified_nested_evidence(

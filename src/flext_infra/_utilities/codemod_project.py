@@ -471,43 +471,12 @@ class FlextInfraUtilitiesCodemodProject(
                 c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
                 c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
             }:
-                if condition.variable not in captures:
-                    continue
-                if admission.snapshot is None or project is None or sources is None:
-                    msg = (
-                        f"{rule.id}: declaration context requires its binding snapshot"
+                if (
+                    cls._declaration_condition_admits(
+                        admission, condition, source, project, sources
                     )
-                    raise ValueError(msg)
-                capture = m.Infra.AstGrepCapture.model_validate(
-                    captures[condition.variable],
-                )
-                _text, start, _end = cls._validated_capture_span(
-                    source,
-                    capture,
-                    sources[source].encode("utf-8"),
-                )
-                declarations = FlextInfraUtilitiesDeclarationPayload.declaration_names(
-                    project,
-                    source,
-                    capture.text,
-                    offset=start,
-                )
-                resolve = (
-                    FlextInfraUtilitiesDeclarationPayload.payload_declaration
-                    if condition.predicate
-                    is c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
-                    else FlextInfraUtilitiesDeclarationPayload.protocol_declaration
-                )
-                holds = (
-                    len(declarations) == 1
-                    and resolve(
-                        project,
-                        source,
-                        declarations[0],
-                    )
-                    is not None
-                )
-                if holds is not condition.holds:
+                    is not condition.holds
+                ):
                     return False
                 continue
             if condition.predicate in {
@@ -517,19 +486,12 @@ class FlextInfraUtilitiesCodemodProject(
                 c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
                 c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
             }:
-                snapshot = admission.snapshot
-                if snapshot is None or project is None or sources is None:
-                    msg = (
-                        f"{rule.id}: binding context requires its captured snapshot "
-                        "and active project sources: "
-                        f"snapshot={snapshot is not None} "
-                        f"project={project is not None} sources={sources is not None}"
+                if (
+                    cls._binding_condition_admits(
+                        admission, condition, source, project, sources
                     )
-                    raise ValueError(msg)
-                holds = cls._occurrence_binding_holds(
-                    (root, source, project), condition, captures, sources
-                )
-                if holds is not condition.holds:
+                    is not condition.holds
+                ):
                     return False
                 continue
             # A condition binds the capture of the branch that matched: a rule
@@ -554,11 +516,118 @@ class FlextInfraUtilitiesCodemodProject(
                 return False
         return True
 
+    @classmethod
+    def _declaration_condition_admits(
+        cls,
+        admission: m.Infra.CodemodAdmission,
+        condition: m.Infra.CodemodContextCondition,
+        source: Path,
+        project: p.Infra.RopeProject | None,
+        sources: t.MappingKV[Path, str] | None,
+    ) -> bool:
+        """Grade one declaration context condition against its payload project.
+
+        Args:
+            admission: The admission under evaluation.
+            condition: The declaration predicate condition to grade.
+            source: The resolved occurrence source path.
+            project: The active Rope project of the admission.
+            sources: The captured admission sources keyed by path.
+
+        Returns:
+            Whether the declaration condition holds for the finding.
+
+        Raises:
+            ValueError: If the declaration context lacks its binding snapshot.
+        """
+        rule = admission.rule
+        if condition.variable not in admission.captures:
+            return True
+        if admission.snapshot is None or project is None or sources is None:
+            msg = f"{rule.id}: declaration context requires its binding snapshot"
+            raise ValueError(msg)
+        capture = m.Infra.AstGrepCapture.model_validate(
+            admission.captures[condition.variable],
+        )
+        _text, start, _end = cls._validated_capture_span(
+            source,
+            capture,
+            sources[source].encode("utf-8"),
+        )
+        declarations = FlextInfraUtilitiesDeclarationPayload.declaration_names(
+            project,
+            source,
+            capture.text,
+            offset=start,
+        )
+        resolve = (
+            FlextInfraUtilitiesDeclarationPayload.payload_declaration
+            if condition.predicate
+            is c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
+            else FlextInfraUtilitiesDeclarationPayload.protocol_declaration
+        )
+        return (
+            len(declarations) == 1
+            and resolve(
+                project,
+                source,
+                declarations[0],
+            )
+            is not None
+        )
+
+    @classmethod
+    def _binding_condition_admits(
+        cls,
+        admission: m.Infra.CodemodAdmission,
+        condition: m.Infra.CodemodContextCondition,
+        source: Path,
+        project: p.Infra.RopeProject | None,
+        sources: t.MappingKV[Path, str] | None,
+    ) -> bool:
+        """Grade one binding context condition against the active project.
+
+        Args:
+            admission: The admission under evaluation.
+            condition: The binding predicate condition to grade.
+            source: The resolved occurrence source path.
+            project: The active Rope project of the admission.
+            sources: The captured admission sources keyed by path.
+
+        Returns:
+            Whether the binding condition holds for the finding.
+
+        Raises:
+            ValueError: If the binding context lacks its snapshot or sources.
+        """
+        snapshot = admission.snapshot
+        if snapshot is None or project is None or sources is None:
+            msg = (
+                f"{admission.rule.id}: binding context requires its captured snapshot "
+                "and active project sources: "
+                f"snapshot={snapshot is not None} "
+                f"project={project is not None} sources={sources is not None}"
+            )
+            raise ValueError(msg)
+        return cls._occurrence_binding_holds(
+            (admission.root, source, project),
+            condition,
+            admission.captures,
+            sources,
+        )
+
     @staticmethod
     def codemod_source_epoch(
         snapshot: m.Infra.CodemodBindingSnapshot,
     ) -> m.Infra.CodemodSourceEpoch:
-        """Decode each captured source once for the complete selected-project pass."""
+        """Decode each captured source once for the complete selected-project pass.
+
+        Args:
+            snapshot: The binding snapshot whose captured states are decoded.
+
+        Returns:
+            The immutable capture epoch shared by the complete pass.
+        """
         contents = {
             state.path: state.content
             for state in snapshot.states
@@ -914,25 +983,17 @@ class FlextInfraUtilitiesCodemodProject(
         own = FlextInfraUtilitiesPyproject.project_package_name(root)
         match predicate:
             case _ if predicate in c.Infra.CODEMOD_PACKAGE_CONTEXT_PREDICATES:
-                own = facts.own_package
-                if own is None:
-                    message = "package predicates require the admission namespace"
-                    raise ValueError(message)
-                if predicate is c.Infra.CodemodContextPredicate.OWN_PACKAGE:
-                    owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                        root, file_path
+                own = cls._resolved_package_own(root, predicate, file_path, facts)
+                if predicate is c.Infra.CodemodContextPredicate.COMPOSE_MODULE:
+                    return cls._compose_module_holds(
+                        root, captured[0], own, facts, file_path
                     )
-                    if owner is None:
-                        message = f"project owner is unresolved: {file_path}"
-                        raise ValueError(message)
-                    own = FlextInfraUtilitiesPyproject.project_package_name(owner)
                 return cls._context_package_holds(
                     root,
                     predicate,
                     captured,
                     own,
                     facts,
-                    file_path,
                 )
             case (
                 c.Infra.CodemodContextPredicate.MODULE_EXPORT
@@ -982,6 +1043,43 @@ class FlextInfraUtilitiesCodemodProject(
                 raise ValueError(message)
 
     @classmethod
+    def _resolved_package_own(
+        cls,
+        root: Path,
+        predicate: c.Infra.CodemodContextPredicate,
+        file_path: Path,
+        facts: m.Infra.CodemodProjectFacts,
+    ) -> str:
+        """Resolve the owning package name of one package-scope predicate.
+
+        Args:
+            root: The repository root of the admission.
+            predicate: The package-scope predicate under evaluation.
+            file_path: The file whose owning project names the package.
+            facts: The admission project facts.
+
+        Returns:
+            The owning package name.
+
+        Raises:
+            ValueError: If the admission namespace or project owner is
+                unresolved.
+        """
+        own = facts.own_package
+        if own is None:
+            message = "package predicates require the admission namespace"
+            raise ValueError(message)
+        if predicate is c.Infra.CodemodContextPredicate.OWN_PACKAGE:
+            owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                root, file_path
+            )
+            if owner is None:
+                message = f"project owner is unresolved: {file_path}"
+                raise ValueError(message)
+            own = FlextInfraUtilitiesPyproject.project_package_name(owner)
+        return own
+
+    @classmethod
     def _context_package_holds(
         cls,
         root: Path,
@@ -989,7 +1087,6 @@ class FlextInfraUtilitiesCodemodProject(
         captured: t.Pair[str, str | None],
         own: str,
         facts: m.Infra.CodemodProjectFacts,
-        file_path: Path,
     ) -> bool:
         """Evaluate one package-scope predicate.
 
@@ -1028,8 +1125,6 @@ class FlextInfraUtilitiesCodemodProject(
                     msg = f"project layout is unresolved: {root}"
                     raise ValueError(msg)
                 return value in layout.runtime_aliases
-            case c.Infra.CodemodContextPredicate.COMPOSE_MODULE:
-                return cls._compose_module_holds(root, value, own, facts, file_path)
             case _:
                 message = f"predicate is not package-scoped: {predicate}"
                 raise ValueError(message)
