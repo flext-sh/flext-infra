@@ -54,6 +54,18 @@ class TestsFlextInfraDeclarationPayload:
             ),
             (
                 (
+                    "class Parent(ForeignBase):\n"
+                    "    @classmethod\n"
+                    "    def __class_getitem__(cls, item):\n"
+                    "        return str\n"
+                    "class Holder:\n"
+                    "    class Payload(Parent[str]):\n"
+                    "        pass\n"
+                ),
+                False,
+            ),
+            (
+                (
                     "class Holder:\n"
                     "    class Payload(ForeignBase):\n"
                     "        value: str = 'payload'\n"

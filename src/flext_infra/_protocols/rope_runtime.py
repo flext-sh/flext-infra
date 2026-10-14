@@ -518,7 +518,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def find_occurrences(
             self,
             *,
-            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
+            resource: FlextInfraProtocolsRopeRuntime.RopeResource | None = None,
+            pymodule: FlextInfraProtocolsRopeRuntime.RopePyModule | None = None,
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeOccurrence]: ...
 
 

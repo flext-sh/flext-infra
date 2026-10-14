@@ -58,14 +58,16 @@ from inspect import (
 from json import dumps
 from pathlib import Path
 from sys import modules
-from types import CodeType
-from typing import TYPE_CHECKING
+from types import CodeType, SimpleNamespace
+from typing import TYPE_CHECKING, get_origin
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
+from flext_infra.workspace import (
+    FlextInfraFlextBindingService,
+    FlextInfraWorkspaceDetector,
+)
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from operator import itemgetter
 from pathlib import Path
 
@@ -57,7 +56,7 @@ class FlextInfraUtilitiesRopeInventory:
         # The text the module snapshot was parsed from: names and offsets must
         # come from one snapshot even when the file changed on disk since.
         source = pymodule.source_code
-        parameter_lines = cls._parameter_lines(source)
+        parameter_lines = cls._parameter_lines(rope_project, pymodule)
         items: t.MutableSequenceOf[m.Infra.Object] = []
         module_scope = pymodule.get_scope()
         if module_scope is None:
@@ -348,29 +347,50 @@ class FlextInfraUtilitiesRopeInventory:
         )
 
     @staticmethod
-    def _parameter_lines(source: str) -> t.MappingKV[t.Pair[int, str], int]:
+    def _parameter_lines(
+        rope_project: t.Infra.RopeProject,
+        pymodule: t.Infra.RopePyModule,
+    ) -> t.MappingKV[t.Pair[int, str], int]:
         """Index parameter positions once for one immutable module snapshot.
 
         Returns:
             Parameter lines keyed by function definition line and parameter name.
 
+        Raises:
+            TypeError: If the immutable module has no native Rope scope.
+            ValueError: If a declared parameter has no native source occurrence.
+
         """
         positions: t.MutableMappingKV[t.Pair[int, str], int] = {}
-        for node in ast.walk(ast.parse(source)):
-            if not isinstance(
-                node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda
-            ):
-                continue
-            arguments = node.args
-            declared = (
-                *arguments.posonlyargs,
-                *arguments.args,
-                *((arguments.vararg,) if arguments.vararg else ()),
-                *arguments.kwonlyargs,
-                *((arguments.kwarg,) if arguments.kwarg else ()),
-            )
-            for argument in declared:
-                positions.setdefault((node.lineno, argument.arg), argument.lineno)
+        module_scope = pymodule.get_scope()
+        if module_scope is None:
+            message = "Rope parameter inventory has no module scope"
+            raise TypeError(message)
+        scopes = list(module_scope.get_scopes())
+        while scopes:
+            scope = scopes.pop()
+            scopes.extend(scope.get_scopes())
+            for name, pyname in scope.get_names().items():
+                if not FlextInfraUtilitiesRopeRuntime.parameter_name(pyname):
+                    continue
+                finder = FlextInfraUtilitiesRopeRuntime.create_occurrence_finder(
+                    rope_project,
+                    name,
+                    pyname,
+                    imports=False,
+                    in_hierarchy=False,
+                )
+                declaration = next(
+                    iter(finder.find_occurrences(pymodule=pymodule)), None
+                )
+                if declaration is None:
+                    message = f"Rope parameter declaration has no occurrence: {name}"
+                    raise ValueError(message)
+                _, definition_line = pyname.get_definition_location()
+                if definition_line is None:
+                    message = f"Rope parameter has no definition line: {name}"
+                    raise ValueError(message)
+                positions[definition_line, name] = declaration.lineno
         return positions
 
     @staticmethod
