@@ -80,6 +80,9 @@ class FlextInfraModelsCodegenPipelineModels:
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered complete authenticated planner inputs"),
         ]
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Authenticated producer resource membership"
+        )
         publications: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
             m.Field(description="Resolved export contracts verified before commit"),
@@ -208,6 +211,9 @@ class FlextInfraModelsCodegenPipelineModels:
         generator_sources: t.VariadicTuple[
             FlextInfraModelsCodegenJournalModels.CodegenJournalSource
         ] = m.Field(default=(), description="Loaded generator implementation identity")
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Captured producer resource membership"
+        )
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),
             description="Captured source directory ancestry and presence",

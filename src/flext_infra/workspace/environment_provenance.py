@@ -293,7 +293,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             f"environment distribution={repository.distribution} "
             f"import_source={package.resolve()}",
         )
-        sources = cls._loaded_import_sources(package_name)
+        sources = cls.loaded_import_sources(package_name)
         if sources.failure:
             return r[bool].from_failure(sources)
         if not sources.value:
@@ -326,7 +326,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _loaded_import_sources(
+    def loaded_import_sources(
         cls,
         package_name: str,
     ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:

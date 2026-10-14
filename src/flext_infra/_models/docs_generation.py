@@ -13,6 +13,7 @@ from flext_cli import m as cli_m
 
 from flext_core import m
 from flext_infra import t
+from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
 
 
 class FlextInfraModelsDocsGeneration:
@@ -41,7 +42,9 @@ class FlextInfraModelsDocsGeneration:
             str,
             m.Field(description="Primary package name for scope"),
         ] = ""
-        governance_source: m.Infra.CodegenBootstrapSource | None = m.Field(
+        governance_source: (
+            FlextInfraConfigModelsWorkspace.CodegenBootstrapSource | None
+        ) = m.Field(
             default=None, description="Captured source and ref owning governance links"
         )
         # Why (docs_audit_policy root-cause fix): a member-project scope inside

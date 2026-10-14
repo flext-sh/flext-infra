@@ -94,6 +94,13 @@ wheel consumers use the same namespace owner; a missing declared packaged file f
 without borrowing repository or sibling defaults. Target and local overlays remain
 explicit repository inputs, separate from the frozen library singleton.
 
+The single-layer schema loader follows that same concrete-package resource contract
+through stdlib resource discovery. Parent-depth guesses, worktree paths and fallback
+searches are not default owners. Missing required defaults retain their native failure.
+Installed-wheel acceptance must identify and exercise the actual distributed artifact;
+an editable source read or a prior editable pass cannot retroactively prove wheel
+resources, template identity or consumer behavior.
+
 Upgrade installs the newly resolved lock through its existing frozen provisioning
 owner and verifies its runtime provenance before the next producer. Package election
 resolves the current physical import path independently of loaded-module caches;
@@ -117,8 +124,9 @@ installed tool directories ahead of the host's shared shims. This includes the
 self-managed Mise executable: a shim named `mise` otherwise invokes the host
 release instead of the project release. Activation does not install tools or
 write locks. The `.envrc` watches `.mise.toml` and `mise.lock` to reload after
-`make upg`. A missing pin requires `make upg`; a runtime that is not yet installed
-requires `make setup`, whose provisioning happens before activation.
+`make upg`. Audit reports a missing pin; only `make upg` may resolve and write it.
+A runtime that is not yet installed requires `make setup`, whose provisioning
+happens before activation.
 Both setup and upgrade resolve the executable through `mise which python` at the
 shared environment-sync boundary and pass that exact path to uv. Recursive Make
 calls do not require a caller-provided `SETUP_PYTHON` environment variable.
@@ -126,12 +134,11 @@ Make and direnv restrict global and system configuration discovery to the
 elected runtime's `.mise` directory; unrelated host tool declarations never
 belong to project provisioning.
 
-If `mise.lock` has no self-managed Mise entry, `make setup` fails without
-changing it. `make upg` uses the installed host Mise to resolve the declared
-manifest first, then provisions the newly recorded release from its verified
-asset and continues the normal lifecycle. The generated `.mise.toml` must match
-the current toolchain owner before that recovery; `mise-config` conformance
-repairs this single declaration without regenerating unrelated project files.
+If `mise.lock` has no self-managed Mise entry, setup uses the qualified host Mise
+provisioning path without changing the lock. The absent pin remains an audit
+defect. `make upg` alone resolves the declared manifest and records the release;
+provisioning then consumes its verified asset. Generated declarations still come
+from the toolchain owner, never a hand-edited projection.
 
 When Beads tracking is configured, the generated `.envrc.local` carries its environment:
 `AGENTS_GAS_CITY_ROOT` selects the Gas City root, the Gas City runtime publication
@@ -272,10 +279,14 @@ generate it with the current generator (`make gen`) before its first `make upg`.
 Separate `mise.version`, bootstrap launchers and staged lock-convergence scripts
 are not lifecycle owners.
 
-`toolchain.tools` in `config/codegen.yaml` declares every fleet tool. Each comes from a
-native, checksum-locked owner (aqua, GitHub releases, conda, or a Mise core backend);
-the toolchain model rejects an `npm:` selector at load (ADR-025). A tool whose upstream
+`toolchain.tools` in the packaged `config/codegen.yaml` owns native tool declarations;
+the toolchain model rejects a Mise `npm:` selector (ADR-025). A tool whose upstream
 release metadata publishes no checksum declares `lock_checksum: false`.
+ADR-025's October 9 amendment requires distributed JavaScript tools, including
+FLEXT's, to use one owned Bun project, `package.json` and a frozen lock. It does not
+restore Mise npm backends or retire native Node wrappers where used. Source-owner
+implementation and real installed-consumer proof are required before claiming this
+cutover complete; the amendment itself is not a runtime receipt.
 
 `make setup` and `make upg` pass the explicit declared key list
 (`toolchain.mise_install_keys`) to `mise install`. A bare `mise install` would also
@@ -301,12 +312,13 @@ the shared shims to the first `mise` on PATH. Caches and installations stay out 
 
 Mise reaches GitHub to install a tool missing from its cache and to resolve
 releases during `make upg`. Only `make upg` writes `mise.lock` and `uv.lock`;
-`make setup` never writes either. A missing or incompatible Mise lock entry fails
-with its original diagnostic and exit status, without disabling lockfiles or
-retrying. Setup installs `uv.lock` with `--frozen`, without a lock verdict or rewrite.
-Audit judges manifest satisfaction and lock integrity. Drift and resulting dependency
-incompatibility remain red until `make upg` produces matching locks. A missing
-lock fails with an actionable diagnostic. A failed native resolver or installer
+`make setup` never writes either. Setup provisions current committed locks without
+resolving them; audit owns missing, stale or incomplete lock verdicts, and CI runs
+audit after setup. Functional installation failures remain red with their original
+diagnostic and exit status, without disabling lockfiles or retrying. Setup installs
+`uv.lock` with `--frozen`, without an audit verdict or rewrite. Audit judges manifest
+satisfaction and lock integrity; drift remains red until canonical upgrade repairs
+it. A failed native resolver or installer
 retains its original failure; no downgrade, retry or disabled lock policy masks it.
 Only successful resolution, installation and generation establish alignment.
 The platforms declared by `toolchain.mise_lockfile_platforms` compose the lock

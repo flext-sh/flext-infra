@@ -139,6 +139,9 @@ class FlextInfraModelsCodegenTransactionModels:
         generator_sources: t.VariadicTuple[
             FlextInfraModelsCodegenJournalModels.CodegenJournalSource
         ] = m.Field(default=(), description="Captured loaded generator implementation")
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Producer resource membership before planning"
+        )
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),
             description="Source-owner directory witnesses for observation",

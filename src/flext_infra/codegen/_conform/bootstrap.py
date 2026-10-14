@@ -66,6 +66,9 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         exclude=True,
         description="First native file planning cause",
     )
+    producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
+        default=None, exclude=True, description="Producer captured before planning"
+    )
 
     def _record_file_failure(
         self,
