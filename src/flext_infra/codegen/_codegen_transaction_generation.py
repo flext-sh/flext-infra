@@ -39,6 +39,21 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         source_authority: m.Infra.CodegenSourceAuthority | None = None,
     ) -> None:
         """Initialize the transaction with its configured Mise artifact owner."""
+        if producer is None:
+            # Self-serve the pre-planning producer authority: every transaction
+            # publication journals the generator's own source states, and the
+            # recovery guard rejects authority-less journals.
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
+            )
+
+            captured = FlextInfraCodegenPreconditions.capture_producer()
+            if captured.failure:
+                raise RuntimeError(
+                    "transaction producer authority capture failed: "
+                    + str(captured.error)
+                )
+            producer = captured.value
         super().__init__(
             owner,
             participant_policy=participant_policy,
