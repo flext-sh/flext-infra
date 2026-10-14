@@ -12,7 +12,6 @@ import sysconfig
 from base64 import urlsafe_b64encode
 from functools import lru_cache
 from importlib.machinery import BuiltinImporter, FrozenImporter
-from inspect import getsourcefile
 from json import dumps
 from pathlib import Path
 from sys import modules
@@ -207,9 +206,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[Path].fail(
                 f"producer source module is not registered: {module_name}"
             )
-        ancestry = vars(type)["__mro__"].__get__(
-            type(module), type(type(module))
-        )
+        ancestry = vars(type)["__mro__"].__get__(type(module), type(type(module)))
         if not any(owner is ModuleType for owner in ancestry):
             return r[Path].fail(
                 f"producer source supplier has no native module storage: {module_name}"
@@ -280,6 +277,90 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     f"producer standard library differs from interpreter base: {module_name}"
                 )
         return r[Path].ok(origin)
+
+    @classmethod
+    def loaded_import_sources(
+        cls,
+        package_name: str,
+        *,
+        expected_root: Path | None = None,
+        reference: m.Infra.NativeImportReference | None = None,
+    ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
+        """Authenticate an explicitly selected whole-module namespace inventory."""
+        from flext_infra.codegen.codegen_preconditions import (
+            FlextInfraCodegenPreconditions,
+        )
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
+        )
+
+        names = tuple(
+            sorted(
+                name
+                for name in tuple(modules)
+                if name == package_name or name.startswith(f"{package_name}.")
+            )
+        )
+        result = r[t.SequenceOf[t.Triple[str, str, str]]]
+        if not names:
+            return result.ok(())
+        selections = tuple(m.Infra.SourceClassReference(target=name) for name in names)
+        if reference is None:
+            authority = FlextInfraCodegenPreconditions.capture_source_authority(
+                nominated=selections
+            )
+            if authority.failure:
+                return result.from_failure(authority)
+            inputs = FlextInfraCodegenPreconditions.authority_inputs(authority.value)
+            if inputs.failure:
+                return result.from_failure(inputs)
+            elected = cls._module_source(package_name)
+            if elected.failure:
+                return result.from_failure(elected)
+            source_root = (
+                elected.value.parent if elected.value.is_file() else elected.value
+            )
+            authenticated = FlextInfraWorkspaceNativeReference.authenticate(
+                m.Infra.NativeImportRequest(
+                    repository_root=source_root,
+                    runtime_root=Path(sys.prefix).absolute().parent,
+                    modules=selections,
+                    source_authority=authority.value,
+                    inputs=inputs.value,
+                )
+            )
+            if authenticated.failure:
+                return result.from_failure(authenticated)
+            source_files = authenticated.value.sources
+        else:
+            if not set(selections).issubset(reference.modules):
+                return result.fail(
+                    f"native reference does not cover selected namespace: {package_name}"
+                )
+            current = FlextInfraCodegenPreconditions.source_authority_current(
+                reference.source_authority
+            )
+            if current.failure:
+                return result.from_failure(current)
+            observed = FlextInfraWorkspaceNativeReference.capture(reference.modules)
+            if observed.failure:
+                return result.from_failure(observed)
+            compared = FlextInfraWorkspaceNativeReference.compare(
+                observed.value, reference
+            )
+            if compared.failure:
+                return result.from_failure(compared)
+            source_files = reference.sources
+        if expected_root is not None:
+            for name, origin, declaration in source_files:
+                module = name.partition("::")[0]
+                if (
+                    module == package_name or module.startswith(f"{package_name}.")
+                ) and not Path(declaration or origin).resolve().is_relative_to(
+                    expected_root.resolve()
+                ):
+                    return result.fail(f"producer source escapes expected root: {name}")
+        return result.ok(source_files)
 
     @staticmethod
     @lru_cache(maxsize=1)

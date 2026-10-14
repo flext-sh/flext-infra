@@ -248,7 +248,12 @@ class TestsFlextInfraDocsGeneratorBundle:
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root)
         )
-        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        producer = tm.ok(
+            FlextInfraCodegenPreconditions.capture_producer(
+                Path.cwd(),
+                entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+            )
+        )
         analysis = tm.ok(
             FlextInfraCodegenPreconditions.bind_producer_analysis(analysis, producer)
         )

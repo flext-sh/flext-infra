@@ -83,7 +83,10 @@ class FlextInfra(
         )
         if workspace.failure:
             return r[bool].from_failure(workspace)
-        producer = FlextInfraCodegenPreconditions.capture_producer(source_root)
+        producer = FlextInfraCodegenPreconditions.capture_producer(
+            source_root,
+            entrypoint=FlextInfra.bootstrap_candidate,
+        )
         if producer.failure:
             return r[bool].from_failure(producer)
         return FlextInfraCandidateBootstrapService(

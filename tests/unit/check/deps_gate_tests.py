@@ -54,10 +54,12 @@ class TestsFlextInfraDepsGate:
         )
         lock_path = root / c.Infra.UV_LOCK_FILENAME
         lock_path.write_text(
-            u.Cli.toml_dumps(u.Cli.toml_document_from_mapping({
-                "version": 1,
-                "package": [package.model_dump(mode="json", exclude_none=True)],
-            })),
+            u.Cli.toml_dumps(
+                u.Cli.toml_document_from_mapping({
+                    "version": 1,
+                    "package": [package.model_dump(mode="json", exclude_none=True)],
+                })
+            ),
             encoding="utf-8",
         )
         return m.Infra.RuntimeDependencyInputs(
@@ -66,21 +68,26 @@ class TestsFlextInfraDepsGate:
             lock=u.Cli.atomic_read_binary_file_state(lock_path, required=True).unwrap(),
             providers=(
                 m.Infra.RuntimeDependencyProvider(
-                    modules=tuple(sorted({
-                        item.parts[0]
-                        for item in files
-                        if len(item.parts) > 1 and item.parts[1] == "__init__.py"
-                    })),
+                    modules=tuple(
+                        sorted({
+                            item.parts[0]
+                            for item in files
+                            if len(item.parts) > 1 and item.parts[1] == "__init__.py"
+                        })
+                    ),
                     package=package,
                     requirement=f"{package.name}>={package.version}",
                     inputs=(
-                        u.Cli.atomic_read_binary_file_state(metadata_path, required=True).unwrap(),
+                        u.Cli.atomic_read_binary_file_state(
+                            metadata_path, required=True
+                        ).unwrap(),
                     ),
                 ),
             ),
             inputs=(
                 u.Cli.atomic_read_binary_file_state(
-                    root / "src" / "fixturepkg.py", required=True,
+                    root / "src" / "fixturepkg.py",
+                    required=True,
                 ).unwrap(),
             ),
         )
@@ -257,11 +264,14 @@ class TestsFlextInfraDepsGate:
             tm.that(rejected.error, has="source changed")
         else:
             supplier = inputs.providers[0]
-            invalid = supplier.model_copy(update={
-                "package": supplier.package.model_copy(update={"version": "0"}),
-            })
+            invalid = supplier.model_copy(
+                update={
+                    "package": supplier.package.model_copy(update={"version": "0"}),
+                }
+            )
             rejected = u.Infra.runtime_dependency_plan(
-                scan, inputs.model_copy(update={"providers": (invalid,)}),
+                scan,
+                inputs.model_copy(update={"providers": (invalid,)}),
             )
             tm.that(rejected.failure, eq=True)
             tm.that(rejected.error, has="selected lock")

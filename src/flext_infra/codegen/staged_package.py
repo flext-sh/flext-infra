@@ -170,7 +170,7 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _source_layout(
         path: Path,
-        layouts: dict[str, m.Infra.RopeProjectLayout],
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
     ) -> p.Result[m.Infra.RopeProjectLayout]:
         """Resolve a source owner without replacing another package's identity.
 

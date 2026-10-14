@@ -30,6 +30,94 @@ from flext_infra._utilities import (
 class FlextInfraUtilitiesRopeImports:
     """Rope-backed import organization and rename helpers."""
 
+    @classmethod
+    def source_import_statements(
+        cls,
+        project: p.Infra.RopeProject,
+        source: str,
+    ) -> t.VariadicTuple[p.Infra.RopeImportStatement]:
+        """Collect imports in every lexical scope through native Rope owners.
+
+        Native token occurrences exclude strings and comments. Native logical
+        regions bound each fragment, and Rope's import tables parse the actual
+        declaration, including inline suites and multiple imports on one line.
+        """
+        from flext_infra._utilities.rope_runtime_modules import (
+            FlextInfraUtilitiesRopeRuntimeModules,
+        )
+        from flext_infra._utilities.rope_runtime_refactors import (
+            FlextInfraUtilitiesRopeRuntimeRefactors,
+        )
+        from flext_infra._utilities.rope_structure import (
+            FlextInfraUtilitiesRopeStructure,
+        )
+
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project,
+            source,
+            force_errors=True,
+        )
+        imports = tuple(
+            occurrence.offset
+            for occurrence in (
+                FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+                    project, "import"
+                ).find_occurrences(pymodule=module)
+            )
+        )
+        if not imports:
+            return ()
+        froms = tuple(
+            occurrence.offset
+            for occurrence in (
+                FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+                    project, "from"
+                ).find_occurrences(pymodule=module)
+            )
+        )
+        statements: list[p.Infra.RopeImportStatement] = []
+        position = 0
+        from_position = 0
+        preceding: int | None = None
+        for region in FlextInfraUtilitiesRopeStructure.logical_statements(source):
+            while position < len(imports) and imports[position] < region.start_offset:
+                position += 1
+            if position == len(imports):
+                break
+            offset = imports[position]
+            if offset >= region.end_offset:
+                continue
+            start = offset
+            while from_position < len(froms) and froms[from_position] < offset:
+                preceding = froms[from_position]
+                from_position += 1
+            if preceding is not None and preceding >= region.start_offset:
+                # Only a dotted import module may stand between `from` and
+                # `import`; `yield from` and exception chaining are not imports.
+                target = "".join(
+                    source[preceding + len("from") : offset]
+                    .replace("\\\n", "")
+                    .split(),
+                )
+                if target and all(
+                    not component or component.isidentifier()
+                    for component in target.split(".")
+                ):
+                    start = preceding
+            fragment = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project,
+                source[start : region.end_offset],
+                force_errors=True,
+            )
+            table = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
+                project,
+                fragment,
+            )
+            statements.extend(cls.import_statements(table))
+            while position < len(imports) and imports[position] < region.end_offset:
+                position += 1
+        return tuple(statements)
+
     @staticmethod
     def import_statements(
         module_imports: t.Infra.RopeModuleImports,

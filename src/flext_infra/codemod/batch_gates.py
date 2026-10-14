@@ -977,9 +977,7 @@ class FlextInfraModGateEngine:
                 text=str(finding.get("text")),
                 message=(
                     native_message
-                    if isinstance(
-                        native_message := finding.get("message"), str
-                    )
+                    if isinstance(native_message := finding.get("message"), str)
                     else None
                 ),
                 replacement=replacement,

@@ -117,6 +117,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class DeptryScan(m.Value):
         """Native findings bound to the exact settings and report bytes."""
 
+        venv_bin: Annotated[
+            Path,
+            m.Field(description="Explicit runtime binary directory owning the scanner"),
+        ]
         source: Annotated[
             m.Cli.AtomicPhysicalTreeManifest,
             m.Field(description="Production tree consumed by the native scanner"),

@@ -252,19 +252,10 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return r[m.Infra.CodegenTransactionJournal].fail(
                 f"generation directory already has an owner: {duplicate}",
             )
-        validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
-            m.Infra.CodegenTransactionJournal,
-            journal.model_dump()
-            | {
-                "directories": (*journal.directories, *directories),
-            },
+        extended = journal.model_copy(
+            update={"directories": (*journal.directories, *directories)},
         )
-        if validated.failure:
-            return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate extended codegen directory journal",
-                validated.error,
-            )
-        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
+        return r[m.Infra.CodegenTransactionJournal].ok(extended)
 
     @classmethod
     def record_transaction_manifests(
@@ -318,15 +309,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                     f"staging physical identity changed: {current.path}",
                 )
             finalized.append(
-                m.Infra.CodegenStagingIntent.model_validate({
-                    **intent.model_dump(),
-                    "created": receipt,
-                }),
+                intent.model_copy(update={"created": receipt}),
             )
-        journal = m.Infra.CodegenTransactionJournal.model_validate({
-            **journal.model_dump(),
-            "staging_intents": tuple(finalized),
-        })
+        journal = journal.model_copy(update={"staging_intents": tuple(finalized)})
         registered = FlextInfraMiseArtifactsVerification.register_transaction_manifests(
             layout,
             journal,
@@ -357,16 +342,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             compared = cls._validated_recorded_directory(previous, current)
             if compared.failure:
                 return result_type.from_failure(compared)
-        validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
-            m.Infra.CodegenTransactionJournal,
-            journal.model_dump() | {"directories": directories},
-        )
-        if validated.failure:
-            return result_type.fail_op(
-                "validate recorded directory evidence",
-                validated.error,
-            )
-        return result_type.ok(validated.value)
+        return result_type.ok(journal.model_copy(update={"directories": directories}))
 
     @staticmethod
     def _validated_recorded_directory(
@@ -423,16 +399,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return r[m.Infra.CodegenTransactionJournal].fail(
                 "only a prepared codegen journal can be committed",
             )
-        validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
-            m.Infra.CodegenTransactionJournal,
-            journal.model_dump() | {"state": "committed"},
+        return r[m.Infra.CodegenTransactionJournal].ok(
+            journal.model_copy(update={"state": "committed"}),
         )
-        if validated.failure:
-            return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate committed codegen journal",
-                validated.error,
-            )
-        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
 
     @classmethod
     def write(

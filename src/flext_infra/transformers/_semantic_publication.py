@@ -226,7 +226,10 @@ class FlextInfraSemanticPublication:
             analysis.files,
             (*options.projection_roots, *options.input_roots),
         )
-        producer = FlextInfraCodegenPreconditions.capture_producer(repository_root)
+        producer = FlextInfraCodegenPreconditions.capture_producer(
+            repository_root,
+            entrypoint=cls.publish_source_candidate,
+        )
         if producer.failure:
             return r[
                 t.Pair[FlextInfraCodegenTransaction, t.MappingKV[str, Path]]

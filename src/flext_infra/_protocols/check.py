@@ -12,13 +12,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-    from contextlib import AbstractContextManager
     from pathlib import Path
 
-    from flext_cli import t
+    from flext_cli import p, t
 
-    from flext_infra import m, p
+    from flext_infra import m
 
 
 @runtime_checkable
@@ -29,55 +27,6 @@ class FlextInfraProtocolsCheck(Protocol):
         """Resolve an elected physical supplier without importing its module."""
 
         def __call__(self, module_name: str) -> p.Result[Path]: ...
-
-    class NativeRopeSourceOperations(Protocol):
-        """Required composed native SDK operations for one source-proof epoch."""
-
-        def runtime_callable(
-            self, module_name: str, attribute: str
-        ) -> Callable[..., p.AttributeProbe]: ...
-
-        def build_string_module(
-            self,
-            rope_project: p.Infra.RopeProject | None,
-            source: str,
-            *,
-            resource: p.Infra.RopeResource | None = None,
-        ) -> p.Infra.RopePyModule: ...
-
-        def logical_statements(
-            self, source: str
-        ) -> t.SequenceOf[p.Infra.RopeSourceStatement]: ...
-
-        def semantic_finder(
-            self, module: p.Infra.RopePyModule
-        ) -> p.Infra.RopeSimilarFinder: ...
-
-        def semantic_capture_region(
-            self, match: p.Infra.RopeContractMatch, variable: str
-        ) -> t.Pair[int, int]: ...
-
-        def expression_name(
-            self, scope: p.Infra.RopeScope, expression: str
-        ) -> p.Infra.RopePyName | None: ...
-
-        def scope_at(
-            self,
-            pymodule: p.Infra.RopePyModule,
-            offset: int,
-            *,
-            declaration_line: int | None = None,
-        ) -> p.Infra.RopeScope: ...
-
-        def same_name(
-            self,
-            expected: p.Infra.RopePyName,
-            actual: p.Infra.RopePyName | None,
-        ) -> bool: ...
-
-        def open_import_project(
-            self, source_root: Path
-        ) -> AbstractContextManager[p.Infra.RopeProject]: ...
 
     class NativeSourceObserver(Protocol):
         """Provide callback-free native observation to the source proof owner."""
@@ -146,7 +95,9 @@ class FlextInfraProtocolsCheck(Protocol):
         def __defaults__(self) -> tuple[p.AttributeProbe | None, ...] | None: ...
 
         @property
-        def __kwdefaults__(self) -> t.MappingKV[str, p.AttributeProbe | None] | None: ...
+        def __kwdefaults__(
+            self,
+        ) -> t.MappingKV[str, p.AttributeProbe | None] | None: ...
 
         @property
         def __globals__(self) -> t.MappingKV[str, p.AttributeProbe | None]: ...
@@ -156,14 +107,8 @@ class FlextInfraProtocolsCheck(Protocol):
             self,
         ) -> tuple[FlextInfraProtocolsCheck.NativeClosureCell, ...] | None: ...
 
-        @property
-        def __name__(self) -> str: ...
-
-        @property
-        def __qualname__(self) -> str: ...
-
-        @property
-        def __module__(self) -> str | None: ...
+        __name__: str
+        __module__: str | None
 
         @property
         def __dict__(self) -> t.MappingKV[str, p.AttributeProbe | None]: ...

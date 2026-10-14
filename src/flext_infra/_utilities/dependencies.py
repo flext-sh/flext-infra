@@ -127,6 +127,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             return result_type.fail("deptry exit status contradicts its native report")
         return result_type.ok(
             m.Infra.DeptryScan(
+                venv_bin=venv_bin,
                 source=source.value,
                 native=native,
                 settings=settings.value,
@@ -156,7 +157,11 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             or scan.settings.path != target / c.PYPROJECT_FILENAME
         ):
             return result_type.fail("dependency provenance belongs to another target")
-        if not inputs.python.is_absolute() or scan.settings.content is None:
+        if (
+            not inputs.python.is_absolute()
+            or inputs.python.parent != scan.venv_bin
+            or scan.settings.content is None
+        ):
             return result_type.fail(
                 "dependency provenance lacks its interpreter or settings"
             )
@@ -656,10 +661,16 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         """
         result_type = r[m.Infra.InstalledResourceSnapshot]
         if not resource_parts or any(
-            not part or part in {".", ".."} or "/" in part or "\\" in part or "\0" in part
+            not part
+            or part in {".", ".."}
+            or "/" in part
+            or "\\" in part
+            or "\0" in part
             for part in resource_parts
         ):
-            return result_type.fail("installed resource requires exact relative components")
+            return result_type.fail(
+                "installed resource requires exact relative components"
+            )
         installed = u.installed_distributions(name=distribution)
         if len(installed) != 1:
             return result_type.fail(
@@ -667,7 +678,9 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                 f"observed={len(installed)}",
             )
         supplier = installed[0]
-        if canonicalize_name(supplier.metadata["Name"]) != canonicalize_name(distribution):
+        if canonicalize_name(supplier.metadata["Name"]) != canonicalize_name(
+            distribution
+        ):
             return result_type.fail(
                 f"installed resource distribution identity differs: {distribution}",
             )
@@ -679,7 +692,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         resource_entries = tuple(
             item
             for item in records
-            if item.parts[-len(resource_parts):] == tuple(resource_parts)
+            if item.parts[-len(resource_parts) :] == tuple(resource_parts)
         )
         if len(resource_entries) != 1:
             return result_type.fail(

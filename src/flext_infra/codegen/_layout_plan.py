@@ -30,7 +30,7 @@ class FlextInfraCodegenLayoutPlanMixin:
         what dropped standalone repositories' canonical declarations.
 
         """
-        layered = u.Infra.load_codegen_inputs(self.repository_root)
+        layered = u.Infra.load_codegen_inputs(Path)
         return layered.map(lambda inputs: inputs.spec.layout).unwrap()
 
     @staticmethod

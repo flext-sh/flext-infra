@@ -61,6 +61,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
 
             captured = FlextInfraCodegenPreconditions.capture_producer(
                 owner.repository_root,
+                entrypoint=type(self).__init__,
             )
             if captured.failure:
                 raise RuntimeError(

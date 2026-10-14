@@ -543,7 +543,7 @@ class FlextInfraModelsScan:
             bindings = tuple(
                 tuple(indexed[path] for path in paths) for paths in self.binding_graphs
             )
-            entries = []
+            entries: list[FlextInfraModelsScan.ModScanFindingReference] = []
             for entry in self.entries:
                 source = (
                     None if entry.source_path is None else indexed[entry.source_path]

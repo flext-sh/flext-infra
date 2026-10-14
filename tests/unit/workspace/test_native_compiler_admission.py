@@ -110,9 +110,7 @@ class TestsNativeCompilerAdmission:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 package / "supplier.py",
-                "class Payload:\n"
-                "    def operation(self):\n"
-                "        return 'native'\n",
+                "class Payload:\n    def operation(self):\n        return 'native'\n",
             ),
         )
         consumer = (
@@ -228,15 +226,9 @@ class TestsNativeCompilerAdmission:
         elif feature == "default-factory":
             field = "    _value = attrib(factory=default_value)\n"
         elif feature == "pre-init":
-            extra = (
-                "    def __attrs_pre_init__(self):\n"
-                "        record('pre-init')\n"
-            )
+            extra = "    def __attrs_pre_init__(self):\n        record('pre-init')\n"
         elif feature == "post-init":
-            extra = (
-                "    def __attrs_post_init__(self):\n"
-                "        record('post-init')\n"
-            )
+            extra = "    def __attrs_post_init__(self):\n        record('post-init')\n"
         elif feature == "field-transformer":
             decorator = f"@attrs({options}, field_transformer=transform)\n"
         tm.ok(
@@ -275,11 +267,7 @@ class TestsNativeCompilerAdmission:
                 "    return 1\n"
                 "def transform(cls, attributes):\n"
                 "    record('field-transformer')\n"
-                "    return attributes\n"
-                + decorator
-                + declaration
-                + field
-                + extra,
+                "    return attributes\n" + decorator + declaration + field + extra,
             ),
         )
         consumer = (
@@ -551,10 +539,7 @@ class TestsNativeCompilerAdmission:
         source_root = tmp_path / location
         package = source_root / "ordered_provider"
         tm.ok(u.Cli.ensure_dir(package))
-        method = (
-            "    def clone(self):\n"
-            "        return 'physical-class'\n"
-        )
+        method = "    def clone(self):\n        return 'physical-class'\n"
         alias = "    alias = clone\n"
         tm.ok(
             u.Cli.atomic_write_text_file(

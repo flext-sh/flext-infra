@@ -776,16 +776,17 @@ def real_detector_project(
         manifest = root / c.PYPROJECT_FILENAME
         payload = u.Tests.toml_payload(manifest.read_text(encoding="utf-8"))
         project = u.Tests.toml_mapping(payload["project"])
-        dependencies = [
+        dependencies: list[t.JsonValue] = [
             requirement
             for requirement in u.Tests.toml_strings(project["dependencies"])
             if (name := u.Infra.dep_name(requirement)) not in c.Tests.CONSUMER_MODULES
             or name in modules
         ]
-        updated: t.JsonMapping = {
-            **payload,
-            "project": {**project, "dependencies": dependencies},
+        project_update: dict[str, t.JsonValue] = {
+            **project,
+            "dependencies": dependencies,
         }
+        updated: t.JsonMapping = {**payload, "project": project_update}
         tm.ok(u.Cli.toml_write_mapping(manifest, updated))
         (root / "src" / root.name.replace("-", "_") / "__init__.py").write_text(
             "\n".join(

@@ -101,7 +101,10 @@ class FlextInfraDocGeneratorBundleMixin:
         for scope in selected:
             if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
                 continue
-            producer = FlextInfraCodegenPreconditions.capture_producer(root)
+            producer = FlextInfraCodegenPreconditions.capture_producer(
+                root,
+                entrypoint=cls._scope_batches,
+            )
             if producer.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(producer)
                 return
@@ -266,7 +269,8 @@ class FlextInfraDocGeneratorBundleMixin:
 
         """
         producer = FlextInfraCodegenPreconditions.capture_producer(
-            request.repository_root
+            request.repository_root,
+            entrypoint=cls._prepare_request,
         )
         if producer.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(producer)

@@ -141,7 +141,7 @@ assert u.Infra.declared_package_dir(sdk.__module__.partition('.')[0]) == Path(ex
 sys.path.insert(0, primary)
 importlib.invalidate_caches()
 importlib.import_module(namespace)
-observed = sdk.capture_producer()
+observed = sdk.capture_producer(Path.cwd(), entrypoint=sdk.capture_producer)
 if mutation == 'duplicate':
     assert observed.failure, observed
     assert 'ambiguous physical distribution ownership' in observed.error, observed.error
@@ -195,7 +195,12 @@ print('physical-provider-proof=' + mutation)
         mutation: str,
     ) -> None:
         """An out-of-consumer resource remains part of the producer CAS closure."""
-        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        producer = tm.ok(
+            FlextInfraCodegenPreconditions.capture_producer(
+                Path.cwd(),
+                entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+            )
+        )
         resource_root = tmp_path / "declared-resource-root"
         resource_root.mkdir()
         anchor = resource_root / "anchor.json"
@@ -249,7 +254,12 @@ print('physical-provider-proof=' + mutation)
         tmp_path: Path,
     ) -> None:
         """An optional path outside inventoried trees stays an authenticated input."""
-        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        producer = tm.ok(
+            FlextInfraCodegenPreconditions.capture_producer(
+                Path.cwd(),
+                entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+            )
+        )
         optional = tmp_path / "not-materialized" / "optional-source.json"
         state = tm.ok(u.Cli.atomic_read_binary_file_state(optional, required=False))
         context = producer.model_copy(
@@ -266,7 +276,12 @@ print('physical-provider-proof=' + mutation)
     @staticmethod
     def test_phase_binds_exact_preplanning_producer_inputs(tmp_path: Path) -> None:
         """The native stage receives the same authenticated identities, not origins."""
-        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        producer = tm.ok(
+            FlextInfraCodegenPreconditions.capture_producer(
+                Path.cwd(),
+                entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+            )
+        )
         source = tmp_path / "source.txt"
         tm.ok(u.Cli.atomic_write_text_file(source, "before"))
         state = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
@@ -302,7 +317,12 @@ print('physical-provider-proof=' + mutation)
         mutation: str,
     ) -> None:
         """Resource witnesses cannot admit an omitted or physically foreign provider."""
-        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        producer = tm.ok(
+            FlextInfraCodegenPreconditions.capture_producer(
+                Path.cwd(),
+                entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+            )
+        )
         namespace, physical = producer.generator_modules[-1]
         modules = producer.generator_modules[:-1]
         if mutation == "moved-provider":
@@ -329,7 +349,12 @@ print('physical-provider-proof=' + mutation)
         helper.write_bytes(b"VALUE = 'before'\n")
         state = tm.ok(u.Cli.atomic_read_binary_file_state(helper, required=True))
         assert state.content is not None
-        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        producer = tm.ok(
+            FlextInfraCodegenPreconditions.capture_producer(
+                Path.cwd(),
+                entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+            )
+        )
         context = producer.model_copy(
             update={
                 "inputs": (*producer.inputs, state),
@@ -434,7 +459,7 @@ print('physical-provider-proof=' + mutation)
             "assert inputs.sources[0].content==resource.read_bytes(); "
             "print('packaged-config-owned=True')"
             "; from flext_infra.codegen import FlextInfraCodegenPreconditions; "
-            "captured=FlextInfraCodegenPreconditions.capture_producer().unwrap(); "
+            "captured=FlextInfraCodegenPreconditions.capture_producer(Path.cwd(), entrypoint=FlextInfraCodegenPreconditions.capture_producer).unwrap(); "
             "elected=u.Infra.declared_package_dir(flext_infra.__name__); "
             "assert elected in {tree.root.path for tree in captured.generator_trees}; "
             "print('controller-root='+str(elected)); "

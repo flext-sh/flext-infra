@@ -13,6 +13,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
+from flext_infra._utilities.rope_runtime_refactors import _RopeRestructureOptions
 
 
 class FlextInfraUtilitiesCodegenPathCutover:
@@ -161,8 +162,10 @@ class FlextInfraUtilitiesCodegenPathCutover:
                 project,
                 pattern,
                 goal,
-                arguments={"files": owner},
-                resources=resources,
+                options=_RopeRestructureOptions(
+                    arguments={"files": owner},
+                    resources=resources,
+                ),
             )
             edits = cls._content_edits(changes, sources, selected)
             if edits:

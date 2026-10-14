@@ -83,6 +83,19 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
         )
 
     @staticmethod
+    def _payload_json_formatter(payload: t.JsonPayload) -> str:
+        """Serialize an erased command payload through the canonical JSON owner.
+
+        Returns:
+            The canonical JSON text of the payload.
+
+        """
+        encoded = u.Cli.json_dumps(u.normalize_to_json_value(payload))
+        if encoded.failure:
+            return encoded.error or "command payload serialization failed"
+        return encoded.value
+
+    @staticmethod
     def _capture_gate(
         params: m.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
@@ -129,9 +142,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 help_text="Inspect native public signing references without key access",
                 model_cls=m.Infra.GitRepoRequest,
                 handler=u.Infra.git_signing_identity,
-                success_formatter=lambda report: report.model_dump_json(
-                    round_trip=True
-                ),
+                success_formatter=_payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
                 name="capture-gate",

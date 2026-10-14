@@ -15,14 +15,9 @@ from pathlib import Path
 import pytest
 from packaging.requirements import Requirement
 
-<<<<<<< HEAD
-from flext_infra import config
-from tests import c, m, t, tm, u
-=======
 from flext_infra import FlextInfraConfig, config
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, tm, u
->>>>>>> 78954c012a56cd9a5b986d549fed6759c7eb3808
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
@@ -47,7 +42,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
         candidate = m.Infra.DependencyCommitSourceSpec(
             distribution=dependency.distribution,
             url=(
-                dependency.url if source_matches
+                dependency.url
+                if source_matches
                 else u.Tests.repository_ref("flext-other").url
             ),
             commit="a" * 40,
@@ -59,10 +55,18 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.ok(
             u.Cli.yaml_dump(
                 layer,
-                {"Infra": {"codegen": {"repository": {
-                    "integration": line.model_dump(mode="json"),
-                    "candidate_dependencies": [candidate.model_dump(mode="json")],
-                }}}},
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "integration": line.model_dump(mode="json"),
+                                "candidate_dependencies": [
+                                    candidate.model_dump(mode="json")
+                                ],
+                            }
+                        }
+                    }
+                },
             ),
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
@@ -72,8 +76,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(workspace.candidate_dependencies, eq=(candidate,))
         tm.that(workspace.integration, eq=line)
         requirement = (
-            f"{self._inline_requirement(dependency)} ; "
-            "implementation_name == 'cpython'"
+            f"{self._inline_requirement(dependency)} ; implementation_name == 'cpython'"
         )
         declared_requirement = Requirement(requirement)
         quoted = tm.ok(u.Cli.json_dumps(requirement))
@@ -95,9 +98,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         if not source_matches:
             tm.that(generated.failure, eq=True)
-            tm.that(
-                generated.error or "", has="candidate dependency Git URL differs"
-            )
+            tm.that(generated.error or "", has="candidate dependency Git URL differs")
             return
         rendered = tm.ok(generated)
         tm.that(u.Tests.toml_strings_at(rendered, "project", "dependencies"), eq=())
@@ -138,11 +139,12 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         first = u.Tests.repository_ref("flext-tests")
         second = u.Tests.repository_ref("flext-other")
-        sources = [
+        sources: list[dict[str, t.JsonValue]] = [
             {"distribution": first.distribution, "url": first.url, "commit": "a" * 40},
             {
                 "distribution": (
-                    first.distribution.upper() if duplicate == "distribution"
+                    first.distribution.upper()
+                    if duplicate == "distribution"
                     else second.distribution
                 ),
                 "url": second.url if duplicate == "distribution" else first.url,
@@ -152,11 +154,14 @@ class TestsFlextInfraPyprojectConformTopologySources:
         layer = FlextInfraConfig.config_layer_paths_for_repository(
             root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
         )[-1]
-        tm.ok(u.Cli.yaml_dump(
-            layer, {"Infra": {"codegen": {"repository": {
-                "candidate_dependencies": sources,
-            }}}},
-        ))
+        repository_overlay: dict[str, t.JsonValue] = {
+            "candidate_dependencies": sources,
+        }
+        codegen_overlay: dict[str, t.JsonValue] = {
+            "repository": repository_overlay,
+        }
+        overlay: dict[str, t.JsonValue] = {"Infra": codegen_overlay}
+        tm.ok(u.Cli.yaml_dump(layer, overlay))
 
         loaded = u.Infra.load_codegen_inputs(root)
 
@@ -1219,11 +1224,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
     def test_standalone_preserves_declared_nonlocal_source(self) -> None:
         """Conformance owns local topology, not a user's independent Git source."""
         dependency = self._member_ref("flext-custom", "flext-custom")
-        source_entry: t.JsonMapping = {
+        source_entry: dict[str, t.JsonValue] = {
             "git": dependency.url,
             "rev": u.Tests.provider_branch(),
         }
-        document: t.JsonMapping = {
+        document: dict[str, t.JsonValue] = {
             "project": {"name": "consumer", "version": "0.1.0", "dependencies": []},
             "tool": {"uv": {"sources": {dependency.distribution: source_entry}}},
         }

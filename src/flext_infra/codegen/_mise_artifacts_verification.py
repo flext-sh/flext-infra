@@ -450,7 +450,7 @@ class FlextInfraMiseArtifactsVerification(
             return authority
         inputs = cls._frontier_inputs_current(outcome, written, frontier)
         if inputs.failure:
-            return inputs
+            return r[bool].from_failure(inputs)
         return cls._frontier_outputs_current(outputs, written, inputs.value, frontier)
 
     @staticmethod

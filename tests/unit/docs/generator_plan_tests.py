@@ -45,7 +45,10 @@ class TestsFlextInfraDocsGeneratorPlan:
         sibling = project / "docs/api-reference/generated/modules/api/v1/private.md"
         source_state = u.Cli.atomic_read_binary_file_state(source, required=True)
         tm.ok(source_state)
-        producer = FlextInfraCodegenPreconditions.capture_producer()
+        producer = FlextInfraCodegenPreconditions.capture_producer(
+            Path.cwd(),
+            entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+        )
         tm.ok(producer)
         bundle = m.Infra.DocsGenerationBundle(
             producer=producer.value,

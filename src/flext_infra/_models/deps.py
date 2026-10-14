@@ -64,11 +64,16 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
 
         resource: Annotated[
             m.Cli.AtomicFileState,
-            m.Field(description="Physical installed resource bytes verified against RECORD"),
+            m.Field(
+                description="Physical installed resource bytes verified against RECORD"
+            ),
         ]
         inventory: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(min_length=1, description="Owning distribution metadata and RECORD snapshots"),
+            m.Field(
+                min_length=1,
+                description="Owning distribution metadata and RECORD snapshots",
+            ),
         ]
 
     class RuntimeDependencyProvider(m.Value):

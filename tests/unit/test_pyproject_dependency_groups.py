@@ -306,8 +306,13 @@ class TestsPyprojectDependencyGroups:
         tm.that(
             u.Tests.toml_list(groups[authored_name]),
             eq=[
-                floor, authored_bound, marked, {"include-group": "base"},
-                extra, direct, marked,
+                floor,
+                authored_bound,
+                marked,
+                {"include-group": "base"},
+                extra,
+                direct,
+                marked,
             ],
         )
         tm.that(

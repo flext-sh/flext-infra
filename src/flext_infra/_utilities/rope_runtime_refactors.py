@@ -7,11 +7,43 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from typing import ClassVar
 
 from flext_cli import u
 
 from flext_infra import m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
+
+
+class _RopeRestructureOptions(m.ArbitraryTypesModel):
+    """Match, admission, and import policies for one Rope restructuring."""
+
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+
+    arguments: t.MappingKV[str, str] = m.Field(
+        description="Pattern argument bindings of the restructuring.",
+    )
+    resources: t.SequenceOf[p.Infra.RopeResource] = m.Field(
+        description="Resources whose changes the restructuring plans.",
+    )
+    imports: t.StrSequence = m.Field(
+        default=(),
+        description="Import declarations the restructuring may add.",
+    )
+    match_filter: (
+        Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool] | None
+    ) = m.Field(
+        default=None,
+        description="Occurrence admission gate over every native match.",
+    )
+    import_bindings: t.MappingKV[str, str] | None = m.Field(
+        default=None,
+        description="Existing binding reuse map applied while adding imports.",
+    )
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
@@ -232,14 +264,15 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         pattern: str,
         goal: str,
         *,
-        arguments: t.MappingKV[str, str],
-        resources: t.SequenceOf[p.Infra.RopeResource],
-        imports: t.StrSequence = (),
-        match_filter: Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool]
-        | None = None,
-        import_bindings: t.MappingKV[str, str] | None = None,
+        options: _RopeRestructureOptions,
     ) -> p.Infra.RopeChangeSet:
         """Plan Rope 1.14 semantic changes without invoking Project.do.
+
+        Args:
+            rope_project: Native Rope project owning the restructured sources.
+            pattern: Native Rope match pattern of the restructuring.
+            goal: Native Rope replacement template of the restructuring.
+            options: Frozen match, admission, and import policies.
 
         Returns:
             The resulting ``p.Infra.RopeChangeSet``.
@@ -252,19 +285,11 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         factory = cls.runtime_callable(
             "flext_infra._utilities._rope.restructure", "FlextInfraRopeRestructure"
         )
-        restructuring = factory(
-            rope_project,
-            pattern,
-            goal,
-            args=dict(arguments),
-            imports=list(imports),
-            match_filter=match_filter,
-            import_bindings=import_bindings,
-        )
+        restructuring = factory(rope_project, pattern, goal, options=options)
         if not isinstance(restructuring, p.Infra.RopeRestructure):
             msg = "rope Restructure does not satisfy its public planning contract"
             raise TypeError(msg)
-        changes = restructuring.get_changes(resources=list(resources))
+        changes = restructuring.get_changes(resources=list(options.resources))
         u.Cli.info(
             "Rope restructuring "
             f"matched={restructuring.matched_count} "
