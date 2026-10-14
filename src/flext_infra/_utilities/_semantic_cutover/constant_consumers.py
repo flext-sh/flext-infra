@@ -9,12 +9,17 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import libcst as cst
 from flext_cli import cli
+from libcst.codemod import CodemodContext
+from libcst.codemod.visitors import AddImportsVisitor
+from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
+    FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -30,6 +35,174 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
     @classmethod
     def _plan_constant_consumers(
+        cls,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Compose constant declaration repairs with their consumer cutover.
+
+        Returns:
+            The complete edits against the original immutable source inventory.
+        """
+        declarations = cls._constant_declarations(rope_workspace, sources)
+        working = dict(sources)
+        working.update({edit.file_path: edit.updated_source for edit in declarations})
+        consumers = cls._plan_constant_imports(rope_workspace, working)
+        if consumers.failure:
+            return consumers
+        working.update({
+            edit.file_path: edit.updated_source for edit in consumers.value
+        })
+        changes = {
+            edit.file_path: edit.changes for edit in (*declarations, *consumers.value)
+        }
+        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(
+            m.Infra.SemanticMigrationEdit(
+                file_path=path,
+                original_source=source,
+                updated_source=working[path],
+                changes=changes[path],
+            )
+            for path, source in sources.items()
+            if source != working[path]
+        ))
+
+    @classmethod
+    def _constant_declarations(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Repair typing.Final in constants class suites by Rope identity.
+
+        A module Final retains its contract. A class constant must be a
+        ClassVar so a composed Pydantic namespace never turns it into a field.
+        Aliased typing imports resolve through the lexical Rope scope; a
+        same-spelled user type is not a typing qualifier.
+
+        Returns:
+            Syntax-preserving declaration edits within the constants family.
+        """
+        candidates = tuple(
+            (path, source)
+            for path, source in cls._editable_sources(sources)
+            if "Final" in source
+            and workspace.convention(path).module_policy.expected_alias == "c"
+        )
+        if not candidates:
+            return ()
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        project = runtime.snapshot_project(workspace.rope_project, sources)
+        try:
+            return tuple(
+                edit
+                for path, source in candidates
+                if (
+                    edit := cls._constant_annotation_edit(project, path, source)
+                ) is not None
+            )
+        finally:
+            project.close()
+
+    @classmethod
+    def _constant_annotation_edit(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        source: str,
+    ) -> m.Infra.SemanticMigrationEdit | None:
+        """Plan one module's identity-proven Final-to-ClassVar repair.
+
+        Returns:
+            The source edit, or None when no class declaration needs repair.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        resource = project.get_resource(
+            path.relative_to(Path(project.root.real_path)).as_posix(),
+        )
+        module = project.get_pymodule(resource)
+        final = project.get_module("typing").get_attribute("Final")
+        classvar = project.get_module("typing").get_attribute("ClassVar")
+        evaluate = runtime.runtime_callable("rope.base.evaluate", "eval_str")
+        wrapper = MetadataWrapper(cst.parse_module(source))
+        positions = wrapper.resolve(PositionProvider)
+        offsets = [0]
+        for line in source.splitlines(keepends=True):
+            offsets.append(offsets[-1] + len(line))
+
+        class Rewrite(cst.CSTTransformer):
+            """Rewrite only proven typing qualifiers in constants class suites."""
+
+            depth: int = 0
+            functions: int = 0
+            changes: int = 0
+
+            def visit_ClassDef(self, node: cst.ClassDef) -> None:
+                self.depth += 1
+
+            def leave_ClassDef(
+                self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+            ) -> cst.ClassDef:
+                self.depth -= 1
+                return updated_node
+
+            def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
+                self.functions += 1
+
+            def leave_FunctionDef(
+                self,
+                original_node: cst.FunctionDef,
+                updated_node: cst.FunctionDef,
+            ) -> cst.FunctionDef:
+                self.functions -= 1
+                return updated_node
+
+            def leave_AnnAssign(
+                self, original_node: cst.AnnAssign, updated_node: cst.AnnAssign
+            ) -> cst.AnnAssign:
+                annotation = original_node.annotation.annotation
+                if (
+                    not self.depth
+                    or self.functions
+                    or not isinstance(annotation, cst.Subscript)
+                ):
+                    return updated_node
+                position = positions[annotation.value].start
+                scope = runtime.scope_at(
+                    module, offsets[position.line - 1] + position.column
+                )
+                binding = evaluate(
+                    scope, wrapper.module.code_for_node(annotation.value)
+                )
+                if not runtime.same_name(final, binding):
+                    return updated_node
+                existing = scope.lookup("ClassVar")
+                if existing is not None and not runtime.same_name(classvar, existing):
+                    message = f"constant ClassVar binding is shadowed in {path}"
+                    raise ValueError(message)
+                self.changes += 1
+                return updated_node.with_changes(
+                    annotation=updated_node.annotation.with_changes(
+                        annotation=annotation.with_changes(value=cst.Name("ClassVar"))
+                    )
+                )
+
+        rewrite = Rewrite()
+        updated = wrapper.module.visit(rewrite)
+        if not rewrite.changes:
+            return None
+        context = CodemodContext()
+        AddImportsVisitor.add_needed_import(context, "typing", "ClassVar")
+        updated = AddImportsVisitor(context).transform_module(updated)
+        return m.Infra.SemanticMigrationEdit(
+            file_path=path,
+            original_source=source,
+            updated_source=updated.code,
+            changes=(f"typing.Final class constants -> ClassVar: {rewrite.changes}",),
+        )
+
+    @classmethod
+    def _plan_constant_imports(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],

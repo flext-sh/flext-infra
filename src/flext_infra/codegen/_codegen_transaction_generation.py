@@ -18,8 +18,8 @@ from flext_infra.codegen import (
     FlextInfraMisePublication,
     FlextInfraMiseStaging,
 )
-from flext_infra.codegen._codegen_transaction_recovery import (
-    FlextInfraCodegenTransactionRecovery,
+from flext_infra.codegen._codegen_transaction_phases import (
+    FlextInfraCodegenTransactionPhases,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecovery):
+class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases):
     """Stage, prepare, and publish the first conform+Mise generation phase."""
 
     def __init__(
@@ -398,34 +398,68 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
 
     def _bind_conform_publications(
         self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        journal: m.Infra.CodegenTransactionJournal,
+        plan: m.Infra.MiseToolchainWorkspacePlan,
+        journal_state: t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState],
         ordinary: t.VariadicTuple[m.Infra.CodegenFilePlan],
         mise_publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
-        """Stage the ordinary conform files and bind every destination parent.
+    ) -> p.Result[
+        t.Pair[
+            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState],
+            t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ]
+    ]:
+        """Authorize ordinary staging before creating any phase artifact.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]``
-            with the complete publication set (conform plus changed Mise files).
+            The durable journal receipt and complete conform plus Mise publication set.
 
         """
-        ordinary_staged = FlextInfraCodegenStaging.stage_file_plans(
-            layout,
-            c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+        result_type = r[
+            t.Pair[
+                t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState],
+                t.VariadicTuple[m.Infra.CodegenStagedFile],
+            ]
+        ]
+        phase = c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP
+        prepared = self.prepare_phase_staging_journal_locked(
+            plan.layout,
+            journal_state[0],
+            journal_state[1],
+            phase,
             ordinary,
         )
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        journal, _journal_state = prepared.value
+        layout = plan.layout
+        ordinary_staged = FlextInfraCodegenStaging.stage_file_plans(
+            layout,
+            phase,
+            ordinary,
+            directories=tuple(
+                directory.created
+                for directory in journal.directories
+                if directory.created is not None
+            ),
+            intents=journal.staging_intents,
+        )
         if ordinary_staged.failure:
-            return r[t.VariadicTuple[m.Infra.CodegenStagedFile]].from_failure(
+            return result_type.from_failure(
                 self._recover_failure(
                     layout,
                     ordinary_staged.error or "cannot stage conform files",
+                    exception=ordinary_staged.exception,
+                    error_code=ordinary_staged.error_code,
+                    error_data=ordinary_staged.error_data,
                 ),
             )
-        return state.bind_created_parents(
+        bound = state.bind_created_parents(
             journal.directories,
             (*ordinary_staged.value, *mise_publications),
         )
+        if bound.failure:
+            return result_type.from_failure(bound)
+        return result_type.ok((prepared.value, bound.value))
 
     def _prepare_generation_journal(
         self,
@@ -546,19 +580,20 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
             )
         )
         publications = self._bind_conform_publications(
-            layout,
-            journal_state[0],
+            plan,
+            journal_state,
             ordinary,
             mise_publications,
         )
         if publications.failure:
             return result_type.from_failure(publications)
+        current, staged = publications.value
         prepared = self._prepare_generation_journal(
             layout,
             plan,
             all_sources,
-            journal_state,
-            publications.value,
+            current,
+            staged,
         )
         if prepared.failure:
             return result_type.from_failure(prepared)
@@ -570,6 +605,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
             session,
             all_plans,
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+            batch_admission=admission,
         )
         if bound.failure:
             return result_type.from_failure(bound)

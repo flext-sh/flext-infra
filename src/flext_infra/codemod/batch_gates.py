@@ -1069,6 +1069,7 @@ class FlextInfraModGateEngine:
             targets=targets,
             json_stream=True,
         )
+        u.Cli.ensure_dir(settings.work_dir).unwrap()
         with tempfile.TemporaryDirectory(
             prefix="mod-native-", dir=settings.work_dir
         ) as directory:

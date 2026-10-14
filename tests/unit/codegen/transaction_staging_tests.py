@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
@@ -366,12 +367,12 @@ class TestsFlextInfraTransactionStaging:
 
     @staticmethod
     @pytest.mark.parametrize("mutation", ["content", "inode", "unchanged"])
-    def test_semantic_commit_preserves_external_changes_after_publication(
+    def test_semantic_candidate_rejects_external_changes_before_publication(
         tmp_path: Path,
         mutation: str,
     ) -> None:
-        """Settle publication without treating later external edits as failure."""
-        root = u.Tests.git_repository(tmp_path)
+        """Consumer acceptance cannot overwrite a concurrent live-file update."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         target = root / "sample.py"
         target.write_bytes(b"value = 1\n")
         before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
@@ -385,20 +386,36 @@ class TestsFlextInfraTransactionStaging:
             changes=("semantic migration",),
         )
 
-        def validate() -> p.Result[bool]:
-            published = tm.ok(
+        def validate(candidate_root: Path) -> p.Result[bool]:
+            candidate = candidate_root / target.relative_to(root)
+            consumed = tm.ok(
+                u.Cli.run_raw(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            "import runpy, sys; "
+                            "assert runpy.run_path(sys.argv[1])['value'] == 2"
+                        ),
+                        str(candidate),
+                    ),
+                    cwd=candidate_root,
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(consumed.outcome), eq=True)
+            original = tm.ok(
                 u.Cli.atomic_read_binary_file_state(target, required=True),
             )
-            tm.that(published.content, eq=desired)
+            tm.that(original.content, eq=before.content)
             if mutation == "content":
                 target.write_bytes(b"value = 3\n")
             elif mutation == "inode":
-                assert published.mode is not None
+                assert original.mode is not None
                 tm.ok(
                     u.Cli.atomic_write_binary_file_guarded(
-                        published,
-                        desired,
-                        permission_mode=published.mode,
+                        original,
+                        tm.not_none(before.content),
+                        permission_mode=original.mode,
                     ),
                 )
             return r[bool].ok(value=True)
@@ -408,10 +425,19 @@ class TestsFlextInfraTransactionStaging:
             repository_root=root,
             validator=validate,
         )
-        tm.ok(outcome)
+        if mutation == "unchanged":
+            tm.ok(outcome)
+        else:
+            tm.fail(outcome)
         tm.that(
             target.read_bytes(),
-            eq=b"value = 3\n" if mutation == "content" else desired,
+            eq=(
+                b"value = 3\n"
+                if mutation == "content"
+                else before.content
+                if mutation == "inode"
+                else desired
+            ),
         )
 
     @staticmethod
@@ -615,13 +641,13 @@ class TestsFlextInfraTransactionStaging:
                             before=before,
                             desired_content=None,
                             desired_mode=None,
+                            source_states=(before,),
                             owner="docs",
                         ),
                     ),
                 ),
                 m.Infra.CodegenPhasePublicationPolicy(
                     directories=(),
-                    validator=lambda: r[bool].ok(value=True),
                 ),
             )
 
@@ -755,7 +781,6 @@ class TestsFlextInfraTransactionStaging:
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(
                     directories=(),
-                    validator=lambda: r[bool].ok(value=True),
                 ),
                 staged_validator=staged,
             )

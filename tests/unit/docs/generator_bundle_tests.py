@@ -9,6 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m
+from flext_infra.codegen import FlextInfraMisePublication
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import tm, u
 
@@ -52,6 +55,8 @@ class TestsFlextInfraDocsGeneratorBundle:
         guide = workspace / "flext-a/docs/guides/operator.md"
         guide.parent.mkdir(parents=True, exist_ok=True)
         guide.write_text("# Original\n", encoding="utf-8")
+        target = workspace / "flext-a/README.md"
+        original_target = target.read_bytes()
         generator = self._generator(workspace)
         prepared = generator.prepare_bundle()
         tm.ok(prepared)
@@ -60,6 +65,8 @@ class TestsFlextInfraDocsGeneratorBundle:
 
         tm.fail(published)
         tm.that(published.error or "", has=str(guide))
+        tm.that(target.read_bytes(), eq=original_target)
+        tm.that((workspace / "flext-a/docs/api-reference/generated").exists(), eq=False)
 
     def test_publication_rejects_source_topology_addition_after_bundle(
         self,
@@ -76,6 +83,103 @@ class TestsFlextInfraDocsGeneratorBundle:
 
         tm.fail(published)
         tm.that(published.error or "", has=c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER)
+
+    @staticmethod
+    def test_publication_rejects_replaced_source_directory(
+        tmp_path: Path,
+    ) -> None:
+        """Identical bytes under a replacement source directory retain no authority."""
+        workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+        generator = FlextInfraDocGenerator(
+            repository_root=workspace,
+            selected_projects=["flext-a"],
+            include_root=False,
+        )
+        prepared = next(generator.prepare_batches())
+        tm.ok(prepared)
+        package = workspace / "flext-a/src/flext_a"
+        relocated = workspace / "flext-a/retained_package"
+        package.rename(relocated)
+        package.mkdir()
+        for source in relocated.iterdir():
+            if source.is_file():
+                (package / source.name).write_bytes(source.read_bytes())
+
+        published = generator.publish_batch(prepared.value)
+
+        tm.fail(published)
+        tm.that(published.error or "", has=str(package))
+
+    @staticmethod
+    def test_noop_destination_edit_rejects_original_publication_state(
+        tmp_path: Path,
+    ) -> None:
+        """A no-op still proves its original state before reporting success."""
+        target = tmp_path / "artifact.md"
+        target.write_bytes(b"original\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        plan = m.Infra.CodegenFilePlan(
+            project=tmp_path,
+            path=target,
+            before=before,
+            desired_content=before.content,
+            desired_mode=before.mode,
+            owner="docs",
+        )
+        target.write_bytes(b"concurrent\n")
+
+        published = FlextInfraMisePublication.publish_file_plan(plan, phase="docs")
+
+        tm.fail(published)
+        tm.that(target.read_bytes(), eq=b"concurrent\n")
+
+    @staticmethod
+    def test_admitted_inputs_remain_the_publication_snapshot(
+        tmp_path: Path,
+    ) -> None:
+        """A later source edit belongs to the next capture, preserving admitted bytes."""
+        root = u.Tests.git_repository(tmp_path)
+        source = root / "input.py"
+        source.write_bytes(b"value = 1\n")
+        captured = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        target = root / "generated.md"
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=False))
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.DOCS,
+            inputs=(captured,),
+            files=(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=target,
+                    before=before,
+                    desired_content=b"captured value = 1\n",
+                    desired_mode=0o644,
+                    source_states=(captured,),
+                    owner="docs",
+                ),
+            ),
+        )
+        admission = tm.ok(FlextInfraMisePublication.admit_batch(analysis))
+        source.write_bytes(b"value = 2\n")
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        )
+        roots = {"@docs": root}
+
+        published = transaction.run_files_locked(
+            roots,
+            lambda scope: transaction.publish_file_phase_locked(
+                scope,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
+                batch_admission=admission,
+            ),
+        )
+
+        tm.ok(published)
+        tm.that(target.read_bytes(), eq=b"captured value = 1\n")
+        tm.that(source.read_bytes(), eq=b"value = 2\n")
 
     @staticmethod
     def test_member_batch_survives_later_member_source_change(

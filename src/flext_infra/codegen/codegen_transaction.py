@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
+    FlextInfraMisePublication,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -26,10 +26,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenTransaction(
-    FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
-):
+class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     """Keep every generation phase recoverable until one final fixed point."""
 
     def preview_sources[T](
@@ -625,6 +622,11 @@ class FlextInfraCodegenTransaction(
 
         """
         result_type = r[t.VariadicTuple[Path]]
+        if batch_admission is None:
+            admitted = FlextInfraMisePublication.admit_batch(analysis)
+            if admitted.failure:
+                return result_type.from_failure(admitted)
+            batch_admission = admitted.value
         started = self.begin_files_locked(scope_root, roots, analysis.inputs)
         if started.failure:
             return result_type.from_failure(started)
@@ -644,11 +646,10 @@ class FlextInfraCodegenTransaction(
             issues=analysis.issues,
             staged_validator=staged_validator,
             batch_admission=batch_admission,
-            admission=policy.admission,
         )
         if published.failure:
             return result_type.from_failure(published)
-        return self.commit_locked(published.value, policy.validator)
+        return self.commit_locked(published.value)
 
     def validate(
         self,

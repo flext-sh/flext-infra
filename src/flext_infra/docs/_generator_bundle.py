@@ -97,6 +97,10 @@ class FlextInfraDocGeneratorBundleMixin:
                     key=lambda item: item.path,
                 )
             )
+            governance = cls._captured_governance_source(root, states)
+            if governance.failure:
+                yield r[m.Infra.DocsGenerationBundle].from_failure(governance)
+                return
             directories = u.Infra.docs_source_directories(
                 source_roots,
                 source_scope=source_scope,
@@ -120,6 +124,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 (batch_scopes, aggregate),
                 states,
                 directories.value,
+                governance.value,
             )
             if rendered.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(rendered)
@@ -214,6 +219,7 @@ class FlextInfraDocGeneratorBundleMixin:
             scopes.value,
             source_states,
             directories.value,
+            cls._captured_governance_source(repository_root, source_states).unwrap(),
         )
         if rendered.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(rendered)
@@ -332,6 +338,7 @@ class FlextInfraDocGeneratorBundleMixin:
         ],
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
+        governance_source: m.Infra.CodegenBootstrapSource | None = None,
     ) -> p.Result[list[_DocsScopeArtifacts]]:
         """Render one docs artifact set per selected scope.
 
@@ -341,11 +348,16 @@ class FlextInfraDocGeneratorBundleMixin:
         """
         selected, aggregate = scopes
         selected = tuple(
-            u.Infra.docs_scope_from_sources(scope, source_states) for scope in selected
+            u.Infra.docs_scope_from_sources(scope, source_states).model_copy(
+                update={"governance_source": governance_source}
+            )
+            for scope in selected
         )
         if any(scope.name == c.Infra.RK_ROOT for scope in selected):
             aggregate = tuple(
-                u.Infra.docs_scope_from_sources(scope, source_states)
+                u.Infra.docs_scope_from_sources(scope, source_states).model_copy(
+                    update={"governance_source": governance_source}
+                )
                 for scope in aggregate
             )
         root_scope: m.Infra.DocScope | None = (
@@ -469,6 +481,43 @@ class FlextInfraDocGeneratorBundleMixin:
                 validated_bundle.error,
             )
         return r[m.Infra.DocsGenerationBundle].ok(validated_bundle.value)
+
+    @staticmethod
+    def _captured_governance_source(
+        repository_root: Path,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[m.Infra.CodegenBootstrapSource]:
+        """Capture the referenced governance owner before rendering its links."""
+        result_type = r[m.Infra.CodegenBootstrapSource]
+        inputs = u.Infra.load_codegen_inputs(repository_root)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        captured = {item.path: item for item in source_states}
+        if any(captured.get(item.path) != item for item in inputs.value.sources):
+            return result_type.fail(
+                "governance configuration differs from captured docs sources",
+            )
+        source = inputs.value.spec.workspace.flext_source
+        if source is not None:
+            return result_type.ok(source)
+        repository = inputs.value.spec.workspace.repository
+        page = u.Infra.repository_page_url(repository)
+        if page.failure:
+            return result_type.from_failure(page)
+        if page.value.rstrip("/") != c.Infra.GITHUB_REPO_URL.rstrip("/"):
+            return result_type.fail(
+                "governance links require the referenced source and explicit ref",
+            )
+        branch = u.Infra.resolve_integration_branch(
+            repository_root,
+            policy_branch=inputs.value.spec.branch_policy.integration_branch,
+            inputs=inputs.value,
+        )
+        if branch.failure:
+            return result_type.from_failure(branch)
+        return result_type.ok(
+            m.Infra.CodegenBootstrapSource(url=page.value, ref=branch.value)
+        )
 
 
 __all__: list[str] = ["FlextInfraDocGeneratorBundleMixin"]

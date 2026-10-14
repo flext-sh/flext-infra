@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import traceback
-from collections.abc import Callable
 from pathlib import Path
 from typing import Self, override
 
@@ -15,7 +14,6 @@ from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -370,9 +368,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                             if not file.path.parent.is_dir()
                         }),
                     ),
-                    validator=lambda: transaction.validate_phase_analysis_locked(
-                        analysis,
-                    ),
                 ),
             )
             if published.failure:
@@ -473,7 +468,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             f"@bootstrap-{index}": (root / repository.path).resolve()
             for index, repository in enumerate(plan.repositories)
         }
-        return transaction.run_files_locked(
+        return self._run_publication(
+            request,
+            transaction,
             roots,
             lambda scope_root: self._publish_bootstrap_locked(
                 request,
@@ -497,75 +494,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         Returns:
             The resulting ``p.Result[m.Infra.CodegenResult]``.
         """
-        verified_plans: list[m.Infra.CodegenPlan] = []
-
-        def verify(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
-            """Verify published gains without re-planning known failed targets.
-
-            Args:
-                analysis: The codegen phase analysis to verify.
-
-            Returns:
-                A result indicating whether the verification succeeded.
-            """
-            unchanged = not any(
-                u.Infra.codegen_file_requires_effect(file) for file in analysis.files
-            )
-            if plan.issues or unchanged:
-                destinations = transaction.validate_phase_analysis_locked(analysis)
-                if destinations.failure:
-                    return destinations
-                owned_paths = {
-                    file.path
-                    for file in analysis.files
-                    if u.Infra.codegen_file_requires_effect(file)
-                }
-                for file in analysis.files:
-                    sources = tuple(
-                        source
-                        for source in file.source_states
-                        if source.path not in owned_paths
-                    )
-                    if unchanged:
-                        if not isinstance(file.before, m.Cli.AtomicFileState):
-                            cause = ValueError(
-                                "unchanged bootstrap requires a physical file "
-                                "preimage: "
-                                f"{file.path}",
-                            )
-                            return r[bool].fail(str(cause), exception=cause)
-                        sources = (file.before, *sources)
-                    dependencies = FlextInfraMiseArtifactsVerification.states_current(
-                        sources,
-                    )
-                    if dependencies.failure:
-                        return dependencies
-                if unchanged and not plan.issues:
-                    verified_plans.append(plan)
-                return r[bool].ok(value=True)
-            checked = self._verify_bootstrap(request)
-            if checked.failure:
-                return r[bool].from_failure(checked)
-            verified_plans.append(checked.value)
-            return r[bool].ok(value=True)
-
         written = self._publish_bootstrap_phase(
             request,
             plan,
             transaction,
             (scope_root, roots),
-            validator=verify,
         )
         if written.failure:
             return r[m.Infra.CodegenResult].from_failure(written)
-        if len(verified_plans) != 1:
-            error = ValueError("bootstrap semantic verification receipt is incomplete")
-            return r[m.Infra.CodegenResult].fail(str(error), exception=error)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(
-                plan=verified_plans[0],
-                written_files=written.value,
-            ),
+            m.Infra.CodegenResult(plan=plan, written_files=written.value),
         )
 
     def _publish_bootstrap_phase(
@@ -574,8 +512,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         plan: m.Infra.CodegenPlan,
         transaction: FlextInfraCodegenTransaction,
         publication_scope: t.Pair[Path, t.MappingKV[str, Path]],
-        *,
-        validator: Callable[[m.Infra.CodegenPhaseAnalysis], p.Result[bool]],
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Authorize the surface contract, then publish its changed files.
 
@@ -663,11 +599,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             issues=plan.issues,
             exception=plan.exception,
         )
-        if not changed:
-            return self._settle_unchanged_bootstrap(
-                plan,
-                validator=lambda: validator(analysis),
-            )
         return transaction.publish_file_phase_locked(
             scope_root,
             roots,
@@ -680,7 +611,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                         if not file.path.parent.is_dir()
                     }),
                 ),
-                validator=lambda: validator(analysis),
             ),
             staged_validator=(
                 self._validate_mise_stage
@@ -690,31 +620,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 else None
             ),
         )
-
-    @staticmethod
-    def _settle_unchanged_bootstrap(
-        plan: m.Infra.CodegenPlan,
-        *,
-        validator: Callable[[], p.Result[bool]],
-    ) -> p.Result[t.VariadicTuple[Path]]:
-        """Report the no-op bootstrap outcome when no declared file changed.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[Path]]``.
-
-        """
-        if plan.issues:
-            return r[t.VariadicTuple[Path]].fail(
-                "\n".join(issue.formatted for issue in plan.issues),
-                exception=plan.exception,
-                error_data={
-                    "issues": tuple(issue.model_dump() for issue in plan.issues),
-                },
-            )
-        checked = validator()
-        if checked.failure:
-            return r[t.VariadicTuple[Path]].from_failure(checked)
-        return r[t.VariadicTuple[Path]].ok(())
 
     @staticmethod
     def _validate_pyproject_stage(
@@ -764,34 +669,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return result_type.from_failure(checked)
         u.Cli.info("stage=mise-config-staged-validation files=1 installs=0")
         return result_type.ok(session)
-
-    def _verify_bootstrap(
-        self,
-        request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[m.Infra.CodegenPlan]:
-        """Validate the public conform plan reaches a fixed point before commit.
-
-        Returns:
-            The verified plan consumed by the caller and fixed-point receipt.
-        """
-        planned = self.plan(request)
-        if planned.failure:
-            return r[m.Infra.CodegenPlan].from_failure(planned)
-        if planned.value.issues:
-            return r[m.Infra.CodegenPlan].fail(
-                "\n".join(issue.formatted for issue in planned.value.issues),
-                exception=planned.value.exception,
-            )
-        if request.what == c.Infra.CodegenConformSurface.MISE_CONFIG:
-            checked = FlextInfraCodegenMiseArtifacts.validate_config_file(
-                request.root / c.Infra.MISE_TOML_FILENAME,
-            )
-            if checked.failure:
-                return r[m.Infra.CodegenPlan].from_failure(checked)
-        fixed = u.Infra.codegen_fixed_point(planned.value.files, subject="bootstrap")
-        if fixed.failure:
-            return r[m.Infra.CodegenPlan].from_failure(fixed)
-        return r[m.Infra.CodegenPlan].ok(planned.value)
 
     def _seed_declared_beads_identity(self, root: Path) -> p.Result[bool]:
         """Materialize the scaffold's declared Beads identity before governance.
@@ -947,8 +824,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Plan each selected repository through its own Rope boundary.
 
-        One call site; both CHECK (drift detection) and APPLY
-        (phase publication + receipt) consume the same analysis.
+        APPLY captures this analysis before phase publication.
         ADR-014: lazy-init ownership stays inside conform's
         transaction. Lazy-init plans exactly the repositories conform
         rewrites: the selected mutable ``internal_flext`` repositories of

@@ -511,10 +511,8 @@ _builtin_require_workspace:
 # Execute the interpreter provisioned by setup without discovering a project
 # workspace or creating a dependency-resolution file during a runtime command.
 override UV_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PATH="$(RUNTIME_BIN):$$PATH" PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --directory "$(PROJECT_ROOT)" --no-project --python "$(RUNTIME_PYTHON)"
-# Derive control imports from the same declared topology the native lock owns.
-# This elects the current producer without accepting stale install provenance.
-override PROJECT_INFRA_PYTHONPATH := $(PROJECT_ROOT)/src{% for repository in workspace_repositories if repository.package and repository.editable %}:$(PROJECT_ROOT)/{{ repository.path }}/src{% endfor %}
-override PROJECT_INFRA_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" "$(FLEXT_INFRA_PYTHON)"
+# Native locked workspace membership owns control imports, never caller overlays.
+override PROJECT_INFRA_RUN = env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT "$(FLEXT_INFRA_PYTHON)"
 override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 
 # Scaffold dev tools live in the validated optional dev
@@ -802,9 +800,7 @@ endif
 _upg_install_runtime:
 	@$(INSTALL_RUNTIME_RECIPE)
 
-# Provision the frozen producer before corrective projection, without runtime
-# admission. Independent locks settle before the containing runtime aligns.
-# Reparse a changed dispatcher once; a second change fails the fixed point.
+# Rebind the resolved lock before the next producer; reparse the dispatcher once.
 .PHONY: _upg_lifecycle _upg_converge
 {% for verb in profile.verbs if verb.name == "upg-sources" %}
 _builtin-upg-sources: _builtin_require_environment
@@ -827,6 +823,8 @@ _upg_lifecycle: _builtin_setup_submodules
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what pyproject --scope all --mode apply
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(UV) lock --project "$(PROJECT_ROOT)" --upgrade --refresh
+	@$(SELF_MAKE) _upg_install_runtime
+	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}

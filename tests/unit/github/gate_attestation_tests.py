@@ -221,6 +221,122 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(restored.key_path, eq=report.key_path)
         tm.that(restored.allowed_signers_path, eq=report.allowed_signers_path)
 
+    @pytest.mark.parametrize(
+        "declarations",
+        [
+            (),
+            (("gpg.format", "ssh"),),
+            (("gpg.format", "openpgp"),),
+            (("gpg.format", "x509"),),
+        ],
+    )
+    def test_public_signing_observation_preserves_undeclared_native_facts(
+        self,
+        tmp_path: Path,
+        declarations: t.VariadicTuple[t.Pair[str, str]],
+    ) -> None:
+        """Native absence is observable, not selection of a signing capability."""
+        u.Tests.git_bootstrap(tmp_path, ("init", "-b", c.Infra.GIT_MAIN))
+        u.Tests.git_bootstrap(tmp_path, ("config", "commit.gpgsign", "false"))
+        u.Tests.initialize_git_repo(tmp_path)
+        isolated = tmp_path / "isolated.gitconfig"
+        isolated.write_text("", encoding="utf-8")
+        for key, value in declarations:
+            u.Tests.git_bootstrap(tmp_path, ("config", key, value))
+        native = tm.ok(
+            cli_u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-m",
+                    "flext_infra",
+                    c.Infra.CLI_GROUP_WORKSPACE,
+                    "signing-identity",
+                    "--repo-root",
+                    str(tmp_path),
+                ],
+                cwd=tmp_path,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "GIT_CONFIG_GLOBAL": str(isolated),
+                        "GIT_CONFIG_SYSTEM": str(isolated),
+                    },
+                    remove_env_keys=u.Tests.isolated_git_keys(),
+                ),
+            ),
+        )
+        process = m.Cli.ProcessOutcome.model_validate(
+            native.outcome,
+            from_attributes=True,
+        )
+        assert cli_u.Cli.process_succeeded(process), native.stderr
+        report = m.Infra.GitSigningIdentityReport.model_validate_json(native.stdout)
+        assert tuple(item.key for item in report.observations) == (
+            c.Infra.GIT_SIGNING_CONFIGURATION_KEYS
+        )
+        for observation in report.observations:
+            declared = next(
+                (value for key, value in declarations if key == observation.key),
+                None,
+            )
+            assert observation.process.raw_return_code == (1 if declared is None else 0)
+            assert observation.scope == (None if declared is None else "local")
+            assert (observation.origin is None) == (declared is None)
+        assert report.signing_format == next(
+            (value for key, value in declarations if key == "gpg.format"),
+            None,
+        )
+        assert report.key_path is None
+        assert report.allowed_signers_path is None
+        assert report.public_fingerprint is None
+        assert not report.inline_public_key
+        assert '"value"' not in native.stdout
+        assert not isolated.read_bytes()
+
+    @pytest.mark.parametrize("key", c.Infra.GIT_SIGNING_CONFIGURATION_KEYS)
+    def test_signing_identity_rejects_declared_empty_values(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+        key: str,
+    ) -> None:
+        """A real empty declaration never becomes an absent fact or Path('.')."""
+        signed_repository_factory(tmp_path)
+        u.Tests.git_bootstrap(tmp_path, ("config", key, ""))
+        tm.fail(
+            u.Infra.git_signing_identity(m.Infra.GitRepoRequest(repo_root=tmp_path))
+        )
+
+    def test_signing_identity_preserves_native_invalid_configuration_failure(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Malformed physical fixture config remains a native Git failure."""
+        signed_repository_factory(tmp_path)
+        configuration = tmp_path / ".git" / "config"
+        configuration.write_text(
+            configuration.read_text(encoding="utf-8") + "\n[broken\n",
+            encoding="utf-8",
+        )
+        failed = u.Infra.git_signing_identity(
+            m.Infra.GitRepoRequest(repo_root=tmp_path)
+        )
+        tm.fail(failed)
+        assert failed.error is not None
+        assert "bad config" in failed.error
+
+    def test_signing_identity_rejects_unsupported_native_format(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Discovery does not accept an unsupported native signing protocol."""
+        signed_repository_factory(tmp_path)
+        u.Tests.git_bootstrap(tmp_path, ("config", "gpg.format", "unsupported"))
+        tm.fail(
+            u.Infra.git_signing_identity(m.Infra.GitRepoRequest(repo_root=tmp_path))
+        )
+
     def test_capture_uses_target_policy_and_configuration_context(
         self,
         tmp_path: Path,
@@ -296,6 +412,45 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(report.public_fingerprint, eq=None)
         tm.that(missing_key.exists(), eq=False)
         tm.that(missing_trust.exists(), eq=False)
+
+    @pytest.mark.parametrize("missing", ["key", "trust"])
+    def test_selected_attestation_still_requires_real_signing_material(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+        missing: str,
+    ) -> None:
+        """Read-only discovery cannot satisfy explicitly selected native signing."""
+        signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        unavailable = tmp_path / f"unavailable-{missing}"
+        if missing == "key":
+            u.Tests.git_bootstrap(
+                tmp_path,
+                ("config", "user.signingkey", str(unavailable)),
+            )
+        else:
+            request = request.model_copy(update={"allowed_signers": str(unavailable)})
+        failed = u.Infra.git_create_gate_attestation(request)
+        tm.fail(failed)
+        assert failed.error is not None
+        assert str(unavailable) in failed.error
+        assert not unavailable.exists()
+        if missing == "trust":
+            verification = u.Infra.git_verify_gate_attestation(
+                m.Infra.GateAttestationVerifyRequest(
+                    workspace=request.workspace,
+                    allowed_signers=request.allowed_signers,
+                    expected_gates=request.gates,
+                    commit_sha=self._head(tmp_path),
+                    context_digest=request.context_digest,
+                    policy=request.policy,
+                    policy_digest=request.policy_digest,
+                ),
+            )
+            tm.fail(verification)
+            assert verification.error is not None
+            assert str(unavailable) in verification.error
 
     def test_dirty_candidate_still_executes_without_reusable_receipt(
         self,

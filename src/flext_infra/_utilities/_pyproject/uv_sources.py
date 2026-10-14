@@ -132,6 +132,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     def _sync_uv_candidates(
         uv: t.Cli.TomlTable,
         candidate_sources: t.StrMapping,
+        local_members: t.StrSequence,
         requirements: t.StrSequence,
         resolution: m.Infra.UvResolutionSpec,
     ) -> None:
@@ -142,16 +143,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
         manifest owns this temporary pin; the committed lock owns normal
         resolutions when no candidate is declared (flext-oe420).
 
-        Declared candidate policy and workspace topology own overrides: uv
-        already unifies a repository's own distribution to its editable root
-        (the committed pre-override lock carried one ``flext-infra =
-        editable "."`` entry with the full dev group), while a rendered
-        self-override forces the workspace-source shape that hard-fails
-        standalone ``uv lock`` without a sources entry and drops the dev
-        group with one. Standalone repositories must lock exactly like
-        fleet members.
+        Declared members retain their local-source overrides. The implicit
+        root is never a member override: replacing its requirement also
+        replaces uv's dependency-group selection.
         """
-        overrides = list(resolution.override_dependencies)
+        overrides = list(resolution.override_dependencies) or [
+            f"{name}{FlextInfraUtilitiesDependencyRequirements.dependency_extras(requirements, name)}"
+            for name in sorted(local_members)
+        ]
         for name, source in sorted(candidate_sources.items()):
             extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
                 requirements,

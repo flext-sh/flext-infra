@@ -32,7 +32,7 @@ class FlextInfraSemanticPublication:
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
         *,
         repository_root: Path,
-        validator: Callable[[], p.Result[bool]] | None = None,
+        validator: Callable[[Path], p.Result[bool]] | None = None,
         codegen: m.Infra.CodegenConfigSpec | None = None,
         projection_roots: t.VariadicTuple[Path] = (),
         dependency_group: str | None = None,
@@ -53,7 +53,7 @@ class FlextInfraSemanticPublication:
             return r[tuple[Path, ...]].from_failure(analysis)
         if not analysis.value.files and not projection_roots:
             if validator is not None:
-                checked = validator()
+                checked = validator(repository_root)
                 if checked.failure:
                     return r[tuple[Path, ...]].from_failure(checked)
                 if not checked.value:
@@ -112,7 +112,7 @@ class FlextInfraSemanticPublication:
             analysis.value,
             repository_root=candidate.workspace,
             projection_roots=(),
-            validator=lambda: u.Cli.atomic_verify_binary_file_states(
+            validator=lambda _view_root: u.Cli.atomic_verify_binary_file_states(
                 tuple(
                     state
                     for state in analysis.value.inputs
@@ -183,7 +183,7 @@ class FlextInfraSemanticPublication:
         *,
         repository_root: Path,
         projection_roots: t.VariadicTuple[Path],
-        validator: Callable[[], p.Result[bool]] | None,
+        validator: Callable[[Path], p.Result[bool]] | None,
         source_guard: Callable[[], p.Result[bool]] | None,
         input_roots: t.VariadicTuple[Path] = (),
         published_files: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
@@ -269,16 +269,25 @@ class FlextInfraSemanticPublication:
                 return r[tuple[Path, ...]].from_failure(planned.value)
             analysis = planned.value.value
 
-        def validate_published() -> p.Result[bool]:
-            checked = cls._validate_phase_receipts(
-                (analysis, *projection_analyses),
-                transaction.validate_phase_analysis_locked,
+        if validator is not None:
+            accepted = transaction.preview_sources(
+                repository_root,
+                {
+                    item.path: item.desired_content.decode(c.DEFAULT_ENCODING)
+                    for item in analysis.files
+                    if item.desired_content is not None
+                },
+                lambda view_root, _candidate: validator(view_root),
+                inputs=analysis.inputs,
             )
-            return (
-                validator()
-                if checked.success and checked.value and validator is not None
-                else checked
-            )
+            if accepted.failure:
+                return r[tuple[Path, ...]].from_failure(accepted)
+            if accepted.value.failure:
+                return r[tuple[Path, ...]].from_failure(accepted.value)
+            if not accepted.value.value:
+                return r[tuple[Path, ...]].fail(
+                    "semantic candidate acceptance rejected"
+                )
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
             guarded = cls._guard_source_inputs(source_guard)
@@ -316,8 +325,14 @@ class FlextInfraSemanticPublication:
                     )
                     if published.failure:
                         return r[tuple[Path, ...]].from_failure(published)
+                verified = cls._validate_phase_receipts(
+                    (analysis, *projection_analyses),
+                    transaction.validate_phase_analysis_locked,
+                )
+                if verified.failure:
+                    return r[tuple[Path, ...]].from_failure(verified)
                 return transaction.commit_locked(
-                    published.value, validate_published, published_files=published_files
+                    published.value, published_files=published_files
                 )
 
             return transaction.publish_prepared_locked(started.value, apply)

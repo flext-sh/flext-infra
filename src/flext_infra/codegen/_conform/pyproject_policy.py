@@ -58,7 +58,9 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         cls,
         source: str,
         *,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[str]:
         """Conform one pyproject source.
 
@@ -66,9 +68,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             The resulting ``p.Result[str]``.
 
         """
-        target = render_inputs.target
-        workspace = render_inputs.workspace
-        codegen = render_inputs.codegen
         flext_line = u.Infra.flext_integration_line_for_checkout(
             codegen=codegen,
             repository_root=target.root,

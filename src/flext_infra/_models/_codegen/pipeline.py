@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
@@ -79,6 +80,9 @@ class FlextInfraModelsCodegenPipelineModels:
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered complete authenticated planner inputs"),
         ]
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Authenticated producer resource membership"
+        )
         publications: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
             m.Field(description="Resolved export contracts verified before commit"),
@@ -105,9 +109,15 @@ class FlextInfraModelsCodegenPipelineModels:
                     or if codegen phase receipt input paths must be unique.
 
             """
-            file_paths = tuple(file.path for file in self.files)
-            if len(set(file_paths)) != len(file_paths):
-                msg = "codegen phase receipt destination paths must be unique"
+            file_paths = Counter(file.path for file in self.files)
+            duplicates = tuple(path for path, count in file_paths.items() if count > 1)
+            if duplicates:
+                msg = (
+                    "codegen phase receipt destination paths must be unique: "
+                    + ", ".join(
+                        f"{path} ({file_paths[path]} plans)" for path in duplicates
+                    )
+                )
                 raise ValueError(msg)
             input_paths = tuple(state.path for state in self.inputs)
             if len(set(input_paths)) != len(input_paths):
@@ -201,6 +211,9 @@ class FlextInfraModelsCodegenPipelineModels:
         generator_sources: t.VariadicTuple[
             FlextInfraModelsCodegenJournalModels.CodegenJournalSource
         ] = m.Field(default=(), description="Loaded generator implementation identity")
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Captured producer resource membership"
+        )
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),
             description="Captured source directory ancestry and presence",

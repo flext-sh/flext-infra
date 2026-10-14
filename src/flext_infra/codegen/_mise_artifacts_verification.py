@@ -59,6 +59,7 @@ class FlextInfraMiseArtifactsVerification(
             or outcome.root != root
             or outcome.surface != c.Infra.CodegenConformSurface(request.what)
             or outcome.scope != c.Infra.CodegenConformScope(request.scope)
+            or outcome.module != request.module
         ):
             return result.fail(
                 f"generation publication does not cover this request: {report}; "

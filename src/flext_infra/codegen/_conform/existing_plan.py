@@ -144,7 +144,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             contract.destinations == frozenset({c.PYPROJECT_FILENAME})
             and not contract.templates
         ):
-            return self._plan_existing_pyproject_bootstrap(target, codegen)
+            return self._plan_existing_pyproject_bootstrap(target, workspace, codegen)
         else:
             return None
         planned = self._bootstrap_destination_plan(
@@ -183,6 +183,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     def _plan_existing_pyproject_bootstrap(
         cls,
         target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Publish owned TOML policy before native semantic consumers open it.
@@ -209,8 +210,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             skip_check=True,
             managed_artifacts=artifacts.value.resolution,
         )
+        conformed = cls.conformed_pyproject_source(
+            source, target=target, workspace=workspace, codegen=codegen
+        )
+        if conformed.failure:
+            return result_type.from_failure(conformed)
         rendered = modernizer.conform_source(
-            source,
+            conformed.value,
             path=path,
             format_source=False,
             topology=m.Infra.PyprojectDeclaredTopology(
