@@ -28,6 +28,7 @@ from flext_infra._utilities._pyproject._requirements_provenance import (
 from flext_infra._utilities._pyproject.overlay import (
     FlextInfraUtilitiesPyprojectOverlay,
 )
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
@@ -466,8 +467,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         lock_state: m.Cli.AtomicFileState | None = None,
     ) -> p.Result[m.Cli.AtomicFileState]:
         """Elect the authenticated live or installed producer declaration."""
-        from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
-
         result = r[m.Cli.AtomicFileState]
         matches = u.installed_distributions(name=repository.distribution)
         if len(matches) != 1:

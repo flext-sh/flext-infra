@@ -125,6 +125,10 @@ class FlextInfraMiseArtifactsVerification(
         if not outcome.completed or outcome.issues or outcome.pending_files:
             return r[bool].fail("generation batch is incomplete; run make gen")
         if not outcome.batches:
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
+            )
+
             if (
                 not outcome.generator_sources
                 or not outcome.generator_trees

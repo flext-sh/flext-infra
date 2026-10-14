@@ -58,6 +58,7 @@ from inspect import (
 from json import dumps
 from pathlib import Path
 from sys import modules
+from types import CodeType
 from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
