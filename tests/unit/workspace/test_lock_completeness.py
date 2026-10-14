@@ -12,7 +12,7 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceLockCompleteness,
 )
-from tests import c, m, tm, u, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraWorkspaceLockCompleteness:
@@ -210,8 +210,13 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         """The selected resolver lock is authoritative even beside a legacy lock."""
         u.Tests.initialize_git_repo(tmp_path)
         context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(tmp_path))
-        (tmp_path / "uv.lock").write_text("[[package]]\nname='legacy'\n", encoding="utf-8")
-        tm.fail(FlextInfraWorkspaceLockCompleteness.validate(tmp_path), has="no committed lock")
+        (tmp_path / "uv.lock").write_text(
+            "[[package]]\nname='legacy'\n", encoding="utf-8"
+        )
+        tm.fail(
+            FlextInfraWorkspaceLockCompleteness.validate(tmp_path),
+            has="no committed lock",
+        )
         tm.ok(u.Cli.ensure_dir(context.lock_path.parent))
         context.lock_path.write_text("[[package]]\nname='selected'\n", encoding="utf-8")
 

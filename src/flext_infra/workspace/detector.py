@@ -64,13 +64,17 @@ class FlextInfraWorkspaceDetector(
         if inputs.failure:
             return result_type.from_failure(inputs)
         policy = inputs.value.spec.make.uv_resolution
-        standalone = u.Infra.env_value(policy.hosted_variable).strip() == policy.hosted_value
+        standalone = (
+            u.Infra.env_value(policy.hosted_variable).strip() == policy.hosted_value
+        )
         directory = (
             policy.standalone_directory if standalone else policy.local_directory
         )
         resolution_root = runtime_root / directory
         if not resolution_root.resolve().is_relative_to(runtime_root):
-            return result_type.fail("UV resolution directory leaves its physical runtime")
+            return result_type.fail(
+                "UV resolution directory leaves its physical runtime"
+            )
         return result_type.ok(
             m.Infra.WorkspaceRuntimeContext(
                 project_root=project_root,

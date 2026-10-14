@@ -76,7 +76,9 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         )
 
     @staticmethod
-    def _runtime_graph(root: Path, *, provider_failure: bool = False) -> tuple[str, ...]:
+    def _runtime_graph(
+        root: Path, *, provider_failure: bool = False
+    ) -> tuple[str, ...]:
         """Compose real Make consumers with dev and examples backedges."""
         identity = u.Tests.BeadsIdentity(
             workspace="fleet-order",

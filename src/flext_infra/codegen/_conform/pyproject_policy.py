@@ -41,9 +41,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             if repository is not workspace.repository and not repository.package:
                 continue
             directory = (
-                root
-                if repository is workspace.repository
-                else root / repository.path
+                root if repository is workspace.repository else root / repository.path
             ).resolve()
             path = directory / c.PYPROJECT_FILENAME
             projected = desired.get(path)
@@ -84,9 +82,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         )
         if layout.failure:
             return result_type.from_failure(layout)
-        catalogue = {
-            item.path: item for item in inputs.spec.managed_file_specs
-        }
+        catalogue = {item.path: item for item in inputs.spec.managed_file_specs}
         files: list[m.Infra.CodegenFilePlan] = []
         for relative, selected in (
             (policy.local_directory, tuple(members)),
@@ -122,10 +118,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             file = self.file_plan(
                 root,
                 destination.as_posix(),
-                (
-                    f"{c.Infra.BANNER}{rendered_by}\n"
-                    f"{formatted.value.lstrip()}"
-                ),
+                (f"{c.Infra.BANNER}{rendered_by}\n{formatted.value.lstrip()}"),
                 mode=metadata.mode,
                 source_states=authenticated.value,
             )

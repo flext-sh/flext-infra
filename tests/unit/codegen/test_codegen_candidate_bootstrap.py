@@ -290,7 +290,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(first_makefile, required=True),
         )
-        second_declaration = second / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+        second_declaration = (
+            second / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+        )
         original = second_declaration.read_text(encoding="utf-8")
         second_declaration.write_text("invalid: [\n", encoding="utf-8")
 

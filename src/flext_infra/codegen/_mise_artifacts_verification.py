@@ -80,8 +80,20 @@ class FlextInfraMiseArtifactsVerification(
         outcome: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[bool]:
         """Verify native file and ancestry witnesses of every completed batch."""
+        from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+
         if not outcome.completed or outcome.issues or outcome.pending_files:
             return r[bool].fail("generation batch is incomplete; run make gen")
+        if not outcome.batches:
+            if not outcome.generator_sources or not outcome.generator_trees or any(
+                source.role is None for source in outcome.generator_sources
+            ):
+                return r[bool].fail("generation batch lacks pre-planning producer closure; run make gen")
+            producer = FlextInfraCodegenPreconditions.producer_trees_current(
+                outcome.generator_trees, outcome.outputs
+            )
+            if producer.failure:
+                return producer
         if outcome.phase == c.Infra.CodegenStagedFilePhase.DOCS:
             membership = u.Infra.docs_source_paths_for_roots(
                 outcome.scope_roots,

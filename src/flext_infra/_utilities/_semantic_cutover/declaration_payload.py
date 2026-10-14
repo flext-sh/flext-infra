@@ -128,8 +128,7 @@ class FlextInfraUtilitiesDeclarationPayload:
             or statement.text.strip() == "pass"
             or statement.text.lstrip().startswith("@")
             or (
-                statement.line == scope.get_body_start()
-                and value.get_doc() is not None
+                statement.line == scope.get_body_start() and value.get_doc() is not None
             )
             for statement in statements
             if scope.get_start() < statement.line <= scope.get_end()

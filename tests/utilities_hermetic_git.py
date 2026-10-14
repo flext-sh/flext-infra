@@ -48,8 +48,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         build = config.Infra.codegen.scaffold.build
         python = config.Infra.codegen.toolchain.python_required_version
         optional_table = (
-            "[project.optional-dependencies]\n"
-            f"feature = {json.dumps(list(optional))}\n"
+            f"[project.optional-dependencies]\nfeature = {json.dumps(list(optional))}\n"
             if optional is not None
             else ""
         )

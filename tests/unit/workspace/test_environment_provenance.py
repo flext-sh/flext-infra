@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from json import dumps
 from pathlib import Path
-from sys import executable, executable, prefix
+from sys import executable, prefix
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 

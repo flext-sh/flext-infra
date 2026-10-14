@@ -62,12 +62,16 @@ class TestsFlextInfraCodegenArtifactSsot:
             update={"local_directory": local, "standalone_directory": standalone},
         )
         declared = codegen.model_copy(
-            update={"make": codegen.make.model_copy(update={"uv_resolution": resolution})},
+            update={
+                "make": codegen.make.model_copy(update={"uv_resolution": resolution})
+            },
         )
         manifests = tuple(directory / c.PYPROJECT_FILENAME for directory in directories)
         owners = {item.path: item for item in declared.managed_file_specs}
         original = next(
-            item for item in codegen.managed_files if item.path == Path(c.PYPROJECT_FILENAME)
+            item
+            for item in codegen.managed_files
+            if item.path == Path(c.PYPROJECT_FILENAME)
         )
         tm.that(declared.managed_files, eq=codegen.managed_files)
         for path in manifests:

@@ -14,9 +14,10 @@ from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, u
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.workspace import FlextInfraFlextBindingService
-from flext_infra import p, r, u
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_infra.workspace import (
+    FlextInfraFlextBindingService,
+    FlextInfraWorkspaceDetector,
+)
 
 
 class FlextInfraWorkspaceLockCompleteness:

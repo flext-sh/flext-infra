@@ -94,7 +94,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         if not candidates:
             return ()
         cli.display_text(
-            f"census: resolve constant declaration qualifiers in {len(candidates)} modules"
+            "census: resolve constant declaration qualifiers "
+            f"in {len(candidates)} modules"
         )
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         project = runtime.snapshot_project(workspace.rope_project, sources)
@@ -119,6 +120,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             The source edit, or None when no class declaration needs repair.
+
+        Raises:
+            ValueError: If ClassVar would capture an existing annotation binding.
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         resource = project.get_resource(
@@ -206,23 +210,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         project: p.Infra.RopeProject,
         paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
+        """Rebind one consumer using its complete Rope import plan.
+
+        Returns:
+            Proposed source and descriptions of its identity-proven edits.
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         convention = rope_workspace.convention(path)
-        policy = convention.module_policy
-        if policy.expected_alias == "c" or policy.expected_family == "Constants":
-            return source, ()
-        if (
-            path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
-            and (path.parent / c.Infra.CONSTANTS_PY).is_file()
-        ):
-            return source, ()
-        if any(
-            FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(parent.name)
-            == "c"
-            for parent in path.parents
-            if parent.is_relative_to(rope_workspace.repository_root)
-        ):
+        if cls._constant_definition_source(rope_workspace, convention):
             return source, ()
         layout = convention.project_layout
         if layout is None:
@@ -231,16 +227,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             path.relative_to(Path(project.root.real_path)).as_posix()
         )
         module = project.get_pymodule(resource)
-        imports = runtime.module_imports_for_pymodule(project, module)
-        statements = tuple(
-            statement
-            for statement in imports.imports
-            if isinstance(statement.import_info, p.Infra.RopeFromImport)
-            and statement.import_info.module_name.startswith(
-                c.Infra.PKG_PREFIX_UNDERSCORE
-            )
-            and not statement.import_info.level
-        )
+        statements = cls._constant_imports(project, module)
         if not any(
             name not in c.Infra.ALIAS_NAMES or (name == "c" and alias is not None)
             for statement in statements
@@ -250,61 +237,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         package = cls._constant_facade_package(statements, layout.package_name, path)
         if package not in paths:
             paths[package] = cls._constant_public_paths(project, package)
-        scope = runtime.scope_at(module, 0)
-        bindings = scope.get_names()
-        rewrites: list[m.Infra.SourceRewrite] = []
-        removals: t.MutableMappingKV[int, set[str]] = {}
-        descriptions: list[str] = []
-        for statement in statements:
-            info = statement.import_info
-            for imported, alias in info.names_and_aliases:
-                name = alias or imported
-                binding = bindings.get(name)
-                if binding is None or (imported == "c" and alias is None):
-                    continue
-                references = tuple(
-                    reference
-                    for reference, candidate in paths[package].items()
-                    if cls._constant_owner_binding(candidate, binding)
-                )
-                if not references:
-                    continue
-                depth = min(reference.count(".") for reference in references)
-                references = tuple(
-                    reference
-                    for reference in references
-                    if reference.count(".") == depth
-                )
-                if len(references) != 1:
-                    message = (
-                        f"constant {name} has ambiguous public owners in {path}: "
-                        f"{references}"
-                    )
-                    raise ValueError(message)
-                finder = refactors.create_occurrence_finder(
-                    project, name, binding, imports=False, in_hierarchy=False
-                )
-                occurrences = tuple(finder.find_occurrences(resource=resource))
-                if any(item.is_defined() for item in occurrences):
-                    continue
-                if cls._constant_composition_base(module, binding):
-                    continue
-                if not occurrences:
-                    continue
-                for occurrence in occurrences:
-                    local_scope = runtime.scope_at(module, occurrence.offset)
-                    existing = local_scope.lookup("c")
-                    if existing is not None and not runtime.same_name(
-                        paths[package]["c"], existing
-                    ):
-                        message = f"constant facade c is shadowed in {path}"
-                        raise ValueError(message)
-                    start, end = occurrence.get_word_range()
-                    rewrites.append(
-                        m.Infra.SourceRewrite(start=start, end=end, text=references[0])
-                    )
-                removals.setdefault(statement.start_line, set()).add(name)
-                descriptions.append(f"constant consumer {name} -> {references[0]}")
+        rewrites, removals = cls._constant_import_plan(
+            project, module, statements, paths[package], path
+        )
         if not rewrites:
             return source, ()
         changed = refactors.content_change(resource, source, rewrites)
@@ -312,6 +247,181 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             project, changed.new_contents, resource=resource
         )
         organized = runtime.module_imports_for_pymodule(project, proposed)
+        cls._remove_constant_imports(organized, removals)
+        organized.add_import(runtime.from_import(package, 0, [("c", None)]))
+        organized.remove_duplicates()
+        return organized.get_changed_source(), (
+            f"constant consumers -> {package}.c: {len(rewrites)} references",
+        )
+
+    @staticmethod
+    def _constant_definition_source(
+        workspace: p.Infra.RopeWorkspaceDsl,
+        convention: m.Infra.RopeModuleConvention,
+    ) -> bool:
+        """Keep constants composition and layer-zero bootstrap imports at their owner.
+
+        Returns:
+            Whether the module declares or bootstraps the constants family.
+        """
+        path = convention.file_path
+        policy = convention.module_policy
+        return (
+            policy.expected_alias == "c"
+            or policy.expected_family == "Constants"
+            or (
+                path.name in c.Infra.NAMESPACE_DEFAULT_OWNER_FILE_NAMES
+                and (path.parent / c.Infra.CONSTANTS_PY).is_file()
+            )
+            or any(
+                FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                    parent.name
+                )
+                == "c"
+                for parent in path.parents
+                if parent.is_relative_to(workspace.repository_root)
+            )
+        )
+
+    @staticmethod
+    def _constant_imports(
+        project: p.Infra.RopeProject, module: p.Infra.RopePyModule
+    ) -> t.VariadicTuple[p.Infra.RopeImportStatement]:
+        """Read first-party absolute imports from Rope's module owner.
+
+        Returns:
+            From-imports participating in constants ownership resolution.
+        """
+        return tuple(
+            statement
+            for statement in (
+                FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
+                    project, module
+                ).imports
+            )
+            if isinstance(statement.import_info, p.Infra.RopeFromImport)
+            and statement.import_info.module_name.startswith(
+                c.Infra.PKG_PREFIX_UNDERSCORE
+            )
+            and not statement.import_info.level
+        )
+
+    @classmethod
+    def _constant_import_plan(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        statements: t.SequenceOf[p.Infra.RopeImportStatement],
+        paths: t.MappingKV[str, p.Infra.RopePyName],
+        path: Path,
+    ) -> t.Pair[t.VariadicTuple[m.Infra.SourceRewrite], t.MappingKV[int, set[str]]]:
+        """Plan every reference before removing any imported binding.
+
+        Returns:
+            Proven edits and obsolete bindings by their import declaration line.
+        """
+        bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
+        rewrites: list[m.Infra.SourceRewrite] = []
+        removals: t.MutableMappingKV[int, set[str]] = {}
+        for statement in statements:
+            info = statement.import_info
+            for imported, alias in info.names_and_aliases:
+                name = alias or imported
+                binding = bindings.get(name)
+                if binding is None or (imported == "c" and alias is None):
+                    continue
+                reference = cls._constant_reference(paths, binding, path)
+                if reference is None:
+                    continue
+                changes = cls._constant_binding_edits(
+                    project, module, (name, binding), reference, paths["c"]
+                )
+                if not changes:
+                    continue
+                rewrites.extend(changes)
+                removals.setdefault(statement.start_line, set()).add(name)
+        return tuple(rewrites), removals
+
+    @classmethod
+    def _constant_reference(
+        cls,
+        paths: t.MappingKV[str, p.Infra.RopePyName],
+        binding: p.Infra.RopePyName,
+        path: Path,
+    ) -> str | None:
+        """Choose the unique closest public owner in the constants ancestry.
+
+        Returns:
+            The canonical public reference, or None for a nonconstant binding.
+
+        Raises:
+            ValueError: If multiple equally close public owners exist.
+        """
+        references = tuple(
+            reference
+            for reference, candidate in paths.items()
+            if cls._constant_owner_binding(candidate, binding)
+        )
+        if not references:
+            return None
+        depth = min(reference.count(".") for reference in references)
+        closest = tuple(
+            reference for reference in references if reference.count(".") == depth
+        )
+        if len(closest) != 1:
+            message = f"constant has ambiguous public owners in {path}: {closest}"
+            raise ValueError(message)
+        return closest[0]
+
+    @classmethod
+    def _constant_binding_edits(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        imported: t.Pair[str, p.Infra.RopePyName],
+        reference: str,
+        facade: p.Infra.RopePyName,
+    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+        """Rewrite one imported identity while preserving local rebinding.
+
+        Returns:
+            Character edits proven by Rope's occurrence finder.
+
+        Raises:
+            ValueError: If the source resource is absent or c has another identity.
+        """
+        name, binding = imported
+        if cls._constant_composition_base(module, binding):
+            return ()
+        resource = module.get_resource()
+        if resource is None:
+            message = "constant consumer module has no source resource"
+            raise ValueError(message)
+        finder = FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
+            project, name, binding, imports=False, in_hierarchy=False
+        )
+        occurrences = tuple(finder.find_occurrences(resource=resource))
+        if any(item.is_defined() for item in occurrences):
+            return ()
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        rewrites: list[m.Infra.SourceRewrite] = []
+        for occurrence in occurrences:
+            scope = runtime.scope_at(module, occurrence.offset)
+            existing = scope.lookup("c")
+            if existing is not None and not runtime.same_name(facade, existing):
+                message = f"constant facade c is shadowed in {resource.real_path}"
+                raise ValueError(message)
+            start, end = occurrence.get_word_range()
+            rewrites.append(m.Infra.SourceRewrite(start=start, end=end, text=reference))
+        return tuple(rewrites)
+
+    @staticmethod
+    def _remove_constant_imports(
+        organized: p.Infra.RopeModuleImports,
+        removals: t.MappingKV[int, set[str]],
+    ) -> None:
+        """Remove only bindings whose occurrence cutover was completely planned."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
         for statement in organized.imports:
             info = statement.import_info
             removed = removals.get(statement.start_line, set())
@@ -326,9 +436,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     if (alias or name) not in removed
                 ],
             )
-        organized.add_import(runtime.from_import(package, 0, [("c", None)]))
-        organized.remove_duplicates()
-        return organized.get_changed_source(), tuple(descriptions)
 
     @classmethod
     def _constant_public_paths(
@@ -350,7 +457,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         if facade is None:
             return {}
         found: t.MutableMappingKV[str, p.Infra.RopePyName] = {"c": facade}
-        pending = [("c", facade.get_object(), ())]
+        pending: t.MutableSequenceOf[
+            t.Triple[str, p.Infra.RopePyObject, t.VariadicTuple[p.Infra.RopePyObject]]
+        ] = [("c", facade.get_object(), ())]
         while pending:
             prefix, owner, ancestors = pending.pop()
             if owner in ancestors:
@@ -371,7 +480,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     def _constant_owner_binding(
         candidate: p.Infra.RopePyName, binding: p.Infra.RopePyName
     ) -> bool:
-        """Prove a published value or a constants composition provider identity."""
+        """Prove a published value or a constants composition provider identity.
+
+        Returns:
+            Whether the binding is published directly or through class ancestry.
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         if runtime.same_name(candidate, binding):
             return True
@@ -396,7 +509,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         module: p.Infra.RopePyModule,
         binding: p.Infra.RopePyName,
     ) -> bool:
-        """Keep provider imports used in a class's composition header."""
+        """Keep provider imports used in a class's composition header.
+
+        Returns:
+            Whether the imported identity is a composing superclass.
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         for scope in runtime.scope_at(module, 0).get_scopes():
             if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:

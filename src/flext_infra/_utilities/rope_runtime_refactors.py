@@ -250,6 +250,33 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return restructuring.get_changes(resources=list(resources))
 
     @classmethod
+    def contract_matches(
+        cls,
+        module: p.Infra.RopePyModule,
+        pattern: str,
+        arguments: t.MappingKV[str, str],
+    ) -> t.VariadicTuple[p.Infra.RopeContractMatch]:
+        """Match native Rope patterns with declaration identity constraints.
+
+        Returns:
+            Native matches exposing only authenticated source coordinates.
+
+        Raises:
+            TypeError: When the SDK does not satisfy the matching contract.
+        """
+        finder = cls.runtime_callable("rope.refactor.similarfinder", "SimilarFinder")(
+            module
+        )
+        if not isinstance(finder, p.Infra.RopeSimilarFinder):
+            message = "Rope SimilarFinder does not satisfy its public contract"
+            raise TypeError(message)
+        matches = tuple(finder.get_matches(pattern, args=dict(arguments)))
+        if not all(isinstance(match, p.Infra.RopeContractMatch) for match in matches):
+            message = "Rope SimilarFinder returned an invalid match"
+            raise TypeError(message)
+        return matches
+
+    @classmethod
     def semantic_regions(
         cls,
         module: p.Infra.RopePyModule,

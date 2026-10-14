@@ -64,7 +64,7 @@ class FlextInfraModelsCodemod:
             Raises:
                 ValueError: If binding source snapshots disagree.
             """
-            indexed: dict[Path, m.Cli.AtomicFileState] = {}
+            indexed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
             for state in states:
                 previous = indexed.setdefault(state.path, state)
                 if previous is not state and previous != state:
@@ -207,12 +207,16 @@ class FlextInfraModelsCodemod:
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
             description="Destination expressions and their required Rope identities",
         )
+        model_bases: t.StrSequence = m.Field(
+            default=(),
+            description="Required model ancestry for every matched declaration",
+        )
 
     class RopeContractRules(m.ContractModel):
         """The packaged semantic contract policy, validated once on input."""
 
         rules: Annotated[
-            t.SequenceOf[RopeContractRule],
+            t.SequenceOf[FlextInfraModelsCodemod.RopeContractRule],
             m.Field(description="Ordered, identity-constrained Rope contract rules"),
         ]
 

@@ -321,12 +321,20 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-        project_root: Annotated[Path, m.Field(description="Submitted Git worktree root")]
+        project_root: Annotated[
+            Path, m.Field(description="Submitted Git worktree root")
+        ]
         runtime_root: Annotated[Path, m.Field(description="Physical runtime owner")]
-        resolution_root: Annotated[Path, m.Field(description="Selected native UV project")]
-        pyproject_path: Annotated[Path, m.Field(description="Selected resolution document")]
+        resolution_root: Annotated[
+            Path, m.Field(description="Selected native UV project")
+        ]
+        pyproject_path: Annotated[
+            Path, m.Field(description="Selected resolution document")
+        ]
         lock_path: Annotated[Path, m.Field(description="Selected immutable UV lock")]
-        environment_path: Annotated[Path, m.Field(description="Physical shared environment")]
+        environment_path: Annotated[
+            Path, m.Field(description="Physical shared environment")
+        ]
         standalone: Annotated[bool, m.Field(description="Actual hosted runner view")]
 
     class WorkspaceProjectContext(m.ContractModel):

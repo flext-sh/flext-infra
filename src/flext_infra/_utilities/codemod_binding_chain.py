@@ -308,7 +308,9 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 return False
             actual = runtime.resolve_symbol(scope, expression)
             if condition.predicate is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL:
-                return cls._resolved_symbol_matches(project, condition, actual)
+                return cls._resolved_symbol_matches(
+                    project, condition, actual
+                ) and cls._stable_binding_chain(frame, expression, start, sources)
             if len(condition.arg) != 1:
                 msg = "same-binding requires one lexical expression"
                 raise ValueError(msg)

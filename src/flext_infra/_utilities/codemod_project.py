@@ -889,7 +889,7 @@ class FlextInfraUtilitiesCodemodProject(
                         and FlextInfraUtilitiesDeclarationPayload.payload_declaration(
                             project,
                             file_path,
-                            declarations[0],
+                            declarations[0].name,
                         )
                         is not None
                     )

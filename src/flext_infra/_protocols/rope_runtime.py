@@ -401,6 +401,20 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> Iterator[tuple[int, int]]: ...
 
     @runtime_checkable
+    class RopeContractMatch(Protocol):
+        """Native Rope match coordinates without exposing syntax trees."""
+
+        def get_region(self) -> t.Pair[int, int]: ...
+
+    @runtime_checkable
+    class RopeSimilarFinder(Protocol):
+        """Native identity-aware Rope matching boundary."""
+
+        def get_matches(
+            self, code: str, args: t.MappingKV[str, str] | None = None
+        ) -> Iterator[FlextInfraProtocolsRopeRuntime.RopeContractMatch]: ...
+
+    @runtime_checkable
     class RopeRestructure(Protocol):
         """Public semantic restructuring planner at the Rope runtime boundary."""
 

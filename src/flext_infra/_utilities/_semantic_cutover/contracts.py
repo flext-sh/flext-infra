@@ -68,6 +68,13 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                     )
                     for path in working
                 )
+                resources = tuple(
+                    resource
+                    for resource in resources
+                    if cls._model_declarations(project, resource, rule)
+                )
+                if not resources:
+                    continue
                 changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
                     project,
                     rule.pattern,
@@ -100,6 +107,43 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 if source != working[path]
             )
         )
+
+    @staticmethod
+    def _model_declarations(
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        rule: m.Infra.RopeContractRule,
+    ) -> bool:
+        """Prove model ancestry for every native match before restructuring.
+
+        Returns:
+            Whether this resource has applicable, ancestry-proven occurrences.
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        module = project.get_pymodule(resource)
+        matches = FlextInfraUtilitiesRopeRuntimeRefactors.contract_matches(
+            module, rule.pattern, rule.arguments
+        )
+        if not matches:
+            return False
+        ancestors = tuple(
+            runtime.qualified_name(project, name).get_object()
+            for name in rule.model_bases
+        )
+        for match in matches:
+            scope = runtime.scope_at(module, match.get_region()[0])
+            pending = [scope.pyobject]
+            found: list[p.Infra.RopePyObject] = []
+            while pending:
+                value = pending.pop()
+                if value in found:
+                    continue
+                found.append(value)
+                if isinstance(value, p.Infra.RopePyClass):
+                    pending.extend(value.get_superclasses())
+            if ancestors and not any(value in found for value in ancestors):
+                return False
+        return True
 
     @staticmethod
     def _require_destination_bindings(

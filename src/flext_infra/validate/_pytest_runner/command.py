@@ -118,10 +118,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         toolchain = (
             FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
         )
-        return (
-            f"toolchain-{toolchain[:12]}-"
-            f"{self._config_testmon_digest()}-{scope}"
-        )
+        return f"toolchain-{toolchain[:12]}-{self._config_testmon_digest()}-{scope}"
 
     def _config_testmon_digest(self) -> str:
         """Fingerprint the project's current ``config/*.yaml`` behavior inputs.

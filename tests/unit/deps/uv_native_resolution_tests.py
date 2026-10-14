@@ -159,9 +159,7 @@ class TestsFlextInfraUvNativeResolution:
                     link_mode=toolchain.uv_link_mode,
                     constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
                     environments=tuple(toolchain.uv_environments),
-                    override_dependencies=(
-                        f"{root_ref.distribution}>=1.0.0,<2.0.0",
-                    ),
+                    override_dependencies=(f"{root_ref.distribution}>=1.0.0,<2.0.0",),
                 ),
                 options=u.Infra.PyprojectConformOptions(
                     repository_root=root,
@@ -249,11 +247,15 @@ class TestsFlextInfraUvNativeResolution:
             msg=process.stdout + process.stderr,
         )
         packages = u.Tests.toml_tables_at(
-            (standalone_directory / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
+            (standalone_directory / c.Infra.UV_LOCK_FILENAME).read_text(
+                encoding="utf-8"
+            ),
             "package",
         )
         member_package = next(
-            package for package in packages if package["name"] == member_ref.distribution
+            package
+            for package in packages
+            if package["name"] == member_ref.distribution
         )
         tm.that(u.Tests.toml_mapping(member_package["source"]), has="git")
         tm.that((root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"), eq=conformed)
@@ -288,18 +290,14 @@ class TestsFlextInfraUvNativeResolution:
         }
         for name, path in leaves.items():
             u.Tests.write_native_resolution_project(path, name)
-        optional = (
-            ("resolution-feature>=1.0.0",)
-            if declares_extras
-            else None
-        )
+        optional = ("resolution-feature>=1.0.0",) if declares_extras else None
         member_bound = (
             f"{member_name}>=1.0.0; python_full_version >= "
             f'"{config.Infra.codegen.toolchain.python_version}"'
         )
         overrides = (
             (
-                f'{root_name}>=1.0.0,<2.0.0; python_full_version >= '
+                f"{root_name}>=1.0.0,<2.0.0; python_full_version >= "
                 f'"{config.Infra.codegen.toolchain.python_version}"',
                 f"{member_name}>=1.0.0,<2.0.0",
             )
@@ -563,10 +561,7 @@ class TestsFlextInfraUvNativeResolution:
             " ; python_full_version < "
             f'"{config.Infra.codegen.toolchain.python_version}"',
         )
-        policy = (
-            "[tool.uv]\n"
-            'constraint-dependencies = ["identity-runtime==1.0.0"]\n'
-        )
+        policy = '[tool.uv]\nconstraint-dependencies = ["identity-runtime==1.0.0"]\n'
         match identity:
             case "source-only":
                 policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
@@ -582,15 +577,11 @@ class TestsFlextInfraUvNativeResolution:
                     f'dependencies = ["{root_name}"]}}]\n'
                 )
                 if identity == "scoped-self":
-                    policy += (
-                        f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
-                    )
+                    policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
         u.Tests.write_native_resolution_project(
             root,
             root_name,
-            dependencies=(
-                f"identity-runtime @ {leaves['identity-runtime'].as_uri()}",
-            ),
+            dependencies=(f"identity-runtime @ {leaves['identity-runtime'].as_uri()}",),
             optional=optional,
             groups=groups,
             uv=policy,

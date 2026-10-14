@@ -29,7 +29,9 @@ class FlextInfraModelsCodegenRender:
 
         repository: Annotated[
             FlextInfraConfigModelsContexts.RepositoryRef,
-            m.Field(description="Declared identity, package status and editable policy"),
+            m.Field(
+                description="Declared identity, package status and editable policy"
+            ),
         ]
         directory: Annotated[
             Path,

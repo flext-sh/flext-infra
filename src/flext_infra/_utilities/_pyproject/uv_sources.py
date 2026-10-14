@@ -11,10 +11,9 @@ from copy import deepcopy
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
-
-from flext_cli import u
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (

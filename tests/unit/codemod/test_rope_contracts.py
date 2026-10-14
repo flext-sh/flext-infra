@@ -103,9 +103,10 @@ class TestsFlextInfraRopeContracts:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         path = package / "consumer.py"
         source = (
-            "from pydantic import Field\n"
+            "from pydantic import BaseModel, Field\n"
             "u = 'existing consumer binding'\n"
-            "values: list[str] = Field(default_factory=list)\n"
+            "class Payload(BaseModel):\n"
+            "    values: list[str] = Field(default_factory=list)\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with infra.rope_workspace(root) as rope:

@@ -968,7 +968,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 raise FileNotFoundError(
                     f"selected resolver input is absent from the runtime commit: {relative}",
                 )
-            tracked.append(f"runtime:{relative}:{(runtime_commit.tree / relative).hexsha}")
+            tracked.append(
+                f"runtime:{relative}:{(runtime_commit.tree / relative).hexsha}"
+            )
         content = "\n".join(tracked)
         return f"sha256:{u.Cli.sha256_content(content)}"
 

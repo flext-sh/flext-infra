@@ -21,10 +21,10 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
 )
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p, t
