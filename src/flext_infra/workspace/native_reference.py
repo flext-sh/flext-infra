@@ -78,21 +78,6 @@ class FlextInfraWorkspaceNativeReference:
             return r[t.Triple[str, str, str]].fail(
                 "extension callback lacks its registered native supplier",
             )
-        supplier_root = metadata["__module__"].split(".")[0]
-        if supplier_root not in {
-            "flext",
-            "flext_core",
-            "flext_infra",
-            "flext_api",
-            "flext_cli",
-            "ai_hub",
-        }:
-            # Ecosystem extensions (yaml._yaml, bcrypt, ...) are observations
-            # of third-party compiled code: the fleet cannot prove their
-            # internal descriptors and the walk records nothing it cannot own.
-            return r[t.Triple[str, str, str]].fail(
-                f"extension callback is ecosystem-owned: {metadata['__module__']}",
-            )
         if not isinstance(supplier.__spec__.loader, ExtensionFileLoader):
             return r[t.Triple[str, str, str]].fail(
                 "extension callback supplier is not a native extension",
@@ -117,13 +102,18 @@ class FlextInfraWorkspaceNativeReference:
             is value
         )
         if not registered:
+            module_bindings = tuple(
+                name for name, candidate in vars(supplier).items()
+                if type(name) is str and candidate is value
+            )
             return r[t.Triple[str, str, str]].fail(
                 "extension callback differs from its registered descriptor: "
                 f"supplier={metadata['__module__']}; "
                 f"qualified={metadata['__qualname__']}; "
-                f"actual_type={cls._symbol(native)}; "
+                f"actual_type={vars(type)['__qualname__'].__get__(native, type(native))}; "
                 f"owner={'.'.join(components[:-1]) or metadata['__module__']}; "
-                f"registered_type={cls._symbol(type(namespace.get(components[-1])))}",
+                f"registered_type={vars(type)['__qualname__'].__get__(type(namespace.get(components[-1])), type(type(namespace.get(components[-1]))))}; "
+                f"module_bindings={dumps(sorted(module_bindings))}",
             )
         return r[t.Triple[str, str, str]].ok((
             metadata["__module__"],
@@ -672,21 +662,9 @@ class FlextInfraWorkspaceNativeReference:
                         actual_supplier,
                     )
                     if observed.failure:
-                        # The supplier module sits outside this epoch's
-                        # election (pyyaml C loaders, typing origins, ...):
-                        # the binding is third-party alias evidence, and the
-                        # supplier's own package owns its proof.
-                        evidence.append(
-                            m.Infra.NativeBindingEvidence(
-                                binding=binding,
-                                kind="alias",
-                                supplier=supplier,
-                                name="",
-                                qualname="",
-                                operands=(("target", actual_supplier),),
-                            ),
+                        return r[m.Infra.NativeImportObservation].from_failure(
+                            observed
                         )
-                        continue
                     origin = origins[actual_supplier] = cls._source_path(
                         observed.value,
                         paths,
@@ -919,8 +897,9 @@ class FlextInfraWorkspaceNativeReference:
                 if type(value) is not BuiltinFunctionType:
                     extension = cls._extension_callback(value)
                     if extension.failure:
-                        return r[m.Infra.NativeImportObservation].from_failure(
-                            extension
+                        return r[m.Infra.NativeImportObservation].fail(
+                            f"{extension.error}; binding={binding}; "
+                            f"binding_supplier={supplier}"
                         )
                     actual_supplier, native_name, qualified = extension.value
                     origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(
@@ -971,18 +950,26 @@ class FlextInfraWorkspaceNativeReference:
                 continue
             raw_code = value.__code__
             code = cls._relocate_code(raw_code, paths)
-            generated = code.co_filename.startswith("<")
-            actual_supplier = value.__globals__.get("__name__")
-            if isinstance(actual_supplier, str):
+            generated = code.co_filename.startswith(
+                "<"
+            ) and not code.co_filename.startswith("<frozen ")
+            if generated:
+                if not owner_source or type(sys.modules.get(supplier)) is not ModuleType:
+                    return r[m.Infra.NativeImportObservation].fail(
+                        f"generated executable has no elected declaration owner: {binding}",
+                    )
+                actual_supplier = supplier
+            else:
+                actual_supplier = value.__globals__.get("__name__")
+                if type(actual_supplier) is not str:
+                    return r[m.Infra.NativeImportObservation].fail(
+                        f"producer globals have no supplier identity: {binding}",
+                    )
                 module = sys.modules.get(actual_supplier)
-                if module is None or (
-                    not generated and value.__globals__ is not vars(module)
-                ):
+                if type(module) is not ModuleType or value.__globals__ is not vars(module):
                     return r[m.Infra.NativeImportObservation].fail(
                         f"producer globals have no native supplier: {binding}",
                     )
-            else:
-                actual_supplier = supplier
             origin = origins.get(actual_supplier)
             if origin is None:
                 observed = FlextInfraWorkspaceEnvironmentProvenance._module_source(
@@ -1044,6 +1031,22 @@ class FlextInfraWorkspaceNativeReference:
                     code=b64encode(marshal.dumps(code)).decode("ascii"),
                     operands=(
                         ("module", cls._value(value.__module__)),
+                        (
+                            "globals",
+                            dumps(
+                                tuple(
+                                    (
+                                        name,
+                                        cls._value(
+                                            value.__globals__[name],
+                                            construction=generated,
+                                        ),
+                                    )
+                                    for name in sorted(set(code.co_names))
+                                    if name in value.__globals__
+                                )
+                            ),
+                        ),
                         ("defaults", cls._value(value.__defaults__)),
                         (
                             "keyword_defaults",
