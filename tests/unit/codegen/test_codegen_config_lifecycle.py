@@ -28,6 +28,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
         )
         script = """
 import sys
+from importlib.resources import files
 from pathlib import Path
 
 sys.path.insert(0, str(Path(sys.argv[1]) / "src"))
@@ -36,7 +37,7 @@ from flext_demo import FlextDemoConfig, config, m, settings
 
 assert FlextDemoConfig.fetch_global() is config
 assert FlextCliConfig.fetch_global() is not config
-source = u.Cli.yaml_safe_load(Path(sys.argv[1]) / "config/Demo.yaml")
+source = u.Cli.yaml_safe_load(Path(str(files("flext_demo") / "config/Demo.yaml")))
 assert source.success, source.error
 assert config.Demo.model_dump() == source.value["Demo"]
 before = config.model_dump()

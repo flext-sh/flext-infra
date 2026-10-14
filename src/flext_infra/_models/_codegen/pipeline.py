@@ -204,6 +204,9 @@ class FlextInfraModelsCodegenPipelineModels:
             default=(),
             description="Roots elected by this receipt's native source owner",
         )
+        source_scope: Path | None = m.Field(
+            default=None, description="Member elected by the native docs source owner"
+        )
         surface: c.Infra.CodegenConformSurface | None = m.Field(
             default=None,
             description="Actual operation surface when composed by conform",

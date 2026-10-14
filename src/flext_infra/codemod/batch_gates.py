@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 from collections.abc import Generator, Mapping, MutableMapping
+from contextlib import closing
 from pathlib import Path
 
 from flext_infra import c, m, p, r, settings, t, u
@@ -975,34 +976,36 @@ class FlextInfraModGateEngine:
 
         def records() -> Generator[bytes]:
             pending = b""
-            for chunk in u.Cli.atomic_iter_binary_file(stdout):
-                *complete, pending = (pending + chunk).split(b"\n")
-                yield from complete
+            with closing(u.Cli.atomic_iter_binary_file(stdout)) as chunks:
+                for chunk in chunks:
+                    *complete, pending = (pending + chunk).split(b"\n")
+                    yield from complete
             if pending:
                 yield pending
 
         entries: list[m.Infra.ModScanFinding] = []
-        for raw_line in records():
-            line = raw_line.strip()
-            if not line:
-                continue
-            parsed = u.Cli.json_parse(line)
-            if parsed.failure:
-                return r[m.Infra.ModScanReport].from_failure(parsed)
-            if not isinstance(parsed.value, Mapping):
-                return r[m.Infra.ModScanReport].fail(
-                    f"ast-grep JSONL finding is not an object: {line}",
+        with closing(records()) as lines:
+            for raw_line in lines:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                parsed = u.Cli.json_loads(line)
+                if parsed.failure:
+                    return r[m.Infra.ModScanReport].from_failure(parsed)
+                if not isinstance(parsed.value, Mapping):
+                    return r[m.Infra.ModScanReport].fail(
+                        f"ast-grep JSONL finding is not an object: {line}",
+                    )
+                entry = cls._line_finding(
+                    line.decode("utf-8"),
+                    parsed.value,
+                    root,
+                    (rule_files_by_id, fixable_ids),
+                    context,
                 )
-            entry = cls._line_finding(
-                line.decode("utf-8"),
-                parsed.value,
-                root,
-                (rule_files_by_id, fixable_ids),
-                context,
-            )
-            if entry.failure:
-                return r[m.Infra.ModScanReport].from_failure(entry)
-            entries.append(entry.value)
+                if entry.failure:
+                    return r[m.Infra.ModScanReport].from_failure(entry)
+                entries.append(entry.value)
         authenticated_states = dict(context.source_states)
         for authenticated in context.authenticated.values():
             if authenticated.failure:

@@ -192,6 +192,9 @@ class FlextInfraModelsDocsGeneration:
             t.VariadicTuple[Path],
             m.Field(description="Exact roots elected for this batch source topology"),
         ] = ()
+        source_scope: Path | None = m.Field(
+            default=None, description="Member elected for this source readset"
+        )
         source_directories: Annotated[
             t.VariadicTuple[cli_m.Cli.AtomicDirectoryChainPlan],
             m.Field(description="Physical directory presence consumed by the batch"),

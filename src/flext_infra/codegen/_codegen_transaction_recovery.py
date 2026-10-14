@@ -77,11 +77,25 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
         outputs = {item.path: item for item in session.journal.outputs}
         written = set(session.written_files)
+        source_records = {
+            item.path: item
+            for item in session.journal.sources
+        }
+        if session.journal.phase == c.Infra.CodegenStagedFilePhase.DOCS:
+            for path in written:
+                if path in outputs and u.Infra.docs_source_path_is_input(
+                    path,
+                    session.journal.scope_roots,
+                    source_scope=session.journal.source_scope,
+                ):
+                    source_records[path] = outputs[path].model_copy(
+                        update={"phase": c.Infra.CodegenStagedFilePhase.DOCS}
+                    )
         sources = tuple(
             item.model_copy(update=outputs[item.path].model_dump(exclude={"phase"}))
             if item.path in written and item.path in outputs
             else item
-            for item in session.journal.sources
+            for item in source_records.values()
         )
         generator_sources = tuple(
             item.model_copy(update=outputs[item.path].model_dump(exclude={"phase"}))
@@ -117,7 +131,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         outcome = m.Infra.CodegenPhaseOutcome(
             root=session.plan.layout.scope_root,
             transaction_id=session.journal.transaction_id,
-            phase=phase,
+            phase=phase or session.journal.phase,
             completed=completed and not pending_files,
             written_files=session.written_files,
             published_files=session.published_files,
@@ -132,6 +146,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             generator_sources=generator_sources,
             source_topology=topology,
             scope_roots=session.journal.scope_roots,
+            source_scope=session.journal.source_scope,
         )
         evidence = FlextInfraCodegenTransactionRecovery.publish_outcome(
             session.plan.layout.scope_root,
@@ -245,6 +260,8 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         *,
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
         scope_roots: t.VariadicTuple[Path] = (),
+        source_scope: Path | None = None,
+        phase: c.Infra.CodegenStagedFilePhase | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Persist the complete native output set without rendering or byte copies."""
         outputs = {item.path: item for item in session.journal.outputs}
@@ -311,6 +328,8 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 "generator_sources": generator_sources,
                 "source_topology": source_topology or session.journal.source_topology,
                 "scope_roots": scope_roots or session.journal.scope_roots,
+                "source_scope": source_scope or session.journal.source_scope,
+                "phase": phase or session.journal.phase,
             }
         )
         written = self._write_journal(

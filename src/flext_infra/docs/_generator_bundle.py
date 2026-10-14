@@ -129,6 +129,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 rendered.value,
                 states,
                 source_roots=source_roots,
+                source_scope=source_scope,
                 source_directories=directories.value,
             )
 
@@ -439,6 +440,7 @@ class FlextInfraDocGeneratorBundleMixin:
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         *,
         source_roots: t.VariadicTuple[Path] = (),
+        source_scope: Path | None = None,
         source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Validate the rendered docs generation bundle.
@@ -456,6 +458,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 "scopes": tuple(normalized.value),
                 "source_states": source_states,
                 "source_roots": source_roots,
+                "source_scope": source_scope,
                 "source_directories": source_directories,
                 "repository_root": repository_root,
             },

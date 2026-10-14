@@ -46,11 +46,11 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
             "\n_upg_install_runtime:", 1
         )[0]
         tm.that(
-            lifecycle.index("_upg_install_runtime")
-            < lifecycle.index("--what pyproject"),
+            lifecycle.index("--what pyproject")
+            < lifecycle.index("_upg_install_runtime"),
             eq=True,
         )
-        tm.that("PROJECT_INFRA_PYTHONPATH" in rendered, eq=False)
+        tm.that('PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)"' in rendered, eq=True)
         setup = rendered.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
         tm.that(
             setup.index("--what runtime-bindings") < setup.index("verify-environment"),

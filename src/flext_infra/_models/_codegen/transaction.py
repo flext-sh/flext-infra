@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models.check import FlextInfraModelsCheck
@@ -158,6 +158,12 @@ class FlextInfraModelsCodegenTransactionModels:
         scope_roots: t.VariadicTuple[Path] = m.Field(
             default=(),
             description="Source-owner roots for topology observation",
+        )
+        source_scope: Path | None = m.Field(
+            default=None, description="Member elected by the native docs source owner"
+        )
+        phase: c.Infra.CodegenStagedFilePhase | None = m.Field(
+            default=None, description="Actual publication phase"
         )
         directories: Annotated[
             t.VariadicTuple[

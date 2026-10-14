@@ -2262,10 +2262,9 @@ Infra:
         destination: "src/{package_name}/services/ping.py"
         profiles: [ workspace, standalone ]
         delegate: render
-      # Runtime config is app-owned and loaded
-      # by FlextConfig from the project-root config directory.
+      # Runtime defaults belong to the declaring import-package resource.
       - source: base/src/config/ns.yaml.j2
-        destination: "config/{ns}.yaml"
+        destination: "src/{package_name}/config/{ns}.yaml"
         profiles: [ workspace, standalone ]
         delegate: render
       # Config/settings declarations live in

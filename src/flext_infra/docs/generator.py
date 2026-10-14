@@ -106,6 +106,8 @@ class FlextInfraDocGenerator(
                     (),
                     source_topology=bundle.source_directories,
                     scope_roots=bundle.source_roots,
+                    source_scope=bundle.source_scope,
+                    phase=c.Infra.CodegenStagedFilePhase.DOCS,
                 )
                 if bound.failure:
                     return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(bound)
@@ -151,6 +153,7 @@ class FlextInfraDocGenerator(
                         bundle.repository_root,
                         bundle.source_states,
                         source_roots=bundle.source_roots,
+                        source_scope=bundle.source_scope,
                         source_directories=bundle.source_directories,
                         created_directories=created,
                     ),

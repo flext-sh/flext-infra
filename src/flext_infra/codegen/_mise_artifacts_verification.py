@@ -82,6 +82,22 @@ class FlextInfraMiseArtifactsVerification(
 
         if not outcome.completed or outcome.issues or outcome.pending_files:
             return r[bool].fail("generation batch is incomplete; run make gen")
+        if outcome.phase == c.Infra.CodegenStagedFilePhase.DOCS:
+            membership = u.Infra.docs_source_paths_for_roots(
+                outcome.scope_roots,
+                source_scope=outcome.source_scope,
+            )
+            if membership.failure:
+                return r[bool].from_failure(membership)
+            expected_paths = {
+                source.path
+                for source in outcome.sources
+                if source.sha256 is not None
+            }
+            if set(membership.value) != expected_paths:
+                return r[bool].fail(
+                    "generation source membership changed; run make gen",
+                )
         for witness in outcome.source_topology:
             observed = u.Cli.atomic_plan_directory_chain(witness.target)
             if observed.failure:

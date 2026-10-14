@@ -1317,6 +1317,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         ports: m.Infra.CodegenConformPorts,
     ) -> p.Result[m.Infra.CodegenResult]:
         """Publish only invocation-owned docs after the managed batch releases."""
+        if result.plan is None:
+            return r[m.Infra.CodegenResult].fail(
+                "docs publication requires its actual generation plan",
+            )
         owned = tuple(
             repository.name
             for repository in result.plan.repositories

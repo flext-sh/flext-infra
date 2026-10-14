@@ -115,7 +115,9 @@ class FlextInfraPytestRunnerBase(s[int]):
         """
         ci = config.Infra.codegen.make.ci
         return cls(
-            repository_root=Path.cwd(),
+            repository_root=Path(
+                cls._environment_value(c.Infra.PYTEST_ENV_REPOSITORY_ROOT)
+            ),
             started_at_monotonic=started_at_monotonic,
             collection_command_prefix=collection_command_prefix,
             profile_enabled=profile_enabled,

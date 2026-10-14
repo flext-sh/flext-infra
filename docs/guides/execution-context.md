@@ -88,6 +88,12 @@ without another writer outside the journal. Initial provisioning remains the
 responsibility of `make setup`. Real commands work without wrapping each call in
 `direnv exec`.
 
+Library defaults resolve through the concrete config class's import-package resource,
+not its declaration file's depth or the checkout's `config/` directory. Editable and
+wheel consumers use the same namespace owner; a missing declared packaged file fails
+without borrowing repository or sibling defaults. Target and local overlays remain
+explicit repository inputs, separate from the frozen library singleton.
+
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from

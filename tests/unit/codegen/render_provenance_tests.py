@@ -63,10 +63,23 @@ class TestsFlextInfraRenderProvenance:
         original = custom.read_bytes()
         probe = (
             "import importlib.metadata as md,pathlib,flext_infra; "
+            "from importlib.resources import files; "
+            "from flext_infra import FlextInfraConfig,c,u; "
             f"d=md.distribution({config.Infra.name!r}); "
             "p=pathlib.Path(flext_infra.__file__).resolve(); "
             "print('controller-file='+str(p)); print('controller-owned='+str(any("
-            "d.locate_file(f).resolve()==p for f in d.files)))"
+            "d.locate_file(f).resolve()==p for f in d.files))); "
+            "resource=files(flext_infra.__name__)/c.CONFIG_DIR_NAME/"
+            "c.Infra.CODEGEN_CONFIG_FILENAME; "
+            f"root=pathlib.Path({str(project)!r}); "
+            "sources=FlextInfraConfig.config_sources_for_repository(root,"
+            "filename=c.Infra.CODEGEN_CONFIG_FILENAME); "
+            "assert sources[0]==pathlib.Path(str(resource)); "
+            "assert any(d.locate_file(f).resolve()==sources[0].resolve() "
+            "for f in d.files); "
+            "inputs=u.Infra.load_codegen_inputs(root).unwrap(); "
+            "assert inputs.sources[0].content==resource.read_bytes(); "
+            "print('packaged-config-owned=True')"
         )
         try:
             custom.write_bytes(
@@ -97,6 +110,7 @@ class TestsFlextInfraRenderProvenance:
             shutil.rmtree(nested)
         tm.that(process.outcome.raw_return_code, eq=0, msg=process.stderr)
         tm.that(process.stdout, has="controller-owned=True")
+        tm.that(process.stdout, has="packaged-config-owned=True")
         selected = Path(
             next(
                 line.removeprefix("controller-file=")
