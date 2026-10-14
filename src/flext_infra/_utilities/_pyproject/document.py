@@ -418,7 +418,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             name = FlextInfraUtilitiesDependencies.dep_name(member.distribution)
             if name is None:
                 return result.fail(
-                    f"member distribution is not a requirement name: {member.distribution}",
+                    "member distribution is not a requirement name: "
+                    f"{member.distribution}",
                 )
             explicit = tuple(
                 line
@@ -436,11 +437,12 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 ),
                 name,
             )
+            canonical_provenance = (
+                FlextInfraUtilitiesPyprojectDocument._parsed_canonical_provenance
+            )
             if explicit:
                 for line in explicit:
-                    origin = FlextInfraUtilitiesPyprojectDocument._parsed_canonical_provenance(
-                        line,
-                    )
+                    origin = canonical_provenance(line)
                     if origin.failure:
                         return result.from_failure(origin)
                     _head, marker, (url, reference) = origin.value

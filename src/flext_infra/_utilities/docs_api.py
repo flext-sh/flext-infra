@@ -102,7 +102,12 @@ class FlextInfraUtilitiesDocsApi:
         path: Path,
         sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None,
     ) -> str | None:
-        """Read a module from the elected immutable inventory when supplied."""
+        """Read a module from the elected immutable inventory when supplied.
+
+        Returns:
+            The module source text, or no content when unavailable.
+
+        """
         if sources is None:
             return (
                 path.read_text(encoding=c.DEFAULT_ENCODING) if path.exists() else None

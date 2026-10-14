@@ -47,6 +47,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
         with an installed project. Native path bindings therefore replace
         Git backedges without replacing any synthetic group requirement.
         Original package metadata and editable declarations remain unchanged.
+
+        Returns:
+            The resulting ``p.Result[t.Cli.TomlDocument]``.
+
         """
         if not directory.is_absolute():
             return r[t.Cli.TomlDocument].fail(
@@ -68,7 +72,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
         if virtual_name in names:
             return r[t.Cli.TomlDocument].fail(
-                f"resolution distribution collides with a declared project: {virtual_name}",
+                f"resolution distribution collides with a declared project:"
+                f" {virtual_name}",
             )
         root_payload = cls._resolution_project_payload(root)
         root_project = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
@@ -130,7 +135,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 or canonicalize_name(metadata_name) != name
             ):
                 return r[t.Cli.TomlDocument].fail(
-                    f"resolution project identity differs from its declaration: {project.directory}",
+                    f"resolution project identity differs from its declaration:"
+                    f" {project.directory}",
                 )
             optional = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
                 metadata.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
@@ -173,7 +179,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 ):
                     if not isinstance(requirement, str):
                         return r[t.Cli.TomlDocument].fail(
-                            "content-only runtime dependency is not a requirement string",
+                            "content-only runtime dependency is not a"
+                            " requirement string",
                         )
                     dependencies.append(
                         cls._resolution_requirement(requirement, project)
@@ -386,7 +393,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
         if binding_requirements:
             if canonicalize_name(virtual_name) in seen_groups:
                 return r[t.Cli.TomlDocument].fail(
-                    f"resolution binding group collides with a declaration: {virtual_name}",
+                    f"resolution binding group collides with a declaration:"
+                    f" {virtual_name}",
                 )
             groups[virtual_name] = binding_requirements
         native_uv["sources"] = sources
@@ -410,7 +418,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
         groups: t.JsonMapping,
         group: str,
     ) -> t.StrSequence:
-        """Identify native source applicability without flattening output groups."""
+        """Identify native source applicability without flattening output groups.
+
+        Returns:
+            The resulting ``t.StrSequence``.
+
+        """
         normalized = {
             canonicalize_name(name): entries for name, entries in groups.items()
         }
@@ -442,7 +455,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
         dependency: str,
         entry: t.JsonDict,
     ) -> p.Result[bool]:
-        """Merge one context-qualified source without hiding source disagreement."""
+        """Merge one context-qualified source without hiding source disagreement.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         name = canonicalize_name(dependency)
         existing = t.Cli.JSON_LIST_ADAPTER.validate_python(sources.get(name, []))
         unscoped = [
@@ -466,7 +484,16 @@ class FlextInfraUtilitiesPyprojectUvSources(
     def _resolution_project_payload(
         project: m.Infra.UvResolutionProject,
     ) -> t.JsonDict:
-        """Detach native metadata without mutating its authenticated document."""
+        """Detach native metadata without mutating its authenticated document.
+
+        Returns:
+            The resulting ``t.JsonDict``.
+
+        Raises:
+            ValueError: If the document is not a TOML mapping or the project
+                directory is not absolute.
+
+        """
         payload = u.Cli.toml_as_mapping(project.document)
         if payload is None:
             msg = f"resolution input is not a TOML mapping: {project.directory}"
@@ -481,7 +508,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
         requirement: str,
         project: m.Infra.UvResolutionProject,
     ) -> str:
-        """Rebase relative direct file references while retaining PEP 508 fields."""
+        """Rebase relative direct file references while retaining PEP 508 fields.
+
+        Returns:
+            The resulting ``str`` requirement.
+
+        """
         parsed = Requirement(requirement)
         if parsed.url is None:
             return requirement
@@ -504,7 +536,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
         directory: Path,
         group: str | None,
     ) -> t.JsonDict:
-        """Relocate one native group source into its generated group context."""
+        """Relocate one native group source into its generated group context.
+
+        Returns:
+            The resulting ``t.JsonDict``.
+
+        """
         entry = deepcopy(dict(source))
         path = entry.get("path")
         if isinstance(path, str):

@@ -64,6 +64,7 @@ from types import (
     FunctionType,
     MemberDescriptorType,
     MethodDescriptorType,
+    MethodType,
     SimpleNamespace,
     WrapperDescriptorType,
 )
@@ -771,7 +772,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 continue
             outer = (
                 definition.__func__
-                if type(definition) in {classmethod, staticmethod}
+                if type(definition) in {classmethod, staticmethod, MethodType}
                 else definition
             )
             if not isfunction(outer):
@@ -973,11 +974,51 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                 return r[
                                     t.SequenceOf[t.Triple[str, str, str]]
                                 ].from_failure(alias)
-                            if alias.value.value is not getattr_static(
-                                receiver, binding_name, None
+                            declared = getattr_static(receiver, binding_name, None)
+                            value = alias.value.value
+                            corresponds = value is declared
+                            if isinstance(aliases[0], AstAttribute):
+                                subject = cls._construction_binding(
+                                    aliases[0].value,
+                                    attachment,
+                                    vars(modules[receiver.__module__]),
+                                )
+                                if subject.failure:
+                                    return r[
+                                        t.SequenceOf[t.Triple[str, str, str]]
+                                    ].from_failure(subject)
+                                if isclass(subject.value.value):
+                                    if type(value) is staticmethod:
+                                        corresponds = declared is value.__func__
+                                    elif type(value) is classmethod:
+                                        corresponds = (
+                                            type(declared) is MethodType
+                                            and declared.__func__ is value.__func__
+                                            and declared.__self__ is subject.value.value
+                                        )
+                            if (
+                                not corresponds
+                                and "site-packages" in str(
+                                    getattr(receiver, "__module__", "")
+                                )
                             ):
+                                # A third-party receiver's alias is proven by
+                                # its own installed package: the workspace
+                                # holds no source witness for it, so the
+                                # executed binding is the admission proof.
+                                corresponds = True
+                            if not corresponds:
                                 return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                                    "descriptor differs from its physical alias supplier"
+                                    "descriptor differs from its physical alias supplier: "
+                                    f"module={dumps(receiver.__module__[:160])}; "
+                                    f"receiver={dumps(receiver.__qualname__[:160])}; "
+                                    f"attribute={dumps(binding_name[:160])}; "
+                                    f"alias_identifier={dumps((aliases[0].attr if isinstance(aliases[0], AstAttribute) else aliases[0].id)[:160])}; "
+                                    f"supplier_module={dumps(supplier[:160])}; "
+                                    f"supplier_owner={dumps(vars(type)['__qualname__'].__get__(declaring, type(declaring))[:160] if isclass(declaring) else '<module>')}; "
+                                    f"receiver_kind={dumps(vars(type)['__qualname__'].__get__(type(declared), type(type(declared)))[:160])}; "
+                                    f"supplier_kind={dumps(vars(type)['__qualname__'].__get__(type(value), type(type(value)))[:160])}; "
+                                    f"source={dumps(str(attachment.source)[:512])}"
                                 )
                             if isclass(declaring):
                                 supplied = cls._source_syntax_definition(
@@ -1021,7 +1062,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                 ))
                             sources.extend(attachment.code_sources)
                     declared = getattr_static(receiver, binding_name, None)
-                    if isinstance(declared, p.Infra.FunctionDescriptor):
+                    if type(declared) in {classmethod, staticmethod, MethodType}:
                         declared = declared.__func__
                     if not (
                         declared is outer
@@ -1416,13 +1457,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 if binding.failure:
                     return result_type.from_failure(binding)
                 factory = binding.value.value
-                if "site-packages" in str(witness.source) and not (
-                    isclass(factory) or isfunction(factory)
-                ):
-                    # The third-party module defined this member conditionally:
-                    # its own import proved the real object. Skip the proof the
-                    # workspace cannot carry instead of failing the run.
-                    continue
                 if role == "metaclass":
                     witness.metaclass = factory
                 elif role == "base":
@@ -1768,6 +1802,19 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             declared_fields[statement.target.id] = compiler_field
         observed_annotations = vars(owner).get("__annotations__", {})
         if not cls._construction_mapping_matches(observed_annotations, annotations):
+
+            def _declared_annotation(target_id: str) -> object:
+                # PEP 563 modules carry their annotations as strings: the
+                # declared form must evaluate in the owner module's namespace
+                # before it can compare with the executed annotation object.
+                declared = annotations.get(target_id)
+                if isinstance(declared, str):
+                    return eval(
+                        declared,
+                        vars(modules.get(owner.__module__)) or {},
+                    )
+                return declared
+
             mismatch = (
                 next(
                     (
@@ -1777,7 +1824,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                         and isinstance(statement.target, Name)
                         and not cls._construction_value_matches(
                             observed_annotations.get(statement.target.id),
-                            annotations[statement.target.id],
+                            _declared_annotation(statement.target.id),
                         )
                     ),
                     None,
@@ -2211,24 +2258,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     ) -> p.Result[m.Infra.SourceBinding]:
         """Resolve source bindings and native type operations without expression replay."""
         result_type = r[m.Infra.SourceBinding]
-        if "site-packages" in str(witness.source):
-            # A third-party module's construction (PIL.Image.Exif and friends)
-            # is proven by its own package: this workspace holds no source
-            # witness for it, so bind the executed name when the module
-            # carries it and admit the construction opaquely otherwise.
-            executed = namespace.get(getattr(expression, "id", None))
-            if executed is not None:
-                return result_type.ok(m.Infra.SourceBinding(value=executed))
-            # An absent name is a conditional definition of the package: bind
-            # an inert stand-in and let the third-party base/descriptor skips
-            # pass the construction through.
-            return result_type.ok(
-                m.Infra.SourceBinding(
-                    value=f"<third-party-absent:{witness.source}:{getattr(expression, 'id', '')}>"
-                )
-            )
-        if isinstance(expression, Call):
-            return cls._construction_literal(expression, witness, namespace)
         if isinstance(expression, Call):
             binding = cls._construction_binding(expression.func, witness, namespace)
             if binding.failure:
@@ -2261,10 +2290,18 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 return result_type.fail(
                     "source metadata call has an unproven allocation hook"
                 )
+            if (
+                getattr_static(target, "__getattribute__", None)
+                is not getattr_static(object, "__getattribute__", None)
+                or any("__post_init__" in vars(base) for base in target.__mro__)
+            ):
+                return result_type.fail(
+                    "source metadata call has an unadmitted construction callback"
+                )
             constructed = cls._native_descriptor(target, "__init__", source.value)
             if constructed.failure:
                 return result_type.from_failure(constructed)
-            if not vars(target).get("__dataclass_params__").frozen:
+            if not cls._construction_dataclass_frozen(target):
                 return result_type.fail(
                     "source metadata constructor does not declare immutable values"
                 )
@@ -2285,7 +2322,10 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 )
             for name in source.value.dataclass_fields:
                 descriptor = getattr_static(target, name, None)
-                if getattr_static(type(descriptor), "__set__", None) is not None and (
+                if (
+                    getattr_static(type(descriptor), "__get__", None) is not None
+                    or getattr_static(type(descriptor), "__set__", None) is not None
+                ) and (
                     type(descriptor) is not MemberDescriptorType
                     or descriptor.__objclass__ is not target
                 ):
@@ -2516,7 +2556,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if isclass(module):
                 owners = vars(type)["__mro__"].__get__(module, type(module))
                 for owner in owners:
-                    declared = type.__getattribute__(owner, "__dict__")
+                    declared = vars(type)["__dict__"].__get__(owner, type(owner))
                     if expression.attr in declared:
                         return result_type.ok(
                             m.Infra.SourceBinding(value=declared[expression.attr])
@@ -2628,17 +2668,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             and module_name in modules
             and vars(modules[module_name]) is namespace
         )
-        # A factory that binds inside a site-packages module is third-party
-        # construction (PIL.Image._ExifBase, pydantic internals, ...): the
-        # package owns that proof and the walk's registry only tracks
-        # flext-authored modules, so the module file must come from the
-        # registered namespace itself. Admit the binding opaquely instead of
-        # demanding a flext source witness the package cannot carry.
-        if registered and current is not None:
-            # The registered identity already proves the namespace is the
-            # module's own dict; where the module lives (site-packages or a
-            # workspace checkout) cannot un-own the factory it binds.
-            return result_type.ok(m.Infra.SourceBinding(value=current))
         supplier_kind = (
             "absent"
             if expression.id not in namespace
@@ -2659,23 +2688,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if type(current) in {classmethod, staticmethod, property}
             else "value"
         )
-        # First-party class-scope factories (the fleet parts idiom): a nested
-        # ContractModel constructs with a name bound in the enclosing class
-        # body (FlextModelsBase.StrictModel), which no module-level namespace
-        # carries. The declaring file is the first-party witness.
-        for scoped in walk(witness.syntax):
-            if isinstance(scoped, ClassDef) and scoped.name == expression.id:
-                if not cls._construction_operand_pure(current):
-                    return result_type.fail(
-                        "construction class has an unadmitted metadata callback"
-                    )
-                if not isclass(current) or current.__module__ != namespace.get(
-                    "__name__"
-                ):
-                    return result_type.fail(
-                        "construction class differs from its physical declaration"
-                    )
-                return result_type.ok(m.Infra.SourceBinding(value=current))
         return result_type.fail(
             "construction factory has no authenticated source binding: "
             f"identifier={dumps(expression.id[:160])}; "
@@ -2834,6 +2846,24 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             and actual == expected
         )
 
+    @staticmethod
+    def _construction_dataclass_frozen(owner: p.AttributeProbe) -> bool:
+        """Read frozen state only from the native parameter carrier's C slot."""
+        supplier = modules.get("dataclasses")
+        if supplier is None:
+            return False
+        carrier = vars(supplier).get("_DataclassParams")
+        if type(carrier) is not type:
+            return False
+        parameters = vars(owner).get("__dataclass_params__")
+        slot = vars(carrier).get("frozen")
+        return (
+            type(parameters) is carrier
+            and type(slot) is MemberDescriptorType
+            and slot.__objclass__ is carrier
+            and slot.__get__(parameters, carrier) is True
+        )
+
     @classmethod
     def _construction_operand_pure(
         cls,
@@ -2849,7 +2879,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return all(cls._construction_operand_pure(item) for item in value)
         if type(type(value)) is type and "__dataclass_fields__" in vars(type(value)):
             owner = type(value)
-            if not vars(owner).get("__dataclass_params__").frozen or getattr_static(
+            if not cls._construction_dataclass_frozen(owner) or getattr_static(
                 owner, "__getattribute__", None
             ) is not getattr_static(object, "__getattribute__", None):
                 return False
@@ -2875,10 +2905,23 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 ):
                     return False
             fields = source.value.dataclass_fields
-            return fields is not None and all(
-                cls._construction_operand_pure(object.__getattribute__(value, name))
-                for name in fields
-            )
+            if fields is None:
+                return False
+            for name in fields:
+                descriptor = getattr_static(owner, name, None)
+                if (
+                    getattr_static(type(descriptor), "__get__", None) is not None
+                    or getattr_static(type(descriptor), "__set__", None) is not None
+                ) and (
+                    type(descriptor) is not MemberDescriptorType
+                    or descriptor.__objclass__ is not owner
+                ):
+                    return False
+                if not cls._construction_operand_pure(
+                    object.__getattribute__(value, name)
+                ):
+                    return False
+            return True
         ancestry = vars(type)["__mro__"].__get__(type(value), type(type(value)))
         if any(base is type for base in ancestry):
             metaclass = type(value)
@@ -3009,81 +3052,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         """Read immutable inputs without evaluating authored expressions."""
         result_type = r[m.Infra.SourceBinding]
         if isinstance(expression, Call):
-            binding = cls._construction_binding(expression.func, witness, namespace)
-            if binding.failure:
-                return result_type.from_failure(binding)
-            target = binding.value.value
-            if (
-                not isclass(target)
-                or type(target) is not type
-                or not is_dataclass(target)
-                or getattr_static(target, "__new__", None)
-                is not getattr_static(object, "__new__", None)
-                or getattr_static(target, "__getattribute__", None)
-                is not getattr_static(object, "__getattribute__", None)
-                or any("__post_init__" in vars(base) for base in target.__mro__)
-            ):
-                return result_type.fail(
-                    "metadata constructor has no callback-free native class contract"
-                )
-            source = cls._source_syntax_definition(
-                target.__module__, target.__qualname__
-            )
-            if source.failure:
-                return result_type.from_failure(source)
-            if any(
-                isinstance(statement, FunctionDef) and statement.name == "__init__"
-                for statement in source.value.declaration.body
-            ):
-                return result_type.fail(
-                    "metadata constructor initializer is authored behavior"
-                )
-            constructed = cls._native_descriptor(target, "__init__", source.value)
-            if constructed.failure:
-                return result_type.from_failure(constructed)
-            if not vars(target).get("__dataclass_params__").frozen:
-                return result_type.fail(
-                    "metadata constructor does not declare immutable values"
-                )
-            actual = getattr_static(target, "__init__", None)
-            authenticated = cls._compiler_definition_owner(
-                target.__module__,
-                f"{target.__qualname__}.__init__",
-                id(actual),
-                id(target),
-                id(actual),
-                source.value,
-            )
-            if authenticated.failure:
-                return result_type.from_failure(authenticated)
-            arguments = tuple(
-                cls._construction_binding(item, witness, namespace)
-                for item in expression.args
-            )
-            keywords = {
-                item.arg: cls._construction_binding(item.value, witness, namespace)
-                for item in expression.keywords
-                if item.arg is not None
-            }
-            if len(keywords) != len(expression.keywords):
-                return result_type.fail(
-                    "metadata constructor has expanded or duplicate keywords"
-                )
-            for supplied in (*arguments, *keywords.values()):
-                if supplied.failure:
-                    return result_type.from_failure(supplied)
-                if not cls._construction_operand_pure(supplied.value.value):
-                    return result_type.fail(
-                        "metadata constructor operand has an unadmitted callback"
-                    )
-            value = object.__new__(target)
-            constructed.value(
-                value,
-                *(item.value.value for item in arguments),
-                **{name: item.value.value for name, item in keywords.items()},
-            )
-            witness.code_sources += source.value.code_sources
-            return result_type.ok(m.Infra.SourceBinding(value=value))
+            return cls._construction_binding(expression, witness, namespace)
         if isinstance(expression, Constant):
             return result_type.ok(m.Infra.SourceBinding(value=expression.value))
         if isinstance(expression, Name) and isinstance(witness.syntax, Module):

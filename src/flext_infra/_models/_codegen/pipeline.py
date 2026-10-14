@@ -140,7 +140,9 @@ class FlextInfraModelsCodegenPipelineModels:
         admitted_states: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             default=(),
             exclude=True,
-            description="Exact immutable inputs authenticated by native batch admission",
+            description=(
+                "Exact immutable inputs authenticated by native batch admission"
+            ),
         )
         error: Annotated[
             str,

@@ -29,15 +29,26 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         """Raw superclass candidates retain only actual protocol declarations."""
         u.Tests.WorktreeFixture.write_python_project(tmp_path, "protocol-fixture")
         _ = self._owner(tmp_path)
-        source_catalog = self._source_catalog(Path(__file__).resolve().parents[3])
-        name = "ban-manual-protocol-outside-protocols"
-        rule = self._catalog(tmp_path) / "rules" / f"{name}.yml"
-        text = (source_catalog / "rules" / rule.name).read_text(
-            encoding=c.DEFAULT_ENCODING
+        rule = (
+            self._catalog(tmp_path)
+            / "rules"
+            / "ban-manual-protocol-outside-protocols.yml"
         )
-        tm.ok(u.Cli.atomic_write_text_file(rule, text))
-        plan = tm.ok(u.Infra.codemod_rule_plan(tmp_path))
-        elected = next(item for item in plan.rules if item.resource == rule)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                rule,
+                (
+                    self._source_catalog(Path(__file__).resolve().parents[3])
+                    / "rules"
+                    / rule.name
+                ).read_text(encoding=c.DEFAULT_ENCODING),
+            ),
+        )
+        elected = next(
+            item
+            for item in tm.ok(u.Infra.codemod_rule_plan(tmp_path)).rules
+            if item.resource == rule
+        )
         u.Tests.provision_checkout(tmp_path)
         namespace = u.Infra.project_package_name(tmp_path)
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / namespace
@@ -47,7 +58,8 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 (
                     "from typing import Protocol\nclass Protocols:\n"
                     "    class Input(Protocol):\n        @property\n"
-                    "        def value(self) -> str: ...\np = Protocols\n__all__ = ['p']\n"
+                    "        def value(self) -> str: ...\n"
+                    "p = Protocols\n__all__ = ['p']\n"
                 ),
             ),
             (
@@ -145,24 +157,30 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "class Consumer(FlextInfraCodegenTransaction):\n"
             "    def accept(self, layout, result: p.Result[bool]):\n"
             "        if result.failure:\n"
-            "            return self._recover_failure(layout, result.error or 'context', "
-            "exception=result.exception, error_code=result.error_code, error_data=result.error_data)\n"
+            "            return self._recover_failure(layout, "
+            "result.error or 'context', "
+            "exception=result.exception, error_code=result.error_code, "
+            "error_data=result.error_data)\n"
             "    def unstable(self, layout, result, other):\n"
             "        if result.failure:\n"
             "            result = other\n"
-            "            return self._recover_failure(layout, result.error or 'context')\n"
+            "            return self._recover_failure("
+            "layout, result.error or 'context')\n"
             "    def effectful(self, layout, result, context):\n"
             "        if result.failure:\n"
-            "            return self._recover_failure(layout, result.error or context())\n"
+            "            return self._recover_failure("
+            "layout, result.error or context())\n"
             "    def getter(self, layout):\n"
             "        if self.result.failure:\n"
-            "            return self._recover_failure(layout, self.result.error or 'context')\n"
+            "            return self._recover_failure("
+            "layout, self.result.error or 'context')\n"
             "class Foreign:\n"
             "    def _recover_failure(self, layout, text, **kwargs):\n"
             "        return text\n"
             "    def accept(self, layout, result):\n"
             "        if result.failure:\n"
-            "            return self._recover_failure(layout, result.error or 'context')\n"
+            "            return self._recover_failure("
+            "layout, result.error or 'context')\n"
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
         report = tm.ok(
@@ -283,15 +301,16 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         """Native apply leaves effectful assertions intact and fixes other owners."""
         tmp_path, demo = self._provider(installed_dependency_path)
         u.Tests.provision_checkout(tmp_path)
-        owner = Path(__file__).resolve().parents[3]
         rule_id = "remove-test-own-literal-tautology"
         rule = self._catalog(tmp_path) / "rules" / f"{rule_id}.yml"
         tm.ok(
             u.Cli.atomic_write_text_file(
                 rule,
-                (self._source_catalog(owner) / "rules" / rule.name).read_text(
-                    encoding=c.DEFAULT_ENCODING
-                ),
+                (
+                    self._source_catalog(Path(__file__).resolve().parents[3])
+                    / "rules"
+                    / rule.name
+                ).read_text(encoding=c.DEFAULT_ENCODING),
             )
         )
         tests = tmp_path / "tests"
@@ -378,7 +397,10 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 self._source_catalog(owner)
                 / "tests"
                 / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
-                / f"rewire-test-assert-{rule_suffix}-message{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}"
+                / (
+                    f"rewire-test-assert-{rule_suffix}-message"
+                    f"{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}"
+                )
             ),
         )["snapshots"]
         if not isinstance(snapshots, Mapping):

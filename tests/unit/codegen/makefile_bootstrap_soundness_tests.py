@@ -110,7 +110,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                     "-c",
                     (
                         "from pathlib import Path; import sys; "
-                        "from flext_infra.workspace import FlextInfraWorkspaceDetector; "
+                        "from flext_infra.workspace import "
+                        "FlextInfraWorkspaceDetector; "
                         "context=FlextInfraWorkspaceDetector.resolution_context("
                         "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())"
                     ),
@@ -429,12 +430,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
 
     def test_bootstrap_recipe_initializes_every_variable_it_reads(self) -> None:
-        """The tool bootstrap recipe never reads an unassigned shell variable.
-
-        Raises:
-            AssertionError: If bootstrap recipe reads shell variables before assigning
-                them.
-        """
+        """The tool bootstrap recipe never reads an unassigned shell variable."""
         recipe = (
             _TEMPLATES / "project" / "base" / ("tool_bootstrap_recipe.j2")
         ).read_text(encoding="utf-8")

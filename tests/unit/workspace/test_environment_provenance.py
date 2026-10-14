@@ -32,6 +32,21 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
 
     @staticmethod
+    def test_core_nested_presets_have_authenticated_lexical_bases(
+        tmp_path: Path,
+    ) -> None:
+        """Authenticate the same nested preset that real FLEXT consumers use."""
+        consumer = (
+            "from flext_core import m\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "model = m.ContractModel.model_validate({})\n"
+            "assert model.model_dump() == {}\n"
+            "provenance.loaded_import_sources(m.ContractModel.__module__).unwrap()\n"
+        )
+        tm.ok(u.Cli.capture([executable, "-c", consumer], cwd=tmp_path))
+
+    @staticmethod
     @pytest.mark.parametrize("supplier_kind", ["absent", "function", "class", "value"])
     @pytest.mark.parametrize("installed_layout", [False, True])
     def test_unknown_factory_diagnostics_preserve_private_values(
@@ -199,16 +214,23 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "supplier-source",
             "import",
             "wrapped",
+            "class-bound",
+            "static-wrapped",
+            "property",
         ],
     )
     @pytest.mark.parametrize("inherited", [False, True])
+    @pytest.mark.parametrize("installed_layout", [False, True])
     def test_physical_alias_authenticates_receiver_and_mro_supplier(
         tmp_path: Path,
         defect: str,
         inherited: bool,
+        *,
+        installed_layout: bool,
     ) -> None:
         """Relative imports retain raw alias identity and both physical declarations."""
-        package = tmp_path / "alias_provider"
+        import_root = tmp_path / "site-packages" if installed_layout else tmp_path
+        package = import_root / "alias_provider"
         tm.ok(u.Cli.ensure_dir(package))
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -218,6 +240,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 "    def alternate(self): return 'alternate'\n"
                 "    @property\n"
                 "    def value(self): return 'property'\n"
+                "    @property\n"
+                "    def other_value(self): return 'other-property'\n"
+                "    @classmethod\n"
+                "    def owner(cls): return cls\n"
+                "    @staticmethod\n"
+                "    def static(): return 'static'\n"
                 "class Supplier(Ancestor): pass\n",
             )
         )
@@ -228,7 +256,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 "from . import supplier\n"
                 f"class Receiver({base}):\n"
                 "    operation = supplier.Supplier.operation\n"
-                "    value = supplier.Supplier.value\n",
+                "    value = supplier.Supplier.value\n"
+                "    owner = supplier.Supplier.owner\n"
+                "    static = supplier.Supplier.static\n",
             )
         )
         consumer = (
@@ -256,18 +286,36 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    module.supplier = pathlib\n"
             "elif defect == 'wrapped':\n"
             "    module.Receiver.operation = contextmanager(supplier.Ancestor.operation)\n"
+            "elif defect == 'class-bound':\n"
+            "    module.Receiver.owner = supplier.Ancestor.owner\n"
+            "elif defect == 'static-wrapped':\n"
+            "    module.Receiver.static = staticmethod(module.Receiver.static)\n"
+            "elif defect == 'property':\n"
+            "    module.Receiver.value = supplier.Ancestor.other_value\n"
             "observed = provenance.loaded_import_sources(module.__name__)\n"
             "if defect == 'none':\n"
             "    sources = observed.unwrap()\n"
             "    assert module.Receiver().operation() == 'supplier-before'\n"
             "    assert module.Receiver().value == 'property'\n"
+            "    assert module.Receiver.owner() is supplier.Supplier\n"
+            "    assert module.Receiver().owner() is supplier.Supplier\n"
+            "    assert module.Receiver.static() == 'static'\n"
             "    assert any(item[0] == module.__name__ + '::Receiver.operation' and item[1] == module.__file__ for item in sources)\n"
             "    assert any(item[0] == supplier.__name__ + '::Ancestor.operation' and item[1] == supplier.__file__ for item in sources)\n"
-            "else: assert observed.failure, observed\n"
+            "else:\n"
+            "    assert observed.failure, observed\n"
+            "    if defect in {'receiver', 'supplier', 'receiver-source', 'wrapped', 'class-bound', 'static-wrapped', 'property'}:\n"
+            "        error = observed.error\n"
+            "        assert error.startswith('descriptor differs from its physical alias supplier:'), error\n"
+            "        assert 'module=\"alias_provider\"' in error, error\n"
+            "        assert 'receiver=\"Receiver\"' in error, error\n"
+            "        assert 'attribute=' in error and 'alias_identifier=' in error, error\n"
+            "        assert 'supplier_module=' in error and 'supplier_owner=' in error, error\n"
+            "        assert 'receiver_kind=' in error and 'supplier_kind=' in error, error\n"
         )
         tm.ok(
             u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect], cwd=tmp_path
+                [executable, "-c", consumer, str(import_root), defect], cwd=tmp_path
             )
         )
 
