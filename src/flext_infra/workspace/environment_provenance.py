@@ -62,6 +62,7 @@ from types import (
     ClassMethodDescriptorType,
     CodeType,
     FunctionType,
+    MemberDescriptorType,
     MethodDescriptorType,
     SimpleNamespace,
     WrapperDescriptorType,
@@ -2595,6 +2596,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return True
         if type(value) in {tuple, list}:
             return all(cls._construction_operand_pure(item) for item in value)
+        # Pydantic/annotated-types constraint instances (Ge(0), MinLen(1), ...)
+        # are inert frozen value data consumed by the validator factory, never
+        # construction callbacks: their defining module is a declared third-
+        # party dependency, not a compiler-owned source, so admit them before
+        # the ownership-scoped dataclass check.
+        if type(value).__module__.startswith(("pydantic", "annotated_types")):
+            return True
         if type(type(value)) is type and "__dataclass_fields__" in vars(type(value)):
             owner = type(value)
             if not vars(owner).get("__dataclass_params__").frozen or getattr_static(
@@ -2649,11 +2657,26 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             ) and cls._construction_operand_pure(
                 storage["__args__"].__get__(value, type(value))
             )
+        annotated_alias = vars(modules["typing"]).get("_AnnotatedAlias")
+        if annotated_alias is not None and type(value) is annotated_alias:
+            # Annotated[int, Ge(0)] is an inert type expression: its origin and
+            # metadata are annotation operands, not construction callbacks.
+            return cls._construction_operand_pure(
+                value.__origin__,
+            ) and all(
+                cls._construction_operand_pure(item)
+                for item in value.__metadata__
+            )
         native_union = vars(modules["types"])["UnionType"]
         if type(value) is native_union:
             return cls._construction_operand_pure(
                 vars(native_union)["__args__"].__get__(value, native_union)
             )
+        # Pydantic constraint metadata (Ge(0), MinLen(1), ...) is inert value
+        # data consumed by the validator factory, never a construction
+        # callback: admit it as an annotation operand.
+        if type(value).__module__.startswith(("pydantic", "annotated_types")):
+            return True
         return all(
             getattr_static(type(value), name, None)
             is getattr_static(object, name, None)
