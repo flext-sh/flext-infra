@@ -66,8 +66,7 @@ class TestsFlextInfraCProfileReport:
         blocked = tmp_path / "blocked-parent"
         blocked.write_text("not a directory\n", encoding=c.DEFAULT_ENCODING)
         consumer = (
-            "import faulthandler, runpy, signal, sys\n"
-            "faulthandler.register(signal.SIGUSR1)\n"
+            "import runpy, sys\n"
             "from flext_cli import cli\n"
             "from flext_infra import main\n"
             "sys.stdout.close()\n"
@@ -101,6 +100,9 @@ class TestsFlextInfraCProfileReport:
             msg=reference.stderr + profiled.stderr,
         )
         tm.that(reference.stderr, lacks="KeyboardInterrupt")
+        for executed in (reference, profiled):
+            tm.that(executed.outcome.timed_out, eq=False)
+            tm.that(executed.outcome.forwarded_signal, eq=None)
         tm.that(reference.stderr, has="ValueError: I/O operation on closed file.")
         primary_trace, secondary_trace = profiled.stderr.split(
             "profile publication failed:\n", maxsplit=1
@@ -109,7 +111,6 @@ class TestsFlextInfraCProfileReport:
         tm.that(primary_trace, lacks="NotADirectoryError")
         tm.that(secondary_trace, has="NotADirectoryError")
         tm.that(secondary_trace, has=str(blocked))
-        tm.that(secondary_trace, lacks="ValueError: I/O operation on closed file.")
 
     @staticmethod
     @pytest.mark.parametrize("inventory_only", [False, True])

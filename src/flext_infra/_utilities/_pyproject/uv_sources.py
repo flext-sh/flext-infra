@@ -306,11 +306,20 @@ class FlextInfraUtilitiesPyprojectUvSources(
         uv: t.Cli.TomlTable,
         members: t.SequenceOf[p.Infra.RepositoryRef],
     ) -> None:
-        """Render declared member paths without changing their editable policy.
+        """Elect declared editable members in the native UV workspace.
 
         The native TOML mapping validator propagates malformed source-table input.
         """
-        u.Cli.toml_remove_key_if_present(uv, "workspace")
+        editable_members = tuple(member for member in members if member.editable)
+        if editable_members:
+            workspace = u.Cli.toml_ensure_table(uv, "workspace")
+            u.Cli.toml_sync_string_list(
+                workspace,
+                "members",
+                tuple(member.path.as_posix() for member in editable_members),
+            )
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None:
             sources = u.Cli.toml_ensure_table(uv, "sources")
@@ -332,7 +341,11 @@ class FlextInfraUtilitiesPyprojectUvSources(
             u.Cli.toml_sync_value(
                 sources,
                 member.distribution,
-                {"path": member.path.as_posix(), "editable": member.editable},
+                (
+                    {"workspace": True}
+                    if member.editable
+                    else {"path": member.path.as_posix(), "editable": False}
+                ),
             )
         if not sources:
             u.Cli.toml_remove_key_if_present(uv, "sources")

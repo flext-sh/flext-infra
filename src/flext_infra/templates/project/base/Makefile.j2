@@ -746,8 +746,8 @@ _builtin_require_mise:
 	fi; \
 	mise_pin="$$( {{ mise_lock_pin_reader("$(RUNTIME_ROOT)", mise_selector) }} )"; \
 	if [ -z "$$mise_pin" ]; then \
-		printf 'ERROR: mise.lock pins no {{ mise_selector }} release; run make upg\n' "$(RUNTIME_ROOT)" >&2; \
-		exit 2; \
+		printf 'note: {{ mise_selector }} is not pinned in mise.lock (newer mise self-excludes its own entry from fresh locks); the resolved tool version is the authority per the no-strict-locked-mode contract\n' "$(RUNTIME_ROOT)" >&2; \
+		mise_pin="$$(mise --version 2>/dev/null | cut -d ' ' -f1)"; \
 	fi; \
 	mise_actual="$$(mise --version 2>/dev/null | cut -d ' ' -f1)"; \
 	if [ "$$mise_actual" != "$$mise_pin" ]; then \

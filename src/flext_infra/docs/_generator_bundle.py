@@ -61,7 +61,11 @@ class FlextInfraDocGeneratorBundleMixin:
             if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
                 continue
             source_roots = u.Infra.docs_scope_source_roots(root, scope, aggregate)
-            paths = u.Infra.docs_source_paths_for_roots(source_roots)
+            source_scope = scope.path if scope.name != c.Infra.RK_ROOT else None
+            paths = u.Infra.docs_source_paths_for_roots(
+                source_roots,
+                source_scope=source_scope,
+            )
             if paths.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(paths)
                 return
@@ -93,7 +97,10 @@ class FlextInfraDocGeneratorBundleMixin:
                     key=lambda item: item.path,
                 )
             )
-            directories = u.Infra.docs_source_directories(source_roots)
+            directories = u.Infra.docs_source_directories(
+                source_roots,
+                source_scope=source_scope,
+            )
             if directories.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(directories)
                 return

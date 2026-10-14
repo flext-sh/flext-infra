@@ -101,6 +101,23 @@ class FlextInfraDocGenerator(
             def apply(
                 session: m.Infra.CodegenTransactionSession,
             ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+                bound = transaction.bind_publication_proof(
+                    session,
+                    (),
+                    source_topology=bundle.source_directories,
+                    scope_roots=bundle.source_roots,
+                )
+                if bound.failure:
+                    return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(bound)
+                session = bound.value
+                incomplete = transaction.record_publication(
+                    session,
+                    phase=c.Infra.CodegenStagedFilePhase.DOCS,
+                )
+                if incomplete.failure:
+                    return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(
+                        incomplete
+                    )
                 directories = self.required_directories(bundle)
                 if directories.failure:
                     return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(

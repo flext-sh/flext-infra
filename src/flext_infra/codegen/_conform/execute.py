@@ -13,6 +13,7 @@ from typing import Self, override
 
 from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenFileLeases,
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsVerification,
@@ -49,6 +50,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+            return cls._observe_publication(request)
         root = request.root.expanduser().resolve()
         prelude = cls._validated_request_prelude(root, initial_workspace)
         if prelude.failure:
@@ -240,6 +243,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.repository_root,
         )
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+            return self._observe_publication(request)
         if (
             c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY
             and self.surface_contract(
@@ -290,6 +295,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 operation=lambda _scope_root: self._execute_plan(request),
             )
         return self._execute_plan(request)
+
+    @staticmethod
+    def _observe_publication(
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Consume authenticated publication evidence without invoking a planner."""
+        with FlextInfraCodegenFileLeases.mutation_lease(request.root):
+            observed = FlextInfraMiseArtifactsVerification.publication_current(request)
+            if observed.failure:
+                return r[m.Infra.CodegenResult].from_failure(observed)
+            return r[m.Infra.CodegenResult].ok(
+                m.Infra.CodegenResult(verified_publication=observed.value),
+            )
 
     def _migrate_repository_declarations(
         self,

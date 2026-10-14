@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 import shutil
 import stat
 import sys
 import tempfile
-from collections.abc import Mapping, MutableMapping
+import time
+from collections.abc import Generator, Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, settings, t, u
@@ -75,6 +75,8 @@ class FlextInfraModGateEngine:
                         c.Infra.SG_CONFIG_FLAG,
                         str(temp_root / c.Infra.CODEMOD_CONFIG_FILENAME),
                     ),
+                    stdout_file=Path(temp_dir) / "stdout",
+                    stderr_file=Path(temp_dir) / "stderr",
                 )
                 if tested.failure:
                     remedy = (
@@ -139,6 +141,8 @@ class FlextInfraModGateEngine:
                         c.Infra.SG_CONFIG_FLAG,
                         str(temp_root / c.Infra.CODEMOD_CONFIG_FILENAME),
                     ),
+                    stdout_file=Path(temp_dir) / "stdout",
+                    stderr_file=Path(temp_dir) / "stderr",
                 ).unwrap()
                 cls._run_tool(
                     temp_root,
@@ -148,6 +152,8 @@ class FlextInfraModGateEngine:
                         c.Infra.SG_CONFIG_FLAG,
                         str(temp_root / c.Infra.CODEMOD_CONFIG_FILENAME),
                     ),
+                    stdout_file=Path(temp_dir) / "stdout",
+                    stderr_file=Path(temp_dir) / "stderr",
                 ).unwrap()
                 changes.extend(
                     cls._publish_regenerated_snapshots(
@@ -386,8 +392,10 @@ class FlextInfraModGateEngine:
         root: Path,
         command: t.StrSequence,
         *,
+        stdout_file: Path,
+        stderr_file: Path,
         finding_exit_code: int | None = None,
-    ) -> p.Result[p.Cli.CommandBytesOutput]:
+    ) -> p.Result[p.Cli.ProcessOutcome]:
         """Run one AST tool and preserve its documented finding status.
 
         Resolve and authenticate in Make's declared tool-owning invocation
@@ -395,7 +403,7 @@ class FlextInfraModGateEngine:
         directory, so neither a shim nor that directory can select another tool.
 
         Returns:
-            The resulting ``p.Result[p.Cli.CommandBytesOutput]``.
+            The fully reaped outcome; streams remain in their caller-owned files.
 
         """
         # Consumer scratch directories never own the invocation's runtime tools.
@@ -405,44 +413,63 @@ class FlextInfraModGateEngine:
         ).parent
         binary = u.Infra.managed_mise_binary(command[0], owner_root)
         if binary.failure:
-            return r[p.Cli.CommandBytesOutput].from_failure(binary)
+            return r[p.Cli.ProcessOutcome].from_failure(binary)
         sys.stderr.write(
             f"mod: start {' '.join(command[:2])} args={max(0, len(command) - 2)}\n",
         )
         sys.stderr.flush()
-        run = u.Cli.run_bytes(
+        started = time.monotonic()
+        run = u.Cli.run_to_file(
             (str(binary.value), *command[1:]),
+            stdout_file,
+            stderr_file=stderr_file,
             cwd=root,
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if run.failure:
-            return r[p.Cli.CommandBytesOutput].from_failure(run)
-        output = run.value
+            return r[p.Cli.ProcessOutcome].from_failure(run)
+        outcome = run.value
         sys.stderr.write(
-            f"mod: finish {command[0]} exit={output.outcome.raw_return_code} "
-            f"duration={output.duration:.2f}s stdout_bytes={len(output.stdout)}\n",
+            f"mod: finish {command[0]} exit={outcome.raw_return_code} "
+            f"duration={time.monotonic() - started:.2f}s "
+            f"stdout_file={stdout_file}\n",
         )
         sys.stderr.flush()
-        if output.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(outcome):
             if (
-                output.outcome.raw_return_code == finding_exit_code
-                and output.stdout
-                and not output.stdout.isspace()
+                outcome.raw_return_code == finding_exit_code
+                and not outcome.timed_out
+                and outcome.forwarded_signal is None
             ):
-                return r[p.Cli.CommandBytesOutput].ok(output)
-            detail = "\n".join(
-                stream.decode("utf-8").strip()
-                for stream in (output.stdout, output.stderr)
-                if stream and not stream.isspace()
+                return r[p.Cli.ProcessOutcome].ok(outcome)
+            diagnostics: list[str] = []
+            for path in (stdout_file, stderr_file):
+                content = (
+                    u.Cli
+                    .atomic_read_binary_file_state(path, required=True)
+                    .unwrap()
+                    .content
+                )
+                if content is not None and content.strip():
+                    diagnostics.append(content.decode("utf-8").strip())
+            detail = "\n".join(diagnostics)
+            return r[p.Cli.ProcessOutcome].fail(
+                f"{command[0]} exited with code {outcome.raw_return_code}: {detail}",
             )
-            return r[p.Cli.CommandBytesOutput].fail(
-                f"{command[0]} exited with code "
-                f"{output.outcome.raw_return_code}: {detail}",
+        stderr_bytes = (
+            u.Cli
+            .atomic_read_binary_file_state(stderr_file, required=True)
+            .unwrap()
+            .content
+        )
+        if stderr_bytes is None:
+            return r[p.Cli.ProcessOutcome].fail(
+                f"ast-grep stderr stream is missing: {stderr_file}"
             )
-        stderr = output.stderr.decode("utf-8").strip()
+        stderr = stderr_bytes.decode("utf-8").strip()
         if stderr:
-            return r[p.Cli.CommandBytesOutput].fail(stderr)
-        return r[p.Cli.CommandBytesOutput].ok(output)
+            return r[p.Cli.ProcessOutcome].fail(stderr)
+        return r[p.Cli.ProcessOutcome].ok(outcome)
 
     @staticmethod
     def _path_depth(path: Path) -> int:
@@ -933,7 +960,7 @@ class FlextInfraModGateEngine:
     @classmethod
     def _parse_findings(
         cls,
-        stdout: bytes,
+        stdout: Path,
         root: Path,
         rule_files_by_id: Mapping[str, Path],
         fixable_ids: frozenset[str],
@@ -945,9 +972,18 @@ class FlextInfraModGateEngine:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
 
         """
+
+        def records() -> Generator[bytes]:
+            pending = b""
+            for chunk in u.Cli.atomic_iter_binary_file(stdout):
+                *complete, pending = (pending + chunk).split(b"\n")
+                yield from complete
+            if pending:
+                yield pending
+
         entries: list[m.Infra.ModScanFinding] = []
-        for match in re.finditer(rb"[^\n]+", stdout):
-            line = match.group().strip()
+        for raw_line in records():
+            line = raw_line.strip()
             if not line:
                 continue
             parsed = u.Cli.json_parse(line)
@@ -1030,34 +1066,54 @@ class FlextInfraModGateEngine:
             targets=targets,
             json_stream=True,
         )
-        run = cls._run_tool(
-            root,
-            scan_command,
-            finding_exit_code=1,
-        )
-        if run.failure:
-            return r[m.Infra.ModScanReport].from_failure(run)
-        sys.stderr.write(
-            f"mod: parse native JSONL bytes={len(run.value.stdout)}\n",
-        )
-        sys.stderr.flush()
-        report = cls._parse_findings(
-            run.value.stdout,
-            root,
-            ruleset_files,
-            frozenset(ruleset.fixable_rule_ids),
-            context,
-        ).unwrap()
-        sys.stderr.write(f"mod: native findings={report.findings}\n")
-        sys.stderr.flush()
-        if run.value.outcome.raw_return_code != 0:
-            error_findings = sum(
-                entry.payload.get("severity") == "error" for entry in report.entries
+        with tempfile.TemporaryDirectory(
+            prefix="mod-native-", dir=settings.work_dir
+        ) as directory:
+            stdout_file, stderr_file = (
+                Path(directory) / "stdout",
+                Path(directory) / "stderr",
             )
-            cls._validate_finding_receipt(
-                run.value.stderr.decode("utf-8"),
-                error_findings,
+            run = cls._run_tool(
+                root,
+                scan_command,
+                stdout_file=stdout_file,
+                stderr_file=stderr_file,
+                finding_exit_code=1,
+            )
+            if run.failure:
+                return r[m.Infra.ModScanReport].from_failure(run)
+            sys.stderr.write(f"mod: parse native JSONL file={stdout_file}\n")
+            sys.stderr.flush()
+            report = cls._parse_findings(
+                stdout_file,
+                root,
+                ruleset_files,
+                frozenset(ruleset.fixable_rule_ids),
+                context,
             ).unwrap()
+            sys.stderr.write(f"mod: native findings={report.findings}\n")
+            sys.stderr.flush()
+            if run.value.raw_return_code != 0:
+                error_findings = sum(
+                    entry.payload.get("severity") == "error" for entry in report.entries
+                )
+                if not error_findings:
+                    return r[m.Infra.ModScanReport].fail(
+                        "ast-grep finding exit has no error-severity occurrence"
+                    )
+                stderr = (
+                    u.Cli
+                    .atomic_read_binary_file_state(stderr_file, required=True)
+                    .unwrap()
+                    .content
+                )
+                if stderr is None:
+                    return r[m.Infra.ModScanReport].fail(
+                        f"ast-grep finding receipt is missing: {stderr_file}"
+                    )
+                cls._validate_finding_receipt(
+                    stderr.decode("utf-8"), error_findings
+                ).unwrap()
         return r[m.Infra.ModScanReport].ok(report)
 
     @classmethod
@@ -1247,39 +1303,12 @@ class FlextInfraModGateEngine:
         logical = {state.path: state for state in states}
         entries: list[m.Infra.ModScanFinding] = []
         for ruleset in plan.rulesets:
-            run = cls._run_tool(
-                view_root,
-                u.Infra.ast_grep_scan_command(
-                    ruleset.config,
-                    rule_ids=ruleset.rule_ids,
-                    targets=targets,
-                    json_stream=True,
-                ),
-                finding_exit_code=1,
+            scanned = cls._ruleset_report(
+                view_root, ruleset, rules_by_id, targets, context
             )
-            if run.failure:
-                return r[m.Infra.ModScanReport].from_failure(run)
-            parsed = cls._parse_findings(
-                run.value.stdout,
-                view_root,
-                {
-                    rule_id: rules_by_id[rule_id].resource
-                    for rule_id in ruleset.rule_ids
-                },
-                frozenset(ruleset.fixable_rule_ids),
-                context,
-            ).unwrap()
-            if run.value.outcome.raw_return_code != 0:
-                receipt = cls._validate_finding_receipt(
-                    run.value.stderr.decode("utf-8"),
-                    sum(
-                        entry.payload.get("severity") == "error"
-                        for entry in parsed.entries
-                    ),
-                )
-                if receipt.failure:
-                    return r[m.Infra.ModScanReport].from_failure(receipt)
-            for entry in parsed.entries:
+            if scanned.failure:
+                return r[m.Infra.ModScanReport].from_failure(scanned)
+            for entry in scanned.value.entries:
                 relative = (
                     entry.file.relative_to(view_root)
                     if entry.file.is_absolute()

@@ -19,6 +19,31 @@ class TestsFlextInfraModEvidenceInputs:
     """Validate public evidence round-trips without duplicated input bodies."""
 
     @staticmethod
+    def test_native_jsonl_preserves_large_unicode_record(mod_workspace: Path) -> None:
+        """A real native record spanning read blocks retains complete evidence."""
+        source = mod_workspace / "consumer.py"
+        content = (
+            'def edge(value: str = "'
+            + "é\u2028" * 600_000
+            + '") -> str:\n    return str(value)\n'
+        )
+        source.write_text(content, encoding="utf-8")
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+            )
+        )
+        tm.that(report.findings, eq=1)
+        finding = report.entries[0]
+        tm.that(finding.text, eq=content.rstrip("\n"))
+        tm.that(finding.payload["text"], eq=finding.text)
+        tm.that(tm.not_none(finding.source_state).content, eq=content.encode("utf-8"))
+        evidence = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes()
+        )
+        tm.that(evidence.entries[0].payload, eq=finding.payload)
+
+    @staticmethod
     @pytest.mark.slow
     def test_full_diagnostic_runs_one_native_scan(
         mod_workspace: Path, capsys: pytest.CaptureFixture[str]

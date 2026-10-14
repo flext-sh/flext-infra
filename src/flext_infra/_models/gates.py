@@ -81,11 +81,15 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         line: Annotated[
             int | None,
-            m.Field(ge=0, strict=True, description="Source line, null for declarations"),
+            m.Field(
+                ge=0, strict=True, description="Source line, null for declarations"
+            ),
         ]
         column: Annotated[
             int | None,
-            m.Field(ge=0, strict=True, description="Source column, null for declarations"),
+            m.Field(
+                ge=0, strict=True, description="Source column, null for declarations"
+            ),
         ]
 
     class DeptryDiagnostic(m.ContractModel):
@@ -97,7 +101,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         module: Annotated[
             str,
-            m.Field(min_length=1, strict=True, description="Reported module or dependency"),
+            m.Field(
+                min_length=1, strict=True, description="Reported module or dependency"
+            ),
         ]
         location: Annotated[
             FlextInfraModelsGates.DeptryLocation,
