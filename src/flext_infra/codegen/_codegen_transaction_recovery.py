@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import secrets
 import sys
-
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -75,6 +75,45 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         pending_files = tuple(
             path for path in effect_targets if path not in observed_targets
         )
+        outputs = {item.path: item for item in session.journal.outputs}
+        written = set(session.written_files)
+        sources = tuple(
+            item.model_copy(update=outputs[item.path].model_dump(exclude={"phase"}))
+            if item.path in written and item.path in outputs
+            else item
+            for item in session.journal.sources
+        )
+        generator_sources = tuple(
+            item.model_copy(update=outputs[item.path].model_dump(exclude={"phase"}))
+            if item.path in written and item.path in outputs
+            else item
+            for item in session.journal.generator_sources
+        )
+        created = {
+            item.created.path: item.created
+            for item in session.journal.directories
+            if item.created is not None
+        }
+        topology = tuple(
+            item.model_copy(
+                update={
+                    "anchor_path": item.target,
+                    "anchor_device": created[item.target].device,
+                    "anchor_inode": created[item.target].inode,
+                    "anchor_ancestry": (
+                        *item.anchor_ancestry,
+                        *(
+                            (created[path].device, created[path].inode)
+                            for path in item.directories
+                        ),
+                    ),
+                    "directories": (),
+                }
+            )
+            if item.directories and all(path in created for path in item.directories)
+            else item
+            for item in session.journal.source_topology
+        )
         outcome = m.Infra.CodegenPhaseOutcome(
             root=session.plan.layout.scope_root,
             transaction_id=session.journal.transaction_id,
@@ -88,29 +127,15 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             pending_files=pending_files,
             issues=session.issues,
             exception=session.exception,
-            sources=session.journal.sources,
+            sources=sources,
             outputs=session.journal.outputs,
-            generator_sources=session.journal.generator_sources,
-            source_topology=session.journal.source_topology,
+            generator_sources=generator_sources,
+            source_topology=topology,
             scope_roots=session.journal.scope_roots,
         )
-        report_path = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
-        digest = u.Cli.sha256_content(outcome.model_dump_json())
-        evidence = u.Infra.publish_refactor_report_evidence(
+        evidence = FlextInfraCodegenTransactionRecovery.publish_outcome(
             session.plan.layout.scope_root,
             outcome,
-            relative_path=(
-                report_path.with_suffix("")
-                / session.journal.transaction_id
-                / f"{digest}{report_path.suffix}"
-            ),
-        )
-        if evidence.failure:
-            return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
-        evidence = u.Infra.publish_refactor_report_evidence(
-            session.plan.layout.scope_root,
-            outcome,
-            relative_path=report_path,
         )
         if evidence.failure:
             return r[m.Infra.CodegenTransactionSession].from_failure(evidence)
@@ -121,6 +146,97 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 error_code=c.Infra.ToolOutcome.ERROR.value,
             )
         return r[m.Infra.CodegenTransactionSession].ok(session)
+
+    @staticmethod
+    def publish_outcome(
+        root: Path,
+        outcome: m.Infra.CodegenPhaseOutcome,
+    ) -> p.Result[bool]:
+        """Archive and publish the same typed native receipt through its owner."""
+        if outcome.transaction_id is None or outcome.root != root:
+            return r[bool].fail("publication receipt lacks its actual scope identity")
+        path = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        digest = u.Cli.sha256_content(outcome.model_dump_json())
+        archived = u.Infra.publish_refactor_report_evidence(
+            root,
+            outcome,
+            relative_path=path.with_suffix("")
+            / outcome.transaction_id
+            / f"{digest}{path.suffix}",
+        )
+        if archived.failure:
+            return r[bool].from_failure(archived)
+        latest = u.Infra.publish_refactor_report_evidence(
+            root,
+            outcome,
+            relative_path=path,
+        )
+        if latest.failure:
+            return r[bool].from_failure(latest)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def publish_operation_receipt(
+        cls,
+        request: m.Infra.CodegenConformRequest,
+        batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        *,
+        scope_roots: t.VariadicTuple[Path],
+        operation: m.Infra.CodegenPhaseOutcome | None = None,
+        completed: bool = False,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Compose actual native batches without reopening their settled journals."""
+        root = request.root.expanduser().resolve()
+        if not scope_roots or (
+            operation is not None
+            and (
+                operation.root != root
+                or operation.surface != request.what
+                or operation.scope != request.scope
+            )
+        ):
+            return r[m.Infra.CodegenPhaseOutcome].fail(
+                "operation receipt differs from its actual request",
+            )
+        if completed and (
+            not batches
+            or any(
+                not item.completed
+                or item.error
+                or item.issues
+                or item.pending_files
+                or item.root is None
+                or item.transaction_id is None
+                or not (item.outputs or item.batches)
+                for item in batches
+            )
+        ):
+            return r[m.Infra.CodegenPhaseOutcome].fail(
+                "operation completion requires every actual batch output proof",
+            )
+        outcome = m.Infra.CodegenPhaseOutcome(
+            root=root,
+            transaction_id=(
+                operation.transaction_id
+                if operation is not None
+                else secrets.token_hex(16)
+            ),
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM,
+            surface=request.what,
+            scope=request.scope,
+            scope_roots=scope_roots,
+            completed=completed,
+            batches=batches,
+            written_files=tuple(
+                path for item in batches for path in item.written_files
+            ),
+            issues=tuple(issue for item in batches for issue in item.issues),
+        )
+        with cls.mutation_lease(root):
+            written = cls.publish_outcome(root, outcome)
+        if written.failure:
+            return r[m.Infra.CodegenPhaseOutcome].from_failure(written)
+        return r[m.Infra.CodegenPhaseOutcome].ok(outcome)
 
     def bind_publication_proof(
         self,

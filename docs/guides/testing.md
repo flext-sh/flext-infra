@@ -118,6 +118,13 @@ inputs across occurrences. Missing sources or graph references fail validation.
 This removes repeated graph serialization; native JSONL ingestion and semantic
 admission still require their own measured performance evidence.
 
+The native scanner writes stdout and stderr to separate files through the CLI
+runner. JSONL admission consumes authenticated byte blocks and retains record
+boundaries across blocks, including Unicode and a final unterminated record.
+Immutable overlays use the same ruleset reader as the ordinary scan. Native
+finding exits require the complete parsed error count and exact stderr receipt;
+timeouts, forwarded signals and unrelated stderr remain failures.
+
 Codemod admission resolves the declared package namespace once in the typed facts
 of each pass. Findings consume that snapshot; a later pass reads the current
 manifest again. No process-global namespace cache carries identity across passes.

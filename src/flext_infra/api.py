@@ -189,7 +189,12 @@ class FlextInfra(
         return FlextInfraCodegenConform.execute_request(
             request,
             initial_workspace,
-            ports=self.codegen_conform_collaborators(),
+            ports=(
+                None
+                if c.Infra.CodegenConformMode(request.mode)
+                is c.Infra.CodegenConformMode.CHECK
+                else self.codegen_conform_collaborators()
+            ),
         )
 
     def codegen_new(

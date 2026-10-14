@@ -81,6 +81,10 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
         )
         sources = u.Tests.toml_table_at(rendered, "tool", "uv", "sources")
         tm.that(
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "workspace", "members"),
+            eq=tuple(member.path.as_posix() for member in members if member.editable),
+        )
+        tm.that(
             set(
                 u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies")
             ),
@@ -89,7 +93,11 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
         for member in members:
             tm.that(
                 sources[member.distribution],
-                eq={"path": member.path.as_posix(), "editable": member.editable},
+                eq=(
+                    {"workspace": True}
+                    if member.editable
+                    else {"path": member.path.as_posix(), "editable": False}
+                ),
             )
             tm.that(
                 member.distribution

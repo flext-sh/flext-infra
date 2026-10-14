@@ -245,6 +245,11 @@ class FlextInfraModelsCodegenPipelineModels:
                 raise ValueError(msg)
             if self.verified_publication is not None and (
                 not self.verified_publication.completed
+                or self.verified_publication.error
+                or self.verified_publication.issues
+                or self.verified_publication.pending_files
+                or self.verified_publication.root is None
+                or self.verified_publication.transaction_id is None
                 or not (
                     self.verified_publication.outputs
                     or self.verified_publication.batches

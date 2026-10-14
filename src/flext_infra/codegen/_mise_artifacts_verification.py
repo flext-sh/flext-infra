@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
-    FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerificationManifest,
     FlextInfraMiseArtifactsVerificationTopology,
 )
@@ -49,16 +48,14 @@ class FlextInfraMiseArtifactsVerification(
             lambda: m.Infra.CodegenPhaseOutcome.model_validate_json(content),
         )
         if parsed.failure:
-            return result.fail(
-                f"generation publication receipt is invalid: {report}; run make gen",
-                exception=parsed.exception,
-            )
+            return result.from_failure(parsed)
         outcome = parsed.value
         if (
             not outcome.completed
             or outcome.issues
             or outcome.pending_files
             or not (outcome.outputs or outcome.batches)
+            or not outcome.scope_roots
             or outcome.root != root
             or outcome.surface != c.Infra.CodegenConformSurface(request.what)
             or outcome.scope != c.Infra.CodegenConformScope(request.scope)
@@ -81,6 +78,8 @@ class FlextInfraMiseArtifactsVerification(
         outcome: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[bool]:
         """Verify native file and ancestry witnesses of every completed batch."""
+        from flext_infra.codegen import FlextInfraMiseArtifactsJournal
+
         if not outcome.completed or outcome.issues or outcome.pending_files:
             return r[bool].fail("generation batch is incomplete; run make gen")
         for witness in outcome.source_topology:

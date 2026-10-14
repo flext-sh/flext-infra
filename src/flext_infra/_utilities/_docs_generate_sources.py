@@ -133,14 +133,19 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
     @staticmethod
     def docs_source_directories(
         roots: t.SequenceOf[Path],
+        *,
+        source_scope: Path | None = None,
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]]:
         """Capture presence and physical ancestry used by docs discovery."""
         states: list[m.Cli.AtomicDirectoryChainPlan] = []
         for root in roots:
-            for path in (
-                root / c.Infra.DEFAULT_SRC_DIR,
-                root / "config",
-                root / c.Infra.DIR_DOCS / "guides",
+            for (
+                path,
+                _recursive,
+                _suffixes,
+            ) in FlextInfraUtilitiesDocsGenerateSourcesMixin._source_trees(
+                root,
+                source_scope,
             ):
                 state = cli_u.Cli.atomic_plan_directory_chain(path)
                 if state.failure:
@@ -155,6 +160,8 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
     @staticmethod
     def docs_source_paths_for_roots(
         roots: t.SequenceOf[Path],
+        *,
+        source_scope: Path | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Discover only the elected roots and declared template dependencies."""
         paths: set[Path] = set()
@@ -162,6 +169,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             collected = (
                 FlextInfraUtilitiesDocsGenerateSourcesMixin._collected_root_paths(
                     root,
+                    source_scope=source_scope,
                 )
             )
             if collected.failure:
@@ -177,8 +185,61 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         paths.update(state.path for state in templates.value)
         return r[t.VariadicTuple[Path]].ok(tuple(sorted(paths)))
 
+    @staticmethod
+    def _source_trees(
+        root: Path,
+        source_scope: Path | None,
+    ) -> t.VariadicTuple[t.Triple[Path, bool, frozenset[str]]]:
+        """Declare the source grammar once for capture and published membership."""
+        return (
+            (root / "config", False, frozenset({".yaml", ".yml"})),
+            *(
+                ((root / c.Infra.DEFAULT_SRC_DIR, True, frozenset({".py"})),)
+                if source_scope is None or source_scope == root
+                else ()
+            ),
+            (root / c.Infra.DIR_DOCS / "guides", False, frozenset({".md"})),
+        )
+
+    @staticmethod
+    def docs_source_path_is_input(
+        path: Path,
+        roots: t.SequenceOf[Path],
+        *,
+        source_scope: Path | None = None,
+    ) -> bool:
+        """Derive whether an owned publication becomes an input of the same owner."""
+        for root in roots:
+            if path in {
+                root / c.Infra.GITMODULES,
+                root / c.PYPROJECT_FILENAME,
+                root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME,
+            }:
+                return True
+            for (
+                tree,
+                recursive,
+                suffixes,
+            ) in FlextInfraUtilitiesDocsGenerateSourcesMixin._source_trees(
+                root,
+                source_scope,
+            ):
+                if (
+                    path.suffix in suffixes
+                    and path.is_relative_to(tree)
+                    and (recursive or path.parent == tree)
+                    and not (path.suffix == ".md" and path.name == "README.md")
+                ):
+                    return True
+        return False
+
     @classmethod
-    def _collected_root_paths(cls, root: Path) -> p.Result[t.VariadicTuple[Path]]:
+    def _collected_root_paths(
+        cls,
+        root: Path,
+        *,
+        source_scope: Path | None = None,
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Collect one repository root's documented physical source paths.
 
         Returns:
@@ -204,24 +265,17 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         )
         collectors = (
             cls._collected_fixed_paths(paths, fixed_paths),
-            cls._collected_tree_paths(
-                paths,
-                root / "config",
-                recursive=False,
-                suffixes=frozenset({".yaml", ".yml"}),
-            ),
-            cls._collected_tree_paths(
-                paths,
-                root / c.Infra.DEFAULT_SRC_DIR,
-                recursive=True,
-                suffixes=frozenset({".py"}),
-            ),
-            cls._collected_tree_paths(
-                paths,
-                root / c.Infra.DIR_DOCS / "guides",
-                recursive=False,
-                suffixes=frozenset({".md"}),
-                excluded_names=frozenset({"README.md"}),
+            *(
+                cls._collected_tree_paths(
+                    paths,
+                    tree,
+                    recursive=recursive,
+                    suffixes=suffixes,
+                    excluded_names=(
+                        frozenset({"README.md"}) if ".md" in suffixes else frozenset()
+                    ),
+                )
+                for tree, recursive, suffixes in cls._source_trees(root, source_scope)
             ),
         )
         for collected in collectors:
@@ -287,6 +341,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         source_roots: t.SequenceOf[Path] = (),
         source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = (),
         created_directories: t.SequenceOf[m.Cli.AtomicDirectoryState] = (),
+        source_scope: Path | None = None,
     ) -> p.Result[bool]:
         """Admit only the current batch's source membership and directory ancestry.
 
@@ -322,6 +377,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         discovered = (
             FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths_for_roots(
                 source_roots,
+                source_scope=source_scope,
             )
             if source_roots
             else FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(

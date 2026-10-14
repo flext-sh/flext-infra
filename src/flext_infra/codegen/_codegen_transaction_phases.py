@@ -64,6 +64,13 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             batch_analysis.phase != phase or batch_analysis.files != plans
         ):
             return result_type.fail("batch analysis differs from requested phase")
+        bound = self.bind_publication_proof(session, plans)
+        if bound.failure:
+            return result_type.from_failure(bound)
+        session = bound.value
+        recorded = self.record_publication(session, phase=phase)
+        if recorded.failure:
+            return result_type.from_failure(recorded)
         if issues:
             session = session.model_copy(
                 update={"issues": (*session.issues, *issues)},
@@ -100,6 +107,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             staged_validator,
             batch_analysis,
             admission,
+            plans,
         )
 
     def _append_authorized_phase(
@@ -125,6 +133,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             [t.VariadicTuple[m.Cli.AtomicDirectoryState]], p.Result[bool]
         ]
         | None = None,
+        all_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Stage and publish a phase only after its source authority is proven.
 
@@ -193,7 +202,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 if recorded.failure:
                     return result_type.from_failure(recorded)
                 journal, journal_state = recorded.value
-            result = self.record_publication(
+            bound = self.bind_publication_proof(
                 m.Infra.CodegenTransactionSession(
                     plan=prepared.value.plan,
                     journal=journal,
@@ -213,7 +222,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     issues=(*session.issues, *published.value.issues),
                     exception=session.exception or published.value.exception,
                 ),
-                phase=phase,
+                all_plans,
+            )
+            result = (
+                self.record_publication(bound.value, phase=phase)
+                if bound.success
+                else result_type.from_failure(bound)
             )
         else:
             result = result_type.from_failure(published)
