@@ -145,7 +145,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                     and target.
 
             """
-            if len(condition.arg) != cls._RESOLVED_SYMBOL_OPERAND_COUNT + 1:
+            if len(condition.arg) != cls.RESOLVED_SYMBOL_OPERAND_COUNT + 1:
                 message = (
                     "emitted-symbol requires a lexical expression, module and target"
                 )
