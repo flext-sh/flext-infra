@@ -28,7 +28,6 @@ class TestsFlextInfraBatchReplacements:
         generated: bool = False,
         replacement: bytes = b"after",
         matched: bytes = b"before",
-        rule_id: str = "fixture-rewrite",
     ) -> m.Infra.ModScanReport:
         policy = path.parent / "pyproject.toml"
         if not policy.exists():
@@ -42,7 +41,7 @@ class TestsFlextInfraBatchReplacements:
         offsets: t.JsonDict = {"start": start, "end": start + len(matched)}
         finding = m.Infra.ModScanFinding(
             rule_file=str(path.parent / "rule.yaml"),
-            rule_id=rule_id,
+            rule_id="fixture-rewrite",
             repository=path.parent.name,
             file=path,
             source_owner="generator" if generated else "authored",

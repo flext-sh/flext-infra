@@ -262,11 +262,11 @@ class FlextInfraUtilitiesDeclarationPayload:
         if not cls._payload_body(value, scope, statements):
             return None
         finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
-        for member in scope.get_defined_names().values():
-            method = member.get_object()
-            if FlextInfraUtilitiesRopeRuntimeTypes.py_function(
-                method
-            ) and not cls._payload_method(finder, method, statements):
+        for member_scope in scope.get_scopes():
+            if (
+                member_scope.get_kind() == c.Infra.RopeScopeKind.FUNCTION
+                and not cls._payload_method(finder, member_scope.pyobject, statements)
+            ):
                 return None
         return binding
 

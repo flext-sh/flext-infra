@@ -747,8 +747,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
 
     @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "code"])
     def test_generated_provenance_does_not_repeat_construction_effects(
         tmp_path: Path,
+        defect: str,
     ) -> None:
         """Authentication preserves effects of the actual imported construction."""
         package = tmp_path / "effect_provider"
@@ -767,9 +769,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 "    def __new__(cls, name, bases, namespace):\n"
                 "        effects.append('metaclass')\n"
                 "        return super().__new__(cls, name, bases, namespace)\n"
+                "class Parent:\n"
+                "    def __init_subclass__(cls):\n"
+                "        effects.append('subclass')\n"
                 "@track\n"
                 "@dataclass\n"
-                "class Payload(metaclass=Meta):\n"
+                "class Payload(Parent, metaclass=Meta):\n"
                 "    effects.append('body')\n"
                 "    with marker.open('a', encoding='utf-8') as stream:\n"
                 "        stream.write('body\\n')\n"
@@ -785,15 +790,18 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert module.Payload().value == 'native'\n"
             "before = tuple(module.effects)\n"
             "marker = module.marker.read_bytes()\n"
-            "assert set(before) == {'body', 'decorator', 'metaclass'}\n"
-            "observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
-            "assert observed\n"
+            "assert set(before) == {'body', 'decorator', 'metaclass', 'subclass'}\n"
+            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "if sys.argv[2] == 'code':\n"
+            "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__.replace(co_name='replaced')\n"
+            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "assert observed.success == (sys.argv[2] == 'none'), observed\n"
             "assert tuple(module.effects) == before\n"
             "assert module.marker.read_bytes() == marker\n"
         )
         tm.ok(
             u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path)],
+                [executable, "-c", consumer, str(tmp_path), defect],
                 cwd=tmp_path,
             )
         )

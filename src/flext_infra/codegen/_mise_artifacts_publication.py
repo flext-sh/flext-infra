@@ -60,10 +60,38 @@ class FlextInfraMisePublication:
         before = files.read_state(plan.path, required=False)
         if before.failure:
             return r[bool].from_failure(before)
+        return cls._publish_required_plan(
+            plan,
+            phase=phase,
+            before=before.value,
+            publication_before=publication_before.value,
+        )
+
+    @classmethod
+    def _publish_required_plan(
+        cls,
+        plan: m.Infra.CodegenFilePlan,
+        *,
+        phase: str,
+        before: m.Cli.AtomicFileState,
+        publication_before: m.Cli.AtomicFileState,
+    ) -> p.Result[bool]:
+        """Publish one plan that requires a guarded publication effect.
+
+        Args:
+            plan: File plan to publish.
+            phase: Staged file phase name for the staged publication.
+            before: Freshly observed destination state gating authored retention.
+            publication_before: Plan-time destination state bound to the staging.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         if (
             phase != c.Infra.CodegenStagedFilePhase.SEMANTIC
             and plan.path.name == c.Infra.INIT_PY
-            and u.Infra.codegen_initializer_is_authored(before.value.content)
+            and u.Infra.codegen_initializer_is_authored(before.content)
         ):
             u.Cli.info(
                 f"ownership=authored disposition=retained target={plan.path}",
@@ -72,7 +100,7 @@ class FlextInfraMisePublication:
         staged_publication = cls._staged_publication(
             plan,
             phase=phase,
-            before=publication_before.value,
+            before=publication_before,
         )
         if staged_publication.failure:
             return r[bool].from_failure(staged_publication)
@@ -153,8 +181,45 @@ class FlextInfraMisePublication:
         *,
         journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
-        """Authenticate batch inputs and original destination states once."""
+        """Authenticate batch inputs and original destination states once.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
+
+        """
         result_type = r[m.Infra.CodegenPhaseOutcome]
+        inputs = FlextInfraMisePublication._admission_inputs(analysis)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        current = FlextInfraMisePublication._source_prerequisites(inputs.value, {})
+        if current.failure:
+            return result_type.from_failure(current)
+        gates = FlextInfraMisePublication._admission_gates(analysis, journal)
+        if gates.failure:
+            return result_type.from_failure(gates)
+        outputs = FlextInfraMisePublication._admission_outputs(analysis)
+        if outputs.failure:
+            return result_type.from_failure(outputs)
+        return result_type.ok(
+            m.Infra.CodegenPhaseOutcome(
+                analysis=analysis,
+                admitted_states=inputs.value,
+                phase=analysis.phase,
+                outputs=outputs.value,
+            )
+        )
+
+    @staticmethod
+    def _admission_inputs(
+        analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Authenticate batch inputs against declared publication dependencies.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]``.
+
+        """
+        result_type = r[tuple[m.Cli.AtomicFileState, ...]]
         inputs = FlextInfraCodegenPreconditions.unique_states(analysis.inputs)
         declared = FlextInfraCodegenPreconditions.unique_states(
             tuple(source for plan in analysis.files for source in plan.source_states)
@@ -167,37 +232,51 @@ class FlextInfraMisePublication:
             item.path: item for item in declared.value
         }:
             return result_type.fail("batch inputs differ from publication dependencies")
-        current = FlextInfraMisePublication._source_prerequisites(inputs.value, {})
-        if current.failure:
-            return result_type.from_failure(current)
+        return result_type.ok(inputs.value)
+
+    @staticmethod
+    def _admission_gates(
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        journal: m.Infra.CodegenTransactionJournal | None,
+    ) -> p.Result[bool]:
+        """Prove producer closure and planned destinations for the batch.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         if analysis.generator_trees:
             producer = FlextInfraCodegenPreconditions.producer_trees_current(
                 analysis.generator_trees,
                 modules=analysis.generator_modules,
             )
             if producer.failure:
-                return result_type.from_failure(producer)
-        destinations = FlextInfraMiseArtifactsVerification.plans_current(
+                return r[bool].from_failure(producer)
+        return FlextInfraMiseArtifactsVerification.plans_current(
             analysis.files, journal=journal
         )
-        if destinations.failure:
-            return result_type.from_failure(destinations)
+
+    @staticmethod
+    def _admission_outputs(
+        analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]:
+        """Capture one output journal record per planned destination.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]``.
+
+        """
         outputs: list[m.Infra.CodegenJournalSource] = []
         for plan in analysis.files:
             captured = FlextInfraMiseArtifactsJournal.source_record(
                 "output", plan.before, path=plan.path
             )
             if captured.failure:
-                return result_type.from_failure(captured)
+                return r[tuple[m.Infra.CodegenJournalSource, ...]].from_failure(
+                    captured
+                )
             outputs.append(captured.value)
-        return result_type.ok(
-            m.Infra.CodegenPhaseOutcome(
-                analysis=analysis,
-                admitted_states=inputs.value,
-                phase=analysis.phase,
-                outputs=tuple(outputs),
-            )
-        )
+        return r[tuple[m.Infra.CodegenJournalSource, ...]].ok(tuple(outputs))
 
     @staticmethod
     def publish(
@@ -212,53 +291,15 @@ class FlextInfraMisePublication:
             The complete written paths and target issues.
 
         """
+        result_type = r[m.Infra.CodegenPhaseOutcome]
         if batch_admission is not None:
-            batch_analysis = batch_admission.analysis
-            if (
-                batch_analysis is None
-                or batch_admission.error
-                or batch_admission.issues
-                or batch_admission.exception is not None
-                or batch_admission.phase != batch_analysis.phase
-                or batch_admission.admitted_states != batch_analysis.inputs
-            ):
-                return r[m.Infra.CodegenPhaseOutcome].fail(
-                    "publication requires its exact native batch admission",
-                )
-            expected = {
-                plan.path
-                for plan in batch_analysis.files
-                if u.Infra.codegen_file_requires_effect(plan)
-            }
-            if expected != {item.before.path for item in publications} or any(
-                item.phase != batch_analysis.phase
-                and not (
-                    batch_analysis.phase
-                    == c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP
-                    and item.phase == c.Infra.CodegenStagedFilePhase.MISE
-                )
-                for item in publications
-            ):
-                return r[m.Infra.CodegenPhaseOutcome].fail(
-                    "staged publications differ from admitted batch",
-                )
-            plans = {item.path: item for item in batch_analysis.files}
-            if any(
-                item.project != plans[item.before.path].project
-                or (None if item.replacement is None else item.replacement.content)
-                != plans[item.before.path].desired_content
-                or (None if item.replacement is None else item.replacement.mode)
-                != plans[item.before.path].desired_mode
-                for item in publications
-            ):
-                return r[m.Infra.CodegenPhaseOutcome].fail(
-                    "staged candidates differ from admitted desired outputs",
-                )
-            destinations = FlextInfraMiseArtifactsVerification.plans_current(
-                batch_analysis.files, journal=journal
+            validated = FlextInfraMisePublication._validated_batch_admission(
+                publications,
+                batch_admission,
+                journal,
             )
-            if destinations.failure:
-                return r[m.Infra.CodegenPhaseOutcome].from_failure(destinations)
+            if validated.failure:
+                return result_type.from_failure(validated)
         written: list[Path] = []
         admitted: list[m.Infra.CodegenStagedFile] = []
         retained: list[Path] = []
@@ -267,47 +308,24 @@ class FlextInfraMisePublication:
             Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
         ] = {}
         exception: BaseException | None = None
-        total = len(publications)
         ordered = tuple(
             sorted(publications, key=lambda item: item.index_before is not None)
         )
         for index, publication in enumerate(ordered, start=1):
-            u.Cli.emit_raw(f"  publish [{index}/{total}] {publication.before.path}\n")
+            u.Cli.emit_raw(
+                f"  publish [{index}/{len(publications)}] {publication.before.path}\n"
+            )
             ready = FlextInfraMisePublication._tracking_prerequisites(
                 publication,
                 publications,
                 written,
             )
-            if ready.success and journal is not None and journal.generator_trees:
-                authority = {item.path: item for item in journal.outputs}
-                for staged in ordered:
-                    if (
-                        staged.replacement is None
-                        or staged.before.path in published_states
-                    ):
-                        continue
-                    encoded = FlextInfraMiseArtifactsJournal.source_record(
-                        "staging", staged.replacement
-                    )
-                    if encoded.failure:
-                        ready = r[bool].from_failure(encoded)
-                        break
-                    authority[encoded.value.path] = encoded.value
-                if ready.success:
-                    for _before, after in published_states.values():
-                        encoded = FlextInfraMiseArtifactsJournal.source_record(
-                            "output", after
-                        )
-                        if encoded.failure:
-                            ready = r[bool].from_failure(encoded)
-                            break
-                        authority[encoded.value.path] = encoded.value
-                if ready.success:
-                    ready = FlextInfraCodegenPreconditions.producer_trees_current(
-                        journal.generator_trees,
-                        tuple(authority.values()),
-                        modules=journal.generator_modules,
-                    )
+            if ready.success:
+                ready = FlextInfraMisePublication._generator_authority(
+                    ordered,
+                    published_states,
+                    journal,
+                )
             if ready.success:
                 ready = FlextInfraMisePublication._source_prerequisites(
                     publication.source_states,
@@ -338,9 +356,8 @@ class FlextInfraMisePublication:
                     f"target={publication.before.path}",
                 )
                 continue
-            admitted_publication = publication
             changed = (
-                files.write_publication(admitted_publication)
+                files.write_publication(publication)
                 if observed.success
                 else r[bool].from_failure(observed)
             )
@@ -361,81 +378,231 @@ class FlextInfraMisePublication:
                 publication.before.path,
             )
             written.append(publication.before.path)
-            receipt = files.read_state(
-                publication.before.path,
-                required=publication.replacement is not None,
+            published_receipt = FlextInfraMisePublication._publication_receipt(
+                publication,
             )
-            expected_content = (
-                publication.replacement.content
-                if publication.replacement is not None
-                else None
-            )
-            expected_mode = (
-                publication.replacement.mode
-                if publication.replacement is not None
-                else None
-            )
-            if receipt.failure or (
-                receipt.value.content != expected_content
-                or receipt.value.mode != expected_mode
-            ):
-                cause = (
-                    receipt.exception or ValueError(receipt.error)
-                    if receipt.failure
-                    else ValueError(
-                        f"generated destination changed after publication: "
-                        f"{publication.before.path}",
-                    )
-                )
+            if published_receipt.failure:
                 issues.append(
                     m.Infra.Issue(
                         file=str(publication.before.path),
                         line=0,
                         column=0,
                         code=c.Infra.ToolOutcome.ERROR.value,
-                        message=str(cause),
+                        message=str(published_receipt.error),
                     ),
                 )
-                exception = exception or cause
+                exception = exception or published_receipt.exception
                 continue
             published_states[publication.before.path] = (
                 publication.before,
-                receipt.value,
+                published_receipt.value,
             )
             admitted.append(
-                admitted_publication.model_copy(
+                publication.model_copy(
                     update={
-                        "replacement": receipt.value
+                        "replacement": published_receipt.value
                         if publication.replacement is not None
                         else None
                     }
                 )
             )
-            if publication.index_before is not None:
-                retired = u.Infra.git_retire_index_file(
+            retired = (
+                publication.index_before is not None
+                and u.Infra.git_retire_index_file(
                     m.Infra.GitIndexRetirementRequest(
                         repo_root=publication.project,
                         entry=publication.index_before,
                     ),
                 )
-                if retired.failure:
-                    issues.append(
-                        m.Infra.Issue(
-                            file=str(publication.before.path),
-                            line=0,
-                            column=0,
-                            code=c.Infra.ToolOutcome.ERROR.value,
-                            message=retired.error or "index retirement failed",
-                        ),
-                    )
-                    exception = exception or retired.exception
-        return r[m.Infra.CodegenPhaseOutcome].ok(
+            )
+            if retired is not None and retired.failure:
+                issues.append(
+                    m.Infra.Issue(
+                        file=str(publication.before.path),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=retired.error or "index retirement failed",
+                    ),
+                )
+                exception = exception or retired.exception
+        return result_type.ok(
             m.Infra.CodegenPhaseOutcome(
                 written_files=tuple(written),
                 published_files=tuple(admitted),
                 retained_files=tuple(retained),
                 issues=tuple(issues),
                 exception=exception,
+            ),
+        )
+
+    @staticmethod
+    def _validated_batch_admission(
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        batch_admission: m.Infra.CodegenPhaseOutcome,
+        journal: m.Infra.CodegenTransactionJournal | None,
+    ) -> p.Result[bool]:
+        """Prove the staged publications exactly match the admitted batch.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        batch_analysis = batch_admission.analysis
+        if FlextInfraMisePublication._batch_admission_mismatch(
+            batch_admission,
+            batch_analysis,
+        ):
+            return r[bool].fail(
+                "publication requires its exact native batch admission",
+            )
+        expected = {
+            plan.path
+            for plan in batch_analysis.files
+            if u.Infra.codegen_file_requires_effect(plan)
+        }
+        if expected != {item.before.path for item in publications} or any(
+            item.phase != batch_analysis.phase
+            and not (
+                batch_analysis.phase == c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP
+                and item.phase == c.Infra.CodegenStagedFilePhase.MISE
+            )
+            for item in publications
+        ):
+            return r[bool].fail(
+                "staged publications differ from admitted batch",
+            )
+        plans = {item.path: item for item in batch_analysis.files}
+        if any(
+            item.project != plans[item.before.path].project
+            or (None if item.replacement is None else item.replacement.content)
+            != plans[item.before.path].desired_content
+            or (None if item.replacement is None else item.replacement.mode)
+            != plans[item.before.path].desired_mode
+            for item in publications
+        ):
+            return r[bool].fail(
+                "staged candidates differ from admitted desired outputs",
+            )
+        destinations = FlextInfraMiseArtifactsVerification.plans_current(
+            batch_analysis.files, journal=journal
+        )
+        if destinations.failure:
+            return r[bool].from_failure(destinations)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _batch_admission_mismatch(
+        batch_admission: m.Infra.CodegenPhaseOutcome,
+        batch_analysis: m.Infra.CodegenPhaseAnalysis | None,
+    ) -> bool:
+        """Report whether the admission outcome is not exactly this batch's.
+
+        Returns:
+            True when the admission does not match its own batch analysis.
+
+        """
+        if batch_analysis is None or batch_admission.error or batch_admission.issues:
+            return True
+        if batch_admission.exception is not None:
+            return True
+        return (
+            batch_admission.phase != batch_analysis.phase
+            or batch_admission.admitted_states != batch_analysis.inputs
+        )
+
+    @staticmethod
+    def _generator_authority(
+        ordered: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        published_states: t.MappingKV[
+            Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
+        ],
+        journal: m.Infra.CodegenTransactionJournal | None,
+    ) -> p.Result[bool]:
+        """Reauthenticate generator trees with staged and published authority.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        if journal is None or not journal.generator_trees:
+            return r[bool].ok(value=True)
+        authority = {item.path: item for item in journal.outputs}
+        for staged in ordered:
+            if staged.replacement is None or staged.before.path in published_states:
+                continue
+            encoded = FlextInfraMiseArtifactsJournal.source_record(
+                "staging", staged.replacement
+            )
+            if encoded.failure:
+                return r[bool].from_failure(encoded)
+            authority[encoded.value.path] = encoded.value
+        for _before, after in published_states.values():
+            encoded = FlextInfraMiseArtifactsJournal.source_record("output", after)
+            if encoded.failure:
+                return r[bool].from_failure(encoded)
+            authority[encoded.value.path] = encoded.value
+        return FlextInfraCodegenPreconditions.producer_trees_current(
+            journal.generator_trees,
+            tuple(authority.values()),
+            modules=journal.generator_modules,
+        )
+
+    @staticmethod
+    def _publication_receipt(
+        publication: m.Infra.CodegenStagedFile,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Read back one published destination and prove its staged identity.
+
+        Returns:
+            The resulting ``p.Result[m.Cli.AtomicFileState]``.
+
+        """
+        receipt = files.read_state(
+            publication.before.path,
+            required=publication.replacement is not None,
+        )
+        expected_content = (
+            publication.replacement.content
+            if publication.replacement is not None
+            else None
+        )
+        expected_mode = (
+            publication.replacement.mode
+            if publication.replacement is not None
+            else None
+        )
+        if receipt.failure or (
+            receipt.value.content != expected_content
+            or receipt.value.mode != expected_mode
+        ):
+            cause = (
+                receipt.exception or ValueError(receipt.error)
+                if receipt.failure
+                else ValueError(
+                    f"generated destination changed after publication: "
+                    f"{publication.before.path}",
+                )
+            )
+            return r[m.Cli.AtomicFileState].fail(str(cause), exception=cause)
+        return r[m.Cli.AtomicFileState].ok(receipt.value)
+
+    @staticmethod
+    def _retire_index_file(
+        publication: m.Infra.CodegenStagedFile,
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Retire one portable index binding after its publication.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+
+        """
+        if publication.index_before is None:
+            return r[m.Infra.GitBoolReport].ok(value=m.Infra.GitBoolReport())
+        return u.Infra.git_retire_index_file(
+            m.Infra.GitIndexRetirementRequest(
+                repo_root=publication.project,
+                entry=publication.index_before,
             ),
         )
 

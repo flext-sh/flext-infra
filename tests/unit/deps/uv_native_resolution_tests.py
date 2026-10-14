@@ -609,8 +609,13 @@ class TestsFlextInfraUvNativeResolution:
                 f"resolution-runtime @ {leaves['resolution-runtime'].as_uri()}",
                 member_bound,
             ),
-            optional=optional,
-            groups='[dependency-groups]\ndev = ["resolution-root-dev>=1.0.0"]\n',
+            groups=(
+                ""
+                if optional is None
+                else "[project.optional-dependencies]\n"
+                f"feature = {json.dumps(list(optional))}\n"
+            )
+            + '[dependency-groups]\ndev = ["resolution-root-dev>=1.0.0"]\n',
             uv=(
                 "[tool.uv]\n"
                 f"override-dependencies = {json.dumps(overrides)}\n"
@@ -623,8 +628,13 @@ class TestsFlextInfraUvNativeResolution:
         u.Tests.write_native_resolution_project(
             member,
             member_name,
-            optional=("resolution-member-feature>=1.0.0",) if declares_extras else None,
             groups=(
+                ""
+                if not declares_extras
+                else "[project.optional-dependencies]\nfeature = "
+                f"{json.dumps(['resolution-member-feature>=1.0.0'])}\n"
+            )
+            + (
                 "[dependency-groups]\n"
                 'dev = ["resolution-member-dev>=1.0.0"]\n'
                 'examples = [{include-group = "dev"}, '

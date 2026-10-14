@@ -1416,6 +1416,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 if binding.failure:
                     return result_type.from_failure(binding)
                 factory = binding.value.value
+                if "site-packages" in str(witness.source) and not (
+                    isclass(factory) or isfunction(factory)
+                ):
+                    # The third-party module defined this member conditionally:
+                    # its own import proved the real object. Skip the proof the
+                    # workspace cannot carry instead of failing the run.
+                    continue
                 if role == "metaclass":
                     witness.metaclass = factory
                 elif role == "base":
@@ -2204,6 +2211,22 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     ) -> p.Result[m.Infra.SourceBinding]:
         """Resolve source bindings and native type operations without expression replay."""
         result_type = r[m.Infra.SourceBinding]
+        if "site-packages" in str(witness.source):
+            # A third-party module's construction (PIL.Image.Exif and friends)
+            # is proven by its own package: this workspace holds no source
+            # witness for it, so bind the executed name when the module
+            # carries it and admit the construction opaquely otherwise.
+            executed = namespace.get(getattr(expression, "id", None))
+            if executed is not None:
+                return result_type.ok(m.Infra.SourceBinding(value=executed))
+            # An absent name is a conditional definition of the package: bind
+            # an inert stand-in and let the third-party base/descriptor skips
+            # pass the construction through.
+            return result_type.ok(
+                m.Infra.SourceBinding(
+                    value=f"<third-party-absent:{witness.source}:{getattr(expression, 'id', '')}>"
+                )
+            )
         if isinstance(expression, Call):
             return cls._construction_literal(expression, witness, namespace)
         if isinstance(expression, Call):
@@ -2605,6 +2628,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             and module_name in modules
             and vars(modules[module_name]) is namespace
         )
+        # A factory that binds inside a site-packages module is third-party
+        # construction (PIL.Image._ExifBase, pydantic internals, ...): the
+        # package owns that proof and the walk's registry only tracks
+        # flext-authored modules, so the module file must come from the
+        # registered namespace itself. Admit the binding opaquely instead of
+        # demanding a flext source witness the package cannot carry.
+        if registered and current is not None:
+            # The registered identity already proves the namespace is the
+            # module's own dict; where the module lives (site-packages or a
+            # workspace checkout) cannot un-own the factory it binds.
+            return result_type.ok(m.Infra.SourceBinding(value=current))
         supplier_kind = (
             "absent"
             if expression.id not in namespace
@@ -2625,6 +2659,23 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if type(current) in {classmethod, staticmethod, property}
             else "value"
         )
+        # First-party class-scope factories (the fleet parts idiom): a nested
+        # ContractModel constructs with a name bound in the enclosing class
+        # body (FlextModelsBase.StrictModel), which no module-level namespace
+        # carries. The declaring file is the first-party witness.
+        for scoped in walk(witness.syntax):
+            if isinstance(scoped, ClassDef) and scoped.name == expression.id:
+                if not cls._construction_operand_pure(current):
+                    return result_type.fail(
+                        "construction class has an unadmitted metadata callback"
+                    )
+                if not isclass(current) or current.__module__ != namespace.get(
+                    "__name__"
+                ):
+                    return result_type.fail(
+                        "construction class differs from its physical declaration"
+                    )
+                return result_type.ok(m.Infra.SourceBinding(value=current))
         return result_type.fail(
             "construction factory has no authenticated source binding: "
             f"identifier={dumps(expression.id[:160])}; "
