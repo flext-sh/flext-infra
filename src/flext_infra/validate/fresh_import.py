@@ -60,20 +60,24 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             "import importlib, sys\n"
             "from flext_infra import m\n"
             "from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport\n"
-            "request = m.Infra.NativeImportRequest.model_validate_json(sys.argv[1])\n"
+            "request = m.Infra.NativeImportRequest.model_validate_json(\n"
+            "        sys.stdin.read()\n"
+            "    )\n"
             "for name in request.modules:\n"
             "    importlib.import_module(name)\n"
             "reference = FlextInfraValidateFreshImport.observe_native_reference(request).unwrap()\n"
             "print(reference.model_dump_json())\n"
         )
+        # The request carries every elected source file's content: argv has a
+        # 128 KiB per-argument ceiling (E2BIG), stdin does not.
         observed = u.Cli.run_raw(
             [
                 str(u.Infra.runtime_python(request.runtime_root)),
                 "-c",
                 code,
-                request.model_dump_json(),
             ],
             cwd=request.repository_root,
+            options=m.Cli.ProcessOptions(input_data=request.model_dump_json()),
         )
         if observed.failure:
             return result_type.from_failure(observed)
