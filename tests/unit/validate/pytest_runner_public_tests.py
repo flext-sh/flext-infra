@@ -842,7 +842,8 @@ class TestsFlextInfraPytestRunner:
             "    marker = request.node.get_closest_marker('timeout')\n"
             "    tm.that(None if marker is None else marker.args,\n"
             "            eq=None if unbounded else (budget,))\n"
-            "    stop = pytestconfig.getoption('flext_suite_stop_monotonic', default=None)\n"
+            "    stop = pytestconfig.getoption("
+            "'flext_suite_stop_monotonic', default=None)\n"
             "    tm.that(stop is None, eq=unbounded)\n",
             encoding="utf-8",
         )

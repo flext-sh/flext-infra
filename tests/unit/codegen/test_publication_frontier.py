@@ -1,4 +1,8 @@
-"""Verify ordered publication ownership with real journaled filesystem effects."""
+"""Verify ordered publication ownership with real journaled filesystem effects.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -23,6 +27,7 @@ class TestsPublicationFrontier:
         tmp_path: Path,
         external_drift: bool,
     ) -> None:
+        """Ordered batches share a destination, and external drift fails it."""
         root = u.Tests.git_repository(tmp_path)
         target = root / c.Infra.MAKEFILE_FILENAME
         tm.ok(u.Cli.atomic_write_text_file(target, "VALUE := initial\n"))

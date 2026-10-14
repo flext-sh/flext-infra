@@ -605,7 +605,7 @@ class TestsFlextInfraDeclarationRelocation:
         origin.write_text(sources[origin], encoding="utf-8")
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="unresolved/outer dependency.*Amount"),
+            pytest.raises(ValueError, match=r"unresolved/outer dependency.*Amount"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
@@ -624,7 +624,7 @@ class TestsFlextInfraDeclarationRelocation:
         *,
         independent_group: bool,
     ) -> None:
-        """A native destination refusal recovers only its invocation's dependent group."""
+        """A destination refusal recovers only its invocation's dependent group."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
             body="count: int = Field(default=3)",
@@ -755,7 +755,7 @@ class TestsFlextInfraDeclarationRelocation:
         *,
         accepted: bool,
     ) -> None:
-        """A fresh consumer accepts the full cutover, never a rejected partial runtime."""
+        """A fresh consumer accepts the full cutover, never a partial runtime."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
             body="count: int = Field(default=3)",

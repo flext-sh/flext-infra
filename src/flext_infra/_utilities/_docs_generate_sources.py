@@ -44,7 +44,6 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
-        from flext_cli import u as cli_u
         """
         planned = cli_u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
@@ -75,7 +74,6 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
-        from flext_cli import u as cli_u
         """
         roots = FlextInfraUtilitiesDocsScope.docs_repository_roots(
             repository_root,
@@ -93,7 +91,12 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         scope: m.Infra.DocScope,
         aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
     ) -> t.VariadicTuple[Path]:
-        """Elect the current scope and its actual shared metadata owners."""
+        """Elect the current scope and its actual shared metadata owners.
+
+        Returns:
+            The resulting ``t.VariadicTuple[Path]``.
+
+        """
         return tuple(
             dict.fromkeys((
                 repository_root,
@@ -110,7 +113,15 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         scope: m.Infra.DocScope,
         source_states: t.SequenceOf[m.Cli.AtomicFileState],
     ) -> m.Infra.DocScope:
-        """Derive scope metadata and package identity from the captured inventory."""
+        """Derive scope metadata and package identity from the captured inventory.
+
+        Returns:
+            The resulting ``m.Infra.DocScope``.
+
+        Raises:
+            ValueError: If docs scope is disabled in captured metadata.
+
+        """
         if scope.name == c.Infra.RK_ROOT:
             return scope
         state = FlextInfraUtilitiesDocsScope.project_state(
@@ -124,9 +135,11 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             update={
                 "name": state.project_name,
                 "package_name": state.package_name,
-                "project_class": FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                    state.project_name,
-                    state.docs_meta,
+                "project_class": (
+                    FlextInfraUtilitiesDocsScope.classify_project_from_meta(
+                        state.project_name,
+                        state.docs_meta,
+                    )
                 ),
             }
         )
@@ -137,7 +150,12 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         *,
         source_scope: Path | None = None,
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]]:
-        """Capture presence and physical ancestry used by docs discovery."""
+        """Capture presence and physical ancestry used by docs discovery.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]]``.
+
+        """
         states: list[m.Cli.AtomicDirectoryChainPlan] = []
         for root in roots:
             for (
@@ -164,7 +182,12 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         *,
         source_scope: Path | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
-        """Discover only the elected roots and declared template dependencies."""
+        """Discover only the elected roots and declared template dependencies.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+
+        """
         paths: set[Path] = set()
         for root in roots:
             collected = (
@@ -201,7 +224,12 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         root: Path,
         source_scope: Path | None,
     ) -> t.VariadicTuple[t.Triple[Path, bool, frozenset[str]]]:
-        """Declare the source grammar once for capture and published membership."""
+        """Declare the source grammar once for capture and published membership.
+
+        Returns:
+            The resulting ``t.VariadicTuple[t.Triple[Path, bool, frozenset[str]]]``.
+
+        """
         return (
             (root / "config", False, frozenset({".yaml", ".yml"})),
             *(
@@ -219,7 +247,12 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         *,
         source_scope: Path | None = None,
     ) -> bool:
-        """Derive whether an owned publication becomes an input of the same owner."""
+        """Derive whether an owned publication becomes an input of the same owner.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
         for root in roots:
             if path in {
                 root / c.Infra.GITMODULES,
@@ -383,7 +416,8 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                     )
                 ):
                     return r[bool].fail(
-                        f"{c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER}: {expected.target}",
+                        f"{c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER}: "
+                        f"{expected.target}",
                     )
         discovered = (
             FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths_for_roots(

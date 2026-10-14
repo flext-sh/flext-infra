@@ -83,7 +83,7 @@ class TestsFlextInfraRuntimeRoot:
         hosted: bool,
         ci: bool,
     ) -> None:
-        """Native UV membership and exclusions elect runtime without flattening a child."""
+        """UV membership and exclusions elect runtime without flattening a child."""
         root = tmp_path / "monorepo"
         root.mkdir()
         u.Tests.initialize_git_repo(root)
@@ -190,7 +190,7 @@ class TestsFlextInfraRuntimeRoot:
         hosted: bool,
         ci: bool,
     ) -> None:
-        """Hosted execution selects resolver input without changing physical ownership."""
+        """Hosted execution selects resolver input without changing ownership."""
         workspace = tmp_path / "runtime"
         workspace.mkdir()
         u.Tests.initialize_git_repo(workspace)

@@ -511,7 +511,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if origin.failure:
                 return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(origin)
             source_files.append((name, str(origin.value), ""))
-            definitions = cls._declaration_sources(name, name)
+            definitions = cls._declaration_sources(name)
             if definitions.failure:
                 return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
                     definitions
@@ -532,17 +532,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[t.SequenceOf[t.Triple[str, str, str]]].ok(tuple(source_files))
 
     @classmethod
-
-    @classmethod
-    def _first_party_roots(cls) -> frozenset[str]:
-        """Return the top-level package names the fleet itself authors.
-
-        Returns:
-            The resulting ``frozenset[str]``.
-        """
-        roots = {"flext", "flext_core", "flext_infra", "flext_api", "flext_cli", "ai_hub"}
-        return frozenset(roots)
-
     def _declaration_sources(
         cls,
         module_name: str,
@@ -558,18 +547,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         pending = [
             (value, None, name)
             for name, value in tuple(vars(modules[module_name]).items())
-            if not (
-                isclass(value)
-                and getattr(value, "__module__", "").split(".")[0]
-                not in {
-                    "flext",
-                    "flext_core",
-                    "flext_infra",
-                    "flext_api",
-                    "flext_cli",
-                    "ai_hub",
-                }
-            )
         ]
         if selected is not None:
             if not isfunction(selected):
@@ -987,19 +964,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                 return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
                                     "alias receiver layout differs from its physical declaration"
                                 )
-                            if str(
-                                modules.get(receiver.__module__, None)
-                                and getattr(
-                                    modules[receiver.__module__],
-                                    "__file__",
-                                    "",
-                                )
-                            ).find("site-packages") >= 0:
-                                # A third-party receiver owns its alias proof:
-                                # its package tests verify the descriptor, and
-                                # this workspace holds no source witness for
-                                # conditionally-defined aliases.
-                                continue
                             alias = cls._construction_binding(
                                 aliases[0],
                                 attachment,
@@ -1947,18 +1911,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     ) -> p.Result[p.AttributeProbe]:
         """Build native compiler data without executing an authored class body."""
         result_type = r[p.AttributeProbe]
-        metaclass = type(owner)
-        # Third-party annotated-types protocols (Len, Ge, ...) are dataclasses
-        # under ABCMeta-derived protocol metaclasses: stdlib abstract machinery
-        # executes no authored body on construction, so they are admitted
-        # beside the plain ``type`` metaclass.
-        abc_meta = vars(__import__("abc")).get("ABCMeta")
-        admitted_metaclass = metaclass is type or (
-            abc_meta is not None and issubclass(metaclass, abc_meta)
-        )
-        if not admitted_metaclass or not isinstance(witness.declaration, ClassDef):
+        if not isinstance(witness.declaration, ClassDef):
             return result_type.fail(
-                "native dataclass compiler has an unadmitted metaclass"
+                "native dataclass compiler has no physical class declaration"
             )
         source_bases = witness.bases or (object,)
         if len(owner.__bases__) != len(source_bases) or any(
@@ -1969,34 +1924,12 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 "native dataclass bases differ from their authenticated source bindings"
             )
         for base in source_bases:
-            base_metaclass = type(base)
-            base_abc_meta = vars(__import__("abc")).get("ABCMeta")
-            if base_metaclass is not type and not (
-                base_abc_meta is not None and issubclass(base_metaclass, base_abc_meta)
-            ):
-                return result_type.fail(
-                    "native dataclass base has an unproven metaclass"
-                )
             origin = cls._module_source(base.__module__)
             if origin.failure:
                 return result_type.from_failure(origin)
             witness.code_sources += (
                 (f"{base.__module__}::{base.__qualname__}", str(origin.value), ""),
             )
-        inherited_hook = getattr_static(object, "__init_subclass__")
-        for base in source_bases:
-            hook = getattr_static(base, "__init_subclass__", None)
-            if hook is inherited_hook:
-                continue
-            # Third-party base machinery (typing.Protocol, annotated_types)
-            # runs its own __init_subclass__ on its own classes: inert to this
-            # workspace's provenance. A workspace-authored hook stays refused.
-            hook_module = getattr(hook, "__module__", None)
-            if hook_module is None or hook_module.startswith("flext"):
-                return result_type.fail(
-                    "native dataclass compiler has an unadmitted subclass hook: "
-                    f"{owner.__qualname__}"
-                )
         for base in owner.__mro__[1:]:
             if (
                 getattr_static(type(base), "__getattribute__", None)
@@ -2087,9 +2020,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     f"native compiler field has an unadmitted descriptor default: {name}"
                 )
             attachment[name] = field
-        return result_type.ok(
-            type(owner)(witness.declaration.name, source_bases, attachment)
-        )
+        # Receiver ancestry is authenticated above, never replayed for compiler data.
+        return result_type.ok(type(witness.declaration.name, (object,), attachment))
 
     @classmethod
     def _native_constructor_alias(
@@ -2272,20 +2204,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     ) -> p.Result[m.Infra.SourceBinding]:
         """Resolve source bindings and native type operations without expression replay."""
         result_type = r[m.Infra.SourceBinding]
-        if "site-packages" in str(witness.source):
-            # A third-party module's construction is proven by its own
-            # package: this workspace holds no source witness for it, and
-            # replaying its names against the executed namespace diverges
-            # whenever the package defines names conditionally. Admit the
-            # binding opaquely.
-            return result_type.ok(
-                m.Infra.SourceBinding(
-                    value=namespace.get(
-                        getattr(expression, "id", None),
-                        f"<third-party:{witness.source}>",
-                    )
-                )
-            )
         if isinstance(expression, Call):
             return cls._construction_literal(expression, witness, namespace)
         if isinstance(expression, Call):
@@ -2687,26 +2605,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             and module_name in modules
             and vars(modules[module_name]) is namespace
         )
-        # A factory that binds inside a site-packages module is third-party
-        # construction (PIL.Image.Exif, annotated_types.Ge, ...): its package
-        # owns that proof. Admit the binding opaquely instead of demanding a
-        # flext source witness the package cannot carry.
-        if registered and type(module_name) is str:
-            # The namespace IS the registered module's dict (registered means
-            # identity), so its __file__ is the real module path. The walk's
-            # own registry only tracks flext-authored modules and cannot
-            # resolve third-party ones (PIL.Image, annotated_types, ...).
-            binding_file = str(namespace.get("__file__", "") or "")
-            if (
-                "site-packages" in binding_file
-                and current is not None
-            ):
-                # Private third-party factories (pydantic's _RootModelMetaclass
-                # and siblings) never bind a public name the AST walk can see:
-                # demanding ``expression.id in namespace`` here demanded a
-                # public witness a private factory cannot carry (aihub-l42it.11
-                # workspace zero-hunt). The package owns the proof either way.
-                return result_type.ok(m.Infra.SourceBinding(value=current))
         supplier_kind = (
             "absent"
             if expression.id not in namespace
@@ -2727,27 +2625,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if type(current) in {classmethod, staticmethod, property}
             else "value"
         )
-        # First-party class-scope factories (the fleet parts idiom):
-        # a nested ContractModel constructs with a name bound in the
-        # enclosing class body (FlextModelsBase.StrictModel), which no
-        # module-level namespace carries. The declaring file itself is
-        # the first-party witness: authenticate the binding against the
-        # nested ClassDef found anywhere in the same source.
-        for scoped in walk(witness.syntax):
-            if isinstance(scoped, ClassDef) and scoped.name == expression.id:
-                if not cls._construction_operand_pure(current):
-                    return result_type.fail(
-                        "construction class has an unadmitted metadata callback"
-                    )
-                if not isclass(current) or current.__module__ != namespace.get(
-                    "__name__"
-                ):
-                    return result_type.fail(
-                        "construction class differs from its physical declaration"
-                    )
-                return result_type.ok(m.Infra.SourceBinding(value=current))
         return result_type.fail(
-        "construction factory has no authenticated source binding: "
+            "construction factory has no authenticated source binding: "
             f"identifier={dumps(expression.id[:160])}; "
             f"module={dumps(module_name[:160] if type(module_name) is str else '<invalid>')}; "
             f"package={dumps(package_name[:160] if type(package_name) is str else '<invalid>')}; "

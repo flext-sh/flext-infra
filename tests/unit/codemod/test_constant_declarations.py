@@ -78,7 +78,8 @@ class TestsFlextInfraConstantDeclarations:
                         f"from {package.name}._constants.values import Values; "
                         f"from {provider} import c as provider; "
                         "assert Values.TOKEN == provider.DEFAULT_ENCODING; "
-                        "assert Values.FIELDS == frozenset({provider.DEFAULT_ENCODING}); "
+                        "assert Values.FIELDS == "
+                        "frozenset({provider.DEFAULT_ENCODING}); "
                         "assert Values.model_fields == {}; "
                         "assert Values().model_dump() == {}"
                     ),

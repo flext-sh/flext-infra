@@ -114,10 +114,12 @@ class FlextInfraCodegenPreconditions:
                 owners[namespace].update(identities)
         for namespace, providers in owners.items():
             if len(providers) != 1:
+                ownership = tuple(
+                    (item.path, item.device, item.inode) for item in providers
+                )
                 return result_type.fail(
                     "producer namespace has ambiguous physical distribution ownership: "
-                    f"{namespace}: "
-                    f"{tuple((item.path, item.device, item.inode) for item in providers)}"
+                    f"{namespace}: {ownership}"
                 )
         snapshot = m.Infra.CodegenPhaseAnalysis(
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,

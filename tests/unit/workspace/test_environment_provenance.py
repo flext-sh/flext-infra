@@ -32,13 +32,17 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
 
     @staticmethod
-    @pytest.mark.parametrize("supplier_kind", ["absent", "function", "value"])
+    @pytest.mark.parametrize("supplier_kind", ["absent", "function", "class", "value"])
+    @pytest.mark.parametrize("installed_layout", [False, True])
     def test_unknown_factory_diagnostics_preserve_private_values(
         tmp_path: Path,
         supplier_kind: str,
+        *,
+        installed_layout: bool,
     ) -> None:
         """An unproven binding fails with declaration context, never operand contents."""
-        package = tmp_path / "diagnostic_provider"
+        import_root = tmp_path / "site-packages" if installed_layout else tmp_path
+        package = import_root / "diagnostic_provider"
         tm.ok(u.Cli.ensure_dir(package))
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -46,7 +50,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 "from dataclasses import dataclass\n"
                 "@dataclass\n"
                 "class Payload:\n"
-                "    value: str\n",
+                "    value: str\n"
+                "class Holder:\n"
+                "    class unproven: pass\n",
             )
         )
         consumer = (
@@ -62,6 +68,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "        return 'private-material-must-not-appear'\n"
             "kind = sys.argv[2]\n"
             "if kind == 'function': module.unproven = module.dataclass\n"
+            "elif kind == 'class': module.unproven = module.Holder.unproven\n"
             "elif kind == 'value': module.unproven = Private()\n"
             "source = pathlib.Path(module.__file__)\n"
             "source.write_text(source.read_text().replace('@dataclass', '@unproven'))\n"
@@ -82,7 +89,53 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         tm.ok(
             u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), supplier_kind], cwd=tmp_path
+                [executable, "-c", consumer, str(import_root), supplier_kind],
+                cwd=tmp_path,
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("package_name", ["external_provider", "flext_lookalike"])
+    @pytest.mark.parametrize("defect", ["none", "source", "code"])
+    def test_public_declaration_binding_authenticates_every_owned_namespace(
+        tmp_path: Path,
+        package_name: str,
+        defect: str,
+    ) -> None:
+        """Inherited guard calls keep non-fleet declarations and reject native changes."""
+        package = tmp_path / package_name
+        tm.ok(u.Cli.ensure_dir(package))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / c.Infra.INIT_PY,
+                "class Payload:\n"
+                "    instance = None\n"
+                "    def operation(self): return 'physical-before'\n",
+            )
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
+            "class Derived(provenance): pass\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module(sys.argv[2])\n"
+            "module.Payload.instance = module.Payload()\n"
+            "sources = Derived.loaded_import_sources(module.__name__).unwrap()\n"
+            "assert any(item[0] == module.__name__ + '::Payload.operation' and item[1] == module.__file__ for item in sources)\n"
+            "defect = sys.argv[3]\n"
+            "if defect == 'source':\n"
+            "    source = pathlib.Path(module.__file__)\n"
+            "    source.write_text(source.read_text().replace('physical-before', 'physical-after'))\n"
+            "elif defect == 'code':\n"
+            "    module.Payload.operation.__code__ = module.Payload.operation.__code__.replace(co_name='replaced')\n"
+            "observed = Derived.loaded_import_sources(module.__name__)\n"
+            "assert observed.success == (defect == 'none'), observed\n"
+            "assert module.Payload.instance.operation() == 'physical-before'\n"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [executable, "-c", consumer, str(tmp_path), package_name, defect],
+                cwd=tmp_path,
             )
         )
 

@@ -289,7 +289,7 @@ print('physical-provider-proof=' + mutation)
         *,
         foreign: bool,
     ) -> None:
-        """A journaled source cutover succeeds; unmanifested bytes fail before effects."""
+        """A journaled source cutover succeeds; unmanifested bytes fail early."""
         root = u.Tests.git_repository(tmp_path)
         resources = root / "producer"
         resources.mkdir()
@@ -411,7 +411,8 @@ print('physical-provider-proof=' + mutation)
             "assert sources[0] in bound; "
             "assert bound[sources[0]].content==resource.read_bytes(); "
             "assert any(path.parent.name.endswith('.dist-info') for path in bound); "
-            "assert FlextInfraCodegenPreconditions.producer_current(captured).unwrap(); "
+            "assert FlextInfraCodegenPreconditions."
+            "producer_current(captured).unwrap(); "
             "print('producer-closure-owned=True')"
         )
         try:
@@ -419,7 +420,8 @@ print('physical-provider-proof=' + mutation)
                 original
                 + (
                     f"\npost-help:\n\t@$(PROJECT_INFRA_RUN) -c {quote(probe)}\n"
-                    '\t@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"\n'
+                    "\t@$(PROJECT_FLEXT_INFRA) workspace verify-environment "
+                    '--repository-root "$(RUNTIME_ROOT)"\n'
                 ).encode(c.DEFAULT_ENCODING)
             )
             process = tm.ok(

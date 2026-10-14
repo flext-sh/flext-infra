@@ -22,7 +22,11 @@ class TestsFlextInfraWorkspaceLockCompleteness:
 
     @staticmethod
     def _selected_lock(root: Path) -> Path:
-        """Consume the same physical owner and resolver view as public validation."""
+        """Consume the same physical owner and resolver view as public validation.
+
+        Returns:
+            The resolved lock path.
+        """
         return tm.ok(FlextInfraWorkspaceDetector.resolution_context(root)).lock_path
 
     def test_native_leaf_omissions_have_fresh_empty_groups(self) -> None:

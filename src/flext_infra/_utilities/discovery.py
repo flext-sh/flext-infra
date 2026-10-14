@@ -216,6 +216,9 @@ class FlextInfraUtilitiesDiscovery(
 
         Returns:
             The unique package directory, or None for an absent name/plain module.
+
+        Raises:
+            ValueError: If the declared package has ambiguous physical origins.
         """
         locations = search_paths
         components = package_name.split(".")

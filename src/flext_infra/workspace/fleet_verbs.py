@@ -58,29 +58,70 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
         selected_members = self._selected_members(workspace, root)
         if selected_members.failure:
             return r[m.Infra.LifecycleReport].from_failure(selected_members)
-        scope = tuple(root / member.path for member in selected_members.value)
-        for member in selected_members.value:
-            makefile = root / member.path / c.Infra.MAKEFILE_FILENAME
-            if not makefile.is_file():
-                return r[m.Infra.LifecycleReport].fail(
-                    f"fleet member Makefile is missing: {makefile}",
-                )
         # The service contract stores enum values; str() reads either form.
         verb = str(self.verb)
-        output_dir = root / c.Infra.FLEET_REPORT_RELATIVE_PATH.with_suffix("")
-        pending = tuple(
-            m.Infra.LifecycleReceipt(
-                command=(
-                    c.Infra.MAKE,
-                    "-f",
-                    (member.path / c.Infra.MAKEFILE_FILENAME).as_posix(),
-                    verb,
-                ),
-                cwd=root,
-                output_file=output_dir / f"{member.distribution}-{verb}.log",
-            )
-            for member in selected_members.value
+        pending = self._pending_receipts(root, selected_members.value, verb)
+        if pending.failure:
+            return r[m.Infra.LifecycleReport].from_failure(pending)
+        return self._published_report(
+            root,
+            selected_members.value,
+            pending.value,
+            verb,
         )
+
+    @staticmethod
+    def _pending_receipts(
+        root: Path,
+        members: t.SequenceOf[m.Infra.RepositoryRef],
+        verb: str,
+    ) -> p.Result[t.SequenceOf[m.Infra.LifecycleReceipt]]:
+        """Build one serial receipt per selected member on its own Makefile.
+
+        Returns:
+            The pending receipts, or the failure naming the missing Makefile.
+
+        """
+        result_type = r[t.SequenceOf[m.Infra.LifecycleReceipt]]
+        for member in members:
+            makefile = root / member.path / c.Infra.MAKEFILE_FILENAME
+            if not makefile.is_file():
+                return result_type.fail(
+                    f"fleet member Makefile is missing: {makefile}",
+                )
+        output_dir = root / c.Infra.FLEET_REPORT_RELATIVE_PATH.with_suffix("")
+        return result_type.ok(
+            tuple(
+                m.Infra.LifecycleReceipt(
+                    command=(
+                        c.Infra.MAKE,
+                        "-f",
+                        (member.path / c.Infra.MAKEFILE_FILENAME).as_posix(),
+                        verb,
+                    ),
+                    cwd=root,
+                    output_file=output_dir / f"{member.distribution}-{verb}.log",
+                )
+                for member in members
+            ),
+        )
+
+    def _published_report(
+        self,
+        root: Path,
+        members: t.SequenceOf[m.Infra.RepositoryRef],
+        pending: t.SequenceOf[m.Infra.LifecycleReceipt],
+        verb: str,
+    ) -> p.Result[m.Infra.LifecycleReport]:
+        """Run the pending receipts serially and publish the report evidence.
+
+        Returns:
+            The published lifecycle report, or the first member failure with
+            its captured output.
+
+        """
+        result_type = r[m.Infra.LifecycleReport]
+        scope = tuple(root / member.path for member in members)
         u.Cli.info(f"[fleet {verb}] {len(pending)} members, serial dependency order")
         attempted: list[m.Infra.LifecycleReceipt] = []
         for receipt in pending:
@@ -103,16 +144,16 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
             relative_path=c.Infra.FLEET_REPORT_RELATIVE_PATH,
         )
         if published.failure:
-            return r[m.Infra.LifecycleReport].from_failure(published)
+            return result_type.from_failure(published)
         failed = next(
             (receipt for receipt in receipts if receipt.error is not None),
             None,
         )
         if failed is not None:
-            return r[m.Infra.LifecycleReport].fail(
+            return result_type.fail(
                 f"{failed.error}\n{self._captured(failed.output_file)}",
             )
-        return r[m.Infra.LifecycleReport].ok(report)
+        return result_type.ok(report)
 
     @staticmethod
     def _run_member(receipt: m.Infra.LifecycleReceipt) -> m.Infra.LifecycleReceipt:

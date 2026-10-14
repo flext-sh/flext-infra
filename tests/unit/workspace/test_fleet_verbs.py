@@ -79,7 +79,11 @@ class TestsFlextInfraWorkspaceFleetVerbs:
     def _runtime_graph(
         root: Path, *, provider_failure: bool = False
     ) -> tuple[str, ...]:
-        """Compose real Make consumers with dev and examples backedges."""
+        """Compose real Make consumers with dev and examples backedges.
+
+        Returns:
+            The expected member execution order.
+        """
         identity = u.Tests.BeadsIdentity(
             workspace="fleet-order",
             database="fleet_order",
@@ -187,7 +191,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
             repository_root=root,
             verb=c.Infra.FleetVerb.FIX,
         )
-        with pytest.raises(ValueError, match="^cyclic dependency graph:"):
+        with pytest.raises(ValueError, match=r"^cyclic dependency graph:"):
             service.execute()
 
         tm.that((root / "fleet.log").exists(), eq=False)

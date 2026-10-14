@@ -142,57 +142,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             else None,
         )
         custom_groups: t.Pair[
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-        ] = ((), ())
-        if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
-            custom = cls._sync_root_environment_groups(
-                source,
-                pyproject_content,
-                member_groups,
-            )
-            if custom.failure:
-                return r[str].from_failure(custom)
-            custom_groups = custom.value
-        grouped = cls._sync_dependency_groups(
-            source,
-            project_name=project_name,
-            required_dev_dependencies=required_dev_dependencies,
-            provenance=source_context,
-        )
-        if grouped.failure:
-            return r[str].from_failure(grouped)
-        cls._sync_member_environment_dev(
-            source,
-            (*member_requests, *member_groups, *member_requirements),
-        )
-        requirement_sources = cls._normalized_requirement_sources(
-            source,
-            source_context,
-        )
-        if requirement_sources.failure:
-            return r[str].from_failure(requirement_sources)
-        (
-            local_requirements,
-            declared_sources,
-            candidate_sources,
-        ) = requirement_sources.value
-        if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
-            owned = cls._sync_root_environment_provenance(
-                source,
-                custom_groups,
-                source_context,
-            )
-            if owned.failure:
-                return r[str].from_failure(owned)
-        cls._remove_legacy_tooling(source)
-        return cls._synced_conform_tables(
-            source,
-            uv_resolution=uv_resolution,
-            candidate_sources=candidate_sources,
-            local_requirements=(*local_requirements, *member_requirements),
-            workspace=workspace,
-        ).flat_map(lambda _synced: cls._render_pyproject(source))
 
     @classmethod
     def _normalized_requirement_sources(

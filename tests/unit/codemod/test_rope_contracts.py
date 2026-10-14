@@ -247,13 +247,15 @@ class TestsFlextInfraRopeContracts:
             "    values: list[str] = Field(default_factory=list)\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as rope:
-            with pytest.raises(ValueError, match="destination u.empty is shadowed"):
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match=r"destination u.empty is shadowed"),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=rope,
+                sources={path: source},
+            )
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
@@ -271,7 +273,7 @@ class TestsFlextInfraRopeContracts:
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="destination u.type_adapter is shadowed"),
+            pytest.raises(ValueError, match=r"destination u.type_adapter is shadowed"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,

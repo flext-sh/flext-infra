@@ -176,7 +176,7 @@ class TestsFlextInfraDocsGeneratorBundle:
     def test_admitted_inputs_remain_the_publication_snapshot(
         tmp_path: Path,
     ) -> None:
-        """A later source edit belongs to the next capture, preserving admitted bytes."""
+        """A later source edit belongs to the next capture, bytes preserved."""
         root = u.Tests.git_repository(tmp_path)
         source = root / "input.py"
         source.write_bytes(b"value = 1\n")

@@ -443,6 +443,9 @@ def _ensure_provisioned(
     Testmon inventory and selection collect tests without network or writes.
     Provisioning belongs to the item that actually consumes the checkout, so
     its cost and failure remain visible to the test deadline and report.
+
+    Raises:
+        ValueError: If a Make profile is requested without its Git environment.
     """
     parent.mkdir(parents=True, exist_ok=True)
     with u.Infra.codegen_transaction_lease(parent / receipt):
@@ -621,7 +624,11 @@ def real_detector_project(
 def installed_artifact_consumer(
     session_runtime: p.Tests.SessionRuntime,
 ) -> Iterator[Path]:
-    """Lease the native consumer with its installed artifacts restored afterward."""
+    """Lease the native consumer with its installed artifacts restored afterward.
+
+    Yields:
+        The leased consumer repository root.
+    """
     with session_runtime.lease(
         _provision_consumer_template,
         mutable_environment=True,

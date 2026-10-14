@@ -1,4 +1,8 @@
-"""Observe bootstrap coverage through real Git members and installed editables."""
+"""Observe bootstrap coverage through real Git members and installed editables.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -86,7 +90,11 @@ class TestsMakeBootstrapPublication:
         check_only: bool = False,
         hosted: bool = False,
     ) -> p.Cli.CommandOutput:
-        """Run the real CLI with an explicit native topology and gate partition."""
+        """Run the real CLI with an explicit native topology and gate partition.
+
+        Returns:
+            The completed CLI command outcome.
+        """
         policy = config.Infra.codegen.make.uv_resolution
         ci = config.Infra.codegen.make.ci
         outcome = tm.ok(

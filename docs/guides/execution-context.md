@@ -123,6 +123,11 @@ fresh pre-planning authentication. Distinct metadata directory identities remain
 distinct even when their declared distribution names match. A Git-locked rendering
 engine is checked by the typed environment provenance owner against both URL and
 commit; absent PEP 610 provenance never becomes a version-only success.
+Registered distribution metadata and physical provider ownership remain the producer
+selection authority. Loaded declaration authentication has no separate first-party
+package inventory: elected third-party providers retain the same source, descriptor,
+and executed-code requirements. Namespace spelling or a `site-packages` path never
+authorizes omitting a declaration or accepting an otherwise unproven factory.
 Selecting writable editable members authenticates the installed PEP 610 receipt,
 editable pointer inventory, and declared Git checkout association. This election
 does not import member code or certify its execution. The normal environment
