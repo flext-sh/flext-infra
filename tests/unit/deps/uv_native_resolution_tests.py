@@ -9,12 +9,16 @@ from __future__ import annotations
 import json
 from copy import deepcopy
 from pathlib import Path
+from typing import cast
 
 import pytest
 from packaging.requirements import Requirement
 
 from flext_infra import config
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 from tests import c, m, t, tm, u
 
 
@@ -113,8 +117,9 @@ class TestsFlextInfraUvNativeResolution:
             root,
             root_name,
             dependencies=(requirements["runtime"],),
-            optional=(requirements["extra"],),
             groups=(
+                "[project.optional-dependencies]\n"
+                f"extra = [{json.dumps(requirements['extra'])}]\n"
                 "[dependency-groups]\n"
                 f"{dev} = [{json.dumps(requirements['development'])}]\n"
                 f'{codegen} = [{{include-group = "{dev}"}}]\n'
@@ -254,7 +259,7 @@ class TestsFlextInfraUvNativeResolution:
                 update={
                     "name": name,
                     "distribution": name,
-                    "url": f"{line.base_url.rstrip('/')}/{name}.git",
+                    "url": f"{(line.base_url or 'https://github.com/flext-sh/').rstrip('/')}/{name}.git",
                     "path": (
                         checkout.relative_to(runtime_root)
                         if name == supplier.distribution
@@ -263,7 +268,7 @@ class TestsFlextInfraUvNativeResolution:
                 },
             )
             captured = tm.ok(
-                u.Infra.member_project_declaration(
+                FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
                     runtime_root,
                     declared,
                     lock_state=lock_state,
@@ -362,7 +367,10 @@ class TestsFlextInfraUvNativeResolution:
             A no-index qualification copy retaining internal requirements in
             their original categories, including extras and marker branches.
         """
-        payload = deepcopy(u.Tests.toml_mapping(u.Cli.toml_unwrap_item(document)))
+        payload = cast(
+            "dict[str, t.JsonValue]",
+            deepcopy(u.Tests.toml_mapping(u.Cli.toml_unwrap_item(document))),
+        )
         constraints: list[str] = []
 
         def internal(requirements: t.JsonValue) -> list[t.JsonValue]:
@@ -391,19 +399,29 @@ class TestsFlextInfraUvNativeResolution:
                 )
             return selected
 
-        project = u.Tests.toml_mapping(payload["project"])
+        project = cast(
+            "dict[str, t.JsonValue]", u.Tests.toml_mapping(payload["project"])
+        )
         project["dependencies"] = internal(project.get("dependencies", []))
-        optional = u.Tests.toml_mapping(project.get("optional-dependencies", {}))
+        optional = cast(
+            "dict[str, t.JsonValue]",
+            u.Tests.toml_mapping(project.get("optional-dependencies", {})),
+        )
         for extra, requirements in optional.items():
             optional[extra] = internal(requirements)
         project["optional-dependencies"] = optional
-        groups = u.Tests.toml_mapping(payload.get("dependency-groups", {}))
+        groups = cast(
+            "dict[str, t.JsonValue]",
+            u.Tests.toml_mapping(payload.get("dependency-groups", {})),
+        )
         for group, requirements in groups.items():
             groups[group] = internal(requirements)
         payload["project"] = project
         payload["dependency-groups"] = groups
-        tool = u.Tests.toml_mapping(payload.get("tool", {}))
-        uv = u.Tests.toml_mapping(tool.get("uv", {}))
+        tool = cast(
+            "dict[str, t.JsonValue]", u.Tests.toml_mapping(payload.get("tool", {}))
+        )
+        uv = cast("dict[str, t.JsonValue]", u.Tests.toml_mapping(tool.get("uv", {})))
         if "override-dependencies" in uv:
             uv["override-dependencies"] = internal(uv["override-dependencies"])
         constraints.extend(
@@ -1378,9 +1396,12 @@ class TestsFlextInfraUvNativeResolution:
             root,
             root_name,
             dependencies=(f"identity-runtime @ {leaves['identity-runtime'].as_uri()}",),
-            optional=optional,
-            groups=groups,
-            uv=policy,
+            groups=(
+                "[project.optional-dependencies]\n"
+                f"extra = {json.dumps(list(optional))}\n"
+                f"{groups}"
+                f"{policy}"
+            ),
         )
         resolution_root = root
         if identity == "virtual-root":

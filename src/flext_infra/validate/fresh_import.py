@@ -67,15 +67,13 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     # The origin gate runs inside the same probe namespace as the export
     # resolution, so its loop names must never rebind the probed ``module``.
     ORIGIN_CODE: ClassVar[str] = (
-        "for loaded_name, loaded_module in tuple(sys.modules.items()):\n"
+        "from flext_infra.workspace.environment_provenance import "
+        "FlextInfraWorkspaceEnvironmentProvenance as native_origins\n"
+        "for loaded_name in tuple(sys.modules):\n"
         "    for package, directory in {origins!r}:\n"
         "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
-        "            origin = getattr(loaded_module, '__file__', None)\n"
-        "            if (\n"
-        "                origin is None\n"
-        "                or not Path(origin).resolve()\n"
-        "                .is_relative_to(Path(directory))\n"
-        "            ):\n"
+        "            origin = native_origins.module_source(loaded_name).unwrap()\n"
+        "            if not origin.resolve().is_relative_to(Path(directory)):\n"
         "                raise ImportError(\n"
         "                    f'{loaded_name}: origin {origin!r} '\n"
         "                    f'is outside {directory}'\n"

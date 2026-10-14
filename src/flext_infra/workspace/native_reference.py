@@ -198,17 +198,16 @@ class FlextInfraWorkspaceNativeReference:
                     view_root / root.relative_to(request.repository_root)
                     for root in request.import_roots
                     if root.is_relative_to(request.repository_root)
+                    and not root.is_relative_to(environment)
                 )
             )
-            selections = dumps(
-                tuple(item.model_dump(mode="json") for item in request.modules)
-            )
+            selections = tuple(item.model_dump_json() for item in request.modules)
             code = (
                 consumer.PRELUDE
                 + f"sys.path[:0] = {tuple(str(root) for root in roots)!r}\n"
-                + "import json\nfrom flext_infra import m\n"
+                + "from flext_infra import m\n"
                 + "from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native\n"
-                + f"selections = tuple(m.Infra.SourceClassReference.model_validate(item) for item in json.loads({selections!r}))\n"
+                + f"selections = tuple(m.Infra.SourceClassReference.model_validate_json(item) for item in {selections!r})\n"
                 + "for item in selections: importlib.import_module(item.target)\n"
                 + consumer.ORIGIN_CODE.replace(
                     consumer.ORIGINS_PLACEHOLDER,
@@ -219,11 +218,13 @@ class FlextInfraWorkspaceNativeReference:
                                 str(
                                     view_root
                                     / source.relative_to(request.repository_root)
+                                    if source.is_relative_to(request.repository_root)
+                                    and not source.is_relative_to(environment)
+                                    else source
                                 ),
                             )
                             for namespace, source in authority.generator_modules
-                            if source.is_relative_to(request.repository_root)
-                            and source.is_dir()
+                            if source.is_dir()
                         )
                     ),
                 )
@@ -1061,7 +1062,7 @@ class FlextInfraWorkspaceNativeReference:
                 or type(value) in {property, classmethod, staticmethod}
                 or cls._callable_storage(value)
             )
-        visited: dict[int, str] = {}
+        visited: dict[int, tuple[p.AttributeProbe, str]] = {}
         while pending:
             binding, value, supplier, owner_source = pending.pop()
             if id(value) in visited:
@@ -1072,11 +1073,11 @@ class FlextInfraWorkspaceNativeReference:
                         supplier=supplier,
                         name="",
                         qualname="",
-                        operands=(("target", visited[id(value)]),),
+                        operands=(("target", visited[id(value)][1]),),
                     ),
                 )
                 continue
-            visited[id(value)] = binding
+            visited[id(value)] = (value, binding)
             if any(owner is GenericAlias for owner in _native_mro(type(value))):
                 evidence.append(
                     m.Infra.NativeBindingEvidence(
@@ -1549,7 +1550,7 @@ class FlextInfraWorkspaceNativeReference:
             ))
             closure = getclosurevars(value)
             nonlocals = closure.nonlocals
-            global_bindings = closure.builtins | closure.globals
+            global_bindings = dict(sorted((closure.builtins | closure.globals).items()))
             globals_used = tuple(global_bindings.values())
             if selected:
                 # Query actual native global/attribute edges, not every name in
@@ -1770,14 +1771,29 @@ class FlextInfraWorkspaceNativeReference:
         ):
             return r[bool].fail("native reference epoch/runtime differs")
         expected = {item.binding: item for item in reference.bindings}
-        if set(expected) != {item.binding for item in observed.bindings}:
-            return r[bool].fail("producer executable binding inventory differs")
+        actual = {item.binding for item in observed.bindings}
+        if set(expected) != actual:
+            only_native = actual - expected.keys()
+            only_imported = expected.keys() - actual
+            return r[bool].fail(
+                "producer executable binding inventory differs: "
+                f"only_native_count={len(only_native)} "
+                f"first={sorted(only_native, key=len)[:3]}; "
+                f"only_imported_count={len(only_imported)} "
+                f"first={sorted(only_imported, key=len)[:3]}"
+            )
         for item in observed.bindings:
             native = expected[item.binding]
-            if item.model_dump(exclude={"code", "operational"}) != native.model_dump(
-                exclude={"code", "operational"}
-            ):
-                return r[bool].fail(f"producer native binding differs: {item.binding}")
+            live = item.model_dump(exclude={"code", "operational"})
+            cold = native.model_dump(exclude={"code", "operational"})
+            if live != cold:
+                operands = dict(item.operands)
+                imported = dict(native.operands)
+                return r[bool].fail(
+                    f"producer native binding differs: {item.binding}; "
+                    f"fields={tuple(key for key in live if key != 'operands' and live[key] != cold[key])}; "
+                    f"operands={tuple(sorted(key for key in operands.keys() | imported.keys() if operands.get(key) != imported.get(key)))}"
+                )
             if item.code is None or native.code is None:
                 if item.code != native.code:
                     return r[bool].fail(

@@ -34,7 +34,7 @@ class TestsPublicationFrontier:
             eq=str(cause),
         )
         with pytest.raises(m.ValidationError):
-            receipt.error = ""
+            object.__setattr__(receipt, "error", "")
         with pytest.raises(m.ValidationError):
             m.Infra.CodegenPhaseOutcome.model_validate({"unowned": True})
 

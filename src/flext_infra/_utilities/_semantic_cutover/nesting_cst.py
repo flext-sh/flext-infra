@@ -257,7 +257,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             c.Infra.StatementCategory.CLASS_DEF,
             c.Infra.StatementCategory.FUNC_DEF,
         }:
-            return FlextInfraUtilitiesRopeStructure._header_name(statement.text)
+            return FlextInfraUtilitiesRopeStructure.header_name(statement.text)
         return FlextInfraUtilitiesRopeStructure.target_name(statement)
 
     @staticmethod

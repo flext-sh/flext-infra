@@ -419,7 +419,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         native_consumer(consumer, defect)
 
     @staticmethod
-    def test_fresh_native_source_authenticates_the_loaded_guard() -> None:
+    def test_fresh_native_source_authenticates_the_loaded_guard(
+        native_consumer: p.Tests.NativeConsumer,
+    ) -> None:
         """The public guard accepts its own freshly imported native declarations."""
         consumer = (
             "observed = authenticate(preconditions.__module__)\n"

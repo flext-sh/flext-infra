@@ -131,7 +131,7 @@ class TestsFlextInfraModernizerSourceReferences:
         )["poetry-kit"]
         poetry_source = tm.not_none(poetry_source)
         tm.that(poetry_source, is_=Mapping)
-        poetry_source = cast(t.JsonMapping, poetry_source)
+        poetry_source = cast("t.JsonMapping", poetry_source)
         tm.that(poetry_source["git"], eq=remote)
         tm.that(poetry_source["rev"], eq=new_ref)
         tm.that(poetry_source["optional"], eq=True)

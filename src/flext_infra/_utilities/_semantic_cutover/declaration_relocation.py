@@ -836,7 +836,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
     ) -> set[str]:
-        imports = cls._native_import_infos(project, module)
+        imports = cls.native_import_infos(project, module)
         names = {
             alias or name.partition(".")[0]
             for information in imports
@@ -1210,7 +1210,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             )
             raise ValueError(msg)
         imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo] = {}
-        for information in cls._native_import_infos(project, module):
+        for information in cls.native_import_infos(project, module):
             for name, alias in information.names_and_aliases:
                 imports[alias or name.split(".")[0]] = information
         dependencies, required = cls._payload_dependency_routes(
@@ -1255,7 +1255,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         return tuple(required), dependencies
 
     @classmethod
-    def _native_import_infos(
+    def native_import_infos(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,

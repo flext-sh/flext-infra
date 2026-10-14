@@ -380,8 +380,8 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             line = module.lines.get_line_number(begin)
             selected: list[str] = []
 
-            def collect(_scope: p.Infra.RopeScope, expression: str) -> None:
-                selected.append(expression)
+            def collect(_scope: p.Infra.RopeScope, expression: str, *, _selected: list[str] = selected) -> None:
+                _selected.append(expression)
 
             cls.rewrite_type_source(literal, project, scope, collect)
             yield from ((expression, scope, line) for expression in selected)

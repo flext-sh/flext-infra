@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 from typing import Literal
 
@@ -273,6 +274,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             The resulting ``p.Result[m.Infra.CodegenTransactionJournal]``.
 
         """
+        inventory_for_parent = cache(u.Cli.atomic_inventory_physical_tree)
         finalized: list[m.Infra.CodegenStagingIntent] = []
         for intent in journal.staging_intents:
             observed = files.read_state(intent.before.path, required=False)
@@ -291,7 +293,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 return r[m.Infra.CodegenTransactionJournal].fail(
                     f"staging bytes differ from durable intention: {current.path}",
                 )
-            inventory = u.Cli.atomic_inventory_physical_tree(current.path.parent)
+            inventory = inventory_for_parent(current.path.parent)
             if inventory.failure:
                 return r[m.Infra.CodegenTransactionJournal].from_failure(inventory)
             receipt = next(
@@ -417,7 +419,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             The resulting ``p.Result[m.Cli.AtomicFileState]``.
 
         """
-        content = journal.model_dump_json(indent=2).encode(c.DEFAULT_ENCODING)
+        content = journal.model_dump_json().encode(c.DEFAULT_ENCODING)
         if expected.path != layout.journal_path:
             return r[m.Cli.AtomicFileState].fail(
                 "codegen journal expected state belongs to another path",

@@ -754,7 +754,7 @@ class TestsFlextInfraGithubGateAttestation:
         source = m.Infra.GateCommandEvidence.model_validate_json(
             request.receipt.read_bytes()
         )
-        tm.ok(u.Infra.git_create_gate_attestation(request))
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         (tmp_path / source.reports[0].path).unlink()
 
         tm.fail(
@@ -834,7 +834,11 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test gate attestation normalizes network remote git suffix."""
         allowed_signers = signed_repository_factory(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(self._request(tmp_path)))
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                self._request(tmp_path), self._context(tmp_path)
+            )
+        )
         remote = tm.ok(
             u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=tmp_path)),
         ).text
@@ -859,7 +863,11 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test gate attestation verifies selected commit with equal tree."""
         allowed_signers = signed_repository_factory(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(self._request(tmp_path)))
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                self._request(tmp_path), self._context(tmp_path)
+            )
+        )
         selected_sha = self._head(tmp_path)
         selected_tree = self._rev_parse(tmp_path, "HEAD^{tree}")
         tm.ok(
@@ -888,7 +896,11 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test gate attestation rejects incomplete coverage."""
         allowed_signers = signed_repository_factory(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(self._request(tmp_path)))
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                self._request(tmp_path), self._context(tmp_path)
+            )
+        )
 
         verified = self._verify(
             tmp_path,

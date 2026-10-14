@@ -83,7 +83,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             )
         return result_type.ok(
             m.Infra.DeptryScan(
-                scanned_files=coverage[0],
+                scanned_files=coverage.value,
                 venv_bin=venv_bin,
                 source=source,
                 native=output,

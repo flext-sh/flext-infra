@@ -274,7 +274,10 @@ class FlextInfraCodegenPreconditions:
         source_files: list[Path] = []
         for path in dict.fromkeys((
             *roots.values(),
-            *(Path(declaration or origin) for _, origin, declaration in observed.sources),
+            *(
+                Path(declaration or origin)
+                for _, origin, declaration in observed.sources
+            ),
         )):
             if path in trees or path in states:
                 continue
@@ -459,8 +462,17 @@ class FlextInfraCodegenPreconditions:
             if observed.failure:
                 return result_type.from_failure(observed)
             if observed.value != tree:
+                previous = {entry.path: entry for entry in tree.entries}
+                current = {entry.path: entry for entry in observed.value.entries}
+                changed = sorted(
+                    path
+                    for path in previous.keys() | current.keys()
+                    if previous.get(path) != current.get(path)
+                )
                 return result_type.fail(
-                    f"cold producer resource tree changed: {tree.root.path}"
+                    f"cold producer resource tree changed: {tree.root.path}; "
+                    f"root_changed={tree.root != observed.value.root} "
+                    f"changed_count={len(changed)} first={changed[:3]}"
                 )
         return result_type.ok(value=True)
 

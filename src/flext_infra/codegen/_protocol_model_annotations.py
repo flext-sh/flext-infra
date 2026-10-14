@@ -127,7 +127,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
             ),
         }
         owner = FlextInfraUtilitiesSemanticDeclarationRelocation
-        for information in owner._native_import_infos(
+        for information in owner.native_import_infos(
             self.workspace.rope_project, module
         ):
             aliases = tuple(
@@ -140,7 +140,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
             imported = (
                 u.Infra.from_import(information.module_name, information.level, aliases)
                 if isinstance(information, p.Infra.RopeFromImport)
-                else owner._normal_import(aliases)
+                else owner.normal_import(aliases)
             )
             statement = imported.get_import_statement()
             self.imports[statement] = statement

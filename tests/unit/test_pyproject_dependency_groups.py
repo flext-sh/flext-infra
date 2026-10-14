@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import json
+from typing import cast
 
 import pytest
 from packaging.requirements import Requirement
@@ -355,9 +356,10 @@ class TestsPyprojectDependencyGroups:
         )
         tm.that(
             groups["examples"],
-            eq=u.Tests.toml_mapping(u.Tests.toml_doc(source))["dependency-groups"][
-                "examples"
-            ],
+            eq=cast(
+                "t.JsonMapping",
+                u.Tests.toml_mapping(u.Tests.toml_doc(source))["dependency-groups"],
+            )["examples"],
         )
 
     @pytest.mark.parametrize(
