@@ -1,7 +1,7 @@
 {% from "base_test_report_recipe.j2" import test_report_recipe -%}
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
 {% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe, mise_install_command, mise_lock_pin_reader -%}
-{% from "runtime_context_recipe.j2" import git_root_reader, runtime_root_reader -%}
+{% from "runtime_context_recipe.j2" import physical_file_reader, git_root_reader, runtime_root_reader -%}
 {% set uv_tool = toolchain.tools | selectattr("name", "equalto", "uv") | first %}
 {# ---- Shared command bases --------------------------------------------------
    Every verb states only its delta (which gate list, which mode); the checker
@@ -10,6 +10,9 @@
    drift from another. #}
 {%- macro gates_csv(names) -%}{{ names|join(",") }}{%- endmacro -%}
 {%- macro gates_banner(names) -%}{{ names|join(" ") }}{%- endmacro -%}
+{%- macro custom_reference_count(reference) -%}
+$(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+{%- endmacro -%}
 {%- macro check_run(gates, extra="") -%}$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{{ gates }}"{{ extra }}{%- endmacro -%}
 {%- macro local_check_body() -%}
 {{ "\t" }}@set -eu; \
@@ -119,6 +122,9 @@ export FLEXT_PYTEST_TARGET_FILE="$(FILE)"; \
 # End SECTION: header
 
 override SHELL := /bin/sh
+ifneq ($(strip $(MAKEFILES)),)
+$(error MAKEFILES makes the selected project Makefile ambiguous; invoke one project Makefile directly)
+endif
 # GNU MAKE_COMMAND may be a bare name. Resolve it before changing PATH so
 # recursive lifecycle calls keep this invoker instead of selecting a Mise shim.
 ifneq ($(filter /%,$(MAKE_COMMAND)),)
@@ -129,7 +135,10 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve current Make executable: $(MAKE_COMMAND))
 endif
 endif
-override SELF_MAKE_EXECUTABLE := $(realpath $(SELF_MAKE_EXECUTABLE))
+override SELF_MAKE_EXECUTABLE := $(shell {{ physical_file_reader('"$(SELF_MAKE_EXECUTABLE)"', true) }})
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve physical Make executable: $(MAKE_COMMAND))
+endif
 ifeq ($(strip $(SELF_MAKE_EXECUTABLE)),)
 $(error Current Make executable has no physical path: $(MAKE_COMMAND))
 endif
@@ -278,7 +287,7 @@ override FLEXT_PYTEST_TESTMON_DATABASE = $(if $(strip $(PYTEST_CACHE_HOME)),$(PY
 # absolute checkout path, never under /tmp and never inside a versioned tree.
 override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $({{ make.pytest_scratch.user_home_environment_variable }})),$({{ make.pytest_scratch.user_home_environment_variable }})/{{ make.pytest_scratch.home_relative_directory }}/{{ make.pytest_scratch.state_directory_name }}$(PROJECT_ROOT)/{{ make.pytest_scratch.namespace }})
 # Profiles sit beside the other reports of this checkout (.reports is ignored).
-PROFILE_REPORTS_DIR = $(PROJECT_ROOT)/$(dir $(PYTEST_REPORTS_DIR))profiles
+PROFILE_REPORTS_DIR = $(PROJECT_ROOT)/$(shell dirname -- "$(PYTEST_REPORTS_DIR)")/profiles
 override PYTEST_RUN_TIMEOUT_SECONDS := {{ pytest.run_timeout_overrides.get(dist, pytest.run_timeout_seconds) }}
 override PYTEST_TERMINATION_GRACE_SECONDS := {{ pytest.termination_grace_seconds }}
 override PYTEST_TIMEOUT_EXIT_CODE := {{ mypy_timeout_exit_code }}
@@ -297,15 +306,23 @@ override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
 # End SECTION: public boundary
 
 # === SECTION: derived paths (managed) ===
-# Source: computed (git rev-parse, MAKEFILE_LIST, abspath)
+# Source: computed (git rev-parse, MAKEFILE_LIST, physical path readers)
 # Rule: PROJECT_ROOT is the checkout that OWNS this Makefile, never the caller's
 # CWD. Deriving it from `pwd -P` made a member validate whatever tree the
 # caller happened to stand in: `make -f <member>/Makefile` invoked from the
 # superproject resolved RUFF_PATHS to the SUPERPROJECT's src/tests, so the
 # member linted files it does not even contain. With many shared worktrees that
 # silently validates the wrong tree.
-override SELF_MAKEFILE := $(realpath $(firstword $(MAKEFILE_LIST)))
-override MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
+# Capture the one selected Makefile before any project include. GNU Make's
+# filename-list functions split whitespace inside a legitimate physical path.
+override SELF_MAKEFILE := $(shell {{ physical_file_reader('"$(MAKEFILE_LIST)"', true) }})
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot authenticate selected Makefile: $(MAKEFILE_LIST))
+endif
+override MAKEFILE_ROOT := $(shell dirname -- "$(SELF_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve selected Makefile directory: $(SELF_MAKEFILE))
+endif
 override export PROJECT_ROOT := $(MAKEFILE_ROOT)
 SETUP_BIN := $(PROJECT_ROOT)/.bin
 # Caller-overridable test target (a directory or a single test file under
@@ -321,7 +338,7 @@ override GIT_DISCOVERY_ROOT := $(shell {{ git_root_reader('"$(MAKEFILE_ROOT)"', 
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot authenticate the physical Git boundary for $(MAKEFILE_ROOT))
 endif
-override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', uv_tool, true) }})
+override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', uv_tool, make.uv_resolution, true) }})
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
@@ -338,8 +355,11 @@ SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 SCRIPT_ROOTS :={{ script_dispatch.roots | join(" ") }}
 {% endif %}
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}
+override FLEXT_MAKE_EMPTY :=
+override FLEXT_MAKE_SPACE := $(FLEXT_MAKE_EMPTY) $(FLEXT_MAKE_EMPTY)
+override CUSTOM_MAKEFILE_ESCAPED := $(subst $(FLEXT_MAKE_SPACE),\$(FLEXT_MAKE_SPACE),$(CUSTOM_MAKEFILE))
 CUSTOM_DECLARED_TARGETS :=
-ifneq ($(wildcard $(CUSTOM_MAKEFILE)),)
+ifneq ($(shell if [ -f "$(CUSTOM_MAKEFILE)" ]; then printf 'present'; fi),)
 CUSTOM_DECLARED_TARGETS := $(shell awk '/^[a-z_][a-z0-9_-]*:/ { target=$$1; sub(/:.*/, "", target); if (!seen[target]++) printf "%s ", target }' "$(CUSTOM_MAKEFILE)")
 ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
@@ -356,13 +376,21 @@ endif
 # pattern). A declared hook without the builtin reference is a replacement
 # and stays forbidden.
 ifneq ($(filter _custom-pre-commit,$(CUSTOM_DECLARED_TARGETS)),)
-ifeq ($(shell grep -c "_builtin-pre-commit" $(CUSTOM_MAKEFILE) || true),0)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := {{ custom_reference_count("_builtin-pre-commit") }}
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-pre-commit must chain _builtin-pre-commit (wrapper parity; replacements are forbidden))
 endif
 endif
 {% for verb in make.approval_verbs %}
 ifneq ($(filter _custom-{{ verb }},$(CUSTOM_DECLARED_TARGETS)),)
-ifeq ($(shell grep -c "_builtin-{{ verb }}" $(CUSTOM_MAKEFILE) || true),0)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := {{ custom_reference_count("_builtin-" ~ verb) }}
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-{{ verb }} must chain _builtin-{{ verb }} (wrapper parity; replacements are forbidden))
 endif
 endif
@@ -374,8 +402,8 @@ DOCS_ACTIONS :={% for action in make.docs.actions %} {{ action }}{% endfor %}
 
 # === SECTION: lint/type paths (managed) ===
 # Source: template + computed (script_dispatch conditional)
-RUFF_PATHS := $(strip $(foreach d,src tests examples{% if script_dispatch %} scripts{% endif %},$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
-MYPY_PATHS := $(strip $(foreach d,src tests examples{% if script_dispatch %} scripts{% endif %},$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
+RUFF_PATHS := $(shell for directory in src tests examples{% if script_dispatch %} scripts{% endif %}; do if [ -d "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
+MYPY_PATHS := $(RUFF_PATHS)
 # End SECTION: lint/type paths
 
 # === SECTION: project tool owner (managed) ===
@@ -392,15 +420,20 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # Source: repository topology. workspace has .gitmodules; standalone does not.
 # Native UV membership and Git attachment elect the physical runtime.
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
-override export GIT_CEILING_DIRECTORIES := $(abspath $(GIT_DISCOVERY_ROOT)/..)
-override export MISE_CEILING_PATHS := $(abspath $(RUNTIME_ROOT)/..)
+override export GIT_CEILING_DIRECTORIES := $(shell cd "$(GIT_DISCOVERY_ROOT)/.." && pwd -P)
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve Git ceiling for $(GIT_DISCOVERY_ROOT))
+endif
+override export MISE_CEILING_PATHS := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve Mise ceiling for $(RUNTIME_ROOT))
+endif
 override export MISE_CONFIG_DIR := $(RUNTIME_ROOT)/.mise
-# The exported global config must be a REAL file in every topology: the
-# workspace profile carries the operator's .mise/config.toml; a standalone
-# checkout (or a member without one) falls back to the always-rendered
-# project manifest — same SSOT, so child mise/uv resolution can never
-# depend on mise's fallback behavior for a missing global file.
-override export MISE_GLOBAL_CONFIG_FILE := $(if $(wildcard $(MISE_CONFIG_DIR)/config.toml),$(MISE_CONFIG_DIR)/config.toml,$(RUNTIME_ROOT)/.mise.toml)
+# The project manifest remains in native project scope. An optional global
+# configuration has its own explicit runtime-scoped path; when absent, Mise
+# reads no global file. Reusing .mise.toml here classifies every project tool
+# as global and leaves the project lock scope empty.
+override export MISE_GLOBAL_CONFIG_FILE := $(MISE_CONFIG_DIR)/config.toml
 override export MISE_SYSTEM_CONFIG_DIR := $(MISE_CONFIG_DIR)
 # A file override wins over the system directory in native Mise discovery.
 unexport MISE_SYSTEM_CONFIG_FILE
@@ -523,7 +556,7 @@ REQUIRE_WORKSPACE_ENVIRONMENT = case "$(PROJECT_ROOT)/" in \
 	if [ "$(strip $({{ make.uv_resolution.hosted_variable }}))" = "{{ make.uv_resolution.hosted_value }}" ] && [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
 		printf 'ERROR: hosted CI requires an independent checkout and environment\n' >&2; exit 2; \
 	fi; \
-	for environment_path in "$(patsubst %/,%,$(dir $(RUNTIME_VENV)))" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/{{ environment_directory }}" "$(PROJECT_ROOT)/{{ environment_directory }}/bin"; do \
+	for environment_path in "$$(dirname "$(RUNTIME_VENV)")" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/{{ environment_directory }}" "$(PROJECT_ROOT)/{{ environment_directory }}/bin"; do \
 		if [ -L "$$environment_path" ]; then \
 			printf 'ERROR: workspace environment must be physical, not a symlink: %s\n' "$$environment_path" >&2; exit 2; \
 		fi; \
@@ -558,7 +591,7 @@ ifeq ($(GEN_INIT_ONLY),)
 # hooks whenever the declared-targets list names them, so a CI-excluded
 # include made every member with a post hook fail with "no rule for
 # post-<verb>" exactly when the pipeline ran the activation half.
-{{ makefile_custom_include }}
+{{ makefile_custom_include.split()[0] }} $(CUSTOM_MAKEFILE_ESCAPED)
 endif
 ifeq ($(APPROVAL_CONTEXT),{{ make.ci.value }})
 override {{ make.ci.variable }} := {{ make.ci.value }}
@@ -767,8 +800,9 @@ _builtin-help:
 # native repair verb.
 .PHONY: _builtin_require_mise
 _builtin_require_mise:
-	@if [ ! -f "$(MISE_GLOBAL_CONFIG_FILE)" ]; then \
-		printf 'ERROR: missing resolved mise global config %s; the checkout is incomplete — run make gen\n' "$(MISE_GLOBAL_CONFIG_FILE)" >&2; \
+	@set -eu; \
+	if [ ! -f "$(RUNTIME_ROOT)/.mise.toml" ]; then \
+		printf 'ERROR: missing project mise config %s; run make gen\n' "$(RUNTIME_ROOT)/.mise.toml" >&2; \
 		exit 2; \
 	fi; \
 	if [ ! -f "$(RUNTIME_ROOT)/mise.lock" ]; then \
@@ -780,7 +814,8 @@ _builtin_require_mise:
 		printf 'ERROR: mise.lock pins no {{ mise_selector }} release; run make upg\n' >&2; \
 		exit 2; \
 	fi; \
-	mise_actual="$$(mise --version 2>/dev/null | cut -d ' ' -f1)"; \
+	mise_version_output="$$(mise --version)"; \
+	mise_actual="$${mise_version_output%% *}"; \
 	if [ "$$mise_actual" != "$$mise_pin" ]; then \
 		printf 'ERROR: mise %s differs from the mise.lock pin %s; run make setup\n' "$$mise_actual" "$$mise_pin" >&2; \
 		exit 2; \

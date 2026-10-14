@@ -662,7 +662,7 @@ class FlextInfraProtocolsBase(Protocol):
             destination: str,
             failure_prefix: str,
             project_context: m.Infra.ProjectRenderContext | None,
-        ) -> p.Result[str]: ...
+        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
         @classmethod
         def compose_project_artifact(
@@ -672,6 +672,7 @@ class FlextInfraProtocolsBase(Protocol):
             rendered: str,
             *,
             render_inputs: m.Infra.CodegenRenderInputs | None = None,
+            source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
         @staticmethod

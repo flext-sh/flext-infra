@@ -11,6 +11,7 @@ from pathlib import Path
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.__version__ import __version__
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 
@@ -131,6 +132,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         rendered: str,
         *,
         render_inputs: m.Infra.CodegenRenderInputs | None = None,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Apply typed project overlays after canonical template rendering.
 
@@ -151,16 +153,31 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 return r[m.Infra.CodegenArtifactComposition].from_failure(overlay)
             rendered = overlay.value
         if destination == c.PYPROJECT_FILENAME:
-            return cls._composed_pyproject_overlay(
+            composed = cls._composed_pyproject_overlay(
                 repository_root,
                 rendered,
                 render_inputs,
             )
-        if destination != c.Infra.MISE_TOML_FILENAME:
-            return r[m.Infra.CodegenArtifactComposition].ok(
+        elif destination != c.Infra.MISE_TOML_FILENAME:
+            composed = r[m.Infra.CodegenArtifactComposition].ok(
                 m.Infra.CodegenArtifactComposition(rendered=rendered),
             )
-        return cls._composed_mise_overlay(repository_root, rendered, render_inputs)
+        else:
+            composed = cls._composed_mise_overlay(
+                repository_root,
+                rendered,
+                render_inputs,
+            )
+        if composed.failure:
+            return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
+        captured = FlextInfraCodegenPreconditions.unique_states(
+            (*source_states, *composed.value.source_states),
+        )
+        if captured.failure:
+            return r[m.Infra.CodegenArtifactComposition].from_failure(captured)
+        return r[m.Infra.CodegenArtifactComposition].ok(
+            composed.value.model_copy(update={"source_states": captured.value}),
+        )
 
     @classmethod
     def _composed_gitignore_overlay(
@@ -327,7 +344,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         destination: str,
         failure_prefix: str,
         project_context: m.Infra.ProjectRenderContext | None,
-    ) -> p.Result[str]:
+    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Resolve one artifact render context and render its template source.
 
         ``failure_prefix`` carries the only difference between the scaffold and
@@ -335,7 +352,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         prepends to a render failure.
 
         Returns:
-            The resulting ``p.Result[str]``.
+            Rendered content and the exact templates consumed by Jinja.
 
         """
         artifact_context = self._artifact_render_context(
@@ -344,23 +361,39 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             project_context=project_context,
         )
         if artifact_context.failure:
-            return r[str].from_failure(artifact_context)
+            return r[m.Infra.CodegenArtifactComposition].from_failure(artifact_context)
         template_path = (
             u.Infra.codegen_templates_root(render_inputs.codegen) / template_relpath
         )
-        rendered = u.Cli.template_render(template_path, artifact_context.value)
+        rendered = u.Cli.template_render_authenticated(
+            template_path,
+            artifact_context.value,
+        )
         if rendered.failure:
-            return r[str].fail(
-                f"{failure_prefix}"
-                f"template={template_relpath}: "
-                f"{rendered.error or 'template render failed'}",
+            return r[m.Infra.CodegenArtifactComposition].from_failure(rendered)
+        primary = next(
+            (
+                source
+                for source in rendered.value.source_states
+                if source.path == template_path.expanduser().absolute()
+            ),
+            None,
+        )
+        if primary is None or primary.content is None:
+            return r[m.Infra.CodegenArtifactComposition].fail(
+                f"authenticated template has no captured primary source: {template_path}",
             )
         return self._require_rendered_content(
-            rendered.value,
+            rendered.value.rendered,
             template_relpath=template_relpath,
             destination=destination,
             failure_prefix=failure_prefix,
-            template_source=template_path.read_text(encoding=c.DEFAULT_ENCODING),
+            template_source=primary.content.decode(c.DEFAULT_ENCODING),
+        ).map(
+            lambda content: m.Infra.CodegenArtifactComposition(
+                rendered=content,
+                source_states=rendered.value.source_states,
+            ),
         )
 
     @staticmethod

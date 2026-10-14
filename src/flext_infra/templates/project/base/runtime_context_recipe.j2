@@ -1,6 +1,43 @@
 {#- Native Git owns physical boundaries; native UV owns membership. The same
     shell readers serve Make parsing and direnv without importing Python or
     inspecting workspace member patterns. Reading never installs a tool. -#}
+{% macro physical_file_reader(path, make_syntax=false) -%}
+{% set d = "$$" if make_syntax else "$" -%}
+set -eu; \
+physical_file={{ path }}; \
+if [ -z "{{ d }}physical_file" ]; then printf 'ERROR: physical file discovery requires one nonempty path\n' >&2; exit 2; fi; \
+set --; \
+while :; do \
+	case "{{ d }}physical_file" in (/*) ;; (*) physical_file="{{ d }}(pwd -P)/{{ d }}physical_file" ;; esac; \
+	physical_parent="{{ d }}(dirname "{{ d }}physical_file")"; \
+	physical_name="{{ d }}{physical_file##*/}"; \
+	physical_parent="{{ d }}(cd "{{ d }}physical_parent" && pwd -P)"; \
+	physical_file="{{ d }}physical_parent/{{ d }}physical_name"; \
+	if [ ! -L "{{ d }}physical_file" ]; then \
+		if [ ! -f "{{ d }}physical_file" ]; then printf 'ERROR: physical file is not an existing regular file: %s\n' "{{ d }}physical_file" >&2; exit 2; fi; \
+		printf '%s\n' "{{ d }}physical_file"; exit 0; \
+	fi; \
+	for previous_file; do \
+		if [ "{{ d }}previous_file" = "{{ d }}physical_file" ]; then printf 'ERROR: physical file link cycle: %s\n' "{{ d }}physical_file" >&2; exit 2; fi; \
+	done; \
+	set -- "{{ d }}@" "{{ d }}physical_file"; \
+	link_target="{{ d }}(readlink "{{ d }}physical_file")"; \
+	case "{{ d }}link_target" in (/*) physical_file="{{ d }}link_target" ;; (*) physical_file="{{ d }}physical_parent/{{ d }}link_target" ;; esac; \
+done
+{%- endmacro %}
+
+{% macro authenticate_git_marker(directory, make_syntax=false) -%}
+{% set d = "$$" if make_syntax else "$" -%}
+git_parent={{ directory }}; \
+case "{{ d }}git_parent" in (/*) ;; (*) printf 'ERROR: Git marker discovery requires an absolute physical directory: %s\n' "{{ d }}git_parent" >&2; exit 2 ;; esac; \
+while [ "{{ d }}git_parent" != / ] && [ ! -e "{{ d }}git_parent/.git" ] && [ ! -L "{{ d }}git_parent/.git" ]; do \
+	next_git_parent="{{ d }}(dirname "{{ d }}git_parent")"; \
+	if [ "{{ d }}next_git_parent" = "{{ d }}git_parent" ]; then printf 'ERROR: Git marker discovery cannot advance from: %s\n' "{{ d }}git_parent" >&2; exit 2; fi; \
+	git_parent="{{ d }}next_git_parent"; \
+done; \
+if [ -e "{{ d }}git_parent/.git" ] || [ -L "{{ d }}git_parent/.git" ]; then git -C {{ directory }} rev-parse --resolve-git-dir "{{ d }}git_parent/.git" >/dev/null; fi;
+{%- endmacro %}
+
 {% macro git_discovery_context(project_root, make_syntax=false) -%}
 {% set d = "$$" if make_syntax else "$" -%}
 set -eu; \
@@ -10,8 +47,12 @@ for git_local_key in {{ d }}git_local_keys; do \
 	case "{{ d }}git_local_key" in (GIT_CONFIG|GIT_CONFIG_PARAMETERS|GIT_CONFIG_COUNT) ;; (*) unset "{{ d }}git_local_key" ;; esac; \
 done; \
 project_root={{ project_root }}; \
+case "{{ d }}project_root" in (/*) ;; (*) printf 'ERROR: workspace discovery requires an absolute project directory: %s\n' "{{ d }}project_root" >&2; exit 2 ;; esac; \
+project_root="{{ d }}(cd "{{ d }}project_root" && pwd -P)"; \
+{{ authenticate_git_marker('"' ~ d ~ 'project_root"', make_syntax) }} \
 git_root="{{ d }}(git -C "{{ d }}project_root" rev-parse --show-toplevel)"; \
-git_root="{{ d }}(cd "{{ d }}git_root" && pwd -P)";
+git_root="{{ d }}(cd "{{ d }}git_root" && pwd -P)"; \
+case "{{ d }}project_root/" in ("{{ d }}git_root/"*) ;; (*) printf 'ERROR: physical Git root does not contain this project: %s\n' "{{ d }}git_root" >&2; exit 2 ;; esac;
 {%- endmacro %}
 
 {% macro git_root_reader(project_root, make_syntax=false) -%}
@@ -20,39 +61,37 @@ git_root="{{ d }}(cd "{{ d }}git_root" && pwd -P)";
 printf '%s\n' "{{ d }}git_root"
 {%- endmacro %}
 
-{% macro runtime_root_reader(project_root, uv_tool, make_syntax=false) -%}
+{% macro runtime_root_reader(project_root, uv_tool, uv_resolution, make_syntax=false) -%}
 {% set d = "$$" if make_syntax else "$" -%}
 {{ git_discovery_context(project_root, make_syntax) }} \
+if [ "{{ d ~ '{' ~ uv_resolution.hosted_variable ~ ':-}' }}" = "{{ uv_resolution.hosted_value }}" ]; then printf '%s\n' "{{ d }}project_root"; exit 0; fi; \
 superproject="{{ d }}(git -C "{{ d }}project_root" rev-parse --show-superproject-working-tree)"; \
-if [ -n "{{ d }}superproject" ]; then \
+if [ -n "{{ d }}superproject" ] && [ -f "{{ d }}superproject/pyproject.toml" ]; then \
 	cd "{{ d }}superproject" && pwd -P; \
 	exit 0; \
 fi; \
-scope="{{ d }}git_root"; \
-if [ "{{ d }}project_root" = "{{ d }}git_root" ]; then \
-	parent="{{ d }}(dirname "{{ d }}project_root")"; \
-	while [ "{{ d }}parent" != / ]; do \
-		if [ -f "{{ d }}parent/pyproject.toml" ]; then \
-			git_parent="{{ d }}parent"; \
-			while [ "{{ d }}git_parent" != / ] && [ ! -e "{{ d }}git_parent/.git" ]; do git_parent="{{ d }}(dirname "{{ d }}git_parent")"; done; \
-			if [ -e "{{ d }}git_parent/.git" ]; then scope="{{ d }}(git -C "{{ d }}parent" rev-parse --show-toplevel)"; fi; \
-			break; \
-		fi; \
-		parent="{{ d }}(dirname "{{ d }}parent")"; \
-	done; \
-fi; \
+reader_root=; \
+parent="{{ d }}(dirname "{{ d }}project_root")"; \
+while [ "{{ d }}parent" != / ]; do \
+	if [ -f "{{ d }}parent/pyproject.toml" ]; then reader_root="{{ d }}parent"; break; fi; \
+	if [ "{{ d }}parent" = "{{ d }}git_root" ]; then break; fi; \
+	parent="{{ d }}(dirname "{{ d }}parent")"; \
+done; \
+if [ -z "{{ d }}reader_root" ]; then printf '%s\n' "{{ d }}project_root"; exit 0; fi; \
+{{ authenticate_git_marker('"' ~ d ~ 'reader_root"', make_syntax) }} \
+if [ ! -e "{{ d }}git_parent/.git" ] && [ ! -L "{{ d }}git_parent/.git" ]; then printf '%s\n' "{{ d }}project_root"; exit 0; fi; \
+scope="{{ d }}(git -C "{{ d }}reader_root" rev-parse --show-toplevel)"; \
 scope="{{ d }}(cd "{{ d }}scope" && pwd -P)"; \
 case "{{ d }}project_root/" in ("{{ d }}scope/"*) ;; (*) printf 'ERROR: native workspace discovery scope does not contain this project: %s\n' "{{ d }}scope" >&2; exit 2 ;; esac; \
-if [ "{{ d }}scope" = "{{ d }}project_root" ]; then printf '%s\n' "{{ d }}project_root"; exit 0; fi; \
+if [ -f "{{ d }}scope/pyproject.toml" ]; then reader_root="{{ d }}scope"; fi; \
 unset MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE UV_PROJECT UV_PROJECT_ENVIRONMENT UV_WORKING_DIRECTORY UV_NO_CONFIG; \
-MISE_CONFIG_DIR="{{ d }}scope/.mise"; \
+MISE_CONFIG_DIR="{{ d }}reader_root/.mise"; \
 MISE_SYSTEM_CONFIG_DIR="{{ d }}MISE_CONFIG_DIR"; \
-MISE_GLOBAL_CONFIG_FILE="{{ d }}scope/.mise.toml"; \
-if [ -f "{{ d }}MISE_CONFIG_DIR/config.toml" ]; then MISE_GLOBAL_CONFIG_FILE="{{ d }}MISE_CONFIG_DIR/config.toml"; fi; \
-MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}scope")"; \
+MISE_GLOBAL_CONFIG_FILE="{{ d }}MISE_CONFIG_DIR/config.toml"; \
+MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}reader_root")"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
-uv_requested="{{ d }}(mise -C "{{ d }}scope" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
-uv_binary="{{ d }}(mise -C "{{ d }}scope" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@{{ d }}uv_requested")"; \
+uv_requested="{{ d }}(mise -C "{{ d }}reader_root" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
+uv_binary="{{ d }}(mise -C "{{ d }}reader_root" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@{{ d }}uv_requested")"; \
 if [ ! -x "{{ d }}uv_binary" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
 owner="{{ d }}("{{ d }}uv_binary" workspace dir --project "{{ d }}project_root")"; \
 case "{{ d }}owner" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "{{ d }}owner" >&2; exit 2 ;; esac; \

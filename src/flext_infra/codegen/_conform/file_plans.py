@@ -35,7 +35,12 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             A guarded source plan preserving all unrelated configuration values.
         """
         result_type = r[m.Infra.CodegenFilePlan]
-        captured = cls.file_plan(root, path.relative_to(root).as_posix(), "")
+        captured = cls.file_plan(
+            root,
+            path.relative_to(root).as_posix(),
+            "",
+            source_states=sources,
+        )
         if captured.failure:
             return result_type.from_failure(captured)
         before = captured.value.before

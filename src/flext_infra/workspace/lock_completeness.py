@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from json import dumps
 from pathlib import Path
 
 from packaging.markers import Marker
@@ -68,7 +69,9 @@ class FlextInfraWorkspaceLockCompleteness:
             payload = u.Cli.toml_read_json(lock_path)
             if payload.failure:
                 return r[int].from_failure(payload)
-            locked = m.Infra.LockedEnvironment.model_validate(payload.value)
+            locked = m.Infra.LockedEnvironment.model_validate_json(
+                dumps(payload.value),
+            )
             if lock_path.name != c.Infra.UV_LOCK_FILENAME:
                 return r[int].fail(f"{lock_path}: not a native UV lock path")
             context = FlextInfraWorkspaceDetector.resolution_context(lock_path.parent)

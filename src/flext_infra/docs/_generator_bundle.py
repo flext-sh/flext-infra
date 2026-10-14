@@ -11,6 +11,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -77,7 +78,7 @@ class FlextInfraDocGeneratorBundleMixin:
             if paths.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(paths)
                 return
-            sources = u.Infra.required_file_states(paths.value)
+            sources = cls._captured_source_states(paths.value, source_roots)
             if sources.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(sources)
                 return
@@ -278,7 +279,12 @@ class FlextInfraDocGeneratorBundleMixin:
             f"docs: discovered {len(source_paths.value)} source paths in "
             f"{perf_counter() - started_at:.2f}s",
         )
-        sources = u.Infra.required_file_states(source_paths.value)
+        source_roots = u.Infra.docs_repository_roots(
+            repository_root, tuple(selected_roots)
+        )
+        if source_roots.failure:
+            return result_type.from_failure(source_roots)
+        sources = cls._captured_source_states(source_paths.value, source_roots.value)
         if sources.failure:
             return result_type.from_failure(sources)
         u.Cli.info(
@@ -286,6 +292,27 @@ class FlextInfraDocGeneratorBundleMixin:
             f"{perf_counter() - started_at:.2f}s",
         )
         return result_type.ok((repository_root, selected_roots, sources.value))
+
+    @staticmethod
+    def _captured_source_states(
+        paths: t.VariadicTuple[Path],
+        roots: t.SequenceOf[Path],
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Retain the configuration reader's declared absence witnesses."""
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        captured = u.Infra.required_file_states(paths)
+        if captured.failure:
+            return result_type.from_failure(captured)
+        states = list(captured.value)
+        for root in roots:
+            configuration = u.Infra.load_config_document_inputs(
+                root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            )
+            if configuration.failure:
+                return result_type.from_failure(configuration)
+            states.extend(configuration.value.sources)
+        return FlextInfraCodegenPreconditions.unique_states(tuple(states))
 
     @classmethod
     def _validated_scopes(

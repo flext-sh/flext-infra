@@ -369,8 +369,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         rendered_content = self.compose_project_artifact(
             root,
             destination,
-            rendered.value,
+            rendered.value.rendered,
             render_inputs=render_inputs,
+            source_states=rendered.value.source_states,
         )
         if rendered_content.failure:
             return result_type.from_failure(rendered_content)
@@ -399,21 +400,21 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         workspace: m.Infra.WorkspaceSpec,
         render_inputs: m.Infra.CodegenRenderInputs,
         context: m.Infra.ProjectRenderContext,
-    ) -> p.Result[str]:
+    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Render one scaffold entry's source bytes.
 
         Returns:
-            The resulting ``p.Result[str]``.
+            Rendered artifact and its captured template sources.
 
         """
         project = workspace.project
         if project is None:
-            return r[str].fail(
+            return r[m.Infra.CodegenArtifactComposition].fail(
                 f"scaffold workspace has no project metadata: {workspace.name}",
             )
         if entry.delegate != c.Infra.TemplateDelegate.MANIFEST:
             if entry.source is None:
-                return r[str].fail(
+                return r[m.Infra.CodegenArtifactComposition].fail(
                     f"render entry has no template source: {destination}",
                 )
             return self._rendered_artifact_source(
@@ -428,7 +429,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
         manifest_path = Path(c.CONFIG_DIR_NAME) / c.Infra.WORKSPACE_MANIFEST_FILENAME
         if Path(destination) != manifest_path:
-            return r[str].fail(
+            return r[m.Infra.CodegenArtifactComposition].fail(
                 f"manifest delegate has an invalid destination: {destination}",
             )
         manifest = m.Infra.WorkspaceManifestSpec(
@@ -449,7 +450,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                     exclude_computed_fields=True,
                 ),
             ),
-        )
+        ).map(lambda content: m.Infra.CodegenArtifactComposition(rendered=content))
 
 
 __all__: list[str] = ["FlextInfraCodegenConformScaffoldPlan"]

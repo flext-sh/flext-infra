@@ -21,6 +21,129 @@ class TestsFlextInfraUvNativeResolution:
     """Resolve real local Git packages without external-service prerequisites."""
 
     @staticmethod
+    @pytest.mark.parametrize("mode", ["local", "standalone"])
+    def test_conformed_group_aliases_resolve_without_merging_dependency_tiers(
+        tmp_path: Path,
+        mode: str,
+    ) -> None:
+        """Real UV consumes authored aliases and includes after public conformance.
+
+        This bounded native grammar fixture declares no generated dev floors.
+        The separate first-party-profile scenario qualifies the SSOT floor set.
+        """
+        root = tmp_path / "project"
+        root_name = "native-alias-root"
+        leaves = {
+            tier: tmp_path / tier
+            for tier in ("runtime", "development", "examples", "extra")
+        }
+        names = {tier: f"native-alias-{tier}" for tier in leaves}
+        for tier, path in leaves.items():
+            u.Tests.write_native_resolution_project(path, names[tier])
+        requirements = {
+            tier: f"{names[tier]} @ {path.as_uri()}"
+            for tier, path in leaves.items()
+        }
+        dev = str(c.Infra.DEV).capitalize()
+        codegen = str(c.Infra.DependencyGroup.CODEGEN).capitalize()
+        u.Tests.write_native_resolution_project(
+            root,
+            root_name,
+            dependencies=(requirements["runtime"],),
+            optional=(requirements["extra"],),
+            groups=(
+                "[dependency-groups]\n"
+                f"{dev} = [{json.dumps(requirements['development'])}]\n"
+                f'{codegen} = [{{include-group = "{dev}"}}]\n'
+                f'examples = [{{include-group = "{codegen}"}}, '
+                f"{json.dumps(requirements['examples'])}]\n"
+            ),
+        )
+        repository = u.Tests.repository_ref(root_name)
+        toolchain = config.Infra.codegen.toolchain
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING),
+                workspace=u.Tests.workspace_spec(repository),
+                required_dev_dependencies=(),
+                uv_resolution=m.Infra.UvResolutionSpec(
+                    link_mode=toolchain.uv_link_mode,
+                    constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
+                    environments=tuple(toolchain.uv_environments),
+                ),
+                options=u.Infra.PyprojectConformOptions(
+                    flext_line=u.Tests.integration().model_copy(
+                        update={"base_url": u.Tests.provider().base_url},
+                    ),
+                ),
+            ),
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(root / c.PYPROJECT_FILENAME, conformed),
+        )
+        complete = u.Tests.toml_doc(conformed)
+        policy = config.Infra.codegen.make.uv_resolution
+        directory = root / (
+            policy.local_directory
+            if mode == "local"
+            else policy.standalone_directory
+        )
+        view = tm.ok(
+            u.Infra.pyproject_native_resolution_view(
+                m.Infra.UvResolutionProject(
+                    repository=repository,
+                    directory=root,
+                    document=complete,
+                ),
+                members=(),
+                directory=directory,
+                policy=policy,
+            ),
+        )
+        groups = u.Tests.toml_mapping(
+            u.Tests.toml_doc_mapping(view)["dependency-groups"],
+        )
+        tm.that(u.Tests.toml_list(groups[codegen]), eq=[{"include-group": dev}])
+        tm.that(
+            u.Tests.toml_list(groups["examples"])[0],
+            eq={"include-group": codegen},
+        )
+        directory.mkdir(parents=True)
+        tm.ok(u.Cli.toml_write_document(directory / c.PYPROJECT_FILENAME, view))
+        process = tm.ok(u.Tests.resolve_native_identity_fixture(directory))
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        locked = m.Infra.LockedEnvironment.model_validate_json(
+            json.dumps(
+                tm.ok(u.Cli.toml_read_json(directory / c.Infra.UV_LOCK_FILENAME)),
+            ),
+        )
+        tm.that(
+            {root_name, *names.values()}.issubset(
+                {package.name for package in locked.package},
+            ),
+            eq=True,
+        )
+        package = next(
+            package for package in locked.package if package.name == root_name
+        )
+        tm.that(
+            {dependency.name for dependency in package.dependencies},
+            eq={names["runtime"]},
+        )
+        tm.that(
+            {dependency.name for dependency in package.optional_dependencies["feature"]},
+            eq={names["extra"]},
+        )
+        tm.that(
+            (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING),
+            eq=conformed,
+        )
+
+    @staticmethod
     def _profile_requirement(requirement: str) -> str:
         """Declare authored internal sources through the fixture's public provider."""
         parsed = Requirement(requirement)

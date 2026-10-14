@@ -105,6 +105,7 @@ class FlextInfraCodegenPreconditions:
                 if captured.failure:
                     return result_type.from_failure(captured)
                 states[path] = captured.value
+        root_depths = {len(root.parts) for root in roots.values()}
         for distribution in u.installed_distributions():
             declared = distribution.files
             if declared is None:
@@ -116,6 +117,7 @@ class FlextInfraCodegenPreconditions:
                 for item in declared
                 if item.parent.name.endswith(".dist-info")
             }
+            receipts: list[m.Cli.AtomicFileState] = []
             for root in sorted(metadata_roots):
                 inventory = u.Cli.atomic_inventory_physical_tree(root)
                 if inventory.failure:
@@ -130,6 +132,11 @@ class FlextInfraCodegenPreconditions:
                     if captured.failure:
                         return result_type.from_failure(captured)
                     states[entry.path] = captured.value
+                    if (
+                        entry.path.parent == root
+                        and entry.path.name == c.Infra.DISTRIBUTION_DIRECT_URL_FILE
+                    ):
+                        receipts.append(captured.value)
             for item in declared:
                 if item.suffix == ".pth":
                     path = Path(distribution.locate_file(item)).absolute()
@@ -143,15 +150,16 @@ class FlextInfraCodegenPreconditions:
             paths = tuple(
                 Path(distribution.locate_file(item)).absolute() for item in declared
             )
+            # Native prefixes retain anchors, case semantics and lexical "..".
+            # Only depths of elected roots can establish RECORD ownership.
+            ownership_prefixes = {
+                Path(*parts[:depth])
+                for parts in (path.parts for path in paths)
+                for depth in root_depths
+            }
             for namespace, root in roots.items():
-                if any(path == root or path.is_relative_to(root) for path in paths):
+                if root in ownership_prefixes:
                     owners[namespace].add(name)
-            receipts = tuple(
-                state
-                for path, state in states.items()
-                if path.parent in metadata_roots
-                and path.name == c.Infra.DISTRIBUTION_DIRECT_URL_FILE
-            )
             for state in receipts:
                 content = state.content
                 if content is None:
@@ -211,7 +219,63 @@ class FlextInfraCodegenPreconditions:
         """Authenticate every captured input before selecting a consumer scope."""
         if not producer.inputs or not producer.generator_trees:
             return r[bool].fail("producer context lacks authenticated source closure")
-        current = FlextInfraMiseArtifactsVerification.states_current(producer.inputs)
+        states = cls.unique_states(producer.inputs)
+        if states.failure:
+            return r[bool].from_failure(states)
+        by_path = {state.path: state for state in states.value}
+        covered: set[Path] = set()
+        representatives: set[Path] = set()
+        for tree in producer.generator_trees:
+            representative: Path | None = None
+            for entry in tree.entries:
+                if (
+                    entry.kind != "file"
+                    or c.Infra.DUNDER_PYCACHE in entry.path.parts
+                ):
+                    continue
+                state = by_path.get(entry.path)
+                if state is None or state.content is None:
+                    continue
+                if (
+                    u.Cli.sha256_bytes(state.content),
+                    len(state.content),
+                    state.mode,
+                    state.device,
+                    state.inode,
+                    state.link_count,
+                    state.parent_device,
+                    state.parent_inode,
+                    state.file_attributes,
+                    state.reparse_tag,
+                ) != (
+                    entry.sha256,
+                    entry.size,
+                    entry.mode,
+                    entry.device,
+                    entry.inode,
+                    entry.link_count,
+                    entry.parent_device,
+                    entry.parent_inode,
+                    entry.file_attributes,
+                    entry.reparse_tag,
+                ):
+                    return r[bool].fail(
+                        f"producer input differs from captured tree: {state.path}"
+                    )
+                covered.add(state.path)
+                if representative is None:
+                    representative = state.path
+            if representative is not None:
+                representatives.add(representative)
+        # Native inventory authenticates every covered file. Keep one complete
+        # file snapshot per tree and every input outside that proof, including
+        # optional absence and editable bindings captured outside package roots.
+        retained = tuple(
+            state
+            for state in states.value
+            if state.path not in covered or state.path in representatives
+        )
+        current = FlextInfraMiseArtifactsVerification.states_current(retained)
         if current.failure:
             return current
         return cls.producer_trees_current(producer.generator_trees)
@@ -343,6 +407,10 @@ class FlextInfraCodegenPreconditions:
                     after.parent_device,
                     after.parent_inode,
                     after.sha256,
+                    after.size,
+                    after.link_count,
+                    after.file_attributes,
+                    after.reparse_tag,
                 ) != (
                     before.mode,
                     before.device,
@@ -350,6 +418,10 @@ class FlextInfraCodegenPreconditions:
                     before.parent_device,
                     before.parent_inode,
                     before.sha256,
+                    before.size,
+                    before.link_count,
+                    before.file_attributes,
+                    before.reparse_tag,
                 ):
                     return r[bool].fail(f"producer resource identity changed: {path}")
         physical_roots = {tree.root.path for tree in trees}

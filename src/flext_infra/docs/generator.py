@@ -134,7 +134,7 @@ class FlextInfraDocGenerator(
             ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
                 bound = transaction.bind_publication_proof(
                     session,
-                    (),
+                    analysis.files,
                     source_topology=bundle.source_directories,
                     scope_roots=bundle.source_roots,
                     source_scope=bundle.source_scope,

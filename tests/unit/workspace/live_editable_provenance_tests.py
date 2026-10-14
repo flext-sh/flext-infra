@@ -23,16 +23,38 @@ class TestsLiveEditableProvenance:
         u.Tests.git_run(workspace, "submodule", "absorbgitdirs")
         manifest = workspace / c.PYPROJECT_FILENAME
         document = u.Tests.toml_doc(manifest.read_text(encoding=c.DEFAULT_ENCODING))
+        document["build-system"] = {
+            "requires": ["setuptools"],
+            "build-backend": "setuptools.build_meta",
+        }
         tool = u.Cli.toml_ensure_table(document, "tool")
-        uv = u.Cli.toml_ensure_table(tool, "uv")
-        uv["package"] = False
+        setuptools = u.Cli.toml_ensure_table(tool, "setuptools")
+        packages = u.Cli.toml_ensure_table(setuptools, "packages")
+        find = u.Cli.toml_ensure_table(packages, "find")
+        find["where"] = ["src"]
         tm.ok(u.Cli.atomic_write_text_file(manifest, u.Cli.toml_dumps(document)))
         u.Tests.git_run(workspace, "add", c.PYPROJECT_FILENAME)
         u.Tests.git_run(
             workspace,
             "commit",
             "-qm",
-            "declare legitimate content-only workspace",
+            "declare real editable workspace build",
+        )
+        uv = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, workspace))
+        tm.ok(
+            u.Cli.run_checked(
+                (
+                    str(uv),
+                    "pip",
+                    "install",
+                    "--no-deps",
+                    "--python",
+                    str(u.Infra.runtime_python(workspace)),
+                    "--editable",
+                    str(workspace),
+                ),
+                cwd=workspace,
+            ),
         )
         return workspace, members
 

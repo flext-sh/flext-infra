@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
+import os
 import shutil
 import sys
 from pathlib import Path
+from shlex import quote
 
 import pytest
 
@@ -17,15 +18,105 @@ from flext_infra import config
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, tm, u
 
-_TEMPLATES = Path(__file__).parents[3] / "src" / "flext_infra" / "templates"
-_ASSIGNMENT = re.compile(r"(?<![-=!<>])\b([a-z_][a-z0-9_]*)=(?!=)")
-_USE = re.compile(r"\$\$([a-z_][a-z0-9_]*)")
-_TRAP_BODY = re.compile(r"trap '.*?' EXIT", re.DOTALL)
-_FUNCTION_BODY = re.compile(r"\b[a-z_][a-z0-9_]*\(\) \{.*?\n\t?\};", re.DOTALL)
-
-
 class TestsFlextInfraMakefileBootstrapSoundness:
-    """Every emitted bootstrap variable is assigned before it is read."""
+    """Public Make preserves physical ownership and native tool configuration."""
+
+    @pytest.mark.parametrize(
+        "entry",
+        ["spaced", "symlink", "outside-spaced", "outside-symlink"],
+    )
+    def test_public_make_paths_keep_the_physical_runtime_owner(
+        self,
+        tmp_path: Path,
+        entry: str,
+    ) -> None:
+        """Spaces, symlinks and external callers retain the selected file's owner."""
+        parent = (
+            tmp_path / "checkout with spaces"
+            if "spaced" in entry
+            else tmp_path / "physical-checkout"
+        )
+        project, _ = u.Tests.render_make_environment(
+            parent,
+            c.Infra.MakeProfile.STANDALONE,
+            bootstrap=True,
+            shape=u.Tests.MakeEnvironmentShape(project_name="physical-runtime-owner"),
+        )
+        (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            "$(info physical-runtime-root=$(RUNTIME_ROOT))\n"
+            "$(info physical-runtime-environment=$(RUNTIME_VENV))\n"
+            "$(info physical-runtime-resolution=$(UV_PROJECT))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        invoked = project
+        if "symlink" in entry:
+            invoked = tmp_path / "invocation-link"
+            invoked.symlink_to(project, target_is_directory=True)
+        caller = invoked
+        arguments = ["help"]
+        if entry.startswith("outside-"):
+            caller = tmp_path / "outside-caller"
+            caller.mkdir()
+            arguments = ["-f", str(invoked / c.Infra.MAKEFILE_FILENAME), "help"]
+        policy = config.Infra.codegen.make.uv_resolution
+        ci = config.Infra.codegen.make.ci
+        context_env = {
+            policy.hosted_variable: "",
+            ci.variable: ci.local_value,
+        }
+        observed = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-I",
+                    "-c",
+                    "from pathlib import Path; import sys; "
+                    "from flext_infra.workspace import FlextInfraWorkspaceDetector; "
+                    "context=FlextInfraWorkspaceDetector.resolution_context("
+                    "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())",
+                    str(invoked),
+                ),
+                cwd=caller,
+                options=m.Cli.ProcessOptions(
+                    env=context_env,
+                    remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                ),
+            ),
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(arguments, cwd=caller, env=context_env),
+        )
+        tm.that(
+            observed.outcome.raw_return_code,
+            eq=0,
+            msg=observed.stdout + observed.stderr,
+        )
+        context = m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
+        physical = project.resolve()
+        environment = physical / c.Infra.ENVIRONMENT_DIRECTORY
+        resolution = physical / policy.local_directory
+        u.Cli.emit_raw(
+            f"path context entry={entry} submitted={invoked} "
+            f"caller={caller} runtime={context.runtime_root}\n",
+        )
+        tm.that(context.project_root, eq=physical)
+        tm.that(context.runtime_root, eq=physical)
+        tm.that(context.environment_path, eq=environment)
+        tm.that(context.resolution_root, eq=resolution)
+        tm.that(
+            process.outcome.raw_return_code,
+            eq=0,
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(process.stdout, has=f"physical-runtime-root={physical}\n")
+        tm.that(
+            process.stdout,
+            has=f"physical-runtime-environment={environment}\n",
+        )
+        tm.that(process.stdout, has=f"physical-runtime-resolution={resolution}\n")
+        tm.that(environment.exists(), eq=False)
+        tm.that((caller / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        tm.that((caller / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
 
     @pytest.mark.parametrize("invocation", ["root", "member"])
     @pytest.mark.parametrize("hosted", [False, True])
@@ -83,10 +174,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(member_environment.exists(), eq=False)
         project = root if invocation == "root" else member
         (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
-            ".PHONY: post-help\npost-help:\n"
-            "\t@printf 'elected-root=%s\\n' '$(RUNTIME_ROOT)'\n"
-            "\t@printf 'elected-environment=%s\\n' '$(RUNTIME_VENV)'\n"
-            "\t@printf 'elected-resolution=%s\\n' '$(UV_PROJECT)'\n",
+            "$(info elected-root=$(RUNTIME_ROOT))\n"
+            "$(info elected-environment=$(RUNTIME_VENV))\n"
+            "$(info elected-resolution=$(UV_PROJECT))\n",
             encoding=c.DEFAULT_ENCODING,
         )
         policy = config.Infra.codegen.make.uv_resolution
@@ -428,31 +518,148 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             eq=metadata_before,
         )
 
-    def test_bootstrap_recipe_initializes_every_variable_it_reads(self) -> None:
-        """The tool bootstrap recipe never reads an unassigned shell variable.
-
-        Raises:
-            AssertionError: If bootstrap recipe reads shell variables before assigning
-                them.
-        """
-        recipe = (
-            _TEMPLATES / "project" / "base" / ("tool_bootstrap_recipe.j2")
-        ).read_text(encoding="utf-8")
-        # Traps and function bodies read only when invoked, not when declared.
-        text = _FUNCTION_BODY.sub(
-            "function ... { };", _TRAP_BODY.sub("trap '...' EXIT", recipe)
+    def test_public_make_preserves_native_project_mise_lock_scope(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The complete Make environment cannot reclassify project tools as global."""
+        project, _ = u.Tests.render_make_environment(
+            tmp_path / "project",
+            c.Infra.MakeProfile.STANDALONE,
+            bootstrap=True,
+            shape=u.Tests.MakeEnvironmentShape(project_name="mise-project-scope"),
         )
-        bound: set[str] = set()
-        violations: list[str] = []
-        for line in text.splitlines():
-            bound.update(assigned.group(1) for assigned in _ASSIGNMENT.finditer(line))
-            violations.extend(
-                f"{name} (line: {line.strip()[:80]})"
-                for name in _USE.findall(line)
-                if name not in bound
+        home = tmp_path / "host-home"
+        home.mkdir()
+        xdg = tmp_path / "host-config"
+        global_config = xdg / "mise" / "config.toml"
+        global_config.parent.mkdir(parents=True)
+        global_config.write_text(
+            '[env]\nNATIVE_SCOPE_HOST_SENTINEL = "fixture-owned-global"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that((project / ".mise" / "config.toml").exists(), eq=False)
+        config_report = tmp_path / "mise-config-files.json"
+        lock_report = tmp_path / "mise-project-locks.json"
+        (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            ".PHONY: post-help\npost-help:\n"
+            '\t@mise -C "$(RUNTIME_ROOT)" config ls --json > '
+            f"{quote(str(config_report))}\n"
+            '\t@mise -C "$(RUNTIME_ROOT)" lock --sidecars --json > '
+            f"{quote(str(lock_report))}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        paths = (
+            project / c.Infra.MISE_TOML_FILENAME,
+            project / c.Infra.MISE_LOCK_FILENAME,
+            project / c.PYPROJECT_FILENAME,
+            global_config,
+        )
+        before = tuple(path.read_bytes() for path in paths)
+        environment = {
+            "HOME": str(home),
+            "XDG_CONFIG_HOME": str(xdg),
+            "XDG_DATA_HOME": str(tmp_path / "host-data"),
+            "XDG_STATE_HOME": str(tmp_path / "host-state"),
+            "XDG_CACHE_HOME": str(tmp_path / "host-cache"),
+            "MISE_DATA_DIR": str(tmp_path / "host-data" / "mise"),
+            "MISE_STATE_DIR": str(tmp_path / "host-state" / "mise"),
+            "MISE_CACHE_DIR": str(tmp_path / "host-cache" / "mise"),
+            "MISE_TRUSTED_CONFIG_PATHS": str(project),
+            "GIT_CONFIG_GLOBAL": str(home / ".gitconfig"),
+            "GIT_CONFIG_SYSTEM": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_PARAMETERS": "",
+            "GIT_CONFIG_COUNT": "0",
+        }
+
+        process = tm.ok(
+            u.Tests.run_isolated_make(["help"], cwd=project, env=environment),
+        )
+
+        tm.that(
+            process.outcome.raw_return_code,
+            eq=0,
+            msg=process.stdout + process.stderr,
+        )
+        native_paths: set[Path] = set()
+        for row in u.Cli.json_as_sequence(
+            tm.ok(u.Cli.json_loads(config_report.read_text(encoding=c.DEFAULT_ENCODING))),
+        ):
+            path = u.Cli.json_as_mapping(row)["path"]
+            tm.that(path, is_=str)
+            if isinstance(path, str):
+                native_paths.add(Path(path).resolve())
+        tm.that(project / c.Infra.MISE_TOML_FILENAME in native_paths, eq=True)
+        tm.that(global_config in native_paths, eq=False)
+        project_locks: set[Path] = set()
+        # Mise's official SidecarListing reports default project-scope lock targets
+        # without resolving tools, installing packages or changing the lock.
+        for row in u.Cli.json_as_sequence(
+            tm.ok(u.Cli.json_loads(lock_report.read_text(encoding=c.DEFAULT_ENCODING))),
+        ):
+            path = u.Cli.json_as_mapping(row)["lockfile"]
+            tm.that(path, is_=str)
+            if isinstance(path, str):
+                project_locks.add((project / path).resolve())
+        tm.that(project_locks, eq={project / c.Infra.MISE_LOCK_FILENAME})
+        tm.that(tuple(path.read_bytes() for path in paths), eq=before)
+
+    @pytest.mark.parametrize("scenario", ["relative-link", "link-cycle"])
+    def test_public_make_authenticates_file_aliases_without_replacing_the_invoker(
+        self,
+        tmp_path: Path,
+        scenario: str,
+    ) -> None:
+        """Native Make/file aliases resolve physically; a link cycle fails bounded."""
+        project, _ = u.Tests.render_make_environment(
+            tmp_path / "alias project",
+            c.Infra.MakeProfile.STANDALONE,
+            bootstrap=True,
+            shape=u.Tests.MakeEnvironmentShape(project_name="make-file-alias"),
+        )
+        binary = Path(tm.not_none(shutil.which(c.Infra.MAKE))).resolve()
+        directory = project / "bin"
+        directory.mkdir()
+        entry = directory / "make-entry"
+        target = directory / "make-target"
+        entry.symlink_to(target.name)
+        target.symlink_to(
+            entry.name if scenario == "link-cycle" else binary,
+        )
+        (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            "$(info physical-invoker=$(SELF_MAKE_EXECUTABLE))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        arguments = ["help", f"MAKE_COMMAND={entry}"]
+        if scenario == "relative-link":
+            selected = project / "selected-Makefile"
+            selected.symlink_to(c.Infra.MAKEFILE_FILENAME)
+            arguments = [
+                "-f",
+                selected.name,
+                "help",
+                f"MAKE_COMMAND={entry.relative_to(project)}",
+            ]
+        process = tm.ok(
+            u.Tests.run_isolated_make(arguments, cwd=project),
+        )
+        if scenario == "link-cycle":
+            tm.that(process.outcome.raw_return_code, eq=2)
+            tm.that(process.stderr, has="physical file link cycle")
+            tm.that(process.stdout, lacks="physical-invoker=")
+        else:
+            tm.that(
+                process.outcome.raw_return_code,
+                eq=0,
+                msg=process.stdout + process.stderr,
             )
-        tm.that(violations, eq=[], msg=f"unassigned bootstrap reads: {violations}")
-        tm.that(bool(recipe), eq=True)
+            tm.that(process.stdout, has=f"physical-invoker={binary}\n")
+        tm.that(entry.readlink(), eq=Path(target.name))
+        tm.that(
+            target.readlink(),
+            eq=Path(entry.name) if scenario == "link-cycle" else binary,
+        )
 
     @pytest.mark.parametrize("verb", ["setup", "upg"])
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
