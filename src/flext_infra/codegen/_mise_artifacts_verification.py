@@ -24,7 +24,6 @@ from flext_infra.codegen._mise_artifacts_verification_manifest import (
 from flext_infra.codegen._mise_artifacts_verification_topology import (
     FlextInfraMiseArtifactsVerificationTopology,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -41,6 +40,8 @@ class FlextInfraMiseArtifactsVerification(
     def publication_current(
         cls,
         request: m.Infra.CodegenConformRequest,
+        *,
+        producer_verifier: p.Infra.CodegenProducerVerifier,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate a completed publication without planning or rendering.
 
@@ -49,7 +50,7 @@ class FlextInfraMiseArtifactsVerification(
 
         """
         root = request.root.expanduser().resolve()
-        observed = cls._read_publication(root)
+        observed = cls._read_publication(root, producer_verifier=producer_verifier)
         result = r[m.Infra.CodegenPhaseOutcome]
         if observed.failure:
             return result.from_failure(observed)
@@ -102,6 +103,8 @@ class FlextInfraMiseArtifactsVerification(
     def _read_publication(
         cls,
         root: Path,
+        *,
+        producer_verifier: p.Infra.CodegenProducerVerifier,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate the stored native receipt before testing request coverage.
 
@@ -131,7 +134,9 @@ class FlextInfraMiseArtifactsVerification(
                 f"generation publication does not cover this request: {report}; "
                 "run make gen",
             )
-        current = cls.publication_states_current(outcome)
+        current = cls.publication_states_current(
+            outcome, producer_verifier=producer_verifier
+        )
         if current.failure:
             return result.from_failure(current)
         return cls.states_current((captured.value,)).map(lambda _: outcome)
@@ -157,6 +162,8 @@ class FlextInfraMiseArtifactsVerification(
     def publication_states_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
+        *,
+        producer_verifier: p.Infra.CodegenProducerVerifier,
     ) -> p.Result[bool]:
         """Verify the terminal frontier of the actual ordered journal batches.
 
@@ -166,7 +173,9 @@ class FlextInfraMiseArtifactsVerification(
         """
         if not outcome.completed or outcome.issues or outcome.pending_files:
             return r[bool].fail("generation batch is incomplete; run make gen")
-        closure = cls._producer_closure_current(outcome)
+        closure = cls._producer_closure_current(
+            outcome, producer_verifier=producer_verifier
+        )
         if closure.failure:
             return closure
         membership = cls._docs_membership_current(outcome)
@@ -181,11 +190,14 @@ class FlextInfraMiseArtifactsVerification(
     def _producer_closure_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
+        *,
+        producer_verifier: p.Infra.CodegenProducerVerifier,
     ) -> p.Result[bool]:
         """Prove pre-planning producer closure for a batchless outcome.
 
         Args:
             outcome: Published phase outcome to authenticate.
+            producer_verifier: Composed authority authenticating the complete epoch.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -195,21 +207,19 @@ class FlextInfraMiseArtifactsVerification(
             return r[bool].ok(value=True)
         if (
             not outcome.generator_sources
-            or not outcome.generator_trees
+            or outcome.generator_reference is None
+            or not outcome.generator_reference.source_authority.inputs
             or any(source.role is None for source in outcome.generator_sources)
         ):
             return r[bool].fail(
                 "generation batch lacks pre-planning producer closure; run make gen",
             )
-        producer = FlextInfraCodegenPreconditions.producer_trees_current(
+        return producer_verifier(
             outcome.generator_trees,
             outcome.outputs,
             modules=outcome.generator_modules,
             reference=outcome.generator_reference,
         )
-        if producer.failure:
-            return producer
-        return r[bool].ok(value=True)
 
     @classmethod
     def _docs_membership_current(
@@ -326,6 +336,8 @@ class FlextInfraMiseArtifactsVerification(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
         frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
+        *,
+        producer_verifier: p.Infra.CodegenProducerVerifier,
     ) -> p.Result[bool]:
         """Advance only through outputs authorized by their native effect journal.
 
@@ -335,14 +347,18 @@ class FlextInfraMiseArtifactsVerification(
         """
         if cls._frontier_incomplete(outcome):
             return r[bool].fail("generation batch is incomplete; run make gen")
-        prerequisites = cls._frontier_prerequisites_current(outcome)
+        prerequisites = cls._frontier_prerequisites_current(
+            outcome, producer_verifier=producer_verifier
+        )
         if prerequisites.failure:
             return prerequisites
         journal = cls._frontier_journal_current(outcome, frontier)
         if journal.failure:
             return journal
         for batch in outcome.batches:
-            advanced = cls._publication_frontier(batch, frontier)
+            advanced = cls._publication_frontier(
+                batch, frontier, producer_verifier=producer_verifier
+            )
             if advanced.failure:
                 return advanced
         return r[bool].ok(value=True)
@@ -367,6 +383,8 @@ class FlextInfraMiseArtifactsVerification(
     def _frontier_prerequisites_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
+        *,
+        producer_verifier: p.Infra.CodegenProducerVerifier,
     ) -> p.Result[bool]:
         """Prove producer closure, DOCS membership, and source topology.
 
@@ -374,7 +392,9 @@ class FlextInfraMiseArtifactsVerification(
             The resulting ``p.Result[bool]``.
 
         """
-        closure = cls._producer_closure_current(outcome)
+        closure = cls._producer_closure_current(
+            outcome, producer_verifier=producer_verifier
+        )
         if closure.failure:
             return closure
         membership = cls._docs_frontier_membership_current(outcome)

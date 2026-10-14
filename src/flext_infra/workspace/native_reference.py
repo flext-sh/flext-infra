@@ -2037,14 +2037,29 @@ class FlextInfraWorkspaceNativeReference:
         observed: m.Infra.NativeImportObservation,
         reference: m.Infra.NativeImportObservation,
     ) -> p.Result[bool]:
-        """Compare executable code using CPython equality, never serialized hashes."""
+        """Compare executable code using CPython equality, never serialized hashes.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+        """
         if (
             observed.runtime != reference.runtime
             or observed.runtime_prefix != reference.runtime_prefix
-            or observed.modules != reference.modules
-            or observed.sources != reference.sources
         ):
-            return r[bool].fail("native reference epoch/runtime differs")
+            return r[bool].fail(
+                f"native reference runtime differs: {observed.runtime} "
+                f"!= {reference.runtime}; prefix={observed.runtime_prefix} "
+                f"!= {reference.runtime_prefix}"
+            )
+        if observed.modules != reference.modules:
+            return r[bool].fail("native reference elected module epoch differs")
+        if observed.sources != reference.sources:
+            extra = sorted(set(observed.sources).difference(reference.sources))
+            missing = sorted(set(reference.sources).difference(observed.sources))
+            return r[bool].fail(
+                "native reference source epoch differs: "
+                f"extra={extra[:1]} missing={missing[:1]}"
+            )
         expected = {item.binding: item for item in reference.bindings}
         actual = {item.binding for item in observed.bindings}
         if set(expected) != actual:

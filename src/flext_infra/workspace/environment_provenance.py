@@ -1145,7 +1145,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         payload: m.Infra.DirectUrlReceipt,
         expected_root: Path,
     ) -> p.Result[int]:
-        """Bind one parsed editable receipt to its declared physical source."""
+        """Bind one parsed editable receipt to its declared physical source.
+
+        Returns:
+            The resulting ``p.Result[int]``.
+        """
         parsed = urlparse(payload.url)
         if (
             parsed.scheme != "file"

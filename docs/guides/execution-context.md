@@ -178,6 +178,14 @@ An unresolved factory binding reports bounded, escaped identifier, module/packag
 registration, receiver/declaration, physical source path, and supplier-kind context.
 Diagnostics never render the operand, its material values, or a source excerpt; they
 preserve the failed admission rather than authorizing an unknown factory.
+Module-level source aliases may follow one unambiguous runtime declaration through
+an imported name or raw provider attribute. A typing-only shadow is excluded only
+when its guard is an authenticated import of native `typing.TYPE_CHECKING` (including
+import aliases, module-qualified access, and native boolean negation). The runtime
+flag must match its freshly read physical declaration. Unknown conditions, competing
+active declarations, alias cycles, or replaced runtime/supplier bindings fail without
+executing either branch, decorators, or class bodies. The selected metaclass retains
+the same physical supplier/source/code authentication as an unconditional import.
 Native compiler inputs preserve the class's actual bases and its own declared
 descriptors. An inherited constructor is not an explicitly declared dataclass
 constructor. Authentication does not replay a class body, decorator, metaclass, or

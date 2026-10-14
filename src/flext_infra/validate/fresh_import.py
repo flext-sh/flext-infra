@@ -20,9 +20,9 @@ from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, 
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 
@@ -141,7 +141,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         Returns:
             The destination proof or the first journal authority failure.
         """
-        authority = FlextInfraCodegenPreconditions.unchanged_journal(
+        authority = FlextInfraMiseArtifactsState.unchanged_journal(
             session, "staged view journal authority changed"
         )
         if authority.failure:
@@ -370,7 +370,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             return r[bool].from_failure(after)
         if after.value != view.manifest:
             return r[bool].fail("candidate tree identity changed during public import")
-        journal_barrier = FlextInfraCodegenPreconditions.unchanged_journal(
+        journal_barrier = FlextInfraMiseArtifactsState.unchanged_journal(
             session, "staged view journal changed during consumer"
         )
         if journal_barrier.failure:

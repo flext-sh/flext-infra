@@ -12,7 +12,6 @@ from pathlib import Path
 
 from flext_infra import m, p, t, u
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities.rope_runtime_refactors import _RopeRestructureOptions
 
 
 class FlextInfraRenameSymbols:
@@ -574,9 +573,9 @@ class FlextInfraRenameSymbols:
                     continue
                 changes = u.Infra.restructure_changes(
                     project,
-                    f"${{owner}}.{old_suffix}",
-                    f"${{owner}}.{new_suffix}",
-                    options=_RopeRestructureOptions(
+                    m.Infra.RopeRestructureRequest(
+                        pattern=f"${{owner}}.{old_suffix}",
+                        goal=f"${{owner}}.{new_suffix}",
                         arguments={"owner": "instance=" + owner},
                         resources=elected,
                     ),

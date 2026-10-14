@@ -233,6 +233,19 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class CodegenProducerVerifier(Protocol):
+        """Authenticate producer trees through a composed source authority."""
+
+        def __call__(
+            self,
+            trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            outputs: t.VariadicTuple[m.Infra.CodegenJournalSource] = (),
+            *,
+            modules: t.VariadicTuple[t.Pair[str, Path]],
+            reference: m.Infra.NativeImportReference | None,
+        ) -> p.Result[bool]: ...
+
+    @runtime_checkable
     class CodegenParticipantPolicyFactory(Protocol):
         """Composition-root authorization for one generation request."""
 

@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import runpy
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import config, infra, u
+from flext_infra import config, infra, p, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
 from tests import c, m, t, tm
@@ -24,6 +25,38 @@ from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
 class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
     """Typed workspace and project-layout fixture helpers."""
+
+    @staticmethod
+    def prove_contract_migration(
+        consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        source: str,
+    ) -> None:
+        """Prove public runtime equivalence, atomic planning and convergence."""
+        workspace, path = consumer
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            ),
+        )
+        tm.that(len(edits), eq=1)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        updated = edits[0].updated_source
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=workspace,
+                    sources={path: updated},
+                ),
+            ),
+            empty=True,
+        )
 
     @dataclasses.dataclass(frozen=True)
     class BeadsIdentity:

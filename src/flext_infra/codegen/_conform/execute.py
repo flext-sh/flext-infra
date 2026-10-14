@@ -1154,9 +1154,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return result_type.from_failure(extended)
         return result_type.ok((extended.value, owned_lazy_analysis))
 
-    @classmethod
+    @staticmethod
     def _publish_docs_batches(
-        cls,
         request: m.Infra.CodegenConformRequest,
         result: m.Infra.CodegenResult,
         ports: m.Infra.CodegenConformPorts,
@@ -1166,7 +1165,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenResult]``.
-
         """
         if result.plan is None:
             return r[m.Infra.CodegenResult].fail(

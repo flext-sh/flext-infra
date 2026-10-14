@@ -31,6 +31,30 @@ class FlextInfraMiseArtifactsState:
     """Journaled directory state for Mise artifact transactions."""
 
     @classmethod
+    def unchanged_journal(
+        cls,
+        session: m.Infra.CodegenTransactionSession,
+        changed_error: str,
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Authenticate the full session receipt through the journal state owner.
+
+        Returns:
+            The session only when its complete native journal snapshot is current.
+        """
+        result_type = r[m.Infra.CodegenTransactionSession]
+        observed = cls.journal_state(session.plan.layout)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        if cls.journal_snapshot(observed.value) != session.journal_state:
+            return result_type.fail(
+                changed_error,
+                error_data={
+                    "cleanup_error": "journal authority mismatch vs session receipt"
+                },
+            )
+        return result_type.ok(session)
+
+    @classmethod
     def _hosting_device(cls, path: Path) -> int:
         """Return the filesystem device that will host ``path``.
 

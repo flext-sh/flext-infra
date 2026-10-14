@@ -23,7 +23,6 @@ from flext_infra._utilities._semantic_cutover.declaration_payload import (
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
-from flext_infra._utilities.rope_runtime_refactors import _RopeRestructureOptions
 
 
 class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdits):
@@ -106,18 +105,13 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 )
                 changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
                     project,
-                    rule.pattern,
-                    rule.goal,
-                    options=_RopeRestructureOptions(
+                    m.Infra.RopeRestructureRequest(
+                        pattern=rule.pattern,
+                        goal=rule.goal,
                         arguments=rule.arguments,
                         resources=resources,
-                        imports=tuple(rule.imports.values()),
-                        import_bindings=rule.imports,
-                        match_filter=partial(
-                            cls._admit_contract_match,
-                            project,
-                            rule,
-                        ),
+                        imports=rule.imports,
+                        match_filter=partial(cls._admit_contract_match, project, rule),
                     ),
                 )
                 members = FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
@@ -273,6 +267,17 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             for name in rule.model_bases
         ):
             return False
+        if rule.repeats_annotation or rule.reorders_annotation:
+            calls = FlextInfraUtilitiesRopeRuntimeRefactors.word_call_regions(
+                module.source_code, match.get_region()
+            )
+            if len(calls) != 1:
+                message = (
+                    f"{rule.id}: annotation evaluation cannot repeat or reorder "
+                    f"authored calls "
+                    f"in {module.get_name()}:{scope.get_start()}"
+                )
+                raise ValueError(message)
         if not cls._admitted_unshadowed_builtins(rule, scope):
             return False
         return cls._admitted_bindings(

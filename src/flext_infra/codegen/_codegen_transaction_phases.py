@@ -341,7 +341,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 )
             )
         current = checked.value
-        journal_barrier = FlextInfraCodegenPreconditions.unchanged_journal(
+        journal_barrier = FlextInfraMiseArtifactsState.unchanged_journal(
             current,
             "journal changed during staged consumer",
         )
@@ -646,7 +646,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        aligned = FlextInfraCodegenPreconditions.unchanged_journal(
+        aligned = FlextInfraMiseArtifactsState.unchanged_journal(
             session,
             "generation journal changed before staging intentions",
         )
@@ -867,7 +867,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ]
-        aligned = FlextInfraCodegenPreconditions.unchanged_journal(
+        aligned = FlextInfraMiseArtifactsState.unchanged_journal(
             session,
             "generation journal changed between phases",
         )
@@ -1207,7 +1207,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
         ]
         layout = session.plan.layout
-        unchanged = FlextInfraCodegenPreconditions.unchanged_journal(
+        unchanged = FlextInfraMiseArtifactsState.unchanged_journal(
             session,
             "generation journal changed before directories",
         )
@@ -1368,7 +1368,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
         ]
         layout = session.plan.layout
-        unchanged = FlextInfraCodegenPreconditions.unchanged_journal(
+        unchanged = FlextInfraMiseArtifactsState.unchanged_journal(
             session,
             "generation journal changed before commit",
         )

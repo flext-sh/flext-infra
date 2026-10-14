@@ -165,6 +165,49 @@ class FlextInfraConfigModelsScaffold:
             ),
         ] = ()
 
+    class ScaffoldDependencyProfileSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Dependencies selected by the declared upstream FLEXT facade."""
+
+        upstream: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Supported upstream facade package"),
+        ]
+        project: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Distribution receiving additional requirements; "
+                    "unset selects the shared upstream profile"
+                ),
+            ),
+        ] = None
+        runtime: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(min_length=1, description="Runtime requirements"),
+        ]
+        codegen: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Code-generation requirements"),
+        ] = ()
+
+        @field_validator("runtime", "codegen")
+        @classmethod
+        def validate_requirements(
+            cls, requirements: t.VariadicTuple[str]
+        ) -> t.VariadicTuple[str]:
+            """Reject invalid PEP 508 policy before any dependency writer runs.
+
+            Args:
+                requirements: A tuple of requirement strings to validate.
+
+            Returns:
+                The validated tuple of requirement strings.
+
+            """
+            for requirement in requirements:
+                Requirement(requirement)
+            return requirements
+
     class ScaffoldSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
 

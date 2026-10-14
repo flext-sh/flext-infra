@@ -9,6 +9,8 @@ from __future__ import annotations
 from ast import Import, ImportFrom
 from collections.abc import Callable
 
+from rope.refactor.restructure import _ChangeComputer
+
 from flext_core import t
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
 
@@ -34,6 +36,7 @@ class FlextInfraTypesRope:
     type RopeImportStatement = FlextInfraProtocolsRopeRuntime.RopeImportStatement
     type RopeModuleImports = FlextInfraProtocolsRopeRuntime.RopeModuleImports
     type RopeChangeSet = FlextInfraProtocolsRopeRuntime.RopeChangeSet
+    type RopeChangeComputer = _ChangeComputer
     type RopeMoveGlobal = FlextInfraProtocolsRopeRuntime.RopeMoveGlobal
     type RopeOccurrence = FlextInfraProtocolsRopeRuntime.RopeOccurrence
     type RopeOccurrenceFinder = FlextInfraProtocolsRopeRuntime.RopeOccurrenceFinder
@@ -41,6 +44,10 @@ class FlextInfraTypesRope:
     type RopeTransformFn = Callable[
         [RopeProject, RopeResource],
         t.Pair[str, t.StrSequence],
+    ]
+    type RopeMatchFilter = Callable[
+        [RopePyModule, FlextInfraProtocolsRopeRuntime.RopeContractMatch],
+        bool,
     ]
 
 

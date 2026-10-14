@@ -6,41 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 
 from flext_cli import u
 
 from flext_infra import m, p, r, t
-from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 _NATIVE_REGION_SPAN = 2
 """Character-region tuples carry exactly one begin and one end coordinate."""
-
-
-class _RopeRestructureOptions(FlextInfraModelsBase.FrozenArbitrary):
-    """Match, admission, and import policies for one Rope restructuring."""
-
-    arguments: t.MappingKV[str, str] = m.Field(
-        description="Pattern argument bindings of the restructuring.",
-    )
-    resources: t.SequenceOf[p.Infra.RopeResource] = m.Field(
-        description="Resources whose changes the restructuring plans.",
-    )
-    imports: t.StrSequence = m.Field(
-        default=(),
-        description="Import declarations the restructuring may add.",
-    )
-    match_filter: (
-        Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool] | None
-    ) = m.Field(
-        default=None,
-        description="Occurrence admission gate over every native match.",
-    )
-    import_bindings: t.MappingKV[str, str] | None = m.Field(
-        default=None,
-        description="Existing binding reuse map applied while adding imports.",
-    )
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
@@ -294,18 +268,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     def restructure_changes(
         cls,
         rope_project: p.Infra.RopeProject,
-        pattern: str,
-        goal: str,
-        *,
-        options: _RopeRestructureOptions,
+        request: m.Infra.RopeRestructureRequest,
     ) -> p.Infra.RopeChangeSet:
         """Plan Rope 1.14 semantic changes without invoking Project.do.
 
         Args:
             rope_project: Native Rope project owning the restructured sources.
-            pattern: Native Rope match pattern of the restructuring.
-            goal: Native Rope replacement template of the restructuring.
-            options: Frozen match, admission, and import policies.
+            request: Immutable native pattern, admission, and import policies.
 
         Returns:
             The resulting ``p.Infra.RopeChangeSet``.
@@ -318,44 +287,20 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         factory = cls.runtime_callable(
             "flext_infra._utilities._rope.restructure", "FlextInfraRopeRestructure"
         )
-        restructuring = factory(rope_project, pattern, goal, options=options)
+        restructuring = factory(
+            rope_project,
+            request,
+        )
         if not isinstance(restructuring, p.Infra.RopeRestructure):
             msg = "rope Restructure does not satisfy its public planning contract"
             raise TypeError(msg)
-        changes = restructuring.get_changes(resources=list(options.resources))
+        changes = restructuring.get_changes(resources=list(request.resources))
         u.Cli.info(
             "Rope restructuring "
             f"matched={restructuring.matched_count} "
-            f"admitted={restructuring.admitted_count} pattern={pattern}"
+            f"admitted={restructuring.admitted_count} pattern={request.pattern}"
         )
         return changes
-
-    @classmethod
-    def contract_matches(
-        cls,
-        module: p.Infra.RopePyModule,
-        pattern: str,
-        arguments: t.MappingKV[str, str],
-    ) -> t.VariadicTuple[p.Infra.RopeContractMatch]:
-        """Match native Rope patterns with declaration identity constraints.
-
-        Returns:
-            Native matches exposing only authenticated source coordinates.
-
-        Raises:
-            TypeError: When the SDK does not satisfy the matching contract.
-        """
-        finder = cls.runtime_callable("rope.refactor.similarfinder", "SimilarFinder")(
-            module
-        )
-        if not isinstance(finder, p.Infra.RopeSimilarFinder):
-            message = "Rope SimilarFinder does not satisfy its public contract"
-            raise TypeError(message)
-        matches = tuple(finder.get_matches(pattern, args=dict(arguments)))
-        if not all(isinstance(match, p.Infra.RopeContractMatch) for match in matches):
-            message = "Rope SimilarFinder returned an invalid match"
-            raise TypeError(message)
-        return matches
 
     @classmethod
     def semantic_regions(
@@ -533,6 +478,31 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             case _:
                 msg = "rope Worder returned invalid primary range"
                 raise TypeError(msg)
+
+    @classmethod
+    def word_call_regions(
+        cls, source: str, region: t.Pair[int, int]
+    ) -> t.SequenceOf[t.Pair[int, int]]:
+        """Collect native call facts using one Rope word finder for the region.
+
+        Returns:
+            Distinct called-word regions, with strings and comments ignored.
+
+        Raises:
+            TypeError: When Rope cannot provide its declared word facts.
+        """
+        finder = cls._word_finder(source)
+        if not isinstance(finder, p.Infra.RopeWorder):
+            message = "Rope word finder does not satisfy its source fact contract"
+            raise TypeError(message)
+        regions: set[t.Pair[int, int]] = set()
+        offset, limit = region
+        while offset < limit:
+            start, end = finder.get_word_range(offset)
+            if start < end <= limit and finder.is_a_function_being_called(start):
+                regions.add((start, end))
+            offset = max(offset + 1, end)
+        return tuple(sorted(regions))
 
     @classmethod
     def word_is_function_call(cls, source: str, offset: int) -> bool:

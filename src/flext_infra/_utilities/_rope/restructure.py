@@ -6,53 +6,63 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Protocol, override
+from collections.abc import Mapping
+from typing import override
 
 from rope.refactor.restructure import Restructure
+from rope.refactor.wildcards import DefaultWildcard
 
-from flext_infra import p, t
-
-
-class _RestructureOptionsSpec(Protocol):
-    """Read-only structural contract for one Rope restructuring policy."""
-
-    @property
-    def arguments(self) -> t.MappingKV[str, str]: ...
-
-    @property
-    def imports(self) -> t.StrSequence: ...
-
-    @property
-    def match_filter(
-        self,
-    ) -> Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool] | None: ...
-
-    @property
-    def import_bindings(self) -> t.MappingKV[str, str] | None: ...
+from flext_infra import m, p, t
 
 
 class FlextInfraRopeRestructure(Restructure):
     """Keep native matching and writing while admitting each occurrence."""
 
+    class _IdentityChoices:
+        """Delegate every alternative to Rope's exact native identity matcher."""
+
+        def __init__(self, project: p.Infra.RopeProject) -> None:
+            self._matches = DefaultWildcard(project).matches
+
+        @staticmethod
+        def get_name() -> str:
+            return "identity_choices"
+
+        def matches(self, suspect: p.AttributeProbe, arg: t.StrSequence) -> bool:
+            return any(self._matches(suspect, choice) for choice in arg)
+
     def __init__(
         self,
         project: p.Infra.RopeProject,
-        pattern: str,
-        goal: str,
-        *,
-        options: _RestructureOptionsSpec,
+        request: m.Infra.RopeRestructureRequest,
     ) -> None:
         """Receive the current consumer's native match and import policies."""
+        constraints = {
+            name: value
+            if isinstance(value, str)
+            else ("identity_choices", tuple(value))
+            for name, value in request.arguments.items()
+        }
         super().__init__(
             project,
-            pattern,
-            goal,
-            args=dict(options.arguments),
-            imports=list(options.imports),
+            request.pattern,
+            request.goal,
+            args=constraints,
+            imports=list(
+                request.imports.values()
+                if isinstance(request.imports, Mapping)
+                else request.imports
+            ),
+            wildcards={
+                wildcard.get_name(): wildcard
+                for wildcard in (
+                    DefaultWildcard(project),
+                    self._IdentityChoices(project),
+                )
+            },
         )
-        self.match_filter = options.match_filter
-        self.import_bindings = options.import_bindings
+        self.match_filter = request.match_filter
+        self.import_policy = request.imports
         self.matched_count = 0
         self.admitted_count = 0
 
@@ -61,7 +71,7 @@ class FlextInfraRopeRestructure(Restructure):
         self,
         matches: t.SequenceOf[p.Infra.RopeContractMatch],
         pymodule: p.Infra.RopePyModule,
-    ) -> p.Infra.RopeChangeComputer:
+    ) -> t.Infra.RopeChangeComputer:
         """Admit occurrences before the native change computer writes source.
 
         Returns:
@@ -96,11 +106,11 @@ class FlextInfraRopeRestructure(Restructure):
             Source emitted by the native import manager.
         """
         selected = imports
-        if self.import_bindings is not None:
+        if isinstance(self.import_policy, Mapping):
             names = self.project.get_pymodule(resource).get_scope().get_defined_names()
             selected = tuple(
                 declaration
-                for binding, declaration in self.import_bindings.items()
+                for binding, declaration in self.import_policy.items()
                 if binding not in names
             )
         return super()._add_imports(resource, source, list(selected))

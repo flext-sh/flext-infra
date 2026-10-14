@@ -118,12 +118,14 @@ class TestsFlextInfraDocsGeneratorBundle:
         tm.ok(
             FlextInfraMiseArtifactsVerification.publication_states_current(
                 receipts[0],
+                producer_verifier=FlextInfraCodegenPreconditions.producer_trees_current,
             ),
         )
         added = workspace / "flext-a/src/flext_a/new_source.py"
         added.write_text('"""Source added after publication."""\n', encoding="utf-8")
         changed = FlextInfraMiseArtifactsVerification.publication_states_current(
             receipts[0],
+            producer_verifier=FlextInfraCodegenPreconditions.producer_trees_current,
         )
 
         tm.fail(changed)
