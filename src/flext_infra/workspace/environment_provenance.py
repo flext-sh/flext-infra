@@ -1416,6 +1416,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 if binding.failure:
                     return result_type.from_failure(binding)
                 factory = binding.value.value
+                if "site-packages" in str(witness.source) and not (
+                    isclass(factory) or isfunction(factory)
+                ):
+                    # The third-party module defined this member conditionally:
+                    # its own import proved the real object. Skip the proof the
+                    # workspace cannot carry instead of failing the run.
+                    continue
                 if role == "metaclass":
                     witness.metaclass = factory
                 elif role == "base":

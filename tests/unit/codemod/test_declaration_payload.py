@@ -161,6 +161,17 @@ class TestsFlextInfraDeclarationPayload:
                     "class Holder:\n"
                     "    class Payload(ForeignBase):\n"
                     "        value: str = 'payload'\n"
+                    "        @property\n"
+                    "        def execute(self) -> str:\n"
+                    "            return self.value.upper()\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
                     "        def execute(self) -> str:\n"
                     "            return self.value.upper()\n"
                 ),

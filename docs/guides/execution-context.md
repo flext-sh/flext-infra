@@ -160,6 +160,11 @@ construction hook. Function compilation uses authenticated native suppliers and
 data-only attachment targets; alias operands and compiler constructor bindings
 require admission before invocation. Value comparison must not invoke authored
 equality, hashing, or attribute access.
+Dataclass ancestry is compared with its source-declared bindings and retained as
+supplier evidence, not replayed to construct compiler data. Native assembly uses an
+object-rooted data-only class with authenticated declarations and fields; neither
+ABC ancestry nor a supplier namespace authorizes executing a receiver metaclass or
+inherited subclass hook again.
 Source bindings retain null literals inside a typed value; a null annotation or
 default never becomes a successful null `FlextResult` payload or a substituted type.
 Native generated methods are compiled in batches whose starting lines depend on
