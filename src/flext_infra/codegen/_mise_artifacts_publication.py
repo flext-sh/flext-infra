@@ -533,6 +533,25 @@ class FlextInfraMisePublication:
         )
 
     @staticmethod
+    def _batch_admission_is_inconsistent(
+        batch_admission: m.Infra.CodegenPhaseOutcome,
+    ) -> bool:
+        """Report whether the batch admission disagrees with its analysis.
+
+        Returns:
+            True when the admission carries an error, issues, an exception,
+            or its phase and admitted states differ from the analysis.
+        """
+        analysis = batch_admission.analysis
+        if analysis is None or batch_admission.error or batch_admission.issues:
+            return True
+        return bool(
+            batch_admission.exception is not None
+            or batch_admission.phase != analysis.phase
+            or batch_admission.admitted_states != analysis.inputs
+        )
+
+    @staticmethod
     def _validated_batch_admission(
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         batch_admission: m.Infra.CodegenPhaseOutcome,
@@ -545,13 +564,8 @@ class FlextInfraMisePublication:
 
         """
         batch_analysis = batch_admission.analysis
-        if (
-            batch_analysis is None
-            or batch_admission.error
-            or batch_admission.issues
-            or batch_admission.exception is not None
-            or batch_admission.phase != batch_analysis.phase
-            or batch_admission.admitted_states != batch_analysis.inputs
+        if FlextInfraMisePublication._batch_admission_is_inconsistent(
+            batch_admission,
         ):
             return r[bool].fail(
                 "publication requires its exact native batch admission",

@@ -87,7 +87,12 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         cls,
         request: m.Infra.NativeImportRequest,
     ) -> p.Result[m.Infra.NativeImportReference]:
-        """Authenticate one loaded epoch against a sealed, actual native import."""
+        """Authenticate one loaded epoch against a sealed, actual native import.
+
+        Returns:
+            Result carrying the sealed native import reference, or a failure
+            when the loaded epoch does not satisfy the request.
+        """
         return FlextInfraWorkspaceNativeReference.authenticate(request)
 
     def build_report(
@@ -695,7 +700,13 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         source_roots: t.SequenceOf[Path] = (),
         isolated: bool = False,
     ) -> p.Result[p.Cli.CommandOutput]:
-        """Run the selected native consumer in its declared physical runtime."""
+        """Run the selected native consumer in its declared physical runtime.
+
+        Returns:
+            Result carrying the consumer's command output, or a failure when
+            the runtime is not a physical directory or the interpreter is
+            missing.
+        """
         interpreter = u.Infra.runtime_python(
             self.repository_root,
             runtime_root=self.runtime_root,

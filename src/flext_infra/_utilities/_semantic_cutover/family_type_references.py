@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 import operator
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
@@ -18,9 +18,54 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeStructure,
 )
 
+_MIN_DECLARATION_SEGMENTS = 2
+
 
 class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     """Select type positions structurally and bind every edit to Rope identity."""
+
+    @classmethod
+    def rewrite_type_source(
+        cls,
+        source: str,
+        project: p.Infra.RopeProject,
+        scope: p.Infra.RopeScope,
+        replacement: Callable[[p.Infra.RopeScope, str], str | None],
+    ) -> str:
+        """Rewrite bound type references once, preserving metadata and literal data."""
+        protected = cls.expression_payload_ranges(source, project, scope)
+        edits: list[t.Triple[int, int, str]] = []
+        for begin, end in cls.reference_regions(source):
+            if any(first <= begin and end <= last for first, last in protected):
+                continue
+            expression = source[begin:end]
+            changed = replacement(scope, expression)
+            if changed is not None and changed != expression:
+                edits.append((begin, end, changed))
+        for (
+            begin,
+            end,
+            _metadata,
+        ) in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source):
+            if source[begin] == "#" or any(
+                first <= begin and end <= last for first, last in protected
+            ):
+                continue
+            literal = cls.string_constant(source[begin:end])
+            if literal is None:
+                continue
+            changed = cls.rewrite_type_source(literal, project, scope, replacement)
+            if changed != literal:
+                edits.append((begin, end, repr(changed)))
+        selected = []
+        previous = -1
+        for begin, end, changed in sorted(edits, key=lambda item: (item[0], -item[1])):
+            if begin >= previous:
+                selected.append((begin, end, changed))
+                previous = end
+        for begin, end, changed in reversed(selected):
+            source = source[:begin] + changed + source[end:]
+        return source
 
     @classmethod
     def annotation_regions(
@@ -28,7 +73,57 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         module: p.Infra.RopePyModule,
     ) -> t.VariadicTuple[t.Triple[int, int, int | None]]:
-        """Return annotation coordinates from native match and declaration regions."""
+        """Return annotation coordinates from native match and declaration regions.
+
+        The native Worder and declaration header contracts fail the scan when a
+        runtime product is foreign or a header has no named region.
+
+        Returns:
+            Sorted ``(begin, end, declaration line)`` annotation regions.
+
+        """
+        regions = cls._semantic_annotation_regions(module)
+        words = cls._require_worder(
+            source,
+            "annotation regions require Rope Worder",
+        )
+        for statement in FlextInfraUtilitiesRopeStructure.logical_statements(source):
+            regions.update(cls._statement_regions(source, words, statement))
+        return tuple(sorted(regions, key=operator.itemgetter(0, 1)))
+
+    @classmethod
+    def _require_worder(cls, source: str, requirement: str) -> p.Infra.RopeWorder:
+        """Build the native Rope Worder or fail the structural contract.
+
+        Args:
+            source: The native source text the Worder indexes.
+            requirement: The contract message raised on a foreign Worder.
+
+        Returns:
+            The validated native Rope Worder for ``source``.
+
+        Raises:
+            TypeError: If the runtime Worder product is not the native contract.
+
+        """
+        words = FlextInfraUtilitiesRopeRuntimeRefactors.runtime_callable(
+            "rope.base.worder",
+            "Worder",
+        )(source)
+        if not isinstance(words, p.Infra.RopeWorder):
+            raise TypeError(requirement)
+        return words
+
+    @staticmethod
+    def _semantic_annotation_regions(
+        module: p.Infra.RopePyModule,
+    ) -> set[t.Triple[int, int, int | None]]:
+        """Collect native semantic capture regions for declared annotations.
+
+        Returns:
+            The semantic annotation capture regions keyed by native offsets.
+
+        """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         finder = refactors.semantic_finder(module)
         regions: set[t.Triple[int, int, int | None]] = set()
@@ -39,80 +134,156 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             for match in finder.get_matches(pattern):
                 begin, end = refactors.semantic_capture_region(match, "annotation")
                 regions.add((begin, end, None))
-        words = refactors.runtime_callable("rope.base.worder", "Worder")(source)
-        if not isinstance(words, p.Infra.RopeWorder):
-            msg = "annotation regions require Rope Worder"
-            raise TypeError(msg)
-        statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
-        for statement in statements:
-            start = statement.start_offset + statement.indent
-            end = statement.end_offset
-            category = statement.category
-            if category == c.Infra.StatementCategory.TYPE_ALIAS:
-                parts = cls.expression_segments(source, start, end, "=")
-                if len(parts) >= 2:
-                    regions.add((parts[1][0], end, None))
-            elif category in {
-                c.Infra.StatementCategory.FUNC_DEF,
-                c.Infra.StatementCategory.CLASS_DEF,
-            }:
-                name = FlextInfraUtilitiesRopeStructure._header_name(statement.text)
-                prefix = source.find(name, start, end)
-                if prefix < 0:
-                    msg = "native declaration header has no named region"
-                    raise ValueError(msg)
-                after = prefix + len(name)
-                if source[after : after + 1] == "[":
-                    generic_start, generic_end = (
-                        words.code_finder.get_word_parens_range(
-                            after - 1,
-                            "[",
-                            "]",
-                        )
-                    )
-                    for parameter_start, parameter_end in cls.expression_segments(
-                        source,
-                        generic_start + 1,
-                        generic_end - 1,
-                        ",",
-                    ):
-                        parts = cls.expression_segments(
-                            source,
-                            parameter_start,
-                            parameter_end,
-                            ":=",
-                        )
-                        regions.update(
-                            (begin, stop, statement.line) for begin, stop in parts[1:]
-                        )
-                    after = generic_end
-                opening = source.find("(", after, end)
-                if opening < 0:
-                    continue
-                first, last = words.code_finder.get_word_parens_range(opening - 1)
-                if category == c.Infra.StatementCategory.CLASS_DEF:
-                    regions.add((first + 1, last - 1, statement.line))
-                    continue
-                for parameter_start, parameter_end in cls.expression_segments(
+        return regions
+
+    @classmethod
+    def _statement_regions(
+        cls,
+        source: str,
+        words: p.Infra.RopeWorder,
+        statement: m.Infra.LogicalStatement,
+    ) -> set[t.Triple[int, int, int | None]]:
+        """Resolve the annotation regions owned by one logical statement.
+
+        Returns:
+            The annotation regions owned by the statement's native category.
+
+        """
+        if statement.category == c.Infra.StatementCategory.TYPE_ALIAS:
+            return cls._type_alias_regions(source, statement)
+        if statement.category in {
+            c.Infra.StatementCategory.FUNC_DEF,
+            c.Infra.StatementCategory.CLASS_DEF,
+        }:
+            return cls._declaration_regions(source, words, statement)
+        return set()
+
+    @classmethod
+    def _type_alias_regions(
+        cls,
+        source: str,
+        statement: m.Infra.LogicalStatement,
+    ) -> set[t.Triple[int, int, int | None]]:
+        """Return the annotation region of one native ``type`` alias statement."""
+        start = statement.start_offset + statement.indent
+        end = statement.end_offset
+        parts = cls.expression_segments(source, start, end, "=")
+        if len(parts) < _MIN_DECLARATION_SEGMENTS:
+            return set()
+        return {(parts[1][0], end, None)}
+
+    @classmethod
+    def _declaration_regions(
+        cls,
+        source: str,
+        words: p.Infra.RopeWorder,
+        statement: m.Infra.LogicalStatement,
+    ) -> set[t.Triple[int, int, int | None]]:
+        """Return annotation regions of one native ``def``/``class`` declaration.
+
+        Returns:
+            The declaration's base, parameter, and return annotation regions.
+
+        Raises:
+            ValueError: If the native declaration header has no named region.
+
+        """
+        start = statement.start_offset + statement.indent
+        end = statement.end_offset
+        name = FlextInfraUtilitiesRopeStructure._header_name(statement.text)
+        prefix = source.find(name, start, end)
+        if prefix < 0:
+            msg = "native declaration header has no named region"
+            raise ValueError(msg)
+        after = prefix + len(name)
+        regions: set[t.Triple[int, int, int | None]] = set()
+        if source[after : after + 1] == "[":
+            generic_start, generic_end = words.code_finder.get_word_parens_range(
+                after - 1,
+                "[",
+                "]",
+            )
+            regions.update(
+                cls._generic_parameter_regions(
                     source,
-                    first + 1,
-                    last - 1,
-                    ",",
-                ):
-                    parts = cls.expression_segments(
-                        source,
-                        parameter_start,
-                        parameter_end,
-                        ":=",
-                    )
-                    if len(parts) >= 2 and ":" in source[parts[0][1] : parts[1][0]]:
-                        regions.add((*parts[1], statement.line))
-                tail = source[last:end]
-                arrow = tail.find("->")
-                if arrow >= 0:
-                    begin = last + arrow + 2
-                    regions.add((begin, end - 1, statement.line))
-        return tuple(sorted(regions, key=operator.itemgetter(0, 1)))
+                    generic_start + 1,
+                    generic_end - 1,
+                    statement,
+                ),
+            )
+            after = generic_end
+        opening = source.find("(", after, end)
+        if opening < 0:
+            return regions
+        first, last = words.code_finder.get_word_parens_range(opening - 1)
+        if statement.category == c.Infra.StatementCategory.CLASS_DEF:
+            regions.add((first + 1, last - 1, statement.line))
+            return regions
+        regions.update(
+            cls._annotated_parameter_regions(source, first + 1, last - 1, statement),
+        )
+        tail = source[last:end]
+        arrow = tail.find("->")
+        if arrow >= 0:
+            regions.add((last + arrow + 2, end - 1, statement.line))
+        return regions
+
+    @classmethod
+    def _generic_parameter_regions(
+        cls,
+        source: str,
+        begin: int,
+        end: int,
+        statement: m.Infra.LogicalStatement,
+    ) -> set[t.Triple[int, int, int | None]]:
+        """Return every annotation region inside one generic parameter list."""
+        regions: set[t.Triple[int, int, int | None]] = set()
+        for parameter_start, parameter_end in cls.expression_segments(
+            source,
+            begin,
+            end,
+            ",",
+        ):
+            parts = cls.expression_segments(
+                source,
+                parameter_start,
+                parameter_end,
+                ":=",
+            )
+            regions.update(
+                (annotation_start, annotation_end, statement.line)
+                for annotation_start, annotation_end in parts[1:]
+            )
+        return regions
+
+    @classmethod
+    def _annotated_parameter_regions(
+        cls,
+        source: str,
+        begin: int,
+        end: int,
+        statement: m.Infra.LogicalStatement,
+    ) -> set[t.Triple[int, int, int | None]]:
+        """Return annotation regions of the parameters annotated in one region."""
+        regions: set[t.Triple[int, int, int | None]] = set()
+        for parameter_start, parameter_end in cls.expression_segments(
+            source,
+            begin,
+            end,
+            ",",
+        ):
+            parts = cls.expression_segments(
+                source,
+                parameter_start,
+                parameter_end,
+                ":=",
+            )
+            if (
+                len(parts) >= _MIN_DECLARATION_SEGMENTS
+                and ":" in source[parts[0][1] : parts[1][0]]
+            ):
+                regions.add((*parts[1], statement.line))
+        return regions
 
     @classmethod
     def quoted_type_regions(
@@ -143,20 +314,36 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
 
     @staticmethod
     def string_constant(literal: str) -> str | None:
-        """Decode one literal through CPython compilation without executing code."""
+        """Decode one literal through CPython compilation without executing code.
+
+        Returns:
+            The decoded string constant, or ``None`` for non-string literals.
+
+        """
         return FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(literal)
 
-    @staticmethod
+    @classmethod
     def reference_regions(
+        cls,
         source: str,
     ) -> t.VariadicTuple[t.Pair[int, int]]:
-        """Return maximal identifier primaries through native Rope word boundaries."""
+        """Return maximal identifier primaries through native Rope word boundaries.
+
+        A foreign runtime Worder product fails the scan.
+
+        Returns:
+            Sorted maximal identifier primary regions.
+
+        Raises:
+            ValueError: If a native reference region does not advance the scan.
+
+        """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         opaque = refactors.ignored_regions(source)
-        words = refactors.runtime_callable("rope.base.worder", "Worder")(source)
-        if not isinstance(words, p.Infra.RopeWorder):
-            msg = "reference regions require Rope Worder"
-            raise TypeError(msg)
+        words = cls._require_worder(
+            source,
+            "reference regions require Rope Worder",
+        )
         regions: set[t.Pair[int, int]] = set()
         cursor = 0
         while cursor < len(source):
@@ -258,19 +445,30 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 protected.update(arguments[1:])
         return frozenset(protected)
 
-    @staticmethod
+    @classmethod
     def expression_segments(
+        cls,
         source: str,
         begin: int,
         end: int,
         separators: str,
     ) -> t.VariadicTuple[t.Pair[int, int]]:
-        """Split a native region using Rope-owned literal and delimiter ranges."""
+        """Split a native region using Rope-owned literal and delimiter ranges.
+
+        A foreign runtime Worder product fails the split.
+
+        Returns:
+            Whitespace-trimmed sub-region pairs for every separator-delimited part.
+
+        Raises:
+            ValueError: If a Rope delimiter differs from the native region.
+
+        """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        finder = refactors.runtime_callable("rope.base.worder", "Worder")(source)
-        if not isinstance(finder, p.Infra.RopeWorder):
-            msg = "type references require native Rope word regions"
-            raise TypeError(msg)
+        finder = cls._require_worder(
+            source,
+            "type references require native Rope word regions",
+        )
         opaque = {
             start: stop for start, stop, _metadata in refactors.ignored_regions(source)
         }
@@ -315,13 +513,19 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         project: p.Infra.RopeProject,
         scope: p.Infra.RopeScope,
     ) -> frozenset[t.Pair[int, int]]:
-        """Protect typing payloads inside a quoted expression in its original scope."""
+        """Protect typing payloads inside a quoted expression in its original scope.
+
+        A foreign runtime Worder product fails the protection scan.
+
+        Returns:
+            The protected ``frozenset[t.Pair[int, int]]`` payload regions.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        words = refactors.runtime_callable("rope.base.worder", "Worder")(source)
-        if not isinstance(words, p.Infra.RopeWorder):
-            msg = "quoted types require native Rope delimiters"
-            raise TypeError(msg)
+        words = cls._require_worder(
+            source,
+            "quoted types require native Rope delimiters",
+        )
         typing = project.get_module("typing")
         protected: set[t.Pair[int, int]] = set()
         for begin, end in cls.reference_regions(source):

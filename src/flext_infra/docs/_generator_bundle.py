@@ -703,6 +703,23 @@ class FlextInfraDocGeneratorBundleMixin:
             return result_type.from_failure(owned)
         if owned.value is not None:
             return result_type.ok(owned.value)
+        family = cls._family_governance_ref(repository_root, inputs)
+        if family.failure:
+            return result_type.from_failure(family)
+        return result_type.ok(family.value)
+
+    @classmethod
+    def _family_governance_ref(
+        cls,
+        repository_root: Path,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[str]:
+        """Resolve and authenticate the declared dependency family line.
+
+        Returns:
+            The dependency family branch, or the first resolution failure.
+        """
+        result_type = r[str]
         line = u.Infra.flext_integration_line(
             codegen=inputs.spec,
             repository_root=repository_root,

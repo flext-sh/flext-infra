@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Protocol
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
@@ -33,6 +33,69 @@ from flext_infra._utilities._rope_source_bases_aliases import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+
+
+class _ChainDeclarationContext(m.ArbitraryTypesModel):
+    """Declaration chase inputs for one assigned binding value."""
+
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+
+    project: p.Infra.RopeProject = m.Field(
+        description="Closed Rope project owning the binding chain.",
+    )
+    holder: p.Infra.RopePyModule = m.Field(
+        description="Module holding the chased declaration.",
+    )
+    holder_text: str = m.Field(
+        description="Snapshot text of the holding module.",
+    )
+    declaration: m.Infra.LogicalStatement = m.Field(
+        description="Single reaching declaration of the binding.",
+    )
+    holder_offset: int = m.Field(
+        description="Declaration start offset inside the holder text.",
+    )
+    holder_scope: p.Infra.RopeScope = m.Field(
+        description="Lexical scope enclosing the declaration.",
+    )
+    expression: str = m.Field(
+        description="Full dotted binding expression being chased.",
+    )
+    sources: t.MappingKV[Path, str] = m.Field(
+        description="Mapping of source file paths to their snapshot text.",
+    )
+
+
+class _ChainDeclarationSpec(Protocol):
+    """Read-only structural contract for declaration chase inputs."""
+
+    @property
+    def project(self) -> p.Infra.RopeProject: ...
+
+    @property
+    def holder(self) -> p.Infra.RopePyModule: ...
+
+    @property
+    def holder_text(self) -> str: ...
+
+    @property
+    def declaration(self) -> m.Infra.LogicalStatement: ...
+
+    @property
+    def holder_offset(self) -> int: ...
+
+    @property
+    def holder_scope(self) -> p.Infra.RopeScope: ...
+
+    @property
+    def expression(self) -> str: ...
+
+    @property
+    def sources(self) -> t.MappingKV[Path, str]: ...
 
 
 class FlextInfraFlextUtilitiesCodemodBindingChain:
@@ -704,10 +767,39 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 }
             ):
                 return True
-            finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(holder)
+            return cls._chain_assigned_value_stable(
+                _ChainDeclarationContext(
+                    project=project,
+                    holder=holder,
+                    holder_text=holder_text,
+                    declaration=declaration,
+                    holder_offset=holder_offset,
+                    holder_scope=holder_scope,
+                    expression=expression,
+                    sources=sources,
+                ),
+                visited=visited,
+            )
+
+        @classmethod
+        def _chain_assigned_value_stable(
+            cls,
+            context: _ChainDeclarationSpec,
+            *,
+            visited: frozenset[t.Pair[str, str]],
+        ) -> bool:
+            """Hold the single assigned value of one declaration on the chain.
+
+            Returns:
+                Whether the declared value resolves to one stable binding chain.
+
+            """
+            finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(
+                context.holder
+            )
             pattern = (
                 "${binding_target}: ${binding_annotation} = ${binding_value}"
-                if declaration.category == c.Infra.StatementCategory.ANN_ASSIGN
+                if context.declaration.category == c.Infra.StatementCategory.ANN_ASSIGN
                 else "${binding_target} = ${binding_value}"
             )
             matches = tuple(finder.get_matches(pattern, {}))
@@ -716,26 +808,26 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                     match, "binding_value"
                 )
                 for match in matches
-                if declaration.start_offset <= match.get_region()[0]
-                and match.get_region()[1] <= declaration.end_offset
+                if context.declaration.start_offset <= match.get_region()[0]
+                and match.get_region()[1] <= context.declaration.end_offset
             )
             if len(regions) != 1:
                 return False
             first, last = regions[0]
-            value = cls._binding_expression(holder_text[first:last])
+            value = cls._binding_expression(context.holder_text[first:last])
             if value is None:
                 return FlextInfraUtilitiesRopeRuntimeRefactors.literal_constant(
-                    holder_text[first:last]
+                    context.holder_text[first:last]
                 )
             # The guard keys the link chased next (the assigned value), never the
             # link already proven: an import hop records (module, name) before this
             # declaration hop holds that same name, which is one chain, not a cycle.
-            key = (holder.get_name(), value)
+            key = (context.holder.get_name(), value)
             return key not in visited and cls._stable_binding_chain(
-                (project, holder, holder_scope),
+                (context.project, context.holder, context.holder_scope),
                 value,
-                holder_offset,
-                sources,
+                context.holder_offset,
+                context.sources,
                 visited=visited | {key},
             )
 
@@ -834,6 +926,35 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             )
 
         @classmethod
+        def _occurrence_is_imported(
+            cls,
+            module: p.Infra.RopePyModule,
+            row: m.Infra.LogicalStatement,
+            expression: str,
+        ) -> bool:
+            """Report whether the statement imports the expression into scope.
+
+            Returns:
+                Whether the import statement's module scope defines the
+                expression.
+
+            """
+            if row.category not in {
+                c.Infra.StatementCategory.IMPORT,
+                c.Infra.StatementCategory.FROM_IMPORT,
+            }:
+                return False
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            imported_module = runtime.build_string_module(
+                module.pycore.project, row.text.strip()
+            )
+            imported_scope = imported_module.get_scope()
+            return (
+                imported_scope is not None
+                and expression in imported_scope.get_defined_names()
+            )
+
+        @classmethod
         def _single_reaching_declarations(
             cls,
             module: p.Infra.RopePyModule,
@@ -879,58 +1000,74 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 )
                 if row is None:
                     continue
-                found_scope = runtime.scope_at(
-                    module,
-                    occurrence.offset,
-                    declaration_line=(
-                        row.line
-                        if row.category
-                        in {
-                            c.Infra.StatementCategory.CLASS_DEF,
-                            c.Infra.StatementCategory.FUNC_DEF,
-                        }
-                        else None
-                    ),
-                )
-                if found_scope is not scope and (
-                    found_scope.get_kind() != c.Infra.RopeScopeKind.MODULE
+                if not cls._occurrence_redefines(
+                    (module, scope),
+                    occurrence,
+                    row,
+                    expression,
+                    assignment_lines,
                 ):
-                    continue
-                imported = False
-                if row.category in {
-                    c.Infra.StatementCategory.IMPORT,
-                    c.Infra.StatementCategory.FROM_IMPORT,
-                }:
-                    imported_module = runtime.build_string_module(
-                        module.pycore.project, row.text.strip()
-                    )
-                    imported_scope = imported_module.get_scope()
-                    imported = (
-                        imported_scope is not None
-                        and expression in imported_scope.get_defined_names()
-                    )
-                assigned = (
-                    occurrence.is_written()
-                    or occurrence.is_defined()
-                    or (
-                        expression.isidentifier()
-                        and occurrence.lineno in assignment_lines
-                    )
-                )
-                if row.category == c.Infra.StatementCategory.ANN_ASSIGN:
-                    assigned |= (
-                        cls._binding_expression(row.text.partition(":")[0])
-                        == expression
-                    )
-                if row.text.lstrip().startswith("del "):
-                    assigned = True
-                if not (assigned or imported):
                     continue
                 key = row.start_offset, occurrence.offset
                 if key not in seen:
                     seen.add(key)
                     declarations.append((row, occurrence.offset))
             return declarations
+
+        @classmethod
+        def _occurrence_redefines(
+            cls,
+            frame: t.Pair[p.Infra.RopePyModule, p.Infra.RopeScope],
+            occurrence: p.Infra.RopeOccurrence,
+            row: m.Infra.LogicalStatement,
+            expression: str,
+            assignment_lines: frozenset[int | None],
+        ) -> bool:
+            """Classify one occurrence as a competing frame-local declaration.
+
+            Args:
+                frame: The queried Rope module and lexical scope frame.
+                occurrence: The lexical occurrence of the expression.
+                row: The logical statement containing the occurrence.
+                expression: The full dotted binding expression.
+                assignment_lines: Line numbers of the binding's assignments.
+
+            Returns:
+                Whether the occurrence writes, defines, imports, or deletes the
+                expression inside the queried frame.
+
+            """
+            module, scope = frame
+            found_scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+                module,
+                occurrence.offset,
+                declaration_line=(
+                    row.line
+                    if row.category
+                    in {
+                        c.Infra.StatementCategory.CLASS_DEF,
+                        c.Infra.StatementCategory.FUNC_DEF,
+                    }
+                    else None
+                ),
+            )
+            if found_scope is not scope and (
+                found_scope.get_kind() != c.Infra.RopeScopeKind.MODULE
+            ):
+                return False
+            imported = cls._occurrence_is_imported(module, row, expression)
+            assigned = (
+                occurrence.is_written()
+                or occurrence.is_defined()
+                or (expression.isidentifier() and occurrence.lineno in assignment_lines)
+            )
+            if row.category == c.Infra.StatementCategory.ANN_ASSIGN:
+                assigned |= (
+                    cls._binding_expression(row.text.partition(":")[0]) == expression
+                )
+            if row.text.lstrip().startswith("del "):
+                assigned = True
+            return assigned or imported
 
         @staticmethod
         def _declaration_reaches_unconditionally(

@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 class FlextInfraDependencyDetectionRunnersMixin:
     """Mixin holding raw-run contract plus external analysis-tool runners."""
 
+    @staticmethod
     def run_deptry(
-        self,
         project_path: Path,
         venv_bin: Path,
         *,
@@ -140,9 +140,13 @@ class FlextInfraDependencyDetectionRunnersMixin:
             or outcome.forwarded_signal is not None
             or outcome.raw_return_code not in {0, 1}
         ):
+            receipt = m.Cli.ProcessOutcome.model_validate(
+                outcome,
+                from_attributes=True,
+            ).model_dump_json()
             return r[t.Pair[t.StrSequence, int]].fail(
-                f"UV package check failed: "
-                f"{m.Cli.ProcessOutcome.model_validate(outcome, from_attributes=True).model_dump_json()}\n"
+                "UV package check failed: "
+                f"{receipt}\n"
                 f"stdout:\n{cmd_result.stdout}\nstderr:\n{cmd_result.stderr}",
             )
         lines = f"{cmd_result.stdout}\n{cmd_result.stderr}".strip().splitlines()

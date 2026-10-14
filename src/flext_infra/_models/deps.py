@@ -120,7 +120,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         ]
 
     class RuntimeDependencyInputs(m.Value):
-        """Explicit interpreter, lock and import-provider proof injected by the owner."""
+        """Interpreter, lock and import-provider proof injected by the owner."""
 
         target_root: Annotated[Path, m.Field(description="Selected repository root")]
         python: Annotated[Path, m.Field(description="Elected consumer interpreter")]

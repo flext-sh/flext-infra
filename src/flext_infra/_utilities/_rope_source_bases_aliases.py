@@ -10,6 +10,9 @@ import importlib.util
 from pathlib import Path
 
 from flext_infra import c, p, t
+from flext_infra._utilities._semantic_cutover.family_type_references import (
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
 from flext_infra._utilities.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -185,42 +188,31 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
 
     @staticmethod
     def _literal_mapping(source: str) -> t.StrDict:
-        """Decode flat alias data from complete native Rope string tokens.
+        """Read string module routes from native mapping-entry regions.
 
         Returns:
-            Constant alias pairs, or no aliases for dynamic mapping data.
+            Constant module routes, excluding attribute-valued export entries.
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        regions = refactors.ignored_regions(source)
-        strings = tuple(
-            (start, end)
-            for start, end, metadata in regions
-            if metadata.get("prefix") is not None
-        )
-        if not strings or len(strings) % 2:
-            return {}
-        remaining = list(source)
-        for start, end, metadata in regions:
-            if metadata.get("prefix") is None:
-                remaining[start:end] = " " * (end - start)
-        text = "".join(remaining)
-        if text[: strings[0][0]].strip() != "{":
+        source = source.strip()
+        if not (source.startswith("{") and source.endswith("}")):
             return {}
         result: t.StrDict = {}
-        for index in range(0, len(strings), 2):
-            key_start, key_end = strings[index]
-            value_start, value_end = strings[index + 1]
-            if text[key_end:value_start].strip() != ":":
+        split = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments
+        for begin, end in split(source, 1, len(source) - 1, ","):
+            parts = split(source, begin, end, ":")
+            if len(parts) != 2:
                 return {}
+            (key_start, key_end), (value_start, value_end) = parts
             key = refactors.literal_string(source[key_start:key_end])
+            if key is None:
+                return {}
             value = refactors.literal_string(source[value_start:value_end])
-            if key is None or value is None:
-                return {}
-            if index and text[strings[index - 1][1] : key_start].strip() != ",":
-                return {}
-            result[key] = value
-        tail = "".join(text[strings[-1][1] :].split())
-        return result if tail in {"}", ",}"} else {}
+            if value is None:
+                result.pop(key, None)
+            else:
+                result[key] = value
+        return result
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeSourceBasesAliases"]

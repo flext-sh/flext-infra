@@ -14,6 +14,9 @@ from flext_cli import u
 from flext_infra import m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
+_NATIVE_REGION_SPAN = 2
+"""Character-region tuples carry exactly one begin and one end coordinate."""
+
 
 class _RopeRestructureOptions(m.ArbitraryTypesModel):
     """Match, admission, and import policies for one Rope restructuring."""
@@ -56,6 +59,10 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         Constant-folded primitive expressions have the same immutable native
         contract. Executable expressions, names and container constructors do
         not acquire a primitive contract from their textual spelling.
+
+        Returns:
+            Result carrying the folded primitive constant, or a failure when
+            the expression does not reduce to one immutable native constant.
         """
         code = compile(source, "<native constant>", "eval", dont_inherit=True)
         if code.co_names or code.co_freevars or len(code.co_consts) != 1:
@@ -77,7 +84,12 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
     @classmethod
     def literal_string(cls, source: str) -> str | None:
-        """Decode native string escapes without evaluating source callbacks."""
+        """Decode native string escapes without evaluating source callbacks.
+
+        Returns:
+            The decoded string when native compilation proves a string
+            constant; otherwise ``None``.
+        """
         observed = cls.compiled_constant(source)
         if observed.failure:
             return None
@@ -325,6 +337,26 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return matches
 
     @classmethod
+    def expression_regions(
+        cls, source: str, pattern: str
+    ) -> t.VariadicTuple[t.Pair[int, int]]:
+        """Return structural matches from an isolated native Rope expression.
+
+        Returns:
+            Native regions; symbol identity remains owned by the caller's scope.
+
+        Raises:
+            TypeError: If the native matcher violates its pattern contract.
+        """
+        finder = cls.runtime_callable("rope.refactor.similarfinder", "RawSimilarFinder")(
+            source
+        )
+        if not isinstance(finder, p.Infra.RopePatternFinder):
+            message = "Native Rope expression matcher violates its pattern contract"
+            raise TypeError(message)
+        return tuple(match.get_region() for match in finder.get_matches(pattern))
+
+    @classmethod
     def semantic_regions(
         cls,
         module: p.Infra.RopePyModule,
@@ -391,7 +423,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             "rope.refactor.patchedast",
             "node_region",
         )(captured)
-        if not isinstance(region, tuple) or len(region) != 2:
+        if not isinstance(region, tuple) or len(region) != _NATIVE_REGION_SPAN:
             message = "Rope capture does not expose its native character region"
             raise TypeError(message)
         begin, end = region

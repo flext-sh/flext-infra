@@ -200,7 +200,16 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
         @m.model_validator(mode="after")
         def dependency_provenance_selection(self) -> Self:
-            """Reject competing dependency suppliers at the composition boundary."""
+            """Reject competing dependency suppliers at the composition boundary.
+
+            Returns:
+                The validated model instance.
+
+            Raises:
+                ValueError: If both a runtime dependency input and a collector
+                    are supplied.
+
+            """
             if (
                 self.runtime_dependency_inputs is not None
                 and self.runtime_dependency_collector is not None

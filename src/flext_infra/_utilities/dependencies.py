@@ -71,18 +71,12 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         )
         if rechecked.failure:
             return result_type.from_failure(rechecked)
-        if output.outcome.raw_return_code != int(bool(parsed.root)):
-            return result_type.fail("deptry exit status contradicts its native report")
-        coverage = tuple(
-            int(match.group("count"))
-            for line in (*output.stdout.splitlines(), *output.stderr.splitlines())
-            if (match := c.Infra.DEPTRY_SCAN_COVERAGE_RE.fullmatch(line)) is not None
+        coverage = FlextInfraUtilitiesDependencies._validated_deptry_coverage(
+            output,
+            parsed,
         )
-        if len(coverage) != 1 or coverage[0] < 1:
-            return result_type.fail(
-                "deptry lacks positive unambiguous native scan coverage\n"
-                f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}",
-            )
+        if coverage.failure:
+            return result_type.from_failure(coverage)
         if report_state.content is None:
             return result_type.fail(
                 "deptry report state has no captured bytes to authenticate",
@@ -99,6 +93,31 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                 report=parsed,
             )
         )
+
+    @staticmethod
+    def _validated_deptry_coverage(
+        output: m.Cli.CommandOutput,
+        parsed: m.Infra.DeptryNativeReport,
+    ) -> p.Result[int]:
+        """Authenticate the native exit status and its scan coverage line.
+
+        Returns:
+            The single positive coverage count reported by native deptry.
+        """
+        result_type = r[int]
+        if output.outcome.raw_return_code != int(bool(parsed.root)):
+            return result_type.fail("deptry exit status contradicts its native report")
+        coverage = tuple(
+            int(match.group("count"))
+            for line in (*output.stdout.splitlines(), *output.stderr.splitlines())
+            if (match := c.Infra.DEPTRY_SCAN_COVERAGE_RE.fullmatch(line)) is not None
+        )
+        if len(coverage) != 1 or coverage[0] < 1:
+            return result_type.fail(
+                "deptry lacks positive unambiguous native scan coverage\n"
+                f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}",
+            )
+        return result_type.ok(coverage[0])
 
     @staticmethod
     def _authenticated_deptry_source(

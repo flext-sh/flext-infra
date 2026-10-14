@@ -45,7 +45,8 @@ class FlextInfraModelsWorkspace:
         selections: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = (
             m.Field(
                 min_length=1,
-                description="Portable entrypoint, receiver and explicitly wired port roots",
+                description="Portable entrypoint, receiver and explicitly "
+                "wired port roots",
             )
         )
         generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
@@ -73,7 +74,8 @@ class FlextInfraModelsWorkspace:
         )
         operational: t.VariadicTuple[t.Pair[str, str]] = m.Field(
             default=(),
-            description="Observable native cache state kept separate from executable links",
+            description="Observable native cache state kept separate from "
+            "executable links",
         )
 
     class NativeImportObservation(m.Value):
@@ -272,13 +274,15 @@ class FlextInfraModelsWorkspace:
         standalone: Annotated[
             bool,
             m.Field(
-                description="Installed native resolution view; independent of later CI flags"
+                description="Installed native resolution view; independent of "
+                "later CI flags"
             ),
         ]
         installation_inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(
-                description="Native lock and physical environment states captured after installation"
+                description="Native lock and physical environment states "
+                "captured after installation"
             ),
         ] = ()
         native_install_exit_code: Annotated[
@@ -413,7 +417,7 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Whether repository-local FLEXT governance exists"),
         ] = False
         runtime: Annotated[
-            WorkspaceRuntimeContext | None,
+            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
             m.Field(description="Physical environment and native resolver ownership"),
         ] = None
 
@@ -479,7 +483,7 @@ class FlextInfraModelsWorkspace:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
 
         dir_info: Annotated[
-            DirectUrlDirectoryInfo | None,
+            FlextInfraModelsWorkspace.DirectUrlDirectoryInfo | None,
             m.Field(description="Directory metadata of a local install"),
         ] = None
         url: Annotated[

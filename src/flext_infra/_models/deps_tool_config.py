@@ -50,7 +50,9 @@ class FlextInfraModelsDepsToolConfig(
             t.StrTuple,
             m.Field(
                 alias="optional-dependencies-dev-groups",
-                description="PEP 621 optional groups treated as development dependencies.",
+                description=(
+                    "PEP 621 optional groups treated as development dependencies."
+                ),
             ),
         ]
 

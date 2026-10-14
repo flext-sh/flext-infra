@@ -111,13 +111,18 @@ class FlextInfraModelsMiseToolchain:
         tool: Annotated[
             t.NonEmptyStr | None,
             m.Field(
-                description="Declared prerequisite tool key owning an external probe executable"
+                description=(
+                    "Declared prerequisite tool key owning an external probe executable"
+                )
             ),
         ] = None
         resources: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
-                description="Exact relative installed resources authenticated before an external probe"
+                description=(
+                    "Exact relative installed resources authenticated before an "
+                    "external probe"
+                )
             ),
         ] = ()
         binary: Annotated[

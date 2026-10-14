@@ -55,10 +55,6 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             # Self-serve the pre-planning producer authority: every transaction
             # publication journals the generator's own source states, and the
             # recovery guard rejects authority-less journals.
-            from flext_infra.codegen.codegen_preconditions import (
-                FlextInfraCodegenPreconditions,
-            )
-
             captured = FlextInfraCodegenPreconditions.capture_producer(
                 owner.repository_root,
                 entrypoint=type(self).__init__,
