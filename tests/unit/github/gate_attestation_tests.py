@@ -34,7 +34,11 @@ class TestsFlextInfraGithubGateAttestation:
         Returns:
             The resulting ``m.Infra.WorkspaceRuntimeContext``.
         """
-        return tm.ok(FlextInfraWorkspaceDetector.resolution_context(root))
+        return tm.ok(
+            FlextInfraWorkspaceDetector.resolution_context(
+                root.expanduser().resolve(),
+            ),
+        )
 
     @staticmethod
     def _runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
