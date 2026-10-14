@@ -9,7 +9,7 @@ from __future__ import annotations
 import marshal
 import sys
 from base64 import b64decode, b64encode
-from dis import get_instructions
+from dis import Instruction, get_instructions
 from functools import partial
 from gc import get_referents
 from importlib.machinery import ExtensionFileLoader, FrozenImporter
@@ -973,6 +973,8 @@ class FlextInfraWorkspaceNativeReference:
         paths: t.SequenceOf[t.Pair[Path, Path]],
     ) -> p.Infra.NativeCodeIdentity:
         """Translate authenticated staging paths using native CodeType.replace."""
+        if not paths:
+            return code
         filename = code.co_filename
         if not filename.startswith("<"):
             source = Path(filename)
@@ -1037,6 +1039,21 @@ class FlextInfraWorkspaceNativeReference:
             )
         return tuple(units)
 
+    @staticmethod
+    def _instructions(
+        code: p.Infra.NativeCodeIdentity,
+        cache: dict[
+            int, t.Pair[p.Infra.NativeCodeIdentity, t.VariadicTuple[Instruction]]
+        ],
+    ) -> t.VariadicTuple[Instruction]:
+        """Decode each exact immutable code object once within one observation."""
+        captured = cache.get(id(code))
+        if captured is not None and captured[0] is code:
+            return captured[1]
+        instructions = tuple(get_instructions(code))
+        cache[id(code)] = (code, instructions)
+        return instructions
+
     @classmethod
     def _declared_class_names(
         cls,
@@ -1044,6 +1061,9 @@ class FlextInfraWorkspaceNativeReference:
         qualname: str,
         namespace: t.MappingKV[str, p.AttributeProbe],
         compiled: dict[Path, t.VariadicTuple[p.Infra.NativeCodeIdentity]],
+        instructions: dict[
+            int, t.Pair[p.Infra.NativeCodeIdentity, t.VariadicTuple[Instruction]]
+        ],
     ) -> p.Result[t.VariadicTuple[frozenset[str]]]:
         """Separate authored class bindings from a metaclass's operational outputs."""
         result = r[t.VariadicTuple[frozenset[str]]]
@@ -1093,7 +1113,7 @@ class FlextInfraWorkspaceNativeReference:
             (
                 frozenset(
                     instruction.argval
-                    for instruction in get_instructions(candidates[0])
+                    for instruction in cls._instructions(candidates[0], instructions)
                     if instruction.opname == "STORE_NAME"
                     and isinstance(instruction.argval, str)
                 ),
@@ -1105,6 +1125,9 @@ class FlextInfraWorkspaceNativeReference:
         owner: p.AttributeProbe,
         namespace: t.MappingKV[str, p.AttributeProbe],
         declarations: frozenset[str],
+        instruction_cache: dict[
+            int, t.Pair[p.Infra.NativeCodeIdentity, t.VariadicTuple[Instruction]]
+        ],
     ) -> t.VariadicTuple[t.Triple[str, p.AttributeProbe, frozenset[str]]]:
         """Prove state writes through the exact native class or global receiver."""
         writers: list[t.Triple[str, p.AttributeProbe, frozenset[str]]] = []
@@ -1121,7 +1144,9 @@ class FlextInfraWorkspaceNativeReference:
                 if type(member) is classmethod
                 else None
             )
-            instructions = tuple(get_instructions(function.__code__))
+            instructions = FlextInfraWorkspaceNativeReference._instructions(
+                function.__code__, instruction_cache
+            )
             if receiver is not None and any(
                 (
                     instruction.opname.startswith("STORE_FAST")
@@ -1196,6 +1221,9 @@ class FlextInfraWorkspaceNativeReference:
         sources: set[t.Triple[str, str, str]] = set()
         evidence: list[m.Infra.NativeBindingEvidence] = []
         compiled: dict[Path, t.VariadicTuple[p.Infra.NativeCodeIdentity]] = {}
+        instructions: dict[
+            int, t.Pair[p.Infra.NativeCodeIdentity, t.VariadicTuple[Instruction]]
+        ] = {}
         references: list[t.Pair[str, p.AttributeProbe]] = []
         observe_value = partial(cls._value, references=references, paths=paths)
         pending = []
@@ -1291,7 +1319,7 @@ class FlextInfraWorkspaceNativeReference:
                     continue
                 mutable_globals.update(
                     instruction.argval
-                    for instruction in get_instructions(function.__code__)
+                    for instruction in cls._instructions(function.__code__, instructions)
                     if instruction.opname == "STORE_GLOBAL"
                 )
             evidence.extend(
@@ -1384,7 +1412,7 @@ class FlextInfraWorkspaceNativeReference:
                     )
                 sources.add((f"{actual_supplier}::{qualname}", source, ""))
                 declarations = cls._declared_class_names(
-                    actual_supplier, qualname, namespace, compiled
+                    actual_supplier, qualname, namespace, compiled, instructions
                 )
                 if declarations.failure:
                     return r[m.Infra.NativeImportObservation].from_failure(declarations)
@@ -1399,7 +1427,7 @@ class FlextInfraWorkspaceNativeReference:
                     and type(item) not in {property, classmethod, staticmethod}
                 }
                 writers = cls._class_state_writers(
-                    value, namespace, frozenset(declaration)
+                    value, namespace, frozenset(declaration), instructions
                 )
                 operational = frozenset(
                     name for _, _, fields in writers for name in fields
@@ -1850,7 +1878,7 @@ class FlextInfraWorkspaceNativeReference:
                 instruction.argval
                 for unit in cls._code_units(code)
                 if isinstance(unit, CodeType)
-                for instruction in get_instructions(unit)
+                for instruction in cls._instructions(unit, instructions)
                 if instruction.opname in {"STORE_GLOBAL", "DELETE_GLOBAL"}
                 and isinstance(instruction.argval, str)
             )
@@ -1860,7 +1888,7 @@ class FlextInfraWorkspaceNativeReference:
                 # an ambient module's dictionary. No descriptor is executed.
                 receiver = None
                 edge = binding
-                for instruction in get_instructions(code):
+                for instruction in cls._instructions(code, instructions):
                     if instruction.opname == "LOAD_GLOBAL":
                         receiver = global_bindings.get(instruction.argval)
                         edge = f"{binding}.global.{instruction.argval}"
