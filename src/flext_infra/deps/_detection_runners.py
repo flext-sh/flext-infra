@@ -47,7 +47,9 @@ class FlextInfraDependencyDetectionRunnersMixin:
         if captured.failure:
             return result_type.from_failure(captured)
         if json_output_path is None:
-            cleaned = u.Cli.atomic_delete_binary_file_guarded(captured.value.report_state)
+            cleaned = u.Cli.atomic_delete_binary_file_guarded(
+                captured.value.report_state
+            )
             if cleaned.failure:
                 return result_type.from_failure(cleaned)
         return result_type.ok((

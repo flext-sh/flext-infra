@@ -8,11 +8,74 @@ from __future__ import annotations
 
 from functools import partial
 from pathlib import Path
+from typing import ClassVar, Protocol
 
 from flext_cli import u as cli_u
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesDocsScope
+
+
+class _DocsTopologyOptions(m.ArbitraryTypesModel):
+    """One docs batch's source membership and directory ancestry inputs."""
+
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+
+    repository_root: Path = m.Field(
+        description="Repository receiving the documentation render.",
+    )
+    source_states: t.SequenceOf[m.Cli.AtomicFileState] = m.Field(
+        description="Authenticated source states of the current batch.",
+    )
+    extra_roots: t.SequenceOf[Path] = m.Field(
+        default=(),
+        description="Additional read-only roots joined onto default discovery.",
+    )
+    source_roots: t.SequenceOf[Path] = m.Field(
+        default=(),
+        description="Explicit source roots replacing default discovery.",
+    )
+    source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+        default=(),
+        description="Planned source directory chains to authenticate.",
+    )
+    created_directories: t.SequenceOf[m.Cli.AtomicDirectoryState] = m.Field(
+        default=(),
+        description="Directories created during atomic scaffolding.",
+    )
+    source_scope: Path | None = m.Field(
+        default=None,
+        description="Scope root bounding discovery inside the repository.",
+    )
+
+
+class _DocsTopologySpec(Protocol):
+    """Read-only structural contract for docs topology verification inputs."""
+
+    @property
+    def repository_root(self) -> Path: ...
+
+    @property
+    def source_states(self) -> t.SequenceOf[m.Cli.AtomicFileState]: ...
+
+    @property
+    def extra_roots(self) -> t.SequenceOf[Path]: ...
+
+    @property
+    def source_roots(self) -> t.SequenceOf[Path]: ...
+
+    @property
+    def source_directories(self) -> t.SequenceOf[m.Cli.AtomicDirectoryChainPlan]: ...
+
+    @property
+    def created_directories(self) -> t.SequenceOf[m.Cli.AtomicDirectoryState]: ...
+
+    @property
+    def source_scope(self) -> Path | None: ...
 
 
 class FlextInfraUtilitiesDocsGenerateSourcesMixin:
@@ -378,23 +441,19 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
 
     @staticmethod
     def docs_verify_source_topology(
-        repository_root: Path,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
-        *,
-        extra_roots: t.SequenceOf[Path] = (),
-        source_roots: t.SequenceOf[Path] = (),
-        source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = (),
-        created_directories: t.SequenceOf[m.Cli.AtomicDirectoryState] = (),
-        source_scope: Path | None = None,
+        spec: _DocsTopologySpec,
     ) -> p.Result[bool]:
         """Admit only the current batch's source membership and directory ancestry.
+
+        Args:
+            spec: Frozen source membership and directory ancestry inputs.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        created = {item.path: item for item in created_directories}
-        for expected in source_directories:
+        created = {item.path: item for item in spec.created_directories}
+        for expected in spec.source_directories:
             observed = cli_u.Cli.atomic_plan_directory_chain(expected.target)
             if observed.failure:
                 return r[bool].from_failure(observed)
@@ -421,19 +480,19 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                     )
         discovered = (
             FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths_for_roots(
-                source_roots,
-                source_scope=source_scope,
+                spec.source_roots,
+                source_scope=spec.source_scope,
             )
-            if source_roots
+            if spec.source_roots
             else FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(
-                repository_root,
-                extra_roots,
+                spec.repository_root,
+                spec.extra_roots,
             )
         )
         if discovered.failure:
             return r[bool].from_failure(discovered)
         expected_paths = tuple(
-            state.path for state in source_states if state.content is not None
+            state.path for state in spec.source_states if state.content is not None
         )
         if discovered.value != expected_paths:
             added = sorted(set(discovered.value).difference(expected_paths))

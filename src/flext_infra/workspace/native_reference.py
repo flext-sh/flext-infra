@@ -32,8 +32,11 @@ from types import (
 
 from flext_infra import m, p, r, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenTransaction,
+    FlextInfraCodegenMiseArtifacts,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournalRelocation,
+    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.workspace.environment_provenance import (
@@ -43,6 +46,151 @@ from flext_infra.workspace.environment_provenance import (
 
 class FlextInfraWorkspaceNativeReference:
     """Observe code and binding topology without evaluating authored expressions."""
+
+    @classmethod
+    def producer_selection(
+        cls,
+        entrypoint: p.AttributeProbe,
+    ) -> p.Result[m.Infra.SourceClassReference]:
+        """Elect the physical declaration of the actual public callable."""
+        value = entrypoint.__func__ if type(entrypoint) is MethodType else entrypoint
+        if type(value) is not FunctionType:
+            return r[m.Infra.SourceClassReference].fail(
+                "producer entrypoint is not a native function"
+            )
+        module = value.__globals__.get("__name__")
+        if type(module) is not str:
+            return r[m.Infra.SourceClassReference].fail(
+                "producer entrypoint has no source module"
+            )
+        source = FlextInfraWorkspaceEnvironmentProvenance._module_source(module)
+        if source.failure:
+            return r[m.Infra.SourceClassReference].from_failure(source)
+        state = u.Cli.atomic_read_binary_file_state(source.value, required=True)
+        if state.failure:
+            return r[m.Infra.SourceClassReference].from_failure(state)
+        attributes = tuple(value.__code__.co_qualname.split("."))
+        exports = u.Infra.module_export_names_source(
+            state.value.content.decode("utf-8"),
+            export_options=m.Infra.ExportOptions(require_explicit_all=True),
+        )
+        if attributes[0] not in exports:
+            return r[m.Infra.SourceClassReference].fail(
+                "producer entrypoint lacks a source-owned public declaration"
+            )
+        return r[m.Infra.SourceClassReference].ok(
+            m.Infra.SourceClassReference(target=module, attributes=attributes),
+        )
+
+    @classmethod
+    def authenticate(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Consume one immutable source epoch through the native loader/compiler.
+
+        The isolated loader, not a recreated class factory, proves descriptor,
+        globals, defaults and closure bindings against the exact pinned tree.
+        """
+        result = r[m.Infra.NativeImportReference]
+        authority = request.source_authority
+        current = FlextInfraCodegenPreconditions.source_authority_current(authority)
+        if current.failure:
+            return result.from_failure(current)
+        inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
+        if inputs.failure:
+            return result.from_failure(inputs)
+        environment = u.Infra.runtime_environment_dir(
+            request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        runtime = u.Infra.runtime_python(
+            request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        if (
+            environment.is_symlink()
+            or environment.absolute() != Path(sys.prefix).absolute()
+            or not runtime.is_file()
+            or runtime.resolve() != authority.runtime
+            or sys.flags.optimize != authority.optimize
+        ):
+            return result.fail("native reference runtime authority differs")
+        observed = cls.capture(request.modules)
+        if observed.failure:
+            return result.from_failure(observed)
+        authored = cls.authored_sources_current(observed.value, authority.inputs)
+        if authored.failure:
+            return result.from_failure(authored)
+        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+
+        consumer = FlextInfraValidateFreshImport(
+            repository_root=request.repository_root, runtime_root=request.runtime_root,
+        )
+
+        def observe(
+            view_root: Path, _candidates: t.MappingKV[Path, Path],
+        ) -> p.Result[m.Infra.NativeImportObservation]:
+            roots = tuple(dict.fromkeys(
+                view_root / source.parent.relative_to(request.repository_root)
+                for _namespace, source in authority.generator_modules
+                if source.is_relative_to(request.repository_root)
+            ))
+            selections = dumps(tuple(item.model_dump(mode="json") for item in request.modules))
+            code = (
+                consumer._PRELUDE
+                + f"sys.path[:0] = {tuple(str(root) for root in roots)!r}\n"
+                + "import json\nfrom flext_infra import m\n"
+                + "from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native\n"
+                + f"selections = tuple(m.Infra.SourceClassReference.model_validate(item) for item in json.loads({selections!r}))\n"
+                + "for item in selections: importlib.import_module(item.target)\n"
+                + consumer._ORIGIN_CODE.replace(consumer._ORIGINS_PLACEHOLDER, repr(tuple(
+                    (namespace, str(view_root / source.relative_to(request.repository_root)))
+                    for namespace, source in authority.generator_modules
+                    if source.is_relative_to(request.repository_root) and source.is_dir()
+                )))
+                + f"reference = native.capture(selections, paths=((Path({str(view_root)!r}), Path({str(request.repository_root)!r})),)).unwrap()\n"
+                + "sys.stdout.write(reference.model_dump_json())\n"
+            )
+            output = consumer._execute_probe(
+                m.Infra.FreshImportProbe(subject="native reference", code=code),
+                cwd=view_root, source_roots=roots, isolated=True,
+            )
+            if output.failure:
+                return r[m.Infra.NativeImportObservation].from_failure(output)
+            if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
+                return r[m.Infra.NativeImportObservation].fail(
+                    f"cold native source import failed: {output.value.outcome}\n"
+                    f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}",
+                )
+            return r[m.Infra.NativeImportObservation].ok(
+                m.Infra.NativeImportObservation.model_validate_json(output.value.stdout),
+            )
+
+        captured = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=request.repository_root),
+            source_authority=authority,
+        ).preview_sources(request.repository_root, {}, observe, inputs=request.inputs)
+        if captured.failure:
+            return result.from_failure(captured)
+        if captured.value.failure:
+            return result.from_failure(captured.value)
+        reference = captured.value.value
+        compared = cls.compare(observed.value, reference)
+        if compared.failure:
+            return result.from_failure(compared)
+        current = FlextInfraCodegenPreconditions.source_authority_current(authority)
+        if current.failure:
+            return result.from_failure(current)
+        inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
+        if inputs.failure:
+            return result.from_failure(inputs)
+        return result.ok(
+            m.Infra.NativeImportReference(
+                **reference.model_dump(),
+                source_authority=authority,
+            )
+        )
 
     @staticmethod
     def _class_namespace(value: p.AttributeProbe) -> t.MappingKV[str, p.AttributeProbe]:
@@ -110,6 +258,16 @@ class FlextInfraWorkspaceNativeReference:
                 for name, candidate in vars(supplier).items()
                 if type(name) is str and candidate is value
             )
+            if module_bindings:
+                # A native extension binds its class callbacks at module
+                # scope (Cython's __setstate_cython__): the supplier module
+                # already proven as an ExtensionFileLoader above is the
+                # registration owner for exactly this callback.
+                return r[t.Triple[str, str, str]].ok((
+                    metadata["__module__"],
+                    metadata["__name__"],
+                    metadata["__qualname__"],
+                ))
             return r[t.Triple[str, str, str]].fail(
                 "extension callback differs from its registered descriptor: "
                 f"supplier={metadata['__module__']}; "
@@ -582,31 +740,50 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def capture(
         cls,
-        names: t.StrSequence,
+        names: t.SequenceOf[str | m.Infra.SourceClassReference],
         *,
         paths: t.SequenceOf[t.Pair[Path, Path]] = (),
     ) -> p.Result[m.Infra.NativeImportObservation]:
         """Observe nominated modules or lexical entrypoints without running factories.
 
-        A plain module nomination requests its complete binding inventory. A
-        ``module::qualified`` nomination requests that executable dependency graph.
+        Plain module names request complete inventories through the existing
+        public API. Typed lexical paths select an invocation's executable graph.
         """
         origins: dict[str, Path] = {}
         sources: set[t.Triple[str, str, str]] = set()
         evidence: list[m.Infra.NativeBindingEvidence] = []
         pending = []
-        selected = any("::" in name for name in names)
-        for nomination in names:
-            name, separator, qualified = nomination.partition("::")
+        nominations = tuple(
+            m.Infra.SourceClassReference(target=item) if type(item) is str else item
+            for item in names
+        )
+        if not nominations or any(
+            not item.target
+            or not all(part.isidentifier() for part in item.target.split("."))
+            or any(not part.isidentifier() for part in item.attributes)
+            or item.qualified_base
+            for item in nominations
+        ):
+            return r[m.Infra.NativeImportObservation].fail(
+                "invalid native source selection"
+            )
+        selected = all(item.attributes for item in nominations)
+        if any(item.attributes for item in nominations) and not selected:
+            return r[m.Infra.NativeImportObservation].fail(
+                "mixed native selection contracts"
+            )
+        for nomination in nominations:
+            name = nomination.target
+            qualified = ".".join(nomination.attributes)
             module = sys.modules.get(name)
             origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(name)
             if origin.failure:
                 return r[m.Infra.NativeImportObservation].from_failure(origin)
             origins[name] = cls._source_path(origin.value, paths)
             sources.add((name, str(origins[name]), ""))
-            if separator:
+            if nomination.attributes:
                 value = module
-                for component in qualified.split("."):
+                for component in nomination.attributes:
                     namespace = (
                         cls._class_namespace(value)
                         if cls._is_class(value)
@@ -616,10 +793,15 @@ class FlextInfraWorkspaceNativeReference:
                     )
                     if component not in namespace:
                         return r[m.Infra.NativeImportObservation].fail(
-                            f"selected producer binding is absent: {nomination}",
+                            f"selected producer binding is absent: {name}::{qualified}",
                         )
                     value = namespace[component]
-                pending.append((nomination, value, name, str(origins[name])))
+                pending.append((
+                    f"{name}::{qualified}",
+                    value,
+                    name,
+                    str(origins[name]),
+                ))
                 continue
             mutable_globals = set()
             functions = [
@@ -732,6 +914,19 @@ class FlextInfraWorkspaceNativeReference:
                                 ),
                             ),
                             ("slots", cls._value(namespace.get("__slots__"))),
+                            (
+                                "declaration",
+                                dumps(
+                                    tuple(
+                                        (name, cls._value(item, construction=True))
+                                        for name, item in sorted(namespace.items())
+                                        if not cls._is_class(item)
+                                        and not cls._callable_storage(item)
+                                        and type(item)
+                                        not in {property, classmethod, staticmethod}
+                                    )
+                                ),
+                            ),
                         ),
                     ),
                 )
@@ -1208,7 +1403,7 @@ class FlextInfraWorkspaceNativeReference:
             m.Infra.NativeImportObservation(
                 runtime=Path(sys.executable).resolve(),
                 runtime_prefix=Path(sys.prefix).absolute(),
-                modules=tuple(names),
+                modules=nominations,
                 sources=tuple(sorted(sources)),
                 bindings=tuple(sorted(evidence, key=lambda item: item.binding)),
             ),

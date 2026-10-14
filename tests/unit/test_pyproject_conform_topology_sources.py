@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
@@ -1079,13 +1079,15 @@ class TestsFlextInfraPyprojectConformTopologySources:
     def test_standalone_preserves_declared_nonlocal_source(self) -> None:
         """Conformance owns local topology, not a user's independent Git source."""
         dependency = self._member_ref("flext-custom", "flext-custom")
-        source_entry = {"git": dependency.url, "rev": u.Tests.provider_branch()}
-        source = u.Cli.toml_dumps(
-            u.Cli.toml_document_from_mapping({
-                "project": {"name": "consumer", "version": "0.1.0", "dependencies": []},
-                "tool": {"uv": {"sources": {dependency.distribution: source_entry}}},
-            }),
-        )
+        source_entry: t.JsonMapping = {
+            "git": dependency.url,
+            "rev": u.Tests.provider_branch(),
+        }
+        document: t.JsonMapping = {
+            "project": {"name": "consumer", "version": "0.1.0", "dependencies": []},
+            "tool": {"uv": {"sources": {dependency.distribution: source_entry}}},
+        }
+        source = u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(document))
         rendered = tm.ok(
             u.Infra.pyproject_conform(
                 source,

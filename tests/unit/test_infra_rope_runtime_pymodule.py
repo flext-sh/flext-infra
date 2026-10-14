@@ -44,7 +44,7 @@ class TestsFlextInfraRopeRuntimePymodule:
         with closing(
             FlextInfraRopeProject.from_snapshot(
                 str(tmp_path),
-                {initializer: source},
+                {initializer: source.encode(c.Infra.ENCODING_DEFAULT)},
                 source_folders=[package.name],
             ),
         ) as project:
@@ -117,8 +117,8 @@ class TestsFlextInfraRopeRuntimePymodule:
         plain_module = tmp_path / "plain.py"
         plain_module.write_text("VALUE = 2\n")
         sources = {
-            init_module: init_module.read_text(),
-            plain_module: plain_module.read_text(),
+            init_module: init_module.read_bytes(),
+            plain_module: plain_module.read_bytes(),
         }
         project = FlextInfraRopeProject.from_snapshot(
             str(tmp_path),

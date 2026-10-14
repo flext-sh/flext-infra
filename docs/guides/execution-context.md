@@ -370,6 +370,17 @@ distribution. Dependency-floor updates rewrite only the selected target's PEP 62
 requirements and dependency groups, retaining markers, extras, direct sources and
 comments. They never write the installed generator's configuration or another
 checkout's declarations.
+Deptry checking and dependency detection consume one capture owner. It records the
+exact settings, native process outcome, fresh report and physical production tree;
+a changed tree, reused report, missing tool or contradictory exit status fails.
+Repairs receive the elected interpreter's import suppliers and its native lock
+through typed injection. Missing or ambiguous suppliers remain native findings;
+installed package names never establish applicability. The existing requirement
+strings retain their markers, extras and sources when promoted from development.
+The fixer holds the repository mutation lease, revalidates every metadata, source,
+lock and report input, publishes only `project.dependencies` through the guarded
+TOML owner, then scans again. A residual `FINDINGS` repair receipt describes the
+operation; the subsequent check remains red and provides no green acceptance.
 `make initialize KIND=internal_flext` supplies a declaration value to the native
 `codegen init` owner for that Makefile's target only. The owner plans the target's
 `config/codegen.yaml` through the existing guarded declaration transaction before

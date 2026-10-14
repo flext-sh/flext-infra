@@ -159,6 +159,10 @@ class FlextInfraModelsScan:
         catalog_digest: Annotated[
             str | None, m.Field(description="Authenticated native rule document digest")
         ] = None
+        message: Annotated[
+            str | None,
+            m.Field(description="Rule catalog message for the finding, when declared"),
+        ] = None
         module_absence: Annotated[
             bool,
             m.Field(
@@ -482,7 +486,9 @@ class FlextInfraModelsScan:
         ]
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
             min_length=1,
-            description="Durable native artifacts stored once for all occurrence references",
+            description=(
+                "Durable native artifacts stored once for all occurrence references"
+            ),
         )
         command: Annotated[
             c.Infra.ModScanCommand,

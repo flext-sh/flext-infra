@@ -7,9 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
-from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import mkdocs.config
 import pytest
@@ -21,6 +19,41 @@ from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@runtime_checkable
+class MkDocsProjectLoader(Protocol):
+    """Native MkDocs loader port for one project configuration file."""
+
+    def __call__(
+        self,
+        config_file: str,
+        *,
+        plugins: list[object],
+    ) -> MkDocsConfig: ...
+
+
+@runtime_checkable
+class MkDocsConfigModulePort(Protocol):
+    """Native ``mkdocs.config`` module port exposing its loader."""
+
+    @property
+    def load_config(self) -> MkDocsProjectLoader: ...
+
+
+def mkdocs_project_config(
+    module: object,
+    config_file: str,
+) -> MkDocsConfig:
+    """Load one project ``mkdocs.yml`` with plugin overrides disabled.
+
+    Raises:
+        TypeError: If the native module does not satisfy its loader port.
+    """
+    if not isinstance(module, MkDocsConfigModulePort):
+        msg = "mkdocs.config does not satisfy its loader port"
+        raise TypeError(msg)
+    return module.load_config(config_file, plugins=[])
 
 
 class TestsFlextInfraDocsRender:
@@ -51,11 +84,7 @@ class TestsFlextInfraDocsRender:
             u.Infra.docs_project_mkdocs(scope, {}, []),
             encoding="utf-8",
         )
-        # MkDocs accepts a positional file path and applies plugin kwargs as overrides.
-        load_config = u.type_adapter(Callable[[str], MkDocsConfig]).validate_python(
-            partial(mkdocs.config.load_config, plugins=[]),
-        )
-        configuration = load_config(str(config_file))
+        configuration = mkdocs_project_config(mkdocs.config, str(config_file))
         files = get_files(configuration)
         navigation = get_navigation(files, configuration)
         tm.that(
@@ -105,10 +134,7 @@ class TestsFlextInfraDocsRender:
             u.Infra.docs_root_mkdocs({"site_title": "Workspace"}),
             encoding="utf-8",
         )
-        load_config = u.type_adapter(Callable[[str], MkDocsConfig]).validate_python(
-            partial(mkdocs.config.load_config, plugins=[]),
-        )
-        configuration = load_config(str(config_file))
+        configuration = mkdocs_project_config(mkdocs.config, str(config_file))
         files = get_files(configuration)
         navigation = get_navigation(files, configuration)
 

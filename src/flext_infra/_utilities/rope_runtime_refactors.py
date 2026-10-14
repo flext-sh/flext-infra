@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import cast
 
 from flext_cli import u
 
@@ -88,9 +87,8 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         """
         if not isinstance(value, list):
             return r[t.SequenceOf[p.Infra.RopeChangeContents]].fail(invalid_result)
-        members = cast("list[p.AttributeProbe]", value)
         validated: list[p.Infra.RopeChangeContents] = []
-        for member in members:
+        for member in value:
             if not isinstance(member, p.Infra.RopeChangeContents):
                 return r[t.SequenceOf[p.Infra.RopeChangeContents]].fail(invalid_result)
             validated.append(member)

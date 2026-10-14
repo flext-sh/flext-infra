@@ -203,7 +203,7 @@ class FlextInfraUtilitiesCodemodRules:
             shadows = local_names | (
                 frozenset(local) if isinstance(local, Mapping) else frozenset()
             )
-            if set(aliases.values()).intersection(shadows):
+            if isinstance(local, Mapping) and set(aliases.values()).intersection(local):
                 msg = "qualified global utility conflicts with a native local utility"
                 raise ValueError(msg)
             return {
@@ -1117,7 +1117,7 @@ class FlextInfraUtilitiesCodemodRules:
 
     @staticmethod
     def _validated_ensure_import_entry(
-        item: object,
+        item: t.JsonValue,
     ) -> p.Result[m.Infra.CodemodEnsureImport]:
         """Validate one declared ``{module, name}`` ensure-imports entry.
 
@@ -1150,7 +1150,7 @@ class FlextInfraUtilitiesCodemodRules:
     @classmethod
     def _declared_ensure_imports(
         cls,
-        declared: object,
+        declared: t.JsonValue | None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]:
         """Validate the rule's declared required module imports.
 

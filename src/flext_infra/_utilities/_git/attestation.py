@@ -15,7 +15,7 @@ from base64 import b64decode
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Protocol
 
 from flext_cli import u
 from git import GitCommandError
@@ -23,6 +23,30 @@ from git import GitCommandError
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesGitRemote
 from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentityMixin
+
+
+class GateAttestationRuntimeContext(Protocol):
+    """Read-only elected resolution inputs the toolchain trust anchor hashes.
+
+    The attestation layer never resolves the workspace itself: the caller
+    elects the current runtime context once at the workspace boundary and
+    provides it explicitly, keeping the dependency direction downward.
+    """
+
+    @property
+    def runtime_root(self) -> Path:
+        """Physical runtime owner of the elected resolution input."""
+        ...
+
+    @property
+    def pyproject_path(self) -> Path:
+        """Declaration file the resolver elected."""
+        ...
+
+    @property
+    def lock_path(self) -> Path:
+        """Lock file the resolver elected."""
+        ...
 
 
 class FlextInfraUtilitiesGitAttestationMixin(
@@ -539,6 +563,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def _attestation_predicate(
         cls,
         request: m.Infra.GateAttestationCreateRequest,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
 
         repo_root = Path(request.workspace).expanduser().resolve()
@@ -578,7 +603,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             checked = validation()
             if checked.failure:
                 return r[m.Infra.GateAttestationPredicate].from_failure(checked)
-        toolchain = cls._toolchain_digest(repo_root)
+        toolchain = cls._toolchain_digest(repo_root, context)
         predicate = m.Infra.GateAttestationPredicate(
             repository=repository,
             commit_sha=identity.value.head_oid,
@@ -948,10 +973,12 @@ class FlextInfraUtilitiesGitAttestationMixin(
         return r[bool].ok(value=True)
 
     @classmethod
-    def _toolchain_digest(cls, repo_root: Path, commit_sha: str | None = None) -> str:
-        from flext_infra.workspace import FlextInfraWorkspaceDetector
-
-        context = FlextInfraWorkspaceDetector.resolution_context(repo_root).unwrap()
+    def _toolchain_digest(
+        cls,
+        repo_root: Path,
+        context: GateAttestationRuntimeContext,
+        commit_sha: str | None = None,
+    ) -> str:
         repo = cls._repo(repo_root)
         commit = repo.commit(commit_sha) if commit_sha is not None else repo.head.commit
         names = (
@@ -995,8 +1022,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def git_create_gate_attestation(
         cls,
         request: m.Infra.GateAttestationCreateRequest,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         """Create the exact signed tag for a validated HEAD predicate.
+
+        Args:
+            request: The validated create request for the candidate HEAD.
+            context: The elected runtime context the caller resolved at the
+                workspace boundary; its toolchain inputs are hashed into the
+                predicate's trust anchor.
 
         Returns:
             The resulting ``p.Result[m.Infra.GateAttestationReport]``.
@@ -1008,7 +1042,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationReport].fail(
                 f"allowed_signers file not found: {allowed}",
             )
-        predicate_result = cls._attestation_predicate(request)
+        predicate_result = cls._attestation_predicate(request, context)
         if predicate_result.failure:
             return r[m.Infra.GateAttestationReport].from_failure(predicate_result)
         predicate = predicate_result.value
@@ -1084,8 +1118,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def git_verify_gate_attestation(
         cls,
         request: m.Infra.GateAttestationVerifyRequest,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         """Verify signature, signer, HEAD identity, and exact gate coverage.
+
+        Args:
+            request: The verification request carrying the expected digest.
+            context: The current runtime context the caller resolved at the
+                workspace boundary; hashing it must reproduce the attested
+                toolchain digest or verification fails.
 
         Returns:
             The resulting ``p.Result[m.Infra.GateAttestationReport]``.
@@ -1112,6 +1153,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             repo_root,
             allowed,
             tag,
+            context,
         )
         if predicate_result.failure:
             return r[m.Infra.GateAttestationReport].from_failure(predicate_result)
@@ -1130,6 +1172,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo_root: Path,
         allowed: Path,
         tag: str,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
         """Verify the tag signature and gate coverage against the predicate.
 
@@ -1162,7 +1205,12 @@ class FlextInfraUtilitiesGitAttestationMixin(
         if predicate_result.failure:
             return r[m.Infra.GateAttestationPredicate].from_failure(predicate_result)
         predicate = predicate_result.value
-        return cls._verify_predicate_evidence(request, predicate, verification.value)
+        return cls._verify_predicate_evidence(
+            request,
+            predicate,
+            verification.value,
+            context,
+        )
 
     @classmethod
     def _verify_predicate_evidence(
@@ -1170,12 +1218,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateAttestationVerifyRequest,
         predicate: m.Infra.GateAttestationPredicate,
         output: p.Cli.CommandOutput,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
         repo_root = Path(request.workspace).expanduser().resolve()
         checked = cls._attestation_predicate_from_value(
             repo_root,
             predicate,
             request.commit_sha,
+            context,
         )
         if checked.failure:
             return r[m.Infra.GateAttestationPredicate].from_failure(checked)
@@ -1307,6 +1357,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo_root: Path,
         predicate: m.Infra.GateAttestationPredicate,
         commit_sha: str,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[bool]:
 
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=repo_root))
@@ -1319,7 +1370,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         if origin is None:
             return r[bool].fail("selected candidate has no declared origin")
         actual_repository = FlextInfraUtilitiesGitRemote.canonical_origin_remote(origin)
-        actual_toolchain = cls._toolchain_digest(repo_root, commit_sha)
+        actual_toolchain = cls._toolchain_digest(repo_root, context, commit_sha)
         mismatches = tuple(
             field
             for field, matches in (

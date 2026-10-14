@@ -317,7 +317,8 @@ class TestsFlextInfraDeclarationRelocation:
                         "assert consumer.text == 'Original.Payload'; "
                         "hints = get_type_hints(consumer, include_extras=True); "
                         "assert get_args(hints['literal']) == ('Original.Payload',); "
-                        "assert get_args(hints['metadata']) == (str, 'Original.Payload')"
+                        "assert get_args(hints['metadata']) == (str, "
+                        "'Original.Payload')"
                     ),
                 ),
                 cwd=root,

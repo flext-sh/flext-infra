@@ -120,37 +120,28 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return r[m.Infra.CodegenTransactionJournal].from_failure(
                 generator_sources,
             )
-        validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
-            m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": transaction_id,
-                "scope_device": physical_scope.value[0],
-                "scope_inode": physical_scope.value[1],
-                "state": "staging",
-                "projects": tuple(projects),
-                "file_participants": plan.layout.file_participants,
-                "sources": encoded_sources.value,
-                "generator_sources": tuple(generator_sources),
-                "generator_trees": producer.generator_trees
-                if producer is not None
-                else (),
-                "generator_modules": producer.generator_modules
-                if producer is not None
-                else (),
-                "generator_reference": producer.generator_reference
-                if producer is not None
-                else None,
-                "directories": directories,
-                "entries": (),
-            },
+        generator_trees = producer.generator_trees if producer is not None else ()
+        generator_modules = producer.generator_modules if producer is not None else ()
+        return r[m.Infra.CodegenTransactionJournal].ok(
+            m.Infra.CodegenTransactionJournal(
+                version=9,
+                transaction_id=transaction_id,
+                scope_device=physical_scope.value[0],
+                scope_inode=physical_scope.value[1],
+                state="staging",
+                projects=tuple(projects),
+                file_participants=plan.layout.file_participants,
+                sources=encoded_sources.value,
+                generator_sources=generator_sources.value,
+                generator_trees=generator_trees,
+                generator_modules=generator_modules,
+                generator_reference=(
+                    producer.generator_reference if producer is not None else None
+                ),
+                directories=directories,
+                entries=(),
+            ),
         )
-        if validated.failure:
-            return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate staging codegen journal",
-                validated.error,
-            )
-        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
 
     @classmethod
     def append_prepared(

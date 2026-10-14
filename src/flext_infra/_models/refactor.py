@@ -834,13 +834,6 @@ class FlextInfraModelsRefactor(
             bool,
             m.Field(description="Atomically rename owned declarations and references"),
         ] = False
-        repository_root: Annotated[
-            Path | None,
-            m.Field(
-                default=None,
-                description="Explicit configuration owner, distinct from scan roots",
-            ),
-        ]
 
         csv: Annotated[
             t.NonEmptyStr,

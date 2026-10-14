@@ -140,7 +140,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         report: Annotated[
-            DeptryNativeReport,
+            FlextInfraModelsGates.DeptryNativeReport,
             m.Field(description="Complete native findings"),
         ]
 

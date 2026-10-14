@@ -83,7 +83,7 @@ class FlextInfra(
         )
         if workspace.failure:
             return r[bool].from_failure(workspace)
-        producer = FlextInfraCodegenPreconditions.capture_producer()
+        producer = FlextInfraCodegenPreconditions.capture_producer(source_root)
         if producer.failure:
             return r[bool].from_failure(producer)
         return FlextInfraCandidateBootstrapService(
@@ -509,14 +509,6 @@ class FlextInfra(
         if captured_runtime.failure:
             return r[m.Infra.WorkspaceProjectContext].from_failure(captured_runtime)
         captured, runtime = captured_runtime.value
-        if captured.spec.repository is None:
-            return r[m.Infra.WorkspaceProjectContext].ok(
-                m.Infra.WorkspaceProjectContext(
-                    cwd=resolved,
-                    identity=identity.value,
-                    runtime=runtime,
-                ),
-            )
         workspace_target = FlextInfra._project_workspace_target(root, captured)
         if workspace_target.failure:
             return r[m.Infra.WorkspaceProjectContext].from_failure(workspace_target)

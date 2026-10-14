@@ -23,6 +23,8 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 
@@ -87,66 +89,8 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         cls,
         request: m.Infra.NativeImportRequest,
     ) -> p.Result[m.Infra.NativeImportReference]:
-        """Authenticate loaded producers through the shared native source owner."""
-        from flext_infra._utilities.rope_runtime_modules import (
-            FlextInfraUtilitiesRopeRuntimeModules,
-        )
-        from flext_infra.workspace.environment_provenance import (
-            FlextInfraWorkspaceEnvironmentProvenance,
-        )
-
-        current = FlextInfraCodegenPreconditions.source_authority_current(
-            request.source_authority,
-        )
-        if current.failure:
-            return r[m.Infra.NativeImportReference].from_failure(current)
-        inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
-        if inputs.failure:
-            return r[m.Infra.NativeImportReference].from_failure(inputs)
-        runtime_root = Path(sys.prefix).absolute().parent
-        environment = u.Infra.runtime_environment_dir(
-            runtime_root,
-            runtime_root=runtime_root,
-        )
-        runtime = u.Infra.runtime_python(runtime_root, runtime_root=runtime_root)
-        if (
-            environment.is_symlink()
-            or environment.absolute() != Path(sys.prefix).absolute()
-            or not runtime.is_file()
-            or runtime.resolve() != request.source_authority.runtime
-            or sys.flags.optimize != request.source_authority.optimize
-        ):
-            return r[m.Infra.NativeImportReference].fail(
-                "native reference runtime authority differs",
-            )
-        proof = FlextInfraUtilitiesRopeRuntimeModules.source_proof(
-            request.modules,
-            module_source=FlextInfraWorkspaceEnvironmentProvenance._module_source,
-            observer=FlextInfraWorkspaceNativeReference,
-        )
-        if proof.failure:
-            return r[m.Infra.NativeImportReference].from_failure(proof)
-        observed = FlextInfraWorkspaceNativeReference.capture(request.modules)
-        if observed.failure:
-            return r[m.Infra.NativeImportReference].from_failure(observed)
-        current = FlextInfraCodegenPreconditions.source_authority_current(
-            request.source_authority,
-        )
-        if current.failure:
-            return r[m.Infra.NativeImportReference].from_failure(current)
-        inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
-        if inputs.failure:
-            return r[m.Infra.NativeImportReference].from_failure(inputs)
-        return r[m.Infra.NativeImportReference].ok(
-            m.Infra.NativeImportReference(
-                runtime=observed.value.runtime,
-                runtime_prefix=observed.value.runtime_prefix,
-                modules=observed.value.modules,
-                sources=observed.value.sources,
-                bindings=observed.value.bindings,
-                source_authority=request.source_authority,
-            ),
-        )
+        """Authenticate one loaded epoch against a sealed, actual native import."""
+        return FlextInfraWorkspaceNativeReference.authenticate(request)
 
     def build_report(
         self,
@@ -774,6 +718,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         return u.Cli.run_raw(
             [
                 str(interpreter),
+                *("-O",) * sys.flags.optimize,
                 *(("-I",) if isolated else ()),
                 "-B",
                 "-W",

@@ -3,7 +3,7 @@
 Centralizes rope-based helpers previously defined as module-level
 functions in ``flext_infra.refactor.analysis``.
 
-Copyright (c) 2025 FLEXT Team. All rights reserved.
+Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
@@ -14,6 +14,7 @@ from collections.abc import Generator, Mapping
 from contextlib import ExitStack, contextmanager
 from itertools import chain
 from pathlib import Path
+from typing import ClassVar, Protocol
 
 from flext_cli import u
 
@@ -21,6 +22,54 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
+
+
+class _RuleDeltaOptions(m.ArbitraryTypesModel):
+    """Optional scope and authentication inputs for one rule delta comparison."""
+
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+
+    inventory: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+        default=(),
+        description="Declared repository and rule pairs included in the delta.",
+    )
+    repository_root: Path | None = m.Field(
+        default=None,
+        description="Root resolving text finding paths into the topology.",
+    )
+    projects: t.SequenceOf[Path] = m.Field(
+        default=(),
+        description="Declared project topology owning text findings.",
+    )
+    publication_chain: t.VariadicTuple[m.Infra.CodegenStagedFile] | None = m.Field(
+        default=None,
+        description="Authenticated staged publication receipts.",
+    )
+
+
+class _RuleDeltaSpec(Protocol):
+    """Read-only structural contract for rule delta comparison options."""
+
+    @property
+    def inventory(self) -> t.VariadicTuple[t.Pair[str, str]]: ...
+
+    @property
+    def repository_root(self) -> Path | None: ...
+
+    @property
+    def projects(self) -> t.SequenceOf[Path]: ...
+
+    @property
+    def publication_chain(
+        self,
+    ) -> t.VariadicTuple[m.Infra.CodegenStagedFile] | None: ...
+
+
+_EMPTY_RULE_DELTA_OPTIONS = _RuleDeltaOptions()
 
 
 class FlextInfraUtilitiesRefactor:
@@ -153,8 +202,8 @@ class FlextInfraUtilitiesRefactor:
         return payload
 
     @staticmethod
-    def violations_totals(
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+    def violations_totals[FindingT: m.Infra.ModOccurrence](
+        report: m.Infra.ModOccurrenceReport[FindingT],
     ) -> m.Infra.ViolationsTotals:
         """Capture native totals without service behavior in data models.
 
@@ -170,8 +219,8 @@ class FlextInfraUtilitiesRefactor:
         )
 
     @staticmethod
-    def _indexed_source_states(
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+    def _indexed_source_states[FindingT: m.Infra.ModOccurrence](
+        report: m.Infra.ModOccurrenceReport[FindingT],
     ) -> dict[Path, m.Cli.AtomicFileState]:
         """Index one report's captured source states by path.
 
@@ -197,7 +246,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _admit_scan_entry(
-        entry: m.Infra.ModOccurrence | m.Infra.ModTextFinding,
+        entry: m.Infra.ModOccurrence,
         catalog: dict[tuple[str, str], tuple[str | None, bool]],
         indexed: dict[Path, m.Cli.AtomicFileState],
     ) -> None:
@@ -295,12 +344,10 @@ class FlextInfraUtilitiesRefactor:
                 raise ValueError(msg)
 
     @classmethod
-    def _authenticated_endpoints(
+    def _authenticated_endpoints[FindingT: m.Infra.ModOccurrence](
         cls,
-        before: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
-        | m.Infra.ModTextReport,
-        after: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
-        | m.Infra.ModTextReport,
+        before: m.Infra.ModOccurrenceReport[FindingT],
+        after: m.Infra.ModOccurrenceReport[FindingT],
         publication_chain: tuple[m.Infra.CodegenStagedFile, ...],
     ) -> t.Pair[
         list[dict[Path, m.Cli.AtomicFileState]],
@@ -390,6 +437,7 @@ class FlextInfraUtilitiesRefactor:
         state: m.Cli.AtomicFileState,
         repository: str,
         proven: set[tuple[str, str]],
+        byte_offsets: t.JsonMapping,
     ) -> str:
         """Authenticate one module-absence root span and return its lexical text.
 
@@ -398,6 +446,7 @@ class FlextInfraUtilitiesRefactor:
             state: The captured source state admitted for the finding.
             repository: Resolved repository owner of the finding.
             proven: Repository and rule pairs proven absent, updated in place.
+            byte_offsets: The finding's validated native byte-offset mapping.
 
         Returns:
             The lexical occurrence text standing in for the absent module.
@@ -405,21 +454,21 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: When the module occurrence is not the native root.
         """
-        offsets = entry.range.get("byteOffset")
-        start, end = offsets.get("start"), offsets.get("end")
-        native_offsets = (
-            isinstance(start, int)
-            and not isinstance(start, bool)
-            and isinstance(end, int)
-            and not isinstance(end, bool)
-        )
-        # The Python module predicate owns the root; spans may omit trivia.
-        native_root = (
-            native_offsets
-            and 0 <= start <= end <= len(state.content)
-            and state.content[start:end] == entry.text.encode(c.DEFAULT_ENCODING)
-        )
-        if not native_root:
+        start, end = byte_offsets.get("start"), byte_offsets.get("end")
+        if (
+            not isinstance(start, int)
+            or isinstance(start, bool)
+            or not isinstance(end, int)
+            or isinstance(end, bool)
+        ):
+            msg = f"module occurrence is not the native root: {entry.file}"
+            raise ValueError(msg)
+        content = state.content
+        if (
+            content is None
+            or not 0 <= start <= end <= len(content)
+            or content[start:end] != entry.text.encode(c.DEFAULT_ENCODING)
+        ):
             msg = f"module occurrence is not the native root: {entry.file}"
             raise ValueError(msg)
         proven.add((repository, entry.rule_id))
@@ -471,10 +520,13 @@ class FlextInfraUtilitiesRefactor:
                 and entry.module_absence
             ):
                 state = cls._admit_module_absence_state(entry)
-                if not isinstance(entry.range.get("byteOffset"), Mapping):
+                byte_offsets = entry.range.get("byteOffset")
+                if not isinstance(byte_offsets, Mapping):
                     msg = f"module occurrence lacks native range: {entry.file}"
                     raise ValueError(msg)
-                text = cls._module_absence_root(entry, state, repository, proven)
+                text = cls._module_absence_root(
+                    entry, state, repository, proven, byte_offsets
+                )
             key = (repository, entry.rule_id)
             occurrences[key][str(entry.file), text] += 1
             positions[key].append(index)
@@ -534,16 +586,11 @@ class FlextInfraUtilitiesRefactor:
         return tuple(deltas)
 
     @staticmethod
-    def rule_deltas(
-        before: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
-        | m.Infra.ModTextReport,
-        after: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
-        | m.Infra.ModTextReport,
+    def rule_deltas[FindingT: m.Infra.ModOccurrence](
+        before: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModTextReport,
+        after: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModTextReport,
         *,
-        inventory: tuple[tuple[str, str], ...] = (),
-        repository_root: Path | None = None,
-        projects: t.SequenceOf[Path] = (),
-        publication_chain: tuple[m.Infra.CodegenStagedFile, ...] | None = None,
+        options: _RuleDeltaSpec = _EMPTY_RULE_DELTA_OPTIONS,
     ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
         """Compare lexical occurrences, or prove module absence through publication.
 
@@ -553,10 +600,7 @@ class FlextInfraUtilitiesRefactor:
         Args:
             before: Baseline native report from the measured engine.
             after: Final native report from the same engine.
-            inventory: Declared repository and rule pairs included in the delta.
-            repository_root: Root resolving text finding paths into the topology.
-            projects: Declared project topology owning text findings.
-            publication_chain: Authenticated staged publication receipts.
+            options: Frozen scope and authentication options for the delta.
 
         Returns:
             Per-repository and per-rule occurrence deltas.
@@ -573,6 +617,7 @@ class FlextInfraUtilitiesRefactor:
         ):
             msg = "rule comparison requires the same native engine"
             raise ValueError(msg)
+        publication_chain = options.publication_chain
         if publication_chain is not None:
             if not isinstance(before, m.Infra.ModOccurrenceReport) or not isinstance(
                 after, m.Infra.ModOccurrenceReport
@@ -583,11 +628,13 @@ class FlextInfraUtilitiesRefactor:
                 before, after, publication_chain
             )
         proven: set[tuple[str, str]] = set()
-        topology = sorted(projects, key=lambda item: len(item.parts), reverse=True)
+        topology = sorted(
+            options.projects, key=lambda item: len(item.parts), reverse=True
+        )
         measured = [
             FlextInfraUtilitiesRefactor._report_occurrence_indexes(
                 report,
-                repository_root,
+                options.repository_root,
                 topology,
                 proven,
                 publication_chain,
@@ -598,7 +645,7 @@ class FlextInfraUtilitiesRefactor:
             engine,
             [occurrences for occurrences, _positions in measured],
             [positions for _occurrences, positions in measured],
-            inventory,
+            options.inventory,
             proven,
         )
 
@@ -755,8 +802,12 @@ class FlextInfraUtilitiesRefactor:
             FlextInfraUtilitiesRefactor.rule_deltas(
                 before.ast_report,
                 after.ast_report,
-                inventory=tuple(
-                    (project.name, rule_id) for rule_id in elected or () if has_sources
+                options=_RuleDeltaOptions(
+                    inventory=tuple(
+                        (project.name, rule_id)
+                        for rule_id in elected or ()
+                        if has_sources
+                    ),
                 ),
             )
             if before.source_verified
@@ -818,8 +869,10 @@ class FlextInfraUtilitiesRefactor:
             FlextInfraUtilitiesRefactor.rule_deltas(
                 before.text_report,
                 after.text_report,
-                repository_root=stage.repository_root,
-                projects=before.repository_roots,
+                options=_RuleDeltaOptions(
+                    repository_root=stage.repository_root,
+                    projects=before.repository_roots,
+                ),
             )
             if before.source_verified
             and after.source_verified
@@ -1044,8 +1097,8 @@ class FlextInfraUtilitiesRefactor:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def mod_scan_inputs(
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+    def mod_scan_inputs[FindingT: m.Infra.ModOccurrence](
+        report: m.Infra.ModOccurrenceReport[FindingT],
     ) -> m.Infra.CodemodBindingSnapshot:
         """Union captured sources and distinct binding graphs once per operation.
 

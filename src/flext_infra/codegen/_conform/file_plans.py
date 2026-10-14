@@ -34,11 +34,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         effective = inputs.spec.repository
-        if (
-            effective is not None
-            and "kind" in effective.model_fields_set
-            and effective.kind != kind
-        ):
+        if "kind" in effective.model_fields_set and effective.kind != kind:
             return result_type.fail(
                 f"bootstrap kind conflicts with the target's effective declaration: {root}",
             )
@@ -80,10 +76,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         )
         if composed.failure:
             return result_type.from_failure(composed)
-        if (
-            composed.value.spec.repository is None
-            or composed.value.spec.repository.kind != kind
-        ):
+        if composed.value.spec.repository.kind != kind:
             return result_type.fail(
                 f"bootstrap kind is overridden by the target's elected layers: {root}",
             )

@@ -9,7 +9,6 @@ from __future__ import annotations
 import sys
 from functools import partial
 from importlib.machinery import PathFinder
-from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -38,57 +37,61 @@ class FlextInfraCodegenPreconditions:
 
     @classmethod
     def elected_producer_modules(
-        cls, *, nominated: t.StrTuple = ()
+        cls, *, nominated: t.SequenceOf[m.Infra.SourceClassReference]
     ) -> p.Result[t.VariadicTuple[t.Pair[str, Path]]]:
         """Elect the physical closure of declared producer source dependencies.
 
         Returns:
             The complete elected namespace and physical-path pairs.
         """
-        nominations = nominated or (
-            f"{cls.__module__}::{cls.__qualname__}.capture_producer",
-        )
-        namespaces = {name.partition("::")[0].partition(".")[0] for name in nominations}
-        elected: list[t.Pair[str, Path]] = []
-        pending = sorted(namespaces)
+        elected: dict[str, Path] = {}
+        pending = [item.target for item in nominated]
+        visited: set[Path] = set()
         with u.Infra.open_import_project(Path.cwd()) as project:
             while pending:
-                namespace = pending.pop(0)
+                module_name = pending.pop(0)
+                namespace = module_name.partition(".")[0]
+                if namespace in sys.stdlib_module_names:
+                    continue
                 selected = cls._elect_namespace(namespace)
                 if selected.failure:
                     return r[t.VariadicTuple[t.Pair[str, Path]]].from_failure(selected)
-                root = selected.value
-                elected.append((namespace, root))
-                paths = (
-                    tuple(root.rglob(f"*{c.Infra.EXT_PYTHON}"))
-                    if root.is_dir()
-                    else (root,)
-                )
-                for path in paths:
-                    if c.Infra.DUNDER_PYCACHE in path.parts or path.suffix != ".py":
+                elected[namespace] = selected.value
+                spec = PathFinder.find_spec(namespace)
+                qualified = namespace
+                for component in module_name.split(".")[1:]:
+                    if spec.submodule_search_locations is None:
+                        break
+                    child = PathFinder.find_spec(
+                        f"{qualified}.{component}",
+                        spec.submodule_search_locations,
+                    )
+                    if child is None:
+                        break
+                    spec = child
+                    qualified += f".{component}"
+                if spec.origin is None:
+                    if spec.submodule_search_locations is not None:
+                        # Namespace packages own physical portions, not an
+                        # executable initializer. Their elected provider tree
+                        # is captured; imported bindings are authenticated by
+                        # the native observer separately.
                         continue
-                    resource = u.Infra.runtime_callable("rope.base.resources", "File")(
-                        u.Infra.runtime_callable(
-                            "rope.base.project", "get_no_project"
-                        )(),
-                        str(path),
+                    return r[t.VariadicTuple[t.Pair[str, Path]]].fail(
+                        f"declared producer dependency has no source: {module_name}",
                     )
-                    declared = u.Infra.resolve_declared_module_imports(
-                        project, resource
-                    )
-                    semantic = u.Infra.resolve_semantic_module_imports(
-                        project, resource
-                    )
-                    for dependency in (*declared.values(), *semantic.values()):
-                        provider = dependency.partition(".")[0]
-                        if (
-                            provider in sys.stdlib_module_names
-                            or provider in namespaces
-                        ):
-                            continue
-                        namespaces.add(provider)
-                        pending.append(provider)
-        return r[t.VariadicTuple[t.Pair[str, Path]]].ok(tuple(sorted(elected)))
+                path = Path(spec.origin).absolute()
+                if path in visited or path.suffix != c.Infra.EXT_PYTHON:
+                    continue
+                visited.add(path)
+                resource = u.Infra.runtime_callable("rope.base.resources", "File")(
+                    u.Infra.runtime_callable("rope.base.project", "get_no_project")(),
+                    str(path),
+                )
+                declared = u.Infra.resolve_declared_module_imports(project, resource)
+                semantic = u.Infra.resolve_semantic_module_imports(project, resource)
+                pending.extend(dict.fromkeys((*declared.values(), *semantic.values())))
+        return r[t.VariadicTuple[t.Pair[str, Path]]].ok(tuple(sorted(elected.items())))
 
     @staticmethod
     def _elect_namespace(namespace: str) -> p.Result[Path]:
@@ -117,7 +120,7 @@ class FlextInfraCodegenPreconditions:
 
     @classmethod
     def capture_source_authority(
-        cls, *, nominated: t.StrTuple = ()
+        cls, *, nominated: t.SequenceOf[m.Infra.SourceClassReference]
     ) -> p.Result[m.Infra.CodegenSourceAuthority]:
         """Elect physical providers and pin their code, resources and metadata.
 
@@ -128,7 +131,7 @@ class FlextInfraCodegenPreconditions:
             The authenticated immutable producer closure.
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
-        names = nominated or (f"{cls.__module__}::{cls.__qualname__}.capture_producer",)
+        names = tuple(nominated)
         elected = cls.elected_producer_modules(nominated=names)
         if elected.failure:
             return result_type.from_failure(elected)
@@ -145,26 +148,17 @@ class FlextInfraCodegenPreconditions:
         observed = FlextInfraWorkspaceNativeReference.capture(names)
         if observed.failure:
             return result_type.from_failure(observed)
-        for namespace, root in elected.value:
+        for supplier, _origin, _declaration in observed.value.sources:
+            namespace = supplier.partition("::")[0].partition(".")[0]
+            if namespace in roots or namespace in sys.stdlib_module_names:
+                continue
+            selected = cls._elect_namespace(namespace)
+            if selected.failure:
+                return result_type.from_failure(selected)
+            roots[namespace] = selected.value
+            owners[namespace] = set()
+        for namespace, root in roots.items():
             if root.is_dir():
-                captured_tree = FlextInfraMiseArtifactsFiles.capture_tree_sources(root)
-                if captured_tree.failure:
-                    return result_type.from_failure(captured_tree)
-                trees[root] = captured_tree.value[0]
-                states.update((item.path, item) for item in captured_tree.value[1])
-        from flext_infra.workspace.environment_provenance import (
-            FlextInfraWorkspaceEnvironmentProvenance,
-        )
-
-        for namespace in dict.fromkeys(
-            name.partition("::")[0].partition(".")[0] for name in nominated
-        ):
-            source = FlextInfraWorkspaceEnvironmentProvenance._module_source(namespace)
-            if source.failure:
-                return result_type.from_failure(source)
-            spec = sys.modules[namespace].__spec__
-            if spec is not None and spec.submodule_search_locations:
-                root = source.value.parent
                 captured_tree = FlextInfraMiseArtifactsFiles.capture_tree_sources(root)
                 if captured_tree.failure:
                     return result_type.from_failure(captured_tree)
@@ -194,7 +188,11 @@ class FlextInfraCodegenPreconditions:
             for namespace, identities in captured.value.items():
                 owners[namespace].update(identities)
         for namespace, providers in owners.items():
-            if len(providers) != 1:
+            explicit = any(
+                not item.attributes and item.target.partition(".")[0] == namespace
+                for item in names
+            )
+            if len(providers) != 1 and not (not providers and explicit):
                 ownership = tuple(
                     (item.path, item.device, item.inode) for item in providers
                 )
@@ -222,7 +220,7 @@ class FlextInfraCodegenPreconditions:
             optimize=sys.flags.optimize,
             inputs=tuple(receipts),
             generator_trees=tuple(trees.values()),
-            generator_modules=elected.value,
+            generator_modules=tuple(sorted(roots.items())),
         )
         authored = FlextInfraWorkspaceNativeReference.authored_sources_current(
             observed.value, authority.inputs
@@ -298,12 +296,22 @@ class FlextInfraCodegenPreconditions:
 
     @classmethod
     def capture_producer(
-        cls, *, nominated: t.StrTuple = ()
+        cls, repository_root: Path, *, entrypoint: p.AttributeProbe
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Authenticate the loaded producer against its cold physical authority."""
         from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
-        names = nominated or (f"{cls.__module__}::{cls.__qualname__}.capture_producer",)
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(context)
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
+        )
+
+        selection = FlextInfraWorkspaceNativeReference.producer_selection(entrypoint)
+        if selection.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(selection)
+        names = (selection.value,)
         cold = cls.capture_source_authority(nominated=names)
         if cold.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(cold)
@@ -312,9 +320,16 @@ class FlextInfraCodegenPreconditions:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(inputs)
         reference = FlextInfraValidateFreshImport.capture_native_reference(
             m.Infra.NativeImportRequest(
+                repository_root=context.value.runtime_root,
+                runtime_root=context.value.runtime_root,
                 modules=names,
                 inputs=inputs.value,
                 source_authority=cold.value,
+                import_roots=tuple(
+                    dict.fromkeys(
+                        root.parent for _name, root in cold.value.generator_modules
+                    )
+                ),
             ),
         )
         if reference.failure:
@@ -328,46 +343,6 @@ class FlextInfraCodegenPreconditions:
             generator_reference=reference.value,
         )
         return cls.producer_current(snapshot).map(lambda _current: snapshot)
-
-    @staticmethod
-    def _capture_import_sources(
-        modules: t.VariadicTuple[t.Pair[str, Path]],
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
-        trees: MutableMapping[Path, m.Cli.AtomicPhysicalTreeManifest],
-    ) -> p.Result[bool]:
-        """Capture cold resources before authenticating the executing code.
-
-        Returns:
-            Success only after every elected and loaded physical source is read.
-        """
-        for namespace, root in modules:
-            if root.is_dir():
-                inventory = FlextInfraMiseArtifactsFiles.capture_tree_sources(root)
-                if inventory.failure:
-                    return r[bool].from_failure(inventory)
-                trees[root] = inventory.value[0]
-                states.update((item.path, item) for item in inventory.value[1])
-                paths: tuple[Path, ...] = ()
-            else:
-                paths = (root,)
-            loaded = FlextInfraWorkspaceEnvironmentProvenance.loaded_import_sources(
-                namespace
-            )
-            if loaded.failure:
-                return r[bool].from_failure(loaded)
-            captured = FlextInfraMiseArtifactsFiles.capture_sources(
-                chain(
-                    (
-                        Path(source or origin).absolute()
-                        for _, origin, source in loaded.value
-                    ),
-                    paths,
-                )
-            )
-            if captured.failure:
-                return r[bool].from_failure(captured)
-            states.update((item.path, item) for item in captured.value)
-        return r[bool].ok(value=True)
 
     @staticmethod
     def _distribution_providers(

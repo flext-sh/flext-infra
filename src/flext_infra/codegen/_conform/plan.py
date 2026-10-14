@@ -136,7 +136,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             Whether the recaptured producer is current, or the first capture,
             verification or currency failure.
         """
-        captured = FlextInfraCodegenPreconditions.capture_producer()
+        captured = FlextInfraCodegenPreconditions.capture_producer(self.repository_root)
         if captured.failure:
             return r[bool].from_failure(captured)
         reverified = self._verified_receipt_states(receipts)
@@ -182,7 +182,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             failure.
         """
         if self.producer is None:
-            captured = FlextInfraCodegenPreconditions.capture_producer()
+            captured = FlextInfraCodegenPreconditions.capture_producer(
+                self.repository_root,
+            )
             if captured.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
             self.producer = captured.value

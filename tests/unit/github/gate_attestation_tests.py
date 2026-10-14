@@ -17,12 +17,24 @@ from flext_cli import u as cli_u
 
 from flext_infra import c, config, m, p
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 from tests import t, tm, u
 
 
 class TestsFlextInfraGithubGateAttestation:
     """Behavior tests for local SSH-signed gate attestations."""
+
+    @staticmethod
+    def _context(root: Path) -> m.Infra.WorkspaceRuntimeContext:
+        """Elect the runtime context at the workspace boundary for the root.
+
+        Returns:
+            The resulting ``m.Infra.WorkspaceRuntimeContext``.
+        """
+        return tm.ok(FlextInfraWorkspaceDetector.resolution_context(root))
 
     @staticmethod
     def _runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
@@ -491,7 +503,10 @@ class TestsFlextInfraGithubGateAttestation:
             )
         else:
             request = request.model_copy(update={"allowed_signers": str(unavailable)})
-        failed = u.Infra.git_create_gate_attestation(request)
+        failed = u.Infra.git_create_gate_attestation(
+            request,
+            self._context(tmp_path),
+        )
         tm.fail(failed)
         assert failed.error is not None
         assert str(unavailable) in failed.error
@@ -507,6 +522,7 @@ class TestsFlextInfraGithubGateAttestation:
                     policy=request.policy,
                     policy_digest=request.policy_digest,
                 ),
+                self._context(tmp_path),
             )
             tm.fail(verification)
             assert verification.error is not None

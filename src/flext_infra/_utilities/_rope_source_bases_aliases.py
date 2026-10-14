@@ -73,6 +73,11 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         Returns:
             Alias name to absolute provider module path.
 
+        Raises:
+            TypeError: The parsed module is not a native Rope source module or
+                the native parameter reader is absent.
+            ValueError: The parsed module differs from its native Rope snapshot.
+
         """
         # Lazy package propagation belongs to initializers. Ordinary module
         # bindings are resolved by the lexical inventory, so their executable
@@ -105,43 +110,78 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         package = module
         aliases: t.StrDict = {}
         for occurrence in finder.find_occurrences(pymodule=parsed):
-            if not words.is_a_function_being_called(occurrence.offset):
-                continue
-            first, last = words.get_word_parens_range(occurrence.offset)
-            arguments, keywords = words.get_parameters(first, last - 1)
-            mapping = next(
-                (
-                    arg
-                    for arg in (*arguments, *(value for _name, value in keywords))
-                    if arg.lstrip().startswith("{")
-                    or arg.partition("(")[0].strip() == "MappingProxyType"
-                ),
-                None,
-            )
+            mapping = cls._call_alias_source(source, words, occurrence.offset)
             if mapping is None:
                 continue
-            mapping_start = source.index(mapping, first + 1, last)
-            if mapping.partition("(")[0].strip() == "MappingProxyType":
-                first, last = words.get_word_parens_range(mapping_start)
-                mapping = source[first + 1 : last - 1].strip()
-            else:
-                first, last = words.code_finder.get_word_parens_range(
-                    mapping_start, "{", "}"
-                )
-                mapping = source[first:last]
             for key, value in cls._literal_mapping(mapping).items():
-                if value.startswith("."):
-                    parts = package.split(".") if package else []
-                    depth = len(value) - len(value.lstrip("."))
-                    remainder = value.lstrip(".")
-                    if depth > len(parts):
-                        continue
-                    base = (
-                        ".".join(parts[: len(parts) - depth + 1]) if depth else package
-                    )
-                    value = ".".join(part for part in (base, remainder) if part)
-                aliases[key] = value
+                resolved = cls._absolute_alias(package, value)
+                if resolved is None:
+                    continue
+                aliases[key] = resolved
         return aliases
+
+    @staticmethod
+    def _call_alias_source(
+        source: str,
+        words: p.Infra.RopeWorder,
+        offset: int,
+    ) -> str | None:
+        """Return the alias-mapping argument text of one lazy-exports call.
+
+        Args:
+            source: Full native source text of the parsed package initializer.
+            words: Rope's native parameter reader over that source text.
+            offset: Lexical offset of the candidate call occurrence.
+
+        Returns:
+            The literal mapping source, or None when the occurrence is not a
+            lazy-exports call carrying mapping data.
+        """
+        if not words.is_a_function_being_called(offset):
+            return None
+        first, last = words.get_word_parens_range(offset)
+        arguments, keywords = words.get_parameters(first, last - 1)
+        mapping = next(
+            (
+                arg
+                for arg in (*arguments, *(value for _name, value in keywords))
+                if arg.lstrip().startswith("{")
+                or arg.partition("(")[0].strip() == "MappingProxyType"
+            ),
+            None,
+        )
+        if mapping is None:
+            return None
+        mapping_start = source.index(mapping, first + 1, last)
+        if mapping.partition("(")[0].strip() == "MappingProxyType":
+            inner_first, inner_last = words.get_word_parens_range(mapping_start)
+            return source[inner_first + 1 : inner_last - 1].strip()
+        brace_first, brace_last = words.code_finder.get_word_parens_range(
+            mapping_start, "{", "}"
+        )
+        return source[brace_first:brace_last]
+
+    @staticmethod
+    def _absolute_alias(package: str, value: str) -> str | None:
+        """Rewrite one relative alias value to an absolute provider module path.
+
+        Args:
+            package: Absolute name of the package owning the alias map.
+            value: Raw alias value read from the native mapping literal.
+
+        Returns:
+            The absolute module path, or None when the relative depth escapes
+            the package root.
+        """
+        if not value.startswith("."):
+            return value
+        parts = package.split(".") if package else []
+        depth = len(value) - len(value.lstrip("."))
+        remainder = value.lstrip(".")
+        if depth > len(parts):
+            return None
+        base = ".".join(parts[: len(parts) - depth + 1]) if depth else package
+        return ".".join(part for part in (base, remainder) if part)
 
     @staticmethod
     def _literal_mapping(source: str) -> t.StrDict:

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from base64 import urlsafe_b64encode
 from collections.abc import Callable, Mapping, MutableMapping
 from functools import partial
 from importlib.metadata import requires
@@ -194,6 +195,10 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             for group in declarations.dependency_groups.values()
             for item in group
             if isinstance(item, str)
+        ) + tuple(
+            item
+            for group in declarations.optional_dependencies.values()
+            for item in group
         )
         parsed_runtime = tuple(Requirement(item) for item in runtime)
         parsed_development = tuple(Requirement(item) for item in development)
@@ -222,7 +227,6 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             for raw, requirement in zip(runtime, parsed_runtime, strict=True)
             if canonicalize_name(requirement.name) not in unused
         ]
-        promoted: list[str] = []
         unresolved: list[str] = []
         for diagnostic in scan.report.root:
             if diagnostic.error.code not in {"DEP001", "DEP003", "DEP004"}:
@@ -246,15 +250,12 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                 if canonicalize_name(parsed.name) == name
             )
             additions = authored or (provider.requirement,)
-            if authored:
-                promoted.extend(authored)
             selected.extend(item for item in additions if item not in selected)
         return result_type.ok(
             m.Infra.RuntimeDependencyPlan(
                 source=scan.source,
                 before=scan.settings,
                 dependencies=tuple(selected),
-                promoted=tuple(dict.fromkeys(promoted)),
                 unresolved_modules=tuple(dict.fromkeys(unresolved)),
                 inputs=(
                     inputs.lock,
@@ -645,6 +646,107 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                 if name not in ready
             }
         return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
+
+    @classmethod
+    def installed_resource_snapshot(
+        cls,
+        distribution: str,
+        *,
+        resource_parts: t.StrSequence,
+        environment_root: Path,
+    ) -> p.Result[m.Infra.InstalledResourceSnapshot]:
+        """Select one declared distribution resource without importing its namespace.
+
+        Returns:
+            Original resource and inventory snapshots, or the first causal failure.
+        """
+        result_type = r[m.Infra.InstalledResourceSnapshot]
+        if not resource_parts or any(
+            not part or part in {".", ".."} or "/" in part or "\\" in part or "\0" in part
+            for part in resource_parts
+        ):
+            return result_type.fail("installed resource requires exact relative components")
+        installed = u.installed_distributions(name=distribution)
+        if len(installed) != 1:
+            return result_type.fail(
+                f"installed resource requires one distribution: {distribution}; "
+                f"observed={len(installed)}",
+            )
+        supplier = installed[0]
+        if canonicalize_name(supplier.metadata["Name"]) != canonicalize_name(distribution):
+            return result_type.fail(
+                f"installed resource distribution identity differs: {distribution}",
+            )
+        records = supplier.files
+        if records is None:
+            return result_type.fail(
+                f"installed resource has no RECORD inventory: {distribution}",
+            )
+        resource_entries = tuple(
+            item
+            for item in records
+            if item.parts[-len(resource_parts):] == tuple(resource_parts)
+        )
+        if len(resource_entries) != 1:
+            return result_type.fail(
+                f"installed resource requires one exact RECORD entry: {distribution} "
+                f"{'/'.join(resource_parts)}; observed={len(resource_entries)}",
+            )
+        metadata_entries = tuple(
+            item
+            for item in records
+            if item.name in {"METADATA", "RECORD"}
+            and item.parent.name.endswith(".dist-info")
+        )
+        if {item.name for item in metadata_entries} != {"METADATA", "RECORD"} or (
+            len(metadata_entries) != 2
+        ):
+            return result_type.fail(
+                f"installed resource needs its exact METADATA and RECORD: {distribution}",
+            )
+        prefix = environment_root.expanduser().resolve(strict=True)
+        entries = (*metadata_entries, resource_entries[0])
+        states: list[m.Cli.AtomicFileState] = []
+        for entry in entries:
+            path = Path(str(supplier.locate_file(entry))).resolve(strict=True)
+            if not path.is_relative_to(prefix):
+                return result_type.fail(
+                    f"installed resource escapes its physical environment: {path}",
+                )
+            captured = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if captured.failure:
+                return result_type.from_failure(captured)
+            states.append(captured.value)
+        resource = resource_entries[0]
+        state = states[-1]
+        if (
+            state.content is None
+            or resource.hash is None
+            or resource.hash.mode != "sha256"
+            or resource.size != len(state.content)
+            or resource.hash.value
+            != urlsafe_b64encode(bytes.fromhex(u.Cli.sha256_bytes(state.content)))
+            .rstrip(b"=")
+            .decode("ascii")
+        ):
+            return result_type.fail(
+                f"installed resource differs from its owning RECORD: {distribution} "
+                f"{'/'.join(resource_parts)}",
+            )
+        inventory = tuple(states[:-1])
+        for name in ("METADATA", "RECORD"):
+            recorded = next(item for item in inventory if item.path.name == name)
+            raw = supplier.read_text(name)
+            if raw is None or recorded.content != raw.encode(c.DEFAULT_ENCODING):
+                return result_type.fail(
+                    f"installed resource inventory has a foreign owner: {distribution} {name}",
+                )
+        unchanged = u.Cli.atomic_verify_binary_file_states(states)
+        if unchanged.failure:
+            return result_type.from_failure(unchanged)
+        return result_type.ok(
+            m.Infra.InstalledResourceSnapshot(resource=state, inventory=inventory),
+        )
 
     @classmethod
     def project_dependency_resource_files(

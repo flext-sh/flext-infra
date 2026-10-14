@@ -239,7 +239,7 @@ class TestsFlextInfraMisePinBootstrap:
 
     @staticmethod
     def test_native_http_source_options_survive_the_public_toml_consumer() -> None:
-        """Typed backend inputs round-trip without table scope swallowing later tools."""
+        """Typed backend inputs round-trip without table scope swallowing tools."""
         toolchain = config.Infra.codegen.toolchain
         dependency = toolchain.tools[0]
         source = m.Infra.MiseToolEntry(

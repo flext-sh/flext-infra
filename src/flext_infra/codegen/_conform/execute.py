@@ -50,7 +50,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return cls._observe_publication(request)
         root = request.root.expanduser().resolve()
-        producer = FlextInfraCodegenPreconditions.capture_producer()
+        producer = FlextInfraCodegenPreconditions.capture_producer(
+            root, entrypoint=cls.execute_request
+        )
         if producer.failure:
             return r[m.Infra.CodegenResult].from_failure(producer)
         prelude = cls._validated_request_prelude(root, initial_workspace)
@@ -247,7 +249,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         if self.producer is None:
-            producer = FlextInfraCodegenPreconditions.capture_producer()
+            producer = FlextInfraCodegenPreconditions.capture_producer(
+                self.repository_root,
+                entrypoint=self.execute,
+            )
             if producer.failure:
                 return r[m.Infra.CodegenResult].from_failure(producer)
             self.producer = producer.value

@@ -51,7 +51,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             RuntimeError: When the self-served producer authority capture
                 fails.
         """
-        if producer is None:
+        if producer is None and source_authority is None:
             # Self-serve the pre-planning producer authority: every transaction
             # publication journals the generator's own source states, and the
             # recovery guard rejects authority-less journals.
@@ -59,7 +59,9 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
                 FlextInfraCodegenPreconditions,
             )
 
-            captured = FlextInfraCodegenPreconditions.capture_producer()
+            captured = FlextInfraCodegenPreconditions.capture_producer(
+                owner.repository_root,
+            )
             if captured.failure:
                 raise RuntimeError(
                     "transaction producer authority capture failed: "
@@ -702,7 +704,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         ],
     ) -> p.Result[
         t.Pair[
-            m.Infra.CodegenTransactionSession,
+            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState],
             t.VariadicTuple[m.Infra.CodegenStagedFile],
         ]
     ]:
@@ -712,12 +714,12 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             settled: The staged generation tuple from the transaction staging.
 
         Returns:
-            The current session and staged set bound to the journal, or the
-            first validation failure.
+            The journaled conform state and staged set bound to the journal, or
+            the first validation failure.
         """
         result_type = r[
             t.Pair[
-                m.Infra.CodegenTransactionSession,
+                t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState],
                 t.VariadicTuple[m.Infra.CodegenStagedFile],
             ]
         ]

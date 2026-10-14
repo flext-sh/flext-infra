@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra.deps._modernizer.document import _RenderPolicy
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import p
-    from flext_infra.deps._modernizer.document import _RenderPolicy
+    from flext_infra.deps._modernizer.document import _RenderPolicySpec
 
 
 class FlextInfraPyprojectModernizerTooling:
@@ -57,7 +58,7 @@ class FlextInfraPyprojectModernizerTooling:
             state: m.Infra.PyprojectDocumentState,
             changes: t.StrSequence,
             *,
-            policy: _RenderPolicy,
+            policy: _RenderPolicySpec,
         ) -> p.Result[t.StrSequence]: ...
 
     def conform_source(

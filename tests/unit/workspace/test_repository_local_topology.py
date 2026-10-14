@@ -62,7 +62,7 @@ class TestsFlextInfraRepositoryLocalTopology:
         self,
         tmp_path: Path,
     ) -> None:
-        """Identity survives invalid exports while the public layout parser stays red."""
+        """Identity survives invalid exports while the layout parser stays red."""
         root = self._self_named_governed_root(tmp_path, "invalid-exports")
         before = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))

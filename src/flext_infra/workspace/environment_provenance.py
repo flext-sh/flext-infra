@@ -176,7 +176,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 "member producer declaration differs from its RECORD: "
                 f"{repository.distribution}",
             )
-        producer = FlextInfraUtilitiesPyprojectDocument._parsed_pyproject(
+        producer = FlextInfraUtilitiesPyprojectDocument.parsed_pyproject(
             state.content.decode(c.DEFAULT_ENCODING),
         )
         if producer.failure:
@@ -711,86 +711,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[bool].ok(value=True)
 
     @classmethod
-    def loaded_import_sources(
-        cls,
-        package_name: str,
-        *,
-        expected_root: Path | None = None,
-        reference: m.Infra.NativeImportReference | None = None,
-    ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Check executable producer declarations or consume their isolated receipt.
-
-        Static source preflight does not authorize generated executable bindings.
-        Physical environment verification uses native module election directly.
-        """
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
-
-        names = tuple(
-            sorted(
-                name
-                for name in tuple(modules)
-                if name == package_name or name.startswith(f"{package_name}.")
-            )
-        )
-        if not names:
-            return r[t.SequenceOf[t.Triple[str, str, str]]].ok(())
-        if reference is None:
-            from flext_infra._utilities.rope_runtime_modules import (
-                FlextInfraUtilitiesRopeRuntimeModules,
-            )
-
-            captured = FlextInfraUtilitiesRopeRuntimeModules.source_proof(
-                names,
-                module_source=cls._module_source,
-                observer=FlextInfraWorkspaceNativeReference,
-            )
-            if captured.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(captured)
-            source_files = captured.value
-        else:
-            if not set(names).issubset(reference.modules):
-                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                    f"native reference does not cover selected namespace: {package_name}",
-                )
-            if reference.runtime != Path(sys.executable).resolve():
-                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                    "native reference runtime differs",
-                )
-            from flext_infra.codegen.codegen_preconditions import (
-                FlextInfraCodegenPreconditions,
-            )
-
-            current = FlextInfraCodegenPreconditions.source_authority_current(
-                reference.source_authority
-            )
-            if current.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(current)
-            observed = FlextInfraWorkspaceNativeReference.capture(reference.modules)
-            if observed.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(observed)
-            matched = FlextInfraWorkspaceNativeReference.compare(
-                observed.value,
-                reference,
-            )
-            if matched.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(matched)
-            source_files = reference.sources
-        if expected_root is not None:
-            for identity, source, declaration in source_files:
-                supplier = identity.partition("::")[0]
-                if (
-                    supplier == package_name or supplier.startswith(f"{package_name}.")
-                ) and not Path(
-                    declaration or source,
-                ).resolve().is_relative_to(expected_root.resolve()):
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                        f"producer loaded source escapes declared checkout: {identity}={declaration or source}",
-                    )
-        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(source_files)
-
-    @classmethod
     def validate_locked(
         cls,
         repository_root: Path,
@@ -1276,7 +1196,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
         package_name = u.Infra.project_package_name(expected_root)
         payload = u.Infra.pyproject_payload(expected_root / c.PYPROJECT_FILENAME)
-        wheel = payload
+        wheel: t.JsonMapping = payload
         for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
             child = u.Cli.toml_mapping_child(wheel, key)
             if child is None:

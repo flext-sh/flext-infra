@@ -353,7 +353,14 @@ class FlextInfraUtilitiesPyproject:
     def project_package_participation(
         declaration: m.Infra.ProjectPackagingDeclaration,
     ) -> bool:
-        """Apply native project defaults without consulting directories or exports."""
+        """Apply native project defaults without consulting directories or exports.
+
+        Args:
+            declaration: Packaging declaration read from the project payload.
+
+        Returns:
+            Whether the project participates in packaging under native defaults.
+        """
         return (
             declaration.build_backend is not None
             if declaration.uv_package is None

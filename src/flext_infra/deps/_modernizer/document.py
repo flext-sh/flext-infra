@@ -22,8 +22,24 @@ from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import Protocol
 
     from flext_infra import p
+
+    class _RenderPolicySpec(Protocol):
+        """Read-only render policy contract crossing modernizer module bounds."""
+
+        @property
+        def dry_run(self) -> bool: ...
+
+        @property
+        def skip_comments(self) -> bool: ...
+
+        @property
+        def format_source(self) -> bool: ...
+
+        @property
+        def preserve_layout(self) -> bool: ...
 
 
 class _RenderPolicy(m.ArbitraryTypesModel):
@@ -380,7 +396,7 @@ class FlextInfraPyprojectModernizerDocument:
         state: m.Infra.PyprojectDocumentState,
         changes: t.StrSequence,
         *,
-        policy: _RenderPolicy,
+        policy: _RenderPolicySpec,
     ) -> p.Result[t.StrSequence]:
         """Order, annotate, and format one payload; write unless ``dry_run``.
 

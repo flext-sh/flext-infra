@@ -57,7 +57,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 "cold source authority cannot authorize project publication",
             )
             if source_authority is not None
-            else FlextInfraCodegenPreconditions.capture_producer()
+            else FlextInfraCodegenPreconditions.capture_producer(owner.repository_root)
             if producer is None
             else r[m.Infra.CodegenPhaseAnalysis].ok(producer)
         )

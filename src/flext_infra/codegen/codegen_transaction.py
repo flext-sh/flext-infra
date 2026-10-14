@@ -335,6 +335,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         """
         writes: list[tuple[Path, bytes, int]] = []
         for before in plan.inputs:
+            if not before.path.is_relative_to(plan.workspace):
+                continue
             content = (
                 plan.updates[before.path].encode(c.DEFAULT_ENCODING)
                 if before.path in plan.updates

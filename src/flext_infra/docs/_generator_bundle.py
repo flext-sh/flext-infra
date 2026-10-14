@@ -101,7 +101,7 @@ class FlextInfraDocGeneratorBundleMixin:
         for scope in selected:
             if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
                 continue
-            producer = FlextInfraCodegenPreconditions.capture_producer()
+            producer = FlextInfraCodegenPreconditions.capture_producer(root)
             if producer.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(producer)
                 return
@@ -265,7 +265,9 @@ class FlextInfraDocGeneratorBundleMixin:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
-        producer = FlextInfraCodegenPreconditions.capture_producer()
+        producer = FlextInfraCodegenPreconditions.capture_producer(
+            request.repository_root
+        )
         if producer.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(producer)
         started_at = perf_counter()
@@ -699,6 +701,10 @@ class FlextInfraDocGeneratorBundleMixin:
         )
         if line.failure:
             return result_type.from_failure(line)
+        if line.value.base_url is None:
+            return result_type.fail(
+                "detected integration line without a base URL",
+            )
         if c.Infra.GITHUB_REPO_URL.rsplit("/", maxsplit=1)[0] != (
             line.value.base_url.rstrip("/")
         ):

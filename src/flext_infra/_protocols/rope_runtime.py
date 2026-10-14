@@ -365,31 +365,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_import_statement(self) -> str: ...
 
     @runtime_checkable
-    @runtime_checkable
-    @runtime_checkable
-    class RopeSourceStatement(Protocol):
-        """Read a native logical source region without binding to a model class."""
-
-        line: int
-        end_line: int
-        start_offset: int
-        end_offset: int
-        indent: int
-        text: str
-
-        @property
-        def category(self) -> str: ...
-
-        @property
-        def enclosing_kind(self) -> str: ...
-
-        @property
-        def enclosing_name(self) -> str: ...
-
-        @property
-        def type_checking_guarded(self) -> bool: ...
-
-    @runtime_checkable
     class RopeFromImport(RopeImportInfo, Protocol):
         """Rope from-import marker shape."""
 

@@ -975,6 +975,13 @@ class FlextInfraModGateEngine:
                     finding.get("range"),
                 ),
                 text=str(finding.get("text")),
+                message=(
+                    native_message
+                    if isinstance(
+                        native_message := finding.get("message"), str
+                    )
+                    else None
+                ),
                 replacement=replacement,
                 actionable=actionable,
                 classification=classification,
@@ -1215,9 +1222,12 @@ class FlextInfraModGateEngine:
         Returns:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
         """
-        reports: list[m.Infra.ModScanReport] = []
         rules_by_id = {rule.id: rule for rule in plan.rules}
-        for ruleset in plan.rulesets:
+        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        with tempfile.TemporaryDirectory(
+            prefix="mod-native-catalog-", dir=settings.work_dir
+        ) as directory:
+            ruleset = u.Infra.codemod_stage_scan_ruleset(plan, Path(directory))
             sys.stderr.write(
                 f"mod: ast-grep provider={ruleset.provider} "
                 f"rules={len(ruleset.rule_ids)}\n",
@@ -1228,20 +1238,7 @@ class FlextInfraModGateEngine:
             )
             if scanned.failure:
                 return r[m.Infra.ModScanReport].from_failure(scanned)
-            reports.append(scanned.value)
-        return r[m.Infra.ModScanReport].ok(
-            cls.recounted(
-                tuple(entry for report in reports for entry in report.entries),
-                source_states=tuple(context.source_states.values()),
-                native_artifacts=tuple(
-                    {
-                        artifact.path: artifact
-                        for report in reports
-                        for artifact in report.native_artifacts
-                    }.values()
-                ),
-            )
-        )
+            return scanned
 
     @classmethod
     def _publish_scan(
@@ -1422,7 +1419,11 @@ class FlextInfraModGateEngine:
         logical = {state.path: state for state in states}
         entries: list[m.Infra.ModScanFinding] = []
         artifacts: dict[Path, m.Cli.AtomicFileReceipt] = {}
-        for ruleset in plan.rulesets:
+        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        with tempfile.TemporaryDirectory(
+            prefix="mod-native-catalog-", dir=settings.work_dir
+        ) as directory:
+            ruleset = u.Infra.codemod_stage_scan_ruleset(plan, Path(directory))
             scanned = cls._ruleset_report(
                 view_root, ruleset, rules_by_id, targets, context, artifact_root=root
             )

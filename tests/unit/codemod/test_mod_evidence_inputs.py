@@ -19,6 +19,103 @@ class TestsFlextInfraModEvidenceInputs:
     """Validate public evidence round-trips without duplicated input bodies."""
 
     @staticmethod
+    def test_composed_native_scan_preserves_provider_utils_and_local_shadows(
+        mod_workspace: Path,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """One real invocation keeps separate provider bindings and native local utilities."""
+        rules: list[m.Infra.CodemodRule] = []
+        rulesets: list[m.Infra.CodemodRuleset] = []
+        for provider, literal in (("left", "left"), ("right", "right")):
+            catalog = tmp_path / "providers" / provider
+            rule_directory = catalog / c.Infra.CODEMOD_RULE_DIRS_KEY
+            utility_directory = catalog / c.Infra.CODEMOD_UTIL_DIRS_KEY
+            rule_directory.mkdir(parents=True)
+            utility_directory.mkdir()
+            configuration = catalog / c.Infra.CODEMOD_CONFIG_FILENAME
+            tm.ok(
+                u.Cli.yaml_dump(
+                    configuration,
+                    {
+                        c.Infra.CODEMOD_RULE_DIRS_KEY: [rule_directory.name],
+                        c.Infra.CODEMOD_UTIL_DIRS_KEY: [utility_directory.name],
+                    },
+                )
+            )
+            tm.ok(
+                u.Cli.yaml_dump(
+                    utility_directory / f"shared{c.Infra.CODEMOD_RULE_SUFFIX}",
+                    {
+                        "id": "shared",
+                        "language": "Python",
+                        "rule": {"pattern": repr(literal)},
+                    },
+                )
+            )
+            tm.ok(
+                u.Cli.yaml_dump(
+                    rule_directory / f"global{c.Infra.CODEMOD_RULE_SUFFIX}",
+                    {
+                        "id": f"{provider}-global",
+                        "language": "Python",
+                        "severity": "error",
+                        "rule": {"matches": "shared"},
+                    },
+                )
+            )
+            if provider == "left":
+                tm.ok(
+                    u.Cli.yaml_dump(
+                        rule_directory / f"local{c.Infra.CODEMOD_RULE_SUFFIX}",
+                        {
+                            "id": f"{provider}-local",
+                            "language": "Python",
+                            "severity": "error",
+                            "utils": {"shared": {"pattern": repr("local")}},
+                            "rule": {"matches": "shared"},
+                        },
+                    )
+                )
+            selected = tm.ok(u.Infra.codemod_catalog_rules(provider, configuration))
+            rules.extend(selected)
+            rulesets.append(
+                m.Infra.CodemodRuleset(
+                    provider=provider,
+                    config=configuration,
+                    rule_ids=tuple(rule.id for rule in selected),
+                    fixable_rule_ids=tuple(
+                        rule.id for rule in selected if rule.fixable
+                    ),
+                )
+            )
+        plan = m.Infra.CodemodRulePlan(
+            provider_order=tuple(ruleset.provider for ruleset in rulesets),
+            rules=tuple(rules),
+            rulesets=tuple(rulesets),
+            project_rule_ids={
+                mod_workspace.resolve(): tuple(rule.id for rule in rules)
+            },
+        )
+        source = mod_workspace / "consumer.py"
+        source.write_text("a = 'left'\nb = 'right'\nc = 'local'\n", encoding="utf-8")
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, plan=plan, source_files=(source,)
+            )
+        )
+        console = capsys.readouterr()
+        tm.that(console.err.count(f"mod: start {c.Infra.SG} scan"), eq=1)
+        tm.that(
+            sorted((entry.rule_id, entry.text) for entry in report.entries),
+            eq=[
+                ("left-global", "'left'"),
+                ("left-local", "'local'"),
+                ("right-global", "'right'"),
+            ],
+        )
+
+    @staticmethod
     def test_native_record_digest_and_operational_fields_fail_closed(
         mod_workspace: Path,
     ) -> None:

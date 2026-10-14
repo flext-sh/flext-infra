@@ -545,9 +545,13 @@ class FlextInfraMisePublication:
 
         """
         batch_analysis = batch_admission.analysis
-        if FlextInfraMisePublication._batch_admission_mismatch(
-            batch_admission,
-            batch_analysis,
+        if (
+            batch_analysis is None
+            or batch_admission.error
+            or batch_admission.issues
+            or batch_admission.exception is not None
+            or batch_admission.phase != batch_analysis.phase
+            or batch_admission.admitted_states != batch_analysis.inputs
         ):
             return r[bool].fail(
                 "publication requires its exact native batch admission",
@@ -586,26 +590,6 @@ class FlextInfraMisePublication:
         if destinations.failure:
             return r[bool].from_failure(destinations)
         return r[bool].ok(value=True)
-
-    @staticmethod
-    def _batch_admission_mismatch(
-        batch_admission: m.Infra.CodegenPhaseOutcome,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None,
-    ) -> bool:
-        """Report whether the admission outcome is not exactly this batch's.
-
-        Returns:
-            True when the admission does not match its own batch analysis.
-
-        """
-        if batch_analysis is None or batch_admission.error or batch_admission.issues:
-            return True
-        if batch_admission.exception is not None:
-            return True
-        return (
-            batch_admission.phase != batch_analysis.phase
-            or batch_admission.admitted_states != batch_analysis.inputs
-        )
 
     @staticmethod
     def _generator_authority(

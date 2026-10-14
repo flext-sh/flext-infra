@@ -17,6 +17,7 @@ from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsMixins
 from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
+from flext_infra._models.rope import FlextInfraModelsRope
 
 
 class FlextInfraModelsWorkspace:
@@ -40,6 +41,12 @@ class FlextInfraModelsWorkspace:
         )
         generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
             description="Cold-elected physical producer namespaces"
+        )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None,
+                description="Shared native epoch; cold authority carries none",
+            )
         )
 
     class NativeBindingEvidence(m.Value):
@@ -68,7 +75,10 @@ class FlextInfraModelsWorkspace:
 
         runtime: Path = m.Field(description="Exact observed native interpreter")
         runtime_prefix: Path = m.Field(description="Physical interpreter environment")
-        modules: t.StrTuple = m.Field(description="Ordered elected loaded modules")
+        modules: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = m.Field(
+            min_length=1,
+            description="Selected modules and native lexical binding paths",
+        )
         sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
             description="Physical supplier and generated declaration origins",
         )
@@ -87,8 +97,15 @@ class FlextInfraModelsWorkspace:
         """Loaded producer identities and pinned inputs for source authentication."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-        modules: t.StrTuple = m.Field(
-            description="Loaded modules elected for this epoch"
+        repository_root: Path = m.Field(
+            description="Declared workspace whose unchanged source view is consumed",
+        )
+        runtime_root: Path = m.Field(
+            description="Declared resolution owner of the elected physical runtime",
+        )
+        modules: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = m.Field(
+            min_length=1,
+            description="Source-owned module/binding selections for this epoch",
         )
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority for reference consumption, not publication",
@@ -96,6 +113,9 @@ class FlextInfraModelsWorkspace:
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             description="Pinned source inputs checked before and after authentication",
             exclude=True,
+        )
+        import_roots: t.VariadicTuple[Path] = m.Field(
+            description="Physical import roots of all nominated and elected modules",
         )
 
     class WorkspaceEnvironmentRequest(m.ContractModel):

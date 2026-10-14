@@ -782,12 +782,11 @@ def real_detector_project(
             if (name := u.Infra.dep_name(requirement)) not in c.Tests.CONSUMER_MODULES
             or name in modules
         ]
-        tm.ok(
-            u.Cli.toml_write_mapping(
-                manifest,
-                {**payload, "project": {**project, "dependencies": dependencies}},
-            )
-        )
+        updated: t.JsonMapping = {
+            **payload,
+            "project": {**project, "dependencies": dependencies},
+        }
+        tm.ok(u.Cli.toml_write_mapping(manifest, updated))
         (root / "src" / root.name.replace("-", "_") / "__init__.py").write_text(
             "\n".join(
                 f"import {name}" for name in ("flext_core", *c.Tests.CONSUMER_MODULES)

@@ -164,6 +164,12 @@ streams into a failure message. Expected finding stderr is compared against the
 native receipt bytes using its derived exact length.
 Semantic planning consumes the shared operational occurrence model; it does not
 fabricate native artifact receipts.
+Every selected provider is projected into one native ruleset before the scan.
+Only elected rule documents are mounted. Provider global utilities receive
+content-derived identities and references; native rule-local shadows retain
+their meaning. Conflicting native configuration fields and ambiguous original
+utility declarations fail before launch. The same projection owner serves
+ordinary and immutable candidate scans.
 Immutable overlays use the same ruleset reader as the ordinary scan. Native
 finding exits require the complete parsed error count and exact stderr receipt;
 timeouts, forwarded signals and unrelated stderr remain failures.

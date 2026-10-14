@@ -593,7 +593,7 @@ class FlextInfraGitLanes:
         repository = captured.value.spec.repository
         declared = (
             repository.integration.branch
-            if repository is not None and repository.integration is not None
+            if repository.integration is not None
             else request.declared
         )
         targets = u.Infra.repository_operation_targets(
