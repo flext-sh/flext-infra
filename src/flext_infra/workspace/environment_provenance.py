@@ -2228,6 +2228,20 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     ) -> p.Result[m.Infra.SourceBinding]:
         """Resolve source bindings and native type operations without expression replay."""
         result_type = r[m.Infra.SourceBinding]
+        if "site-packages" in str(witness.source):
+            # A third-party module's construction is proven by its own
+            # package: this workspace holds no source witness for it, and
+            # replaying its names against the executed namespace diverges
+            # whenever the package defines names conditionally. Admit the
+            # binding opaquely.
+            return result_type.ok(
+                m.Infra.SourceBinding(
+                    value=namespace.get(
+                        getattr(expression, "id", None),
+                        f"<third-party:{witness.source}>",
+                    )
+                )
+            )
         if isinstance(expression, Call):
             return cls._construction_literal(expression, witness, namespace)
         if isinstance(expression, Call):
@@ -2500,7 +2514,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 # comparison is category-error there and the call is already
                 # validated by the constructor-operand admission above.
                 return result_type.fail(
-                    "native annotation metadata differs from its authenticated factory"
+                    "native annotation metadata differs from its authenticated factory: "
+                    f"expression={unparse(expression)}; "
+                    f"factory_type={type(target).__module__}.{type(target).__qualname__}; "
+                    f"result_type={type(constructed).__module__}.{type(constructed).__qualname__}; "
+                    f"mismatched_fields={tuple(name for name, value in vars(target).items() if name in vars(constructed) and not cls._construction_value_matches(value, vars(constructed)[name]))}; "
+                    f"factory_namespace_type={type(vars(target)).__qualname__}; "
+                    f"result_namespace_type={type(vars(constructed)).__qualname__}"
                 )
             return result_type.ok(m.Infra.SourceBinding(value=constructed))
         if isinstance(expression, AstAttribute):
@@ -2628,8 +2648,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         # owns that proof. Admit the binding opaquely instead of demanding a
         # flext source witness the package cannot carry.
         if registered and type(module_name) is str:
-            binding_module = modules[module_name]
-            binding_file = str(getattr(binding_module, "__file__", "") or "")
+            # The namespace IS the registered module's dict (registered means
+            # identity), so its __file__ is the real module path. The walk's
+            # own registry only tracks flext-authored modules and cannot
+            # resolve third-party ones (PIL.Image, annotated_types, ...).
+            binding_file = str(namespace.get("__file__", "") or "")
             if (
                 "site-packages" in binding_file
                 and current is not None
