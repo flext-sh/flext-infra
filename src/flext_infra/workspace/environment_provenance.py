@@ -58,8 +58,15 @@ from inspect import (
 from json import dumps
 from pathlib import Path
 from sys import modules
-from types import CodeType, SimpleNamespace
-from typing import TYPE_CHECKING, get_origin
+from types import (
+    ClassMethodDescriptorType,
+    CodeType,
+    FunctionType,
+    MethodDescriptorType,
+    SimpleNamespace,
+    WrapperDescriptorType,
+)
+from typing import TYPE_CHECKING, get_args, get_origin
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 

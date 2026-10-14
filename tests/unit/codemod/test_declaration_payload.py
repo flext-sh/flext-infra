@@ -18,6 +18,41 @@ class TestsFlextInfraDeclarationPayload:
     """Exercise semantic identity and inherited declarations without source parsing."""
 
     @staticmethod
+    def test_same_named_declarations_use_captured_occurrence(tmp_path: Path) -> None:
+        """Resolve each nested declaration in its own native class scope."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = (
+            "from pydantic import BaseModel\n"
+            "class First:\n"
+            "    class Payload(BaseModel):\n"
+            "        value: str\n"
+            "class Second:\n"
+            "    class Payload:\n"
+            "        value: str\n"
+        )
+        path = package / "payload.py"
+        path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as workspace:
+            for enclosing, header, accepted in (
+                ("First", "class Payload(BaseModel)", True),
+                ("Second", "class Payload:", False),
+            ):
+                declarations = u.Infra.declaration_names(
+                    workspace.rope_project,
+                    path,
+                    "Payload",
+                    offset=source.index(header) + len("class "),
+                )
+                tm.that(declarations, eq=(f"{enclosing}.Payload",))
+                binding = u.Infra.payload_declaration(
+                    workspace.rope_project,
+                    path,
+                    declarations[0],
+                )
+                tm.that(binding is not None, eq=accepted)
+        tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
     @pytest.mark.parametrize(
         ("definition", "accepted"),
         [

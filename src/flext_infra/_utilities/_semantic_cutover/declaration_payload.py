@@ -157,6 +157,8 @@ class FlextInfraUtilitiesDeclarationPayload:
         project: p.Infra.RopeProject,
         path: Path,
         name: str,
+        *,
+        offset: int | None = None,
     ) -> t.VariadicTuple[str]:
         """Discover module and nested class paths from the native scope graph.
 
@@ -171,9 +173,22 @@ class FlextInfraUtilitiesDeclarationPayload:
             ),
             path,
         )
-        scope = project.get_pymodule(resource).get_scope()
+        module = project.get_pymodule(resource)
+        scope = module.get_scope()
         if scope is None:
             return ()
+        declaration_lines = (
+            frozenset(
+                statement.line
+                for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
+                    module.source_code,
+                )
+                if statement.category == c.Infra.StatementCategory.CLASS_DEF
+                and statement.start_offset <= offset < statement.end_offset
+            )
+            if offset is not None
+            else None
+        )
         pending: list[t.Pair[p.Infra.RopeScope, str]] = [(scope, "")]
         names: list[str] = []
         while pending:
@@ -183,7 +198,10 @@ class FlextInfraUtilitiesDeclarationPayload:
                     continue
                 local_name = child.pyobject.get_name()
                 qualified_name = f"{prefix}.{local_name}" if prefix else local_name
-                if local_name == name:
+                if local_name == name and (
+                    declaration_lines is None
+                    or child.get_start() in declaration_lines
+                ):
                     names.append(qualified_name)
                 pending.append((child, qualified_name))
         return tuple(names)

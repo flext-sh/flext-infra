@@ -399,6 +399,8 @@ class FlextInfraUtilitiesCodemodProject(
             c.Infra.CodemodContextPredicate.SAME_BINDING,
             c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
             c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
+            c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
+            c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
         }
         selected = tuple(
             rule
@@ -462,6 +464,41 @@ class FlextInfraUtilitiesCodemodProject(
             raise ValueError(msg)
         source = cls.codemod_source_path(root, admission.file_path)
         for condition in rule.context:
+            if condition.predicate in {
+                c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
+                c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
+            }:
+                if condition.variable not in captures:
+                    continue
+                if admission.snapshot is None or project is None or sources is None:
+                    msg = f"{rule.id}: declaration context requires its binding snapshot"
+                    raise ValueError(msg)
+                capture = m.Infra.AstGrepCapture.model_validate(
+                    captures[condition.variable],
+                )
+                _text, start, _end = cls._validated_capture_span(
+                    source,
+                    capture,
+                    sources[source].encode("utf-8"),
+                )
+                declarations = FlextInfraUtilitiesDeclarationPayload.declaration_names(
+                    project,
+                    source,
+                    capture.text,
+                    offset=start,
+                )
+                resolve = (
+                    FlextInfraUtilitiesDeclarationPayload.payload_declaration
+                    if condition.predicate
+                    is c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
+                    else FlextInfraUtilitiesDeclarationPayload.protocol_declaration
+                )
+                holds = len(declarations) == 1 and resolve(
+                    project, source, declarations[0],
+                ) is not None
+                if holds is not condition.holds:
+                    return False
+                continue
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
                 c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
@@ -851,27 +888,6 @@ class FlextInfraUtilitiesCodemodProject(
             raise TypeError(message)
         own = FlextInfraUtilitiesPyproject.project_package_name(root)
         match predicate:
-            case (
-                c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
-                | c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION
-            ):
-                with FlextInfraUtilitiesRopeCore.open_project(root) as project:
-                    declarations = (
-                        FlextInfraUtilitiesDeclarationPayload.declaration_names(
-                            project,
-                            file_path,
-                            captured[0],
-                        )
-                    )
-                    if len(declarations) != 1:
-                        return False
-                    resolve = (
-                        FlextInfraUtilitiesDeclarationPayload.payload_declaration
-                        if predicate
-                        is c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
-                        else FlextInfraUtilitiesDeclarationPayload.protocol_declaration
-                    )
-                    return resolve(project, file_path, declarations[0]) is not None
             case _ if predicate in c.Infra.CODEMOD_PACKAGE_CONTEXT_PREDICATES:
                 own = facts.own_package
                 if own is None:
