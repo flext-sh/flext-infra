@@ -96,7 +96,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             ):
                 return False
             scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
-            if cls._type_payload_occurrence(project, module, text, start, end):
+            if cls._type_payload_occurrence(module, text, start, end):
                 return False
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
@@ -288,7 +288,6 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
         @staticmethod
         def _type_payload_occurrence(
-            project: p.Infra.RopeProject,
             module: p.Infra.RopePyModule,
             text: str,
             start: int,
@@ -305,7 +304,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             )
             return any(
                 left <= start < end <= right
-                for left, right in payload_ranges(text, project, module)
+                for left, right in payload_ranges(text, module)
             )
 
         @classmethod
@@ -855,10 +854,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             name = expression.rpartition(".")[-1]
             binding = runtime.expression_name(scope, expression)
             assignment_lines = (
-                frozenset(
-                    assignment.get_lineno()
-                    for assignment in binding.assignments
-                )
+                frozenset(assignment.get_lineno() for assignment in binding.assignments)
                 if isinstance(binding, p.Infra.RopeAssignedName)
                 else frozenset()
             )

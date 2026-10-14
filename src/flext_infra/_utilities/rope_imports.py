@@ -877,7 +877,6 @@ class FlextInfraUtilitiesRopeImports:
         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         protected = FlextInfraUtilitiesSemanticFamilyTypeReferences.type_payload_ranges(
             "".join(lines),
-            rope_project,
             pymodule,
         )
         for node in ast.walk(ast.parse("".join(lines))):
