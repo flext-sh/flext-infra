@@ -125,7 +125,26 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return r[str].from_failure(environment)
         member_requests, member_groups, member_requirements = environment.value
         member_groups = cls.active_development_requirements(member_groups)
-        custom_groups: t.Pair[t.StrSequence, t.StrSequence] = ((), ())
+        origins = cls._declared_requirement_sources(
+            project_name=project_name,
+            workspace=workspace,
+            required_dev_dependencies=required_dev_dependencies,
+            flext_line=provenance.flext_line,
+        )
+        if origins.failure:
+            return r[str].from_failure(origins)
+        declared_sources, candidate_sources = origins.value
+        source_context = FlextInfraUtilitiesPyprojectRequirementsProvenance(
+            declared_sources=declared_sources,
+            candidate_sources=candidate_sources,
+            family_line=provenance.flext_line.branch
+            if provenance.flext_line is not None
+            else None,
+        )
+        custom_groups: t.Pair[
+            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        ] = ((), ())
         if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE:
             custom = cls._sync_root_environment_groups(
                 source,
@@ -135,21 +154,21 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             if custom.failure:
                 return r[str].from_failure(custom)
             custom_groups = custom.value
-        cls._sync_dependency_groups(
+        grouped = cls._sync_dependency_groups(
             source,
             project_name=project_name,
             required_dev_dependencies=required_dev_dependencies,
+            provenance=source_context,
         )
+        if grouped.failure:
+            return r[str].from_failure(grouped)
         cls._sync_member_environment_dev(
             source,
             (*member_requests, *member_groups, *member_requirements),
         )
         requirement_sources = cls._normalized_requirement_sources(
             source,
-            project_name,
-            workspace,
-            required_dev_dependencies,
-            provenance,
+            source_context,
         )
         if requirement_sources.failure:
             return r[str].from_failure(requirement_sources)
@@ -162,13 +181,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             owned = cls._sync_root_environment_provenance(
                 source,
                 custom_groups,
-                FlextInfraUtilitiesPyprojectRequirementsProvenance(
-                    declared_sources=declared_sources,
-                    candidate_sources=candidate_sources,
-                    family_line=provenance.flext_line.branch
-                    if provenance.flext_line
-                    else None,
-                ),
+                source_context,
             )
             if owned.failure:
                 return r[str].from_failure(owned)
@@ -185,12 +198,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def _normalized_requirement_sources(
         cls,
         source: t.Cli.TomlDocument,
-        project_name: str,
-        workspace: m.Infra.WorkspaceSpec,
-        required_dev_dependencies: t.StrSequence,
-        provenance: PyprojectConformOptions,
+        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
     ) -> p.Result[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]]:
-        """Resolve declared origins before normalizing development requirements.
+        """Validate composed declarations before applying the one source context.
 
         Returns:
             Local requirements and source mappings, or the original failure.
@@ -201,46 +211,45 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]].from_failure(
                 local,
             )
-        origins = cls._declared_requirement_sources(
-            source,
-            project_name=project_name,
-            workspace=workspace,
-            required_dev_dependencies=required_dev_dependencies,
-            flext_line=provenance.flext_line,
+        unused_candidates = sorted(
+            provenance.candidate_sources.keys()
+            - set(FlextInfraUtilitiesDependencies.declared_dependency_names(source)),
         )
-        if origins.failure:
-            return r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]].from_failure(
-                origins,
+        if unused_candidates:
+            return r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]].fail(
+                "candidate dependencies are not declared requirements: "
+                + ", ".join(unused_candidates),
             )
-        declared, candidates = origins.value
         normalized = cls._normalize_requirements(
             source,
-            declared_sources=declared,
-            candidate_sources=candidates,
-            family_line=provenance.flext_line.branch
-            if provenance.flext_line is not None
-            else None,
+            declared_sources=provenance.declared_sources,
+            candidate_sources=provenance.candidate_sources,
+            family_line=provenance.family_line,
         )
         if normalized.failure:
             return r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]].from_failure(
                 normalized,
             )
         return r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]].ok(
-            (local.value, declared, candidates),
+            (local.value, provenance.declared_sources, provenance.candidate_sources),
         )
 
-    @staticmethod
+    @classmethod
     def _sync_member_environment_dev(
+        cls,
         source: t.Cli.TomlDocument,
         requirements: t.StrSequence,
     ) -> None:
         """Retain marker variants when merging selected member requirements."""
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
-        dev = u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV)))
-        u.Cli.toml_sync_string_list(
+        dev_name = cls.dependency_group_name(tuple(groups), str(c.Infra.DEV))
+        dev = cls.read_dependency_group(groups, dev_name)
+        existing = frozenset(entry for entry in dev if isinstance(entry, str))
+        additions = tuple(sorted(set(requirements) - existing))
+        u.Cli.toml_sync_value(
             groups,
-            str(c.Infra.DEV),
-            sorted({*dev, *requirements}),
+            dev_name,
+            cls.dependency_group_wire((*dev, *additions)),
         )
 
     @classmethod
@@ -249,34 +258,54 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         source: t.Cli.TomlDocument,
         original: str,
         member_groups: t.StrSequence,
-    ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
+    ) -> p.Result[
+        t.Pair[
+            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        ]
+    ]:
         """Retain custom development groups before adding current member requirements.
 
         Returns:
             Custom DEV and CODEGEN requirements, or the original parse failure.
 
         """
+        result_type = r[
+            t.Pair[
+                t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+                t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+            ]
+        ]
         payload = u.Cli.toml_as_mapping(source)
         if payload is None:
-            return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
+            return result_type.fail(
                 "root metadata is not a TOML mapping",
             )
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
-        retained: t.MutableMappingKV[str, t.StrSequence] = {}
+        retained: t.MutableMappingKV[
+            str, t.SequenceOf[str | m.Infra.DependencyGroupInclude]
+        ] = {}
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
+            authored_name = cls.dependency_group_name(tuple(groups), str(group))
             custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
                 payload,
                 original,
                 group=group,
             )
             if custom.failure:
-                return r[t.Pair[t.StrSequence, t.StrSequence]].from_failure(custom)
-            retained[group] = cls.active_development_requirements(custom.value)
+                return result_type.from_failure(custom)
+            retained[group] = cls.merge_dependency_group_entries((), custom.value)
             values = retained[group]
             if group == c.Infra.DependencyGroup.CODEGEN:
-                values = tuple(sorted({*values, *member_groups}))
-            u.Cli.toml_sync_string_list(groups, group, values)
-        return r[t.Pair[t.StrSequence, t.StrSequence]].ok(
+                values = cls.merge_dependency_group_entries(
+                    tuple(sorted(set(member_groups))), values,
+                )
+            u.Cli.toml_sync_value(
+                groups,
+                authored_name,
+                cls.dependency_group_wire(values),
+            )
+        return result_type.ok(
             (retained[str(c.Infra.DEV)], retained[c.Infra.DependencyGroup.CODEGEN]),
         )
 
@@ -284,7 +313,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def _sync_root_environment_provenance(
         cls,
         source: t.Cli.TomlDocument,
-        custom_groups: t.Pair[t.StrSequence, t.StrSequence],
+        custom_groups: t.Pair[
+            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        ],
         context: FlextInfraUtilitiesPyprojectRequirementsProvenance,
     ) -> p.Result[bool]:
         """Tag derived occurrences after normalizing their declared origins.
@@ -298,8 +330,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             custom_groups,
             strict=True,
         ):
-            normalized_custom: t.MutableSequenceOf[str] = []
+            normalized_custom: t.MutableSequenceOf[
+                str | m.Infra.DependencyGroupInclude
+            ] = []
             for value in custom:
+                if not isinstance(value, str):
+                    normalized_custom.append(value)
+                    continue
                 canonical = cls._canonical_requirement(value, provenance=context)
                 if canonical.failure:
                     return r[bool].from_failure(canonical)
@@ -719,7 +756,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     @classmethod
     def _declared_requirement_sources(
         cls,
-        source: t.Cli.TomlDocument,
         *,
         project_name: str,
         workspace: m.Infra.WorkspaceSpec,
@@ -732,7 +768,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         members use their governed workspace line; generated bare ``flext-*``
         floors use the detected FLEXT line. Candidate dependencies must be
         declared requirements.
-
         Returns:
             The declared and candidate requirement sources.
 
@@ -750,15 +785,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             item.distribution: f"git+{item.url}@{item.commit}"
             for item in workspace.candidate_dependencies
         }
-        unused_candidates = sorted(
-            candidate_sources.keys()
-            - set(FlextInfraUtilitiesDependencies.declared_dependency_names(source)),
-        )
-        if unused_candidates:
-            return r[t.Pair[t.StrMapping, t.StrMapping]].fail(
-                "candidate dependencies are not declared requirements: "
-                + ", ".join(unused_candidates),
-            )
         return r[t.Pair[t.StrMapping, t.StrMapping]].ok(
             (declared_sources, candidate_sources),
         )

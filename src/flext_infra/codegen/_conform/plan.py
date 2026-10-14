@@ -115,7 +115,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if gathered.failure:
             return r[m.Infra.CodegenPlan].from_failure(gathered)
         files, environments, issues = gathered.value
-        if contract.pyproject and (
+        if not issues and contract.pyproject and (
             contract.destinations is None
             or c.PYPROJECT_FILENAME in contract.destinations
         ):
@@ -818,7 +818,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             task.workspace,
             target,
             local_workspace,
-            planner.surface_contract(task.surface, codegen=inputs.spec),
+            planner.surface_contract(
+                c.Infra.CodegenConformSurface(task.surface),
+                codegen=inputs.spec,
+            ),
             inputs,
         )
         if planned.failure:

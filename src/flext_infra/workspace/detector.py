@@ -106,6 +106,13 @@ class FlextInfraWorkspaceDetector(
         )
         if enclosing is None:
             return result_type.ok(git_root)
+        ownership = u.Infra.git_mutation_scope(
+            m.Infra.GitRepoRequest(repo_root=enclosing),
+        )
+        if ownership.failure:
+            return result_type.from_failure(ownership)
+        if ownership.value.git_dir is None:
+            return result_type.ok(git_root)
         identity = u.Infra.git_show_toplevel(
             m.Infra.GitRepoRequest(repo_root=enclosing),
         )

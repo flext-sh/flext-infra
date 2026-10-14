@@ -440,6 +440,23 @@ class FlextInfraModelsWorkspace:
         vcs: Annotated[str, m.Field(description="Native VCS kind")]
         commit_id: Annotated[str, m.Field(description="Installed full commit identity")]
 
+    class PythonEnvironmentObservation(m.Value):
+        """Native metadata and package resolution from one elected interpreter."""
+
+        prefix: Annotated[Path, m.Field(description="Observed native sys.prefix")]
+        metadata_paths: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Native physical purelib and platlib install directories"),
+        ]
+        import_paths: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Native sys.path used for package resolution"),
+        ]
+        package_directories: Annotated[
+            t.MappingKV[str, t.VariadicTuple[Path]],
+            m.Field(description="Native package search locations by declared package"),
+        ]
+
     class DirectUrlReceipt(m.ContractModel):
         """Any installed distribution's PEP 610 receipt, read for its kind only.
 

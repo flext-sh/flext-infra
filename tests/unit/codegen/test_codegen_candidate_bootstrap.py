@@ -7,9 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
+from yaml.parser import ParserError
 
 from flext_infra import config, infra
 from flext_infra.codegen.conform import FlextInfraCodegenConform
@@ -78,6 +80,107 @@ def _declared_candidate_campaign(
 
 class TestsFlextInfraCodegenCandidateBootstrap:
     """A declared campaign publishes all recovery projections or none."""
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_absent_resolution_parent_chains_publish_atomically_and_converge(
+        tmp_path: Path,
+    ) -> None:
+        """The existing publication journal owns new native-view parent chains."""
+        source, candidate = _declared_candidate_campaign(
+            tmp_path,
+            c.Infra.CodegenConformSurface.PYPROJECT,
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
+        views = tuple(candidate / relative for relative in inputs.spec.uv_resolution_pyprojects)
+        tm.that(bool(views), eq=True)
+        for view in views:
+            tm.that(view.parent.exists(), eq=False)
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(
+                candidate / c.PYPROJECT_FILENAME,
+                required=True,
+            ),
+        )
+        check = infra.bootstrap_candidate(
+            m.Infra.CandidateBootstrapCommand(
+                repository_root=source,
+                check_only=True,
+            ),
+        )
+        tm.that(check.failure, eq=True)
+        for view in views:
+            tm.that(view.parent.exists(), eq=False)
+        tm.that(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(
+                    candidate / c.PYPROJECT_FILENAME,
+                    required=True,
+                ),
+            ),
+            eq=before,
+        )
+        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
+        tm.ok(infra.bootstrap_candidate(command))
+        committed = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(view, required=True))
+            for view in views
+        )
+        for view, state in zip(views, committed, strict=True):
+            tm.that(view.parent.is_dir(), eq=True)
+            tm.that(view.parent.is_symlink(), eq=False)
+            tm.that(
+                u.Cli.toml_mapping_from_text((state.content or b"").decode("utf-8"))
+                is not None,
+                eq=True,
+            )
+        tm.ok(infra.bootstrap_candidate(command))
+        tm.that(
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(view, required=True))
+                for view in views
+            ),
+            eq=committed,
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_resolution_parent_symlink_refuses_foreign_publication(
+        tmp_path: Path,
+    ) -> None:
+        """Missing-parent support does not authorize a foreign symlink target."""
+        source, candidate = _declared_candidate_campaign(
+            tmp_path,
+            c.Infra.CodegenConformSurface.PYPROJECT,
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
+        view = candidate / inputs.spec.uv_resolution_pyprojects[0]
+        foreign = tmp_path / "foreign"
+        foreign.mkdir()
+        sentinel = foreign / view.name
+        sentinel.write_text("foreign content\n", encoding="utf-8")
+        view.parent.parent.mkdir(parents=True, exist_ok=True)
+        view.parent.symlink_to(foreign, target_is_directory=True)
+        original = tm.ok(
+            u.Cli.atomic_read_binary_file_state(
+                candidate / c.PYPROJECT_FILENAME,
+                required=True,
+            ),
+        )
+        result = infra.bootstrap_candidate(
+            m.Infra.CandidateBootstrapCommand(repository_root=source),
+        )
+        tm.that(result.failure, eq=True)
+        tm.that(sentinel.read_text(encoding="utf-8"), eq="foreign content\n")
+        tm.that(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(
+                    candidate / c.PYPROJECT_FILENAME,
+                    required=True,
+                ),
+            ),
+            eq=original,
+        )
 
     @staticmethod
     def _write_runtime_probe(candidate: Path) -> t.StrSequence:
@@ -210,15 +313,26 @@ class TestsFlextInfraCodegenCandidateBootstrap:
     ) -> None:
         """Dynamic initializer destinations retain source and converge."""
         source, first, _ = self._campaign(tmp_path)
-        package = first / "src" / "bootstrap_case"
-        package.mkdir(parents=True)
+        package_name = u.Infra.project_package_name(first)
+        tm.that(bool(package_name), eq=True)
+        package = first / "src" / package_name
+        tm.that(package.is_dir(), eq=True)
         module = package / "domain.py"
+        exported = "BootstrapCase"
         module.write_text(
-            "class FlextBootstrapCase:\n    pass\n__all__ = ['FlextBootstrapCase']\n",
+            f"class {exported}:\n    pass\n__all__ = ['{exported}']\n",
             encoding="utf-8",
         )
         initializer = package / c.Infra.INIT_PY
-        initializer.write_text("# stale initializer\n", encoding="utf-8")
+        stale = f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n"
+        initializer.write_text(stale, encoding="utf-8")
+        foreign = package / "authored"
+        foreign.mkdir()
+        authored = foreign / c.Infra.INIT_PY
+        authored.write_text("OWNED = True\n", encoding="utf-8")
+        authored_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(authored, required=True),
+        )
         _write_candidate_targets(
             source,
             (
@@ -235,7 +349,29 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         generated = tm.ok(
             u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
-        tm.that(generated.content, ne=b"# stale initializer\n")
+        tm.that(generated.content, ne=stale.encode(c.DEFAULT_ENCODING))
+        observed = tm.ok(
+            u.Cli.capture(
+                [
+                    sys.executable,
+                    "-c",
+                    "import importlib, sys; "
+                    "print(getattr(importlib.import_module(sys.argv[1]), "
+                    "sys.argv[2]).__name__)",
+                    package_name,
+                    exported,
+                ],
+                cwd=first,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(first / "src")},
+                ),
+            ),
+        )
+        tm.that(observed.strip(), eq=exported)
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(authored, required=True)),
+            eq=authored_before,
+        )
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(module, required=True)),
             eq=before,
@@ -296,11 +432,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         original = second_declaration.read_text(encoding="utf-8")
         second_declaration.write_text("invalid: [\n", encoding="utf-8")
 
-        failed = infra.bootstrap_candidate(
-            m.Infra.CandidateBootstrapCommand(repository_root=source),
-        )
-
-        tm.that(failed.failure, eq=True)
+        with pytest.raises(ParserError):
+            infra.bootstrap_candidate(
+                m.Infra.CandidateBootstrapCommand(repository_root=source),
+            )
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(first_makefile, required=True)),
             eq=before,
@@ -494,6 +629,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         for relative in inputs.spec.uv_resolution_pyprojects:
             view = candidate / relative
             tm.that(view.is_file(), eq=True)
+            tm.that(dict(after), has=relative.as_posix())
             tm.that(
                 u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8"))
                 is not None,

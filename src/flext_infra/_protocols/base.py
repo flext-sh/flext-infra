@@ -265,6 +265,9 @@ class FlextInfraProtocolsBase(Protocol):
         def publish_batch(
             self,
             bundle: m.Infra.DocsGenerationBundle,
+            *,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
         ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
             """Admit, publish and settle one captured scope batch."""
             ...

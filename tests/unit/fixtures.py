@@ -12,6 +12,7 @@ import hashlib
 import os
 from collections.abc import Iterator
 from pathlib import Path
+from shlex import quote
 
 import pytest
 
@@ -283,7 +284,11 @@ def _write_receipt(path: Path, output: p.Cli.CommandOutput) -> None:
     )
 
 
-def _provision_make_template(run_root: Path, profile: c.Infra.MakeProfile) -> None:
+def _provision_make_template(
+    run_root: Path,
+    profile: c.Infra.MakeProfile,
+    git_environment: t.StrMapping,
+) -> None:
     """Resolve one generated consumer through ``make upg`` once per run.
 
     The upgrade runs under a foreign uv environment with a declared post-upg
@@ -291,25 +296,76 @@ def _provision_make_template(run_root: Path, profile: c.Infra.MakeProfile) -> No
     into cold CI storage; both receipts are what the consumers assert.
     """
     parent = _run_scoped(run_root, "make-templates", profile.value)
+    # Git inputs remain immutable file-only mirrors. Native registry wheels,
+    # build requirements and cold Mise artifacts still require provisioning.
+    git_environment = {**git_environment, "UV_OFFLINE": "0"}
     root, _ = u.Tests.render_make_environment(parent, profile, bootstrap=True)
+    candidate_url = u.Tests.repository_ref(
+        config.Infra.codegen.infra_repository.distribution,
+    ).url
+    candidate = next(
+        source
+        for source in u.Tests.locked_git_sources(_PROJECT_ROOT)
+        if source[0] == candidate_url
+    )
+    source_probe = (
+        "import base64,hashlib,importlib.metadata as md,json,pathlib,sys,flext_infra; "
+        f"distribution=md.distribution({config.Infra.name!r}); "
+        "source=json.loads(distribution.read_text('direct_url.json')); "
+        f"assert source['url']=={candidate[0]!r},source; "
+        f"assert source['vcs_info']['commit_id']=={candidate[2]!r},source; "
+        "module=pathlib.Path(flext_infra.__file__).resolve(); "
+        "assert module.is_relative_to(pathlib.Path(sys.prefix).resolve()),module; "
+        "record=next(item for item in distribution.files "
+        "if distribution.locate_file(item).resolve()==module); "
+        "assert record.hash is not None,record; "
+        "digest=hashlib.new(record.hash.mode,module.read_bytes()); "
+        "assert base64.urlsafe_b64encode(digest.digest()).rstrip(b'=').decode()"
+        "==record.hash.value,record; "
+        f"print('candidate-source={candidate[0]}#{candidate[2]}'); "
+        "print('candidate-module='+str(module)); "
+        "print('candidate-module-record='+record.hash.value); "
+        "print('candidate-prefix='+str(pathlib.Path(sys.prefix).resolve()))"
+    )
     hostile_venv = parent / c.Tests.MAKE_TEMPLATE_HOSTILE_VENV
     (hostile_venv / "bin").mkdir(parents=True)
     (hostile_venv / "sentinel").write_text("untouched\n", encoding="utf-8")
     custom = root / c.Infra.CUSTOM_MAKE_FILENAME
     custom.write_text(
         custom.read_text(encoding="utf-8")
-        + ".PHONY: post-upg\npost-upg:\n\t@printf '%s\\n' 'upg-hook-ran'\n",
+        + ".PHONY: post-upg post-status\n"
+        "post-upg:\n\t@printf '%s\\n' 'upg-hook-ran'\n"
+        f"post-status:\n\t@$(PROJECT_INFRA_RUN) -I -c {quote(source_probe)}\n",
         encoding="utf-8",
     )
     upgrade = tm.ok(
         u.Tests.run_isolated_make(
             ["--no-print-directory", "upg"],
             cwd=root,
-            env=u.Tests.hostile_uv_environment(hostile_venv),
+            env={
+                **git_environment,
+                **u.Tests.hostile_uv_environment(hostile_venv),
+            },
         ),
     )
     _write_receipt(parent / _MAKE_UPGRADE_RECEIPT, upgrade)
     if not u.Cli.process_succeeded(upgrade.outcome):
+        return
+    origin = tm.ok(
+        u.Tests.run_isolated_make(
+            ["--no-print-directory", "status"],
+            cwd=root,
+            env=git_environment,
+        ),
+    )
+    _write_receipt(
+        parent
+        / Path(_MAKE_UPGRADE_RECEIPT).with_stem(
+            f"{Path(_MAKE_UPGRADE_RECEIPT).stem}-source",
+        ),
+        origin,
+    )
+    if not u.Cli.process_succeeded(origin.outcome):
         return
     checkout = u.Tests.resolved_make_checkout(
         root,
@@ -317,12 +373,15 @@ def _provision_make_template(run_root: Path, profile: c.Infra.MakeProfile) -> No
         profile,
     )
     make = config.Infra.codegen.make
-    (checkout / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+    ci_custom = checkout / c.Infra.CUSTOM_MAKE_FILENAME
+    ci_custom.write_text(
         ".PHONY: post-setup\npost-setup:\n"
         '\t@test -x "$(MAKE_COMMAND)"\n'
         '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
         f'\t@test "$({make.ci.variable})" = "{make.ci.value}"\n'
-        "\t@printf '%s\\n' 'ci-runtime-provisioned'\n",
+        "\t@printf '%s\\n' 'ci-runtime-provisioned'\n"
+        ".PHONY: post-status\n"
+        f"post-status:\n\t@$(PROJECT_INFRA_RUN) -I -c {quote(source_probe)}\n",
         encoding="utf-8",
     )
     setup = tm.ok(
@@ -330,13 +389,36 @@ def _provision_make_template(run_root: Path, profile: c.Infra.MakeProfile) -> No
             ["--no-print-directory", "setup"],
             cwd=checkout,
             env={
+                **git_environment,
                 **u.Tests.hostile_uv_environment(hostile_venv),
                 make.ci.variable: make.ci.value,
+                make.uv_resolution.hosted_variable: make.uv_resolution.hosted_value,
                 c.Tests.MISE_DATA_DIR_ENV: str(parent / c.Tests.COLD_MISE_STORAGE),
             },
         ),
     )
     _write_receipt(parent / _MAKE_CI_SETUP_RECEIPT, setup)
+    if not u.Cli.process_succeeded(setup.outcome):
+        return
+    origin = tm.ok(
+        u.Tests.run_isolated_make(
+            ["--no-print-directory", "status"],
+            cwd=checkout,
+            env={
+                **git_environment,
+                make.ci.variable: make.ci.value,
+                make.uv_resolution.hosted_variable: make.uv_resolution.hosted_value,
+                c.Tests.MISE_DATA_DIR_ENV: str(parent / c.Tests.COLD_MISE_STORAGE),
+            },
+        ),
+    )
+    _write_receipt(
+        parent
+        / Path(_MAKE_CI_SETUP_RECEIPT).with_stem(
+            f"{Path(_MAKE_CI_SETUP_RECEIPT).stem}-source",
+        ),
+        origin,
+    )
 
 
 def _provision_infra_checkout(run_root: Path, scenario: str) -> None:
@@ -354,6 +436,8 @@ def _ensure_provisioned(
     parent: Path,
     receipt: str,
     key: c.Infra.MakeProfile | str,
+    *,
+    git_environment: t.StrMapping | None = None,
 ) -> None:
     """Provision only a consumed fixture under the canonical filesystem lease.
 
@@ -367,12 +451,15 @@ def _ensure_provisioned(
             return
         match key:
             case c.Infra.MakeProfile():
-                _provision_make_template(run_root, key)
+                if git_environment is None:
+                    msg = "Make templates require their declared immutable Git mirrors"
+                    raise ValueError(msg)
+                _provision_make_template(run_root, key, git_environment)
             case str():
                 _provision_infra_checkout(run_root, key)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMapping:
     """Serve the fixture provider's Git sources from this run's local mirrors.
 
@@ -426,6 +513,7 @@ def generated_make_template(
 @pytest.fixture(scope="session")
 def resolved_make_templates(
     session_runtime: p.Tests.SessionRuntime,
+    hermetic_git_environment: t.StrMapping,
 ) -> t.MappingKV[c.Infra.MakeProfile, Path]:
     """Return committed templates owned by this isolated worker-session.
 
@@ -440,7 +528,13 @@ def resolved_make_templates(
     for profile in c.Infra.MakeProfile:
         run_root = session_runtime.directory
         parent = _run_scoped(run_root, "make-templates", profile.value)
-        _ensure_provisioned(run_root, parent, _MAKE_UPGRADE_RECEIPT, profile)
+        _ensure_provisioned(
+            run_root,
+            parent,
+            _MAKE_UPGRADE_RECEIPT,
+            profile,
+            git_environment=hermetic_git_environment,
+        )
         upgrade = u.Tests.command_receipt(parent / _MAKE_UPGRADE_RECEIPT)
         tm.that(
             u.Cli.process_succeeded(upgrade.outcome),

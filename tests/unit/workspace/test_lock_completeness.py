@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceLockCompleteness,
@@ -17,6 +19,11 @@ from tests import c, m, tm, u
 
 class TestsFlextInfraWorkspaceLockCompleteness:
     """An interrupted resolution must never pass as a complete lock."""
+
+    @staticmethod
+    def _selected_lock(root: Path) -> Path:
+        """Consume the same physical owner and resolver view as public validation."""
+        return tm.ok(FlextInfraWorkspaceDetector.resolution_context(root)).lock_path
 
     def test_native_leaf_omissions_have_fresh_empty_groups(self) -> None:
         """UV omits empty edge collections without omitting package identity."""
@@ -84,7 +91,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         duplicate_project: Path,
     ) -> None:
         """The real once-provisioned consumer keeps its immutable lock bytes."""
-        lock = duplicate_project / c.Infra.UV_LOCK_FILENAME
+        lock = self._selected_lock(duplicate_project)
         before = lock.read_bytes()
         tm.ok(FlextInfraWorkspaceLockCompleteness.validate(duplicate_project))
         tm.that(lock.read_bytes(), eq=before)
@@ -94,7 +101,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         duplicate_project: Path,
     ) -> None:
         """Native manifest validation precedes permissive requirement extraction."""
-        lock = duplicate_project / c.Infra.UV_LOCK_FILENAME
+        lock = self._selected_lock(duplicate_project)
         before = lock.read_bytes()
         path = duplicate_project / c.PYPROJECT_FILENAME
         document = tm.ok(u.Cli.toml_read_document(path))
@@ -111,7 +118,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         self, duplicate_project: Path
     ) -> None:
         """Removing a real active package never passes as an empty closure."""
-        lock = duplicate_project / c.Infra.UV_LOCK_FILENAME
+        lock = self._selected_lock(duplicate_project)
         document = tm.ok(u.Cli.toml_read_document(lock))
         payload = tm.ok(u.Cli.toml_read_json(lock))
         inventory = m.Infra.LockedEnvironment.model_validate(payload)
@@ -141,7 +148,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         marker: str,
     ) -> None:
         """Metadata for inactive markers/extras does not create phantom packages."""
-        lock = duplicate_project / c.Infra.UV_LOCK_FILENAME
+        lock = self._selected_lock(duplicate_project)
         payload = tm.ok(u.Cli.toml_read_json(lock))
         inventory = m.Infra.LockedEnvironment.model_validate(payload)
         supplier = next(item for item in inventory.package if item.source.registry)
@@ -204,20 +211,21 @@ class TestsFlextInfraWorkspaceLockCompleteness:
 
     def test_the_infra_checkout_lock_is_complete(self) -> None:
         """The repository's own committed lock always passes its own gate."""
-        tm.ok(FlextInfraWorkspaceLockCompleteness.validate(Path(__file__).parents[3]))
+        root = Path(__file__).parents[3]
+        tm.ok(FlextInfraWorkspaceLockCompleteness.validate(root))
 
-    def test_public_validation_uses_the_elected_view(self, tmp_path: Path) -> None:
-        """The selected resolver lock is authoritative even beside a legacy lock."""
-        u.Tests.initialize_git_repo(tmp_path)
-        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(tmp_path))
-        (tmp_path / "uv.lock").write_text(
-            "[[package]]\nname='legacy'\n", encoding="utf-8"
-        )
-        tm.fail(
-            FlextInfraWorkspaceLockCompleteness.validate(tmp_path),
-            has="no committed lock",
-        )
-        tm.ok(u.Cli.ensure_dir(context.lock_path.parent))
-        context.lock_path.write_text("[[package]]\nname='selected'\n", encoding="utf-8")
+    def test_public_validation_uses_the_elected_view(
+        self,
+        duplicate_project: Path,
+    ) -> None:
+        """A malformed legacy root lock cannot replace a complete selected view."""
+        lock = self._selected_lock(duplicate_project)
+        before = lock.read_bytes()
+        legacy = duplicate_project / c.Infra.UV_LOCK_FILENAME
+        tm.that(legacy != lock, eq=True)
+        legacy.write_text("package = []\n", encoding="utf-8")
 
-        tm.that(tm.ok(FlextInfraWorkspaceLockCompleteness.validate(tmp_path)), eq=1)
+        tm.ok(FlextInfraWorkspaceLockCompleteness.validate(duplicate_project))
+
+        tm.that(lock.read_bytes(), eq=before)
+        tm.that(legacy.read_text(encoding="utf-8"), eq="package = []\n")

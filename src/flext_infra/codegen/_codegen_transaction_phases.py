@@ -1146,6 +1146,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         session: m.Infra.CodegenTransactionSession,
         *,
         published_files: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+        | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Report every target, preserve gains, and settle the publication cursor.
 
@@ -1157,7 +1159,14 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             evidence = self.record_publication(session)
             if evidence.failure:
                 return r[t.VariadicTuple[Path]].from_failure(evidence)
-            return self._settle_publication(session)
+            settled = self._settle_publication(session)
+            if settled.failure or publication_receipts is None:
+                return settled
+            receipt = self.publication_outcome(session, completed=True)
+            if receipt.failure:
+                return r[t.VariadicTuple[Path]].from_failure(receipt)
+            publication_receipts.append(receipt.value)
+            return settled
         finally:
             if published_files is not None:
                 endpoints = {

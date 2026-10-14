@@ -20,6 +20,41 @@ class TestsFlextInfraRuntimeRoot:
     """The execution context elects exactly one lock and environment owner."""
 
     @staticmethod
+    @pytest.mark.parametrize("malformed_parent_git", [False, True])
+    def test_python_parent_does_not_invent_a_containing_git_owner(
+        tmp_path: Path,
+        malformed_parent_git: bool,
+    ) -> None:
+        """A Git child stays independent, while a malformed parent marker is red."""
+        parent = tmp_path / "python-parent"
+        parent.mkdir()
+        (parent / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'fixture-parent'\nversion = '1.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        root = parent / "standalone"
+        root.mkdir()
+        u.Tests.initialize_git_repo(root)
+        (root / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'fixture-child'\nversion = '1.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        if malformed_parent_git:
+            (parent / c.Infra.GIT_DIR).write_text(
+                "gitdir: absent-storage\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+
+        observed = FlextInfraWorkspaceDetector.resolution_context(root)
+
+        if malformed_parent_git:
+            tm.that(observed.failure, eq=True)
+        else:
+            context = tm.ok(observed)
+            tm.that(context.project_root, eq=root.resolve())
+            tm.that(context.runtime_root, eq=root.resolve())
+
+    @staticmethod
     def test_root_context_is_available_before_managed_toml_recovery(
         tmp_path: Path,
     ) -> None:

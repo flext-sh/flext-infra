@@ -17,6 +17,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerificationManifest,
     FlextInfraMiseArtifactsVerificationTopology,
 )
+from flext_infra.codegen import FlextInfraMiseArtifactsJournal
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -35,6 +36,50 @@ class FlextInfraMiseArtifactsVerification(
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate a completed publication without planning or rendering."""
         root = request.root.expanduser().resolve()
+        observed = cls._read_publication(root)
+        result = r[m.Infra.CodegenPhaseOutcome]
+        if observed.failure:
+            return result.from_failure(observed)
+        outcome = observed.value
+        surface = c.Infra.CodegenConformSurface(request.what)
+        scope = c.Infra.CodegenConformScope(request.scope)
+        covers_surface = outcome.surface == surface or (
+            outcome.surface is c.Infra.CodegenConformSurface.ALL
+            and surface is not c.Infra.CodegenConformSurface.ALL
+        )
+        covers_scope = outcome.scope == scope or (
+            outcome.scope is c.Infra.CodegenConformScope.ALL
+            and scope is c.Infra.CodegenConformScope.SELF
+            and root in outcome.scope_roots
+        )
+        if (
+            not covers_surface
+            or not covers_scope
+            or outcome.module != request.module
+            or not outcome.scope_roots
+            or (
+                scope
+                in {
+                    c.Infra.CodegenConformScope.SELF,
+                    c.Infra.CodegenConformScope.ALL,
+                }
+                and root not in outcome.scope_roots
+            )
+        ):
+            return result.fail(
+                "generation publication does not cover this request: "
+                f"{root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH}; "
+                "run make gen",
+            )
+        return result.ok(outcome)
+
+    @classmethod
+    def _read_publication(
+        cls,
+        root: Path,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Authenticate the stored native receipt before testing request coverage."""
+        root = root.expanduser().resolve()
         report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         captured = FlextInfraMiseArtifactsFiles.read_state(report, required=False)
         result = r[m.Infra.CodegenPhaseOutcome]
@@ -53,20 +98,18 @@ class FlextInfraMiseArtifactsVerification(
         outcome = parsed.value
         if (
             not outcome.completed
+            or outcome.error
             or outcome.issues
             or outcome.pending_files
             or not (outcome.outputs or outcome.batches)
-            or not outcome.scope_roots
             or outcome.root != root
-            or outcome.surface != c.Infra.CodegenConformSurface(request.what)
-            or outcome.scope != c.Infra.CodegenConformScope(request.scope)
-            or outcome.module != request.module
+            or outcome.transaction_id is None
         ):
             return result.fail(
                 f"generation publication does not cover this request: {report}; "
                 "run make gen",
             )
-        current = cls._publication_states_current(outcome)
+        current = cls.publication_states_current(outcome)
         if current.failure:
             return result.from_failure(current)
         unchanged = cls.states_current((captured.value,))
@@ -75,15 +118,11 @@ class FlextInfraMiseArtifactsVerification(
         return result.ok(outcome)
 
     @classmethod
-    def _publication_states_current(
+    def publication_states_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[bool]:
-        """Verify native file and ancestry witnesses of every completed batch."""
-        from flext_infra.codegen.codegen_preconditions import (
-            FlextInfraCodegenPreconditions,
-        )
-
+        """Verify the terminal frontier of the actual ordered journal batches."""
         if not outcome.completed or outcome.issues or outcome.pending_files:
             return r[bool].fail("generation batch is incomplete; run make gen")
         if not outcome.batches:
@@ -157,10 +196,145 @@ class FlextInfraMiseArtifactsVerification(
                     f"generation publication state changed: {expected.path}; "
                     "run make gen",
                 )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _publication_frontier(
+        cls,
+        outcome: m.Infra.CodegenPhaseOutcome,
+        frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
+    ) -> p.Result[bool]:
+        """Advance only through outputs authorized by their native effect journal."""
+        if (
+            not outcome.completed
+            or outcome.error
+            or outcome.issues
+            or outcome.pending_files
+            or outcome.root is None
+            or outcome.transaction_id is None
+            or not (outcome.outputs or outcome.batches)
+        ):
+            return r[bool].fail("generation batch is incomplete; run make gen")
+        if not outcome.batches:
+            from flext_infra.codegen.codegen_preconditions import (
+                FlextInfraCodegenPreconditions,
+            )
+
+            if (
+                not outcome.generator_sources
+                or not outcome.generator_trees
+                or any(source.role is None for source in outcome.generator_sources)
+            ):
+                return r[bool].fail(
+                    "generation batch lacks pre-planning producer closure; run make gen",
+                )
+            producer = FlextInfraCodegenPreconditions.producer_trees_current(
+                outcome.generator_trees,
+                outcome.outputs,
+            )
+            if producer.failure:
+                return producer
+        if outcome.phase == c.Infra.CodegenStagedFilePhase.DOCS:
+            membership = u.Infra.docs_source_paths_for_roots(
+                outcome.scope_roots,
+                source_scope=outcome.source_scope,
+            )
+            if membership.failure:
+                return r[bool].from_failure(membership)
+            sources = {source.path: source for source in outcome.sources}
+            destinations = {output.path for output in outcome.outputs}
+            sources.update(
+                {
+                    output.path: output
+                    for output in outcome.outputs
+                    if u.Infra.docs_source_path_is_input(
+                        output.path,
+                        outcome.scope_roots,
+                        source_scope=outcome.source_scope,
+                    )
+                },
+            )
+            expected_paths = {
+                source.path
+                for source in sources.values()
+                if source.sha256 is not None
+                and (
+                    source.path not in destinations
+                    or u.Infra.docs_source_path_is_input(
+                        source.path,
+                        outcome.scope_roots,
+                        source_scope=outcome.source_scope,
+                    )
+                )
+            }
+            if set(membership.value) != expected_paths:
+                return r[bool].fail(
+                    "generation source membership changed; "
+                    f"added={sorted(set(membership.value) - expected_paths)}; "
+                    f"removed={sorted(expected_paths - set(membership.value))}; "
+                    "run make gen",
+                )
+        for witness in outcome.source_topology:
+            observed = u.Cli.atomic_plan_directory_chain(witness.target)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != witness:
+                return r[bool].fail(
+                    f"generation source topology changed: {witness.target}; run make gen",
+                )
+        outputs = {item.path: item for item in outcome.outputs}
+        written = set(outcome.written_files)
+        if outcome.batches:
+            if written != {
+                path for batch in outcome.batches for path in batch.written_files
+            }:
+                return r[bool].fail(
+                    "generation operation differs from its actual batches",
+                )
+        elif not written.issubset(
+            set(outcome.effect_targets) & set(outcome.attempted_files) & outputs.keys(),
+        ):
+            return r[bool].fail("generation writes have no journal effect authority")
+        inputs: dict[Path, list[m.Infra.CodegenJournalSource]] = {}
+        for source in (*outcome.sources, *outcome.generator_sources):
+            inputs.setdefault(source.path, []).append(source)
+        for path, records in inputs.items():
+            previous = frontier.get(path)
+            if previous is not None and not any(
+                record.model_dump(exclude={"phase", "role"})
+                == previous.model_dump(exclude={"phase", "role"})
+                for record in records
+            ):
+                return r[bool].fail(
+                    f"generation batch input differs from preceding output: {path}",
+                )
+            if path not in written and any(
+                record.model_dump(exclude={"phase", "role"})
+                != records[0].model_dump(exclude={"phase", "role"})
+                for record in records[1:]
+            ):
+                return r[bool].fail(
+                    f"generation inputs disagree without an owned write: {path}",
+                )
+            frontier[path] = records[0]
+        for path, output in outputs.items():
+            if path in written:
+                if path not in inputs:
+                    return r[bool].fail(
+                        f"generation output has no authenticated preimage: {path}",
+                    )
+            elif path in frontier and (
+                frontier[path].model_dump(exclude={"phase", "role"})
+                != output.model_dump(exclude={"phase", "role"})
+            ):
+                return r[bool].fail(
+                    f"generation output changed without an owned write: {path}",
+                )
+            frontier[path] = output
         for batch in outcome.batches:
-            verified = cls._publication_states_current(batch)
-            if verified.failure:
-                return verified
+            advanced = cls._publication_frontier(batch, frontier)
+            if advanced.failure:
+                return advanced
         return r[bool].ok(value=True)
 
     @classmethod
@@ -227,7 +401,7 @@ class FlextInfraMiseArtifactsVerification(
         """
         for expected in states:
             if expected.parent_device is None and journal is not None:
-                rebound = cls._bind_source_parent(expected, journal)
+                rebound = cls.bind_source_parent(expected, journal)
                 if rebound.failure:
                     return r[bool].from_failure(rebound)
                 rebound_expected = rebound.value
@@ -254,7 +428,7 @@ class FlextInfraMiseArtifactsVerification(
         return r[bool].ok(value=True)
 
     @classmethod
-    def _bind_source_parent(
+    def bind_source_parent(
         cls,
         expected: m.Cli.AtomicFileState,
         journal: m.Infra.CodegenTransactionJournal,
@@ -267,7 +441,11 @@ class FlextInfraMiseArtifactsVerification(
         """
         result = r[m.Cli.AtomicFileState]
         source = next(
-            (item for item in journal.sources if item.path == expected.path),
+            (
+                item
+                for item in (*journal.sources, *journal.outputs)
+                if item.path == expected.path and item.absent_parent is not None
+            ),
             None,
         )
         if (

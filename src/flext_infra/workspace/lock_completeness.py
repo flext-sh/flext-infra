@@ -13,7 +13,6 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, u
-from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import (
     FlextInfraFlextBindingService,
     FlextInfraWorkspaceDetector,
@@ -72,11 +71,31 @@ class FlextInfraWorkspaceLockCompleteness:
             locked = m.Infra.LockedEnvironment.model_validate(payload.value)
             if lock_path.name != c.Infra.UV_LOCK_FILENAME:
                 return r[int].fail(f"{lock_path}: not a native UV lock path")
-            owned = FlextInfraCodegenConform.require_own_lock(lock_path.parent)
-            if owned.failure:
-                return r[int].from_failure(owned)
-            owner = owned.value.resolve()
-            python = u.Infra.runtime_python(owner)
+            context = FlextInfraWorkspaceDetector.resolution_context(lock_path.parent)
+            if context.failure:
+                return r[int].from_failure(context)
+            owner = lock_path.parent.resolve()
+            if lock_path.resolve() != context.value.lock_path.resolve():
+                return r[int].fail(
+                    f"{lock_path}: lock differs from selected resolution context",
+                )
+            binary = u.Infra.managed_mise_binary(
+                c.Infra.UV,
+                context.value.runtime_root,
+            )
+            if binary.failure:
+                return r[int].from_failure(binary)
+            native_owner = u.Cli.run(
+                (str(binary.value), "workspace", "dir", "--project", str(owner)),
+                cwd=owner,
+            )
+            if native_owner.failure:
+                return r[int].from_failure(native_owner)
+            if Path(native_owner.value.stdout.strip()) != owner:
+                return r[int].fail(
+                    f"{lock_path}: native UV owner differs from selected resolution context",
+                )
+            python = u.Infra.runtime_python(context.value.runtime_root)
             environment = FlextInfraFlextBindingService.consumer_marker_environment(
                 consumer_root=owner,
                 python=python,
@@ -85,7 +104,7 @@ class FlextInfraWorkspaceLockCompleteness:
                 return r[int].from_failure(environment)
             checked = u.Cli.run(
                 (
-                    c.Infra.UV,
+                    str(binary.value),
                     "lock",
                     "--check",
                     "--project",

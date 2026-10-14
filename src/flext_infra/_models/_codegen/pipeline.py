@@ -259,6 +259,12 @@ class FlextInfraModelsCodegenPipelineModels:
         ) = m.Field(
             default=None, description="Native publication proof verified by observer"
         )
+        publication_receipt: (
+            FlextInfraModelsCodegenPipelineModels.CodegenPhaseOutcome | None
+        ) = m.Field(
+            default=None,
+            description="Exact settled operation receipt returned by its producer",
+        )
         written_files: t.VariadicTuple[Path] = m.Field(
             default=(),
             description="Files atomically replaced by apply",
@@ -273,20 +279,21 @@ class FlextInfraModelsCodegenPipelineModels:
             if (self.plan is None) == (self.verified_publication is None):
                 msg = "conform result requires exactly one actual capability"
                 raise ValueError(msg)
-            if self.verified_publication is not None and (
-                not self.verified_publication.completed
-                or self.verified_publication.error
-                or self.verified_publication.issues
-                or self.verified_publication.pending_files
-                or self.verified_publication.root is None
-                or self.verified_publication.transaction_id is None
-                or not (
-                    self.verified_publication.outputs
-                    or self.verified_publication.batches
-                )
-            ):
-                msg = "verified publication requires complete output evidence"
+            if self.publication_receipt is not None and self.plan is None:
+                msg = "producer publication requires its actual generation plan"
                 raise ValueError(msg)
+            for receipt in (self.verified_publication, self.publication_receipt):
+                if receipt is not None and (
+                    not receipt.completed
+                    or receipt.error
+                    or receipt.issues
+                    or receipt.pending_files
+                    or receipt.root is None
+                    or receipt.transaction_id is None
+                    or not (receipt.outputs or receipt.batches)
+                ):
+                    msg = "publication requires complete output evidence"
+                    raise ValueError(msg)
             return self
 
     class CodegenConformPorts(m.ArbitraryTypesModel):

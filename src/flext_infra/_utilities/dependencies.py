@@ -410,7 +410,9 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         if waves.failure:
             raise ValueError(waves.error)
         return tuple(
-            by_name[name].distribution for wave in waves.value for name in wave
+            by_name[name].distribution
+            for wave in waves.value
+            for name in wave
         )
 
     @staticmethod

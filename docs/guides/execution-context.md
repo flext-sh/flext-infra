@@ -191,11 +191,6 @@ audit owns its pin and completeness verdicts. `make upg` resolves the declared
 manifest, provisions the recorded release from its verified asset and requalifies
 Mise before continuing. `mise-config` conformance repairs the generated tool
 declaration without resolving a lock or regenerating unrelated project files.
-If `mise.lock` has no self-managed Mise entry, setup uses the qualified host Mise
-provisioning path without changing the lock. The absent pin remains an audit
-defect. `make upg` alone resolves the declared manifest and records the release;
-provisioning then consumes its verified asset. Generated declarations still come
-from the toolchain owner, never a hand-edited projection.
 
 When Beads tracking is configured, the generated `.envrc.local` carries its environment:
 `AGENTS_GAS_CITY_ROOT` selects the Gas City root, the Gas City runtime publication
@@ -215,10 +210,12 @@ reading a gate identity does not load the pytest execution or collection owners.
 The producer declares the Markdown collection plugin as a runtime dependency
 because its shipped pytest collection implementation imports that plugin.
 
-Git attachment elects the physical runtime, not the lock owner. Every repository
-owns independent locks, authenticated through native UV discovery. Attached
-`make setup` delegates to the root; `make upg` settles its own lock before aligning
-that root once. Standalone checkouts own both. Setup never changes locks.
+An associated project inherits the locks and physical environment of its
+authenticated Git or native UV workspace. Its `make setup` and `make upg`
+delegate to that root before
+installing tools or resolving dependencies. A standalone checkout owns those
+operations itself. Only `upg` resolves moving Git branches; `setup` installs the
+exact committed lock without changing it.
 
 Every repository runs independently in remote CI, including a superproject.
 Remote checkout never initializes members. The CI gate token does not change
@@ -257,8 +254,9 @@ explicit `make upg` at the selected workspace or standalone owner.
 Git dependencies follow their declared integration branches, and `APPLY` stays removed.
 
 One `make upg` run provisions the frozen producer before corrective pyproject
-projection, without requiring final runtime admission. Native UV authenticates
-independent lock ownership; member locks settle before root alignment.
+projection, without requiring final runtime admission. The elected runtime
+owner resolves both native views; attached members delegate that operation
+to their workspace.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -268,11 +266,16 @@ native lock payloads or substitute manual installation commands.
 
 `codegen.scaffold.project.retired_dev` declares development distributions that
 must no longer reach managed `dev` or `codegen` groups. Conformance filters them
-from existing groups, optional development extras, and member contributions;
+from existing groups and member contributions;
 declaring the same distribution as a required development floor fails. Retire
 obsolete typing stubs here when their runtime SDK supplies inline typing, then
 regenerate and run `make upg` to reconcile locks and the installed environment.
 Do not uninstall packages manually or weaken the type checker.
+
+PEP 621 optional extras and PEP 735 dependency groups retain their separate
+categories, including when both declare a name such as `dev` or `codegen`.
+Conformance preserves each extra's requirement strings, bounds, markers and
+origins; a matching group name does not authorize moving or deleting the extra.
 
 Member contributions carry per-occurrence provenance in both managed development
 groups. CUSTOM entries retain their full constraints and origins; removing a
@@ -312,18 +315,6 @@ with their existing editable policy. Authored native workspace declarations and
 custom sources are preserved rather than erased by a generic FLEXT rewrite.
 Regenerate the owner with `make gen` and update its locks with `make upg` when
 the declared composition changes.
-A workspace root preserves declared Git requirements and binds its package members
-through `[tool.uv.sources]` entries containing their declared local `path` and
-`editable` values. No repository declares a native `[tool.uv.workspace]`.
-Standalone and attached repositories own independent locks. Members retain inline
-Git provenance whether attached or standalone; only the containing root owns the
-local source overlay and the shared runtime environment. Regenerate that root with
-`make gen` and reconcile its lock with `make upg` when the local binding changes.
-Every package checkout also overrides transitive requirements for its own
-distribution with its local project identity. A dependency that refers back to
-the checkout through Git must resolve to that checkout rather than introduce a
-second source for the same distribution. Generation derives this identity from
-the repository declaration in both workspace and standalone contexts.
 Dependency-floor updates select explicit `dependency_profiles` declarations or
 the infrastructure repository declared by the topology. A consumer configuration
 file containing only project metadata or editor settings does not declare another
@@ -499,6 +490,36 @@ targets account for attempted effects; remaining targets stay pending. Final
 accounting cannot mark an invocation complete while any authorized effect is
 pending. This inventory covers publication effects, not unchanged files or a
 repository's unexecuted checks.
+
+The operation receipt separately records its requested surface, elected repository
+roots, and the actual completed transaction batches, including unchanged outputs.
+`initialize` qualifies only its Makefile bootstrap; its read-only verification does
+not require or certify complete generation. Complete generation qualifies its
+managed and documentation batches after each has settled. A complete `all` scope
+can verify the `self` subset only when that repository root is in its recorded
+coverage. Checks authenticate source, generator, output and physical identities
+without planning, rendering, repairing or replacing the receipt. Missing coverage
+and changed identities remain failures.
+
+Workspace Make bootstrap composes the root and eligible members' actual receipts
+after each has published once. A member failure prevents completed aggregate
+coverage. Member eligibility reads PEP 610 metadata, editable path inventory and
+package resolution from the elected physical Python environment. A foreign API
+caller does not lend its installed packages to that decision. Resolution observed
+in that Python is distinguished from loaded-code execution; loaded-code provenance
+remains checked when the caller is the elected interpreter. Hosted topology uses
+the declared hosted-provider flag independently of the local CI gate partition.
+
+Installed metadata comes from that Python's physical `purelib` and `platlib`
+directories. Its `sys.path` supplies separate import-resolution observations.
+Editable source-tree `egg-info` stays outside the installed inventory; duplicate
+installed metadata and directories outside the elected prefix remain failures.
+
+PEP 735 dependency groups retain string requirements and `include-group` tables
+in order, including repeated occurrences. Group references are local to their
+declaring project; absent references, cycles and normalized name collisions fail.
+Runtime and optional dependency metadata retain PEP 508 strings. Development
+groups remain groups and are never promoted into distribution runtime metadata.
 
 The pytest runner retains the native exit code when startup fails before a final
 JUnit report is produced. Its process-outcome receipt and raw log remain available,

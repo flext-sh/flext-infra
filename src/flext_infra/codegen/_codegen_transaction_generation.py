@@ -213,6 +213,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         all_sources: t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]],
         transaction_id: str,
         transaction_directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
+        file_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
         """Open the generation journal on an absent baseline and materialize it.
 
@@ -241,9 +242,19 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         )
         if staging_journal.failure:
             return result_type.from_failure(staging_journal)
+        outputs: list[m.Infra.CodegenJournalSource] = []
+        for file in file_plans:
+            before = journal_io.source_record(
+                "output",
+                file.before,
+                path=file.path,
+            )
+            if before.failure:
+                return result_type.from_failure(before)
+            outputs.append(before.value)
         return self._materialize_journal(
             layout,
-            staging_journal.value,
+            staging_journal.value.model_copy(update={"outputs": tuple(outputs)}),
             expected=journal_before_snapshot,
         )
 
@@ -355,6 +366,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             sources.value,
             transaction_id,
             transaction_directories,
+            file_plans,
         )
         if opened.failure:
             return result_type.from_failure(opened)

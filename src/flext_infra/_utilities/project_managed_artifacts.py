@@ -136,10 +136,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             )
             return result_type.fail(str(error), exception=error)
         snapshots: list[m.Cli.AtomicFileState] = []
-        for path in elected.value:
-            if path not in selected:
-                continue
-            observed = u.Cli.atomic_read_binary_file_state(path, required=True)
+        for path in selected:
+            observed = u.Cli.atomic_read_binary_file_state(
+                path,
+                required=path == selected[0] or path in elected.value,
+            )
             if observed.failure:
                 return result_type.from_failure(observed)
             snapshots.append(observed.value)
@@ -174,7 +175,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         for before in snapshots:
-            observed = u.Cli.atomic_read_binary_file_state(before.path, required=True)
+            observed = u.Cli.atomic_read_binary_file_state(
+                before.path,
+                required=before.content is not None,
+            )
             if observed.failure:
                 return r[bool].from_failure(observed)
             if observed.value != before:
@@ -322,8 +326,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         Returns:
             The composed document; schema consumers validate their owned section.
 
-        Raises:
-            ValueError: If captured config input has no bytes.
         """
         merged: t.JsonDict = {}
         parse_document = (
@@ -331,14 +333,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
         for path in sources:
             captured = next((item for item in snapshots if item.path == path), None)
-            if captured is None:
+            if captured is None or captured.content is None:
                 payload: t.JsonMapping = {}
             else:
-                content = captured.content
-                if content is None:
-                    msg = f"captured config input has no bytes: {path}"
-                    raise ValueError(msg)
-                payload = parse_document(content)
+                payload = parse_document(captured.content)
             projected = next(
                 (item for item in projections if item.path == path),
                 None,

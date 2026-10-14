@@ -225,18 +225,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             )
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
-                "state": journal.state,
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
-                "sources": journal.sources,
+            journal.model_dump()
+            | {
                 "directories": (*journal.directories, *directories),
-                "entries": journal.entries,
-                "staging_intents": journal.staging_intents,
             },
         )
         if validated.failure:
@@ -339,19 +330,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 return result_type.from_failure(compared)
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
-                "state": journal.state,
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
-                "sources": journal.sources,
-                "directories": directories,
-                "entries": journal.entries,
-                "staging_intents": journal.staging_intents,
-            },
+            journal.model_dump() | {"directories": directories},
         )
         if validated.failure:
             return result_type.fail_op(
@@ -417,19 +396,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             )
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
-                "state": "committed",
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
-                "sources": journal.sources,
-                "directories": journal.directories,
-                "entries": journal.entries,
-                "staging_intents": journal.staging_intents,
-            },
+            journal.model_dump() | {"state": "committed"},
         )
         if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(

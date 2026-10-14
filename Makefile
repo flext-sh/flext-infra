@@ -1,3 +1,4 @@
+
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-adjust: edit the owner configuration or template; never this projection
@@ -41,6 +42,12 @@ $(error Approval cannot load caller-supplied Makefiles)
 endif
 ifneq ($(filter command line override,$(origin MAKE_COMMAND)),)
 $(error Approval cannot replace the native Make invoker)
+endif
+endif
+
+ifeq ($(strip $(GITHUB_ACTIONS)),true)
+ifneq ($(filter upg _upg% dep propagate,$(MAKECMDGOALS)),)
+$(error Resolution and member propagation are forbidden in hosted CI)
 endif
 endif
 
@@ -199,12 +206,68 @@ SETUP_BIN := $(PROJECT_ROOT)/.bin
 # target_directory; the runner validates the path's shape.
 export FLEXT_PYTEST_TARGET_RAW := tests
 # === SECTION: REPOSITORY_ROOT isolation (managed) ===
-# Source: physical checkout topology; caller variables cannot select a workspace.
-# Inside a workspace every make run, root
-# or member, uses the workspace runtime. A member resolves the Git superproject
-# that checks it out as a submodule; a checkout without one (a standalone clone,
-# a linked worktree) owns its runtime.
-override REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && if root=$$(git rev-parse --show-superproject-working-tree); then if [ -n "$$root" ]; then cd "$$root" && pwd -P; else pwd -P; fi; else status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; pwd -P; fi)
+# Source: authenticated physical Git boundary and governed native UV membership.
+# Discovery clears repository selectors inherited from recursive Make before
+# electing a new boundary. Git credential configuration remains unchanged.
+override GIT_DISCOVERY_ROOT := $(shell set -eu; \
+unset GIT_CEILING_DIRECTORIES; \
+git_local_keys="$$(git rev-parse --local-env-vars)"; \
+for git_local_key in $$git_local_keys; do \
+	case "$$git_local_key" in (GIT_CONFIG|GIT_CONFIG_PARAMETERS|GIT_CONFIG_COUNT) ;; (*) unset "$$git_local_key" ;; esac; \
+done; \
+project_root="$(MAKEFILE_ROOT)"; \
+git_root="$$(git -C "$$project_root" rev-parse --show-toplevel)"; \
+git_root="$$(cd "$$git_root" && pwd -P)"; \
+printf '%s\n' "$$git_root")
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot authenticate the physical Git boundary for $(MAKEFILE_ROOT))
+endif
+override REPOSITORY_ROOT := $(shell set -eu; \
+unset GIT_CEILING_DIRECTORIES; \
+git_local_keys="$$(git rev-parse --local-env-vars)"; \
+for git_local_key in $$git_local_keys; do \
+	case "$$git_local_key" in (GIT_CONFIG|GIT_CONFIG_PARAMETERS|GIT_CONFIG_COUNT) ;; (*) unset "$$git_local_key" ;; esac; \
+done; \
+project_root="$(MAKEFILE_ROOT)"; \
+git_root="$$(git -C "$$project_root" rev-parse --show-toplevel)"; \
+git_root="$$(cd "$$git_root" && pwd -P)"; \
+superproject="$$(git -C "$$project_root" rev-parse --show-superproject-working-tree)"; \
+if [ -n "$$superproject" ]; then \
+	cd "$$superproject" && pwd -P; \
+	exit 0; \
+fi; \
+scope="$$git_root"; \
+if [ "$$project_root" = "$$git_root" ]; then \
+	parent="$$(dirname "$$project_root")"; \
+	while [ "$$parent" != / ]; do \
+		if [ -f "$$parent/pyproject.toml" ]; then \
+			git_parent="$$parent"; \
+			while [ "$$git_parent" != / ] && [ ! -e "$$git_parent/.git" ]; do git_parent="$$(dirname "$$git_parent")"; done; \
+			if [ -e "$$git_parent/.git" ]; then scope="$$(git -C "$$parent" rev-parse --show-toplevel)"; fi; \
+			break; \
+		fi; \
+		parent="$$(dirname "$$parent")"; \
+	done; \
+fi; \
+scope="$$(cd "$$scope" && pwd -P)"; \
+case "$$project_root/" in ("$$scope/"*) ;; (*) printf 'ERROR: native workspace discovery scope does not contain this project: %s\n' "$$scope" >&2; exit 2 ;; esac; \
+if [ "$$scope" = "$$project_root" ]; then printf '%s\n' "$$project_root"; exit 0; fi; \
+unset MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE UV_PROJECT UV_PROJECT_ENVIRONMENT UV_WORKING_DIRECTORY UV_NO_CONFIG; \
+MISE_CONFIG_DIR="$$scope/.mise"; \
+MISE_SYSTEM_CONFIG_DIR="$$MISE_CONFIG_DIR"; \
+MISE_GLOBAL_CONFIG_FILE="$$scope/.mise.toml"; \
+if [ -f "$$MISE_CONFIG_DIR/config.toml" ]; then MISE_GLOBAL_CONFIG_FILE="$$MISE_CONFIG_DIR/config.toml"; fi; \
+MISE_CEILING_PATHS="$$(dirname "$$scope")"; \
+export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
+uv_requested="$$(mise -C "$$scope" tool "uv" --requested)"; \
+uv_binary="$$(mise -C "$$scope" which "uv" --tool "uv@$$uv_requested")"; \
+if [ ! -x "$$uv_binary" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
+owner="$$("$$uv_binary" workspace dir --project "$$project_root")"; \
+case "$$owner" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "$$owner" >&2; exit 2 ;; esac; \
+owner="$$(cd "$$owner" && pwd -P)"; \
+case "$$owner/" in ("$$scope/"*) ;; (*) printf 'ERROR: native UV workspace owner leaves its Git scope: %s\n' "$$owner" >&2; exit 2 ;; esac; \
+case "$$project_root/" in ("$$owner/"*) ;; (*) printf 'ERROR: native UV workspace owner does not contain this project: %s\n' "$$owner" >&2; exit 2 ;; esac; \
+printf '%s\n' "$$owner")
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
@@ -292,7 +355,6 @@ MYPY_PATHS := $(strip $(foreach d,src tests examples,$(if $(wildcard $(PROJECT_R
 # Every tool resolves from the mise-managed PATH (direnv activation shims, or
 # the CI provisioned PATH); _builtin_require_mise guards the running mise
 # against the committed mise.lock pin.
-
 override UV = "$$(mise -C "$(RUNTIME_ROOT)" which "uv" --tool "uv@$$(mise -C "$(RUNTIME_ROOT)" tool "uv" --requested)")"
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
@@ -300,9 +362,9 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
 # === SECTION: profile routing (managed) ===
 # Source: repository topology. workspace has .gitmodules; standalone does not.
-# Attached members share their Git superproject runtime; standalone owns itself.
+# Native UV membership and Git attachment elect the physical runtime.
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
-override export GIT_CEILING_DIRECTORIES := $(abspath $(RUNTIME_ROOT)/..)
+override export GIT_CEILING_DIRECTORIES := $(abspath $(GIT_DISCOVERY_ROOT)/..)
 override export MISE_CEILING_PATHS := $(abspath $(RUNTIME_ROOT)/..)
 override export MISE_CONFIG_DIR := $(RUNTIME_ROOT)/.mise
 # The exported global config must be a REAL file in every topology: the
@@ -355,7 +417,13 @@ SANITIZED_CALLER_PATH :=
 endif
 endif
 override FLEXT_INFRA_PYTHON := $(RUNTIME_PYTHON)
-override UV_PROJECT := $(RUNTIME_ROOT)
+override UV_LOCAL_PROJECT := $(RUNTIME_ROOT)/.flext/uv/local
+override UV_STANDALONE_PROJECT := $(RUNTIME_ROOT)/.flext/uv/standalone
+ifeq ($(strip $(GITHUB_ACTIONS)),true)
+override UV_PROJECT := $(UV_STANDALONE_PROJECT)
+else
+override UV_PROJECT := $(UV_LOCAL_PROJECT)
+endif
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
@@ -498,6 +566,18 @@ _bootstrap_setup_tools:
 	bootstrap_stage=complete; bootstrap_completed=true
 _bootstrap_setup_tools: _builtin_require_workspace
 
+# UV, not Git attachment or runtime environment selection, owns lock discovery.
+.PHONY: _builtin_require_upg_lock_owner
+_builtin_require_upg_lock_owner:
+	@set -eu; \
+	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
+		owner="$$($(UV) workspace dir --project "$$resolution")"; \
+		if [ "$$owner" != "$$resolution" ]; then \
+			printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the native resolution inputs before upgrading.\n' "$$owner" "$$resolution" >&2; \
+			exit 2; \
+		fi; \
+	done
+
 # Every repository evaluates only itself: a workspace root consumes its members
 # as installed libraries and each member runs its own lifecycle in its own
 # repository. Locally, the mutating verbs fmt/fix/mod then carry that same
@@ -529,12 +609,10 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"
 SETUP_ENVIRONMENT_RECIPE = $(INSTALL_RUNTIME_RECIPE); \
 	setup_scope="self"; \
-	if [ "$(strip $(CI))" = "Y" ]; then setup_scope=self; fi; \
+	if [ "$(strip $(GITHUB_ACTIONS))" = "true" ]; then setup_scope=self; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only --scope "$$setup_scope"; \
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)" --scope "$$setup_scope"; \
-	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope" --mode apply; \
-	$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
-	$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
+	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope" --mode apply
 
 # Reject borrowed environments before bootstrap, activation or custom hooks.
 # Members may use their containing workspace, never an unrelated checkout.
@@ -542,8 +620,8 @@ REQUIRE_WORKSPACE_ENVIRONMENT = case "$(PROJECT_ROOT)/" in \
 	"$(RUNTIME_ROOT)/"*) ;; \
 	*) printf 'ERROR: runtime workspace does not contain this project: %s\n' "$(RUNTIME_ROOT)" >&2; exit 2 ;; \
 	esac; \
-	if [ "$(strip $(CI))" = "Y" ] && [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
-		printf 'ERROR: CI approval is root-only; attached member execution is forbidden\n' >&2; exit 2; \
+	if [ "$(strip $(GITHUB_ACTIONS))" = "true" ] && [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
+		printf 'ERROR: hosted CI requires an independent checkout and environment\n' >&2; exit 2; \
 	fi; \
 	for environment_path in "$(patsubst %/,%,$(dir $(RUNTIME_VENV)))" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin"; do \
 		if [ -L "$$environment_path" ]; then \
@@ -570,7 +648,7 @@ override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # Native workspace selection installs every declared package.
 UV_SYNC_FLAGS := --all-extras --all-groups
 
-ifeq ($(strip $(CI)),Y)
+ifeq ($(strip $(GITHUB_ACTIONS)),true)
 override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable
 endif
 
@@ -1293,11 +1371,16 @@ _builtin-pre-commit: _builtin_require_environment
 # not require a satisfied committed mise.lock either. Its bootstrap half runs
 # `mise lock --bump` first (native resolution; no stage and no prior install),
 # then installs from the fresh lock. The lifecycle verifies native UV ownership
-# before resolving its physical uv.lock; attachment selects the environment,
-# not the independent lock. A member aligns its containing root once.
+# before resolving its two physical view locks. Attached members delegate
+# before bootstrap, installation, hooks or lock resolution.
+ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle
 upg: TOOL_BOOTSTRAP_RESOLVE := 1
 upg: _bootstrap_setup_tools
+else
+upg: _builtin_require_workspace
+	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg
+endif
 else
 
 help:
@@ -1517,6 +1600,7 @@ _setup_lifecycle:
 # integrity, the toolchain reality proof - belong to `make audit`, which CI runs
 # right after setup; `make upg` cures them and never depends on setup.
 .PHONY: _setup_activated
+# Audit owns the final pin, completeness and runtime verdicts after provisioning.
 _setup_activated:
 	@set -eu; \
 	case "$(strip $(CI)): $(CUSTOM_DECLARED_TARGETS) " in \
@@ -1865,8 +1949,8 @@ _builtin_require_mise:
 	fi; \
 	mise_pin="$$( awk 'index($$0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "$(RUNTIME_ROOT)/mise.lock" )"; \
 	if [ -z "$$mise_pin" ]; then \
-		printf 'note: github:jdx/mise is not pinned in mise.lock (newer mise self-excludes its own entry from fresh locks); the resolved tool version is the authority per the no-strict-locked-mode contract\n' "$(RUNTIME_ROOT)" >&2; \
-		mise_pin="$$(mise --version 2>/dev/null | cut -d ' ' -f1)"; \
+		printf 'ERROR: mise.lock pins no github:jdx/mise release; run make upg\n' >&2; \
+		exit 2; \
 	fi; \
 	mise_actual="$$(mise --version 2>/dev/null | cut -d ' ' -f1)"; \
 	if [ "$$mise_actual" != "$$mise_pin" ]; then \
@@ -1875,7 +1959,7 @@ _builtin_require_mise:
 	fi
 
 .PHONY: _builtin_require_interpreter
-_builtin_require_interpreter: _builtin_require_workspace _builtin_require_mise
+_builtin_require_interpreter: _builtin_require_workspace
 # Documenting the interface (`make help`) must not require the interpreter it
 # tells the user how to provision. Only `make help` with no other goal
 # skips the check; any combined goal still demands the environment.
@@ -1902,15 +1986,12 @@ endif
 # replaces it against the declared interpreter.
 # Local setup provisions declared gitlinks. CI consumes the committed lock
 # without initializing member checkouts.
-_builtin_setup_environment: $(if $(filter Y,$(CI)),,_builtin_setup_submodules)
+_builtin_setup_environment: $(if $(filter true,$(GITHUB_ACTIONS)),,_builtin_setup_submodules)
 	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
 		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(RUNTIME_ROOT)/Makefile" setup; \
 	else \
 		$(SETUP_ENVIRONMENT_RECIPE); \
 	fi
-ifeq ($(MAKE_PROFILE),workspace)
-	@$(UV) pip check --python "$(RUNTIME_VENV)"
-endif
 # End SECTION: setup environment
 
 # Upgrade provisions its trusted locked tool closure before its producer runs.
@@ -1919,7 +2000,10 @@ endif
 _upg_install_runtime:
 	@$(INSTALL_RUNTIME_RECIPE)
 
-# Rebind the resolved lock before the next producer; reparse the dispatcher once.
+# Provision the frozen producer before corrective projection, without runtime
+# admission. Only this elected runtime owner resolves both native views;
+# attached members delegate before bootstrap instead of writing member locks.
+# Reparse a changed dispatcher once; a second change fails the fixed point.
 .PHONY: _upg_lifecycle _upg_converge
 
 _builtin-upg-sources: _builtin_require_environment
@@ -1949,14 +2033,19 @@ _builtin-upg-sources: _builtin_require_environment
 		--git-source-ref-from "$(SOURCE_REF_FROM)" --git-source-ref-to "$(SOURCE_REF_TO)"
 
 _upg_lifecycle: _builtin_setup_submodules
+	@$(SELF_MAKE) _builtin_require_upg_lock_owner
 	@set -eu; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
+	@set -eu; \
+	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
+	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
+		$(UV) lock --project "$$resolution" --python "$$desired_python" --upgrade --refresh; \
+	done
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what pyproject --scope all --mode apply
 	@$(SELF_MAKE) _upg_reconcile_locks
-	@$(UV) lock --project "$(PROJECT_ROOT)" --upgrade --refresh
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
@@ -1981,37 +2070,23 @@ _upg_converge:
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@mise -C "$(PROJECT_ROOT)" install --locked --yes "python" "github:jdx/mise" "uv" "direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"
-	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
-		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg; \
-	fi
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(SELF_MAKE) _builtin_require_mise
 	$(call RUN_PUBLIC_ACTIVATE,gen)
 	@$(SELF_MAKE) gen
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _builtin_setup_environment
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --mode check
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
 
 .PHONY: _upg_reconcile_locks
 _upg_reconcile_locks:
 	@set -eu; \
-	members=; \
-	if [ "$(strip $(CI))" != "Y" ]; then \
-		members="$$($(PROJECT_FLEXT_INFRA) workspace editable-members --repository-root "$(PROJECT_ROOT)")"; \
-	fi; \
-	printf '%s\n' "$$members" . | while IFS= read -r relative; do \
-		if [ -z "$$relative" ]; then continue; fi; \
-		project="$(PROJECT_ROOT)"; \
-		if [ "$$relative" != . ]; then project="$(PROJECT_ROOT)/$$relative"; fi; \
-		owner="$$($(UV) workspace dir --project "$$project")"; \
-		if [ "$$owner" != "$$project" ]; then \
-			printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the independent-project topology before upgrading.\n' "$$owner" "$$project" >&2; \
-			exit 2; \
-		fi; \
-		printf 'upg: reconciling independent lock %s\n' "$$project"; \
-		$(UV) lock --project "$$project"; \
-		$(UV) lock --check --project "$$project"; \
+	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
+	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
+		$(UV) lock --project "$$resolution" --python "$$desired_python"; \
+		$(UV) lock --check --project "$$resolution" --python "$$desired_python"; \
 	done
 
 .PHONY: _upg_activated
@@ -2417,8 +2492,10 @@ ifneq ($(CI),Y)
 	@$(PROJECT_FLEXT_INFRA) workspace verify-lanes --repo-root "$(PROJECT_ROOT)"
 endif
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
+	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
-	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(PROJECT_ROOT)" --uv-executable "$$(command -v $(UV))"
+	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(RUNTIME_ROOT)" --uv-executable "$$(command -v $(UV))"
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 _builtin-status: _builtin_status_diagnostics
 	@$(PROJECT_FLEXT_INFRA) workspace signing-identity --repo-root "$(PROJECT_ROOT)"
 _builtin-verify-clean: _builtin_require_environment

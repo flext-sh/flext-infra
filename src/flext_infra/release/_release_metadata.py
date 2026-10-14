@@ -11,7 +11,7 @@ from pathlib import PurePosixPath
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.release import FlextInfraReleaseSourceMixin
 
 
@@ -29,6 +29,8 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         versions: t.StrMapping,
+        *,
+        dependency_group: bool = False,
     ) -> p.Result[bool]:
         """Pin every internal requirement of one TOML array; others pass verbatim.
 
@@ -42,19 +44,30 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         raw = u.Cli.toml_value(container, key)
         if raw is None:
             return r[bool].ok(value=False)
-        items: p.Result[t.StrSequence] = u.validate_value(
-            t.Infra.STR_SEQ_ADAPTER,
-            u.Cli.json_as_sequence(raw),
-            strict=True,
-        )
-        if items.failure:
-            return r[bool].fail_op(
-                f"validate release dependency group {key}",
-                items.error,
+        entries: t.SequenceOf[str | m.Infra.DependencyGroupInclude]
+        if dependency_group:
+            parsed_group = u.validate_value(
+                m.Infra.DependencyGroupEntries,
+                u.Cli.toml_unwrap_item(raw),
             )
-        rendered: t.MutableSequenceOf[str] = []
+            if parsed_group.failure:
+                return r[bool].from_failure(parsed_group)
+            entries = parsed_group.value.root
+        else:
+            strings = u.validate_value(
+                t.Infra.STR_SEQ_ADAPTER,
+                u.Cli.toml_unwrap_item(raw),
+                strict=True,
+            )
+            if strings.failure:
+                return r[bool].from_failure(strings)
+            entries = strings.value
+        rendered: list[str | m.Infra.DependencyGroupInclude] = []
         has_direct_references = False
-        for requirement in items.value:
+        for requirement in entries:
+            if not isinstance(requirement, str):
+                rendered.append(requirement)
+                continue
             try:
                 parsed = Requirement(requirement)
             except InvalidRequirement as exc:
@@ -74,7 +87,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
             marker = f"; {parsed.marker}" if parsed.marker is not None else ""
             rendered.append(f"{parsed.name}{extras}{pin.value}{marker}")
-        u.Cli.toml_sync_string_list(container, key, rendered)
+        u.Cli.toml_sync_value(container, key, u.Infra.dependency_group_wire(rendered))
         return r[bool].ok(has_direct_references)
 
     @classmethod
@@ -100,6 +113,17 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             return r[str].fail(
                 "release pyproject must be valid TOML defining [project]",
             )
+        groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        validated_groups = u.validate_value(
+            m.Infra.DependencyGroupDeclarations,
+            {
+                "dependency-groups": (
+                    {} if groups is None else u.Cli.toml_unwrap_item(groups)
+                ),
+            },
+        )
+        if validated_groups.failure:
+            return r[str].from_failure(validated_groups)
         project[c.Infra.VERSION] = version
         fields = (
             (project, c.Infra.DEPENDENCIES),
@@ -107,7 +131,9 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         )
         has_direct_references = False
         for container, key in fields:
-            pinned = cls._release_requirements(container, key, versions)
+            pinned = cls._release_requirements(
+                container, key, versions, dependency_group=container is groups,
+            )
             if pinned.failure:
                 return r[str].from_failure(pinned)
             has_direct_references |= pinned.value
