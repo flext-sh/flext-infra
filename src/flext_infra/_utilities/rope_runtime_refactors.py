@@ -18,6 +18,36 @@ from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
     """Load Rope refactor helpers behind protocols."""
 
+    @staticmethod
+    def compiled_constant(source: str) -> p.Result[p.AttributeProbe]:
+        """Read a primitive compiler constant without executing authored source.
+
+        Constant-folded primitive expressions have the same immutable native
+        contract. Executable expressions, names and container constructors do
+        not acquire a primitive contract from their textual spelling.
+        """
+        code = compile(source, "<native constant>", "eval", dont_inherit=True)
+        if code.co_names or code.co_freevars or len(code.co_consts) != 1:
+            return r[p.AttributeProbe].fail("expression has no sole native constant")
+        value = code.co_consts[0]
+        if type(value) not in {str, bytes, int, float, complex, bool, type(None)} and value is not Ellipsis:
+            return r[p.AttributeProbe].fail("expression has no primitive native constant")
+        return r[p.AttributeProbe].ok(value)
+
+    @classmethod
+    def literal_constant(cls, source: str) -> bool:
+        """Return whether native compilation proves a sole immutable primitive."""
+        return cls.compiled_constant(source).success
+
+    @classmethod
+    def literal_string(cls, source: str) -> str | None:
+        """Decode native string escapes without evaluating source callbacks."""
+        observed = cls.compiled_constant(source)
+        if observed.failure:
+            return None
+        value = observed.value
+        return value if type(value) is str else None
+
     @classmethod
     def ignored_regions(
         cls,

@@ -910,15 +910,15 @@ class FlextInfraWorkspaceNativeReference:
                 )
             namespace = cls._class_namespace(owner)
         registered = namespace.get(components[-1])
-        # A native extension recreates its bound callback per attribute access:
-        # identity can never hold for C descriptors. Presence in the
-        # extension's namespace is the registration proof.
-        if registered is None or (
-            registered is not value
-            and not isinstance(supplier.__spec__.loader, ExtensionFileLoader)
-        ):
+        if type(registered) in {classmethod, staticmethod}:
+            registered = registered.__func__
+        if registered is not value:
             return r[t.Triple[str, str, str]].fail(
-                "extension callback differs from its registered descriptor",
+                "extension callback differs from its registered descriptor: "
+                f"supplier={metadata['__module__']}; "
+                f"qualified={metadata['__qualname__']}; "
+                f"actual_type={cls._symbol(native)}; "
+                f"registered_type={cls._symbol(type(registered))}",
             )
         return r[t.Triple[str, str, str]].ok((
             metadata["__module__"],

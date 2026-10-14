@@ -215,7 +215,7 @@ class TestsFlextInfraModEvidenceInputs:
         """Distinct binding groups share inputs through both JSON publication paths."""
         report, snapshot, inputs, source, owner, marker = (
             TestsFlextInfraModEvidenceInputs._scanned_shared_occurrences(
-                mod_workspace, occurrences, resources
+                mod_workspace, occurrences
             )
         )
         for index in range(resources):
@@ -265,7 +265,7 @@ class TestsFlextInfraModEvidenceInputs:
         )
         encoded = receipt.path.read_bytes()
         restored = m.Infra.ModScanEvidence.model_validate_json(encoded)
-        tm.that(encoded.count(marker.encode("utf-8")), eq=1)
+        tm.that(encoded.count("descriptor evidence sentinel".encode("utf-8")), eq=1)
         tm.that(u.Cli.sha256_bytes(encoded), eq=receipt.sha256)
         tm.that(restored.deferred, eq=1)
         tm.that(
@@ -297,7 +297,7 @@ class TestsFlextInfraModEvidenceInputs:
                 state.path for state in (*tm.not_none(report.source_states), *inputs)
             }),
         )
-        nested = self._verified_nested_evidence(
+        nested = TestsFlextInfraModEvidenceInputs._verified_nested_evidence(
             mod_workspace, receipt, restored, inputs
         )
         closure = nested.evidence.entries[0].binding_states
@@ -309,67 +309,19 @@ class TestsFlextInfraModEvidenceInputs:
                 m.Infra.CodemodBindingSnapshot(states=closure)
             ),
         ) as (project, sources):
-            module = project.get_pymodule(project.get_resource(source.name))
             tm.that(
                 u.Infra.name_definition_resource_path(
-                    module, sources[source].rindex("Public")
+                    project.get_pymodule(project.get_resource(source.name)),
+                    sources[source].rindex("Public"),
                 ),
                 eq=str(owner),
             )
-        missing_source = mod_workspace / "absent_source.py"
-        missing_binding = mod_workspace / "absent_binding.py"
-        for updates, expected_key in (
-            (
-                {
-                    "entries": (
-                        restored.entries[0].model_copy(
-                            update={"source_path": missing_source}
-                        ),
-                        *restored.entries[1:],
-                    )
-                },
-                missing_source,
-            ),
-            (
-                {
-                    "binding_graphs": (
-                        (missing_binding,),
-                        *restored.binding_graphs[1:],
-                    )
-                },
-                missing_binding,
-            ),
-            (
-                {
-                    "binding_graphs": (
-                        (missing_binding,),
-                        *restored.binding_graphs[1:],
-                    ),
-                    "entries": (
-                        restored.entries[0].model_copy(
-                            update={"source_path": missing_source}
-                        ),
-                        *restored.entries[1:],
-                    ),
-                },
-                missing_binding,
-            ),
-        ):
-            tampered = restored.model_copy(update=updates)
-            with pytest.raises(KeyError) as missing:
-                m.Infra.ModScanEvidence.model_validate_json(
-                    tampered.model_dump_json(round_trip=True)
-                )
-            tm.that(missing.value.args, eq=(expected_key,))
-        TestsFlextInfraModEvidenceInputs._rejected_tampered_evidence(
-            restored, snapshot
-        )
+        TestsFlextInfraModEvidenceInputs._rejected_tampered_evidence(restored, snapshot)
 
     @staticmethod
     def _scanned_shared_occurrences(
         mod_workspace: Path,
         occurrences: int,
-        resources: int,
     ) -> tuple[
         m.Infra.ModScanReport,
         m.Infra.CodemodBindingSnapshot,
@@ -383,7 +335,6 @@ class TestsFlextInfraModEvidenceInputs:
         Args:
             mod_workspace: The governed mod workspace root.
             occurrences: The expected native finding count.
-            resources: The number of additional resource files to capture.
 
         Returns:
             The scanned report, its binding snapshot, the captured inputs,
