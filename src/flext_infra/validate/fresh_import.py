@@ -20,9 +20,9 @@ from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, 
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
-    FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
 )
+from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 
