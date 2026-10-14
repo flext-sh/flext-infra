@@ -66,6 +66,9 @@ class FlextInfraStagedPackage:
             ),
         ))
         for path in source_paths:
+            root = u.Infra.project_root(path)
+            if any(item.project_root == root for item in selected):
+                continue
             resolved = cls._source_layout(path, layouts)
             if resolved.failure:
                 if path in normalized:
@@ -75,16 +78,15 @@ class FlextInfraStagedPackage:
                 # read outside any rope layout; only rewrite targets need one.
                 continue
             local = resolved.value
-            if not any(item.project_root == local.project_root for item in selected):
-                pinned = cls._pin_closure(
-                    local,
-                    layouts,
-                    selected,
-                    states,
-                    updates=normalized,
-                )
-                if pinned.failure:
-                    return result_type.from_failure(pinned)
+            pinned = cls._pin_closure(
+                local,
+                layouts,
+                selected,
+                states,
+                updates=normalized,
+            )
+            if pinned.failure:
+                return result_type.from_failure(pinned)
         metadata = cls._pin_workspace_metadata(workspace, states)
         if metadata.failure:
             return result_type.from_failure(metadata)
@@ -170,7 +172,7 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _source_layout(
         path: Path,
-        layouts: dict[str, m.Infra.RopeProjectLayout],
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
     ) -> p.Result[m.Infra.RopeProjectLayout]:
         """Resolve a source owner without replacing another package's identity.
 

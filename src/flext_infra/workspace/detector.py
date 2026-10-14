@@ -411,7 +411,7 @@ class FlextInfraWorkspaceDetector(
         values = observed.model_dump(round_trip=True)
         values.update(
             declaration.model_dump(
-                include=frozenset(m.Infra.RepositoryRef.model_fields),
+                include=set(m.Infra.RepositoryRef.model_fields),
                 round_trip=True,
             ),
         )
@@ -474,10 +474,10 @@ class FlextInfraWorkspaceDetector(
             The resulting ``p.Result[m.Infra.RepositoryRef]``.
 
         """
-        metadata = u.Infra.read_project_metadata_result(repository_root)
+        metadata = u.Infra.read_project_metadata_state(repository_root)
         if metadata.failure:
             return r[m.Infra.RepositoryRef].from_failure(metadata)
-        project_name = metadata.value.project.name
+        project_name = metadata.value.metadata.project.name
         origin = cls._reconciled_origin(
             repository_root,
             path=path,
@@ -505,13 +505,8 @@ class FlextInfraWorkspaceDetector(
         # The manifest is the identity authority: the provider key is the one
         # the repository itself declares and the declared URL organization was
         # just reconciled against the live origin, so no catalog may override
-        # either. Package participation stays an observed fact for a
-        # manifest-less checkout (the observed state IS the identity): the
-        # canonical layout resolution returns the typed "not a Python package
-        # project" signal for such roots, and declaring a package there made
-        # the fresh-import guard demand an importable layout no repository
-        # publishes. A flext-* checkout that cannot resolve its package fails
-        # the discovery contract loudly instead of being declared one.
+        # either. Native packaging declarations own participation; source
+        # exports remain independently accountable to their actual check owner.
         return r[m.Infra.RepositoryRef].ok(
             m.Infra.RepositoryRef(
                 name=repository_name,
@@ -522,7 +517,9 @@ class FlextInfraWorkspaceDetector(
                 provider=provider_name,
                 kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                 codegen=c.Infra.CodegenKind.CONFORM,
-                package=u.Infra.layout(repository_root) is not None,
+                package=u.Infra.project_package_participation(
+                    metadata.value.packaging,
+                ),
                 # The checkout's own root package is its environment's
                 # editable install by the uv contract — the lock records
                 # `editable = "."` for the project root in every standalone
@@ -862,6 +859,7 @@ class FlextInfraWorkspaceDetector(
                 project=resolved_refs[0][2],
                 namespace_scan_dirs=declaration.namespace_scan_dirs,
                 integration=declaration.integration,
+                candidate_dependencies=declaration.candidate_dependencies,
                 candidate_bootstrap_targets=declaration.candidate_bootstrap_targets,
                 docs_audit=declaration.docs_audit,
                 subprojects=tuple(resolved_refs[1][0]),

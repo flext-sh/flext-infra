@@ -37,6 +37,25 @@ configuration validation. Python matches and replacements use native Rope
 The phase shares the existing semantic fixed point and publication transaction;
 it has no independent repair loop or CST, AST or regular-expression parser.
 
+Constant consumers reuse declarations already exposed by the package's public
+`c` facade. Complete function returns can use a uniquely assigned string or
+nonnegative decimal integer constant with the same native scalar type. Enum
+members are excluded from that rewrite because returning an enum changes the
+observable type. String spelling is taken from Rope's native literal regions,
+including raw, Unicode, escaped and triple-quoted forms; formatted strings do
+not establish a static value.
+
+Singleton `Literal` field annotations can reuse an existing public `StrEnum`
+member with the same value. This rewrite preserves defaults, aliases,
+discriminator metadata and the field's accepted JSON values. Function
+annotations and multi-value `Literal` declarations are outside this operation.
+Singleton static builtin `frozenset` declarations can replace the right-hand
+collection of an `in` or `not in` predicate. Construction and return expressions
+retain their original object identity. Shadowed constructors, mutable values,
+reassigned declarations, conflicting constant owners and competing `c` bindings
+cannot authorize a rewrite. These operations do not create new constants or
+enum declarations.
+
 Pydantic field rewrites require ancestry established from the native Rope
 object graph. Same-spelled factories and declarations outside those model
 scopes retain their behavior. Empty factories migrate only when the declared

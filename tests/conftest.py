@@ -43,6 +43,64 @@ def rope_workspace(tmp_path: Path) -> Iterator[p.Infra.RopeWorkspaceDsl]:
         yield workspace
 
 
+@pytest.fixture
+def constants_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+    """Use the shared real project factory for constants phase consumers.
+
+    Returns:
+        The governed workspace root and its package directory.
+    """
+    return u.Tests.create_lazy_init_workspace(tmp_path)
+
+
+@pytest.fixture
+def constant_candidate(
+    constants_workspace: t.Pair[Path, Path],
+) -> t.Tests.SourceCandidate:
+    """Publish a public constants plan only after its complete fixed-point check.
+
+    Returns:
+        A factory that checks and publishes the complete source candidate.
+    """
+    root, _package = constants_workspace
+
+    def candidate(
+        sources: t.MappingKV[Path, str], expected_paths: t.VariadicTuple[Path]
+    ) -> t.MappingKV[Path, str]:
+        """Validate the phase through its public entry point.
+
+        Returns:
+            The published sources after a proven fixed point.
+        """
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        with infra.rope_workspace(root) as workspace:
+            phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=workspace, sources=sources
+                )
+            )
+            tm.that(tuple(edit.file_path for edit in edits), eq=expected_paths)
+            proposed = {
+                **sources,
+                **{edit.file_path: edit.updated_source for edit in edits},
+            }
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        phase, rope_workspace=workspace, sources=proposed
+                    )
+                ),
+                empty=True,
+            )
+        for path, source in proposed.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        return proposed
+
+    return candidate
+
+
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Isolate the suite's FLEXT caches and snapshot the tracked codegen config.
 

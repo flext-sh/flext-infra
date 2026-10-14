@@ -31,7 +31,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
 
     @staticmethod
     def _editable_members(
-        params: m.Infra.WorkspaceEnvironmentRequest,
+        params: p.Infra.WorkspaceRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Print eligible relative member paths from installed provenance.
 
@@ -83,6 +83,19 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
         )
 
     @staticmethod
+    def _payload_json_formatter(payload: t.JsonPayload) -> str:
+        """Serialize an erased command payload through the canonical JSON owner.
+
+        Returns:
+            The canonical JSON text of the payload.
+
+        """
+        encoded = u.Cli.json_dumps(u.normalize_to_json_value(payload))
+        if encoded.failure:
+            return encoded.error or "command payload serialization failed"
+        return encoded.value
+
+    @staticmethod
     def _capture_gate(
         params: m.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
@@ -129,9 +142,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 help_text="Inspect native public signing references without key access",
                 model_cls=m.Infra.GitRepoRequest,
                 handler=u.Infra.git_signing_identity,
-                success_formatter=lambda report: report.model_dump_json(
-                    round_trip=True
-                ),
+                success_formatter=_payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
                 name="capture-gate",
@@ -142,7 +153,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             m.Cli.ResultCommandRoute(
                 name="validate-lifecycle",
                 help_text="Validate the root and governed member lifecycles serially",
-                model_cls=m.Infra.WorkspaceEnvironmentRequest,
+                model_cls=m.Infra.WorkspaceRequest,
                 handler=FlextInfraWorkspaceLifecycle.execute_request,
                 success_message="workspace serial lifecycle validated",
             ),
@@ -186,13 +197,13 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 help_text=(
                     "List declared members with authenticated installed editables"
                 ),
-                model_cls=m.Infra.WorkspaceEnvironmentRequest,
+                model_cls=m.Infra.WorkspaceRequest,
                 handler=_editable_members,
             ),
             m.Cli.ResultCommandRoute(
                 name="verify-environment",
                 help_text="Verify live workspace editable provenance",
-                model_cls=m.Infra.WorkspaceEnvironmentRequest,
+                model_cls=m.Infra.WorkspaceRequest,
                 handler=FlextInfraWorkspaceEnvironmentProvenance.execute_request,
                 success_message="workspace editable provenance verified",
             ),
@@ -200,7 +211,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 name="verify-lock",
                 help_text="Verify the committed uv.lock carries every referenced "
                 "package",
-                model_cls=m.Infra.WorkspaceLockRequest,
+                model_cls=m.Infra.WorkspaceRequest,
                 handler=FlextInfraWorkspaceLockCompleteness.execute_request,
                 success_message="lock completeness verified",
             ),

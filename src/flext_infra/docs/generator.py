@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, t, u
+from flext_infra._utilities._docs_generate_sources import _DocsTopologyOptions
 from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
@@ -130,11 +131,13 @@ class FlextInfraDocGenerator(
         """
         result_type = r[_DocsAdmission]
         topology = u.Infra.docs_verify_source_topology(
-            bundle.repository_root,
-            bundle.source_states,
-            source_roots=bundle.source_roots,
-            source_scope=bundle.source_scope,
-            source_directories=bundle.source_directories,
+            _DocsTopologyOptions(
+                repository_root=bundle.repository_root,
+                source_states=bundle.source_states,
+                source_roots=bundle.source_roots,
+                source_scope=bundle.source_scope,
+                source_directories=bundle.source_directories,
+            ),
         )
         if topology.failure:
             return result_type.from_failure(topology)

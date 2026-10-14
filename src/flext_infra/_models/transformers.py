@@ -13,6 +13,7 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import t
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsTransformers:
@@ -137,10 +138,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Why that owner did not resolve"),
         ]
 
-    class CompatibilityAliasRewritePlan(m.ArbitraryTypesModel):
+    class CompatibilityAliasRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven rewrites planned for one compatibility-alias cutover file."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         local_aliases: Annotated[
             t.StrMapping,
@@ -163,10 +162,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Module-level names the file already binds"),
         ]
 
-    class NestingModuleAliasScan(m.ArbitraryTypesModel):
+    class NestingModuleAliasScan(FlextInfraModelsBase.FrozenArbitrary):
         """Module bindings one consumer holds on modules whose members nest."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         aliases: Annotated[
             t.StrMapping,
@@ -185,10 +182,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Nested modules whose owner the file imports"),
         ]
 
-    class PrivateImportRewritePlan(m.ArbitraryTypesModel):
+    class PrivateImportRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven import rewrites planned for one private-import file."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         removals: Annotated[
             t.MappingKV[str, frozenset[str]],
@@ -253,10 +248,8 @@ class FlextInfraModelsTransformers:
             """
             return bool(self.category_b or self.category_c or self.category_d)
 
-    class SourceRewrite(m.ArbitraryTypesModel):
+    class SourceRewrite(FlextInfraModelsBase.FrozenArbitrary):
         """One source rewrite: replace ``source[start:end]`` with ``text``."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         start: Annotated[int, m.Field(description="Start byte offset in the source")]
         end: Annotated[int, m.Field(description="End byte offset in the source")]
@@ -313,10 +306,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Wrapper docstring line span"),
         ] = None
 
-    class HeaderInfo(m.ArbitraryTypesModel):
+    class HeaderInfo(FlextInfraModelsBase.FrozenArbitrary):
         """Structural summary of a module header."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         has_future_annotations: Annotated[
             bool,
@@ -356,10 +347,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Prospective source bytes per path"),
         ]
 
-    class FacadeNamespaceSite(m.ArbitraryTypesModel):
+    class FacadeNamespaceSite(FlextInfraModelsBase.FrozenArbitrary):
         """Resolved duplicate-facade site for one editable source module."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         path: Annotated[Path, m.Field(description="Source path holding the facade")]
         source: Annotated[str, m.Field(description="Source bytes holding the facade")]

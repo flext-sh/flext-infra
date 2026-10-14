@@ -185,8 +185,9 @@ class FlextInfraUtilitiesPyprojectOverlay:
     ) -> None:
         """Tag generated additions in the existing dev group, not another registry."""
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
+        group_names: tuple[str, ...] = tuple(groups)
         group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
-            tuple(groups),
+            group_names,
             group,
         )
         values = FlextInfraUtilitiesPyprojectRequirements.read_dependency_group(

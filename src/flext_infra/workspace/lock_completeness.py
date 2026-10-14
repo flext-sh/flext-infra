@@ -31,7 +31,7 @@ class FlextInfraWorkspaceLockCompleteness:
     @classmethod
     def execute_request(
         cls,
-        request: p.Infra.WorkspaceLockRequest,
+        request: p.Infra.WorkspaceRequest,
     ) -> p.Result[int]:
         """Validate one CLI request against the checkout's committed lock.
 

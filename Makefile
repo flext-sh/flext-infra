@@ -11,6 +11,9 @@
 # End SECTION: header
 
 override SHELL := /bin/sh
+ifneq ($(strip $(MAKEFILES)),)
+$(error MAKEFILES makes the selected project Makefile ambiguous; invoke one project Makefile directly)
+endif
 # GNU MAKE_COMMAND may be a bare name. Resolve it before changing PATH so
 # recursive lifecycle calls keep this invoker instead of selecting a Mise shim.
 ifneq ($(filter /%,$(MAKE_COMMAND)),)
@@ -21,7 +24,30 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve current Make executable: $(MAKE_COMMAND))
 endif
 endif
-override SELF_MAKE_EXECUTABLE := $(realpath $(SELF_MAKE_EXECUTABLE))
+override SELF_MAKE_EXECUTABLE := $(shell set -eu; \
+physical_file="$(SELF_MAKE_EXECUTABLE)"; \
+if [ -z "$${physical_file}" ]; then printf 'ERROR: physical file discovery requires one nonempty path\n' >&2; exit 2; fi; \
+set --; \
+while :; do \
+	case "$${physical_file}" in (/*) ;; (*) physical_file="$$(pwd -P)/$${physical_file}" ;; esac; \
+	physical_parent="$$(dirname "$${physical_file}")"; \
+	physical_name="$${physical_file##*/}"; \
+	physical_parent="$$(cd "$${physical_parent}" && pwd -P)"; \
+	physical_file="$${physical_parent}/$${physical_name}"; \
+	if [ ! -L "$${physical_file}" ]; then \
+		if [ ! -f "$${physical_file}" ]; then printf 'ERROR: physical file is not an existing regular file: %s\n' "$${physical_file}" >&2; exit 2; fi; \
+		printf '%s\n' "$${physical_file}"; exit 0; \
+	fi; \
+	for previous_file; do \
+		if [ "$${previous_file}" = "$${physical_file}" ]; then printf 'ERROR: physical file link cycle: %s\n' "$${physical_file}" >&2; exit 2; fi; \
+	done; \
+	set -- "$$@" "$${physical_file}"; \
+	link_target="$$(readlink "$${physical_file}")"; \
+	case "$${link_target}" in (/*) physical_file="$${link_target}" ;; (*) physical_file="$${physical_parent}/$${link_target}" ;; esac; \
+done)
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve physical Make executable: $(MAKE_COMMAND))
+endif
 ifeq ($(strip $(SELF_MAKE_EXECUTABLE)),)
 $(error Current Make executable has no physical path: $(MAKE_COMMAND))
 endif
@@ -96,14 +122,12 @@ endif
 GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
 ifeq ($(GITHUB_TOKEN),)
 ifneq ($(filter local unset,$(GITHUB_AUTH_CI)),)
-GITHUB_AUTH_SOURCE := gh
 override GITHUB_AUTH_COMMAND := $(shell command -v gh 2>/dev/null)
 override GITHUB_AUTH_COMMAND_STATUS := $(.SHELLSTATUS)
 ifeq ($(GITHUB_AUTH_COMMAND_STATUS),0)
+GITHUB_AUTH_SOURCE := gh
 GITHUB_TOKEN := $(shell "$(GITHUB_AUTH_COMMAND)" auth token 2>/dev/null)
 GITHUB_AUTH_STATUS := $(.SHELLSTATUS)
-else
-GITHUB_AUTH_STATUS := $(GITHUB_AUTH_COMMAND_STATUS)
 endif
 endif
 endif
@@ -170,7 +194,7 @@ override FLEXT_PYTEST_TESTMON_DATABASE = $(if $(strip $(PYTEST_CACHE_HOME)),$(PY
 # absolute checkout path, never under /tmp and never inside a versioned tree.
 override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $(HOME)),$(HOME)/tmp/.flext-runtime$(PROJECT_ROOT)/scratch)
 # Profiles sit beside the other reports of this checkout (.reports is ignored).
-PROFILE_REPORTS_DIR = $(PROJECT_ROOT)/$(dir $(PYTEST_REPORTS_DIR))profiles
+PROFILE_REPORTS_DIR = $(PROJECT_ROOT)/$(shell dirname -- "$(PYTEST_REPORTS_DIR)")/profiles
 override PYTEST_RUN_TIMEOUT_SECONDS := 1200
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
@@ -189,15 +213,43 @@ override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
 # End SECTION: public boundary
 
 # === SECTION: derived paths (managed) ===
-# Source: computed (git rev-parse, MAKEFILE_LIST, abspath)
+# Source: computed (git rev-parse, MAKEFILE_LIST, physical path readers)
 # Rule: PROJECT_ROOT is the checkout that OWNS this Makefile, never the caller's
 # CWD. Deriving it from `pwd -P` made a member validate whatever tree the
 # caller happened to stand in: `make -f <member>/Makefile` invoked from the
 # superproject resolved RUFF_PATHS to the SUPERPROJECT's src/tests, so the
 # member linted files it does not even contain. With many shared worktrees that
 # silently validates the wrong tree.
-override SELF_MAKEFILE := $(realpath $(firstword $(MAKEFILE_LIST)))
-override MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
+# Capture the one selected Makefile before any project include. GNU Make's
+# filename-list functions split whitespace inside a legitimate physical path.
+override SELF_MAKEFILE := $(shell set -eu; \
+physical_file="$(MAKEFILE_LIST)"; \
+if [ -z "$${physical_file}" ]; then printf 'ERROR: physical file discovery requires one nonempty path\n' >&2; exit 2; fi; \
+set --; \
+while :; do \
+	case "$${physical_file}" in (/*) ;; (*) physical_file="$$(pwd -P)/$${physical_file}" ;; esac; \
+	physical_parent="$$(dirname "$${physical_file}")"; \
+	physical_name="$${physical_file##*/}"; \
+	physical_parent="$$(cd "$${physical_parent}" && pwd -P)"; \
+	physical_file="$${physical_parent}/$${physical_name}"; \
+	if [ ! -L "$${physical_file}" ]; then \
+		if [ ! -f "$${physical_file}" ]; then printf 'ERROR: physical file is not an existing regular file: %s\n' "$${physical_file}" >&2; exit 2; fi; \
+		printf '%s\n' "$${physical_file}"; exit 0; \
+	fi; \
+	for previous_file; do \
+		if [ "$${previous_file}" = "$${physical_file}" ]; then printf 'ERROR: physical file link cycle: %s\n' "$${physical_file}" >&2; exit 2; fi; \
+	done; \
+	set -- "$$@" "$${physical_file}"; \
+	link_target="$$(readlink "$${physical_file}")"; \
+	case "$${link_target}" in (/*) physical_file="$${link_target}" ;; (*) physical_file="$${physical_parent}/$${link_target}" ;; esac; \
+done)
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot authenticate selected Makefile: $(MAKEFILE_LIST))
+endif
+override MAKEFILE_ROOT := $(shell dirname -- "$(SELF_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve selected Makefile directory: $(SELF_MAKEFILE))
+endif
 override export PROJECT_ROOT := $(MAKEFILE_ROOT)
 SETUP_BIN := $(PROJECT_ROOT)/.bin
 # Caller-overridable test target (a directory or a single test file under
@@ -212,62 +264,187 @@ export FLEXT_PYTEST_TARGET_RAW := tests
 override GIT_DISCOVERY_ROOT := $(shell set -eu; \
 unset GIT_CEILING_DIRECTORIES; \
 git_local_keys="$$(git rev-parse --local-env-vars)"; \
-for git_local_key in $$git_local_keys; do \
-	case "$$git_local_key" in (GIT_CONFIG|GIT_CONFIG_PARAMETERS|GIT_CONFIG_COUNT) ;; (*) unset "$$git_local_key" ;; esac; \
+for git_local_key in $${git_local_keys}; do \
+	case "$${git_local_key}" in (GIT_CONFIG|GIT_CONFIG_PARAMETERS|GIT_CONFIG_COUNT) ;; (*) unset "$${git_local_key}" ;; esac; \
 done; \
 project_root="$(MAKEFILE_ROOT)"; \
-git_root="$$(git -C "$$project_root" rev-parse --show-toplevel)"; \
-git_root="$$(cd "$$git_root" && pwd -P)"; \
-printf '%s\n' "$$git_root")
+case "$${project_root}" in (/*) ;; (*) printf 'ERROR: workspace discovery requires an absolute project directory: %s\n' "$${project_root}" >&2; exit 2 ;; esac; \
+project_root="$$(cd "$${project_root}" && pwd -P)"; \
+git_parent="$${project_root}"; \
+case "$${git_parent}" in (/*) ;; (*) printf 'ERROR: Git marker discovery requires an absolute physical directory: %s\n' "$${git_parent}" >&2; exit 2 ;; esac; \
+while [ "$${git_parent}" != / ] && [ ! -e "$${git_parent}/.git" ] && [ ! -L "$${git_parent}/.git" ]; do \
+	next_git_parent="$$(dirname "$${git_parent}")"; \
+	if [ "$${next_git_parent}" = "$${git_parent}" ]; then printf 'ERROR: Git marker discovery cannot advance from: %s\n' "$${git_parent}" >&2; exit 2; fi; \
+	git_parent="$${next_git_parent}"; \
+done; \
+if [ -e "$${git_parent}/.git" ] || [ -L "$${git_parent}/.git" ]; then git -C "$${project_root}" rev-parse --resolve-git-dir "$${git_parent}/.git" >/dev/null; fi; \
+git_root="$$(git -C "$${project_root}" rev-parse --show-toplevel)"; \
+git_root="$$(cd "$${git_root}" && pwd -P)"; \
+case "$${project_root}/" in ("$${git_root}/"*) ;; (*) printf 'ERROR: physical Git root does not contain this project: %s\n' "$${git_root}" >&2; exit 2 ;; esac; \
+printf '%s\n' "$${git_root}")
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot authenticate the physical Git boundary for $(MAKEFILE_ROOT))
 endif
 override REPOSITORY_ROOT := $(shell set -eu; \
 unset GIT_CEILING_DIRECTORIES; \
 git_local_keys="$$(git rev-parse --local-env-vars)"; \
-for git_local_key in $$git_local_keys; do \
-	case "$$git_local_key" in (GIT_CONFIG|GIT_CONFIG_PARAMETERS|GIT_CONFIG_COUNT) ;; (*) unset "$$git_local_key" ;; esac; \
+for git_local_key in $${git_local_keys}; do \
+	case "$${git_local_key}" in (GIT_CONFIG|GIT_CONFIG_PARAMETERS|GIT_CONFIG_COUNT) ;; (*) unset "$${git_local_key}" ;; esac; \
 done; \
 project_root="$(MAKEFILE_ROOT)"; \
-git_root="$$(git -C "$$project_root" rev-parse --show-toplevel)"; \
-git_root="$$(cd "$$git_root" && pwd -P)"; \
-superproject="$$(git -C "$$project_root" rev-parse --show-superproject-working-tree)"; \
-if [ -n "$$superproject" ]; then \
-	cd "$$superproject" && pwd -P; \
+case "$${project_root}" in (/*) ;; (*) printf 'ERROR: workspace discovery requires an absolute project directory: %s\n' "$${project_root}" >&2; exit 2 ;; esac; \
+project_root="$$(cd "$${project_root}" && pwd -P)"; \
+git_parent="$${project_root}"; \
+case "$${git_parent}" in (/*) ;; (*) printf 'ERROR: Git marker discovery requires an absolute physical directory: %s\n' "$${git_parent}" >&2; exit 2 ;; esac; \
+while [ "$${git_parent}" != / ] && [ ! -e "$${git_parent}/.git" ] && [ ! -L "$${git_parent}/.git" ]; do \
+	next_git_parent="$$(dirname "$${git_parent}")"; \
+	if [ "$${next_git_parent}" = "$${git_parent}" ]; then printf 'ERROR: Git marker discovery cannot advance from: %s\n' "$${git_parent}" >&2; exit 2; fi; \
+	git_parent="$${next_git_parent}"; \
+done; \
+if [ -e "$${git_parent}/.git" ] || [ -L "$${git_parent}/.git" ]; then git -C "$${project_root}" rev-parse --resolve-git-dir "$${git_parent}/.git" >/dev/null; fi; \
+git_root="$$(git -C "$${project_root}" rev-parse --show-toplevel)"; \
+git_root="$$(cd "$${git_root}" && pwd -P)"; \
+case "$${project_root}/" in ("$${git_root}/"*) ;; (*) printf 'ERROR: physical Git root does not contain this project: %s\n' "$${git_root}" >&2; exit 2 ;; esac; \
+if [ "$${GITHUB_ACTIONS:-}" = "true" ]; then printf '%s\n' "$${project_root}"; exit 0; fi; \
+superproject="$$(git -C "$${project_root}" rev-parse --show-superproject-working-tree)"; \
+if [ -n "$${superproject}" ] && [ -f "$${superproject}/pyproject.toml" ]; then \
+	cd "$${superproject}" && pwd -P; \
 	exit 0; \
 fi; \
-scope="$$git_root"; \
-if [ "$$project_root" = "$$git_root" ]; then \
-	parent="$$(dirname "$$project_root")"; \
-	while [ "$$parent" != / ]; do \
-		if [ -f "$$parent/pyproject.toml" ]; then \
-			git_parent="$$parent"; \
-			while [ "$$git_parent" != / ] && [ ! -e "$$git_parent/.git" ]; do git_parent="$$(dirname "$$git_parent")"; done; \
-			if [ -e "$$git_parent/.git" ]; then scope="$$(git -C "$$parent" rev-parse --show-toplevel)"; fi; \
-			break; \
-		fi; \
-		parent="$$(dirname "$$parent")"; \
-	done; \
-fi; \
-scope="$$(cd "$$scope" && pwd -P)"; \
-case "$$project_root/" in ("$$scope/"*) ;; (*) printf 'ERROR: native workspace discovery scope does not contain this project: %s\n' "$$scope" >&2; exit 2 ;; esac; \
-if [ "$$scope" = "$$project_root" ]; then printf '%s\n' "$$project_root"; exit 0; fi; \
+reader_root=; \
+parent="$$(dirname "$${project_root}")"; \
+while [ "$${parent}" != / ]; do \
+	if [ -f "$${parent}/pyproject.toml" ]; then reader_root="$${parent}"; break; fi; \
+	if [ "$${parent}" = "$${git_root}" ]; then break; fi; \
+	parent="$$(dirname "$${parent}")"; \
+done; \
+if [ -z "$${reader_root}" ]; then printf '%s\n' "$${project_root}"; exit 0; fi; \
+git_parent="$${reader_root}"; \
+case "$${git_parent}" in (/*) ;; (*) printf 'ERROR: Git marker discovery requires an absolute physical directory: %s\n' "$${git_parent}" >&2; exit 2 ;; esac; \
+while [ "$${git_parent}" != / ] && [ ! -e "$${git_parent}/.git" ] && [ ! -L "$${git_parent}/.git" ]; do \
+	next_git_parent="$$(dirname "$${git_parent}")"; \
+	if [ "$${next_git_parent}" = "$${git_parent}" ]; then printf 'ERROR: Git marker discovery cannot advance from: %s\n' "$${git_parent}" >&2; exit 2; fi; \
+	git_parent="$${next_git_parent}"; \
+done; \
+if [ -e "$${git_parent}/.git" ] || [ -L "$${git_parent}/.git" ]; then git -C "$${reader_root}" rev-parse --resolve-git-dir "$${git_parent}/.git" >/dev/null; fi; \
+if [ ! -e "$${git_parent}/.git" ] && [ ! -L "$${git_parent}/.git" ]; then printf '%s\n' "$${project_root}"; exit 0; fi; \
+scope="$$(git -C "$${reader_root}" rev-parse --show-toplevel)"; \
+scope="$$(cd "$${scope}" && pwd -P)"; \
+case "$${project_root}/" in ("$${scope}/"*) ;; (*) printf 'ERROR: native workspace discovery scope does not contain this project: %s\n' "$${scope}" >&2; exit 2 ;; esac; \
+if [ -f "$${scope}/pyproject.toml" ]; then reader_root="$${scope}"; fi; \
 unset MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE UV_PROJECT UV_PROJECT_ENVIRONMENT UV_WORKING_DIRECTORY UV_NO_CONFIG; \
-MISE_CONFIG_DIR="$$scope/.mise"; \
-MISE_SYSTEM_CONFIG_DIR="$$MISE_CONFIG_DIR"; \
-MISE_GLOBAL_CONFIG_FILE="$$scope/.mise.toml"; \
-if [ -f "$$MISE_CONFIG_DIR/config.toml" ]; then MISE_GLOBAL_CONFIG_FILE="$$MISE_CONFIG_DIR/config.toml"; fi; \
-MISE_CEILING_PATHS="$$(dirname "$$scope")"; \
+MISE_CONFIG_DIR="$${reader_root}/.mise"; \
+MISE_SYSTEM_CONFIG_DIR="$${MISE_CONFIG_DIR}"; \
+MISE_GLOBAL_CONFIG_FILE="$${MISE_CONFIG_DIR}/config.toml"; \
+MISE_CEILING_PATHS="$$(dirname "$${reader_root}")"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
-uv_requested="$$(mise -C "$$scope" tool "uv" --requested)"; \
-uv_binary="$$(mise -C "$$scope" which "uv" --tool "uv@$$uv_requested")"; \
-if [ ! -x "$$uv_binary" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
-owner="$$("$$uv_binary" workspace dir --project "$$project_root")"; \
-case "$$owner" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "$$owner" >&2; exit 2 ;; esac; \
-owner="$$(cd "$$owner" && pwd -P)"; \
-case "$$owner/" in ("$$scope/"*) ;; (*) printf 'ERROR: native UV workspace owner leaves its Git scope: %s\n' "$$owner" >&2; exit 2 ;; esac; \
-case "$$project_root/" in ("$$owner/"*) ;; (*) printf 'ERROR: native UV workspace owner does not contain this project: %s\n' "$$owner" >&2; exit 2 ;; esac; \
-printf '%s\n' "$$owner")
+reader_mise=mise; \
+case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
+	mise_stage=; \
+	trap 'bootstrap_status=$$?; trap - EXIT; if [ -n "$${mise_stage}" ]; then \
+			if rm -rf "$${mise_stage}"; then :; else \
+				mise_cleanup_status=$$?; \
+				printf "ERROR: bootstrap staging cleanup failed (exit %s); original exit %s\n" "$${mise_cleanup_status}" "$${bootstrap_status}" >&2; \
+				if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${mise_cleanup_status}; fi; \
+			fi; \
+		fi; exit "$${bootstrap_status}"' EXIT; \
+	{ \
+		bootstrap_stage=network-auth; \
+	$(GITHUB_AUTH_DIAGNOSTICS); \
+	if [ "$(GITHUB_AUTH_SOURCE)" = gh ]; then \
+		if [ "$(GITHUB_AUTH_STATUS)" != 0 ]; then \
+			printf 'ERROR: selected gh auth token failed (exit %s); refusing anonymous provisioning\n' '$(GITHUB_AUTH_STATUS)' >&2; \
+			exit "$(GITHUB_AUTH_STATUS)"; \
+		fi; \
+		if [ "$(GITHUB_AUTH_PRESENT)" != yes ]; then \
+			printf 'ERROR: selected gh auth token returned no credential; refusing anonymous provisioning\n' >&2; \
+			exit 2; \
+		fi; \
+	fi; \
+		mise_bootstrap_root="$${XDG_CACHE_HOME:-$${HOME}/.cache}/flext/infra/mise-bootstrap"; \
+	mise_probe() { \
+		if mise_version_output="$$("$$1" --version)"; then :; else return $$?; fi; \
+		mise_receipt="$${mise_version_output%% *}"; \
+	}; \
+	mise_qualify() { \
+	mise_pin=; \
+	if [ -f "$${reader_root}/mise.lock" ]; then \
+		mise_pin="$$( awk 'index($$0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "$${reader_root}/mise.lock" )"; \
+	fi; \
+	if [ -z "$${mise_pin}" ]; then \
+		bootstrap_stage=lock-pin; \
+		printf 'ERROR: mise.lock pins no github:jdx/mise release\n' >&2; \
+		exit 2; \
+	fi; \
+	bootstrap_stage=platform; \
+	case "$$(uname -s)/$$(uname -m)" in \
+		(Linux/x86_64) mise_platform=linux-x64 ;; \
+		(Linux/aarch64) mise_platform=linux-arm64 ;; \
+		(Darwin/x86_64) mise_platform=macos-x64 ;; \
+		(Darwin/arm64) mise_platform=macos-arm64 ;; \
+		(Windows/AMD64) mise_platform=windows-x64 ;; \
+		(*) printf 'ERROR: no github:jdx/mise lock platform maps to %s/%s; install mise %s (https://mise.run) and retry\n' "$$(uname -s)" "$$(uname -m)" "$${mise_pin}" >&2; exit 2 ;; \
+	esac; \
+	bootstrap_stage=release-asset; \
+	mise_key=url; \
+	mise_url="$$( awk -v section="[tools.\"github:jdx/mise\".\"platforms.$${mise_platform}\"]" -v key="$${mise_key}" \
+	'$$0 == section { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == key { gsub(/"/, "", $$3); print $$3; exit }' "$${reader_root}/mise.lock" )"; \
+	case "$${mise_url}" in \
+		(https://github.com/*/releases/download/*) ;; \
+		(*) printf 'ERROR: mise.lock has no release URL for github:jdx/mise on %s\n' "$${mise_platform}" >&2; exit 2 ;; \
+	esac; \
+	mise_key=checksum; \
+	mise_checksum="$$( awk -v section="[tools.\"github:jdx/mise\".\"platforms.$${mise_platform}\"]" -v key="$${mise_key}" \
+	'$$0 == section { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == key { gsub(/"/, "", $$3); print $$3; exit }' "$${reader_root}/mise.lock" )"; \
+	case "$${mise_checksum}" in \
+		(sha256:*) mise_sha256="$${mise_checksum#sha256:}" ;; \
+		(*) printf 'ERROR: mise.lock has no sha256 for github:jdx/mise on %s\n' "$${mise_platform}" >&2; exit 2 ;; \
+	esac; \
+	mise_bootstrap_bin="$${mise_bootstrap_root}/$${mise_pin}/mise"; \
+	mise_recover=true; \
+	if [ -x "$${mise_bootstrap_bin}" ]; then \
+		bootstrap_stage=release-verification; \
+		mise_probe "$${mise_bootstrap_bin}"; \
+		if [ "$${mise_receipt}" = "$${mise_pin}" ]; then mise_recover=false; fi; \
+	fi; \
+	if [ "$${mise_recover}" = true ]; then \
+		printf 'setup: recovering github:jdx/mise %s from the mise.lock release asset for %s\n' "$${mise_pin}" "$${mise_platform}"; \
+		mkdir -p "$$(dirname "$${mise_bootstrap_bin}")"; \
+		mise_stage="$$(mktemp -d "$$(dirname "$${mise_bootstrap_bin}")/.stage.XXXXXXXX")"; \
+		curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/archive" "$${mise_url}"; \
+		if command -v sha256sum >/dev/null 2>&1; then \
+			echo "$${mise_sha256}  $${mise_stage}/archive" | sha256sum -c -; \
+		else \
+			echo "$${mise_sha256}  $${mise_stage}/archive" | shasum -a 256 -c -; \
+		fi; \
+		tar -xf "$${mise_stage}/archive" -C "$${mise_stage}"; \
+		bootstrap_stage=release-verification; \
+		chmod +x "$${mise_stage}/mise/bin/mise"; \
+		mise_probe "$${mise_stage}/mise/bin/mise"; \
+		if [ "$${mise_receipt}" != "$${mise_pin}" ]; then \
+			printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s\n' "$${mise_receipt}" "$${mise_pin}" >&2; \
+			exit 2; \
+		fi; \
+		mv "$${mise_stage}/mise/bin/mise" "$${mise_bootstrap_bin}"; \
+		rm -rf "$${mise_stage}"; \
+		mise_stage=; \
+	fi; \
+	export MISE_SHIMS_DIR="$${mise_bootstrap_root}/$${mise_receipt}/shims"; \
+	}; \
+		mise_qualify; \
+		"$${mise_bootstrap_bin}" -C "$${reader_root}" install --locked --yes "uv"; \
+	} >&2; \
+	reader_mise="$${mise_bootstrap_bin}"; \
+;; esac; \
+uv_requested="$$("$${reader_mise}" -C "$${reader_root}" tool "uv" --requested)"; \
+uv_binary="$$("$${reader_mise}" -C "$${reader_root}" which "uv" --tool "uv@$${uv_requested}")"; \
+if [ ! -x "$${uv_binary}" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
+owner="$$("$${uv_binary}" workspace dir --project "$${project_root}")"; \
+case "$${owner}" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "$${owner}" >&2; exit 2 ;; esac; \
+owner="$$(cd "$${owner}" && pwd -P)"; \
+case "$${owner}/" in ("$${scope}/"*) ;; (*) printf 'ERROR: native UV workspace owner leaves its Git scope: %s\n' "$${owner}" >&2; exit 2 ;; esac; \
+case "$${project_root}/" in ("$${owner}/"*) ;; (*) printf 'ERROR: native UV workspace owner does not contain this project: %s\n' "$${owner}" >&2; exit 2 ;; esac; \
+printf '%s\n' "$${owner}")
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
@@ -275,13 +452,16 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
-BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
+override FLEXT_MAKE_EMPTY :=
+override FLEXT_MAKE_SPACE := $(FLEXT_MAKE_EMPTY) $(FLEXT_MAKE_EMPTY)
+override CUSTOM_MAKEFILE_ESCAPED := $(subst $(FLEXT_MAKE_SPACE),\$(FLEXT_MAKE_SPACE),$(CUSTOM_MAKEFILE))
 CUSTOM_DECLARED_TARGETS :=
-ifneq ($(wildcard $(CUSTOM_MAKEFILE)),)
+ifneq ($(shell if [ -f "$(CUSTOM_MAKEFILE)" ]; then printf 'present'; fi),)
 CUSTOM_DECLARED_TARGETS := $(shell awk '/^[a-z_][a-z0-9_-]*:/ { target=$$1; sub(/:.*/, "", target); if (!seen[target]++) printf "%s ", target }' "$(CUSTOM_MAKEFILE)")
 ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
@@ -298,43 +478,71 @@ endif
 # pattern). A declared hook without the builtin reference is a replacement
 # and stays forbidden.
 ifneq ($(filter _custom-pre-commit,$(CUSTOM_DECLARED_TARGETS)),)
-ifeq ($(shell grep -c "_builtin-pre-commit" $(CUSTOM_MAKEFILE) || true),0)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-pre-commit" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-pre-commit must chain _builtin-pre-commit (wrapper parity; replacements are forbidden))
 endif
 endif
 
 ifneq ($(filter _custom-setup,$(CUSTOM_DECLARED_TARGETS)),)
-ifeq ($(shell grep -c "_builtin-setup" $(CUSTOM_MAKEFILE) || true),0)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-setup" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-setup must chain _builtin-setup (wrapper parity; replacements are forbidden))
 endif
 endif
 
 ifneq ($(filter _custom-gen,$(CUSTOM_DECLARED_TARGETS)),)
-ifeq ($(shell grep -c "_builtin-gen" $(CUSTOM_MAKEFILE) || true),0)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-gen" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-gen must chain _builtin-gen (wrapper parity; replacements are forbidden))
 endif
 endif
 
 ifneq ($(filter _custom-audit,$(CUSTOM_DECLARED_TARGETS)),)
-ifeq ($(shell grep -c "_builtin-audit" $(CUSTOM_MAKEFILE) || true),0)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-audit" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-audit must chain _builtin-audit (wrapper parity; replacements are forbidden))
 endif
 endif
 
 ifneq ($(filter _custom-check,$(CUSTOM_DECLARED_TARGETS)),)
-ifeq ($(shell grep -c "_builtin-check" $(CUSTOM_MAKEFILE) || true),0)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-check" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-check must chain _builtin-check (wrapper parity; replacements are forbidden))
 endif
 endif
 
 ifneq ($(filter _custom-test,$(CUSTOM_DECLARED_TARGETS)),)
-ifeq ($(shell grep -c "_builtin-test" $(CUSTOM_MAKEFILE) || true),0)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-test" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-test must chain _builtin-test (wrapper parity; replacements are forbidden))
 endif
 endif
 
 ifneq ($(filter _custom-verify-clean,$(CUSTOM_DECLARED_TARGETS)),)
-ifeq ($(shell grep -c "_builtin-verify-clean" $(CUSTOM_MAKEFILE) || true),0)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-verify-clean" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-verify-clean must chain _builtin-verify-clean (wrapper parity; replacements are forbidden))
 endif
 endif
@@ -346,8 +554,8 @@ DOCS_ACTIONS := generate fix fmt build validate audit
 
 # === SECTION: lint/type paths (managed) ===
 # Source: template + computed (script_dispatch conditional)
-RUFF_PATHS := $(strip $(foreach d,src tests examples,$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
-MYPY_PATHS := $(strip $(foreach d,src tests examples,$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
+RUFF_PATHS := $(shell for directory in src tests examples; do if [ -d "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
+MYPY_PATHS := $(RUFF_PATHS)
 # End SECTION: lint/type paths
 
 # === SECTION: project tool owner (managed) ===
@@ -364,15 +572,20 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # Source: repository topology. workspace has .gitmodules; standalone does not.
 # Native UV membership and Git attachment elect the physical runtime.
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
-override export GIT_CEILING_DIRECTORIES := $(abspath $(GIT_DISCOVERY_ROOT)/..)
-override export MISE_CEILING_PATHS := $(abspath $(RUNTIME_ROOT)/..)
+override export GIT_CEILING_DIRECTORIES := $(shell cd "$(GIT_DISCOVERY_ROOT)/.." && pwd -P)
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve Git ceiling for $(GIT_DISCOVERY_ROOT))
+endif
+override export MISE_CEILING_PATHS := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve Mise ceiling for $(RUNTIME_ROOT))
+endif
 override export MISE_CONFIG_DIR := $(RUNTIME_ROOT)/.mise
-# The exported global config must be a REAL file in every topology: the
-# workspace profile carries the operator's .mise/config.toml; a standalone
-# checkout (or a member without one) falls back to the always-rendered
-# project manifest — same SSOT, so child mise/uv resolution can never
-# depend on mise's fallback behavior for a missing global file.
-override export MISE_GLOBAL_CONFIG_FILE := $(if $(wildcard $(MISE_CONFIG_DIR)/config.toml),$(MISE_CONFIG_DIR)/config.toml,$(RUNTIME_ROOT)/.mise.toml)
+# The project manifest remains in native project scope. An optional global
+# configuration has its own explicit runtime-scoped path; when absent, Mise
+# reads no global file. Reusing .mise.toml here classifies every project tool
+# as global and leaves the project lock scope empty.
+override export MISE_GLOBAL_CONFIG_FILE := $(MISE_CONFIG_DIR)/config.toml
 override export MISE_SYSTEM_CONFIG_DIR := $(MISE_CONFIG_DIR)
 # A file override wins over the system directory in native Mise discovery.
 unexport MISE_SYSTEM_CONFIG_FILE
@@ -440,32 +653,39 @@ TOOL_BOOTSTRAP_RESOLVE :=
 _bootstrap_setup_tools:
 	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 	+@set -eu; \
-	bootstrap_stage=host-mise; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; \
+	bootstrap_stage=host-mise; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; mise_stage=; \
 	bootstrap_report="$(PROJECT_ROOT)/.reports/setup-operations/tool-bootstrap.json"; \
 	bootstrap_publish_report() { \
-		if mkdir -p "$$(dirname "$$bootstrap_report")"; then :; else return $$?; fi; \
-		if printf '%s\n' '{"root":".","operation":"tool-bootstrap","scope":["."],"candidate_sha":@@SHA@@,"candidate_read_exit_code":@@GIT_EXIT@@,"receipts":[{"root":".","executed":true,"outcome":null,"native_exit_code":@@EXIT@@,"stage":"@@STAGE@@","completed":@@COMPLETE@@,"applicability":"","files":[],"issues":[]}]}' | sed \
-			-e "s/@@SHA@@/$$bootstrap_sha/" \
-			-e "s/@@GIT_EXIT@@/$$bootstrap_git_status/" \
-			-e "s/@@EXIT@@/$$bootstrap_status/" \
-			-e "s/@@STAGE@@/$$bootstrap_stage/" \
-			-e "s/@@COMPLETE@@/$$bootstrap_completed/" > "$$bootstrap_report.pending"; then :; else return $$?; fi; \
-		mv "$$bootstrap_report.pending" "$$bootstrap_report"; \
+		if mkdir -p "$$(dirname "$${bootstrap_report}")"; then :; else return $$?; fi; \
+		if printf '%s\n' '{"root":".","operation":"tool-bootstrap","scope":["."],"receipts":[{"native_tool_qualifications":[],"runtime_context":null,"root":".","executed":true,"outcome":null,"native_exit_code":@@EXIT@@,"stage":"@@STAGE@@","completed":@@COMPLETE@@,"applicability":"","files":[],"issues":[]}],"candidate_read_exit_code":@@GIT_EXIT@@,"candidate_sha":@@SHA@@}' | sed \
+			-e "s/@@SHA@@/$${bootstrap_sha}/" \
+			-e "s/@@GIT_EXIT@@/$${bootstrap_git_status}/" \
+			-e "s/@@EXIT@@/$${bootstrap_status}/" \
+			-e "s/@@STAGE@@/$${bootstrap_stage}/" \
+			-e "s/@@COMPLETE@@/$${bootstrap_completed}/" > "$${bootstrap_report}.pending"; then :; else return $$?; fi; \
+		mv "$${bootstrap_report}.pending" "$${bootstrap_report}"; \
 	}; \
 	trap 'bootstrap_status=$$?; trap - EXIT; \
+		if [ -n "$${mise_stage}" ]; then \
+			if rm -rf "$${mise_stage}"; then :; else \
+				mise_cleanup_status=$$?; \
+				printf "ERROR: bootstrap staging cleanup failed (exit %s); original exit %s\n" "$${mise_cleanup_status}" "$${bootstrap_status}" >&2; \
+				if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${mise_cleanup_status}; fi; \
+			fi; \
+		fi; \
 		if bootstrap_publish_report; then :; else \
 			bootstrap_report_status=$$?; \
-			printf "ERROR: bootstrap evidence publication failed (exit %s); original exit %s\n" "$$bootstrap_report_status" "$$bootstrap_status" >&2; \
-			if [ "$$bootstrap_status" -eq 0 ]; then bootstrap_status=$$bootstrap_report_status; fi; \
+			printf "ERROR: bootstrap evidence publication failed (exit %s); original exit %s\n" "$${bootstrap_report_status}" "$${bootstrap_status}" >&2; \
+			if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${bootstrap_report_status}; fi; \
 		fi; \
-		exit "$$bootstrap_status"' EXIT; \
+		exit "$${bootstrap_status}"' EXIT; \
 	if bootstrap_candidate="$$(git -C "$(PROJECT_ROOT)" rev-parse --verify HEAD)"; then \
 		bootstrap_git_status=0; \
-		case "$$bootstrap_candidate" in \
+		case "$${bootstrap_candidate}" in \
 			*[!0-9a-f]*) printf 'ERROR: bootstrap candidate is not a Git object ID\n' >&2; exit 2 ;; \
 		esac; \
 		case "$${#bootstrap_candidate}" in \
-			40|64) bootstrap_sha="\"$$bootstrap_candidate\"" ;; \
+			40|64) bootstrap_sha="\"$${bootstrap_candidate}\"" ;; \
 			*) printf 'ERROR: bootstrap candidate has an invalid object ID length\n' >&2; exit 2 ;; \
 		esac; \
 	else bootstrap_git_status=$$?; fi; \
@@ -481,88 +701,107 @@ _bootstrap_setup_tools:
 			exit 2; \
 		fi; \
 	fi; \
-	bootstrap_stage=host-mise; \
-	if ! command -v mise >/dev/null 2>&1; then \
-		printf 'ERROR: mise is not installed; install it (https://mise.run) and retry\n' >&2; \
-		exit 2; \
-	fi; \
+	bootstrap_stage=lock-pin; \
 	mise_pin=; mise_resolved=0; \
 	bootstrap_stage=lock-pin; \
 	if [ -f "$(PROJECT_ROOT)/mise.lock" ]; then \
 		mise_pin="$$( awk 'index($$0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "$(PROJECT_ROOT)/mise.lock" )"; \
 	fi; \
-	if [ -z "$$mise_pin" ] && [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+	if [ -z "$${mise_pin}" ] && [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		bootstrap_stage=host-mise; \
+		if ! command -v mise >/dev/null 2>&1; then \
+			printf 'ERROR: resolving a missing Mise self-pin requires an available native Mise\n' >&2; \
+			exit 2; \
+		fi; \
+		bootstrap_stage=lock-pin; \
 		mise -C "$(PROJECT_ROOT)" lock --upgrade --bump; \
 		mise_resolved=1; \
 		mise_pin="$$( awk 'index($$0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "$(PROJECT_ROOT)/mise.lock" )"; \
 	fi; \
-	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
-	if [ -n "$$mise_pin" ]; then \
+	mise_bootstrap_root="$${XDG_CACHE_HOME:-$${HOME}/.cache}/flext/infra/mise-bootstrap"; \
+	mise_probe() { \
+		if mise_version_output="$$("$$1" --version)"; then :; else return $$?; fi; \
+		mise_receipt="$${mise_version_output%% *}"; \
+	}; \
+	mise_qualify() { \
+	mise_pin=; \
+	if [ -f "$(PROJECT_ROOT)/mise.lock" ]; then \
+		mise_pin="$$( awk 'index($$0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == "version" { gsub(/[",]/, "", $$3); print $$3; exit }' "$(PROJECT_ROOT)/mise.lock" )"; \
+	fi; \
+	if [ -z "$${mise_pin}" ]; then \
+		bootstrap_stage=lock-pin; \
+		printf 'ERROR: mise.lock pins no github:jdx/mise release\n' >&2; \
+		exit 2; \
+	fi; \
 	bootstrap_stage=platform; \
 	case "$$(uname -s)/$$(uname -m)" in \
-		Linux/x86_64) mise_platform=linux-x64 ;; \
-		Linux/aarch64) mise_platform=linux-arm64 ;; \
-		Darwin/x86_64) mise_platform=macos-x64 ;; \
-		Darwin/arm64) mise_platform=macos-arm64 ;; \
-		Windows/AMD64) mise_platform=windows-x64 ;; \
-		*) printf 'ERROR: no github:jdx/mise lock platform maps to %s/%s; install mise %s (https://mise.run) and retry\n' "$$(uname -s)" "$$(uname -m)" "$$mise_pin" >&2; exit 2 ;; \
+		(Linux/x86_64) mise_platform=linux-x64 ;; \
+		(Linux/aarch64) mise_platform=linux-arm64 ;; \
+		(Darwin/x86_64) mise_platform=macos-x64 ;; \
+		(Darwin/arm64) mise_platform=macos-arm64 ;; \
+		(Windows/AMD64) mise_platform=windows-x64 ;; \
+		(*) printf 'ERROR: no github:jdx/mise lock platform maps to %s/%s; install mise %s (https://mise.run) and retry\n' "$$(uname -s)" "$$(uname -m)" "$${mise_pin}" >&2; exit 2 ;; \
 	esac; \
 	bootstrap_stage=release-asset; \
 	mise_key=url; \
 	mise_url="$$( awk -v section="[tools.\"github:jdx/mise\".\"platforms.$${mise_platform}\"]" -v key="$${mise_key}" \
 	'$$0 == section { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == key { gsub(/"/, "", $$3); print $$3; exit }' "$(PROJECT_ROOT)/mise.lock" )"; \
-	case "$$mise_url" in \
-		https://github.com/*/releases/download/*) ;; \
-		*) printf 'ERROR: mise.lock has no release URL for github:jdx/mise on %s\n' "$$mise_platform" >&2; exit 2 ;; \
+	case "$${mise_url}" in \
+		(https://github.com/*/releases/download/*) ;; \
+		(*) printf 'ERROR: mise.lock has no release URL for github:jdx/mise on %s\n' "$${mise_platform}" >&2; exit 2 ;; \
 	esac; \
 	mise_key=checksum; \
 	mise_checksum="$$( awk -v section="[tools.\"github:jdx/mise\".\"platforms.$${mise_platform}\"]" -v key="$${mise_key}" \
 	'$$0 == section { inside = 1; next } inside && substr($$0, 1, 1) == "[" { exit } inside && $$1 == key { gsub(/"/, "", $$3); print $$3; exit }' "$(PROJECT_ROOT)/mise.lock" )"; \
-	case "$$mise_checksum" in \
-		sha256:*) mise_sha256="$${mise_checksum#sha256:}" ;; \
-		*) printf 'ERROR: mise.lock has no sha256 for github:jdx/mise on %s\n' "$$mise_platform" >&2; exit 2 ;; \
+	case "$${mise_checksum}" in \
+		(sha256:*) mise_sha256="$${mise_checksum#sha256:}" ;; \
+		(*) printf 'ERROR: mise.lock has no sha256 for github:jdx/mise on %s\n' "$${mise_platform}" >&2; exit 2 ;; \
 	esac; \
-	mise_bootstrap_bin="$$mise_bootstrap_root/$$mise_pin/mise"; \
-	if [ ! -x "$$mise_bootstrap_bin" ]; then \
-		printf 'setup: recovering github:jdx/mise %s from the mise.lock release asset for %s\n' "$$mise_pin" "$$mise_platform"; \
-		mise_stage="$$mise_bootstrap_root/$$mise_pin/stage"; \
-		rm -rf "$$mise_stage"; \
-		mkdir -p "$$mise_stage" "$$(dirname "$$mise_bootstrap_bin")"; \
-		curl --proto '=https' --tlsv1.2 -fsSL -o "$$mise_stage/archive" "$$mise_url"; \
+	mise_bootstrap_bin="$${mise_bootstrap_root}/$${mise_pin}/mise"; \
+	mise_recover=true; \
+	if [ -x "$${mise_bootstrap_bin}" ]; then \
+		bootstrap_stage=release-verification; \
+		mise_probe "$${mise_bootstrap_bin}"; \
+		if [ "$${mise_receipt}" = "$${mise_pin}" ]; then mise_recover=false; fi; \
+	fi; \
+	if [ "$${mise_recover}" = true ]; then \
+		printf 'setup: recovering github:jdx/mise %s from the mise.lock release asset for %s\n' "$${mise_pin}" "$${mise_platform}"; \
+		mkdir -p "$$(dirname "$${mise_bootstrap_bin}")"; \
+		mise_stage="$$(mktemp -d "$$(dirname "$${mise_bootstrap_bin}")/.stage.XXXXXXXX")"; \
+		curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/archive" "$${mise_url}"; \
 		if command -v sha256sum >/dev/null 2>&1; then \
-			echo "$$mise_sha256  $$mise_stage/archive" | sha256sum -c -; \
+			echo "$${mise_sha256}  $${mise_stage}/archive" | sha256sum -c -; \
 		else \
-			echo "$$mise_sha256  $$mise_stage/archive" | shasum -a 256 -c -; \
+			echo "$${mise_sha256}  $${mise_stage}/archive" | shasum -a 256 -c -; \
 		fi; \
-		tar -xf "$$mise_stage/archive" -C "$$mise_stage"; \
-		mv "$$mise_stage/mise/bin/mise" "$$mise_bootstrap_bin"; \
-		chmod +x "$$mise_bootstrap_bin"; \
-		rm -rf "$$mise_stage"; \
+		tar -xf "$${mise_stage}/archive" -C "$${mise_stage}"; \
+		bootstrap_stage=release-verification; \
+		chmod +x "$${mise_stage}/mise/bin/mise"; \
+		mise_probe "$${mise_stage}/mise/bin/mise"; \
+		if [ "$${mise_receipt}" != "$${mise_pin}" ]; then \
+			printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s\n' "$${mise_receipt}" "$${mise_pin}" >&2; \
+			exit 2; \
+		fi; \
+		mv "$${mise_stage}/mise/bin/mise" "$${mise_bootstrap_bin}"; \
+		rm -rf "$${mise_stage}"; \
+		mise_stage=; \
 	fi; \
-	bootstrap_stage=release-verification; \
-	mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
-	if [ "$$mise_receipt" != "$$mise_pin" ]; then \
-		printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s; delete %s and run make setup\n' "$$mise_receipt" "$$mise_pin" "$$mise_bootstrap_bin" >&2; \
-		exit 2; \
-	fi; \
-	else \
-		mise_bootstrap_bin="$$(command -v mise)"; \
-		mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
-		printf 'setup: declared self-pin is absent; provisioning with host Mise %s (%s); make audit owns lock admission\n' "$$mise_receipt" "$$mise_bootstrap_bin"; \
-	fi; \
-	export MISE_SHIMS_DIR="$$mise_bootstrap_root/$$mise_receipt/shims"; \
+	export MISE_SHIMS_DIR="$${mise_bootstrap_root}/$${mise_receipt}/shims"; \
+	}; \
+	mise_qualify; \
 	bootstrap_stage=tool-lock; \
-	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$$mise_resolved" = "0" ]; then \
-		"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" lock --upgrade --bump; \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$${mise_resolved}" = "0" ]; then \
+		"$${mise_bootstrap_bin}" -C "$(PROJECT_ROOT)" lock --upgrade --bump; \
+		mise_qualify; \
 	fi; \
 	bootstrap_stage=tool-install; \
-	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --locked --yes "python" "github:jdx/mise" "uv" "direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"; \
+	"$${mise_bootstrap_bin}" -C "$(PROJECT_ROOT)" install --locked --yes "python" "github:jdx/mise" "uv" "direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"; \
 	bootstrap_stage=shims; \
-	"$$mise_bootstrap_bin" reshim; \
-	printf 'setup: mise %s provisioning complete\n' "$$mise_receipt"; \
+	"$${mise_bootstrap_bin}" reshim; \
+	printf 'setup: mise %s provisioning complete\n' "$${mise_receipt}"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \
-	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$$mise_bootstrap_bin"):$${MISE_SHIMS_DIR}:$${PATH}" "CI=$(CI)" $(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE); \
+	"$${mise_bootstrap_bin}" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$${mise_bootstrap_bin}"):$${MISE_SHIMS_DIR}:$${PATH}" "CI=$(CI)" $(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE); \
 	bootstrap_stage=complete; bootstrap_completed=true
 _bootstrap_setup_tools: _builtin_require_workspace
 
@@ -572,8 +811,8 @@ _builtin_require_upg_lock_owner:
 	@set -eu; \
 	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
 		owner="$$($(UV) workspace dir --project "$$resolution")"; \
-		if [ "$$owner" != "$$resolution" ]; then \
-			printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the native resolution inputs before upgrading.\n' "$$owner" "$$resolution" >&2; \
+		if [ "$${owner}" != "$$resolution" ]; then \
+			printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the native resolution inputs before upgrading.\n' "$${owner}" "$$resolution" >&2; \
 			exit 2; \
 		fi; \
 	done
@@ -623,7 +862,7 @@ REQUIRE_WORKSPACE_ENVIRONMENT = case "$(PROJECT_ROOT)/" in \
 	if [ "$(strip $(GITHUB_ACTIONS))" = "true" ] && [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
 		printf 'ERROR: hosted CI requires an independent checkout and environment\n' >&2; exit 2; \
 	fi; \
-	for environment_path in "$(patsubst %/,%,$(dir $(RUNTIME_VENV)))" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin"; do \
+	for environment_path in "$$(dirname "$(RUNTIME_VENV)")" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin"; do \
 		if [ -L "$$environment_path" ]; then \
 			printf 'ERROR: workspace environment must be physical, not a symlink: %s\n' "$$environment_path" >&2; exit 2; \
 		fi; \
@@ -658,7 +897,7 @@ ifeq ($(GEN_INIT_ONLY),)
 # hooks whenever the declared-targets list names them, so a CI-excluded
 # include made every member with a post hook fail with "no rule for
 # post-<verb>" exactly when the pipeline ran the activation half.
--include custom.mk
+-include $(CUSTOM_MAKEFILE_ESCAPED)
 endif
 ifeq ($(APPROVAL_CONTEXT),Y)
 override CI := Y
@@ -924,6 +1163,34 @@ _activated-profile-test-report: _builtin_require_environment
 
 
 	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-profile-test-report,$(call RUN_PUBLIC,profile-test-report))
+
+
+
+
+profile-environment: _builtin_require_workspace
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-profile-environment,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-profile-environment)
+
+.PHONY: _activated-profile-environment
+
+_activated-profile-environment: _builtin_require_interpreter
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-profile-environment,$(call RUN_PUBLIC,profile-environment))
+
+
+
+
+profile-environment-report: _builtin_require_workspace
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-profile-environment-report,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-profile-environment-report)
+
+.PHONY: _activated-profile-environment-report
+
+_activated-profile-environment-report: _builtin_require_interpreter
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-profile-environment-report,$(call RUN_PUBLIC,profile-environment-report))
 
 
 
@@ -1455,6 +1722,14 @@ profile-test-report:
 	@printf '  %-16s %s\n' 'profile-test-report' 'Render the parent pytest profile and the aggregated child profiles from that run.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-test-report to execute it.'
 
+profile-environment:
+	@printf '  %-16s %s\n' 'profile-environment' 'Profile the canonical environment provenance guard without invoking that guard as a prerequisite.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-environment to execute it.'
+
+profile-environment-report:
+	@printf '  %-16s %s\n' 'profile-environment-report' 'Render the profile retained by the canonical environment provenance guard.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-environment-report to execute it.'
+
 profile-mod:
 	@printf '  %-16s %s\n' 'profile-mod' 'Profile the canonical mutating codemod lifecycle and retain the profile on failure.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-mod to execute it.'
@@ -1540,7 +1815,7 @@ gen-footprint:
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make gen-footprint to execute it.'
 
 initialize:
-	@printf '  %-16s %s\n' 'initialize' 'Materialize the declared package initializer graph.'
+	@printf '  %-16s %s\n' 'initialize' 'Bootstrap this target'"'"'s own declaration and canonical Makefile.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make initialize to execute it.'
 
 mod:
@@ -1647,6 +1922,10 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'profile-test-report' 'Render the parent pytest profile and the aggregated child profiles from that run.';
 
+	@printf '  %-16s %s\n' 'profile-environment' 'Profile the canonical environment provenance guard without invoking that guard as a prerequisite.';
+
+	@printf '  %-16s %s\n' 'profile-environment-report' 'Render the profile retained by the canonical environment provenance guard.';
+
 	@printf '  %-16s %s\n' 'profile-mod' 'Profile the canonical mutating codemod lifecycle and retain the profile on failure.';
 
 	@printf '  %-16s %s\n' 'profile-mod-report' 'Render the canonical codemod profile from the last profiling invocation.';
@@ -1689,7 +1968,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'gen-footprint' 'Inspect the pending generation journal and declared physical effect footprint without leases, recovery, or publication.';
 
-	@printf '  %-16s %s\n' 'initialize' 'Materialize the declared package initializer graph.';
+	@printf '  %-16s %s\n' 'initialize' 'Bootstrap this target'"'"'s own declaration and canonical Makefile.';
 
 	@printf '  %-16s %s\n' 'mod' 'Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.';
 
@@ -1747,185 +2026,185 @@ _builtin_setup_submodules:
 	@set -eu; \
 	umask 022; \
 	root="$(PROJECT_ROOT)"; \
-	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
+	if [ ! -f "$${root}/.gitmodules" ]; then exit 0; fi; \
 	managed=""; \
 	keys=""; \
-	if keys=$$(git -C "$$root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
+	if keys=$$(git -C "$${root}" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
 		keys_status=0; \
 	else \
 		keys_status=$$?; \
 	fi; \
-	if [ "$$keys_status" -ne 0 ] && [ "$$keys_status" -ne 1 ]; then \
+	if [ "$${keys_status}" -ne 0 ] && [ "$${keys_status}" -ne 1 ]; then \
 		printf 'ERROR: cannot enumerate governed gitlinks\n' >&2; \
-		exit "$$keys_status"; \
+		exit "$${keys_status}"; \
 	fi; \
-	for key in $$keys; do \
+	for key in $${keys}; do \
 		section=$${key%.path}; \
-		value=$$(git -C "$$root" config -f .gitmodules --type=bool --get --default true "$$section.flext-managed"); \
-		case "$$value" in \
+		value=$$(git -C "$${root}" config -f .gitmodules --type=bool --get --default true "$${section}.flext-managed"); \
+		case "$${value}" in \
 			true) ;; \
 			false) continue ;; \
-			*) printf 'ERROR: Git returned an invalid management boolean for %s\n' "$$section" >&2; exit 2 ;; \
+			*) printf 'ERROR: Git returned an invalid management boolean for %s\n' "$${section}" >&2; exit 2 ;; \
 		esac; \
-		path=$$(git -C "$$root" config -f .gitmodules --get "$$key"); \
-		case "$$path" in \
+		path=$$(git -C "$${root}" config -f .gitmodules --get "$${key}"); \
+		case "$${path}" in \
 			""|/*|..|../*|*/../*|*/..|*[[:space:]]*) \
-				printf 'ERROR: governed gitlink path is not a safe relative Make path: %s\n' "$$path" >&2; \
+				printf 'ERROR: governed gitlink path is not a safe relative Make path: %s\n' "$${path}" >&2; \
 				exit 2 ;; \
 		esac; \
-		case " $$managed " in \
-			*" $$path "*) printf 'ERROR: governed gitlink path is duplicated: %s\n' "$$path" >&2; exit 2 ;; \
+		case " $${managed} " in \
+			*" $${path} "*) printf 'ERROR: governed gitlink path is duplicated: %s\n' "$${path}" >&2; exit 2 ;; \
 		esac; \
-		managed="$$managed $$path"; \
+		managed="$${managed} $${path}"; \
 	done; \
-	if [ -z "$$managed" ]; then exit 0; fi; \
+	if [ -z "$${managed}" ]; then exit 0; fi; \
 	if [ "$${GIT_INDEX_FILE+x}" = x ]; then \
 		printf 'ERROR: submodule setup cannot authenticate a relocated Git index\n' >&2; \
 		exit 2; \
 	fi; \
 	absent=""; \
-	for path in $$managed; do \
-		child="$$root/$$path"; \
-		if [ ! -e "$$child/.git" ]; then \
-			absent="$$absent $$path"; \
+	for path in $${managed}; do \
+		child="$${root}/$${path}"; \
+		if [ ! -e "$${child}/.git" ]; then \
+			absent="$${absent} $${path}"; \
 			continue; \
 		fi; \
-		owner=$$(git -C "$$child" rev-parse --show-superproject-working-tree); \
-		checkout_root=$$(git -C "$$child" rev-parse --show-toplevel); \
-		if [ "$$owner" != "$$root" ] || [ "$$checkout_root" != "$$child" ]; then \
-			printf 'ERROR: %s: checkout identity does not match the governed child\n' "$$path" >&2; \
+		owner=$$(git -C "$${child}" rev-parse --show-superproject-working-tree); \
+		checkout_root=$$(git -C "$${child}" rev-parse --show-toplevel); \
+		if [ "$${owner}" != "$${root}" ] || [ "$${checkout_root}" != "$${child}" ]; then \
+			printf 'ERROR: %s: checkout identity does not match the governed child\n' "$${path}" >&2; \
 			exit 2; \
 		fi; \
-		git_dir=$$(git -C "$$child" rev-parse --absolute-git-dir); \
-		index="$$git_dir/index"; \
-		if [ -e "$$index" ] || [ -L "$$index" ]; then continue; fi; \
-		content=$$(git -C "$$child" ls-files --others --directory); \
-		reflog=$$(git -C "$$child" reflog show --format=%gs HEAD); \
-		initial=$$(git -C "$$child" reflog show --format=%gs -1 HEAD); \
-		if [ -n "$$content" ] || [ "$$reflog" != "$$initial" ]; then \
-			printf 'ERROR: %s: missing index with unproven initial-clone state; preserve and review\n' "$$path" >&2; \
+		git_dir=$$(git -C "$${child}" rev-parse --absolute-git-dir); \
+		index="$${git_dir}/index"; \
+		if [ -e "$${index}" ] || [ -L "$${index}" ]; then continue; fi; \
+		content=$$(git -C "$${child}" ls-files --others --directory); \
+		reflog=$$(git -C "$${child}" reflog show --format=%gs HEAD); \
+		initial=$$(git -C "$${child}" reflog show --format=%gs -1 HEAD); \
+		if [ -n "$${content}" ] || [ "$${reflog}" != "$${initial}" ]; then \
+			printf 'ERROR: %s: missing index with unproven initial-clone state; preserve and review\n' "$${path}" >&2; \
 			exit 2; \
 		fi; \
-		case "$$initial" in \
+		case "$${initial}" in \
 			'clone: from '*) ;; \
-			*) printf 'ERROR: %s: missing index without initial clone receipt\n' "$$path" >&2; exit 2 ;; \
+			*) printf 'ERROR: %s: missing index without initial clone receipt\n' "$${path}" >&2; exit 2 ;; \
 		esac; \
-		local_refs=$$(git -C "$$child" for-each-ref --format='%(refname)' refs/heads refs/stash); \
-		if active_ref=$$(git -C "$$child" symbolic-ref -q HEAD); then \
+		local_refs=$$(git -C "$${child}" for-each-ref --format='%(refname)' refs/heads refs/stash); \
+		if active_ref=$$(git -C "$${child}" symbolic-ref -q HEAD); then \
 			:; \
 		else \
 			ref_status=$$?; \
-			[ "$$ref_status" -eq 1 ] || exit "$$ref_status"; \
+			[ "$${ref_status}" -eq 1 ] || exit "$${ref_status}"; \
 		fi; \
-		if [ "$$local_refs" != "$$active_ref" ]; then \
-			printf 'ERROR: %s: missing index with local branch or stash work; preserve and review\n' "$$path" >&2; \
+		if [ "$${local_refs}" != "$${active_ref}" ]; then \
+			printf 'ERROR: %s: missing index with local branch or stash work; preserve and review\n' "$${path}" >&2; \
 			exit 2; \
 		fi; \
-		entry=$$(git -C "$$root" ls-files --stage -- "$$path"); \
-		set -- $$entry; \
-		if [ "$$#" -ne 4 ] || [ "$$1" != 160000 ] || [ "$$3" != 0 ] || [ "$$4" != "$$path" ]; then \
-			printf 'ERROR: governed path is not a gitlink: %s\n' "$$path" >&2; \
+		entry=$$(git -C "$${root}" ls-files --stage -- "$${path}"); \
+		set -- $${entry}; \
+		if [ "$$#" -ne 4 ] || [ "$$1" != 160000 ] || [ "$$3" != 0 ] || [ "$$4" != "$${path}" ]; then \
+			printf 'ERROR: governed path is not a gitlink: %s\n' "$${path}" >&2; \
 			exit 2; \
 		fi; \
-		head=$$(git -C "$$child" rev-parse HEAD); \
-		if [ "$$head" = "$$2" ]; then \
-			printf 'setup: materializing unfinished initial clone at recorded pin: %s\n' "$$path"; \
+		head=$$(git -C "$${child}" rev-parse HEAD); \
+		if [ "$${head}" = "$$2" ]; then \
+			printf 'setup: materializing unfinished initial clone at recorded pin: %s\n' "$${path}"; \
 			GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=5s "120s" \
-				git -C "$$child" -c submodule.recurse=false checkout --detach --no-overwrite-ignore "$$head"; \
+				git -C "$${child}" -c submodule.recurse=false checkout --detach --no-overwrite-ignore "$${head}"; \
 			continue; \
 		fi; \
-		printf 'setup: resuming unfinished initial clone: %s\n' "$$path"; \
-		absent="$$absent $$path"; \
+		printf 'setup: resuming unfinished initial clone: %s\n' "$${path}"; \
+		absent="$${absent} $${path}"; \
 	done; \
-	if [ -n "$$absent" ]; then \
-		credential_helper='!f() { if [ "$$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$$GITHUB_TOKEN"; fi; }; f'; \
-		absent_count=$$(printf '%s\n' $$absent | wc -l); \
+	if [ -n "$${absent}" ]; then \
+		credential_helper='!f() { if [ "$$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$${GITHUB_TOKEN}"; fi; }; f'; \
+		absent_count=$$(printf '%s\n' $${absent} | wc -l); \
 		clone_waves=$$(( (absent_count + 8 - 1) / 8 )); \
 		GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=5s "$$(( clone_waves * 120 ))s" \
-			git -C "$$root" -c credential.helper= \
-			-c "credential.https://$${GH_HOST:-github.com}.helper=$$credential_helper" \
-			submodule update --init --checkout --depth 1 --jobs "8" -- $$absent; \
+			git -C "$${root}" -c credential.helper= \
+			-c "credential.https://$${GH_HOST:-github.com}.helper=$${credential_helper}" \
+			submodule update --init --checkout --depth 1 --jobs "8" -- $${absent}; \
 	fi; \
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
-		child_root="$$superproject/$$child_path"; \
+		child_root="$${superproject}/$${child_path}"; \
 		keys=""; \
-		if keys=$$(git -C "$$superproject" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
+		if keys=$$(git -C "$${superproject}" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
 			keys_status=0; \
 		else \
 			keys_status=$$?; \
 		fi; \
-		if [ "$$keys_status" -ne 0 ] && [ "$$keys_status" -ne 1 ]; then \
+		if [ "$${keys_status}" -ne 0 ] && [ "$${keys_status}" -ne 1 ]; then \
 			printf 'ERROR: cannot enumerate submodule paths\n' >&2; \
-			exit "$$keys_status"; \
+			exit "$${keys_status}"; \
 		fi; \
 		section=""; \
-		for key in $$keys; do \
-			declared=$$(git -C "$$superproject" config -f .gitmodules --get "$$key"); \
-			if [ "$$declared" = "$$child_path" ]; then \
-				if [ -n "$$section" ]; then \
-					printf 'ERROR: governed gitlink path is duplicated: %s\n' "$$child_path" >&2; \
+		for key in $${keys}; do \
+			declared=$$(git -C "$${superproject}" config -f .gitmodules --get "$${key}"); \
+			if [ "$${declared}" = "$${child_path}" ]; then \
+				if [ -n "$${section}" ]; then \
+					printf 'ERROR: governed gitlink path is duplicated: %s\n' "$${child_path}" >&2; \
 					exit 2; \
 				fi; \
 				section=$${key%.path}; \
 			fi; \
 		done; \
-		if [ -z "$$section" ]; then \
-			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$$child_path" >&2; \
+		if [ -z "$${section}" ]; then \
+			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
-		branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$section.branch"); \
-		if [ -z "$$branch" ]; then \
-			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$$child_path" >&2; \
+		branch=$$(git -C "$${superproject}" config -f .gitmodules --get --default "" "$${section}.branch"); \
+		if [ -z "$${branch}" ]; then \
+			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
-		super_branch=$$(git -C "$$superproject" branch --show-current); \
-		if [ "$$branch" = "." ]; then \
-			branch="$$super_branch"; \
-			if [ -z "$$branch" ]; then \
-				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$$child_path" >&2; \
+		super_branch=$$(git -C "$${superproject}" branch --show-current); \
+		if [ "$${branch}" = "." ]; then \
+			branch="$${super_branch}"; \
+			if [ -z "$${branch}" ]; then \
+				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$${child_path}" >&2; \
 				exit 1; \
 			fi; \
 		fi; \
-		validated_branch=$$(git check-ref-format --branch "$$branch"); \
-		if [ "$$validated_branch" != "$$branch" ]; then \
-			printf 'ERROR: branch validator changed %s to %s\n' "$$branch" "$$validated_branch" >&2; \
+		validated_branch=$$(git check-ref-format --branch "$${branch}"); \
+		if [ "$${validated_branch}" != "$${branch}" ]; then \
+			printf 'ERROR: branch validator changed %s to %s\n' "$${branch}" "$${validated_branch}" >&2; \
 			exit 2; \
 		fi; \
-		gitlink_entry=$$(git -C "$$superproject" ls-files --stage -- "$$child_path"); \
-		if [ -z "$$gitlink_entry" ]; then \
-			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$$child_path" >&2; \
+		gitlink_entry=$$(git -C "$${superproject}" ls-files --stage -- "$${child_path}"); \
+		if [ -z "$${gitlink_entry}" ]; then \
+			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
-		set -- $$gitlink_entry; \
+		set -- $${gitlink_entry}; \
 		if [ "$$1" != 160000 ]; then \
-			printf 'ERROR: governed path is not a gitlink: %s\n' "$$child_path" >&2; \
+			printf 'ERROR: governed path is not a gitlink: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
 		gitlink="$$2"; \
-		if [ ! -e "$$child_root/.git" ]; then \
-			printf 'ERROR: governed gitlink is not materialized: %s\n' "$$child_path" >&2; \
+		if [ ! -e "$${child_root}/.git" ]; then \
+			printf 'ERROR: governed gitlink is not materialized: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
-		current=$$(git -C "$$child_root" branch --show-current); \
-		head=$$(git -C "$$child_root" rev-parse HEAD); \
-		if git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
+		current=$$(git -C "$${child_root}" branch --show-current); \
+		head=$$(git -C "$${child_root}" rev-parse HEAD); \
+		if git -C "$${child_root}" merge-base --is-ancestor "$${gitlink}" HEAD; then \
 			ancestor=Y; \
 		else \
-			status=$$?; if [ "$$status" -eq 1 ]; then ancestor=N; else exit "$$status"; fi; \
+			status=$$?; if [ "$${status}" -eq 1 ]; then ancestor=N; else exit "$${status}"; fi; \
 		fi; \
-		if [ "$$ancestor" = N ]; then \
-			if [ -z "$$current" ]; then \
-				printf 'ERROR: %s: detached HEAD %s does not contain recorded gitlink %s; merge the superproject gitlink into this head\n' "$$child_path" "$$head" "$$gitlink" >&2; \
+		if [ "$${ancestor}" = N ]; then \
+			if [ -z "$${current}" ]; then \
+				printf 'ERROR: %s: detached HEAD %s does not contain recorded gitlink %s; merge the superproject gitlink into this head\n' "$${child_path}" "$${head}" "$${gitlink}" >&2; \
 			else \
-				printf 'ERROR: %s: checked-out branch %s at %s does not contain recorded gitlink %s; merge the superproject gitlink into this branch\n' "$$child_path" "$$current" "$$head" "$$gitlink" >&2; \
+				printf 'ERROR: %s: checked-out branch %s at %s does not contain recorded gitlink %s; merge the superproject gitlink into this branch\n' "$${child_path}" "$${current}" "$${head}" "$${gitlink}" >&2; \
 			fi; \
 			exit 1; \
 		fi; \
 	}; \
-	for child_path in $$managed; do \
-		validate_submodule "$$root" "$$child_path"; \
+	for child_path in $${managed}; do \
+		validate_submodule "$${root}" "$${child_path}"; \
 	done
 
 # A provisioned local setup needs no GitHub credential. Mise and Git receive
@@ -1939,8 +2218,9 @@ _builtin_setup_submodules:
 # native repair verb.
 .PHONY: _builtin_require_mise
 _builtin_require_mise:
-	@if [ ! -f "$(MISE_GLOBAL_CONFIG_FILE)" ]; then \
-		printf 'ERROR: missing resolved mise global config %s; the checkout is incomplete — run make gen\n' "$(MISE_GLOBAL_CONFIG_FILE)" >&2; \
+	@set -eu; \
+	if [ ! -f "$(RUNTIME_ROOT)/.mise.toml" ]; then \
+		printf 'ERROR: missing project mise config %s; run make gen\n' "$(RUNTIME_ROOT)/.mise.toml" >&2; \
 		exit 2; \
 	fi; \
 	if [ ! -f "$(RUNTIME_ROOT)/mise.lock" ]; then \
@@ -1952,7 +2232,8 @@ _builtin_require_mise:
 		printf 'ERROR: mise.lock pins no github:jdx/mise release; run make upg\n' >&2; \
 		exit 2; \
 	fi; \
-	mise_actual="$$(mise --version 2>/dev/null | cut -d ' ' -f1)"; \
+	mise_version_output="$$(mise --version)"; \
+	mise_actual="$${mise_version_output%% *}"; \
 	if [ "$$mise_actual" != "$$mise_pin" ]; then \
 		printf 'ERROR: mise %s differs from the mise.lock pin %s; run make setup\n' "$$mise_actual" "$$mise_pin" >&2; \
 		exit 2; \
@@ -2267,6 +2548,18 @@ profile-gen-report: _builtin_require_environment
 		'import pstats, sys; stats = pstats.Stats(sys.argv[1]); stats.sort_stats("cumtime").print_stats(50); stats.sort_stats("tottime").print_callers(15)' \
 		"$(PROFILE_REPORTS_DIR)/conform.pstats"
 
+# Measure the environment guard itself before changing its provenance checks.
+_builtin-profile-environment: _builtin_require_interpreter
+	@mkdir -p "$(PROFILE_REPORTS_DIR)"
+	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
+		"$(PROFILE_REPORTS_DIR)/environment.pstats" workspace verify-environment \
+		--repository-root "$(RUNTIME_ROOT)"
+
+_builtin-profile-environment-report: _builtin_require_interpreter
+	@cd "$(PROJECT_ROOT)" || exit $$?; \
+		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
+		"$(PROFILE_REPORTS_DIR)/environment.pstats"
+
 # Measure the same mutating codemod lifecycle, retaining profiles on failure.
 _builtin-profile-mod: _builtin_require_environment
 	@mkdir -p "$(PROFILE_REPORTS_DIR)"
@@ -2409,8 +2702,11 @@ _builtin_release_publish: _builtin_require_environment
 # members and journals ordinary, Mise, lazy-init, and documentation phases through
 # one fixed point. Only `upg` resolves and rewrites the locks; gen installs
 # nothing and never runs another writer before or after conform's journal.
+export KIND
 _builtin_gen_init:
-	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)"
+	@set -eu; set --; \
+	if [ -n "$${KIND-}" ]; then set -- --kind "$$KIND"; fi; \
+	$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" "$$@"
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check-only
 
 _builtin_gen_all:
@@ -2430,7 +2726,7 @@ _builtin_mod_apply: _builtin_require_environment
 
 _builtin-census: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor census --repository-root "$(PROJECT_ROOT)" \
-		--families c --rules duplicate --rules wrong_tier --rules constant-consumers \
+		--rules duplicate --rules wrong_tier --rules constant-consumers \
 		--json-output "$(PROJECT_ROOT)/.reports/constants-census.json"
 
 _builtin-census-constants: _builtin_require_environment

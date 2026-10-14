@@ -274,6 +274,7 @@ class FlextInfraMisePublication:
             producer = FlextInfraCodegenPreconditions.producer_trees_current(
                 analysis.generator_trees,
                 modules=analysis.generator_modules,
+                reference=analysis.generator_reference,
             )
             if producer.failure:
                 return r[bool].from_failure(producer)
@@ -532,6 +533,25 @@ class FlextInfraMisePublication:
         )
 
     @staticmethod
+    def _batch_admission_is_inconsistent(
+        batch_admission: m.Infra.CodegenPhaseOutcome,
+    ) -> bool:
+        """Report whether the batch admission disagrees with its analysis.
+
+        Returns:
+            True when the admission carries an error, issues, an exception,
+            or its phase and admitted states differ from the analysis.
+        """
+        analysis = batch_admission.analysis
+        if analysis is None or batch_admission.error or batch_admission.issues:
+            return True
+        return bool(
+            batch_admission.exception is not None
+            or batch_admission.phase != analysis.phase
+            or batch_admission.admitted_states != analysis.inputs
+        )
+
+    @staticmethod
     def _validated_batch_admission(
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         batch_admission: m.Infra.CodegenPhaseOutcome,
@@ -544,9 +564,8 @@ class FlextInfraMisePublication:
 
         """
         batch_analysis = batch_admission.analysis
-        if FlextInfraMisePublication._batch_admission_mismatch(
+        if FlextInfraMisePublication._batch_admission_is_inconsistent(
             batch_admission,
-            batch_analysis,
         ):
             return r[bool].fail(
                 "publication requires its exact native batch admission",
@@ -587,26 +606,6 @@ class FlextInfraMisePublication:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _batch_admission_mismatch(
-        batch_admission: m.Infra.CodegenPhaseOutcome,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None,
-    ) -> bool:
-        """Report whether the admission outcome is not exactly this batch's.
-
-        Returns:
-            True when the admission does not match its own batch analysis.
-
-        """
-        if batch_analysis is None or batch_admission.error or batch_admission.issues:
-            return True
-        if batch_admission.exception is not None:
-            return True
-        return (
-            batch_admission.phase != batch_analysis.phase
-            or batch_admission.admitted_states != batch_analysis.inputs
-        )
-
-    @staticmethod
     def _generator_authority(
         ordered: t.VariadicTuple[m.Infra.CodegenStagedFile],
         published_states: t.MappingKV[
@@ -641,6 +640,7 @@ class FlextInfraMisePublication:
             journal.generator_trees,
             tuple(authority.values()),
             modules=journal.generator_modules,
+            reference=journal.generator_reference,
         )
 
     @staticmethod

@@ -335,6 +335,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         """
         writes: list[tuple[Path, bytes, int]] = []
         for before in plan.inputs:
+            if not before.path.is_relative_to(plan.workspace):
+                continue
             content = (
                 plan.updates[before.path].encode(c.DEFAULT_ENCODING)
                 if before.path in plan.updates
@@ -414,9 +416,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             The scope identity report of the transaction scope.
 
         """
-        if self._producer.failure:
-            return r[m.Infra.GitIdentityReport].from_failure(self._producer)
-        producer = FlextInfraCodegenPreconditions.producer_current(self._producer.value)
+        producer = self._file_session_authority()
         if producer.failure:
             return r[m.Infra.GitIdentityReport].from_failure(producer)
         identity = self._planner.scope_identity()
@@ -629,7 +629,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    prepared_journal.error or "file preparation failed",
+                    r[bool].fail(
+                        prepared_journal.error or "file preparation failed",
+                    ),
                 ),
             )
         ready = self._write_journal(
@@ -641,7 +643,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    ready.error or "file cursor persistence failed",
+                    r[bool].fail(
+                        ready.error or "file cursor persistence failed",
+                    ),
                 ),
             )
         return result_type.ok((prepared_journal.value, ready.value))

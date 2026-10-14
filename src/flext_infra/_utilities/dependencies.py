@@ -6,9 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from base64 import urlsafe_b64encode
 from collections.abc import Callable, Mapping, MutableMapping
-from importlib.metadata import requires
-from importlib.resources import files
+from functools import partial
+from importlib.metadata import Distribution, PackagePath
+from json import dumps
 from pathlib import Path
 from types import MappingProxyType
 
@@ -23,9 +25,552 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPyproject,
 )
 
+_EXACT_INSTALL_METADATA_NAMES: frozenset[str] = frozenset({"METADATA", "RECORD"})
+_EXACT_INSTALL_METADATA_COUNT: int = 2
+
 
 class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements):
     """Workspace dependency policy composed over independent requirement parsing."""
+
+    @staticmethod
+    def capture_deptry_scan(
+        project_path: Path,
+        venv_bin: Path,
+        *,
+        config_path: Path,
+        json_output_path: Path,
+    ) -> p.Result[m.Infra.DeptryScan]:
+        """Capture one native deptry report against an unchanged production tree.
+
+        Callers elect the interpreter, configuration and fresh report destination.
+
+        Returns:
+            Complete native findings and the states authenticating their inputs.
+        """
+        result_type = r[m.Infra.DeptryScan]
+        payload = FlextInfraUtilitiesDependencies._captured_deptry_inputs(
+            project_path,
+            config_path=config_path,
+        )
+        if payload.failure:
+            return result_type.from_failure(payload)
+        settings, source = payload.value
+        native = FlextInfraUtilitiesDependencies._captured_deptry_native(
+            venv_bin,
+            project_path,
+            config_path=config_path,
+            json_output_path=json_output_path,
+        )
+        if native.failure:
+            return result_type.from_failure(native)
+        output, report_state, parsed = native.value
+        rechecked = FlextInfraUtilitiesDependencies._rechecked_deptry_states(
+            settings,
+            report_state,
+            source,
+        )
+        if rechecked.failure:
+            return result_type.from_failure(rechecked)
+        coverage = FlextInfraUtilitiesDependencies._validated_deptry_coverage(
+            output,
+            parsed,
+        )
+        if coverage.failure:
+            return result_type.from_failure(coverage)
+        if report_state.content is None:
+            return result_type.fail(
+                "deptry report state has no captured bytes to authenticate",
+            )
+        return result_type.ok(
+            m.Infra.DeptryScan(
+                scanned_files=coverage.value,
+                venv_bin=venv_bin,
+                source=source,
+                native=output,
+                settings=settings,
+                report_state=report_state,
+                report_sha256=u.Cli.sha256_bytes(report_state.content),
+                report=parsed,
+            )
+        )
+
+    @staticmethod
+    def _validated_deptry_coverage(
+        output: m.Cli.CommandOutput,
+        parsed: m.Infra.DeptryNativeReport,
+    ) -> p.Result[int]:
+        """Authenticate the native exit status and its scan coverage line.
+
+        Returns:
+            The single positive coverage count reported by native deptry.
+        """
+        result_type = r[int]
+        if output.outcome.raw_return_code != int(bool(parsed.root)):
+            return result_type.fail("deptry exit status contradicts its native report")
+        coverage = tuple(
+            int(match.group("count"))
+            for line in (*output.stdout.splitlines(), *output.stderr.splitlines())
+            if (match := c.Infra.DEPTRY_SCAN_COVERAGE_RE.fullmatch(line)) is not None
+        )
+        if len(coverage) != 1 or coverage[0] < 1:
+            return result_type.fail(
+                "deptry lacks positive unambiguous native scan coverage\n"
+                f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}",
+            )
+        return result_type.ok(coverage[0])
+
+    @staticmethod
+    def _authenticated_deptry_source(
+        project_path: Path,
+    ) -> p.Result[m.Cli.AtomicPhysicalTreeManifest]:
+        """Inventory the production tree and authenticate its physical shape.
+
+        Returns:
+            The exact tree manifest, or the first authentication failure.
+        """
+        result_type = r[m.Cli.AtomicPhysicalTreeManifest]
+        source = u.Cli.atomic_inventory_physical_tree(
+            project_path / c.Infra.DEFAULT_SRC_DIR,
+        )
+        if source.failure:
+            return result_type.from_failure(source)
+        if any(entry.kind == "symlink" for entry in source.value.entries):
+            return result_type.fail(
+                "deptry production source contains unauthenticated symbolic links"
+            )
+        return result_type.ok(source.value)
+
+    @staticmethod
+    def _captured_deptry_inputs(
+        project_path: Path,
+        *,
+        config_path: Path,
+    ) -> p.Result[t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicPhysicalTreeManifest]]:
+        """Read the deptry configuration and authenticate the production tree.
+
+        Returns:
+            The configuration state and the authenticated source manifest.
+        """
+        result_type = r[t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicPhysicalTreeManifest]]
+        settings = u.Cli.atomic_read_binary_file_state(config_path, required=True)
+        if settings.failure:
+            return result_type.from_failure(settings)
+        source = FlextInfraUtilitiesDependencies._authenticated_deptry_source(
+            project_path,
+        )
+        if source.failure:
+            return result_type.from_failure(source)
+        return result_type.ok((settings.value, source.value))
+
+    @staticmethod
+    def _run_deptry(
+        venv_bin: Path,
+        project_path: Path,
+        *,
+        config_path: Path,
+        json_output_path: Path,
+    ) -> p.Result[m.Cli.CommandOutput]:
+        """Run native deptry once against a fresh report destination.
+
+        Returns:
+            The validated native command output, or the first execution failure.
+        """
+        result_type = r[m.Cli.CommandOutput]
+        before = u.Cli.atomic_read_binary_file_state(json_output_path, required=False)
+        if before.failure:
+            return result_type.from_failure(before)
+        if before.value.content is not None:
+            return result_type.fail(
+                f"deptry report destination already exists: {json_output_path}"
+            )
+        completed = u.Cli.run_raw(
+            (
+                str(venv_bin / c.Infra.DEPTRY),
+                str(c.Infra.DEFAULT_SRC_DIR),
+                "--config",
+                str(config_path),
+                "--json-output",
+                str(json_output_path),
+                "--no-ansi",
+            ),
+            cwd=project_path,
+            timeout=c.Infra.TIMEOUT_MEDIUM,
+        )
+        if completed.failure:
+            return result_type.from_failure(completed)
+        native = m.Cli.CommandOutput.model_validate(
+            completed.value, from_attributes=True
+        )
+        if (
+            native.outcome.timed_out
+            or native.outcome.forwarded_signal is not None
+            or native.outcome.raw_return_code not in {0, 1}
+        ):
+            return result_type.fail(
+                f"deptry process failed: {native.outcome.model_dump_json()}\n"
+                f"stdout:\n{native.stdout}\nstderr:\n{native.stderr}",
+            )
+        return result_type.ok(native)
+
+    @staticmethod
+    def _parsed_deptry_report(
+        json_output_path: Path,
+    ) -> p.Result[t.Pair[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]:
+        """Read and strictly parse the fresh native deptry report.
+
+        Returns:
+            The report file state and its validated native payload.
+        """
+        result_type = r[t.Pair[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]
+        report_state = u.Cli.atomic_read_binary_file_state(
+            json_output_path, required=True
+        )
+        if report_state.failure:
+            return result_type.from_failure(report_state)
+        if report_state.value.content is None:
+            return result_type.fail(
+                f"deptry did not produce its native report: {json_output_path}"
+            )
+        parsed = r[m.Infra.DeptryNativeReport].create_from_callable(
+            partial(
+                m.Infra.DeptryNativeReport.model_validate_json,
+                report_state.value.content,
+                strict=True,
+            ),
+        )
+        if parsed.failure:
+            return result_type.from_failure(parsed)
+        return result_type.ok((report_state.value, parsed.value))
+
+    @staticmethod
+    def _captured_deptry_native(
+        venv_bin: Path,
+        project_path: Path,
+        *,
+        config_path: Path,
+        json_output_path: Path,
+    ) -> p.Result[
+        t.Triple[m.Cli.CommandOutput, m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]
+    ]:
+        """Run deptry once and strictly parse its fresh native report.
+
+        Returns:
+            The validated command output, report state, and native report.
+        """
+        result_type = r[
+            t.Triple[
+                m.Cli.CommandOutput,
+                m.Cli.AtomicFileState,
+                m.Infra.DeptryNativeReport,
+            ]
+        ]
+        native = FlextInfraUtilitiesDependencies._run_deptry(
+            venv_bin,
+            project_path,
+            config_path=config_path,
+            json_output_path=json_output_path,
+        )
+        if native.failure:
+            return result_type.from_failure(native)
+        report = FlextInfraUtilitiesDependencies._parsed_deptry_report(
+            json_output_path,
+        )
+        if report.failure:
+            return result_type.from_failure(report)
+        report_state, parsed = report.value
+        return result_type.ok((native.value, report_state, parsed))
+
+    @staticmethod
+    def _rechecked_deptry_states(
+        settings: m.Cli.AtomicFileState,
+        report_state: m.Cli.AtomicFileState,
+        source: m.Cli.AtomicPhysicalTreeManifest,
+    ) -> p.Result[bool]:
+        """Re-verify the captured states and the unchanged production tree.
+
+        Returns:
+            Whether every captured state survived the scan unchanged.
+        """
+        result_type = r[bool]
+        verified = u.Cli.atomic_verify_binary_file_states((settings, report_state))
+        if verified.failure:
+            return result_type.from_failure(verified)
+        current_source = u.Cli.atomic_inventory_physical_tree(source.root.path)
+        if current_source.failure:
+            return result_type.from_failure(current_source)
+        if current_source.value != source:
+            return result_type.fail(
+                f"deptry production source changed during scanning: {source.root.path}"
+            )
+        return result_type.ok(value=True)
+
+    @staticmethod
+    def runtime_dependency_plan(
+        scan: m.Infra.DeptryScan,
+        inputs: m.Infra.RuntimeDependencyInputs,
+    ) -> p.Result[m.Infra.RuntimeDependencyPlan]:
+        """Calculate native-evidenced changes from explicit supplier provenance.
+
+        Preserve target-owned requirement strings, including their sources, extras
+        and markers. Installation never establishes that an import is applicable.
+
+        Returns:
+            The target requirement changes and unresolved native import identities.
+        """
+        result_type = r[m.Infra.RuntimeDependencyPlan]
+        payload = FlextInfraUtilitiesDependencies._locked_environment_and_document(
+            scan,
+            inputs,
+        )
+        if payload.failure:
+            return result_type.from_failure(payload)
+        locked, document = payload.value
+        declarations = FlextInfraUtilitiesDependencies._declared_runtime_requirements(
+            scan,
+            document,
+        )
+        if declarations.failure:
+            return result_type.from_failure(declarations)
+        suppliers = FlextInfraUtilitiesDependencies._validated_import_suppliers(
+            inputs,
+            locked,
+        )
+        if suppliers.failure:
+            return result_type.from_failure(suppliers)
+        selected, unresolved = FlextInfraUtilitiesDependencies._runtime_selections(
+            scan,
+            declarations.value,
+            suppliers.value,
+            development_only=inputs.development_only,
+        )
+        return result_type.ok(
+            m.Infra.RuntimeDependencyPlan(
+                source=scan.source,
+                before=scan.settings,
+                dependencies=tuple(selected),
+                unresolved_modules=tuple(dict.fromkeys(unresolved)),
+                inputs=(
+                    inputs.lock,
+                    *inputs.inputs,
+                    *(
+                        state
+                        for provider in inputs.providers
+                        for state in provider.inputs
+                    ),
+                    scan.settings,
+                    scan.report_state,
+                ),
+            )
+        )
+
+    @staticmethod
+    def _locked_environment_and_document(
+        scan: m.Infra.DeptryScan,
+        inputs: m.Infra.RuntimeDependencyInputs,
+    ) -> p.Result[t.Pair[m.Infra.LockedEnvironment, t.JsonMapping]]:
+        """Authenticate provenance and decode the lock and declaration payloads.
+
+        Returns:
+            The validated locked environment and native pyproject mapping.
+        """
+        result_type = r[t.Pair[m.Infra.LockedEnvironment, t.JsonMapping]]
+        target = inputs.target_root
+        if (
+            not target.is_absolute()
+            or scan.settings.path != target / c.PYPROJECT_FILENAME
+        ):
+            return result_type.fail("dependency provenance belongs to another target")
+        if (
+            not inputs.python.is_absolute()
+            or inputs.python.parent != scan.venv_bin
+            or scan.settings.content is None
+        ):
+            return result_type.fail(
+                "dependency provenance lacks its interpreter or settings"
+            )
+        if (
+            inputs.lock.path.name != c.Infra.UV_LOCK_FILENAME
+            or inputs.lock.content is None
+        ):
+            return result_type.fail("dependency provenance lacks its native UV lock")
+        lock_payload = u.Cli.toml_mapping_from_text(
+            inputs.lock.content.decode(c.DEFAULT_ENCODING),
+        )
+        if lock_payload is None:
+            return result_type.fail(f"invalid dependency lock: {inputs.lock.path}")
+        locked = m.Infra.LockedEnvironment.model_validate_json(dumps(lock_payload))
+        document = u.Cli.toml_mapping_from_text(
+            scan.settings.content.decode(c.DEFAULT_ENCODING),
+        )
+        if document is None:
+            return result_type.fail(
+                f"invalid dependency declaration: {scan.settings.path}"
+            )
+        return result_type.ok((locked, document))
+
+    @staticmethod
+    def _declared_runtime_requirements(
+        scan: m.Infra.DeptryScan,
+        document: t.JsonMapping,
+    ) -> p.Result[m.Infra.DepsToml.MemberRequirements]:
+        """Read the project table into its typed requirement declarations.
+
+        Returns:
+            The validated member requirements, or the declaration failure.
+        """
+        result_type = r[m.Infra.DepsToml.MemberRequirements]
+        project = u.Cli.toml_mapping_child(document, c.Infra.PROJECT)
+        if project is None:
+            return result_type.fail(
+                f"project declaration is absent: {scan.settings.path}"
+            )
+        declarations = m.Infra.DepsToml.MemberRequirements.model_validate({
+            "name": project[c.Infra.NAME],
+            "dependencies": project.get(c.Infra.DEPENDENCIES, []),
+            "optional_dependencies": project.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
+            "dependency-groups": document.get(c.Infra.DEPENDENCY_GROUPS, {}),
+        })
+        return result_type.ok(declarations)
+
+    @staticmethod
+    def _validated_import_suppliers(
+        inputs: m.Infra.RuntimeDependencyInputs,
+        locked: m.Infra.LockedEnvironment,
+    ) -> p.Result[
+        t.VariadicTuple[t.Pair[m.Infra.RuntimeDependencyProvider, Requirement]]
+    ]:
+        """Parse provider requirements and authenticate them against the lock.
+
+        Returns:
+            Parsed provider requirement pairs, or the first provenance failure.
+        """
+        result_type = r[
+            t.VariadicTuple[t.Pair[m.Infra.RuntimeDependencyProvider, Requirement]]
+        ]
+        suppliers = tuple(
+            (provider, Requirement(provider.requirement))
+            for provider in inputs.providers
+        )
+        for provider, requirement in suppliers:
+            if provider.package not in locked.package:
+                return result_type.fail(
+                    "import supplier differs from the selected lock: "
+                    f"{provider.package.name}",
+                )
+            if canonicalize_name(requirement.name) != canonicalize_name(
+                provider.package.name
+            ):
+                return result_type.fail(
+                    "import supplier requirement differs from its locked identity: "
+                    f"{provider.package.name}",
+                )
+        return result_type.ok(suppliers)
+
+    @staticmethod
+    def _runtime_selections(
+        scan: m.Infra.DeptryScan,
+        declarations: m.Infra.DepsToml.MemberRequirements,
+        suppliers: t.VariadicTuple[
+            t.Pair[m.Infra.RuntimeDependencyProvider, Requirement]
+        ],
+        *,
+        development_only: t.StrTuple,
+    ) -> t.Pair[list[str], list[str]]:
+        """Select retained runtime requirements and collect unresolved modules.
+
+        Returns:
+            The retained requirement strings and the unresolved import modules.
+        """
+        runtime = declarations.dependencies
+        development = tuple(
+            item
+            for group in declarations.dependency_groups.values()
+            for item in group
+            if isinstance(item, str)
+        ) + tuple(
+            item
+            for group in declarations.optional_dependencies.values()
+            for item in group
+        )
+        parsed_runtime = tuple(Requirement(item) for item in runtime)
+        parsed_development = tuple(Requirement(item) for item in development)
+        forbidden = {
+            canonicalize_name(Requirement(item).name) for item in development_only
+        }
+        unused = {
+            canonicalize_name(item.module)
+            for item in scan.report.root
+            if item.error.code == c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE
+        }
+        selected = [
+            raw
+            for raw, requirement in zip(runtime, parsed_runtime, strict=True)
+            if canonicalize_name(requirement.name) not in unused
+        ]
+        unresolved: list[str] = []
+        for diagnostic in scan.report.root:
+            if diagnostic.error.code not in {"DEP001", "DEP003", "DEP004"}:
+                continue
+            providers = tuple(
+                (provider, requirement)
+                for provider, requirement in suppliers
+                if diagnostic.module in provider.modules
+            )
+            if len(providers) != 1:
+                unresolved.append(diagnostic.module)
+                continue
+            provider = providers[0][0]
+            name = canonicalize_name(provider.package.name)
+            if name == canonicalize_name(declarations.name) or name in forbidden:
+                unresolved.append(diagnostic.module)
+                continue
+            authored = tuple(
+                raw
+                for raw, parsed in zip(development, parsed_development, strict=True)
+                if canonicalize_name(parsed.name) == name
+            )
+            additions = authored or (provider.requirement,)
+            selected.extend(item for item in additions if item not in selected)
+        return selected, unresolved
+
+    @staticmethod
+    def publish_runtime_dependency_plan(
+        plan: m.Infra.RuntimeDependencyPlan,
+    ) -> p.Result[bool]:
+        """Publish only the calculated runtime list against unchanged source states.
+
+        The caller owns the repository mutation lease. Locks remain owned by upg.
+
+        Returns:
+            Whether the original target declaration changed.
+        """
+        u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
+        current_source = u.Cli.atomic_inventory_physical_tree(plan.source.root.path)
+        if current_source.failure:
+            return r[bool].from_failure(current_source)
+        if current_source.value != plan.source:
+            return r[bool].fail(
+                "deptry production source changed before publication: "
+                f"{plan.source.root.path}"
+            )
+        if plan.before.content is None:
+            return r[bool].fail(f"dependency declaration is absent: {plan.before.path}")
+        document = u.Cli.toml_parse_text(plan.before.content.decode(c.DEFAULT_ENCODING))
+        if document is None:
+            return r[bool].fail(f"invalid dependency declaration: {plan.before.path}")
+        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+        if project is None:
+            return r[bool].fail(f"project declaration is absent: {plan.before.path}")
+        changed = u.Cli.toml_sync_string_list(
+            project, c.Infra.DEPENDENCIES, plan.dependencies
+        )
+        if changed:
+            u.Cli.atomic_write_binary_file_guarded(
+                plan.before,
+                document.as_string().encode(c.DEFAULT_ENCODING),
+                permission_mode=plan.before.mode,
+            ).unwrap()
+        return r[bool].ok(changed)
 
     @staticmethod
     def project_dev_groups_from_payload(
@@ -100,45 +645,6 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             for requirement in groups.get(str(group), ())
         ])
 
-    @classmethod
-    def flext_dependency_namespaces(
-        cls,
-        document: t.Cli.TomlDocument,
-    ) -> t.StrSequence:
-        """Extract declared FLEXT dependency namespaces from one TOML document.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
-        if not normalized:
-            return ()
-        return cls.flext_dependency_namespaces_from_payload(normalized)
-
-    @classmethod
-    def flext_dependency_namespaces_from_payload(
-        cls,
-        payload: t.MappingKV[str, t.JsonValue],
-    ) -> t.StrSequence:
-        """Extract every declared ``flext-*`` dependency as a Python namespace.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        # FLEXT dependencies are first-party contracts even
-        # when their uv source declaration is owned by an enclosing workspace.
-
-        normalized = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
-        return tuple(
-            sorted(
-                name.replace("-", "_")
-                for name in cls.declared_dependency_names_from_payload(normalized)
-                if name == "flext" or name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
-            ),
-        )
-
     @staticmethod
     def project_development_requirements(
         scaffold: m.Infra.ScaffoldProjectSpec,
@@ -157,14 +663,8 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             Authored requirements followed by missing applicable suppliers.
         """
         own = canonicalize_name(distribution)
-        authored = tuple(
-            dict.fromkeys(
-                item
-                for item in declared
-                if canonicalize_name(Requirement(item).name) != own
-            )
-        )
-        names = {canonicalize_name(Requirement(item).name) for item in authored}
+        authored = tuple(declared)
+        retained = {Requirement(item) for item in authored}
         policy = (
             *scaffold.dev,
             *(
@@ -173,14 +673,14 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                 else ()
             ),
         )
-        return (
-            *authored,
-            *(
-                requirement
-                for requirement in policy
-                if canonicalize_name(Requirement(requirement).name) not in {*names, own}
-            ),
-        )
+        additions: list[str] = []
+        for requirement in policy:
+            parsed = Requirement(requirement)
+            if canonicalize_name(parsed.name) == own or parsed in retained:
+                continue
+            retained.add(parsed)
+            additions.append(requirement)
+        return (*authored, *additions)
 
     @classmethod
     def project_dependency_names_from_payload(
@@ -321,9 +821,9 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         )
 
     @staticmethod
-    def dependency_waves(
-        edges: Mapping[str, t.StrSequence],
-    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
+    def dependency_waves[NameT: str](
+        edges: Mapping[NameT, t.StrSequence],
+    ) -> p.Result[t.SequenceOf[t.SequenceOf[NameT]]]:
         """Split a closed named dependency graph into dependency-first waves.
 
         Wave ``n`` contains only names whose dependencies all live in earlier
@@ -334,7 +834,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         provider ordering) compose it through ``p.Result`` chaining.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[t.StrSequence]]``.
+            The resulting ``p.Result[t.SequenceOf[t.SequenceOf[NameT]]]``.
 
         """
         unknown = sorted({
@@ -344,18 +844,18 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             if dependency not in edges
         })
         if unknown:
-            return r[t.SequenceOf[t.StrSequence]].fail(
+            return r[t.SequenceOf[t.SequenceOf[NameT]]].fail(
                 "dependency graph references names outside the graph: "
                 + ", ".join(unknown),
             )
-        pending: t.MutableMappingKV[str, set[str]] = {
+        pending: dict[NameT, set[str]] = {
             name: set(deps) for name, deps in edges.items()
         }
-        waves: list[t.StrSequence] = []
+        waves: list[tuple[NameT, ...]] = []
         while pending:
             ready = frozenset(name for name, deps in pending.items() if not deps)
             if not ready:
-                return r[t.SequenceOf[t.StrSequence]].fail(
+                return r[t.SequenceOf[t.SequenceOf[NameT]]].fail(
                     "cyclic dependency graph: " + ", ".join(sorted(pending)),
                 )
             waves.append(tuple(sorted(ready)))
@@ -364,76 +864,226 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                 for name, deps in pending.items()
                 if name not in ready
             }
-        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
+        return r[t.SequenceOf[t.SequenceOf[NameT]]].ok(tuple(waves))
 
     @classmethod
-    def project_dependency_resource_files(
+    def installed_resource_snapshot(
         cls,
-        project_root: Path,
+        distribution: str,
         *,
         resource_parts: t.StrSequence,
-        distribution_prefix: str = "",
-        suffix: str = "",
-    ) -> t.SequenceOf[Path]:
-        """Resolve runtime, local, and test dependency resources in order.
+        environment_root: Path,
+    ) -> p.Result[m.Infra.InstalledResourceSnapshot]:
+        """Select one declared distribution resource without importing its namespace.
 
         Returns:
-            The resulting ``t.SequenceOf[Path]``.
-
+            Original resource and inventory snapshots, or the first causal failure.
         """
-        pyproject = project_root / c.PYPROJECT_FILENAME
-        payload = u.Cli.toml_read_json(pyproject).unwrap()
-        project_name = canonicalize_name(
-            FlextInfraUtilitiesPyproject.project_name_from_payload(
-                project_root,
-                payload,
-            ),
+        result_type = r[m.Infra.InstalledResourceSnapshot]
+        supplier = cls._elected_installed_supplier(distribution, resource_parts)
+        if supplier.failure:
+            return result_type.from_failure(supplier)
+        elected = cls._elected_installed_resource(
+            supplier.value,
+            distribution,
+            resource_parts,
         )
-        declared_names = cls.declared_dependency_names_from_payload(payload)
-
-        def installed_dependencies(name: str) -> t.StrSequence:
-            return tuple(
-                dependency
-                for raw_requirement in requires(name) or ()
-                if (dependency := cls.dep_name(raw_requirement, active_only=True))
-                is not None
+        if elected.failure:
+            return result_type.from_failure(elected)
+        resource, metadata_entries = elected.value
+        states = cls._captured_installed_states(
+            supplier.value,
+            environment_root,
+            (*metadata_entries, resource),
+        )
+        if states.failure:
+            return result_type.from_failure(states)
+        if not cls._resource_matches_record(resource, states.value[-1]):
+            return result_type.fail(
+                f"installed resource differs from its owning RECORD: {distribution} "
+                f"{'/'.join(resource_parts)}",
             )
-
-        ordered = list(
-            cls.dependency_order(
-                declared_names,
-                dependencies=installed_dependencies,
-                prefix=distribution_prefix,
+        rechecked = cls._rechecked_installed_inventory(
+            supplier.value,
+            states.value,
+            distribution,
+        )
+        if rechecked.failure:
+            return result_type.from_failure(rechecked)
+        return result_type.ok(
+            m.Infra.InstalledResourceSnapshot(
+                resource=states.value[-1],
+                inventory=tuple(states.value[:-1]),
             ),
         )
-        package_names: MutableMapping[str, str] = {
-            name: name.replace("-", "_") for name in ordered
-        }
-        if not distribution_prefix or project_name.startswith(distribution_prefix):
-            if project_name not in ordered:
-                ordered.append(project_name)
-            package_names[project_name] = (
-                FlextInfraUtilitiesPyproject.package_name_from_payload(
-                    project_root,
-                    payload,
-                    FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload),
+
+    @staticmethod
+    def _elected_installed_supplier(
+        distribution: str,
+        resource_parts: t.StrSequence,
+    ) -> p.Result[Distribution]:
+        """Authenticate one installed distribution and its resource components.
+
+        Returns:
+            The single elected installed distribution, or the election failure.
+        """
+        result_type = r[Distribution]
+        if not resource_parts or any(
+            not part
+            or part in {".", ".."}
+            or "/" in part
+            or "\\" in part
+            or "\0" in part
+            for part in resource_parts
+        ):
+            return result_type.fail(
+                "installed resource requires exact relative components"
+            )
+        installed = u.installed_distributions(name=distribution)
+        if len(installed) != 1:
+            return result_type.fail(
+                f"installed resource requires one distribution: {distribution}; "
+                f"observed={len(installed)}",
+            )
+        supplier = installed[0]
+        if canonicalize_name(supplier.metadata["Name"]) != canonicalize_name(
+            distribution
+        ):
+            return result_type.fail(
+                f"installed resource distribution identity differs: {distribution}",
+            )
+        return result_type.ok(supplier)
+
+    @staticmethod
+    def _elected_installed_resource(
+        supplier: Distribution,
+        distribution: str,
+        resource_parts: t.StrSequence,
+    ) -> p.Result[t.Pair[PackagePath, t.VariadicTuple[PackagePath]]]:
+        """Elect the exact RECORD resource entry beside its native metadata pair.
+
+        Returns:
+            The resource entry and its METADATA and RECORD inventory entries.
+        """
+        result_type = r[t.Pair[PackagePath, t.VariadicTuple[PackagePath]]]
+        records = supplier.files
+        if records is None:
+            return result_type.fail(
+                f"installed resource has no RECORD inventory: {distribution}",
+            )
+        resource_entries = tuple(
+            item
+            for item in records
+            if item.parts[-len(resource_parts) :] == tuple(resource_parts)
+        )
+        if len(resource_entries) != 1:
+            return result_type.fail(
+                f"installed resource requires one exact RECORD entry: {distribution} "
+                f"{'/'.join(resource_parts)}; observed={len(resource_entries)}",
+            )
+        metadata_entries = tuple(
+            item
+            for item in records
+            if item.name in {"METADATA", "RECORD"}
+            and item.parent.name.endswith(".dist-info")
+        )
+        if (
+            frozenset(item.name for item in metadata_entries)
+            != (_EXACT_INSTALL_METADATA_NAMES)
+            or len(metadata_entries) != _EXACT_INSTALL_METADATA_COUNT
+        ):
+            return result_type.fail(
+                "installed resource needs its exact METADATA and RECORD: "
+                f"{distribution}",
+            )
+        return result_type.ok((resource_entries[0], metadata_entries))
+
+    @staticmethod
+    def _captured_installed_states(
+        supplier: Distribution,
+        environment_root: Path,
+        entries: t.SequenceOf[PackagePath],
+    ) -> p.Result[list[m.Cli.AtomicFileState]]:
+        """Capture the byte state of every elected entry inside its environment.
+
+        Args:
+            supplier: The elected installed distribution owning the entries.
+            environment_root: Physical root the entries must stay inside.
+            entries: RECORD entries captured in inventory-then-resource order.
+
+        Returns:
+            The captured states in entry order, or the first capture failure.
+        """
+        result_type = r[list[m.Cli.AtomicFileState]]
+        prefix = environment_root.expanduser().resolve(strict=True)
+        states: list[m.Cli.AtomicFileState] = []
+        for entry in entries:
+            path = Path(str(supplier.locate_file(entry))).resolve(strict=True)
+            if not path.is_relative_to(prefix):
+                return result_type.fail(
+                    f"installed resource escapes its physical environment: {path}",
                 )
-            )
-        discovered: list[Path] = []
-        seen: set[Path] = set()
-        for distribution_name in ordered:
-            resource = files(package_names[distribution_name])
-            for part in resource_parts:
-                resource /= part
-            resource_root = Path(str(resource))
-            if not resource_root.is_dir():
-                continue
-            for candidate in sorted(resource_root.rglob(f"*{suffix}")):
-                resolved = candidate.resolve()
-                if resolved not in seen:
-                    seen.add(resolved)
-                    discovered.append(resolved)
-        return tuple(discovered)
+            captured = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if captured.failure:
+                return result_type.from_failure(captured)
+            states.append(captured.value)
+        return result_type.ok(states)
+
+    @staticmethod
+    def _resource_matches_record(
+        resource: PackagePath,
+        state: m.Cli.AtomicFileState,
+    ) -> bool:
+        """Authenticate one captured resource against its RECORD digest row.
+
+        Args:
+            resource: The elected RECORD entry declaring the expected digest.
+            state: The captured byte state of the resource file.
+
+        Returns:
+            Whether the captured content matches its RECORD digest and size.
+        """
+        return not (
+            state.content is None
+            or resource.hash is None
+            or resource.hash.mode != "sha256"
+            or resource.size != len(state.content)
+            or resource.hash.value
+            != urlsafe_b64encode(bytes.fromhex(u.Cli.sha256_bytes(state.content)))
+            .rstrip(b"=")
+            .decode("ascii")
+        )
+
+    @staticmethod
+    def _rechecked_installed_inventory(
+        supplier: Distribution,
+        states: t.SequenceOf[m.Cli.AtomicFileState],
+        distribution: str,
+    ) -> p.Result[bool]:
+        """Authenticate the METADATA and RECORD owners and their byte stability.
+
+        Args:
+            supplier: The elected installed distribution owning the inventory.
+            states: Captured states in inventory-then-resource order.
+            distribution: Elected distribution spelling used in failure text.
+
+        Returns:
+            Whether the inventory is native and survived capture unchanged.
+        """
+        result_type = r[bool]
+        inventory = tuple(states[:-1])
+        for name in ("METADATA", "RECORD"):
+            recorded = next(item for item in inventory if item.path.name == name)
+            raw = supplier.read_text(name)
+            if raw is None or recorded.content != raw.encode(c.DEFAULT_ENCODING):
+                return result_type.fail(
+                    "installed resource inventory has a foreign owner: "
+                    f"{distribution} {name}",
+                )
+        unchanged = u.Cli.atomic_verify_binary_file_states(states)
+        if unchanged.failure:
+            return result_type.from_failure(unchanged)
+        return result_type.ok(value=True)
 
     @staticmethod
     def constraint_specifier(version: str) -> str:

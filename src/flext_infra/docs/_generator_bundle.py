@@ -94,6 +94,8 @@ class FlextInfraDocGeneratorBundleMixin:
         Yields:
             Results of the documentation generation bundle preparation for each batch.
         """
+        from flext_infra.docs.generator import FlextInfraDocGenerator
+
         root_scope = next(
             (scope for scope in selected if scope.name == c.Infra.RK_ROOT),
             None,
@@ -101,7 +103,10 @@ class FlextInfraDocGeneratorBundleMixin:
         for scope in selected:
             if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
                 continue
-            producer = FlextInfraCodegenPreconditions.capture_producer()
+            producer = FlextInfraCodegenPreconditions.capture_producer(
+                root,
+                entrypoint=FlextInfraDocGenerator.execute_request,
+            )
             if producer.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(producer)
                 return
@@ -265,7 +270,12 @@ class FlextInfraDocGeneratorBundleMixin:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
-        producer = FlextInfraCodegenPreconditions.capture_producer()
+        from flext_infra.docs.generator import FlextInfraDocGenerator
+
+        producer = FlextInfraCodegenPreconditions.capture_producer(
+            request.repository_root,
+            entrypoint=FlextInfraDocGenerator.execute_request,
+        )
         if producer.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(producer)
         started_at = perf_counter()
@@ -647,9 +657,15 @@ class FlextInfraDocGeneratorBundleMixin:
         if inputs.failure:
             return result_type.from_failure(inputs)
         captured = {item.path: item for item in source_states}
-        if any(captured.get(item.path) != item for item in inputs.value.sources):
+        mismatched = tuple(
+            str(item.path)
+            for item in inputs.value.sources
+            if captured.get(item.path) != item
+        )
+        if mismatched:
             return result_type.fail(
                 "governance configuration differs from captured docs sources",
+                error_data={"mismatched_sources": mismatched},
             )
         ref = cls._governance_source_ref(repository_root, inputs.value)
         if ref.failure:
@@ -693,12 +709,33 @@ class FlextInfraDocGeneratorBundleMixin:
             return result_type.from_failure(owned)
         if owned.value is not None:
             return result_type.ok(owned.value)
+        family = cls._family_governance_ref(repository_root, inputs)
+        if family.failure:
+            return result_type.from_failure(family)
+        return result_type.ok(family.value)
+
+    @classmethod
+    def _family_governance_ref(
+        cls,
+        repository_root: Path,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[str]:
+        """Resolve and authenticate the declared dependency family line.
+
+        Returns:
+            The dependency family branch, or the first resolution failure.
+        """
+        result_type = r[str]
         line = u.Infra.flext_integration_line(
             codegen=inputs.spec,
             repository_root=repository_root,
         )
         if line.failure:
             return result_type.from_failure(line)
+        if line.value.base_url is None:
+            return result_type.fail(
+                "detected integration line without a base URL",
+            )
         if c.Infra.GITHUB_REPO_URL.rsplit("/", maxsplit=1)[0] != (
             line.value.base_url.rstrip("/")
         ):

@@ -392,10 +392,10 @@ class FlextInfraCodemodSemanticApply:
         return r[bool].ok(value=True)
 
     @classmethod
-    def source_fingerprint(
+    def source_fingerprint[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
     ) -> t.VariadicTuple[t.Pair[str, str]]:
         """Identify the complete governed source state between mod phases.
 
@@ -409,10 +409,10 @@ class FlextInfraCodemodSemanticApply:
         )
 
     @classmethod
-    def relocation_findings(
+    def relocation_findings[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> t.VariadicTuple[m.Infra.DeclarationRelocationFinding]:
         """Return every payload declaration whose relocation owner is unresolved.
@@ -427,10 +427,10 @@ class FlextInfraCodemodSemanticApply:
         )
 
     @classmethod
-    def plan_transaction_paths(
+    def plan_transaction_paths[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Return one immutable Rope callback for the mod loop's progress identity.
@@ -847,9 +847,9 @@ class FlextInfraCodemodSemanticApply:
         return verified
 
     @staticmethod
-    def _source_inventory(
+    def _source_inventory[FindingT: m.Infra.ModOccurrence](
         root: Path,
-        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
     ) -> t.MappingKV[Path, str]:
         """Read governed sources and every Python path reported by preflight.
 

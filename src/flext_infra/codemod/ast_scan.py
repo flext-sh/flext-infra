@@ -22,6 +22,7 @@ from uuid import uuid4
 from flext_cli import cli
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra._utilities.refactor import _RuleDeltaOptions
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
 
@@ -222,7 +223,9 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             catalog_after = u.Infra.codemod_rule_plan(root)
             cls._require_whole_catalog_correspondence(catalog_before, catalog_after)
             deltas = u.Infra.rule_deltas(
-                before, after.value, publication_chain=tuple(published_plans)
+                before,
+                after,
+                options=_RuleDeltaOptions(publication_chain=tuple(published_plans)),
             )
         except ValueError as exc:
             sys.stderr.write(
@@ -233,7 +236,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             return outcome if outcome.failure else r[t.Cli.ResultValue].fail(str(exc))
         cli.display_text(
             f"ast: whole-catalog before={before.findings} "
-            f"after={after.value.findings}; "
+            f"after={after.findings}; "
             "text phases=0 semantic callbacks=0; corpus=full",
         )
         for delta in deltas:

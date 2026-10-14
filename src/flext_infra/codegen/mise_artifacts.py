@@ -43,10 +43,7 @@ class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
         source = u.Cli.files_read_text(path)
         if source.failure:
             return r[t.JsonMapping].from_failure(source)
-        payload = u.Cli.toml_mapping_from_text(source.value)
-        if payload is None:
-            return r[t.JsonMapping].fail(f"invalid TOML in {path.name}")
-        return r[t.JsonMapping].ok(payload)
+        return u.Cli.toml_mapping_from_text_result(source.value)
 
     @staticmethod
     def _tool_version(raw_tool: t.JsonValue) -> str | None:

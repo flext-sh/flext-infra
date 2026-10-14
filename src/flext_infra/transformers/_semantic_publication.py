@@ -226,7 +226,10 @@ class FlextInfraSemanticPublication:
             analysis.files,
             (*options.projection_roots, *options.input_roots),
         )
-        producer = FlextInfraCodegenPreconditions.capture_producer()
+        producer = FlextInfraCodegenPreconditions.capture_producer(
+            repository_root,
+            entrypoint=cls.publish_source_candidate,
+        )
         if producer.failure:
             return r[
                 t.Pair[FlextInfraCodegenTransaction, t.MappingKV[str, Path]]
@@ -269,13 +272,13 @@ class FlextInfraSemanticPublication:
 
         def plan_exposure(
             view_root: Path,
-            _candidate: m.Infra.StageSourcePlan,
+            _candidate: t.MappingKV[Path, Path],
         ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
             """Compose the semantic plans with the generated projection phase.
 
             Args:
                 view_root: Elected view root of the previewed transaction.
-                _candidate: Previewed staged source plan, unused here.
+                _candidate: Previewed staged path mapping, unused here.
 
             Returns:
                 The composed phase analysis, or its first planning failure.

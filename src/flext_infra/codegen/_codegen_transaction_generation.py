@@ -38,16 +38,27 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         producer: m.Infra.CodegenPhaseAnalysis | None = None,
         source_authority: m.Infra.CodegenSourceAuthority | None = None,
     ) -> None:
-        """Initialize the transaction with its configured Mise artifact owner."""
-        if producer is None:
+        """Initialize the transaction with its configured Mise artifact owner.
+
+        Args:
+            owner: The configured Mise artifact owner of the transaction.
+            participant_policy: The declared participant authorization policy.
+            producer: The bound producer analysis, or ``None`` to self-serve
+                the pre-planning producer authority.
+            source_authority: The cold source authority, when publishing.
+
+        Raises:
+            RuntimeError: When the self-served producer authority capture
+                fails.
+        """
+        if producer is None and source_authority is None:
             # Self-serve the pre-planning producer authority: every transaction
             # publication journals the generator's own source states, and the
             # recovery guard rejects authority-less journals.
-            from flext_infra.codegen.codegen_preconditions import (
-                FlextInfraCodegenPreconditions,
+            captured = FlextInfraCodegenPreconditions.capture_producer(
+                owner.repository_root,
+                entrypoint=type(self).__init__,
             )
-
-            captured = FlextInfraCodegenPreconditions.capture_producer()
             if captured.failure:
                 raise RuntimeError(
                     "transaction producer authority capture failed: "
@@ -139,7 +150,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         self,
         config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         file_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]]]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Prove the producer authority and the file plan's unique sources.
 
         Args:
@@ -147,17 +158,17 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             file_plans: The complete declared file plan of the phase.
 
         Returns:
-            The tagged unique source states of the complete file plan, or a
+            The unique source states of the complete file plan, or a
             failure when the producer lacks authority or the configuration
             plans differ from the complete file plan.
         """
         if self._producer.failure:
-            return r[t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]]].from_failure(
+            return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
                 self._producer
             )
         by_path = {item.path: item for item in file_plans}
         if any(by_path.get(item.path) != item for item in config_plans):
-            return r[t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]]].fail(
+            return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
                 "generation configurations differ from the complete file plan",
             )
         return FlextInfraCodegenPreconditions.unique_states(
@@ -339,7 +350,9 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    mise_staged.error or "cannot stage Mise artifacts",
+                    r[bool].fail(
+                        mise_staged.error or "cannot stage Mise artifacts",
+                    ),
                 ),
             )
         mise_files, mise_directories = mise_staged.value
@@ -463,7 +476,9 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             if validated.failure:
                 return self._recover_failure(
                     layout,
-                    validated.error or "Mise staged validation failed",
+                    r[bool].fail(
+                        validated.error or "Mise staged validation failed",
+                    ),
                 )
         return r[bool].ok(value=True)
 
@@ -518,10 +533,12 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    ordinary_staged.error or "cannot stage conform files",
-                    exception=ordinary_staged.exception,
-                    error_code=ordinary_staged.error_code,
-                    error_data=ordinary_staged.error_data,
+                    r[bool].fail(
+                        ordinary_staged.error or "cannot stage conform files",
+                        exception=ordinary_staged.exception,
+                        error_code=ordinary_staged.error_code,
+                        error_data=ordinary_staged.error_data,
+                    ),
                 ),
             )
         bound = state.bind_created_parents(
@@ -561,7 +578,9 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    prepared_journal.error or "cannot prepare generation journal",
+                    r[bool].fail(
+                        prepared_journal.error or "cannot prepare generation journal",
+                    ),
                 ),
             )
         manifested = journal_io.record_transaction_manifests(
@@ -572,7 +591,9 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    manifested.error or "cannot register generation staging tree",
+                    r[bool].fail(
+                        manifested.error or "cannot register generation staging tree",
+                    ),
                 ),
             )
         prepared_state = self._write_journal(
@@ -584,8 +605,10 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    prepared_state.error
-                    or "cannot publish prepared generation journal",
+                    r[bool].fail(
+                        prepared_state.error
+                        or "cannot publish prepared generation journal",
+                    ),
                 ),
             )
         return result_type.ok((manifested.value, prepared_state.value))
@@ -611,7 +634,9 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return r[m.Infra.CodegenPhaseOutcome].from_failure(
                 self._recover_failure(
                     layout,
-                    published.error or "generation publication failed",
+                    r[bool].fail(
+                        published.error or "generation publication failed",
+                    ),
                 ),
             )
         return published
@@ -676,7 +701,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         ],
     ) -> p.Result[
         t.Pair[
-            m.Infra.CodegenTransactionSession,
+            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState],
             t.VariadicTuple[m.Infra.CodegenStagedFile],
         ]
     ]:
@@ -686,12 +711,12 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             settled: The staged generation tuple from the transaction staging.
 
         Returns:
-            The current session and staged set bound to the journal, or the
-            first validation failure.
+            The journaled conform state and staged set bound to the journal, or
+            the first validation failure.
         """
         result_type = r[
             t.Pair[
-                m.Infra.CodegenTransactionSession,
+                t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState],
                 t.VariadicTuple[m.Infra.CodegenStagedFile],
             ]
         ]

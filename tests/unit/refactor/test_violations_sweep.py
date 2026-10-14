@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, main
+from flext_infra._utilities.refactor import _RuleDeltaOptions
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 from tests import c, m, tm, u
@@ -120,7 +121,11 @@ class TestsFlextInfraRefactorViolationsSweep:
         """
         changed = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
         with pytest.raises(ValueError, match=r"identity drift|unexplained removal"):
-            u.Infra.rule_deltas(before, changed, publication_chain=tuple(chain))
+            u.Infra.rule_deltas(
+                before,
+                changed,
+                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+            )
         if quiet_before is not None:
             quiet_after = tm.ok(
                 FlextInfraModGateEngine.scan(
@@ -131,7 +136,7 @@ class TestsFlextInfraRefactorViolationsSweep:
                 u.Infra.rule_deltas(
                     quiet_before,
                     quiet_after,
-                    publication_chain=tuple(chain),
+                    options=_RuleDeltaOptions(publication_chain=tuple(chain)),
                 )
 
     def test_actual_publication_identity_and_complete_resolution_inventory(
@@ -190,7 +195,11 @@ class TestsFlextInfraRefactorViolationsSweep:
             )
             observed = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
             if index == 0:
-                u.Infra.rule_deltas(before, observed, publication_chain=tuple(chain))
+                u.Infra.rule_deltas(
+                    before,
+                    observed,
+                    options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                )
                 assert observed.source_states is not None
                 admitted = next(item for item in chain if item.before.path == sample)
                 tm.that(
@@ -203,7 +212,11 @@ class TestsFlextInfraRefactorViolationsSweep:
                 if drift != "none":
                     self._assert_drift_rejected(root, before, chain, quiet_before)
         if drift == "none":
-            rows = u.Infra.rule_deltas(before, observed, publication_chain=tuple(chain))
+            rows = u.Infra.rule_deltas(
+                before,
+                observed,
+                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+            )
             future = next(row for row in rows if row.rule_id == "absent-future")
             tm.that(future.resolved, eq=1)
             tm.that(future.semantic_correspondence_proven, eq=True)
@@ -211,7 +224,11 @@ class TestsFlextInfraRefactorViolationsSweep:
             with pytest.raises(
                 ValueError, match=r"identity continuity|unexplained removal"
             ):
-                u.Infra.rule_deltas(before, observed, publication_chain=tuple(chain))
+                u.Infra.rule_deltas(
+                    before,
+                    observed,
+                    options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                )
 
     def test_native_lint_failure_keeps_independent_scan_evidence(
         self,
@@ -313,7 +330,9 @@ class TestsFlextInfraRefactorViolationsSweep:
         rows = {
             row.rule_id: row
             for row in u.Infra.rule_deltas(
-                before, after, publication_chain=tuple(chain)
+                before,
+                after,
+                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
             )
         }
         absence = rows["absent-class"]
@@ -337,7 +356,11 @@ class TestsFlextInfraRefactorViolationsSweep:
             rows["module-with-declaration"].semantic_correspondence_proven, eq=False
         )
         with pytest.raises(ValueError, match="identity continuity broken"):
-            u.Infra.rule_deltas(before, after, publication_chain=(*chain, *chain))
+            u.Infra.rule_deltas(
+                before,
+                after,
+                options=_RuleDeltaOptions(publication_chain=(*chain, *chain)),
+            )
         duplicated = FlextInfraModGateEngine.recounted(
             (
                 *after.entries,
@@ -350,7 +373,9 @@ class TestsFlextInfraRefactorViolationsSweep:
         duplicate_rows = {
             row.rule_id: row
             for row in u.Infra.rule_deltas(
-                before, duplicated, publication_chain=tuple(chain)
+                before,
+                duplicated,
+                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
             )
         }
         tm.that(duplicate_rows["absent-class"].introduced, eq=1)
@@ -358,12 +383,14 @@ class TestsFlextInfraRefactorViolationsSweep:
             u.Infra.rule_deltas(
                 before,
                 after.model_copy(update={"source_states": None}),
-                publication_chain=tuple(chain),
+                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
             )
         lexical = {row.rule_id: row for row in u.Infra.rule_deltas(before, after)}
         tm.that(lexical["absent-class"].introduced, eq=1)
         with pytest.raises(ValueError, match="source identity drift"):
-            u.Infra.rule_deltas(before, after, publication_chain=())
+            u.Infra.rule_deltas(
+                before, after, options=_RuleDeltaOptions(publication_chain=())
+            )
         drifted = after.model_copy(
             update={
                 "entries": tuple(
@@ -383,7 +410,11 @@ class TestsFlextInfraRefactorViolationsSweep:
             }
         )
         with pytest.raises(ValueError, match="differs from complete scan inventory"):
-            u.Infra.rule_deltas(before, drifted, publication_chain=tuple(chain))
+            u.Infra.rule_deltas(
+                before,
+                drifted,
+                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+            )
         changed_catalog = after.model_copy(
             update={
                 "entries": tuple(
@@ -395,7 +426,11 @@ class TestsFlextInfraRefactorViolationsSweep:
             }
         )
         with pytest.raises(ValueError, match="catalog correspondence changed"):
-            u.Infra.rule_deltas(before, changed_catalog, publication_chain=tuple(chain))
+            u.Infra.rule_deltas(
+                before,
+                changed_catalog,
+                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+            )
 
     @pytest.mark.parametrize("counts", [(2, 0), (2, 1), (1, 2), (0, 0)])
     def test_public_utility_deltas_preserve_native_scan_indexes_and_multiplicity(
@@ -437,7 +472,9 @@ class TestsFlextInfraRefactorViolationsSweep:
             for project in u.Infra.governed_project_roots(mod_workspace)
             for rule in plan.rules
         )
-        deltas = u.Infra.rule_deltas(before, after, inventory=inventory)
+        deltas = u.Infra.rule_deltas(
+            before, after, options=_RuleDeltaOptions(inventory=inventory)
+        )
         tm.that(
             [(row.repository, row.rule_id) for row in deltas], eq=sorted(set(inventory))
         )
@@ -660,8 +697,10 @@ class TestsFlextInfraRefactorViolationsSweep:
         text_rows = u.Infra.rule_deltas(
             before_text,
             after_text,
-            repository_root=root,
-            projects=(root.resolve(),),
+            options=_RuleDeltaOptions(
+                repository_root=root,
+                projects=(root.resolve(),),
+            ),
         )
         rows = {(row.engine, row.rule_id): row for row in (*ast_rows, *text_rows)}
         for engine in ("ast-grep", "text"):

@@ -363,6 +363,48 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             (flext_git_base_url, flext_line.value.branch),
         ))
 
+    def _development_dependencies(
+        self,
+        repository_root: Path,
+        repository: m.Infra.RepositoryRef,
+        codegen: m.Infra.CodegenConfigSpec,
+        project: m.Infra.ProjectSpec,
+    ) -> p.Result[t.Pair[t.VariadicTuple[t.NonEmptyStr], t.StrSequence]]:
+        """Resolve declared and composed development dependencies of one render.
+
+        Args:
+            repository_root: Root whose existing pyproject owns declarations.
+            repository: Declared immutable repository identity.
+            codegen: Codegen contract the repository renders under.
+            project: Validated scaffold project of the conform request.
+
+        Returns:
+            The declared project dependencies and the validated development
+            dependencies, or the first composition or validation failure.
+
+        """
+        result_type = r[t.Pair[t.VariadicTuple[t.NonEmptyStr], t.StrSequence]]
+        declared = self._declared_dependency_facts(repository_root, project)
+        if declared.failure:
+            return result_type.from_failure(declared)
+        project_dependencies, declared_dev = declared.value
+        composed_dev = u.Infra.project_development_requirements(
+            codegen.scaffold.project,
+            distribution=repository.distribution,
+            kind=repository.kind,
+            declared=declared_dev,
+        )
+        development_dependencies = u.validate_value(
+            t.Infra.NON_EMPTY_STR_SEQ_ADAPTER,
+            composed_dev,
+        )
+        if development_dependencies.failure:
+            return result_type.from_failure(development_dependencies)
+        return result_type.ok((
+            project_dependencies,
+            development_dependencies,
+        ))
+
     def _project_render_context(
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
@@ -384,16 +426,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         if project.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(project)
         project = project.value
-        declared = self._declared_dependency_facts(repository_root, project)
-        if declared.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(declared)
-        project_dependencies, declared_dev = declared.value
-        development_dependencies = u.Infra.project_development_requirements(
-            codegen.scaffold.project,
-            distribution=repository.distribution,
-            kind=repository.kind,
-            declared=declared_dev,
+        dependencies = self._development_dependencies(
+            repository_root, repository, codegen, project
         )
+        if dependencies.failure:
+            return r[m.Infra.ProjectRenderContext].from_failure(dependencies)
+        project_dependencies, development_dependencies = dependencies.value
         profile = target.make_profile
         make_context = self.make_render_context(render_inputs)
         if make_context.failure:
@@ -439,7 +477,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     ),
                 ),
                 project_dependencies=project_dependencies,
-                development_dependencies=development_dependencies,
+                development_dependencies=development_dependencies.value,
                 tooling=config.Infra.tooling,
                 # The in-place pyproject edit and this render read the same
                 # fleet exemption map, unchanged for every project.
@@ -526,7 +564,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _declared_dependency_facts(
         repository_root: Path,
         project: m.Infra.ProjectSpec,
-    ) -> p.Result[t.Pair[t.SequenceOf[str], t.VariadicTuple[str]]]:
+    ) -> p.Result[
+        t.Pair[t.VariadicTuple[t.NonEmptyStr], t.VariadicTuple[t.NonEmptyStr]]
+    ]:
         """Read the declared dependency facts of one render project.
 
         An existing ``pyproject.toml`` owns the declared runtime dependencies
@@ -538,23 +578,36 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             project: Resolved render project used before the pyproject exists.
 
         Returns:
-            The project dependencies with their declared development extras,
-            or the first metadata failure.
+            The non-empty declared dependency names with their declared
+            development extras, or the first metadata failure.
         """
-        result_type = r[t.Pair[t.SequenceOf[str], t.VariadicTuple[str]]]
+        result_type = r[
+            t.Pair[t.VariadicTuple[t.NonEmptyStr], t.VariadicTuple[t.NonEmptyStr]]
+        ]
         if (repository_root / c.PYPROJECT_FILENAME).is_file():
             metadata = u.Infra.read_project_metadata_result(repository_root)
             if metadata.failure:
                 return result_type.from_failure(metadata)
             payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
             groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
-            declared_dev = (
-                *t.Infra.STR_SEQ_ADAPTER.validate_python(groups.get(c.Infra.DEV, [])),
-                *u.Infra.canonical_dev_dependencies_from_payload(payload),
+            runtime = u.validate_value(
+                t.Infra.NON_EMPTY_STR_SEQ_ADAPTER,
+                metadata.value.project.dependencies,
             )
-            return result_type.ok(
-                (metadata.value.project.dependencies, declared_dev),
+            if runtime.failure:
+                return result_type.from_failure(runtime)
+            declared_dev = u.validate_value(
+                t.Infra.NON_EMPTY_STR_SEQ_ADAPTER,
+                (
+                    *t.Infra.STR_SEQ_ADAPTER.validate_python(
+                        groups.get(c.Infra.DEV, ()),
+                    ),
+                    *u.Infra.canonical_dev_dependencies_from_payload(payload),
+                ),
             )
+            if declared_dev.failure:
+                return result_type.from_failure(declared_dev)
+            return result_type.ok((runtime.value, declared_dev.value))
         return result_type.ok((project.runtime_dependency_overlay, ()))
 
     def _validated_render_project(

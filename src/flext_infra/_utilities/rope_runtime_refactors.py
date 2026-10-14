@@ -7,16 +7,115 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import cast
 
 from flext_cli import u
 
 from flext_infra import m, p, r, t
+from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
+
+_NATIVE_REGION_SPAN = 2
+"""Character-region tuples carry exactly one begin and one end coordinate."""
+
+
+class _RopeRestructureOptions(FlextInfraModelsBase.FrozenArbitrary):
+    """Match, admission, and import policies for one Rope restructuring."""
+
+    arguments: t.MappingKV[str, str] = m.Field(
+        description="Pattern argument bindings of the restructuring.",
+    )
+    resources: t.SequenceOf[p.Infra.RopeResource] = m.Field(
+        description="Resources whose changes the restructuring plans.",
+    )
+    imports: t.StrSequence = m.Field(
+        default=(),
+        description="Import declarations the restructuring may add.",
+    )
+    match_filter: (
+        Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool] | None
+    ) = m.Field(
+        default=None,
+        description="Occurrence admission gate over every native match.",
+    )
+    import_bindings: t.MappingKV[str, str] | None = m.Field(
+        default=None,
+        description="Existing binding reuse map applied while adding imports.",
+    )
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
     """Load Rope refactor helpers behind protocols."""
+
+    @classmethod
+    def reindent_source(cls, source: str, amount: int) -> str:
+        """Move source indentation while retaining every multiline literal value."""
+        literals = tuple(
+            (begin, end)
+            for begin, end, _metadata in cls.ignored_regions(source)
+            if source[begin] != "#"
+        )
+        result = []
+        offset = 0
+        for line in source.splitlines(keepends=True):
+            inside_literal = any(begin < offset < end for begin, end in literals)
+            if not inside_literal and line.strip():
+                if amount >= 0:
+                    changed = " " * amount + line
+                else:
+                    removable = len(line) - len(line.lstrip(" \t"))
+                    if removable < -amount:
+                        msg = "source indentation is smaller than its native move"
+                        raise ValueError(msg)
+                    changed = line[-amount:]
+            else:
+                changed = line
+            result.append(changed)
+            offset += len(line)
+        return "".join(result)
+
+    @staticmethod
+    def compiled_constant(source: str) -> p.Result[p.AttributeProbe]:
+        """Read a primitive compiler constant without executing authored source.
+
+        Constant-folded primitive expressions have the same immutable native
+        contract. Executable expressions, names and container constructors do
+        not acquire a primitive contract from their textual spelling.
+
+        Returns:
+            Result carrying the folded primitive constant, or a failure when
+            the expression does not reduce to one immutable native constant.
+        """
+        code = compile(source, "<native constant>", "eval", dont_inherit=True)
+        if code.co_names or code.co_freevars or len(code.co_consts) != 1:
+            return r[p.AttributeProbe].fail("expression has no sole native constant")
+        value = code.co_consts[0]
+        if (
+            type(value) not in {str, bytes, int, float, complex, bool, type(None)}
+            and value is not Ellipsis
+        ):
+            return r[p.AttributeProbe].fail(
+                "expression has no primitive native constant"
+            )
+        return r[p.AttributeProbe].ok(value)
+
+    @classmethod
+    def literal_constant(cls, source: str) -> bool:
+        """Return whether native compilation proves a sole immutable primitive."""
+        return cls.compiled_constant(source).success
+
+    @classmethod
+    def literal_string(cls, source: str) -> str | None:
+        """Decode native string escapes without evaluating source callbacks.
+
+        Returns:
+            The decoded string when native compilation proves a string
+            constant; otherwise ``None``.
+        """
+        observed = cls.compiled_constant(source)
+        if observed.failure:
+            return None
+        value = observed.value
+        return value if type(value) is str else None
 
     @classmethod
     def ignored_regions(
@@ -53,9 +152,8 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         """
         if not isinstance(value, list):
             return r[t.SequenceOf[p.Infra.RopeChangeContents]].fail(invalid_result)
-        members = cast("list[p.AttributeProbe]", value)
         validated: list[p.Infra.RopeChangeContents] = []
-        for member in members:
+        for member in value:
             if not isinstance(member, p.Infra.RopeChangeContents):
                 return r[t.SequenceOf[p.Infra.RopeChangeContents]].fail(invalid_result)
             validated.append(member)
@@ -199,14 +297,15 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         pattern: str,
         goal: str,
         *,
-        arguments: t.MappingKV[str, str],
-        resources: t.SequenceOf[p.Infra.RopeResource],
-        imports: t.StrSequence = (),
-        match_filter: Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool]
-        | None = None,
-        import_bindings: t.MappingKV[str, str] | None = None,
+        options: _RopeRestructureOptions,
     ) -> p.Infra.RopeChangeSet:
         """Plan Rope 1.14 semantic changes without invoking Project.do.
+
+        Args:
+            rope_project: Native Rope project owning the restructured sources.
+            pattern: Native Rope match pattern of the restructuring.
+            goal: Native Rope replacement template of the restructuring.
+            options: Frozen match, admission, and import policies.
 
         Returns:
             The resulting ``p.Infra.RopeChangeSet``.
@@ -219,19 +318,11 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         factory = cls.runtime_callable(
             "flext_infra._utilities._rope.restructure", "FlextInfraRopeRestructure"
         )
-        restructuring = factory(
-            rope_project,
-            pattern,
-            goal,
-            args=dict(arguments),
-            imports=list(imports),
-            match_filter=match_filter,
-            import_bindings=import_bindings,
-        )
+        restructuring = factory(rope_project, pattern, goal, options=options)
         if not isinstance(restructuring, p.Infra.RopeRestructure):
             msg = "rope Restructure does not satisfy its public planning contract"
             raise TypeError(msg)
-        changes = restructuring.get_changes(resources=list(resources))
+        changes = restructuring.get_changes(resources=list(options.resources))
         u.Cli.info(
             "Rope restructuring "
             f"matched={restructuring.matched_count} "
@@ -333,7 +424,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             "rope.refactor.patchedast",
             "node_region",
         )(captured)
-        if not isinstance(region, tuple) or len(region) != 2:
+        if not isinstance(region, tuple) or len(region) != _NATIVE_REGION_SPAN:
             message = "Rope capture does not expose its native character region"
             raise TypeError(message)
         begin, end = region

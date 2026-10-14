@@ -23,6 +23,7 @@ from flext_infra._utilities._semantic_cutover.declaration_payload import (
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
+from flext_infra._utilities.rope_runtime_refactors import _RopeRestructureOptions
 
 
 class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdits):
@@ -107,11 +108,17 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                     project,
                     rule.pattern,
                     rule.goal,
-                    arguments=rule.arguments,
-                    resources=resources,
-                    imports=tuple(rule.imports.values()),
-                    import_bindings=rule.imports,
-                    match_filter=partial(cls._admit_contract_match, project, rule),
+                    options=_RopeRestructureOptions(
+                        arguments=rule.arguments,
+                        resources=resources,
+                        imports=tuple(rule.imports.values()),
+                        import_bindings=rule.imports,
+                        match_filter=partial(
+                            cls._admit_contract_match,
+                            project,
+                            rule,
+                        ),
+                    ),
                 )
                 members = FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
                     changes.changes, f"{rule.id}: invalid Rope content changes"

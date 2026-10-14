@@ -20,11 +20,57 @@ import pytest
 
 from flext_infra import config, infra
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 from tests import c, m, p, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture
+def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
+    """Exercise public native authentication against real fixture source trees."""
+    runtime = tm.ok(
+        FlextInfraWorkspaceDetector.resolution_context(_PROJECT_ROOT)
+    ).runtime_root
+    prelude = (
+        "import importlib, pathlib, sys\n"
+        "from pathlib import Path\n"
+        "from flext_infra import m\n"
+        "from flext_infra.codegen import FlextInfraCodegenPreconditions as preconditions\n"
+        "from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport as fresh\n"
+        f"runtime_root = Path({str(runtime)!r})\n"
+        "def authenticate(name, *, source_root=None):\n"
+        "    modules = (m.Infra.SourceClassReference(target=name),)\n"
+        "    authority = preconditions.capture_source_authority(runtime_root, nominated=modules)\n"
+        "    if authority.failure: return authority\n"
+        "    inputs = preconditions.authority_inputs(authority.value)\n"
+        "    if inputs.failure: return inputs\n"
+        "    return fresh.capture_native_reference(m.Infra.NativeImportRequest(\n"
+        "        repository_root=Path.cwd() if source_root is None else source_root,\n"
+        "        runtime_root=runtime_root, modules=modules,\n"
+        "        import_roots=tuple(dict.fromkeys(root.parent for _, root in authority.value.generator_modules)),\n"
+        "        source_authority=authority.value, inputs=inputs.value))\n"
+    )
+
+    def consume(code: str, *arguments: str, cwd: Path | None = None) -> None:
+        u.Tests.run_lazy_init_probe(
+            prelude + code,
+            python_paths=(),
+            arguments=arguments,
+            cwd=tmp_path if cwd is None else cwd,
+        )
+
+    return consume
+
+
+@pytest.fixture
+def declaration_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+    """Provide the standard FLEXT workspace fabric for native declarations."""
+    return u.Tests.create_lazy_init_workspace(tmp_path)
 
 
 @pytest.fixture
@@ -174,7 +220,7 @@ def _consumer_pyproject_source(distribution: str) -> str:
         f'"{infrastructure_source}"]\n'
         "[tool.hatch.metadata]\nallow-direct-references = true\n"
         "[tool.mypy]\n"
-        '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
+        '[tool.deptry]\noptional_dependencies_dev_groups = ["dev"]\n'
     )
 
 
@@ -776,18 +822,18 @@ def real_detector_project(
         manifest = root / c.PYPROJECT_FILENAME
         payload = u.Tests.toml_payload(manifest.read_text(encoding="utf-8"))
         project = u.Tests.toml_mapping(payload["project"])
-        dependencies = [
+        dependencies: list[t.JsonValue] = [
             requirement
             for requirement in u.Tests.toml_strings(project["dependencies"])
             if (name := u.Infra.dep_name(requirement)) not in c.Tests.CONSUMER_MODULES
             or name in modules
         ]
-        tm.ok(
-            u.Cli.toml_write_mapping(
-                manifest,
-                {**payload, "project": {**project, "dependencies": dependencies}},
-            )
-        )
+        project_update: dict[str, t.JsonValue] = {
+            **project,
+            "dependencies": dependencies,
+        }
+        updated: t.JsonMapping = {**payload, "project": project_update}
+        tm.ok(u.Cli.toml_write_mapping(manifest, updated))
         (root / "src" / root.name.replace("-", "_") / "__init__.py").write_text(
             "\n".join(
                 f"import {name}" for name in ("flext_core", *c.Tests.CONSUMER_MODULES)

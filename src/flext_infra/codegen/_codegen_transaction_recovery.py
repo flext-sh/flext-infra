@@ -57,7 +57,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 "cold source authority cannot authorize project publication",
             )
             if source_authority is not None
-            else FlextInfraCodegenPreconditions.capture_producer()
+            else FlextInfraCodegenPreconditions.capture_producer(
+                owner.repository_root,
+                entrypoint=type(self).__init__,
+            )
             if producer is None
             else r[m.Infra.CodegenPhaseAnalysis].ok(producer)
         )
@@ -195,6 +198,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             generator_sources=session.journal.generator_sources,
             generator_trees=session.journal.generator_trees,
             generator_modules=session.journal.generator_modules,
+            generator_reference=session.journal.generator_reference,
             source_topology=topology,
             scope_roots=session.journal.scope_roots,
             source_scope=session.journal.source_scope,
@@ -345,7 +349,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 return r[m.Infra.CodegenTransactionSession].from_failure(state)
             record = FlextInfraMiseArtifactsJournal.source_record(
                 "output",
-                state,
+                state.value,
                 path=plan.path,
             )
             if record.failure:
@@ -819,7 +823,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    created.error or f"cannot create directory {intent.path}",
+                    r[bool].fail(
+                        created.error or f"cannot create directory {intent.path}"
+                    ),
                 ),
             )
         directories = tuple(
@@ -834,7 +840,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                recorded.error or f"cannot record directory {intent.path}",
+                r[bool].fail(
+                    recorded.error or f"cannot record directory {intent.path}"
+                ),
                 journal_write=False,
             )
             return result_type.from_failure(failed)
@@ -847,7 +855,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                persisted.error or f"cannot persist directory {intent.path}",
+                r[bool].fail(
+                    persisted.error or f"cannot persist directory {intent.path}"
+                ),
                 journal_write=True,
             )
             return result_type.from_failure(failed)
@@ -969,7 +979,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         original = r[bool].from_failure(failure)
         try:
             recovered = self._recover_prepared(layout)
-        except Exception as cleanup_exception:
+        except (OSError, ValueError) as cleanup_exception:
             recovered = r[bool].fail_op(
                 "finalize failed generation publication",
                 cleanup_exception,

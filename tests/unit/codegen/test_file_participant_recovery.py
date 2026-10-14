@@ -66,7 +66,7 @@ class TestsFlextInfraFileParticipantRecovery:
     def _corrupted_journal_state(
         journal: Path,
         journal_change: str,
-    ) -> p.Result[m.Cli.AtomicFileState] | None:
+    ) -> m.Cli.AtomicFileState | None:
         """Corrupt the journaled authority per the parametrized change kind.
 
         Args:
@@ -790,6 +790,7 @@ class TestsFlextInfraFileParticipantRecovery:
                 tm.that(journal.is_dir(), eq=True)
                 tm.that(target.read_bytes(), eq=before.content)
             else:
+                assert foreign is not None
                 tm.that(
                     tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False)),
                     eq=foreign,

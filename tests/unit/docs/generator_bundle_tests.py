@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraConfig, c, m
 from flext_infra.codegen import (
+    FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
 )
@@ -96,11 +97,19 @@ class TestsFlextInfraDocsGeneratorBundle:
         tm.ok(generator.publish_batch(prepared, publication_receipts=receipts))
         tm.that(len(receipts), eq=1)
         published_sources = {source.path: source for source in receipts[0].sources}
+        captured_sources = tuple(
+            tm.ok(
+                FlextInfraMiseArtifactsJournal.source_record(
+                    prepared.producer.phase, source
+                )
+            )
+            for source in prepared.producer.inputs
+        )
         tm.that(
             all(
                 source.path in published_sources
                 and published_sources[source.path].sha256 == source.sha256
-                for source in prepared.producer.inputs
+                for source in captured_sources
             ),
             eq=True,
         )
@@ -239,7 +248,12 @@ class TestsFlextInfraDocsGeneratorBundle:
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root)
         )
-        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        producer = tm.ok(
+            FlextInfraCodegenPreconditions.capture_producer(
+                Path.cwd(),
+                entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+            )
+        )
         analysis = tm.ok(
             FlextInfraCodegenPreconditions.bind_producer_analysis(analysis, producer)
         )

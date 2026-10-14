@@ -21,7 +21,7 @@ class FlextInfraWorkspaceLifecycle:
 
     @staticmethod
     def plan_request(
-        request: p.Infra.WorkspaceEnvironmentRequest,
+        request: p.Infra.WorkspaceRequest,
     ) -> p.Result[m.Infra.LifecycleReport]:
         """Declare public commands before execution without provisioning sources.
 
@@ -105,7 +105,7 @@ class FlextInfraWorkspaceLifecycle:
     @classmethod
     def execute_request(
         cls,
-        request: p.Infra.WorkspaceEnvironmentRequest,
+        request: p.Infra.WorkspaceRequest,
     ) -> p.Result[m.Infra.LifecycleReport]:
         """Run declared public commands serially with first-failure accounting.
 
@@ -227,7 +227,7 @@ class FlextInfraWorkspaceLifecycle:
     def _published_progress(
         cls,
         report: m.Infra.LifecycleReport,
-        cause: p.Result[p.Cli.ProcessOutcome] | p.Result[frozenset[Path]],
+        cause: p.Result[p.Cli.ProcessOutcome] | p.Result[frozenset[Path]] | None,
     ) -> p.Result[m.Infra.LifecycleReport] | None:
         """Publish incremental progress and classify its failure, if any.
 

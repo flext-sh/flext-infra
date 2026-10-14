@@ -216,6 +216,9 @@ class TestsFlextInfraVscodeOwnerMerge:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         published = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.that(published.plan is not None, eq=True)
+        if published.plan is None:
+            pytest.fail("conform did not return its actual plan")
         targets = {
             root / entry.path
             for entry in config.Infra.codegen.managed_files
@@ -242,6 +245,9 @@ class TestsFlextInfraVscodeOwnerMerge:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         first = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.that(first.plan is not None, eq=True)
+        if first.plan is None:
+            pytest.fail("conform did not return its actual plan")
         before = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(file.path, required=True))
             for file in first.plan.files

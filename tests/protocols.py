@@ -9,6 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Protocol
+
 from flext_tests import FlextTestsProtocols
 
 from flext_infra import FlextInfraProtocols
@@ -19,6 +22,15 @@ class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
 
     class Tests(FlextTestsProtocols.Tests):
         """Tests use inherited flext-tests and production protocols."""
+
+        class NativeConsumer(Protocol):
+            """Run an actual isolated Python consumer with explicit source inputs."""
+
+            def __call__(
+                self, code: str, *arguments: str, cwd: Path | None = None
+            ) -> None:
+                """Assert successful real execution, preserving its causal output."""
+                ...
 
 
 p = TestsFlextInfraProtocols

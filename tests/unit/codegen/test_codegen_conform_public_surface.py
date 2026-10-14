@@ -536,6 +536,23 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 config=config.Infra.codegen,
             ),
         )
+        TestsFlextInfraCodegenConformPublicSurface._verified_uv_resolution_views(
+            root, workspace, plan
+        )
+
+    @staticmethod
+    def _verified_uv_resolution_views(
+        root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        plan: m.Infra.CodegenPlan,
+    ) -> None:
+        """Verify both native resolution views' sources and member lines.
+
+        Args:
+            root: The governed workspace root.
+            workspace: The loaded workspace specification.
+            plan: The completed conform plan.
+        """
         policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
         views = (
             (policy.local_directory, (workspace.repository, *workspace.subprojects)),

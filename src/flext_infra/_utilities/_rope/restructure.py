@@ -7,11 +7,29 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import override
+from typing import Protocol, override
 
 from rope.refactor.restructure import Restructure
 
 from flext_infra import p, t
+
+
+class _RestructureOptionsSpec(Protocol):
+    """Read-only structural contract for one Rope restructuring policy."""
+
+    @property
+    def arguments(self) -> t.MappingKV[str, str]: ...
+
+    @property
+    def imports(self) -> t.StrSequence: ...
+
+    @property
+    def match_filter(
+        self,
+    ) -> Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool] | None: ...
+
+    @property
+    def import_bindings(self) -> t.MappingKV[str, str] | None: ...
 
 
 class FlextInfraRopeRestructure(Restructure):
@@ -23,16 +41,18 @@ class FlextInfraRopeRestructure(Restructure):
         pattern: str,
         goal: str,
         *,
-        args: t.MappingKV[str, str],
-        imports: t.StrSequence,
-        match_filter: Callable[[p.Infra.RopePyModule, p.Infra.RopeContractMatch], bool]
-        | None = None,
-        import_bindings: t.MappingKV[str, str] | None = None,
+        options: _RestructureOptionsSpec,
     ) -> None:
         """Receive the current consumer's native match and import policies."""
-        super().__init__(project, pattern, goal, args=dict(args), imports=list(imports))
-        self.match_filter = match_filter
-        self.import_bindings = import_bindings
+        super().__init__(
+            project,
+            pattern,
+            goal,
+            args=dict(options.arguments),
+            imports=list(options.imports),
+        )
+        self.match_filter = options.match_filter
+        self.import_bindings = options.import_bindings
         self.matched_count = 0
         self.admitted_count = 0
 

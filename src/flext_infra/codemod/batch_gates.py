@@ -78,6 +78,7 @@ class FlextInfraModGateEngine:
                     ),
                     stdout_file=Path(temp_dir) / "stdout",
                     stderr_file=Path(temp_dir) / "stderr",
+                    artifact_root=root,
                 )
                 if tested.failure:
                     remedy = (
@@ -144,6 +145,7 @@ class FlextInfraModGateEngine:
                     ),
                     stdout_file=Path(temp_dir) / "stdout",
                     stderr_file=Path(temp_dir) / "stderr",
+                    artifact_root=root,
                 ).unwrap()
                 cls._run_tool(
                     temp_root,
@@ -155,6 +157,7 @@ class FlextInfraModGateEngine:
                     ),
                     stdout_file=Path(temp_dir) / "stdout",
                     stderr_file=Path(temp_dir) / "stderr",
+                    artifact_root=root,
                 ).unwrap()
                 changes.extend(
                     cls._publish_regenerated_snapshots(
@@ -395,6 +398,7 @@ class FlextInfraModGateEngine:
         *,
         stdout_file: Path,
         stderr_file: Path,
+        artifact_root: Path,
         finding_exit_code: int | None = None,
     ) -> p.Result[p.Cli.ProcessOutcome]:
         """Run one AST tool and preserve its documented finding status.
@@ -443,36 +447,29 @@ class FlextInfraModGateEngine:
                 and outcome.forwarded_signal is None
             ):
                 return r[p.Cli.ProcessOutcome].ok(outcome)
-            diagnostics: list[str] = []
-            for path in (stdout_file, stderr_file):
-                content = (
-                    u.Cli
-                    .atomic_read_binary_file_state(path, required=True)
-                    .unwrap()
-                    .content
-                )
-                if content is not None and content.strip():
-                    diagnostics.append(content.decode("utf-8").strip())
-            detail = "\n".join(diagnostics)
-            return r[p.Cli.ProcessOutcome].fail(
-                f"{command[0]} exited with code {outcome.raw_return_code}: {detail}",
+            streams = tuple(
+                u.Infra.publish_mod_native_artifact(artifact_root, path)
+                for path in (stdout_file, stderr_file)
             )
-        stderr_bytes = (
-            u.Cli
-            .atomic_read_binary_file_state(stderr_file, required=True)
-            .unwrap()
-            .content
-        )
-        error = (
-            f"ast-grep stderr stream is missing: {stderr_file}"
-            if stderr_bytes is None
-            else stderr_bytes.decode("utf-8").strip()
-        )
-        return (
-            r[p.Cli.ProcessOutcome].fail(error)
-            if error
-            else r[p.Cli.ProcessOutcome].ok(outcome)
-        )
+            detail = "\n".join(
+                f"{channel}={receipt.path} size={receipt.size} sha256={receipt.sha256}"
+                for channel, receipt in zip(("stdout", "stderr"), streams, strict=True)
+            )
+            return r[p.Cli.ProcessOutcome].fail(
+                f"{command[0]} exited with code {outcome.raw_return_code} "
+                f"timed_out={outcome.timed_out} "
+                f"forwarded_signal={outcome.forwarded_signal}\n{detail}",
+            )
+        stderr = u.Cli.atomic_read_binary_file_receipt(
+            stderr_file, required=True
+        ).unwrap()
+        if stderr.size != 0:
+            receipt = u.Infra.publish_mod_native_artifact(artifact_root, stderr_file)
+            return r[p.Cli.ProcessOutcome].fail(
+                f"{command[0]} emitted unexpected stderr: {receipt.path} "
+                f"size={receipt.size} sha256={receipt.sha256}"
+            )
+        return r[p.Cli.ProcessOutcome].ok(outcome)
 
     @staticmethod
     def _path_depth(path: Path) -> int:
@@ -485,23 +482,31 @@ class FlextInfraModGateEngine:
         return len(path.parts)
 
     @staticmethod
-    def _validate_finding_receipt(stderr: str, errors: int) -> p.Result[bool]:
+    def _validate_finding_receipt(
+        stderr: m.Cli.AtomicFileReceipt, errors: int
+    ) -> p.Result[bool]:
         """Authenticate ast-grep's exact error-finding stderr receipt.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        expected = "\n".join((
-            c.Infra.AST_GREP_ERROR_FINDING_RECEIPT.format(count=errors),
-            c.Infra.AST_GREP_ERROR_FINDING_HELP,
-        ))
-        receipt = stderr.strip()
-        if receipt != expected:
-            return r[bool].fail(
-                f"ast-grep finding receipt mismatch: parsed_errors={errors} "
-                f"expected={expected!r} actual={receipt!r}",
-            )
+        expected = (
+            "\n".join((
+                c.Infra.AST_GREP_ERROR_FINDING_RECEIPT.format(count=errors),
+                c.Infra.AST_GREP_ERROR_FINDING_HELP,
+            ))
+            + "\n\n"
+        ).encode(c.DEFAULT_ENCODING)
+        with u.Cli.atomic_binary_file_reader(stderr) as reader:
+            actual = reader.read_range(0, stderr.size)
+            if actual != expected:
+                return r[bool].fail(
+                    f"ast-grep finding receipt mismatch: parsed_errors={errors} "
+                    f"expected={expected!r} actual_bytes={actual!r} "
+                    f"actual={stderr.path} "
+                    f"size={stderr.size} sha256={stderr.sha256}"
+                )
         return r[bool].ok(value=True)
 
     @staticmethod
@@ -706,9 +711,9 @@ class FlextInfraModGateEngine:
         )
 
     @classmethod
-    def authored(
-        cls, report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
-    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
+    def authored[FindingT: m.Infra.ModOccurrence](
+        cls, report: m.Infra.ModOccurrenceReport[FindingT]
+    ) -> m.Infra.ModOccurrenceReport[FindingT]:
         """Return the findings mod may rewrite: a generated source is never one.
 
         A generator finding stays blocking evidence for its generator; it never
@@ -966,6 +971,11 @@ class FlextInfraModGateEngine:
                     finding.get("range"),
                 ),
                 text=str(finding.get("text")),
+                message=(
+                    native_message
+                    if isinstance(native_message := finding.get("message"), str)
+                    else None
+                ),
                 replacement=replacement,
                 actionable=actionable,
                 classification=classification,
@@ -1126,6 +1136,7 @@ class FlextInfraModGateEngine:
                 scan_command,
                 stdout_file=stdout_file,
                 stderr_file=stderr_file,
+                artifact_root=artifact_root,
                 finding_exit_code=1,
             )
             if run.failure:
@@ -1143,6 +1154,7 @@ class FlextInfraModGateEngine:
             ).unwrap()
             sys.stderr.write(f"mod: native findings={report.findings}\n")
             sys.stderr.flush()
+            stderr = u.Infra.publish_mod_native_artifact(artifact_root, stderr_file)
             if run.value.raw_return_code != 0:
                 error_findings = sum(
                     entry.severity == "error" for entry in report.entries
@@ -1151,19 +1163,17 @@ class FlextInfraModGateEngine:
                     return r[m.Infra.ModScanReport].fail(
                         "ast-grep finding exit has no error-severity occurrence"
                     )
-                stderr = (
-                    u.Cli
-                    .atomic_read_binary_file_state(stderr_file, required=True)
-                    .unwrap()
-                    .content
-                )
-                if stderr is None:
-                    return r[m.Infra.ModScanReport].fail(
-                        f"ast-grep finding receipt is missing: {stderr_file}"
-                    )
-                cls._validate_finding_receipt(
-                    stderr.decode("utf-8"), error_findings
-                ).unwrap()
+                cls._validate_finding_receipt(stderr, error_findings).unwrap()
+            report = cls.recounted(
+                report.entries,
+                source_states=report.source_states,
+                native_artifacts=tuple(
+                    {
+                        receipt.path: receipt
+                        for receipt in (*report.native_artifacts, stderr)
+                    }.values()
+                ),
+            )
         return r[m.Infra.ModScanReport].ok(report)
 
     @staticmethod
@@ -1206,9 +1216,12 @@ class FlextInfraModGateEngine:
         Returns:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
         """
-        reports: list[m.Infra.ModScanReport] = []
         rules_by_id = {rule.id: rule for rule in plan.rules}
-        for ruleset in plan.rulesets:
+        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        with tempfile.TemporaryDirectory(
+            prefix="mod-native-catalog-", dir=settings.work_dir
+        ) as directory:
+            ruleset = u.Infra.codemod_stage_scan_ruleset(plan, Path(directory))
             sys.stderr.write(
                 f"mod: ast-grep provider={ruleset.provider} "
                 f"rules={len(ruleset.rule_ids)}\n",
@@ -1219,20 +1232,7 @@ class FlextInfraModGateEngine:
             )
             if scanned.failure:
                 return r[m.Infra.ModScanReport].from_failure(scanned)
-            reports.append(scanned.value)
-        return r[m.Infra.ModScanReport].ok(
-            cls.recounted(
-                tuple(entry for report in reports for entry in report.entries),
-                source_states=tuple(context.source_states.values()),
-                native_artifacts=tuple(
-                    {
-                        artifact.path: artifact
-                        for report in reports
-                        for artifact in report.native_artifacts
-                    }.values()
-                ),
-            )
-        )
+            return scanned
 
     @classmethod
     def _publish_scan(
@@ -1329,7 +1329,7 @@ class FlextInfraModGateEngine:
         if verified.failure:
             return r[m.Infra.ModScanReport].from_failure(verified)
         current_paths = cls._scan_source_paths(root, targets)
-        if current_paths != set(
+        if current_paths != frozenset(
             source_states
         ) or targets != u.Infra.ast_grep_scan_targets(root, source_files=source_files):
             return r[m.Infra.ModScanReport].fail(
@@ -1413,7 +1413,11 @@ class FlextInfraModGateEngine:
         logical = {state.path: state for state in states}
         entries: list[m.Infra.ModScanFinding] = []
         artifacts: dict[Path, m.Cli.AtomicFileReceipt] = {}
-        for ruleset in plan.rulesets:
+        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        with tempfile.TemporaryDirectory(
+            prefix="mod-native-catalog-", dir=settings.work_dir
+        ) as directory:
+            ruleset = u.Infra.codemod_stage_scan_ruleset(plan, Path(directory))
             scanned = cls._ruleset_report(
                 view_root, ruleset, rules_by_id, targets, context, artifact_root=root
             )

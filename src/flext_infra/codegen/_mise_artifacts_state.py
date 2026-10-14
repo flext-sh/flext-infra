@@ -16,8 +16,11 @@ from flext_infra import c, m, r, t, u
 from flext_infra.codegen._mise_artifacts_files import (
     FlextInfraMiseArtifactsFiles as files,
 )
-from flext_infra.codegen._mise_artifacts_verification import (
-    FlextInfraMiseArtifactsVerification as verify,
+from flext_infra.codegen._mise_artifacts_verification_manifest import (
+    FlextInfraMiseArtifactsVerificationManifest as manifest,
+)
+from flext_infra.codegen._mise_artifacts_verification_topology import (
+    FlextInfraMiseArtifactsVerificationTopology as topology,
 )
 
 if TYPE_CHECKING:
@@ -590,9 +593,9 @@ class FlextInfraMiseArtifactsState:
             The resulting ``p.Result[bool]``.
 
         """
-        topology = verify.journal_topology(layout, journal)
-        if topology.failure:
-            return topology
+        bound = topology.journal_topology(layout, journal)
+        if bound.failure:
+            return bound
         validated = cls.validate_transaction_roots(layout, journal)
         if validated.failure:
             return validated
@@ -649,7 +652,7 @@ class FlextInfraMiseArtifactsState:
                     continue
                 removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
             else:
-                observed = verify.authorized_cleanup_manifest(layout, journal, entry)
+                observed = manifest.authorized_cleanup_manifest(layout, journal, entry)
                 if observed.failure:
                     return result_type.from_failure(observed)
                 removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
@@ -876,7 +879,7 @@ class FlextInfraMiseArtifactsState:
 
         """
         if recorded.manifest is not None:
-            authorized = verify.authorized_cleanup_manifest(layout, journal, recorded)
+            authorized = manifest.authorized_cleanup_manifest(layout, journal, recorded)
             if authorized.failure:
                 return r[bool].from_failure(authorized)
             return r[bool].ok(value=True)

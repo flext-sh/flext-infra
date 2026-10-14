@@ -28,7 +28,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
     def _api_alias_specs(
         cls,
         root: Path,
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[
         t.Pair[t.MappingKV[Path, t.StrMapping], t.MappingKV[str, t.StrMapping]]
     ]:
@@ -73,7 +73,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan API alias removals and AST-proven consumer rewrites.
 

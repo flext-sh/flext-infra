@@ -883,8 +883,8 @@ Infra:
         python.analysis.includeVenvInWorkspaceSymbols: false
         # Attached projects share one physical workspace environment. Avoid
         # virtual workspaces isolating sources from the native Pyright context.
-        python.analysis.useNearestConfiguration: false
-        python.analysis.usePerProjectEnvironments: false
+        python.analysis.useNearestConfiguration: true
+        python.analysis.usePerProjectEnvironments: true
         python.analysis.userFileIndexingLimit: 2000
         python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
         python.languageServer: Pylance

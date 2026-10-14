@@ -17,12 +17,28 @@ from flext_cli import u as cli_u
 
 from flext_infra import c, config, m, p
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 from tests import t, tm, u
 
 
 class TestsFlextInfraGithubGateAttestation:
     """Behavior tests for local SSH-signed gate attestations."""
+
+    @staticmethod
+    def _context(root: Path) -> m.Infra.WorkspaceRuntimeContext:
+        """Elect the runtime context at the workspace boundary for the root.
+
+        Returns:
+            The resulting ``m.Infra.WorkspaceRuntimeContext``.
+        """
+        return tm.ok(
+            FlextInfraWorkspaceDetector.resolution_context(
+                root.expanduser().resolve(),
+            ),
+        )
 
     @staticmethod
     def _runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
@@ -491,7 +507,10 @@ class TestsFlextInfraGithubGateAttestation:
             )
         else:
             request = request.model_copy(update={"allowed_signers": str(unavailable)})
-        failed = u.Infra.git_create_gate_attestation(request)
+        failed = u.Infra.git_create_gate_attestation(
+            request,
+            self._context(tmp_path),
+        )
         tm.fail(failed)
         assert failed.error is not None
         assert str(unavailable) in failed.error
@@ -507,6 +526,7 @@ class TestsFlextInfraGithubGateAttestation:
                     policy=request.policy,
                     policy_digest=request.policy_digest,
                 ),
+                self._context(tmp_path),
             )
             tm.fail(verification)
             assert verification.error is not None
@@ -598,6 +618,7 @@ class TestsFlextInfraGithubGateAttestation:
                 policy=evidence[0].policy,
                 policy_digest=evidence[0].policy_digest,
             ),
+            TestsFlextInfraGithubGateAttestation._context(root),
         )
 
     def test_signed_gate_attestation_round_trip_is_local(
@@ -607,7 +628,10 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test signed gate attestation round trip is local."""
         allowed_signers = signed_repository_factory(tmp_path)
-        created = u.Infra.git_create_gate_attestation(self._request(tmp_path))
+        created = u.Infra.git_create_gate_attestation(
+            self._request(tmp_path),
+            self._context(tmp_path),
+        )
 
         tm.ok(created)
         head = self._head(tmp_path)
@@ -625,8 +649,9 @@ class TestsFlextInfraGithubGateAttestation:
         signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
         before = (tmp_path / "invocations.txt").read_bytes()
-        created = tm.ok(u.Infra.git_create_gate_attestation(request))
-        reused = tm.ok(u.Infra.git_create_gate_attestation(request))
+        context = self._context(tmp_path)
+        created = tm.ok(u.Infra.git_create_gate_attestation(request, context))
+        reused = tm.ok(u.Infra.git_create_gate_attestation(request, context))
 
         tm.that(created.reused, eq=False)
         tm.that(reused.reused, eq=True)
@@ -646,7 +671,7 @@ class TestsFlextInfraGithubGateAttestation:
         )
         tm.that(source.process.raw_return_code != 0, eq=True)
         tm.that(source.native_outcome, eq=c.Infra.ToolOutcome.FINDINGS)
-        tm.ok(u.Infra.git_create_gate_attestation(request))
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         destination = tmp_path / c.Infra.REPORTS_DIR_NAME / "verified-proof.json"
         verified = u.Infra.git_verify_gate_attestation(
             m.Infra.GateAttestationVerifyRequest(
@@ -659,6 +684,7 @@ class TestsFlextInfraGithubGateAttestation:
                 policy_digest=request.policy_digest,
                 output=str(destination),
             ),
+            self._context(tmp_path),
         )
         tm.ok(verified)
         predicate = m.Infra.GateAttestationPredicate.model_validate_json(
@@ -685,7 +711,7 @@ class TestsFlextInfraGithubGateAttestation:
         report = tmp_path / source.reports[0].path
         report.write_text("{}\n", encoding="utf-8")
 
-        tm.fail(u.Infra.git_create_gate_attestation(request))
+        tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         tm.that(
             (tmp_path / "invocations.txt").read_text(encoding="utf-8").splitlines(),
             eq=["executed"],
@@ -699,7 +725,7 @@ class TestsFlextInfraGithubGateAttestation:
         """A proof for another exact context remains outside required coverage."""
         allowed = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(request))
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         digest = f"sha256:{cli_u.Cli.sha256_content('different runtime context')}"
 
         tm.fail(
@@ -713,6 +739,7 @@ class TestsFlextInfraGithubGateAttestation:
                     policy=request.policy,
                     policy_digest=request.policy_digest,
                 ),
+                self._context(tmp_path),
             ),
         )
 
@@ -727,7 +754,7 @@ class TestsFlextInfraGithubGateAttestation:
         source = m.Infra.GateCommandEvidence.model_validate_json(
             request.receipt.read_bytes()
         )
-        tm.ok(u.Infra.git_create_gate_attestation(request))
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         (tmp_path / source.reports[0].path).unlink()
 
         tm.fail(
@@ -742,7 +769,7 @@ class TestsFlextInfraGithubGateAttestation:
         """Native SSH verification rejects an unrelated key under the same principal."""
         allowed = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(request))
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         foreign = tmp_path / "foreign-signing-key"
         tm.ok(
             cli_u.Cli.run_raw(
@@ -794,7 +821,7 @@ class TestsFlextInfraGithubGateAttestation:
             ),
         )
 
-        tm.fail(u.Infra.git_create_gate_attestation(request))
+        tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         tm.that(
             (tmp_path / "invocations.txt").read_text(encoding="utf-8").splitlines(),
             eq=["executed", "executed"],
@@ -807,7 +834,11 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test gate attestation normalizes network remote git suffix."""
         allowed_signers = signed_repository_factory(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(self._request(tmp_path)))
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                self._request(tmp_path), self._context(tmp_path)
+            )
+        )
         remote = tm.ok(
             u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=tmp_path)),
         ).text
@@ -832,7 +863,11 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test gate attestation verifies selected commit with equal tree."""
         allowed_signers = signed_repository_factory(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(self._request(tmp_path)))
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                self._request(tmp_path), self._context(tmp_path)
+            )
+        )
         selected_sha = self._head(tmp_path)
         selected_tree = self._rev_parse(tmp_path, "HEAD^{tree}")
         tm.ok(
@@ -861,7 +896,11 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test gate attestation rejects incomplete coverage."""
         allowed_signers = signed_repository_factory(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(self._request(tmp_path)))
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                self._request(tmp_path), self._context(tmp_path)
+            )
+        )
 
         verified = self._verify(
             tmp_path,

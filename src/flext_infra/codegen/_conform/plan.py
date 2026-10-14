@@ -38,10 +38,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return r[bool].fail(
                 "producer continuation requires its captured publication receipts",
             )
-        expected = self._expected_producer_sources()
+        producer = self.producer
+        expected = self._expected_producer_sources(producer)
         if expected.failure:
             return r[bool].from_failure(expected)
-        matched = self._matched_producer_receipts(receipts, expected.value)
+        matched = self._matched_producer_receipts(receipts, producer, expected.value)
         if matched.failure:
             return matched
         verified = self._verified_receipt_states(receipts)
@@ -49,17 +50,21 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return verified
         return self._advanced_producer_capture(receipts)
 
+    @staticmethod
     def _expected_producer_sources(
-        self,
+        producer: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[t.MappingKV[Path, m.Infra.CodegenJournalSource]]:
         """Encode the captured producer's inputs as expected journal sources.
+
+        Args:
+            producer: The captured producer analysis.
 
         Returns:
             The expected generator sources keyed by path, or the first
             encoding failure.
         """
         expected_sources: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource] = {}
-        for state in self.producer.inputs:
+        for state in producer.inputs:
             encoded = FlextInfraMiseArtifactsJournal.source_record("generator", state)
             if encoded.failure:
                 return r[t.MappingKV[Path, m.Infra.CodegenJournalSource]].from_failure(
@@ -68,24 +73,24 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             expected_sources[state.path] = encoded.value
         return r[t.MappingKV[Path, m.Infra.CodegenJournalSource]].ok(expected_sources)
 
+    @staticmethod
     def _matched_producer_receipts(
-        self,
         receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        producer: m.Infra.CodegenPhaseAnalysis,
         expected_sources: t.MappingKV[Path, m.Infra.CodegenJournalSource],
     ) -> p.Result[bool]:
         """Reject publication receipts captured by a different producer.
 
         Args:
             receipts: Publication receipts of this producer's live effects.
+            producer: The captured producer analysis.
             expected_sources: Expected generator sources keyed by path.
 
         Returns:
             Whether every receipt belongs to the captured producer, or the
             first mismatch failure.
         """
-        expected_trees = {
-            tree.root.path: tree for tree in self.producer.generator_trees
-        }
+        expected_trees = {tree.root.path: tree for tree in producer.generator_trees}
         for receipt in receipts:
             if (
                 {
@@ -95,7 +100,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 != expected_sources
                 or {tree.root.path: tree for tree in receipt.generator_trees}
                 != expected_trees
-                or receipt.generator_modules != self.producer.generator_modules
+                or receipt.generator_modules != producer.generator_modules
             ):
                 return r[bool].fail(
                     "publication receipt belongs to a different captured producer",
@@ -136,7 +141,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             Whether the recaptured producer is current, or the first capture,
             verification or currency failure.
         """
-        captured = FlextInfraCodegenPreconditions.capture_producer()
+        captured = FlextInfraCodegenPreconditions.capture_producer(
+            self.repository_root,
+            entrypoint=self.plan,
+        )
         if captured.failure:
             return r[bool].from_failure(captured)
         reverified = self._verified_receipt_states(receipts)
@@ -182,7 +190,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             failure.
         """
         if self.producer is None:
-            captured = FlextInfraCodegenPreconditions.capture_producer()
+            captured = FlextInfraCodegenPreconditions.capture_producer(
+                self.repository_root,
+                entrypoint=self.plan,
+            )
             if captured.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
             self.producer = captured.value

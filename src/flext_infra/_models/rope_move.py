@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 from flext_cli import m
 
 from flext_infra import t
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsRopeMove:
@@ -45,10 +46,8 @@ class FlextInfraModelsRopeMove:
             m.Field(description="Whether to execute the validated move"),
         ]
 
-    class ResolvedClassMove(m.ArbitraryTypesModel):
+    class ResolvedClassMove(FlextInfraModelsBase.FrozenArbitrary):
         """One class move whose Rope identities are resolved before any rewrite."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         request: Annotated[
             FlextInfraModelsRopeMove.ClassMoveRequest,

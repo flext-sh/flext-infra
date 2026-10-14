@@ -11,11 +11,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
+from flext_infra.deps._modernizer.document import RenderPolicy
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
 
     from flext_infra import p
+    from flext_infra.deps._modernizer.document import RenderPolicySpec
 
 
 class FlextInfraPyprojectModernizerRun:
@@ -63,10 +65,7 @@ class FlextInfraPyprojectModernizerRun:
             state: m.Infra.PyprojectDocumentState,
             changes: t.StrSequence,
             *,
-            dry_run: bool,
-            skip_comments: bool,
-            format_source: bool = True,
-            preserve_layout: bool = False,
+            policy: RenderPolicySpec,
         ) -> p.Result[t.StrSequence]: ...
 
     def _selected_project_paths(self) -> p.Result[t.SequenceOf[Path]]:
@@ -487,12 +486,10 @@ class FlextInfraPyprojectModernizerRun:
                     msg = f"{section}.{name} must be a requirement array"
                     raise TypeError(msg)
                 for index, requirement in enumerate(entries):
-                    if isinstance(requirement, Mapping):
-                        if section == c.Infra.DEPENDENCY_GROUPS:
-                            continue
-                        msg = f"{section}.{name} requires requirement strings"
-                        raise TypeError(msg)
-                    if not isinstance(requirement, str):
+                    mapping = isinstance(requirement, Mapping)
+                    if mapping and section == c.Infra.DEPENDENCY_GROUPS:
+                        continue
+                    if mapping or not isinstance(requirement, str):
                         msg = f"{section}.{name} requires requirement strings"
                         raise TypeError(msg)
                     rewritten = u.Infra.rewrite_requirement_constraint(
@@ -533,10 +530,12 @@ class FlextInfraPyprojectModernizerRun:
         rendered = self._render_document_state(
             root_state,
             tuple(changes),
-            dry_run=True,
-            skip_comments=True,
-            format_source=False,
-            preserve_layout=True,
+            policy=RenderPolicy(
+                dry_run=True,
+                skip_comments=True,
+                format_source=False,
+                preserve_layout=True,
+            ),
         )
         if rendered.failure:
             rendered.unwrap()

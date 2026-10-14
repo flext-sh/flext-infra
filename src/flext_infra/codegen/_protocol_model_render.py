@@ -6,305 +6,209 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from inspect import getattr_static
-from types import FunctionType
+from collections import defaultdict
+from pathlib import Path
+from textwrap import dedent, indent
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, p, t, u
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
 from flext_infra.codegen import FlextInfraCodegenProtocolModelAnnotations
 
 
-class FlextInfraCodegenProtocolModelRender:
+class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotations):
     """Render structural protocols and their generated-file modules."""
-
-    Annotations = FlextInfraCodegenProtocolModelAnnotations
 
     @classmethod
     def render_member_modules(
         cls,
-        models: t.SequenceOf[type[m.BaseModel]],
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
-    ) -> t.MappingKV[str, str]:
-        """Render every generated module (path -> content) for a member.
-
-        Returns:
-            The resulting ``t.MappingKV[str, str]``.
-
-        """
-        grouped: MutableMapping[str, list[type[m.BaseModel]]] = {}
-        for model in sorted(models, key=cls._model_sort_key):
-            grouped.setdefault(cls._owner_name(model), []).append(model)
-        modules: MutableMapping[str, str] = {}
-        part_names: list[str] = []
-        for owner, owner_models in sorted(grouped.items()):
-            for index, chunk in enumerate(cls._chunks(owner_models, target), 1):
-                part_name = cls._part_name(owner, index)
-                part_names.append(part_name)
-                modules[cls._module_path(target, owner, index)] = (
-                    cls._module_header(target)
-                    + f"class {part_name}:\n"
-                    + cls._indent(chunk)
+        models: t.MappingKV[str, p.ModelType],
+        project: p.Infra.ProjectSpec,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        facades: t.MappingKV[str, p.ModuleOwned],
+        declarations: t.MappingKV[str, p.Infra.RopePyName],
+        protocol_directory: Path,
+        aliases: t.MappingKV[str, t.StrSequence],
+    ) -> t.MappingKV[Path, str]:
+        """Render source-bound declarations and their composing owner modules."""
+        renderer = cls(project, workspace, facades, declarations)
+        grouped: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        for name, model in sorted(models.items()):
+            declaration = declarations[name].get_object()
+            scope = declaration.get_scope()
+            if scope is None:
+                msg = f"model declaration has no native scope: {name}"
+                raise ValueError(msg)
+            body = renderer._render_protocol(name.rpartition(".")[2], model, scope)
+            grouped[name.rpartition(".")[0]].append((model.__module__, body))
+        modules: dict[Path, str] = {}
+        for namespace, bodies in grouped.items():
+            parts: list[tuple[str, str]] = []
+            token = namespace.replace(".", "_").lower()
+            stem = f"generated_models_{token}" if token else "generated_models"
+            chunk = ""
+            for _owner, body in bodies:
+                header = cls._module_header(project, renderer.imports)
+                if chunk and (
+                    header.count("\n") + chunk.count("\n") + body.count("\n") + 1
+                    > config.Infra.codegen.loc_cap.max_lines
+                ):
+                    renderer._append_part(
+                        modules, parts, protocol_directory, stem, chunk, header
+                    )
+                    chunk = ""
+                if (
+                    header.count("\n") + body.count("\n") + 1
+                    > config.Infra.codegen.loc_cap.max_lines
+                ):
+                    msg = (
+                        f"protocol declaration exceeds configured LOC cap: {namespace}"
+                    )
+                    raise ValueError(msg)
+                chunk += body
+            if chunk:
+                renderer._append_part(
+                    modules,
+                    parts,
+                    protocol_directory,
+                    stem,
+                    chunk,
+                    cls._module_header(project, renderer.imports),
                 )
-        modules[cls._aggregate_path(target)] = cls._render_aggregate(part_names, target)
+            aggregate = f"{project.class_stem}{namespace.replace('.', '')}ProtocolsGeneratedModels"
+            imports = "\n".join(
+                f"from .{module} import {owner}" for module, owner in parts
+            )
+            bases = ", ".join(owner for _module, owner in parts)
+            alias_lines = [
+                f"    type {name.rpartition('.')[2]} = "
+                + " | ".join(f"_public.p.{route}" for route in routes)
+                for name, routes in aliases.items()
+                if name.rpartition(".")[0] == namespace
+            ]
+            modules[protocol_directory / f"{stem}.py"] = (
+                f"{cls._module_header(project, {})}{imports}\n\n"
+                f"class {aggregate}({bases}):\n"
+                '    """Compose the generated structural declarations."""\n'
+                + "\n".join(alias_lines)
+                + f'\n\n__all__: list[str] = ["{aggregate}"]\n'
+            )
         return modules
 
-    @classmethod
-    def _chunks(
-        cls,
-        models: t.SequenceOf[type[m.BaseModel]],
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
-    ) -> t.SequenceOf[str]:
-        """Split one owner's protocol bodies under the configured module LOC cap.
-
-        The budget is ``loc_cap.max_lines`` minus the module header and the
-        part class line, so every generated part module stays under the cap.
-
-        Returns:
-            The resulting ``t.SequenceOf[str]``.
-
-        """
-        budget = (
-            config.Infra.codegen.loc_cap.max_lines
-            - cls._module_header(target).count("\n")
-            - 1
-        )
-        chunks: list[str] = []
-        current = ""
-        for model in models:
-            body = cls._render_protocol(model, target)
-            if current and current.count("\n") + body.count("\n") > budget:
-                chunks.append(current)
-                current = ""
-            current += body
-        if current:
-            chunks.append(current)
-        return chunks
-
-    @classmethod
     def _render_protocol(
-        cls,
-        model: type[m.BaseModel],
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
+        self,
+        name: str,
+        model: p.ModelType,
+        scope: p.Infra.RopeScope,
     ) -> str:
-        """Render one runtime-checkable structural protocol for ``model``.
-
-        Returns:
-            The resulting ``str``.
-
-        """
+        """Preserve field mutability and the model's authored method signatures."""
         lines = [
             "@runtime_checkable",
-            f"class {model.__name__}(Protocol):",
+            f"class {name}(Protocol):",
             '    """Structural contract generated from a validated model."""',
             "",
         ]
-        for name, field in model.model_fields.items():
-            rendered = cls._render_annotation(
-                name,
-                getattr(field, "annotation", None),
-                target,
+        for field_name, field in model.model_fields.items():
+            if field.annotation is None:
+                msg = f"field {field_name!r} has no annotation"
+                raise TypeError(msg)
+            rendered = self.render(field.annotation, scope)
+            if model.model_config.get("frozen", False) is True or field.frozen is True:
+                lines.extend((
+                    "    @property",
+                    f"    def {field_name}(self) -> {rendered}: ...",
+                ))
+            else:
+                lines.append(f"    {field_name}: {rendered}")
+        module = scope.pyobject.get_module()
+        if module is None:
+            msg = f"model declaration has no source module: {name}"
+            raise ValueError(msg)
+        statements = u.Infra.logical_statements(module.source_code)
+        regions = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        annotation_regions = regions.annotation_regions(module.source_code, module)
+        for method in scope.get_scopes():
+            method_name = method.pyobject.get_name()
+            if (
+                method.get_kind() != c.Infra.RopeScopeKind.FUNCTION
+                or method_name.startswith(("_", "model_"))
+            ):
+                continue
+            statement = next(
+                item for item in statements if item.line == method.get_start()
             )
-            lines.extend((
-                "    @property",
-                f"    def {name}(self) -> {rendered}:",
-                "        ...",
-                "",
-            ))
-        for name in cls._owned_public_properties(model):
-            rendered = cls._render_owned(name, model, target)
-            lines.extend((
-                "    @property",
-                f"    def {name}(self) -> {rendered}:",
-                "        ...",
-                "",
-            ))
-        while lines and not lines[-1]:
-            lines.pop()
-        if len(lines) <= c.Infra.PROTOCOL_MODEL_MINIMAL_BODY_LINES:
+            signature = module.source_code[
+                statement.start_offset : statement.end_offset
+            ]
+            _first, last = regions.expression_segments(
+                signature, 0, len(signature), ":"
+            )[0]
+            signature = signature[:last]
+            header_end = statement.start_offset + last
+            for begin, end, _line in reversed(annotation_regions):
+                stop = min(end, header_end)
+                if statement.start_offset <= begin < stop <= header_end:
+                    signature = (
+                        signature[: begin - statement.start_offset]
+                        + self.source(module.source_code[begin:stop], scope)
+                        + signature[stop - statement.start_offset :]
+                    )
+            signature = dedent(signature)
+            signature = signature.strip()
+            if "->" not in signature:
+                msg = f"public method {name}.{method_name} lacks a return annotation"
+                raise TypeError(msg)
+            descriptor = vars(model).get(method_name)
+            if type(descriptor) is property:
+                setter = any(
+                    item.text.strip() == f"@{method_name}.setter"
+                    for item in statements
+                    if method.get_region()[0] <= item.start_offset
+                    and item.line < method.get_start()
+                )
+                lines.append(
+                    f"    @{method_name}.setter" if setter else "    @property"
+                )
+            elif type(descriptor) in {classmethod, staticmethod}:
+                lines.append(f"    @{type(descriptor).__name__}")
+            self.record_imports(signature, scope)
+            lines.append(indent(f"{signature}: ...", "    "))
+        if len(lines) == 4:
             lines.append("    pass")
         return "\n".join(lines) + "\n\n"
 
-    @classmethod
-    def _render_annotation(
-        cls,
-        name: str,
-        annotation: t.TypeHintSpecifier | None,
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
-    ) -> str:
-        """Render one pydantic field annotation through the facade mapper.
-
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            TypeError: If field.
-
-        """
-        if annotation is None:
-            msg = f"field {name!r} has no annotation; close it at the model owner"
-            raise TypeError(msg)
-        return cls.Annotations.render(annotation, target)
-
-    @classmethod
-    def _owned_public_properties(cls, model: type[m.BaseModel]) -> list[str]:
-        """Return property/function names owned by the model itself.
-
-        Returns:
-            Property/function names owned by the model itself.
-
-        """
-        names: list[str] = []
-        for name, value in vars(model).items():
-            if name.startswith(("_", "model_")):
-                continue
-            if isinstance(value, (property, FunctionType)):
-                names.append(name)
-        return sorted(names)
-
-    @classmethod
-    def _render_owned(
-        cls,
-        name: str,
-        model: type[m.BaseModel],
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
-    ) -> str:
-        """Render one owned property return annotation, failing when missing.
-
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            TypeError: If owned member; or if property.
-
-        """
-        descriptor = getattr_static(model, name)
-        getter = descriptor.fget if isinstance(descriptor, property) else descriptor
-        if getter is None:
-            msg = f"owned member {name!r} has no getter on {model.__name__}"
-            raise TypeError(msg)
-        annotations: t.MappingKV[str, t.TypeHintSpecifier | None] = getattr(
-            getter,
-            "__annotations__",
-            {},
+    def _append_part(
+        self,
+        modules: t.MutableMappingKV[Path, str],
+        parts: list[tuple[str, str]],
+        directory: Path,
+        stem: str,
+        body: str,
+        header: str,
+    ) -> None:
+        """Append one budgeted part using the existing generated-module boundary."""
+        index = len(parts) + 1
+        module = f"{stem}_{index:02d}"
+        owner = f"{self.project.class_stem}ProtocolsGeneratedPart{len(modules) + 1:02d}"
+        modules[directory / f"{module}.py"] = (
+            f"{header}class {owner}:\n{indent(body, '    ')}\n__all__: list[str] = []\n"
         )
-        annotation = annotations.get("return")
-        if annotation is None:
-            msg = f"property {name!r} on {model.__name__} lacks a return annotation"
-            raise TypeError(msg)
-        return cls.Annotations.render(annotation, target)
-
-    @classmethod
-    def _render_aggregate(
-        cls,
-        part_names: t.SequenceOf[str],
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
-    ) -> str:
-        """Render the aggregate owner composing every generated part.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        container = f"{target.facade_container}ProtocolsGeneratedModels"
-        lines = [cls._module_header(target), f"class {container}:", ""]
-        lines.extend(f"    {name}" for name in sorted(part_names))
-        lines.append("")
-        return "\n".join(lines)
-
-    @classmethod
-    def _part_name(cls, owner: str, index: int) -> str:
-        """Return the PascalCase owner-part class name.
-
-        Returns:
-            The PascalCase owner-part class name.
-
-        """
-        camel = "".join(
-            part.capitalize() for part in owner.replace("-", "_").split("_")
-        )
-        return f"{camel}ProtocolsGeneratedPart{index:02d}"
-
-    @classmethod
-    def _module_path(
-        cls,
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
-        owner: str,
-        index: int,
-    ) -> str:
-        """Return the generated part module path for an owner chunk.
-
-        Returns:
-            The generated part module path for an owner chunk.
-
-        """
-        return (
-            f"src/{target.package_name}/_protocols/"
-            f"generated_models_{owner}_{index:02d}.py"
-        )
-
-    @classmethod
-    def _aggregate_path(
-        cls,
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
-    ) -> str:
-        """Return the generated aggregate module path.
-
-        Returns:
-            The generated aggregate module path.
-
-        """
-        return f"src/{target.package_name}/_protocols/generated_models.py"
-
-    @classmethod
-    def _owner_name(cls, model: type[m.BaseModel]) -> str:
-        """Return the owning module's short name for grouping.
-
-        Returns:
-            The owning module's short name for grouping.
-
-        """
-        return model.__module__.rsplit(".", 1)[-1]
-
-    @classmethod
-    def _model_sort_key(cls, model: type[m.BaseModel]) -> str:
-        """Sort models by owner then declared name for stable output.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return f"{model.__module__}.{model.__name__}"
-
-    @classmethod
-    def _indent(cls, body: str) -> str:
-        """Indent rendered protocol bodies into their owner class.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return (
-            "\n".join(f"    {line}" if line else line for line in body.splitlines())
-            + "\n"
-        )
+        parts.append((module, owner))
 
     @staticmethod
     def _module_header(
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
+        project: p.Infra.ProjectSpec,
+        imports: t.MappingKV[str, str],
     ) -> str:
-        """Return the generated-file header with regeneration instruction.
-
-        Returns:
-            The generated-file header with regeneration instruction.
-
-        """
+        """Import the package object without eagerly reading its composing facade."""
         return (
             "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
-            "# Structural protocols assembled from the member's validated models.\n"
             "from __future__ import annotations\n\n"
-            "from typing import TYPE_CHECKING, Protocol, runtime_checkable\n\n"
-            "if TYPE_CHECKING:\n"
-            f"    from {target.package_name} import p\n\n"
+            "from typing import Protocol, runtime_checkable\n"
+            f"import {project.package_name} as _public\n"
+            + "\n".join(sorted(imports.values()))
+            + "\n\n"
         )
 
 

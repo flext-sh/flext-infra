@@ -198,6 +198,24 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class ProjectSpec(Protocol):
+        """Elected project identity consumed directly by source projections."""
+
+        @property
+        def repository_root_rel(self) -> str:
+            """Declared relative path from the project to its workspace root."""
+            ...
+
+        @property
+        def package_name(self) -> str: ...
+
+        @property
+        def class_stem(self) -> str: ...
+
+        @property
+        def namespace(self) -> str: ...
+
+    @runtime_checkable
     class MiseArtifactsOwner(Protocol):
         """Owner contract consumed by the atomic generation transaction."""
 
@@ -487,15 +505,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class ProjectSpec(Protocol):
-        """Scaffold-only project metadata consumed by initial generation."""
-
-        @property
-        def repository_root_rel(self) -> str:
-            """Declared relative path from the project to its workspace root."""
-            ...
-
-    @runtime_checkable
     class BeadsProjectSpec(Protocol):
         """Repository-local Beads identity contract."""
 
@@ -554,12 +563,12 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceEnvironmentRequest(Protocol):
-        """Read-only workspace environment validation request."""
+    class WorkspaceRequest(Protocol):
+        """One explicit repository target for read-only workspace operations."""
 
         @property
         def repository_root(self) -> Path:
-            """Workspace whose active interpreter provenance must be validated."""
+            """Repository whose owned environment or lock must be validated."""
             ...
 
     @runtime_checkable

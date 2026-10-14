@@ -13,15 +13,183 @@ from difflib import unified_diff
 from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement
 
-from flext_infra import config
-from tests import c, m, tm, u
+from flext_infra import FlextInfraConfig, config
+from flext_infra.workspace import FlextInfraWorkspaceDetector
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
     """Tests for ``FlextInfraPyprojectConformTopologySources``."""
 
     _ROLE = c.Infra.MakeProfile
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("source_matches", [False, True])
+    def test_modern_candidate_declaration_reaches_the_existing_requirement_owner(
+        self,
+        tmp_path: Path,
+        *,
+        source_matches: bool,
+    ) -> None:
+        """Modern config pins declared categories without changing their line."""
+        _root, workspace, candidate = self._modern_candidate_fixture(
+            tmp_path,
+            source_matches=source_matches,
+        )
+        dependency = self._member_ref("flext-tests", "flext-tests")
+        line = u.Tests.integration()
+        requirement = (
+            f"{self._inline_requirement(dependency)} ; implementation_name == 'cpython'"
+        )
+        declared_requirement = Requirement(requirement)
+        quoted = tm.ok(u.Cli.json_dumps(requirement))
+        source = (
+            f'[project]\nname = "{workspace.repository.distribution}"\n'
+            'version = "0.1.0"\ndependencies = []\n'
+            "[project.optional-dependencies]\n"
+            f"feature = [{quoted}]\n"
+            "[dependency-groups]\n"
+            f"dev = [{quoted}]\n"
+            'examples = [{include-group = "dev"}]\n'
+        )
+        generated = u.Infra.pyproject_conform(
+            source,
+            workspace=workspace,
+            required_dev_dependencies=(),
+            uv_resolution=self._toolchain_resolution(),
+            options=u.Infra.PyprojectConformOptions(flext_line=line),
+        )
+        if not source_matches:
+            tm.that(generated.failure, eq=True)
+            tm.that(generated.error or "", has="candidate dependency Git URL differs")
+            return
+        rendered = tm.ok(generated)
+        tm.that(u.Tests.toml_strings_at(rendered, "project", "dependencies"), eq=())
+        payload = u.Tests.toml_payload(rendered)
+        groups = u.Tests.toml_mapping(payload["dependency-groups"])
+        tm.that(groups["examples"], eq=[{"include-group": "dev"}])
+        for path in (
+            ("dependency-groups", "dev"),
+            ("project", "optional-dependencies", "feature"),
+        ):
+            actual = Requirement(u.Tests.toml_strings_at(rendered, *path)[0])
+            tm.that(actual.url, eq=f"git+{candidate.url}@{candidate.commit}")
+            tm.that(actual.marker, eq=declared_requirement.marker)
+        tm.that(
+            tm.ok(
+                u.Infra.pyproject_conform(
+                    rendered,
+                    workspace=workspace,
+                    required_dev_dependencies=(),
+                    uv_resolution=self._toolchain_resolution(),
+                    options=u.Infra.PyprojectConformOptions(flext_line=line),
+                ),
+            ),
+            eq=rendered,
+        )
+
+    def _modern_candidate_fixture(
+        self,
+        tmp_path: Path,
+        *,
+        source_matches: bool,
+    ) -> t.Triple[
+        Path,
+        m.Infra.WorkspaceSpec,
+        m.Infra.DependencyCommitSourceSpec,
+    ]:
+        """Render the modern fixture declaring one candidate dependency.
+
+        Returns:
+            The fixture root, its loaded workspace, and the declared candidate.
+        """
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "modern",
+            self._ROLE.STANDALONE,
+        )
+        dependency = self._member_ref("flext-tests", "flext-tests")
+        candidate = m.Infra.DependencyCommitSourceSpec(
+            distribution=dependency.distribution,
+            url=(
+                dependency.url
+                if source_matches
+                else u.Tests.repository_ref("flext-other").url
+            ),
+            commit="a" * 40,
+        )
+        line = u.Tests.integration()
+        layer = FlextInfraConfig.config_layer_paths_for_repository(
+            root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+        )[-1]
+        tm.ok(
+            u.Cli.yaml_dump(
+                layer,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "integration": line.model_dump(mode="json"),
+                                "candidate_dependencies": [
+                                    candidate.model_dump(mode="json")
+                                ],
+                            }
+                        }
+                    }
+                },
+            ),
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        workspace = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(root, inputs=inputs),
+        )
+        tm.that(workspace.candidate_dependencies, eq=(candidate,))
+        tm.that(workspace.integration, eq=line)
+        return root, workspace, candidate
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("duplicate", ["distribution", "repository"])
+    def test_modern_candidate_declaration_rejects_ambiguous_sources(
+        tmp_path: Path,
+        duplicate: str,
+    ) -> None:
+        """The modern loader runs the same unique-source contract as workspace."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "modern",
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        first = u.Tests.repository_ref("flext-tests")
+        second = u.Tests.repository_ref("flext-other")
+        sources: list[t.JsonValue] = [
+            {"distribution": first.distribution, "url": first.url, "commit": "a" * 40},
+            {
+                "distribution": (
+                    first.distribution.upper()
+                    if duplicate == "distribution"
+                    else second.distribution
+                ),
+                "url": second.url if duplicate == "distribution" else first.url,
+                "commit": "b" * 40,
+            },
+        ]
+        layer = FlextInfraConfig.config_layer_paths_for_repository(
+            root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+        )[-1]
+        repository_overlay: dict[str, t.JsonValue] = {
+            "candidate_dependencies": sources,
+        }
+        codegen_overlay: dict[str, t.JsonValue] = {
+            "repository": repository_overlay,
+        }
+        overlay: dict[str, t.JsonValue] = {"Infra": codegen_overlay}
+        tm.ok(u.Cli.yaml_dump(layer, overlay))
+
+        loaded = u.Infra.load_codegen_inputs(root)
+
+        tm.that(loaded.failure, eq=True)
+        tm.that(loaded.error or "", has="must be unique")
 
     def _member_ref(self, distribution: str, path: str) -> m.Infra.RepositoryRef:
         """Declare one standalone-capable member through the provider contract.
@@ -108,6 +276,12 @@ class TestsFlextInfraPyprojectConformTopologySources:
         captured = tm.ok(
             u.Cli.atomic_read_binary_file_state(declaration, required=True),
         )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                declaration,
+                "captured declarations are the parser input, not the live path",
+            ),
+        )
         marker = 'implementation_name == "cpython"'
         request = f"{member.distribution} @ git+{member.url}@{source_line}; {marker}"
         source = (
@@ -148,6 +322,31 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(
             any(f"[{member.distribution}-feature]" in line for line in selected),
             eq=True,
+        )
+
+    def test_member_provisioning_requires_captured_declarations(
+        self, tmp_path: Path
+    ) -> None:
+        """A pure metadata renderer never elects an installed producer itself."""
+        member = self._member_ref(config.Infra.name, "member")
+        workspace = self._workspace(member)
+        source = (
+            "[project]\n"
+            f'name = "{workspace.repository.distribution}"\n'
+            'version = "1.0"\n'
+            "dependencies = []\n"
+        )
+        rendered = u.Infra.pyproject_conform(
+            source,
+            workspace=workspace,
+            required_dev_dependencies=(),
+            uv_resolution=self._toolchain_resolution(),
+            options=u.Infra.PyprojectConformOptions(repository_root=tmp_path),
+        )
+        tm.that(rendered.failure, eq=True)
+        tm.that(
+            rendered.error,
+            has="member provisioning requires captured authenticated declarations",
         )
 
     @pytest.mark.parametrize("package", [False, True])
@@ -1048,13 +1247,15 @@ class TestsFlextInfraPyprojectConformTopologySources:
     def test_standalone_preserves_declared_nonlocal_source(self) -> None:
         """Conformance owns local topology, not a user's independent Git source."""
         dependency = self._member_ref("flext-custom", "flext-custom")
-        source_entry = {"git": dependency.url, "rev": u.Tests.provider_branch()}
-        source = u.Cli.toml_dumps(
-            u.Cli.toml_document_from_mapping({
-                "project": {"name": "consumer", "version": "0.1.0", "dependencies": []},
-                "tool": {"uv": {"sources": {dependency.distribution: source_entry}}},
-            }),
-        )
+        source_entry: dict[str, t.JsonValue] = {
+            "git": dependency.url,
+            "rev": u.Tests.provider_branch(),
+        }
+        document: dict[str, t.JsonValue] = {
+            "project": {"name": "consumer", "version": "0.1.0", "dependencies": []},
+            "tool": {"uv": {"sources": {dependency.distribution: source_entry}}},
+        }
+        source = u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(document))
         rendered = tm.ok(
             u.Infra.pyproject_conform(
                 source,

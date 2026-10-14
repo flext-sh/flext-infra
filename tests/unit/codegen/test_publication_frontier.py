@@ -22,6 +22,23 @@ class TestsPublicationFrontier:
     """Historical sources advance only through actual native publication effects."""
 
     @staticmethod
+    def test_public_receipt_preserves_native_cause_and_immutable_boundary() -> None:
+        """Shared presets retain causal evidence and reject unauthorized state."""
+        cause = ValueError("native publication failure")
+        receipt = m.Infra.CodegenPhaseOutcome(exception=cause, error=str(cause))
+        tm.that(receipt.exception is cause, eq=True)
+        tm.that(
+            m.Infra.CodegenPhaseOutcome.model_validate_json(
+                receipt.model_dump_json()
+            ).error,
+            eq=str(cause),
+        )
+        with pytest.raises(m.ValidationError):
+            object.__setattr__(receipt, "error", "")
+        with pytest.raises(m.ValidationError):
+            m.Infra.CodegenPhaseOutcome.model_validate({"unowned": True})
+
+    @staticmethod
     @pytest.mark.parametrize("external_drift", [False, True])
     def test_ordered_batches_authenticate_their_shared_destination(
         tmp_path: Path,
