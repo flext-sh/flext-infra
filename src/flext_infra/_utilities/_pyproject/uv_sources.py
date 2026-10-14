@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
-from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlsplit
 
 from flext_cli import u
@@ -25,9 +24,6 @@ from flext_infra._utilities._pyproject import (
 from flext_infra._utilities.dependency_requirements import (
     FlextInfraUtilitiesDependencyRequirements,
 )
-
-if TYPE_CHECKING:
-    from tomlkit.items import Table
 
 
 class FlextInfraUtilitiesPyprojectUvSources(
@@ -196,6 +192,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 )
                 development.extend(t.Cli.JSON_LIST_ADAPTER.validate_python(legacy_dev))
                 declared_groups["dev"] = development
+            validated_groups = m.Infra.DependencyGroupDeclarations.model_validate(
+                {"dependency-groups": declared_groups},
+            )
+            declared_groups = {
+                group: cls.dependency_group_wire(entries)
+                for group, entries in validated_groups.dependency_groups.items()
+            }
             renamed = {
                 canonicalize_name(group): (
                     group
@@ -305,16 +308,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     if isinstance(entry, str):
                         rewritten.append(cls._resolution_requirement(entry, project))
                     else:
-                        inclusion = t.Cli.JSON_MAPPING_ADAPTER.validate_python(entry)
-                        included = inclusion.get("include-group")
-                        if (
-                            len(inclusion) != 1
-                            or not isinstance(included, str)
-                            or canonicalize_name(included) not in renamed
-                        ):
-                            return r[t.Cli.TomlDocument].fail(
-                                f"invalid resolution group inclusion: {name}:{group}",
-                            )
+                        inclusion = m.Infra.DependencyGroupInclude.model_validate(entry)
+                        included = inclusion.include_group
                         rewritten.append({
                             "include-group": renamed[canonicalize_name(included)],
                         })
@@ -435,12 +430,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     if name is not None:
                         names.add(name)
                 else:
-                    inclusion = t.Cli.JSON_MAPPING_ADAPTER.validate_python(requirement)
-                    included = inclusion["include-group"]
-                    if not isinstance(included, str):
-                        msg = "dependency-group inclusion is not a group name"
-                        raise ValueError(msg)
-                    pending.append(canonicalize_name(included))
+                    inclusion = m.Infra.DependencyGroupInclude.model_validate(
+                        requirement
+                    )
+                    pending.append(canonicalize_name(inclusion.include_group))
         return tuple(sorted(names))
 
     @staticmethod
@@ -621,11 +614,11 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
 
     @staticmethod
-    def _resolved_uv_table(document: t.Cli.TomlDocument) -> Table:
+    def _resolved_uv_table(document: t.Cli.TomlDocument) -> t.Cli.TomlTable:
         """Return the ``[tool.uv]`` table, creating its nesting when absent.
 
         Returns:
-            The resulting ``Table``.
+            The resulting ``t.Cli.TomlTable``.
 
         """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
@@ -636,7 +629,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _sync_uv_candidates(
-        uv: Table,
+        uv: t.Cli.TomlTable,
         candidate_sources: t.StrMapping,
         requirements: t.StrSequence,
         resolution: m.Infra.UvResolutionSpec,
@@ -670,7 +663,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _sync_uv_constraints(
-        uv: Table,
+        uv: t.Cli.TomlTable,
         resolution: m.Infra.UvResolutionSpec,
     ) -> None:
         """Sync the SSOT-rendered constraints, link mode, and banned cooldown keys.
@@ -702,7 +695,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
         u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
 
     @staticmethod
-    def _sync_uv_environments(uv: Table, resolution: m.Infra.UvResolutionSpec) -> None:
+    def _sync_uv_environments(
+        uv: t.Cli.TomlTable,
+        resolution: m.Infra.UvResolutionSpec,
+    ) -> None:
         """Sync the fleet toolchain SSOT environments.
 
         Environments come from the fleet toolchain SSOT: an empty declaration
@@ -719,33 +715,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
             u.Cli.toml_sync_value(uv, "environments", environments)
         else:
             u.Cli.toml_remove_key_if_present(uv, "environments")
-
-    @staticmethod
-    def _sync_uv_excludes(uv: Table, resolution: m.Infra.UvResolutionSpec) -> None:
-        """Sync the uv scoped exclude-dependencies payload.
-
-        Project is a flext-infra routing key only; uv scoped form is
-        {package={name, version?}, dependencies=[...]} (uv settings docs).
-        Emit on every owning pyproject so standalone CI clones resolve;
-        do not gate on owns_uv_root_policy (that stripped member excludes).
-        """
-        exclude_payload = list(
-            t.Cli.JSON_LIST_ADAPTER.validate_python([
-                {
-                    key: value
-                    for key, value in item.model_dump(
-                        mode="json",
-                        exclude_none=True,
-                    ).items()
-                    if key != "project"
-                }
-                for item in resolution.exclude_dependencies
-            ]),
-        )
-        if exclude_payload:
-            u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
 
     @classmethod
     def _sync_uv_sources(
@@ -772,38 +741,26 @@ class FlextInfraUtilitiesPyprojectUvSources(
             if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        local_names = tuple(member.distribution for member in members)
+        root_names = (
+            (workspace.repository.distribution,) if workspace.repository.package else ()
+        )
+        local_names = (*root_names, *(member.distribution for member in members))
         conflicting = set(local_names) & candidate_sources.keys()
         if conflicting:
             return r[bool].fail(
                 "candidate source overrides local members: "
                 + ", ".join(sorted(conflicting)),
             )
-        # Source replacement must not discard declared version/marker bounds.
-        constraints = tuple(
-            sorted({
-                *resolution.constraint_dependencies,
-                *(
-                    FlextInfraUtilitiesDependencies.dependency_constraint(
-                        line,
-                        replace_source=True,
-                    )
-                    for line in local_requirements
-                    if FlextInfraUtilitiesDependencies.dep_name(line) in local_names
-                ),
-            }),
-        )
+        # Authored metadata retains declared policy. Native resolution views own
+        # local source overrides and the constraints preserving replaced sources.
         cls._sync_uv_candidates(
             uv,
-            candidate_sources=candidate_sources,
-            requirements=local_requirements,
-            resolution=resolution,
+            candidate_sources,
+            local_requirements,
+            resolution,
         )
         u.Cli.toml_remove_key_if_present(uv, "required-version")
-        cls._sync_uv_constraints(
-            uv,
-            resolution.model_copy(update={"constraint_dependencies": constraints}),
-        )
+        cls._sync_uv_constraints(uv, resolution)
         cls._sync_uv_environments(uv, resolution)
         u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         cls._retire_generated_local_sources(
@@ -814,10 +771,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _retire_generated_local_sources(
-        uv: Table,
-        repositories: t.SequenceOf[m.Infra.RepositoryRef],
+        uv: t.Cli.TomlTable,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
     ) -> None:
-        """Retire authenticated generated local bindings from package metadata.
+        """Remove only identifiable old generated local bindings.
 
         Native workspace declarations and custom sources remain owned by
         their author. A source outside the authenticated declarations is
@@ -846,7 +803,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             )
             if not has_native_workspace and (entry == generated_path or generated_self):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
-        if not tuple(sources):
+        if not sources:
             u.Cli.toml_remove_key_if_present(uv, "sources")
 
 

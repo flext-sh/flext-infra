@@ -14,12 +14,39 @@ from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
-from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenFixModels,
+    FlextInfraModelsCodegenLazyInitModels,
+)
 
 
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
+
+    class RopeSourceImport(m.ArbitraryTypesModel):
+        """One native import declaration and its original logical source region."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        import_info: Annotated[
+            p.Infra.RopeFromImport,
+            m.Field(exclude=True, description="Native Rope from-import identity"),
+        ]
+        start_line: Annotated[
+            int, m.Field(ge=1, description="Original one-based declaration line")
+        ]
+        start_offset: Annotated[
+            int, m.Field(ge=0, description="Original inclusive source character offset")
+        ]
+        end_offset: Annotated[
+            int, m.Field(ge=0, description="Original exclusive source character offset")
+        ]
+        source: Annotated[
+            str, m.Field(description="Complete Rope logical import statement")
+        ]
+        type_checking_guarded: Annotated[
+            bool, m.Field(description="Import belongs to a TYPE_CHECKING suite")
+        ]
 
     # Callers resolve project
     # selection once; source iteration has one exact, branch-free request shape.
@@ -561,6 +588,12 @@ class FlextInfraModelsRope:
             t.MappingKV[t.Pair[int, str], int],
             m.Field(description="Parameter positions from the module snapshot"),
         ]
+        constant_bindings: Annotated[
+            frozenset[t.Pair[int, str]],
+            m.Field(
+                description="Identity-proven immutable declarations in the snapshot"
+            ),
+        ] = frozenset()
         name: Annotated[str, m.Field(description="Resolved symbol name being recorded")]
         pyname: Annotated[
             t.Infra.RopePyName,

@@ -11,9 +11,7 @@ from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    # This boundary also supplies t.Infra's aliases, so it cannot depend on them.
-    from flext_core import p
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 @runtime_checkable
@@ -232,6 +230,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
 
     @runtime_checkable
+    class RopePyCore(Protocol):
+        """Native source graph owner; source objects keep their original project."""
+
+        @property
+        def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
+
+    @runtime_checkable
     class RopePyModule(Protocol):
         """Rope parsed module shape."""
 
@@ -262,6 +267,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
 
         def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope | None: ...
+
+    @runtime_checkable
+    class RopeSourceModule(RopePyModule, Protocol):
+        """Source-module capability retaining its native semantic graph."""
+
+        @property
+        def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
     @runtime_checkable
     class RopeProject(Protocol):
@@ -363,14 +375,35 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         end_line: int
 
     @runtime_checkable
+    class RopeWordFinder(Protocol):
+        """Native delimiter reader owned by Worder's code finder."""
+
+        def get_word_parens_range(
+            self,
+            offset: int,
+            opening: str = "(",
+            closing: str = ")",
+        ) -> tuple[int, int]: ...
+
+    @runtime_checkable
     class RopeWorder(Protocol):
         """Rope word/call classifier consumed by the static fact engine."""
+
+        code_finder: FlextInfraProtocolsRopeRuntime.RopeWordFinder
 
         def get_primary_at(self, offset: int) -> str: ...
 
         def is_a_function_being_called(self, offset: int) -> bool: ...
 
         def get_word_parens_range(self, offset: int) -> tuple[int, int]: ...
+
+        def get_word_range(self, offset: int) -> tuple[int, int]: ...
+
+        def get_parameters(
+            self,
+            first: int,
+            last: int,
+        ) -> tuple[list[str], list[tuple[str, str]]]: ...
 
         def is_function_keyword_parameter(self, offset: int) -> bool: ...
 
@@ -411,8 +444,17 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> Iterator[tuple[int, int]]: ...
 
     @runtime_checkable
+    class RopeChangeComputer(Protocol):
+        """The native source writer without exposing its internal syntax tree."""
+
+        def get_changed(self) -> str | None: ...
+
+    @runtime_checkable
     class RopeRestructure(Protocol):
         """Public semantic restructuring planner at the Rope runtime boundary."""
+
+        matched_count: int
+        admitted_count: int
 
         def get_changes(
             self,
@@ -476,7 +518,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def find_occurrences(
             self,
             *,
-            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
+            resource: FlextInfraProtocolsRopeRuntime.RopeResource | None = None,
+            pymodule: FlextInfraProtocolsRopeRuntime.RopePyModule | None = None,
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeOccurrence]: ...
 
 

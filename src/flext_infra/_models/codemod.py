@@ -14,7 +14,7 @@ from flext_cli import m
 from typing_extensions import TypeForm
 
 from flext_core import u
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraModelsCodemod:
@@ -194,14 +194,20 @@ class FlextInfraModelsCodemod:
         """Identity-constrained native Rope restructuring of a Python contract."""
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
+        phase: c.Infra.SemanticCutoverPhase = m.Field(
+            default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+            strict=False,
+            description="Existing semantic phase owning this rule's execution",
+        )
         pattern: Annotated[t.NonEmptyStr, m.Field(description="Native Rope pattern")]
         goal: Annotated[t.NonEmptyStr, m.Field(description="Native Rope replacement")]
         arguments: Annotated[
             t.MappingKV[str, str],
             m.Field(description="Native Rope wildcard identity constraints"),
         ]
-        imports: t.StrSequence = m.Field(
-            default=(), description="Imports added by native Rope import management"
+        imports: t.MappingKV[str, str] = u.Field(
+            default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
+            description="Destination bindings and their native import declarations",
         )
         bindings: t.MappingKV[str, str] = u.Field(
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
@@ -210,6 +216,20 @@ class FlextInfraModelsCodemod:
         model_bases: t.StrSequence = m.Field(
             default=(),
             description="Required model ancestry for every matched declaration",
+        )
+        unshadowed_builtins: t.StrSequence = m.Field(
+            default=(),
+            description="Native lexical names required to be interpreter builtins",
+        )
+        families: t.StrSequence = m.Field(
+            default=(),
+            description="Declared facade families admitting the source module",
+        )
+        scope_kinds: t.SequenceOf[
+            Annotated[c.Infra.RopeScopeKind, m.Field(strict=False)]
+        ] = m.Field(
+            default=(),
+            description="Native Rope lexical scopes admitting a match",
         )
 
     class RopeContractRules(m.ContractModel):

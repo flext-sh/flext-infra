@@ -25,6 +25,9 @@ ignores:
   - "**/conftest.py"
 metadata:
   relocation: protocol
+  context:
+    NAME:
+      is: protocol-declaration
 rule:
   all:
     - kind: class_definition
@@ -39,16 +42,7 @@ rule:
           stopBy: end
     - has:
         field: superclasses
-        has:
-          any:
-            - kind: identifier
-              regex: "^Protocol$"
-            - kind: subscript
-              has:
-                field: value
-                regex: "^(?:typing\\.)?Protocol$"
-            - kind: attribute
-              regex: "^typing\\.Protocol$"
+        pattern: $BASES
 message: >-
   Protocol class outside the protocols family: declare it in protocols.py or
   the _protocols package.

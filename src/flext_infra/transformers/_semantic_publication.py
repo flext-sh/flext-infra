@@ -198,8 +198,12 @@ class FlextInfraSemanticPublication:
         roots = cls._semantic_phase_roots(
             analysis.files, (*projection_roots, *input_roots)
         )
+        producer = FlextInfraCodegenPreconditions.capture_producer()
+        if producer.failure:
+            return r[tuple[Path, ...]].from_failure(producer)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=repository_root),
+            producer=producer.value,
         )
         if dependency_group is not None:
 

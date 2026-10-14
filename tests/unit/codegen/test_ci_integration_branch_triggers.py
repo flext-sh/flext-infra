@@ -246,7 +246,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     def test_tool_cache_keeps_new_generations_after_completed_failures() -> None:
-        """A rendered cache contract restores progress and never overwrites a generation."""
+        """A rendered cache contract restores progress and never overwrites it."""
         spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
             dist="cache-consumer",
             make_profile=c.Infra.MakeProfile.STANDALONE,

@@ -19,10 +19,6 @@ snapshots:
       style: secondary
       start: 38
       end: 46
-    - source: rules
-      style: secondary
-      start: 47
-      end: 52
     - source: |-
         Engine.scan(
             root, fix=False,
@@ -50,10 +46,6 @@ snapshots:
       style: secondary
       start: 29
       end: 33
-    - source: plan
-      style: secondary
-      start: 34
-      end: 38
     - source: Engine.scan(root, fix=False, plan=plan)
       style: secondary
       start: 0
@@ -73,10 +65,6 @@ snapshots:
       style: secondary
       start: 29
       end: 37
-    - source: choose(plan=plan)
-      style: secondary
-      start: 38
-      end: 55
     - source: Engine.scan(root, fix=False, rule_ids=choose(plan=plan))
       style: secondary
       start: 0
@@ -96,10 +84,6 @@ snapshots:
       style: secondary
       start: 29
       end: 37
-    - source: rules
-      style: secondary
-      start: 38
-      end: 43
     - source: Engine.scan(root, fix=False, rule_ids=rules)
       style: secondary
       start: 0

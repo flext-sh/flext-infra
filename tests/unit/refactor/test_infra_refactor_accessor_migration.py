@@ -382,7 +382,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         """Local bindings and nested introducing classes remain in the same inventory.
 
         Args:
-            tmp_path: The temporary path provided by pytest for creating isolated test files.
+            tmp_path: Temporary path provided by pytest for isolated test files.
         """
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
         policy = m.MethodShapeParams.model_validate(

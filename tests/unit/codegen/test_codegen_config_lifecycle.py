@@ -7,13 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import cProfile
-import sys
 from pathlib import Path
 
 import pytest
 from jinja2 import Template
 
-from flext_infra import infra
+from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 from tests import c, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
@@ -82,17 +81,34 @@ class TestsFlextInfraCodegenConfigLifecycle:
         tm.that(after, eq=before)
 
     @staticmethod
-    def test_generated_config_keeps_settings_independent(tmp_path: Path) -> None:
+    def test_generated_config_keeps_settings_independent(
+        installed_artifact_consumer: Path,
+    ) -> None:
         """The real generated package loads typed YAML and freezes only config."""
         root = test_codegen_ci_matrix.TestsFlextInfraCodegenCiMatrix.render_project(
-            tmp_path / "project",
+            installed_artifact_consumer,
         )
+        for verb in ("build", "setup"):
+            output = tm.ok(
+                u.Tests.run_isolated_make(
+                    [verb],
+                    cwd=root,
+                    env={
+                        config.Infra.codegen.make.ci.variable: (
+                            config.Infra.codegen.make.ci.value
+                        ),
+                    },
+                ),
+            )
+            tm.that(
+                u.Cli.process_succeeded(output.outcome),
+                eq=True,
+                msg=output.stdout + output.stderr,
+            )
         script = """
-import sys
 from importlib.resources import files
 from pathlib import Path
 
-sys.path.insert(0, str(Path(sys.argv[1]) / "src"))
 from flext_cli import FlextCliConfig, u
 from flext_demo import FlextDemoConfig, config, m, settings
 
@@ -115,7 +131,8 @@ print("generated config: frozen YAML, subclass identity, independent settings")
 """
         process = tm.ok(
             u.Cli.run_raw(
-                [sys.executable, "-c", script, str(root)],
+                [str(u.Infra.runtime_python(root)), "-c", script],
+                cwd=root,
             ),
         )
         tm.that(
@@ -154,3 +171,71 @@ print("generated config: frozen YAML, subclass identity, independent settings")
             tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=True)),
             eq=before,
         )
+
+    @staticmethod
+    def test_installed_git_artifact_retains_complete_declaration(
+        installed_artifact_consumer: Path,
+    ) -> None:
+        """Read the native Git artifact and reject bytes outside its wheel RECORD."""
+        root = installed_artifact_consumer
+        script = """
+import sys
+from pathlib import Path
+
+from flext_infra import c, config, u
+
+root = Path(sys.argv[1])
+repository = u.Infra.configured_repository_ref(
+    codegen=config.Infra.codegen,
+    repository_root=root,
+).unwrap()
+state = u.Infra.member_project_declaration(root, repository).unwrap()
+assert state.path.is_relative_to(Path(sys.prefix))
+metadata, requirements = u.Infra.member_declaration_requirements(
+    state,
+    repository.distribution,
+).unwrap()
+assert state.content is not None
+document = u.Cli.toml_parse_text(state.content.decode(c.DEFAULT_ENCODING))
+assert document is not None
+payload = u.Cli.toml_as_mapping(document)
+assert payload is not None
+project = payload["project"]
+assert metadata.dependencies == tuple(project.get("dependencies", ()))
+assert metadata.optional_dependencies == {
+    name: tuple(entries)
+    for name, entries in project.get("optional-dependencies", {}).items()
+}
+assert {
+    name: [
+        entry if isinstance(entry, str) else entry.model_dump(by_alias=True)
+        for entry in entries
+    ]
+    for name, entries in metadata.dependency_groups.items()
+} == payload.get("dependency-groups", {})
+assert tuple(requirements) == tuple(
+    u.Infra.document_requirement_lines(document).unwrap()
+)
+assert state.mode is not None
+u.Cli.atomic_write_binary_file_guarded(
+    state,
+    state.content + b"\\n",
+    permission_mode=state.mode,
+).unwrap()
+changed = u.Infra.member_project_declaration(root, repository)
+assert changed.failure
+assert "RECORD" in changed.error
+print("installed Git declaration: complete groups, extras and RECORD authentication")
+"""
+        output = tm.ok(
+            u.Cli.run_raw(
+                [str(u.Infra.runtime_python(root)), "-c", script, str(root)],
+                cwd=root,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(output.outcome),
+            eq=True,
+            msg=output.stdout + output.stderr,
+        )
+        tm.that(output.stdout, has="installed Git declaration: complete groups")

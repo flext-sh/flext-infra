@@ -270,6 +270,21 @@ class TestsFlextInfraModEvidenceInputs:
                 },
                 missing_binding,
             ),
+            (
+                {
+                    "binding_graphs": (
+                        (missing_binding,),
+                        *restored.binding_graphs[1:],
+                    ),
+                    "entries": (
+                        restored.entries[0].model_copy(
+                            update={"source_path": missing_source}
+                        ),
+                        *restored.entries[1:],
+                    ),
+                },
+                missing_binding,
+            ),
         ):
             tampered = restored.model_copy(update=updates)
             with pytest.raises(KeyError) as missing:

@@ -24,6 +24,9 @@ from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 # export, when the root namespace is still initializing — a root from-import
 # would re-enter the partial namespace and fail.
 
+_GITHUB_REPO_PATH_SEGMENTS = 2
+"""A GitHub repository path is exactly ``<organization>/<repository>``."""
+
 
 class FlextInfraUtilitiesDocsGithubLinks:
     """Governed GitHub URL helpers for docs audit and fix."""
@@ -99,7 +102,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
                     continue
                 path = parsed.path.strip("/")
             pieces = path.removesuffix(".git").split("/")
-            if len(pieces) != 2 or not all(pieces):
+            if len(pieces) != _GITHUB_REPO_PATH_SEGMENTS or not all(pieces):
                 message = (
                     f"GitHub declaration must name one owner and repository: {url}"
                 )

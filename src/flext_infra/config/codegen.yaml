@@ -692,6 +692,10 @@ Infra:
         description: Profile the canonical pytest entry and its collection children on the same persistent testmon database, without the outer bounded-gate wrapper.
       - name: profile-test-report
         description: Render the parent pytest profile and the aggregated child profiles from that run.
+      - name: profile-environment
+        description: Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
+      - name: profile-environment-report
+        description: Render the profile retained by the canonical environment provenance guard.
       - name: profile-mod
         description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
       - name: profile-mod-report
@@ -1428,7 +1432,7 @@ Infra:
           runtime: [ click>=8.5.0, typer>=0.27.3, jinja2>=3.1.6, jsonschema>=4.26.0, tomlkit>=0.15.1, ruamel.yaml>=0.19.1, defusedxml>=0.7.1, openpyxl>=3.1.5, python-docx>=1.2.0, python-pptx>=1.0.2 ]
         - upstream: flext_cli
           project: flext-infra
-          runtime: [ flext-cli, defusedxml>=0.7.1, GitPython>=3.2.0, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.11, "rope @ git+https://github.com/marlon-costa-dc/rope.git@datacosmos", pytest>=9.1.1, pytest-markdown-docs, mkdocs>=1.6.1 ]
+          runtime: [ flext-cli, defusedxml>=0.7.1, GitPython>=3.2.0, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.11.1, "rope @ git+https://github.com/marlon-costa-dc/rope.git@datacosmos", pytest>=9.1.1, pytest-markdown-docs>=0.9.2, mkdocs>=1.6.1 ]
         - upstream: flext_cli
           project: flext-tests
           runtime: [ flext-cli, flext-infra, pytest>=9.1.1, pytest-timeout>=2.4.0, docker>=7.2.0, python-on-whales>=0.81.0 ]

@@ -76,6 +76,9 @@ class FlextInfraDocGenerator(
     def publish_batch(
         self,
         bundle: m.Infra.DocsGenerationBundle,
+        *,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+        | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Admit and settle one captured batch before another batch is prepared.
 
@@ -174,7 +177,10 @@ class FlextInfraDocGenerator(
                     return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(
                         written
                     )
-                committed = transaction.commit_locked(written.value)
+                committed = transaction.commit_locked(
+                    written.value,
+                    publication_receipts=publication_receipts,
+                )
                 if committed.failure:
                     return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(
                         committed

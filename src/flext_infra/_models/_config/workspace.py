@@ -11,6 +11,7 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, t
+from packaging.utils import canonicalize_name
 
 from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
@@ -234,7 +235,109 @@ class FlextInfraConfigModelsWorkspace:
                 raise ValueError(msg)
             return self
 
-    class DependencyManifestSpec(m.ContractModel):
+    class DependencyGroupInclude(m.ContractModel):
+        """One native PEP 735 inclusion at its original array position."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        include_group: Annotated[
+            t.NonEmptyStr,
+            m.Field(alias="include-group", description="Referenced dependency group"),
+        ]
+
+    class DependencyGroupEntries(
+        m.RootModel[t.VariadicTuple[str | DependencyGroupInclude]]
+    ):
+        """Native ordered PEP 735 entries, without resolving local references."""
+
+        @m.model_validator(mode="before")
+        @classmethod
+        def toml_array(cls, value: t.JsonValue) -> t.JsonPayload:
+            """Freeze an array while retaining each native inclusion table."""
+            return tuple(value) if isinstance(value, list) else value
+
+    class DependencyGroupDeclarations(m.ContractModel):
+        """Shared native dependency-group grammar and local reference graph."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+
+        dependency_groups: Annotated[
+            t.MappingKV[
+                str,
+                t.VariadicTuple[
+                    str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+                ],
+            ],
+            m.Field(
+                alias="dependency-groups", description="Ordered native group entries"
+            ),
+        ]
+
+        @m.field_validator("dependency_groups", mode="before")
+        @classmethod
+        def toml_group_arrays(cls, value: t.JsonValue) -> t.JsonPayload:
+            """Freeze TOML containers without converting inclusion tables to strings."""
+            if isinstance(value, dict):
+                return {
+                    name: tuple(entries) if isinstance(entries, list) else entries
+                    for name, entries in value.items()
+                }
+            return value
+
+        @m.field_validator("dependency_groups")
+        @classmethod
+        def local_group_graph(
+            cls,
+            groups: t.MappingKV[
+                str,
+                t.VariadicTuple[
+                    str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+                ],
+            ],
+        ) -> t.MappingKV[
+            str,
+            t.VariadicTuple[
+                str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+            ],
+        ]:
+            """Reject missing, ambiguous or cyclic local group inclusions."""
+            names = {canonicalize_name(name, validate=True): name for name in groups}
+            if len(names) != len(groups):
+                msg = "dependency group names have colliding normalized identities"
+                raise ValueError(msg)
+            graph: dict[str, tuple[str, ...]] = {}
+            for name, entries in groups.items():
+                references = tuple(
+                    canonicalize_name(entry.include_group, validate=True)
+                    for entry in entries
+                    if not isinstance(entry, str)
+                )
+                if any(reference not in names for reference in references):
+                    msg = f"dependency group includes an undeclared group: {name}"
+                    raise ValueError(msg)
+                graph[canonicalize_name(name)] = references
+            active: list[str] = []
+            visited: set[str] = set()
+
+            def visit(name: str) -> None:
+                if name in active:
+                    msg = "cyclic dependency group inclusion: " + " -> ".join(
+                        (*active, name),
+                    )
+                    raise ValueError(msg)
+                if name in visited:
+                    return
+                active.append(name)
+                for reference in graph[name]:
+                    visit(reference)
+                active.pop()
+                visited.add(name)
+
+            for name in graph:
+                visit(name)
+            return groups
+
+    class DependencyManifestSpec(DependencyGroupDeclarations):
         """Dependency facts one member's own ``pyproject.toml`` declares."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
@@ -257,13 +360,23 @@ class FlextInfraConfigModelsWorkspace:
             ),
         ] = ()
         dependency_groups: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            t.MappingKV[
+                str,
+                t.VariadicTuple[
+                    str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+                ],
+            ],
             m.Field(
                 validation_alias=FlextInfraConfigVocabulary.DEPENDENCY_GROUPS,
                 description="PEP 735 dependency groups (dev, codegen, ...)",
             ),
         ] = m.Field(
-            default_factory=lambda: MappingProxyType[str, t.StrSequence]({}),
+            default_factory=lambda: MappingProxyType[
+                str,
+                t.VariadicTuple[
+                    str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+                ],
+            ]({}),
         )
 
     class DependencyEdgeSpec(m.ContractModel):

@@ -59,7 +59,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 return r[m.Infra.GitSigningIdentityReport].from_failure(observed)
             observations.append(observed.value)
         signing_format, signing_key, allowed_signers = observations
-        if any(item.value == "" for item in observations):
+        if any(item.value is not None and not item.value for item in observations):
             return r[m.Infra.GitSigningIdentityReport].fail(
                 "native Git signing configuration declares an empty reference",
             )
@@ -73,12 +73,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         inline = ssh and key is not None and key.startswith(("key::", "ssh-"))
         if inline and key is not None:
             try:
-                kind, encoded, *_ = key.removeprefix("key::").split(maxsplit=2)
-                blob = b64decode(encoded, validate=True)
-                size = int.from_bytes(blob[:4], "big")
-                if len(blob) <= 4 + size or blob[4 : 4 + size] != kind.encode("ascii"):
-                    msg = "malformed SSH public key envelope"
-                    raise ValueError(msg)
+                cls._validate_inline_ssh_key(key)
             except ValueError:
                 return r[m.Infra.GitSigningIdentityReport].fail(
                     "native Git signing configuration declares a malformed public key",
@@ -94,6 +89,23 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 observations=tuple(observations),
             ),
         )
+
+    @staticmethod
+    def _validate_inline_ssh_key(key: str) -> None:
+        """Decode one inline SSH public key envelope and verify its key material.
+
+        Raises:
+            ValueError: If the envelope does not split into a key kind plus
+                base64 payload, the payload is not valid base64, or the
+                decoded blob does not start with its declared key kind.
+
+        """
+        kind, encoded, *_ = key.removeprefix("key::").split(maxsplit=2)
+        blob = b64decode(encoded, validate=True)
+        size = int.from_bytes(blob[:4], "big")
+        if len(blob) <= 4 + size or blob[4 : 4 + size] != kind.encode("ascii"):
+            msg = "malformed SSH public key envelope"
+            raise ValueError(msg)
 
     @staticmethod
     def _signing_config_observation(
@@ -141,7 +153,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
                     pass
                 case _:
                     return r[m.Infra.GitSigningConfigObservation].fail(
-                        "native Git signing configuration returned malformed origin data",
+                        "native Git signing configuration returned "
+                        "malformed origin data",
                     )
         return r[m.Infra.GitSigningConfigObservation].ok(
             m.Infra.GitSigningConfigObservation(
@@ -965,7 +978,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
         for path in (context.pyproject_path, context.lock_path):
             relative = path.relative_to(context.runtime_root).as_posix()
             if relative not in runtime_commit.tree:
-                msg = f"selected resolver input is absent from the runtime commit: {relative}"
+                msg = (
+                    "selected resolver input is absent from the runtime commit: "
+                    f"{relative}"
+                )
                 raise FileNotFoundError(
                     msg,
                 )

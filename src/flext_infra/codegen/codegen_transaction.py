@@ -394,10 +394,10 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         if self._producer.failure:
-            return r[T].from_failure(self._producer)
+            return r[m.Infra.GitIdentityReport].from_failure(self._producer)
         producer = FlextInfraCodegenPreconditions.producer_current(self._producer.value)
         if producer.failure:
-            return r[T].from_failure(producer)
+            return r[m.Infra.GitIdentityReport].from_failure(producer)
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[m.Infra.GitIdentityReport].from_failure(identity)
@@ -618,6 +618,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         analysis: m.Infra.CodegenPhaseAnalysis,
         policy: m.Infra.CodegenPhasePublicationPolicy,
         *,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+        | None = None,
         batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
         staged_validator: Callable[
             [
@@ -655,9 +657,12 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         started = self.begin_files_locked(scope_root, roots, analysis.inputs)
         if started.failure:
             return result_type.from_failure(started)
+        bound = self.bind_publication_proof(started.value, analysis.files)
+        if bound.failure:
+            return result_type.from_failure(bound)
         prepared = self.append_directories_locked(
-            started.value.model_copy(
-                update={"exception": started.value.exception or analysis.exception},
+            bound.value.model_copy(
+                update={"exception": bound.value.exception or analysis.exception},
             ),
             analysis.phase,
             policy.directories,
@@ -674,7 +679,10 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         )
         if published.failure:
             return result_type.from_failure(published)
-        return self.commit_locked(published.value)
+        return self.commit_locked(
+            published.value,
+            publication_receipts=publication_receipts,
+        )
 
     def validate(
         self,

@@ -17,15 +17,15 @@
         run: |
           set -eu
           cache_home="{{ '${' }}{{ make.testmon_cache.data_home_environment_variable }}{{ ':-' }}{{ '${' }}{{ make.testmon_cache.user_home_environment_variable }}{{ '}' }}/{{ make.testmon_cache.home_cache_directory }}}"
-          database="$(realpath -m "$cache_home/{{ make.testmon_cache.external_storage_directory }}/{{ dist }}/{{ make.testmon_cache.database_filename }}")"
-          case "$database" in /*) ;; *) exit 2 ;; esac
-          printf 'database=%s\n' "$database" >> "$GITHUB_OUTPUT"
-          branch_digest="$(printf '%s' "$CACHE_BRANCH" | sha256sum)"
-          seed_digest="$(printf '%s' "$CACHE_SEED_BRANCH" | sha256sum)"
-          namespace="$CACHE_PLATFORM-{{ python_version }}-{{ make.testmon_cache_policy.key_prefix }}-{{ dist }}-${branch_digest%% *}-"
-          seed_namespace="$CACHE_PLATFORM-{{ python_version }}-{{ make.testmon_cache_policy.key_prefix }}-{{ dist }}-${seed_digest%% *}-"
-          printf 'namespace=%s\nseed_namespace=%s\nsave_allowed=%s\n' "$namespace" "$seed_namespace" "$CACHE_WRITE_ALLOWED" >> "$GITHUB_OUTPUT"
-          printf 'key=%s%s-%s\n' "$namespace" "$CACHE_INPUTS" "$CACHE_GENERATION" >> "$GITHUB_OUTPUT"
+          database="$(realpath -m "${cache_home}/{{ make.testmon_cache.external_storage_directory }}/{{ dist }}/{{ make.testmon_cache.database_filename }}")"
+          case "${database}" in /*) ;; *) exit 2 ;; esac
+          printf 'database=%s\n' "${database}" >> "${GITHUB_OUTPUT}"
+          branch_digest="$(printf '%s' "${CACHE_BRANCH}" | sha256sum)"
+          seed_digest="$(printf '%s' "${CACHE_SEED_BRANCH}" | sha256sum)"
+          namespace="${CACHE_PLATFORM}-{{ python_version }}-{{ make.testmon_cache_policy.key_prefix }}-{{ dist }}-${branch_digest%% *}-"
+          seed_namespace="${CACHE_PLATFORM}-{{ python_version }}-{{ make.testmon_cache_policy.key_prefix }}-{{ dist }}-${seed_digest%% *}-"
+          printf 'namespace=%s\nseed_namespace=%s\nsave_allowed=%s\n' "${namespace}" "${seed_namespace}" "${CACHE_WRITE_ALLOWED}" >> "${GITHUB_OUTPUT}"
+          printf 'key=%s%s-%s\n' "${namespace}" "${CACHE_INPUTS}" "${CACHE_GENERATION}" >> "${GITHUB_OUTPUT}"
       - name: Restore testmon database
         uses: {{ github_actions["cache"].repository }}/restore@{{ github_actions["cache"].version }}
         with:

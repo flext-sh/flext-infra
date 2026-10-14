@@ -105,6 +105,32 @@ mutating codemod lifecycle. The profile is written to the generated Make
 the CLI raises. A failed profiling invocation remains RED; its statistics
 identify the expensive owner and do not replace the required quality gates.
 
+`make profile-environment` measures the environment provenance guard itself.
+Its prerequisite checks only the interpreter, so the guard is measured once.
+`make profile-environment-report` reads the retained profile through the same
+report owner.
+
+Generated Python wheels include the producer's complete `pyproject.toml` inside
+their package namespace. Root dependency composition reads live declarations
+only from authenticated editable installations. Installed Git dependencies
+provide their wheel declaration instead: its distribution, immutable lock
+origin, RECORD digest and size, and producer packaging destination must agree.
+Missing resources require publishing the producer's generated artifact first;
+installed METADATA cannot reconstruct development groups or extras.
+
+Root member requests retain each explicit requirement's Git URL, ref and
+marker while adding the member's declared extras. The governed workspace
+integration line supplies a member request only when no explicit source
+request exists. This does not rewrite a member's independent lock or its
+transitive source declarations.
+
+Config lifecycle tests use the shared physical session consumer and its native
+Make upgrade, setup and build sequence. Artifact cases restore the installed
+environment after each case. They import installed packages through that
+environment's interpreter and reject modified declaration resources. These
+cases require producer artifacts containing the declaration contract, built and
+published through the native lifecycle.
+
 Use `make profile-mod-rules` followed by `make profile-mod-rules-report` to
 measure the complete read-only rule diagnostic. It runs the same `refactor ast`
 consumer as `make mod-rules`, including semantic admission and evidence

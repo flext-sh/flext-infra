@@ -9,7 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m
-from flext_infra.codegen import FlextInfraMisePublication
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsVerification,
+    FlextInfraMisePublication,
+)
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.docs.generator import FlextInfraDocGenerator
@@ -67,6 +70,42 @@ class TestsFlextInfraDocsGeneratorBundle:
         tm.that(published.error or "", has=str(guide))
         tm.that(target.read_bytes(), eq=original_target)
         tm.that((workspace / "flext-a/docs/api-reference/generated").exists(), eq=False)
+
+    def test_published_membership_preserves_captured_resource_dependencies(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Keep template/config inputs while refusing a newly introduced source."""
+        workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+        generator = self._generator(workspace)
+        prepared = tm.ok(generator.prepare_bundle())
+        resources = tuple(
+            state.path
+            for state in prepared.source_states
+            if not u.Infra.docs_source_path_is_input(
+                state.path,
+                prepared.source_roots,
+                source_scope=prepared.source_scope,
+            )
+        )
+        tm.that(bool(resources), eq=True)
+        receipts: list[m.Infra.CodegenPhaseOutcome] = []
+
+        tm.ok(generator.publish_batch(prepared, publication_receipts=receipts))
+        tm.that(len(receipts), eq=1)
+        tm.ok(
+            FlextInfraMiseArtifactsVerification.publication_states_current(
+                receipts[0],
+            ),
+        )
+        added = workspace / "flext-a/src/flext_a/new_source.py"
+        added.write_text('"""Source added after publication."""\n', encoding="utf-8")
+        changed = FlextInfraMiseArtifactsVerification.publication_states_current(
+            receipts[0],
+        )
+
+        tm.fail(changed)
+        tm.that(changed.error or "", has=str(added))
 
     def test_publication_rejects_source_topology_addition_after_bundle(
         self,
@@ -137,7 +176,7 @@ class TestsFlextInfraDocsGeneratorBundle:
     def test_admitted_inputs_remain_the_publication_snapshot(
         tmp_path: Path,
     ) -> None:
-        """A later source edit belongs to the next capture, preserving admitted bytes."""
+        """A later source edit belongs to the next capture, bytes preserved."""
         root = u.Tests.git_repository(tmp_path)
         source = root / "input.py"
         source.write_bytes(b"value = 1\n")

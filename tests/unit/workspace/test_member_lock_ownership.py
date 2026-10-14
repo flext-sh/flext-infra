@@ -11,8 +11,10 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra
-from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.workspace import FlextInfraWorkspaceLockCompleteness
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceLockCompleteness,
+)
 from tests import c, t, tm, u
 
 pytestmark = pytest.mark.slow
@@ -26,64 +28,38 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
         """Create an actual governed Git checkout in the requested topology.
 
         Returns:
-            The workspace root.
-
+            The containing root and the project selected for conformance.
         """
-        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "workspace")
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            root / cls.MEMBER,
-            cls.MEMBER,
-            beads=u.Tests.BeadsIdentity(
-                workspace="fixture-workspace",
-                database="fixture_workspace",
-                issue_prefix="fixture-workspace",
-            ),
-        )
-        u.Tests.checkout_integration(root / cls.MEMBER)
-        u.Tests.WorktreeFixture.write_gitmodules(root, (cls.MEMBER,))
-        head = u.Tests.git_capture(root / cls.MEMBER, "rev-parse", c.Infra.GIT_HEAD)
-        u.Tests.git_run(
-            root,
-            "update-index",
-            "--add",
-            "--cacheinfo",
-            f"160000,{head.strip()},{cls.MEMBER}",
-        )
-        if uv_workspace:
-            pyproject = root / c.PYPROJECT_FILENAME
-            pyproject.write_text(
-                pyproject.read_text(encoding="utf-8")
-                + f'\n[tool.uv.workspace]\nmembers = ["{cls.MEMBER}"]\n',
-                encoding="utf-8",
-            )
-        u.Tests.commit_git_changes(root, "declare members")
-        return root
+        root = tmp_path / "workspace"
+        if attached:
+            member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
+            return root, member
+        project = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "standalone")
+        return project, project
 
-    def test_standalone_member_owns_its_lock(self, tmp_path: Path) -> None:
-        """Without an enclosing uv workspace the member resolves alone."""
-        member = self._workspace(tmp_path, uv_workspace=False) / self.MEMBER
-
-        tm.that(tm.ok(FlextInfraCodegenConform.require_own_lock(member)), eq=member)
-
-    @pytest.mark.parametrize("uv_workspace", [False, True])
-    def test_verification_uses_native_lock_owner(
+    @pytest.mark.parametrize("attached", [False, True])
+    def test_verification_uses_selected_owner_without_repair(
         self,
         tmp_path: Path,
-        uv_workspace: bool,
+        attached: bool,
     ) -> None:
-        """Git attachment alone never elects the containing runtime's lock."""
-        root = self._workspace(tmp_path, uv_workspace=uv_workspace)
-        member = root / self.MEMBER
-        owner = root if uv_workspace else member
-        lock = owner / c.Infra.UV_LOCK_FILENAME
-        lock.write_text("package = []", encoding="utf-8")
+        """Attached and standalone validation name their own selected missing lock."""
+        root, project = self._repository(tmp_path, attached=attached)
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project))
+        tm.that(context.runtime_root, eq=root)
+        legacy = project / c.Infra.UV_LOCK_FILENAME
+        legacy.write_text("package = []\n", encoding="utf-8")
 
-        tm.fail(FlextInfraWorkspaceLockCompleteness.validate(member), has=str(lock))
-        tm.that(lock.read_text(encoding="utf-8"), eq="package = []")
-        other = (member if uv_workspace else root) / c.Infra.UV_LOCK_FILENAME
-        tm.that(other.exists(), eq=False)
+        tm.fail(
+            FlextInfraWorkspaceLockCompleteness.validate(project),
+            has=str(context.lock_path),
+        )
 
-    def test_attached_member_settle_stops_before_any_lock(
+        tm.that(context.lock_path.exists(), eq=False)
+        tm.that(legacy.read_text(encoding="utf-8"), eq="package = []\n")
+
+    @pytest.mark.parametrize("attached", [False, True])
+    def test_conform_preserves_existing_locks(
         self,
         tmp_path: Path,
         attached: bool,

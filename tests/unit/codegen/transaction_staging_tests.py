@@ -31,6 +31,135 @@ class TestsFlextInfraTransactionStaging:
     """Exercise durable staging authority before publishing live destinations."""
 
     @staticmethod
+    def test_missing_required_member_manifest_rejects_source_planning(
+        tmp_path: Path,
+    ) -> None:
+        """Missing mandatory Python input cannot become a native-member exemption."""
+        root = u.Tests.git_repository(tmp_path)
+        package = u.Tests.src_package(
+            root,
+            "preview_receiver",
+            pyproject="[project]\nname = 'preview-receiver'\nversion = '1.0.0'\n",
+        )
+        receiver = package / "__init__.py"
+        receiver.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
+        missing = root / "required-member"
+        missing.mkdir()
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "required-member"]\n\tpath = required-member\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = receiver.read_bytes()
+
+        result = FlextInfraStagedPackage.plan_sources(
+            root,
+            {receiver: "VALUE = 2\n"},
+        )
+
+        tm.fail(result, has=str(missing / c.PYPROJECT_FILENAME))
+        tm.that(receiver.read_bytes(), eq=before)
+        tm.that((missing / c.PYPROJECT_FILENAME).exists(), eq=False)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("policy", "manifest_present"),
+        [
+            ("unmanaged", False),
+            ("native", False),
+            ("unmanaged", True),
+            ("native", True),
+            ("read-only", True),
+        ],
+    )
+    def test_dependency_closure_is_independent_of_generation_applicability(
+        tmp_path: Path,
+        policy: str,
+        manifest_present: bool,
+    ) -> None:
+        """Real Python providers remain importable beside declared native members."""
+        root = u.Tests.git_repository(tmp_path)
+        receiver_package = u.Tests.src_package(
+            root,
+            "preview_receiver",
+            pyproject="[project]\nname = 'preview-receiver'\nversion = '1.0.0'\n",
+        )
+        provider_root = root / "provider"
+        provider_package = u.Tests.src_package(
+            provider_root,
+            "preview_provider",
+            pyproject="[project]\nname = 'preview-provider'\nversion = '1.0.0'\n",
+        )
+        receiver = receiver_package / "__init__.py"
+        receiver.write_text(
+            "from preview_provider import VALUE\ndef read():\n    return VALUE\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (provider_package / "__init__.py").write_text(
+            "VALUE = 7\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        participant = provider_root if manifest_present else root / "native-member"
+        participant.mkdir(exist_ok=True)
+        declarations = '[submodule "provider"]\n\tpath = provider\n'
+        if not manifest_present:
+            declarations += '[submodule "native-member"]\n\tpath = native-member\n'
+        if policy == "unmanaged":
+            declarations += "\tflext-managed = false\n"
+        else:
+            directory = participant / c.Infra.CODEGEN_CONFIG_DIR
+            directory.mkdir()
+            declaration = "codegen: none" if policy == "native" else "read_only: true"
+            (directory / "codegen.yaml").write_text(
+                f"Infra:\n  codegen:\n    repository:\n      {declaration}\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        (root / c.Infra.GITMODULES).write_text(
+            declarations,
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = receiver.read_bytes()
+        provider_before = (provider_root / c.PYPROJECT_FILENAME).read_bytes()
+
+        planned = tm.ok(
+            FlextInfraStagedPackage.plan_sources(
+                root,
+                {receiver: receiver.read_text(encoding=c.DEFAULT_ENCODING) + "\n"},
+            ),
+        )
+
+        tm.that(
+            {layout.package_name for layout in planned.layouts},
+            eq={"preview_receiver", "preview_provider"},
+        )
+        bindings = tuple(
+            (layout.package_name, str(layout.init_path)) for layout in planned.layouts
+        )
+        code = (
+            "import importlib.util, sys\n"
+            f"bindings = {bindings!r}\n"
+            "for name, path in reversed(bindings):\n"
+            "    spec = importlib.util.spec_from_file_location(name, path)\n"
+            "    module = importlib.util.module_from_spec(spec)\n"
+            "    sys.modules[name] = module\n"
+            "    spec.loader.exec_module(module)\n"
+            "import preview_receiver\n"
+            "assert preview_receiver.read() == 7\n"
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [sys.executable, "-I", "-c", code],
+                cwd=tmp_path,
+            ),
+        )
+        tm.that(receiver.read_bytes(), eq=before)
+        tm.that(
+            (provider_root / c.PYPROJECT_FILENAME).read_bytes(),
+            eq=provider_before,
+        )
+        if not manifest_present:
+            tm.that((participant / c.PYPROJECT_FILENAME).exists(), eq=False)
+
+    @staticmethod
     @pytest.mark.parametrize("consumer_root", ["tests", "examples", "scripts", "."])
     @pytest.mark.parametrize("missing", [False, True])
     def test_composed_source_preview_consumes_new_transitive_dependencies(

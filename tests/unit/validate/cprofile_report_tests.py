@@ -111,6 +111,7 @@ class TestsFlextInfraCProfileReport:
         tm.that(primary_trace, lacks="NotADirectoryError")
         tm.that(secondary_trace, has="NotADirectoryError")
         tm.that(secondary_trace, has=str(blocked))
+        tm.that(secondary_trace, lacks="ValueError: I/O operation on closed file.")
 
     @staticmethod
     @pytest.mark.parametrize("inventory_only", [False, True])

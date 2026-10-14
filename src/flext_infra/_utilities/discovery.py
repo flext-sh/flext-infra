@@ -207,13 +207,20 @@ class FlextInfraUtilitiesDiscovery(
         return cls._discover_package_from_path(str(file_path))
 
     @staticmethod
-    def declared_package_dir(package_name: str) -> Path | None:
+    def declared_package_dir(
+        package_name: str,
+        *,
+        search_paths: t.StrSequence | None = None,
+    ) -> Path | None:
         """Elect the physical import path without trusting cached module origins.
 
         Returns:
             The unique package directory, or None for an absent name/plain module.
+
+        Raises:
+            ValueError: If the declared package has ambiguous physical origins.
         """
-        locations: t.StrSequence | None = None
+        locations = search_paths
         components = package_name.split(".")
         for index in range(len(components)):
             spec = PathFinder.find_spec(".".join(components[: index + 1]), locations)

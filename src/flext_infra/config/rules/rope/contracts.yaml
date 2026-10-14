@@ -1,5 +1,30 @@
 rules:
+  - id: namespace-final-constant
+    phase: constant-consumers
+    families: [c]
+    scope_kinds: [Class]
+    pattern: '${name}: ${final}[${contract}] = ${value}'
+    goal: '${name}: ClassVar[${contract}] = ${value}'
+    arguments:
+      final: name=typing.Final
+    imports:
+      ClassVar: from typing import ClassVar
+    bindings:
+      ClassVar: typing.ClassVar
+  - id: pydantic-adapter-construction
+    phase: contract-normalization
+    pattern: '${adapter}(${contract})'
+    goal: 'u.type_adapter(TypeForm(${contract}))'
+    arguments:
+      adapter: name=pydantic.TypeAdapter
+    imports:
+      u: from flext_core import u
+      TypeForm: from typing_extensions import TypeForm
+    bindings:
+      u.type_adapter: pydantic.TypeAdapter
+      TypeForm: typing_extensions.TypeForm
   - id: pydantic-annotated-factory
+    phase: contract-normalization
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${annotated}[${contract}, ${field}(default_factory=${factory})]'
     goal: '${name}: ${contract} = ${field}(default_factory=${factory})'
@@ -7,6 +32,7 @@ rules:
       annotated: name=typing.Annotated
       field: name=pydantic.Field
   - id: pydantic-annotated-default
+    phase: contract-normalization
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${annotated}[${contract}, ${field}(default=${default})]'
     goal: '${name}: ${contract} = ${default}'
@@ -14,6 +40,7 @@ rules:
       annotated: name=typing.Annotated
       field: name=pydantic.Field
   - id: pydantic-empty-list-factory
+    phase: contract-normalization
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${collection}[${element}] = ${field}(default_factory=${collection})'
     goal: '${name}: ${collection}[${element}] = ${field}(default_factory=u.empty(TypeForm(${collection}[${element}])))'
@@ -21,21 +48,22 @@ rules:
       collection: name=__builtin__.list
       field: name=pydantic.Field
     imports:
-      - from flext_core import u
-      - from typing_extensions import TypeForm
+      u: from flext_core import u
+      TypeForm: from typing_extensions import TypeForm
     bindings:
       u.empty: flext_core._models.pydantic.FlextModelsPydantic.empty
       TypeForm: typing_extensions.TypeForm
   - id: pydantic-empty-dict-factory
+    phase: contract-normalization
     model_bases: [pydantic.BaseModel]
-    pattern: '${name}: ${collection}[${key}, ${value}] = ${field}(default_factory=${collection})'
-    goal: '${name}: ${collection}[${key}, ${value}] = ${field}(default_factory=u.empty(TypeForm(${collection}[${key}, ${value}])))'
+    unshadowed_builtins: [dict]
+    pattern: '${name}: dict[${parameters}] = ${field}(default_factory=dict)'
+    goal: '${name}: dict[${parameters}] = ${field}(default_factory=u.empty(TypeForm(dict[${parameters}])))'
     arguments:
-      collection: name=__builtin__.dict
       field: name=pydantic.Field
     imports:
-      - from flext_core import u
-      - from typing_extensions import TypeForm
+      u: from flext_core import u
+      TypeForm: from typing_extensions import TypeForm
     bindings:
       u.empty: flext_core._models.pydantic.FlextModelsPydantic.empty
       TypeForm: typing_extensions.TypeForm
