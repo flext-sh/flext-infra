@@ -41,7 +41,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope_analysis.asthelpers import (

@@ -644,7 +644,7 @@ _activated-{{ verb.name }}: _builtin_require_environment
 _activated-{{ verb.name }}: _builtin_require_interpreter
 	+@$(SELF_MAKE) _builtin_status_import_observation
 	+@$(SELF_MAKE) _builtin_require_environment
-{% elif verb.name == "initialize" %}
+{% elif verb.name in ("initialize", "profile-environment", "profile-environment-report") %}
 _activated-{{ verb.name }}: _builtin_require_interpreter
 {% else %}
 _activated-{{ verb.name }}: _builtin_require_environment
@@ -1010,6 +1010,18 @@ profile-gen-report: _builtin_require_environment
 	@$(RUNTIME_PYTHON) -c \
 		'import pstats, sys; stats = pstats.Stats(sys.argv[1]); stats.sort_stats("cumtime").print_stats(50); stats.sort_stats("tottime").print_callers(15)' \
 		"$(PROFILE_REPORTS_DIR)/conform.pstats"
+
+# Measure the environment guard itself before changing its provenance checks.
+_builtin-profile-environment: _builtin_require_interpreter
+	@mkdir -p "$(PROFILE_REPORTS_DIR)"
+	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
+		"$(PROFILE_REPORTS_DIR)/environment.pstats" workspace verify-environment \
+		--repository-root "$(RUNTIME_ROOT)"
+
+_builtin-profile-environment-report: _builtin_require_interpreter
+	@cd "$(PROJECT_ROOT)" || exit $$?; \
+		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
+		"$(PROFILE_REPORTS_DIR)/environment.pstats"
 
 # Measure the same mutating codemod lifecycle, retaining profiles on failure.
 _builtin-profile-mod: _builtin_require_environment

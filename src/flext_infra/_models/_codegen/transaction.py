@@ -142,6 +142,9 @@ class FlextInfraModelsCodegenTransactionModels:
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             default=(), description="Producer resource membership before planning"
         )
+        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+            default=(), description="Immutable producer module election"
+        )
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),
             description="Source-owner directory witnesses for observation",

@@ -172,7 +172,8 @@ class FlextInfraMisePublication:
             return result_type.from_failure(current)
         if analysis.generator_trees:
             producer = FlextInfraCodegenPreconditions.producer_trees_current(
-                analysis.generator_trees
+                analysis.generator_trees,
+                modules=analysis.generator_modules,
             )
             if producer.failure:
                 return result_type.from_failure(producer)
@@ -303,9 +304,11 @@ class FlextInfraMisePublication:
                         authority[encoded.value.path] = encoded.value
                 if ready.success:
                     ready = FlextInfraCodegenPreconditions.producer_trees_current(
-                        journal.generator_trees, tuple(authority.values())
+                        journal.generator_trees,
+                        tuple(authority.values()),
+                        modules=journal.generator_modules,
                     )
-            if ready.success and batch_admission is None:
+            if ready.success:
                 ready = FlextInfraMisePublication._source_prerequisites(
                     publication.source_states,
                     published_states,
@@ -461,11 +464,7 @@ class FlextInfraMisePublication:
                 )
                 return r[bool].fail(str(cause), exception=cause)
             expected.append(after)
-        verified = FlextInfraMiseArtifactsVerification.states_current(tuple(expected))
-        if verified.failure and verified.exception is None:
-            cause = ValueError(verified.error)
-            return r[bool].fail(str(cause), exception=cause)
-        return verified
+        return FlextInfraMiseArtifactsVerification.states_current(tuple(expected))
 
     @staticmethod
     def _tracking_prerequisites(

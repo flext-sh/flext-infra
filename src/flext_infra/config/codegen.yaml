@@ -692,6 +692,10 @@ Infra:
         description: Profile the canonical pytest entry and its collection children on the same persistent testmon database, without the outer bounded-gate wrapper.
       - name: profile-test-report
         description: Render the parent pytest profile and the aggregated child profiles from that run.
+      - name: profile-environment
+        description: Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
+      - name: profile-environment-report
+        description: Render the profile retained by the canonical environment provenance guard.
       - name: profile-mod
         description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
       - name: profile-mod-report

@@ -96,7 +96,9 @@ class FlextInfraMiseArtifactsVerification(
                     "generation batch lacks pre-planning producer closure; run make gen"
                 )
             producer = FlextInfraCodegenPreconditions.producer_trees_current(
-                outcome.generator_trees, outcome.outputs
+                outcome.generator_trees,
+                outcome.outputs,
+                modules=outcome.generator_modules,
             )
             if producer.failure:
                 return producer
@@ -223,8 +225,7 @@ class FlextInfraMiseArtifactsVerification(
             The resulting ``p.Result[bool]``.
 
         """
-        for original_expected in states:
-            expected = original_expected
+        for expected in states:
             if expected.parent_device is None and journal is not None:
                 rebound = cls._bind_source_parent(expected, journal)
                 if rebound.failure:
@@ -240,13 +241,16 @@ class FlextInfraMiseArtifactsVerification(
                 return r[bool].from_failure(observed)
             if observed.value != rebound_expected:
                 content_changed = observed.value.content != rebound_expected.content
-                return r[bool].fail(
+                message = (
                     f"generation authenticated state changed: {rebound_expected.path}; "
                     f"content_changed={content_changed}; "
+                    f"expected_sha256={FlextInfraMiseArtifactsFiles.digest(rebound_expected.content) if rebound_expected.content is not None else None}; "
+                    f"observed_sha256={FlextInfraMiseArtifactsFiles.digest(observed.value.content) if observed.value.content is not None else None}; "
                     "expected="
                     f"{rebound_expected.model_dump_json(exclude={'content'})}; "
-                    f"observed={observed.value.model_dump_json(exclude={'content'})}",
+                    f"observed={observed.value.model_dump_json(exclude={'content'})}"
                 )
+                return r[bool].fail(message, exception=ValueError(message))
         return r[bool].ok(value=True)
 
     @classmethod

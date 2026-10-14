@@ -7,14 +7,23 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import importlib.metadata
+import os
 import shutil
+import stat
+import sys
 from pathlib import Path
 from shlex import quote
 
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenPreconditions
+from flext_infra.codegen import (
+    FlextInfraCodegenConform,
+    FlextInfraCodegenPreconditions,
+    FlextInfraCodegenTransaction,
+    FlextInfraMiseArtifactsFiles,
+)
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from tests import c, m, t, tm, u
 
 
@@ -22,9 +31,167 @@ class TestsFlextInfraRenderProvenance:
     """Rendered Make controls execute the installed, metadata-owned namespace."""
 
     @staticmethod
-    @pytest.mark.parametrize("mutation", ["unchanged", "changed", "added", "directory", "removed-root"])
+    @pytest.mark.parametrize("failure", ["none", "manifest", "binding", "name"])
+    def test_native_distribution_collection_retains_resources_and_failure_order(
+        tmp_path: Path,
+        failure: str,
+    ) -> None:
+        """Real PEP 376 descriptors preserve complete resources and native barriers."""
+        metadata = tmp_path / "capture_provider-1.0.dist-info"
+        metadata.mkdir()
+        (metadata / "METADATA").write_text(
+            "Metadata-Version: 2.4\nVersion: 1.0\n"
+            + ("Name: capture-provider\n" if failure == "none" else ""),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (metadata / "resource.bin").write_bytes(b"unlisted physical resource")
+        binding = tmp_path / "capture-provider.pth"
+        if failure not in {"manifest", "binding"}:
+            binding.write_text(str(tmp_path) + "\n", encoding=c.DEFAULT_ENCODING)
+        if failure != "manifest":
+            (metadata / "RECORD").write_text(
+                f"{metadata.name}/METADATA,,\n{metadata.name}/RECORD,,\n"
+                f"{binding.name},,\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        distributions = u.installed_distributions(path=(str(tmp_path),))
+        tm.that(len(distributions), eq=1)
+        observed = FlextInfraMiseArtifactsFiles.capture_distribution_sources(
+            distributions[0]
+        )
+        if failure != "none":
+            expected = {
+                "manifest": "no native file manifest",
+                "binding": str(binding),
+                "name": "no declared name",
+            }
+            tm.fail(observed, has=expected[failure])
+            return
+        trees, states, paths = tm.ok(observed)
+        tm.that(trees, eq=(tm.ok(u.Cli.atomic_inventory_physical_tree(metadata)),))
+        expected_paths = tuple(
+            entry.path
+            for entry in trees[0].entries
+            if entry.kind == "file" and c.Infra.DUNDER_PYCACHE not in entry.path.parts
+        )
+        tm.that(
+            states,
+            eq=tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                for path in (*expected_paths, binding)
+            ),
+        )
+        declared = distributions[0].files
+        assert declared is not None
+        tm.that(
+            paths,
+            eq=tuple(
+                Path(str(distributions[0].locate_file(item))).absolute()
+                for item in declared
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("mutation", ["unchanged", "duplicate", "rebound"])
+    def test_real_third_provider_preserves_physical_election(
+        tmp_path: Path,
+        mutation: str,
+    ) -> None:
+        """A native child SDK rejects same-name/case duplicates and cold rebinding."""
+        namespace = "capture_provider_fixture"
+        primary = tmp_path / "primary"
+        rebound = tmp_path / "rebound"
+        for root in (primary, rebound):
+            package = root / namespace
+            package.mkdir(parents=True)
+            (package / c.Infra.INIT_PY).write_text(
+                "VALUE = 'physical provider'\n", encoding=c.DEFAULT_ENCODING
+            )
+            (package / "resource.bin").write_bytes(b"unlisted provider resource")
+            for index, name in enumerate(("Capture-Provider", "capture-provider")):
+                if index and mutation != "duplicate":
+                    continue
+                metadata = root / f"capture_provider_{index}-1.0.dist-info"
+                metadata.mkdir()
+                (metadata / "METADATA").write_text(
+                    f"Metadata-Version: 2.4\nName: {name}\nVersion: 1.0\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+                (metadata / "top_level.txt").write_text(
+                    namespace + "\n", encoding=c.DEFAULT_ENCODING
+                )
+                (metadata / "RECORD").write_text(
+                    f"{metadata.name}/METADATA,,\n{metadata.name}/RECORD,,\n"
+                    f"{metadata.name}/top_level.txt,,\n{namespace}/__init__.py,,\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+        candidate = u.Infra.declared_package_dir(
+            FlextInfraCodegenPreconditions.__module__.partition(".")[0]
+        )
+        assert candidate is not None
+        probe = """
+import importlib
+import sys
+from pathlib import Path
+from flext_infra import u
+from flext_infra.codegen import FlextInfraCodegenPreconditions
+primary, rebound, expected, namespace, mutation = sys.argv[1:]
+sdk = FlextInfraCodegenPreconditions
+assert u.Infra.declared_package_dir(sdk.__module__.partition('.')[0]) == Path(expected)
+sys.path.insert(0, primary)
+importlib.invalidate_caches()
+importlib.import_module(namespace)
+observed = sdk.capture_producer()
+if mutation == 'duplicate':
+    assert observed.failure, observed
+    assert 'ambiguous physical distribution ownership' in observed.error, observed.error
+else:
+    producer = observed.unwrap()
+    assert (namespace, Path(primary) / namespace) in producer.generator_modules
+    resource = Path(primary) / namespace / 'resource.bin'
+    bound = {state.path: state for state in producer.inputs}
+    assert bound[resource].content == resource.read_bytes()
+    if mutation == 'rebound':
+        sys.path.remove(primary)
+        sys.path.insert(0, rebound)
+        importlib.invalidate_caches()
+    current = sdk.producer_current(producer)
+    assert current.success == (mutation == 'unchanged'), current.error
+    if mutation == 'rebound':
+        assert 'election changed' in current.error, current.error
+print('physical-provider-proof=' + mutation)
+"""
+        process = tm.ok(
+            u.Cli.run([
+                sys.executable,
+                "-c",
+                probe,
+                str(primary),
+                str(rebound),
+                str(candidate),
+                namespace,
+                mutation,
+            ])
+        )
+        tm.that(process.stdout, has=f"physical-provider-proof={mutation}")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "mutation",
+        [
+            "unchanged",
+            "changed",
+            "added",
+            "directory",
+            "removed-root",
+            "mode",
+            "timestamp",
+            "link",
+        ],
+    )
     def test_full_producer_authentication_precedes_source_selection(
-        tmp_path: Path, mutation: str,
+        tmp_path: Path,
+        mutation: str,
     ) -> None:
         """An out-of-consumer resource remains part of the producer CAS closure."""
         producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
@@ -34,10 +201,12 @@ class TestsFlextInfraRenderProvenance:
         tm.ok(u.Cli.atomic_write_text_file(resource, '{"value":"before"}'))
         state = tm.ok(u.Cli.atomic_read_binary_file_state(resource, required=True))
         inventory = tm.ok(u.Cli.atomic_inventory_physical_tree(resource_root))
-        context = producer.model_copy(update={
-            "inputs": (*producer.inputs, state),
-            "generator_trees": (*producer.generator_trees, inventory),
-        })
+        context = producer.model_copy(
+            update={
+                "inputs": (*producer.inputs, state),
+                "generator_trees": (*producer.generator_trees, inventory),
+            }
+        )
         tm.ok(FlextInfraCodegenPreconditions.producer_current(context))
         if mutation == "changed":
             tm.ok(u.Cli.atomic_write_text_file(resource, '{"value":"after"}'))
@@ -47,6 +216,14 @@ class TestsFlextInfraRenderProvenance:
             (resource_root / "added-directory").mkdir()
         elif mutation == "removed-root":
             resource_root.rename(tmp_path / "retired-resource-root")
+        elif mutation == "mode":
+            assert state.mode is not None
+            resource.chmod(state.mode ^ stat.S_IXUSR)
+        elif mutation == "timestamp":
+            before = resource.stat()
+            os.utime(resource, ns=(before.st_atime_ns, before.st_mtime_ns + 1))
+        elif mutation == "link":
+            resource.with_suffix(".alias").hardlink_to(resource)
         observed = FlextInfraCodegenPreconditions.producer_current(context)
         tm.that(observed.success, eq=mutation == "unchanged")
         if observed.failure:
@@ -62,20 +239,112 @@ class TestsFlextInfraRenderProvenance:
         tm.ok(u.Cli.atomic_write_text_file(source, "before"))
         state = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
         file = m.Infra.CodegenFilePlan(
-            project=tmp_path, path=source, before=state,
-            desired_content=b"after", desired_mode=state.mode, source_states=(state,),
+            project=tmp_path,
+            path=source,
+            before=state,
+            desired_content=b"after",
+            desired_mode=state.mode,
+            source_states=(state,),
         )
         original = m.Infra.CodegenPhaseAnalysis(
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-            files=(file,), inputs=(state,),
+            files=(file,),
+            inputs=(state,),
         )
-        bound = tm.ok(FlextInfraCodegenPreconditions.bind_producer_analysis(original, producer))
+        bound = tm.ok(
+            FlextInfraCodegenPreconditions.bind_producer_analysis(original, producer)
+        )
         tm.that(bound.generator_trees, eq=producer.generator_trees)
+        tm.that(bound.generator_modules, eq=producer.generator_modules)
         tm.that(bound.files[0].source_states, eq=bound.inputs)
-        tm.that({item.path: item for item in bound.inputs}, eq={
-            item.path: item for item in (state, *producer.inputs)
-        })
+        tm.that(
+            {item.path: item for item in bound.inputs},
+            eq={item.path: item for item in (state, *producer.inputs)},
+        )
         tm.that(original.inputs, eq=(state,))
+
+    @staticmethod
+    @pytest.mark.parametrize("mutation", ["removed-provider", "moved-provider"])
+    def test_entire_captured_election_is_required(
+        tmp_path: Path,
+        mutation: str,
+    ) -> None:
+        """Resource witnesses cannot admit an omitted or physically foreign provider."""
+        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        namespace, physical = producer.generator_modules[-1]
+        modules = producer.generator_modules[:-1]
+        if mutation == "moved-provider":
+            modules = (*modules, (namespace, tmp_path / physical.name))
+        context = producer.model_copy(update={"generator_modules": modules})
+        observed = FlextInfraCodegenPreconditions.producer_current(context)
+        tm.that(observed.failure, eq=True)
+        tm.that(observed.error, has="election changed")
+        tm.that(context.inputs, eq=producer.inputs)
+        tm.that(context.generator_trees, eq=producer.generator_trees)
+
+    @staticmethod
+    @pytest.mark.parametrize("foreign", [False, True])
+    def test_native_generation_accounts_only_admitted_source_effects(
+        tmp_path: Path,
+        *,
+        foreign: bool,
+    ) -> None:
+        """A journaled source cutover succeeds; unmanifested bytes fail before effects."""
+        root = u.Tests.git_repository(tmp_path)
+        resources = root / "producer"
+        resources.mkdir()
+        helper = resources / "helper.py"
+        helper.write_bytes(b"VALUE = 'before'\n")
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(helper, required=True))
+        assert state.content is not None
+        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        context = producer.model_copy(
+            update={
+                "inputs": (*producer.inputs, state),
+                "generator_trees": (
+                    *producer.generator_trees,
+                    tm.ok(u.Cli.atomic_inventory_physical_tree(resources)),
+                ),
+            }
+        )
+        plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=helper,
+            before=state,
+            desired_content=b"VALUE = 'after'\n",
+            desired_mode=state.mode,
+            source_states=(state,),
+        )
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            files=(plan,),
+            inputs=(state,),
+        )
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+            producer=context,
+        )
+        if foreign:
+            helper.write_bytes(b"VALUE = 'foreign'\n")
+        observed = owner.run_files_locked(
+            {"@producer": root},
+            lambda scope_root: owner.publish_file_phase_locked(
+                scope_root,
+                {"@producer": root},
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
+            ),
+        )
+        if foreign:
+            tm.fail(observed, has="generation authenticated state changed")
+            tm.that(
+                observed.error,
+                has=f"expected_sha256={u.Cli.sha256_bytes(state.content)}",
+            )
+            tm.that(helper.read_bytes(), eq=b"VALUE = 'foreign'\n")
+        else:
+            tm.that(tm.ok(observed), eq=(helper,))
+            tm.that(helper.read_bytes(), eq=plan.desired_content)
 
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
     @pytest.mark.parametrize("ci_context", [False, True])
@@ -118,21 +387,17 @@ class TestsFlextInfraRenderProvenance:
         custom = project / c.Infra.CUSTOM_MAKE_FILENAME
         original = custom.read_bytes()
         probe = (
-            "import importlib.metadata as md,pathlib,flext_infra; "
+            "import pathlib,flext_infra; "
             "from importlib.resources import files; "
             "from flext_infra import FlextInfraConfig,c,u; "
-            f"d=md.distribution({config.Infra.name!r}); "
             "p=pathlib.Path(flext_infra.__file__).resolve(); "
-            "print('controller-file='+str(p)); print('controller-owned='+str(any("
-            "d.locate_file(f).resolve()==p for f in d.files))); "
+            "print('controller-file='+str(p)); "
             "resource=files(flext_infra.__name__)/c.CONFIG_DIR_NAME/"
             "c.Infra.CODEGEN_CONFIG_FILENAME; "
             f"root=pathlib.Path({str(project)!r}); "
             "sources=FlextInfraConfig.config_sources_for_repository(root,"
             "filename=c.Infra.CODEGEN_CONFIG_FILENAME); "
             "assert sources[0]==pathlib.Path(str(resource)); "
-            "assert any(d.locate_file(f).resolve()==sources[0].resolve() "
-            "for f in d.files); "
             "inputs=u.Infra.load_codegen_inputs(root).unwrap(); "
             "assert inputs.sources[0].content==resource.read_bytes(); "
             "print('packaged-config-owned=True')"
@@ -140,7 +405,9 @@ class TestsFlextInfraRenderProvenance:
             "captured=FlextInfraCodegenPreconditions.capture_producer().unwrap(); "
             "elected=u.Infra.declared_package_dir(flext_infra.__name__); "
             "assert elected in {tree.root.path for tree in captured.generator_trees}; "
+            "print('controller-root='+str(elected)); "
             "bound={state.path: state for state in captured.inputs}; "
+            "assert p in bound; print('controller-owned=True'); "
             "assert sources[0] in bound; "
             "assert bound[sources[0]].content==resource.read_bytes(); "
             "assert any(path.parent.name.endswith('.dist-info') for path in bound); "
@@ -185,7 +452,12 @@ class TestsFlextInfraRenderProvenance:
                 if line.startswith("controller-file=")
             )
         )
-        tm.that(
-            selected.is_relative_to(u.Infra.runtime_environment_dir(project)), eq=True
+        owned = Path(
+            next(
+                line.removeprefix("controller-root=")
+                for line in process.stdout.splitlines()
+                if line.startswith("controller-root=")
+            )
         )
+        tm.that(selected.is_relative_to(owned), eq=True)
         tm.that(marker.exists(), eq=False)

@@ -224,12 +224,43 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if overlaid.failure:
             return result_type.from_failure(overlaid)
         composed_rendered = overlaid.value
+        source_states: list[m.Cli.AtomicFileState] = []
         if render_inputs is not None:
+            declarations: list[m.Cli.AtomicFileState] = []
+            members = (
+                tuple(
+                    member
+                    for member in render_inputs.workspace.subprojects
+                    if member.package
+                )
+                if render_inputs.workspace.repository.role
+                is c.Infra.MakeProfile.WORKSPACE
+                else ()
+            )
+            if members:
+                locked = u.Cli.atomic_read_binary_file_state(
+                    repository_root / c.Infra.UV_LOCK_FILENAME,
+                    required=False,
+                )
+                if locked.failure:
+                    return result_type.from_failure(locked)
+                source_states.append(locked.value)
+                for member in members:
+                    declaration = u.Infra.member_project_declaration(
+                        repository_root,
+                        member,
+                        lock_state=locked.value,
+                    )
+                    if declaration.failure:
+                        return result_type.from_failure(declaration)
+                    declarations.append(declaration.value)
+                    source_states.append(declaration.value)
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
                 target=render_inputs.target,
                 workspace=render_inputs.workspace,
                 codegen=render_inputs.codegen,
+                member_declarations=tuple(declarations),
             )
             if conformed.failure:
                 return result_type.from_failure(conformed)
@@ -261,6 +292,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     f"{cls.rendered_by_stamp()}\n"
                     f"{formatted.value.lstrip()}"
                 ),
+                source_states=tuple(source_states),
             ),
         )
 

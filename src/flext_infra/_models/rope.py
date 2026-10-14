@@ -21,6 +21,31 @@ from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyIn
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
 
+    class RopeSourceImport(m.ArbitraryTypesModel):
+        """One native import declaration and its original logical source region."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        import_info: Annotated[
+            p.Infra.RopeFromImport,
+            m.Field(exclude=True, description="Native Rope from-import identity"),
+        ]
+        start_line: Annotated[
+            int, m.Field(ge=1, description="Original one-based declaration line")
+        ]
+        start_offset: Annotated[
+            int, m.Field(ge=0, description="Original inclusive source character offset")
+        ]
+        end_offset: Annotated[
+            int, m.Field(ge=0, description="Original exclusive source character offset")
+        ]
+        source: Annotated[
+            str, m.Field(description="Complete Rope logical import statement")
+        ]
+        type_checking_guarded: Annotated[
+            bool, m.Field(description="Import belongs to a TYPE_CHECKING suite")
+        ]
+
     # Callers resolve project
     # selection once; source iteration has one exact, branch-free request shape.
     class SourceScanRequest(m.ContractModel):

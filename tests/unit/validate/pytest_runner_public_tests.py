@@ -257,14 +257,17 @@ class TestsFlextInfraPytestRunner:
         runner = u.Tests.PytestRunner.declared_project_runner(
             cached_runner_project, declared_name
         )
-        report = (
-            cached_runner_project
-            / config.Infra.codegen.make.testmon_cache.reports_directory
-        )
+        report = cached_runner_project / runner.reports
 
         assert runner.run_timeout_seconds(policy) == expected
         command = runner.build_command(report)
-        tm.that(any(arg.startswith("--timeout") for arg in command), eq=False)
+        tm.that(
+            command, has=f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}"
+        )
+        tm.that(
+            command,
+            has=f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}={policy.slow_timeout_seconds}",
+        )
         stop = next(
             item
             for item in command
@@ -280,32 +283,17 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    def _seed_cache(cached_runner_project: Path) -> Path:
-        """Seed the persistent cache through one public cold run.
-
-        Returns:
-            The resulting ``Path``.
-
-        """
-        tm.that(
-            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
-            eq=0,
-        )
-        return (
-            cached_runner_project
-            / config.Infra.codegen.make.testmon_cache.reports_directory
-        )
-
     @pytest.mark.slow
     @pytest.mark.parametrize("profile_collection", [False, True])
     def test_warm_cache_deselects_the_unchanged_suite(
-        self,
         cached_runner_project: Path,
         *,
         profile_collection: bool,
     ) -> None:
         """A second run restores the seeded cache and executes nothing."""
-        reports_root = self._seed_cache(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        tm.that(tm.ok(runner.execute()), eq=0)
+        reports_root = cached_runner_project / runner.reports
 
         second_exit = tm.ok(
             u.Tests.PytestRunner.runner_for(
@@ -332,13 +320,15 @@ class TestsFlextInfraPytestRunner:
             tm.that(warm_state.restored_accepted, eq=True)
             tm.that(warm_state.seed_needed, eq=False)
 
+    @staticmethod
     @pytest.mark.slow
     def test_seeded_cache_executes_only_an_added_test(
-        self,
         cached_runner_project: Path,
     ) -> None:
         """A test added after the seed is the only one the next run executes."""
-        reports_root = self._seed_cache(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        tm.that(tm.ok(runner.execute()), eq=0)
+        reports_root = cached_runner_project / runner.reports
         (cached_runner_project / "tests" / "test_added.py").write_text(
             "def test_added_after_cache_seed():\n    assert True\n",
             encoding="utf-8",
@@ -734,7 +724,10 @@ class TestsFlextInfraPytestRunner:
         recorded = (report_dir / "command.txt").read_text()
         tm.that(recorded, has="--testmon-noselect")
         tm.that(recorded, lacks=c.Infra.PYTEST_SUITE_STOP_OPTION)
-        tm.that(recorded, lacks="--timeout")
+        tm.that(
+            recorded, has=f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}"
+        )
+        tm.that(recorded.split(), has=f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}=")
 
     @staticmethod
     @pytest.mark.slow
@@ -825,20 +818,32 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @pytest.mark.slow
-    def test_unbounded_full_suite_runs_every_phase_without_deadline(
+    @pytest.mark.parametrize("unbounded", [False, True])
+    def test_full_suite_applies_effective_slow_and_aggregate_policy(
         cached_runner_project: Path,
+        *,
+        unbounded: bool,
     ) -> None:
-        """``make test-full`` carries no deadline in any of its phases."""
+        """Real pytest applies slow limits only when its aggregate wall is enabled."""
         bounded = u.Tests.PytestRunner.runner_for(cached_runner_project)
         reports_root = cached_runner_project / bounded.reports
         existing = set(reports_root.glob("*/run-context.json"))
-        runner = bounded.model_copy(update={"unbounded": True})
+        runner = bounded.model_copy(update={"unbounded": unbounded})
         (cached_runner_project / runner.target / "test_unbounded_policy.py").write_text(
-            "from tests import tm\n\n"
-            "def test_unbounded_policy(pytestconfig):\n"
-            "    tm.that(pytestconfig.getoption('timeout'), eq=0)\n"
-            "    tm.that(pytestconfig.getoption("
-            "'flext_suite_stop_monotonic', default=None), none=True)\n",
+            "import pytest\nfrom flext_infra import config\nfrom tests import c, tm\n\n"
+            f"@pytest.mark.{config.Infra.tooling.tools.pytest.slow_marker}\n"
+            "def test_unbounded_policy(pytestconfig, request):\n"
+            "    tm.that(pytestconfig.getoption('timeout'),\n"
+            "            eq=c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS)\n"
+            "    budget = config.Infra.tooling.tools.pytest.slow_timeout_seconds\n"
+            f"    unbounded = {unbounded}\n"
+            "    tm.that(pytestconfig.getini(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS),\n"
+            "            eq='' if unbounded else str(budget))\n"
+            "    marker = request.node.get_closest_marker('timeout')\n"
+            "    tm.that(None if marker is None else marker.args,\n"
+            "            eq=None if unbounded else (budget,))\n"
+            "    stop = pytestconfig.getoption('flext_suite_stop_monotonic', default=None)\n"
+            "    tm.that(stop is None, eq=unbounded)\n",
             encoding="utf-8",
         )
 
@@ -846,18 +851,16 @@ class TestsFlextInfraPytestRunner:
 
         contexts = sorted(set(reports_root.glob("*/run-context.json")) - existing)
         parsed = [
-            m.Infra.PytestRunContext.model_validate_json(path.read_text())
-            for path in contexts
+            m.Infra.PytestRunContext.model_validate_json(p.read_text())
+            for p in contexts
         ]
         tm.that(
-            [context.execution_mode for context in parsed],
-            eq=["incremental", "full"],
+            [context.execution_mode for context in parsed], eq=["incremental", "full"]
         )
-        tm.that([context.deadline_monotonic for context in parsed], eq=[None, None])
         tm.that(
-            {context.testmon_db for context in parsed},
-            eq={runner.testmon_db},
+            {context.deadline_monotonic is None for context in parsed}, eq={unbounded}
         )
+        tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
 
     @staticmethod
     @pytest.mark.slow

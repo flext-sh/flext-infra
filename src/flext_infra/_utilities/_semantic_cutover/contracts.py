@@ -6,15 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 
-from flext_cli import u
+from flext_cli import cli, u
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._semantic_cutover.declaration_payload import (
+    FlextInfraUtilitiesDeclarationPayload,
 )
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -30,21 +34,20 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan the declared contract rules without publishing any source.
+        """Return source-authenticated edits for the normalization phase's rules."""
+        return cls.plan_contract_rules(
+            workspace,
+            sources,
+            tuple(
+                rule
+                for rule in cls.declared_contract_rules()
+                if rule.phase == c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
+            ),
+        )
 
-        Args:
-            workspace: The Rope workspace context for the migration.
-            sources: A mapping of file paths to their current source content.
-
-        Returns:
-            Source-authenticated edits for the existing semantic transaction.
-
-        Raises:
-            ValueError: If there are duplicate Rope contract rule identities.
-        """
-        items = cls._editable_sources(sources)
-        if not items:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
+    @staticmethod
+    def declared_contract_rules() -> t.SequenceOf[m.Infra.RopeContractRule]:
+        """Load typed policy; reject duplicate identities and undeclared families."""
         rules = m.Infra.RopeContractRules.model_validate(
             u.Cli.yaml_safe_load(
                 type(config).ssot_config_dir().parent
@@ -56,6 +59,29 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         if len(ids) != len(set(ids)):
             message = "duplicate Rope contract rule identities"
             raise ValueError(message)
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+        for rule in rules:
+            unknown = set(rule.families).difference(families)
+            if unknown:
+                message = f"{rule.id}: undeclared Rope contract families: {unknown}"
+                raise ValueError(message)
+        return rules
+
+    @classmethod
+    def plan_contract_rules(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        rules: t.SequenceOf[m.Infra.RopeContractRule],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Reuse the native contract loop for an already validated rule domain.
+
+        Returns:
+            Content plans consumed by the existing semantic publication owner.
+        """
+        items = cls._editable_sources(sources)
+        if not items:
+            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
         working = dict(items)
         applied: dict[Path, list[str]] = {}
         for rule in rules:
@@ -69,20 +95,15 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                     )
                     for path in working
                 )
-                resources = tuple(
-                    resource
-                    for resource in resources
-                    if cls._model_declarations(project, resource, rule)
-                )
-                if not resources:
-                    continue
                 changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
                     project,
                     rule.pattern,
                     rule.goal,
                     arguments=rule.arguments,
                     resources=resources,
-                    imports=rule.imports,
+                    imports=tuple(rule.imports.values()),
+                    import_bindings=rule.imports,
+                    match_filter=partial(cls._admit_contract_match, project, rule),
                 )
                 members = FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
                     changes.changes, f"{rule.id}: invalid Rope content changes"
@@ -91,9 +112,11 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                     path = Path(change.resource.real_path).resolve()
                     if change.new_contents == working[path]:
                         continue
-                    cls._require_destination_bindings(project, change.resource, rule)
                     working[path] = change.new_contents
                     applied.setdefault(path, []).append(rule.id)
+                cli.display_text(
+                    f"mod: Rope contract {rule.id}: changed_files={len(members)}"
+                )
             finally:
                 project.close()
         return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
@@ -110,72 +133,66 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         )
 
     @staticmethod
-    def _model_declarations(
+    def _admit_contract_match(
         project: p.Infra.RopeProject,
-        resource: p.Infra.RopeResource,
         rule: m.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
     ) -> bool:
-        """Prove model ancestry for every native match before restructuring.
+        """Prove each occurrence's model ancestry and destination bindings.
 
         Returns:
-            Whether this resource has applicable, ancestry-proven occurrences.
-        """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        module = project.get_pymodule(resource)
-        matches = FlextInfraUtilitiesRopeRuntimeRefactors.contract_matches(
-            module, rule.pattern, rule.arguments
-        )
-        if not matches:
-            return False
-        ancestors = tuple(
-            runtime.qualified_name(project, name).get_object()
-            for name in rule.model_bases
-        )
-        for match in matches:
-            scope = runtime.scope_at(module, match.get_region()[0])
-            pending = [scope.pyobject]
-            found: list[p.Infra.RopePyObject] = []
-            while pending:
-                value = pending.pop()
-                if value in found:
-                    continue
-                found.append(value)
-                if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
-                    pending.extend(value.get_superclasses())
-            if ancestors and not any(value in found for value in ancestors):
-                return False
-        return True
-
-    @staticmethod
-    def _require_destination_bindings(
-        project: p.Infra.RopeProject,
-        resource: p.Infra.RopeResource,
-        rule: m.Infra.RopeContractRule,
-    ) -> None:
-        """Refuse captures by existing module, class or function bindings.
+            Whether the native occurrence belongs to this rule's model domain.
 
         Raises:
             ValueError: When a destination name has a competing lexical identity.
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        module = project.get_pymodule(resource)
-        pending = [module.get_scope()]
+        scope = runtime.scope_at(module, match.get_region()[0])
+        if rule.scope_kinds and scope.get_kind() not in rule.scope_kinds:
+            return False
+        if rule.families:
+            resource = module.get_resource()
+            if resource is None:
+                message = f"{rule.id}: source module has no declared resource"
+                raise ValueError(message)
+            families = (
+                FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                    parent.name
+                )
+                for parent in Path(resource.real_path).parents
+                if parent.is_relative_to(Path(project.root.real_path))
+            )
+            family = next((value for value in families if value is not None), None)
+            if family not in rule.families:
+                return False
+        ancestry = FlextInfraUtilitiesDeclarationPayload._class_ancestry(scope.pyobject)
+        if rule.model_bases and not any(
+            runtime.qualified_name(project, name).get_object() in ancestry
+            for name in rule.model_bases
+        ):
+            return False
+        for name in rule.unshadowed_builtins:
+            lexical = runtime.lexical_scope(scope, name)
+            if (
+                lexical is None
+                or lexical.get_kind() != c.Infra.RopeScopeKind.MODULE
+                or name in lexical.get_defined_names()
+            ):
+                return False
         for expression, expected in rule.bindings.items():
             identity = runtime.qualified_name(project, expected)
-            scopes = list(pending)
-            while scopes:
-                scope = scopes.pop()
-                scopes.extend(scope.get_scopes())
-                root = expression.split(".", 1)[0]
-                if root not in scope.get_defined_names():
-                    continue
-                actual = runtime.expression_name(scope, expression)
-                if not runtime.same_name(identity, actual):
-                    message = (
-                        f"{rule.id}: destination {expression} is shadowed "
-                        f"in {resource.path}:{scope.get_start()}"
-                    )
-                    raise ValueError(message)
+            root = expression.split(".", 1)[0]
+            if runtime.expression_name(scope, root) is None:
+                continue
+            actual = runtime.expression_name(scope, expression)
+            if not runtime.same_name(identity, actual):
+                message = (
+                    f"{rule.id}: destination {expression} is shadowed "
+                    f"in {module.get_name()}:{scope.get_start()}"
+                )
+                raise ValueError(message)
+        return True
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticContracts"]

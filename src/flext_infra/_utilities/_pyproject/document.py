@@ -6,14 +6,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from base64 import urlsafe_b64encode
 from collections.abc import Mapping
+from json import dumps
 from pathlib import Path
+from sys import prefix
 from typing import Annotated
 
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDependencies
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesDependencyRequirements,
+    FlextInfraUtilitiesGit,
+)
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectUvSources
 from flext_infra._utilities._pyproject._requirements_provenance import (
     FlextInfraUtilitiesPyprojectRequirementsProvenance,
@@ -38,6 +45,12 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         repository_root: Annotated[
             Path | None,
             m.Field(description="Canonical root for declared member metadata"),
+        ] = None
+        member_declarations: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState] | None,
+            m.Field(
+                description="Pre-render captured member declarations in declared order"
+            ),
         ] = None
 
     @classmethod
@@ -103,7 +116,11 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return r[str].from_failure(parsed)
         source, project_name = parsed.value[0], parsed.value[1]
         provenance = options if options is not None else cls.PyprojectConformOptions()
-        environment = cls._member_environment_requirements(workspace, provenance)
+        environment = cls._member_environment_requirements(
+            source,
+            workspace,
+            provenance,
+        )
         if environment.failure:
             return r[str].from_failure(environment)
         member_requests, member_groups, member_requirements = environment.value
@@ -296,12 +313,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
     @staticmethod
     def _member_environment_requirements(
+        source: t.Cli.TomlDocument,
         workspace: m.Infra.WorkspaceSpec,
         options: PyprojectConformOptions,
     ) -> p.Result[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]:
         """Retain all declared member extras and groups in the root environment.
 
         Args:
+            source: Parsed root requirements before environment composition.
             workspace: The workspace specification containing subprojects and
                 integration details.
             options: The options for pyproject conformity, including repository
@@ -323,46 +342,264 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return result.fail(
                 "member provisioning requires repository root and integration",
             )
+        declared_lines = (
+            FlextInfraUtilitiesPyprojectDocument.document_requirement_lines(source)
+        )
+        if declared_lines.failure:
+            return result.from_failure(declared_lines)
         requests: list[str] = []
         groups: list[str] = []
         requirements: list[str] = []
-        for member in members:
-            path = options.repository_root / member.path / c.PYPROJECT_FILENAME
-            parsed = FlextInfraUtilitiesPyprojectDocument._member_requirements(
-                path, member.distribution
+        declarations = options.member_declarations
+        if declarations is not None and len(declarations) != len(members):
+            return result.fail(
+                "captured member declarations differ from declared members"
+            )
+        for index, member in enumerate(members):
+            if declarations is None:
+                declaration = (
+                    FlextInfraUtilitiesPyprojectDocument.member_project_declaration(
+                        options.repository_root,
+                        member,
+                    )
+                )
+                if declaration.failure:
+                    return result.from_failure(declaration)
+                state = declaration.value
+            else:
+                state = declarations[index]
+            parsed = (
+                FlextInfraUtilitiesPyprojectDocument.member_declaration_requirements(
+                    state,
+                    member.distribution,
+                )
             )
             if parsed.failure:
                 return result.from_failure(parsed)
             metadata, declared = parsed.value
-            extras = (
-                f"[{','.join(sorted(metadata.optional_dependencies))}]"
-                if metadata.optional_dependencies
-                else ""
+            name = FlextInfraUtilitiesDependencies.dep_name(member.distribution)
+            if name is None:
+                return result.fail(
+                    f"member distribution is not a requirement name: {member.distribution}",
+                )
+            explicit = tuple(
+                line
+                for line in declared_lines.value
+                if FlextInfraUtilitiesDependencies.dep_name(line) == name
+                and FlextInfraUtilitiesPyprojectDocument._declares_direct_source(line)
             )
-            requests.append(
-                f"{member.distribution}{extras} @ "
-                f"git+{member.url}@{workspace.integration.branch}",
+            extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
+                (
+                    *explicit,
+                    *(
+                        f"{member.distribution}[{extra}]"
+                        for extra in metadata.optional_dependencies
+                    ),
+                ),
+                name,
             )
+            if explicit:
+                for line in explicit:
+                    origin = FlextInfraUtilitiesPyprojectDocument._parsed_canonical_provenance(
+                        line,
+                    )
+                    if origin.failure:
+                        return result.from_failure(origin)
+                    _head, marker, (url, reference) = origin.value
+                    request = f"{member.distribution}{extras} @ git+{url}@{reference}"
+                    requests.append(
+                        f"{request}; {marker[1]}" if marker[0] else request,
+                    )
+            else:
+                requests.append(
+                    f"{member.distribution}{extras} @ "
+                    f"git+{member.url}@{workspace.integration.branch}",
+                )
             for entries in metadata.dependency_groups.values():
                 groups.extend(entry for entry in entries if isinstance(entry, str))
             requirements.extend(declared)
         return result.ok((tuple(requests), tuple(groups), tuple(requirements)))
 
     @staticmethod
-    def _member_requirements(
-        path: Path,
+    def member_project_declaration(
+        repository_root: Path,
+        repository: m.Infra.RepositoryRef,
+        *,
+        lock_state: m.Cli.AtomicFileState | None = None,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Elect the authenticated live or installed producer declaration."""
+        from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+
+        result = r[m.Cli.AtomicFileState]
+        matches = u.installed_distributions(name=repository.distribution)
+        if len(matches) != 1:
+            return result.fail(
+                "member declaration needs one installed distribution: "
+                f"{repository.distribution}",
+            )
+        distribution = matches[0]
+        raw = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+        if raw is None:
+            return result.fail(
+                "member declaration lacks PEP 610 provenance: "
+                f"{repository.distribution}",
+            )
+        receipt = r[m.Infra.DirectUrlReceipt].create_from_callable(
+            lambda: m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
+        )
+        if receipt.failure:
+            return result.from_failure(receipt)
+        if receipt.value.dir_info is not None and receipt.value.dir_info.editable:
+            if not repository.editable:
+                return result.fail(
+                    "member editable installation differs from declaration: "
+                    f"{repository.distribution}",
+                )
+            authenticated = (
+                FlextInfraWorkspaceEnvironmentProvenance.validate_editable_installation(
+                    repository,
+                    repository_root,
+                    distribution,
+                    receipt.value,
+                )
+            )
+            if authenticated.failure:
+                return result.from_failure(authenticated)
+            return u.Cli.atomic_read_binary_file_state(
+                repository_root / repository.path / c.PYPROJECT_FILENAME,
+                required=True,
+            )
+        if lock_state is None:
+            lock_read = u.Cli.atomic_read_binary_file_state(
+                repository_root / c.Infra.UV_LOCK_FILENAME,
+                required=True,
+            )
+            if lock_read.failure:
+                return result.from_failure(lock_read)
+            lock_state = lock_read.value
+        if (
+            lock_state.path != (repository_root / c.Infra.UV_LOCK_FILENAME).resolve()
+            or lock_state.content is None
+        ):
+            return result.fail("member artifact needs its captured root lock")
+        locked_document = u.Cli.toml_parse_text(
+            lock_state.content.decode(c.DEFAULT_ENCODING),
+        )
+        if locked_document is None:
+            return result.fail("captured member artifact lock is invalid TOML")
+        locked_payload = u.Cli.toml_as_mapping(locked_document)
+        if locked_payload is None:
+            return result.fail("captured member artifact lock is not a mapping")
+        locked = r[m.Infra.LockedEnvironment].create_from_callable(
+            lambda: m.Infra.LockedEnvironment.model_validate_json(
+                dumps(locked_payload),
+            ),
+        )
+        if locked.failure:
+            return result.from_failure(locked)
+        candidates = tuple(
+            item
+            for item in locked.value.package
+            if FlextInfraUtilitiesDependencies.dep_name(item.name)
+            == FlextInfraUtilitiesDependencies.dep_name(repository.distribution)
+            and item.version == distribution.version
+        )
+        if len(candidates) != 1 or candidates[0].source.git is None:
+            return result.fail(
+                "member declaration requires its installed locked Git artifact: "
+                f"{repository.distribution}",
+            )
+        origin = FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict(
+            repository.distribution,
+            candidates[0],
+            raw,
+        )
+        if origin.failure:
+            return result.from_failure(origin)
+        if FlextInfraUtilitiesGit.git_remote_identity(
+            receipt.value.url
+        ) != FlextInfraUtilitiesGit.git_remote_identity(repository.url):
+            return result.fail(
+                "member artifact origin differs from declared repository: "
+                f"{repository.distribution}",
+            )
+        files = distribution.files
+        if files is None:
+            return result.fail(
+                f"member artifact has no RECORD inventory: {repository.distribution}",
+            )
+        resources = tuple(item for item in files if item.name == c.PYPROJECT_FILENAME)
+        if len(resources) != 1:
+            return result.fail(
+                "member artifact needs one packaged producer declaration: "
+                f"{repository.distribution}; publish its generated wheel first",
+            )
+        resource = resources[0]
+        path = Path(str(distribution.locate_file(resource))).resolve()
+        if not path.is_relative_to(Path(prefix).resolve()):
+            return result.fail(
+                "member declaration escapes its installed environment: "
+                f"{repository.distribution}",
+            )
+        captured = u.Cli.atomic_read_binary_file_state(path, required=True)
+        if captured.failure:
+            return result.from_failure(captured)
+        state = captured.value
+        if (
+            state.content is None
+            or resource.hash is None
+            or resource.hash.mode != "sha256"
+            or resource.size != len(state.content)
+            or resource.hash.value
+            != urlsafe_b64encode(
+                bytes.fromhex(u.Cli.sha256_bytes(state.content)),
+            )
+            .rstrip(b"=")
+            .decode("ascii")
+        ):
+            return result.fail(
+                "member producer declaration differs from its RECORD: "
+                f"{repository.distribution}",
+            )
+        producer = FlextInfraUtilitiesPyprojectDocument._parsed_pyproject(
+            state.content.decode(c.DEFAULT_ENCODING),
+        )
+        if producer.failure:
+            return result.from_failure(producer)
+        document, name, _payload = producer.value
+        force_include = u.Cli.toml_table_path(
+            document,
+            ("tool", "hatch", "build", "targets", "wheel", "force-include"),
+        )
+        if (
+            FlextInfraUtilitiesDependencies.dep_name(name)
+            != FlextInfraUtilitiesDependencies.dep_name(repository.distribution)
+            or force_include is None
+            or u.Cli.toml_value(force_include, c.PYPROJECT_FILENAME)
+            != resource.as_posix()
+        ):
+            return result.fail(
+                "packaged declaration differs from its producer build contract: "
+                f"{repository.distribution}",
+            )
+        return result.ok(state)
+
+    @staticmethod
+    def member_declaration_requirements(
+        state: m.Cli.AtomicFileState,
         distribution: str,
     ) -> p.Result[t.Pair[m.Infra.DepsToml.MemberRequirements, t.StrSequence]]:
-        """Parse a member's dependency declarations once at the TOML boundary.
-
-        Returns:
-            Validated metadata and its complete requirement lines.
-        """
+        """Parse complete member requirements from the exact captured declaration."""
         result = r[t.Pair[m.Infra.DepsToml.MemberRequirements, t.StrSequence]]
-        document = u.Cli.toml_read_document(path)
-        if document.failure:
-            return result.from_failure(document)
-        payload = u.Cli.toml_as_mapping(document.value)
+        path = state.path
+        if state.content is None:
+            return result.fail(f"member declaration has no captured bytes: {path}")
+        parsed_document = FlextInfraUtilitiesPyprojectDocument._parsed_pyproject(
+            state.content.decode(c.DEFAULT_ENCODING),
+        )
+        if parsed_document.failure:
+            return result.from_failure(parsed_document)
+        document, _name, payload = parsed_document.value
         if payload is None:
             return result.fail(f"member metadata is not a TOML mapping: {path}")
         project = payload.get(c.Infra.PROJECT)
@@ -381,12 +618,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         )
         if parsed.failure:
             return result.from_failure(parsed)
-        if parsed.value.name != distribution:
+        if FlextInfraUtilitiesDependencies.dep_name(
+            parsed.value.name,
+        ) != FlextInfraUtilitiesDependencies.dep_name(distribution):
             return result.fail(
                 f"member metadata identity differs from declaration: {path}",
             )
         declared = FlextInfraUtilitiesPyprojectUvSources.document_requirement_lines(
-            document.value,
+            document,
         ).unwrap()
         return result.ok((parsed.value, declared))
 
@@ -398,7 +637,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         requirements: t.StrSequence,
         flext_line: m.Infra.WorkspaceIntegrationSpec | None,
     ) -> p.Result[t.StrMapping]:
-        """Derive member sources and provider provenance only for generated floors.
+        """Derive governed defaults for source-less members and generated floors.
 
         Returns:
             Declared sources, or the missing provider URL failure.
@@ -489,9 +728,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     ) -> p.Result[t.Pair[t.StrMapping, t.StrMapping]]:
         """Return the declared and candidate Git sources of internal requirements.
 
-        Workspace members render on the declared integration line; generated
-        bare ``flext-*`` dev floors render on the detected FLEXT line; candidate
-        dependencies must be declared requirements.
+        Explicit requirement URLs and refs remain authoritative. Source-less
+        members use their governed workspace line; generated bare ``flext-*``
+        floors use the detected FLEXT line. Candidate dependencies must be
+        declared requirements.
 
         Returns:
             The declared and candidate requirement sources.

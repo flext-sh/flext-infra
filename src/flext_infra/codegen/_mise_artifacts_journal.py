@@ -100,6 +100,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 "generator_trees": producer.generator_trees
                 if producer is not None
                 else (),
+                "generator_modules": producer.generator_modules
+                if producer is not None
+                else (),
                 "directories": directories,
                 "entries": (),
             },

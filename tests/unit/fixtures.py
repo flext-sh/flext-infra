@@ -117,6 +117,7 @@ def tool_config_document() -> m.Infra.ToolConfigDocument:
 
 
 _CONSUMER_UPGRADE_RECEIPT = "upgrade-receipt.json"
+_CONSUMER_BUILD_RECEIPT = "build-receipt.json"
 
 
 def _provision_consumer_template(parent: Path) -> Path:
@@ -222,6 +223,7 @@ def _provision_consumer_template(parent: Path) -> Path:
     for verb, receipt in (
         ("upg", _CONSUMER_UPGRADE_RECEIPT),
         ("setup", _INFRA_SETUP_RECEIPT),
+        ("build", _CONSUMER_BUILD_RECEIPT),
     ):
         output = tm.ok(
             u.Tests.run_isolated_make(
@@ -519,6 +521,18 @@ def real_detector_project(
         (root / "limits.toml").write_text(
             "[typing_libraries]\nexclude = []\n", encoding="utf-8"
         )
+        yield root
+
+
+@pytest.fixture
+def installed_artifact_consumer(
+    session_runtime: p.Tests.SessionRuntime,
+) -> Iterator[Path]:
+    """Lease the native consumer with its installed artifacts restored afterward."""
+    with session_runtime.lease(
+        _provision_consumer_template,
+        mutable_environment=True,
+    ) as root:
         yield root
 
 

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +20,19 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeContracts:
     """Prove runtime values, failure contracts and the shared fixed point."""
+
+    @staticmethod
+    def test_catalog_phases_roundtrip_and_reject_unknown_values() -> None:
+        """Configured rules retain enum identities, never an unvalidated phase."""
+        for rule in u.Infra.declared_contract_rules():
+            payload = rule.model_dump(round_trip=True)
+            restored = m.Infra.RopeContractRule.model_validate_json(
+                rule.model_dump_json(round_trip=True)
+            )
+            tm.that(restored.phase, eq=c.Infra.SemanticCutoverPhase(rule.phase))
+            payload["phase"] = "".join(c.Infra.SemanticCutoverPhase)
+            with pytest.raises(ValueError, match="phase"):
+                m.Infra.RopeContractRule.model_validate(payload)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -98,6 +111,36 @@ class TestsFlextInfraRopeContracts:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
+    def test_shadowed_dictionary_constructor_retains_its_own_contract(
+        tmp_path: Path,
+    ) -> None:
+        """Inherited BaseModel.dict is not lexical, but a real local dict is."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from builtins import dict as BuiltinDictionary\n"
+            "from pydantic import BaseModel, Field, ConfigDict\n"
+            "class dict(BuiltinDictionary):\n"
+            "    pass\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(arbitrary_types_allowed=True)\n"
+            "    values: dict[str, list[int]] = Field(default_factory=dict)\n"
+            "evidence = type(Payload().values) is dict\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=True)
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=rope,
+                    sources={path: source},
+                )
+            )
+        tm.that(edits, empty=True)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=True)
+
+    @staticmethod
     def test_competing_utility_binding_refuses_publication(tmp_path: Path) -> None:
         """A new public utility import must not capture an existing consumer."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -117,3 +160,102 @@ class TestsFlextInfraRopeContracts:
                     sources={path: source},
                 )
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    def test_function_parameter_cannot_capture_adapter_destination(
+        tmp_path: Path,
+    ) -> None:
+        """A native function parameter must take precedence over module imports."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from pydantic import TypeAdapter\n"
+            "def consume(u):\n"
+            "    return TypeAdapter(list[int]).validate_python([1])\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match="destination u.type_adapter is shadowed"),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=rope,
+                sources={path: source},
+            )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    def test_existing_cli_facade_and_unrelated_field_info_are_preserved(
+        tmp_path: Path,
+    ) -> None:
+        """Valid model fields migrate independently without capturing richer u."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from flext_cli import u\n"
+            "from pydantic import BaseModel, Field\n"
+            "info: list[str] = Field(default_factory=list)\n"
+            "class Payload(BaseModel):\n"
+            "    values: list[str] = Field(default_factory=list)\n"
+            "evidence = (Payload().model_dump_json(), "
+            "info.default_factory is list, "
+            "u.Cli.env_read('consumer_key', {'consumer_key': 'value'}).unwrap())\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=rope,
+                    sources={path: source},
+                )
+            )
+            tm.that(len(edits), eq=1)
+            path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+
+    @staticmethod
+    def test_aliased_adapter_preserves_validation_and_failure_modes(
+        tmp_path: Path,
+    ) -> None:
+        """The public constructor preserves native coercion and rejection."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from pydantic import TypeAdapter as Parse, ValidationError\n"
+            "def consume():\n"
+            "    adapter = Parse(list[int])\n"
+            "    accepted = adapter.validate_json('[1, \"2\"]')\n"
+            "    try:\n"
+            "        adapter.validate_python(['invalid'])\n"
+            "    except ValidationError as error:\n"
+            "        return accepted, tuple(item['type'] for item in error.errors())\n"
+            "    raise AssertionError('invalid input was accepted')\n"
+            "evidence = consume()\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=rope,
+                    sources={path: source},
+                )
+            )
+            tm.that(len(edits), eq=1)
+            updated = edits[0].updated_source
+            path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+            tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                        rope_workspace=rope,
+                        sources={path: updated},
+                    )
+                ),
+                empty=True,
+            )

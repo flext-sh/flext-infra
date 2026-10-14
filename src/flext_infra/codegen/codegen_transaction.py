@@ -394,10 +394,10 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         if self._producer.failure:
-            return r[T].from_failure(self._producer)
+            return r[m.Infra.GitIdentityReport].from_failure(self._producer)
         producer = FlextInfraCodegenPreconditions.producer_current(self._producer.value)
         if producer.failure:
-            return r[T].from_failure(producer)
+            return r[m.Infra.GitIdentityReport].from_failure(producer)
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[m.Infra.GitIdentityReport].from_failure(identity)

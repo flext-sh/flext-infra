@@ -22,53 +22,67 @@ class TestsFlextInfraModScanSelection:
         """Admit each project's actual stable owner from one native capture."""
         cases = [
             (
-                "from flext_infra.codemod.batch_gates import "
-                "FlextInfraModGateEngine as Engine\n"
-                "Engine.scan(root, fix=False, rule_ids=rules)\n",
+                (
+                    "from flext_infra.codemod.batch_gates import "
+                    "FlextInfraModGateEngine as Engine\n"
+                    "Engine.scan(root, fix=False, rule_ids=rules)\n"
+                ),
                 1,
                 0,
             ),
             (
-                "import flext_infra.codemod.batch_gates as native\n"
-                "native.FlextInfraModGateEngine.scan(root, fix=False, plan=plan)\n",
+                (
+                    "import flext_infra.codemod.batch_gates as native\n"
+                    "native.FlextInfraModGateEngine.scan(root, fix=False, plan=plan)\n"
+                ),
                 1,
                 0,
             ),
             (
-                "from flext_infra.codemod.batch_gates import "
-                "FlextInfraModGateEngine as Engine\n"
-                "def use(Engine):\n"
-                "    Engine.scan(root, fix=False, rule_ids=rules)\n",
+                (
+                    "from flext_infra.codemod.batch_gates import "
+                    "FlextInfraModGateEngine as Engine\n"
+                    "def use(Engine):\n"
+                    "    Engine.scan(root, fix=False, rule_ids=rules)\n"
+                ),
                 0,
                 0,
             ),
             (
-                "from flext_infra.codemod.batch_gates import "
-                "FlextInfraModGateEngine as Engine\n"
-                "original = Engine\nEngine = independent\n"
-                "Engine.scan(root, fix=False, rule_ids=rules)\n"
-                "Engine = original\n",
+                (
+                    "from flext_infra.codemod.batch_gates import "
+                    "FlextInfraModGateEngine as Engine\n"
+                    "original = Engine\nEngine = independent\n"
+                    "Engine.scan(root, fix=False, rule_ids=rules)\n"
+                    "Engine = original\n"
+                ),
                 0,
                 0,
             ),
             (
-                "from flext_infra.codemod.batch_gates import "
-                "FlextInfraModGateEngine as Engine\n"
-                "Engine.scan(root, fix=False, selection=other(rule_ids=rules))\n",
+                (
+                    "from flext_infra.codemod.batch_gates import "
+                    "FlextInfraModGateEngine as Engine\n"
+                    "Engine.scan(root, fix=False, selection=other(rule_ids=rules))\n"
+                ),
                 0,
                 0,
             ),
             (
-                "from flext_infra.codemod.batch_gates import "
-                "FlextInfraModGateEngine as Engine\n"
-                "Engine.scan(root, fix=False, rule_ids=rules, plan=plan)\n",
+                (
+                    "from flext_infra.codemod.batch_gates import "
+                    "FlextInfraModGateEngine as Engine\n"
+                    "Engine.scan(root, fix=False, rule_ids=rules, plan=plan)\n"
+                ),
                 0,
                 1,
             ),
             (
-                "from flext_infra.codemod.batch_gates import "
-                "FlextInfraModGateEngine as Engine\n"
-                "Engine.scan(root, fix=False, plan=plan, selection=plan)\n",
+                (
+                    "from flext_infra.codemod.batch_gates import "
+                    "FlextInfraModGateEngine as Engine\n"
+                    "Engine.scan(root, fix=False, plan=plan, selection=plan)\n"
+                ),
                 0,
                 1,
             ),

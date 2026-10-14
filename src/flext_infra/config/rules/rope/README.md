@@ -29,8 +29,10 @@ nesting step keeps `get_type_hints` bound to the moved class. Consumers used onl
 type positions participate in the same plan. Ordinary literals, `Literal` values,
 `Annotated` metadata, and unrelated homonyms retain their values.
 
-The contract-normalization phase consumes `contracts.yaml` through a typed
-configuration model. Python matches and replacements use native Rope
+The contract-normalization phase consumes its `phase` rows in `contracts.yaml`
+through the canonical semantic-phase enum; constant-consumers consumes its own
+rows through the same typed catalog and native planner. Unknown phases fail
+configuration validation. Python matches and replacements use native Rope
 `SimilarFinder`, identity-constrained `Restructure` patterns and ChangeSets.
 The phase shares the existing semantic fixed point and publication transaction;
 it has no independent repair loop or CST, AST or regular-expression parser.

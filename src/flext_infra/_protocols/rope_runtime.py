@@ -232,6 +232,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
 
     @runtime_checkable
+    class RopePyCore(Protocol):
+        """Native source graph owner; source objects keep their original project."""
+
+        @property
+        def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
+
+    @runtime_checkable
     class RopePyModule(Protocol):
         """Rope parsed module shape."""
 
@@ -262,6 +269,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
 
         def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope | None: ...
+
+    @runtime_checkable
+    class RopeSourceModule(RopePyModule, Protocol):
+        """Source-module capability retaining its native semantic graph."""
+
+        @property
+        def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
     @runtime_checkable
     class RopeProject(Protocol):
@@ -370,7 +384,26 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def is_a_function_being_called(self, offset: int) -> bool: ...
 
-        def get_word_parens_range(self, offset: int) -> tuple[int, int]: ...
+        def get_word_parens_range(
+            self,
+            offset: int,
+            opening: str = "(",
+            closing: str = ")",
+        ) -> tuple[int, int]: ...
+
+        def get_word_range(self, offset: int) -> tuple[int, int]: ...
+
+        def find_function_offset(
+            self,
+            offset: int,
+            definition: str = "def ",
+        ) -> int: ...
+
+        def get_parameters(
+            self,
+            first: int,
+            last: int,
+        ) -> tuple[list[str], list[tuple[str, str]]]: ...
 
         def is_function_keyword_parameter(self, offset: int) -> bool: ...
 
@@ -411,8 +444,17 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> Iterator[tuple[int, int]]: ...
 
     @runtime_checkable
+    class RopeChangeComputer(Protocol):
+        """The native source writer without exposing its internal syntax tree."""
+
+        def get_changed(self) -> str | None: ...
+
+    @runtime_checkable
     class RopeRestructure(Protocol):
         """Public semantic restructuring planner at the Rope runtime boundary."""
+
+        matched_count: int
+        admitted_count: int
 
         def get_changes(
             self,

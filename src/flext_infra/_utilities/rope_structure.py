@@ -94,7 +94,7 @@ class FlextInfraUtilitiesRopeStructure:
             Whether one logical-line region opens a TYPE_CHECKING branch.
 
         """
-        normalized = " ".join(text.split())
+        normalized = " ".join(text.partition("#")[0].split())
         return normalized in {"if TYPE_CHECKING:", "if TYPE_CHECKING is True:"}
 
     @staticmethod

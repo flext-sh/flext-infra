@@ -77,6 +77,81 @@ class TestsFlextInfraPyprojectConformTopologySources:
             environments=tuple(toolchain.uv_environments),
         )
 
+    def test_member_request_preserves_explicit_source_over_receiver_line(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Compose captured member extras without adding a conflicting root ref."""
+        member = self._member_ref(config.Infra.name, "member")
+        workspace = self._workspace(member)
+        source_line = u.Tests.provider_branch()
+        receiver_line = f"{source_line}-receiver"
+        integration = m.Infra.WorkspaceIntegrationSpec(
+            provider=workspace.repository.provider,
+            branch=receiver_line,
+        )
+        workspace = workspace.model_copy(update={"integration": integration})
+        extra = f"{member.distribution}-feature"
+        marker = 'implementation_name == "cpython"'
+        member_root = tmp_path / member.path
+        member_root.mkdir()
+        declaration = member_root / c.PYPROJECT_FILENAME
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                declaration,
+                "[project]\n"
+                f'name = "{member.distribution}"\n'
+                'version = "1.0"\n'
+                "dependencies = []\n"
+                "[project.optional-dependencies]\n"
+                f'"{extra}" = []\n'
+                "[dependency-groups]\ndev = []\n",
+            ),
+        )
+        captured = tm.ok(
+            u.Cli.atomic_read_binary_file_state(declaration, required=True),
+        )
+        request = f"{member.distribution} @ git+{member.url}@{source_line}; {marker}"
+        source = (
+            "[project]\n"
+            f'name = "{workspace.repository.distribution}"\n'
+            'version = "1.0"\n'
+            f"dependencies = [{tm.ok(u.Cli.json_dumps(request))}]\n"
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=u.Infra.PyprojectConformOptions(
+                    repository_root=tmp_path,
+                    member_declarations=(captured,),
+                ),
+            ),
+        )
+        document = u.Cli.toml_parse_text(rendered)
+        tm.that(document is not None, eq=True)
+        if document is None:
+            pytest.fail("composition did not produce valid TOML")
+        lines = tm.ok(u.Infra.document_requirement_lines(document))
+        selected = tuple(
+            line
+            for line in lines
+            if u.Infra.dep_name(line) == u.Infra.dep_name(member.distribution)
+        )
+        tm.that(bool(selected), eq=True)
+        for line in selected:
+            tm.that(
+                tm.ok(u.Infra.declared_git_source(line)),
+                eq=(member.url, source_line),
+            )
+            tm.that(line, has=marker)
+        tm.that(
+            any(f"[{extra}]" in line for line in selected),
+            eq=True,
+        )
+
     @pytest.mark.parametrize("package", [False, True])
     def test_packaged_root_renders_workspace_source_without_self_override(
         self, package: bool

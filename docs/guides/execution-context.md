@@ -115,6 +115,42 @@ code, package resources, distribution metadata, editable pointer files, and proj
 metadata read during ownership election. Distribution names and namespace names are
 separate identities; ambiguous ownership is a failure.
 
+The captured cold module election is retained with the same native manifests in
+phase inputs, journal transitions, and publication receipts. Revalidation uses the
+same registered-provider selector and compares the complete election, not only
+facade ancestors. Newly imported providers and changed physical bindings require
+fresh pre-planning authentication. Distinct metadata directory identities remain
+distinct even when their declared distribution names match. A Git-locked rendering
+engine is checked by the typed environment provenance owner against both URL and
+commit; absent PEP 610 provenance never becomes a version-only success.
+Selecting writable editable members authenticates the installed PEP 610 receipt,
+editable pointer inventory, and declared Git checkout association. This election
+does not import member code or certify its execution. The normal environment
+verification separately authenticates the loaded code; producer capture also
+retains its own code and resource proof before generation.
+Loaded-code checks bind physical declarations, function code, executable wrapper
+links, property accessors, and MRO suppliers. They do not require operational class
+variables, initialized settings singletons, or config data to equal class-body literals;
+the actual consumer captures typed config and resource inputs separately. Native
+dataclass and named-tuple methods require a physical field-layout witness, native
+construction metadata and descriptor identity, and correspondence with code emitted
+by the authenticated generator. A compiler filename or cached field table alone is
+not evidence. A missing physical/native construction witness fails explicitly rather
+than evaluating arbitrary declaration expressions or importing dormant providers.
+Native compiler inputs preserve the class's actual bases and its own declared
+descriptors. An inherited constructor is not an explicitly declared dataclass
+constructor. Authentication does not replay a class body, decorator, metaclass, or
+construction hook. Function compilation uses authenticated native suppliers and
+data-only attachment targets; alias operands and compiler constructor bindings
+require admission before invocation. Value comparison must not invoke authored
+equality, hashing, or attribute access.
+Source bindings retain null literals inside a typed value; a null annotation or
+default never becomes a successful null `FlextResult` payload or a substituted type.
+Native generated methods are compiled in batches whose starting lines depend on
+other generated methods. Their comparison uses the same fixed starting line on
+immutable copies of both code objects, preserving compiler filenames, executable
+code, metadata and closure checks. Authored functions retain exact source positions.
+
 Every phase binds that same captured context to its staged consumer inputs. Journal
 transitions preserve it instead of rediscovering loaded origins after publication.
 Native tree authentication precedes source filtering; derived interpreter bytecode is

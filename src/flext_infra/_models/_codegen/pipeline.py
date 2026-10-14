@@ -83,6 +83,9 @@ class FlextInfraModelsCodegenPipelineModels:
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             default=(), description="Authenticated producer resource membership"
         )
+        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+            default=(), description="Exact cold module election before planning"
+        )
         publications: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
             m.Field(description="Resolved export contracts verified before commit"),
@@ -213,6 +216,9 @@ class FlextInfraModelsCodegenPipelineModels:
         ] = m.Field(default=(), description="Loaded generator implementation identity")
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             default=(), description="Captured producer resource membership"
+        )
+        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+            default=(), description="Captured producer module election"
         )
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),
