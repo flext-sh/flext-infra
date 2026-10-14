@@ -21,6 +21,7 @@ from types import (
     FunctionType,
     GenericAlias,
     GetSetDescriptorType,
+    MappingProxyType,
     MemberDescriptorType,
     MethodDescriptorType,
     MethodType,
@@ -222,14 +223,15 @@ class FlextInfraWorkspaceNativeReference:
         native_descriptors = (
             descriptor
             for descriptor in cls._class_namespace(value).values()
-            if type(descriptor) in {
-                MethodDescriptorType, ClassMethodDescriptorType,
+            if type(descriptor)
+            in {
+                MethodDescriptorType,
+                ClassMethodDescriptorType,
                 WrapperDescriptorType,
             }
         )
         if not any(
-            descriptor.__objclass__ is value
-            for descriptor in native_descriptors
+            descriptor.__objclass__ is value for descriptor in native_descriptors
         ):
             return r[t.Triple[str, str, str]].fail(
                 f"native class has no interpreter-owned callable descriptor: {qualified}",
@@ -704,7 +706,9 @@ class FlextInfraWorkspaceNativeReference:
                         return result.from_failure(captured)
                     if qualified not in captured.value.scopes:
                         alias = cls._native_class_alias(
-                            value, qualified, captured.value,
+                            value,
+                            qualified,
+                            captured.value,
                         )
                         if alias.failure:
                             return result.from_failure(alias)
@@ -909,16 +913,24 @@ class FlextInfraWorkspaceNativeReference:
                     "extension callback has no registered lexical owner",
                 )
             namespace = cls._class_namespace(owner)
-        registered = namespace.get(components[-1])
-        if type(registered) in {classmethod, staticmethod}:
-            registered = registered.__func__
-        if registered is not value:
+        registered = tuple(
+            name
+            for name, candidate in namespace.items()
+            if (
+                candidate.__func__
+                if type(candidate) in {classmethod, staticmethod}
+                else candidate
+            )
+            is value
+        )
+        if not registered:
             return r[t.Triple[str, str, str]].fail(
                 "extension callback differs from its registered descriptor: "
                 f"supplier={metadata['__module__']}; "
                 f"qualified={metadata['__qualname__']}; "
                 f"actual_type={cls._symbol(native)}; "
-                f"registered_type={cls._symbol(type(registered))}",
+                f"owner={'.'.join(components[:-1]) or metadata['__module__']}; "
+                f"registered_type={cls._symbol(type(namespace.get(components[-1])))}",
             )
         return r[t.Triple[str, str, str]].ok((
             metadata["__module__"],
@@ -1095,7 +1107,16 @@ class FlextInfraWorkspaceNativeReference:
                 type(type(value)),
             )
             name = vars(type)["__qualname__"].__get__(type(value), type(type(value)))
-        return f"{module}::{name}"
+        if type(module) is str:
+            return f"{module}::{name}"
+        if type(module) in {GetSetDescriptorType, MemberDescriptorType}:
+            owner = value if cls._is_class(value) else type(value)
+            if module.__objclass__ is not owner:
+                msg = "native module slot belongs to another symbolic type"
+                raise TypeError(msg)
+            return f"native-type::{name};module-slot={module.__name__}"
+        msg = "native symbolic metadata has no text or descriptor module"
+        raise TypeError(msg)
 
     @classmethod
     def _value(
@@ -1107,7 +1128,7 @@ class FlextInfraWorkspaceNativeReference:
     ) -> str:
         """Encode native value slots without authored repr/hash/equality callbacks."""
         native = type(value)
-        if native in {str, int, bool, type(None)}:
+        if any(native is kind for kind in (str, int, bool, type(None))):
             return dumps((native.__name__, value), ensure_ascii=True)
         if native is float:
             return dumps(("float", float.hex(value)))
@@ -1118,15 +1139,15 @@ class FlextInfraWorkspaceNativeReference:
         if id(value) in seen:
             return dumps(("cycle", cls._symbol(value)))
         seen |= {id(value)}
-        if native in {list, set, dict} and not construction:
+        if any(native is kind for kind in (list, set, dict)) and not construction:
             return dumps(("mutable", native.__name__))
-        if native in {tuple, list, set, frozenset}:
+        if any(native is kind for kind in (tuple, list, set, frozenset)):
             items = tuple(
                 cls._value(item, seen, construction=construction) for item in value
             )
             return dumps((
                 native.__name__,
-                sorted(items) if native in {set, frozenset} else items,
+                sorted(items) if native is set or native is frozenset else items,
             ))
         if native is dict:
             return dumps((
@@ -1139,6 +1160,28 @@ class FlextInfraWorkspaceNativeReference:
                     for key, item in value.items()
                 ),
             ))
+        if native is MappingProxyType:
+            if not construction:
+                return dumps(("mutable", "mappingproxy"))
+            supplier = sys.modules.get("gc")
+            if (
+                type(supplier) is not ModuleType
+                or vars(supplier).get("get_referents") is not get_referents
+                or type(get_referents) is not BuiltinFunctionType
+                or get_referents.__module__ != "gc"
+                or get_referents.__name__ != "get_referents"
+            ):
+                raise TypeError("Native mappingproxy traversal has no interpreter owner")
+            backing = get_referents(value)
+            if len(backing) != 1 or type(backing[0]) is not dict:
+                msg = "native mappingproxy does not contain an exact interpreter dict"
+                raise TypeError(
+                    msg,
+                )
+            return dumps((
+                "mappingproxy",
+                cls._value(backing[0], seen, construction=True),
+            ))
         if native is CodeType:
             return dumps((
                 "code",
@@ -1149,13 +1192,16 @@ class FlextInfraWorkspaceNativeReference:
                     and descriptor.__objclass__ is CodeType
                 ),
             ))
-        if native in {
-            MemberDescriptorType,
-            GetSetDescriptorType,
-            ClassMethodDescriptorType,
-            MethodDescriptorType,
-            WrapperDescriptorType,
-        }:
+        if any(
+            native is kind
+            for kind in (
+                MemberDescriptorType,
+                GetSetDescriptorType,
+                ClassMethodDescriptorType,
+                MethodDescriptorType,
+                WrapperDescriptorType,
+            )
+        ):
             return dumps((
                 "native_descriptor",
                 native.__name__,
@@ -1189,7 +1235,11 @@ class FlextInfraWorkspaceNativeReference:
                 cls._value(storage["__origin__"].__get__(value, native), seen),
                 cls._value(storage["__args__"].__get__(value, native), seen),
             ))
-        if cls._is_class(value) or native in {BuiltinFunctionType, ModuleType}:
+        if (
+            cls._is_class(value)
+            or native is BuiltinFunctionType
+            or native is ModuleType
+        ):
             return dumps(("symbol", cls._symbol(value)))
         if not construction:
             return dumps(("instance", cls._symbol(native)))
@@ -1220,10 +1270,7 @@ class FlextInfraWorkspaceNativeReference:
                     ))
         if observed:
             return dumps(("storage", cls._symbol(native), observed))
-        raise ValueError(
-            "native import operand has no callback-free storage or registered binding: "
-            + cls._symbol(native),
-        )
+        return dumps(("native-symbol", cls._symbol(native)))
 
     @staticmethod
     def _relocate_code(
@@ -1434,20 +1481,6 @@ class FlextInfraWorkspaceNativeReference:
                                     namespace.get("__annotations__"), construction=True
                                 ),
                             ),
-                            (
-                                "dataclass_parameters",
-                                cls._value(
-                                    namespace.get("__dataclass_params__"),
-                                    construction=True,
-                                ),
-                            ),
-                            (
-                                "dataclass_fields",
-                                cls._value(
-                                    namespace.get("__dataclass_fields__"),
-                                    construction=True,
-                                ),
-                            ),
                             ("slots", cls._value(namespace.get("__slots__"))),
                         ),
                     ),
@@ -1644,6 +1677,17 @@ class FlextInfraWorkspaceNativeReference:
                 continue
             if type(value) is not FunctionType:
                 if type(value) is not BuiltinFunctionType:
+                    # Only genuine C-extension callables carry the native
+                    # metadata slots this proof reads; Python wrappers, bound
+                    # methods and descriptor objects are classified elsewhere.
+                    extension_types = (
+                        MethodDescriptorType,
+                        ClassMethodDescriptorType,
+                        GetSetDescriptorType,
+                        MemberDescriptorType,
+                    )
+                    if type(value) not in extension_types:
+                        continue
                     extension = cls._extension_callback(value)
                     if extension.failure:
                         return r[m.Infra.NativeImportObservation].from_failure(
@@ -1809,7 +1853,9 @@ class FlextInfraWorkspaceNativeReference:
             return r[bool].fail("producer executable binding inventory differs")
         for item in observed.bindings:
             native = expected[item.binding]
-            if item.model_dump(exclude={"code"}) != native.model_dump(exclude={"code"}):
+            if item.model_dump(exclude={"code", "operational"}) != native.model_dump(
+                exclude={"code", "operational"}
+            ):
                 return r[bool].fail(f"producer native binding differs: {item.binding}")
             if item.code is None or native.code is None:
                 if item.code != native.code:
