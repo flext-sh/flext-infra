@@ -48,6 +48,7 @@ class FlextInfraCodegenPreconditions:
             TypeError: If an elected producer dependency resource is not a
                 file.
         """
+        result_type = r[t.VariadicTuple[t.Pair[str, Path]]]
         elected: dict[str, Path] = {}
         pending = [item.target for item in nominated]
         visited: set[Path] = set()
@@ -59,11 +60,11 @@ class FlextInfraCodegenPreconditions:
                     continue
                 selected = cls._elect_namespace(namespace)
                 if selected.failure:
-                    return r[t.VariadicTuple[t.Pair[str, Path]]].from_failure(selected)
+                    return result_type.from_failure(selected)
                 elected[namespace] = selected.value
                 refined = cls._refined_module_spec(namespace, module_name)
                 if refined.failure:
-                    return r[t.VariadicTuple[t.Pair[str, Path]]].from_failure(refined)
+                    return result_type.from_failure(refined)
                 spec = refined.value
                 if spec.origin is None:
                     if spec.submodule_search_locations is not None:
@@ -72,7 +73,7 @@ class FlextInfraCodegenPreconditions:
                         # is captured; imported bindings are authenticated by
                         # the native observer separately.
                         continue
-                    return r[t.VariadicTuple[t.Pair[str, Path]]].fail(
+                    return result_type.fail(
                         f"declared producer dependency has no source: {module_name}",
                     )
                 path = Path(spec.origin).absolute()
@@ -89,7 +90,7 @@ class FlextInfraCodegenPreconditions:
                 declared = u.Infra.resolve_declared_module_imports(project, resource)
                 semantic = u.Infra.resolve_semantic_module_imports(project, resource)
                 pending.extend(dict.fromkeys((*declared.values(), *semantic.values())))
-        return r[t.VariadicTuple[t.Pair[str, Path]]].ok(tuple(sorted(elected.items())))
+        return result_type.ok(tuple(sorted(elected.items())))
 
     @staticmethod
     def _refined_module_spec(
@@ -475,16 +476,15 @@ class FlextInfraCodegenPreconditions:
         Returns:
             The pinned atomic file states carrying their re-read payloads.
         """
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
         states: list[m.Cli.AtomicFileState] = []
         for receipt in authority.inputs:
             if receipt.device is None:
                 current = u.Cli.atomic_read_binary_file_receipt(receipt.path)
                 if current.failure:
-                    return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
-                        current
-                    )
+                    return result_type.from_failure(current)
                 if current.value != receipt:
-                    return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
+                    return result_type.fail(
                         f"cold producer absent input changed: {receipt.path}",
                     )
                 content = None
@@ -492,7 +492,7 @@ class FlextInfraCodegenPreconditions:
                 with u.Cli.atomic_binary_file_reader(receipt) as reader:
                     content = reader.read_range(0, receipt.size)
             else:
-                return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
+                return result_type.fail(
                     f"cold producer pinned input has no physical size: {receipt.path}",
                 )
             states.append(
@@ -503,7 +503,7 @@ class FlextInfraCodegenPreconditions:
                     "content": content,
                 }),
             )
-        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(states))
+        return result_type.ok(tuple(states))
 
     @classmethod
     def capture_producer(
@@ -520,9 +520,10 @@ class FlextInfraCodegenPreconditions:
         """
         from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
         if context.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(context)
+            return result_type.from_failure(context)
         from flext_infra.workspace.native_reference import (
             FlextInfraWorkspaceNativeReference,
         )
@@ -532,17 +533,17 @@ class FlextInfraCodegenPreconditions:
             collaborators,
         )
         if selection.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(selection)
+            return result_type.from_failure(selection)
         names = selection.value
         cold = cls.capture_source_authority(
             context.value.runtime_root,
             nominated=names,
         )
         if cold.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(cold)
+            return result_type.from_failure(cold)
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(inputs)
+            return result_type.from_failure(inputs)
         reference = FlextInfraValidateFreshImport.capture_native_reference(
             m.Infra.NativeImportRequest(
                 repository_root=context.value.runtime_root,
@@ -558,7 +559,7 @@ class FlextInfraCodegenPreconditions:
             ),
         )
         if reference.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(reference)
+            return result_type.from_failure(reference)
         snapshot = m.Infra.CodegenPhaseAnalysis(
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
             files=(),
@@ -676,6 +677,18 @@ class FlextInfraCodegenPreconditions:
         result_type = r[t.Pair[set[Path], set[Path]]]
         covered: set[Path] = set()
         representatives: set[Path] = set()
+        # State and entry share these physical identity fields; state carries
+        # the content pair (sha256, size) the entry stores directly.
+        identity_fields = (
+            "mode",
+            "device",
+            "inode",
+            "link_count",
+            "parent_device",
+            "parent_inode",
+            "file_attributes",
+            "reparse_tag",
+        )
         for tree in trees:
             representative: Path | None = None
             for entry in tree.entries:
@@ -687,25 +700,11 @@ class FlextInfraCodegenPreconditions:
                 if (
                     u.Cli.sha256_bytes(state.content),
                     len(state.content),
-                    state.mode,
-                    state.device,
-                    state.inode,
-                    state.link_count,
-                    state.parent_device,
-                    state.parent_inode,
-                    state.file_attributes,
-                    state.reparse_tag,
+                    *(getattr(state, field) for field in identity_fields),
                 ) != (
                     entry.sha256,
                     entry.size,
-                    entry.mode,
-                    entry.device,
-                    entry.inode,
-                    entry.link_count,
-                    entry.parent_device,
-                    entry.parent_inode,
-                    entry.file_attributes,
-                    entry.reparse_tag,
+                    *(getattr(entry, field) for field in identity_fields),
                 ):
                     return result_type.fail(
                         f"producer input differs from captured tree: {state.path}"

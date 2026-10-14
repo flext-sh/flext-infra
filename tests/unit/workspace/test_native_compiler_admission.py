@@ -437,7 +437,7 @@ class TestsNativeCompilerAdmission:
         *,
         slots: bool,
     ) -> None:
-        """Native scalar defaults support construction and compiler-generated methods."""
+        """Native scalar defaults support construction and compiler methods."""
         package = tmp_path / "default_provider"
         tm.ok(u.Cli.ensure_dir(package))
         tm.ok(

@@ -22,24 +22,63 @@ class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
 
     @runtime_checkable
+    class NativeModuleSpec(Protocol):
+        """Physical source fields supplied by the native import finder."""
+
+        @property
+        def origin(self) -> str | None: ...
+
+        @property
+        def submodule_search_locations(self) -> t.SequenceOf[str] | None: ...
+
+    @runtime_checkable
     class NativeCodeIdentity(Protocol):
         """Immutable native code metadata consumed by source provenance."""
 
-        co_argcount: int
-        co_posonlyargcount: int
-        co_kwonlyargcount: int
-        co_filename: str
-        co_qualname: str
-        co_firstlineno: int
-        co_consts: tuple[p.AttributeProbe | None, ...]
-        co_names: tuple[str, ...]
-        co_varnames: tuple[str, ...]
-        co_freevars: tuple[str, ...]
-        co_cellvars: tuple[str, ...]
-        co_code: bytes
-        co_linetable: bytes
-        co_exceptiontable: bytes
-        co_flags: int
+        @property
+        def co_argcount(self) -> int: ...
+
+        @property
+        def co_posonlyargcount(self) -> int: ...
+
+        @property
+        def co_kwonlyargcount(self) -> int: ...
+
+        @property
+        def co_filename(self) -> str: ...
+
+        @property
+        def co_qualname(self) -> str: ...
+
+        @property
+        def co_firstlineno(self) -> int: ...
+
+        @property
+        def co_consts(self) -> tuple[p.AttributeProbe | None, ...]: ...
+
+        @property
+        def co_names(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_varnames(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_freevars(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_cellvars(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_code(self) -> bytes: ...
+
+        @property
+        def co_linetable(self) -> bytes: ...
+
+        @property
+        def co_exceptiontable(self) -> bytes: ...
+
+        @property
+        def co_flags(self) -> int: ...
 
         def replace(
             self,

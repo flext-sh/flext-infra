@@ -184,6 +184,20 @@ class FlextInfraUtilitiesRopeStructure:
             # Docstrings carry parentheses in their prose; they are inert
             # string-literal expressions, never executable calls.
             return c.Infra.StatementCategory.OTHER
+        if ":" in stripped:
+            words = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+                "rope.base.worder", "Worder"
+            )(stripped, handle_ignores=True)
+            if not isinstance(words, p.Infra.RopeWorder):
+                message = "Rope Worder does not expose native annotation boundaries"
+                raise TypeError(message)
+            begin, end = words.get_word_range(0)
+            if (
+                begin == 0
+                and stripped[begin:end].isidentifier()
+                and stripped[end:].lstrip().startswith(":")
+            ):
+                return c.Infra.StatementCategory.ANN_ASSIGN
         return (
             c.Infra.StatementCategory.CALL
             if "(" in stripped

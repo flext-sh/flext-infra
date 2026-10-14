@@ -58,6 +58,24 @@ class TestsFlextInfraDeclarationPayload:
         ("definition", "accepted"),
         [
             (
+                ("class Holder:\n    class Payload(ForeignBase): value: str\n"),
+                True,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase): print('class body effect')\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase): value: str; print('effect')\n"
+                ),
+                False,
+            ),
+            (
                 (
                     "class Parent(ForeignBase):\n"
                     "    value: str = 'payload'\n"
@@ -170,6 +188,33 @@ class TestsFlextInfraDeclarationPayload:
                     "            return len(self.value)\n"
                 ),
                 True,
+            ),
+            (
+                (
+                    "from builtins import property as native_property\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                    "        @computed_field\n"
+                    "        @native_property\n"
+                    "        def size(self) -> int:\n"
+                    "            return len(self.value)\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "def property(function):\n"
+                    "    return function\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                    "        @computed_field\n"
+                    "        @property\n"
+                    "        def size(self) -> int:\n"
+                    "            return len(self.value)\n"
+                ),
+                False,
             ),
             (
                 (

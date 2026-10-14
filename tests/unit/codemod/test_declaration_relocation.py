@@ -259,6 +259,19 @@ class TestsFlextInfraDeclarationRelocation:
             variants=frozenset({"existing_imports"} if existing_imports else ()),
         )
         with infra.rope_workspace(root) as rope:
+            origin = next(
+                path
+                for path in sources
+                if path.parent.name
+                == u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+            )
+            binding = u.Infra.payload_declaration(
+                rope.rope_project,
+                origin,
+                f"{u.derive_class_stem(root.name)}UtilitiesPayload.Payload",
+            )
+            tm.that(binding, none=False)
+            tm.that(u.Infra.declaration_relocation_findings(rope, sources), eq=())
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                 rope_workspace=rope,

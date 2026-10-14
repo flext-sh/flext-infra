@@ -455,17 +455,16 @@ class FlextInfraUtilitiesRefactor:
             ValueError: When the module occurrence is not the native root.
         """
         start, end = byte_offsets.get("start"), byte_offsets.get("end")
-        if (
-            not isinstance(start, int)
-            or isinstance(start, bool)
-            or not isinstance(end, int)
-            or isinstance(end, bool)
-        ):
-            msg = f"module occurrence is not the native root: {entry.file}"
-            raise ValueError(msg)
         content = state.content
+        native_offsets = (
+            isinstance(start, int)
+            and not isinstance(start, bool)
+            and isinstance(end, int)
+            and not isinstance(end, bool)
+        )
         if (
-            content is None
+            not native_offsets
+            or content is None
             or not 0 <= start <= end <= len(content)
             or content[start:end] != entry.text.encode(c.DEFAULT_ENCODING)
         ):
@@ -701,6 +700,8 @@ class FlextInfraUtilitiesRefactor:
         Returns:
             Every engine's actual observation coverage disposition.
         """
+        text_observed = before.text_report is not None and after.text_report is not None
+        lint_observed = before.lint is not None and after.lint is not None
         return (
             m.Infra.ViolationsEngineCoverage(
                 repository=project.name,
@@ -716,9 +717,7 @@ class FlextInfraUtilitiesRefactor:
             m.Infra.ViolationsEngineCoverage(
                 repository=project.name,
                 engine="text",
-                status="incomplete"
-                if before.text_report is not None and after.text_report is not None
-                else "NOT_EXECUTED",
+                status="incomplete" if text_observed else "NOT_EXECUTED",
                 cause=(
                     "native text report lacks effective per-project "
                     "zero-rule audit metadata"
@@ -727,9 +726,7 @@ class FlextInfraUtilitiesRefactor:
             m.Infra.ViolationsEngineCoverage(
                 repository=project.name,
                 engine="ruff",
-                status="incomplete"
-                if before.lint is not None and after.lint is not None
-                else "NOT_EXECUTED",
+                status="incomplete" if lint_observed else "NOT_EXECUTED",
                 cause=(
                     "; ".join(lint_failures)
                     or "lint snapshots lack complete native rule IDs "

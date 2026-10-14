@@ -343,6 +343,29 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             return ""
         return source[statement.start_offset : statement.end_offset]
 
+    @staticmethod
+    def _binding_is_unifiable(
+        module: p.Infra.RopePyModule, definition: m.Infra.DuplicateDefinition
+    ) -> bool:
+        """Return whether the definition name resolves to one module binding.
+
+        Returns:
+            Whether the module scope exposes the definition name exactly once
+            so purity analysis can reason about a single binding.
+
+        """
+        module_scope = module.get_scope()
+        if module_scope is None:
+            return False
+        binding = module_scope.get_defined_names().get(definition.item.name)
+        return not (
+            binding is None
+            or (
+                isinstance(binding, p.Infra.RopeAssignedName)
+                and len(binding.assignments) != 1
+            )
+        )
+
     @classmethod
     def _statement_is_pure(
         cls, project: p.Infra.RopeProject, definition: m.Infra.DuplicateDefinition
@@ -363,14 +386,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if statement is None:
             return False
         module = u.Infra.build_string_module(project, definition.source)
-        module_scope = module.get_scope()
-        if module_scope is None:
-            return False
-        binding = module_scope.get_defined_names().get(definition.item.name)
-        if binding is None or (
-            isinstance(binding, p.Infra.RopeAssignedName)
-            and len(binding.assignments) != 1
-        ):
+        if not cls._binding_is_unifiable(module, definition):
             return False
         targets = frozenset(
             row.start_offset + len(row.text) - len(row.text.lstrip())

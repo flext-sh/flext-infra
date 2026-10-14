@@ -348,9 +348,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         Raises:
             TypeError: If the native matcher violates its pattern contract.
         """
-        finder = cls.runtime_callable("rope.refactor.similarfinder", "RawSimilarFinder")(
-            source
-        )
+        finder = cls.runtime_callable(
+            "rope.refactor.similarfinder", "RawSimilarFinder"
+        )(source)
         if not isinstance(finder, p.Infra.RopePatternFinder):
             message = "Native Rope expression matcher violates its pattern contract"
             raise TypeError(message)

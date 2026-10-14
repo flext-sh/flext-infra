@@ -29,7 +29,7 @@ import re
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, Protocol, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
@@ -39,7 +39,11 @@ if TYPE_CHECKING:
 
 
 class _DeclaredProofOptions(m.ArbitraryTypesModel):
-    """Frozen inputs proving one declared tool against the Mise resolution."""
+    """Frozen read-only inputs proving one declared tool against Mise.
+
+    The frozen model is itself the structural read-only contract every proof
+    step consumes; no parallel protocol re-declares its fields.
+    """
 
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
         frozen=True,
@@ -65,28 +69,6 @@ class _DeclaredProofOptions(m.ArbitraryTypesModel):
     proven: frozenset[str] = m.Field(
         description="Selectors already proven before this entry.",
     )
-
-
-class _DeclaredProofSpec(Protocol):
-    """Read-only structural contract for one declared tool proof."""
-
-    @property
-    def entry(self) -> m.Infra.MiseToolEntry: ...
-
-    @property
-    def lock(self) -> t.JsonMapping: ...
-
-    @property
-    def platform_name(self) -> str: ...
-
-    @property
-    def mise_binary(self) -> Path: ...
-
-    @property
-    def declared(self) -> t.SequenceOf[m.Infra.MiseToolEntry]: ...
-
-    @property
-    def proven(self) -> frozenset[str]: ...
 
 
 class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
@@ -380,7 +362,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             )
         return r[str].ok(line)
 
-    def _prove_declared(self, options: _DeclaredProofSpec) -> p.Result[str]:
+    def _prove_declared(self, options: _DeclaredProofOptions) -> p.Result[str]:
         """Prove one declared tool against the real Mise resolution.
 
         Returns:
@@ -423,7 +405,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
 
     def _external_probe_context(
         self,
-        options: _DeclaredProofSpec,
+        options: _DeclaredProofOptions,
         version: str,
     ) -> p.Result[t.Triple[m.Infra.MiseToolEntry, Path | None, str]]:
         """Resolve the declared external probe owner, root and version.

@@ -486,12 +486,10 @@ class FlextInfraPyprojectModernizerRun:
                     msg = f"{section}.{name} must be a requirement array"
                     raise TypeError(msg)
                 for index, requirement in enumerate(entries):
-                    if isinstance(requirement, Mapping):
-                        if section == c.Infra.DEPENDENCY_GROUPS:
-                            continue
-                        msg = f"{section}.{name} requires requirement strings"
-                        raise TypeError(msg)
-                    if not isinstance(requirement, str):
+                    mapping = isinstance(requirement, Mapping)
+                    if mapping and section == c.Infra.DEPENDENCY_GROUPS:
+                        continue
+                    if mapping or not isinstance(requirement, str):
                         msg = f"{section}.{name} requires requirement strings"
                         raise TypeError(msg)
                     rewritten = u.Infra.rewrite_requirement_constraint(

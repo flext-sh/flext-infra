@@ -1,4 +1,35 @@
 rules:
+  - id: ldif-helper-oid
+    pattern: '${extractor}(${definition})'
+    goal: 'u.Ldif.extract_from_definition(${definition}, patterns=(c.Ldif.SCHEMA_OID_LEADING_RE,), empty_error=c.Ldif.SCHEMA_OID_EMPTY_ERROR)'
+    arguments:
+      extractor: name=flext_ldif._utilities._parser_schema_fields.FlextLdifParserSchemaFields.extract_oid
+    imports: {u: 'from flext_ldif import u', c: 'from flext_ldif import c'}
+    bindings:
+      u.Ldif.extract_from_definition: flext_ldif._utilities.oid.FlextLdifUtilitiesOID.extract_from_definition
+  - id: ldif-helper-acl
+    pattern: '${splitter}(${line})'
+    goal: 'u.Ldif.split_acl_line(${line})'
+    arguments:
+      splitter: name=flext_ldif.servers.novell.FlextLdifServersNovell.Acl.splitacl_line
+    imports: {u: 'from flext_ldif import u'}
+    bindings:
+      u.Ldif.split_acl_line: flext_ldif._utilities._acl_format.FlextLdifACLFormatting.split_acl_line
+  - id: ldif-helper-relaxed-oid
+    pattern: |
+      oid = ${extractor}(${definition})
+      if not oid:
+          return ${failure}
+    goal: |
+      oid_result = u.Ldif.extract_from_definition(${definition}, patterns=c.Ldif.OID_EXTRACTION_PATTERNS)
+      if oid_result.failure:
+          return ${failure}
+      oid = oid_result.value
+    arguments:
+      extractor: name=flext_ldif.servers.relaxed_schema.FlextLdifServersRelaxedSchema._extract_oid_with_fallback_patterns
+    imports: {u: 'from flext_ldif import u', c: 'from flext_ldif import c'}
+    bindings:
+      u.Ldif.extract_from_definition: flext_ldif._utilities.oid.FlextLdifUtilitiesOID.extract_from_definition
   - id: namespace-final-constant
     phase: constant-consumers
     families: [c]

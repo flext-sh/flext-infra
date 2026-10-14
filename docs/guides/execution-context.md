@@ -210,8 +210,18 @@ An extension can export a callback at module level while its qualified name
 describes a class. Observation checks those native namespaces by object identity;
 the qualified name alone does not establish or invalidate registration.
 Bound interpreter methods are checked against the registered receiver type and
-its native descriptor, and their evidence retains the receiver value. Import
-dependency discovery uses the shared import maps; class-lineage validation remains
+its native descriptor, and their evidence retains the receiver value.
+Instance storage follows effective MRO ownership. The observation distinguishes
+an uninitialized native slot from a slot shadowed by a derived declaration;
+neither state supplies a fabricated field value or executes the derived accessor.
+Optional native reads require the standard attribute reader and no custom missing
+attribute hook.
+Operand observations retain structured JSON values until the transport boundary.
+Recursive JSON strings are prohibited: re-encoding their escapes amplifies memory
+with nesting depth. Nested compiler locations use a flat list with each code
+unit's position in `co_consts`; neither optimization replaces executable equality or operand evidence
+with a digest.
+Import dependency discovery uses the shared import maps; class-lineage validation remains
 with the queries that request class information. Namespace packages contribute
 their physical portions to source authority without requiring an executable
 initializer.

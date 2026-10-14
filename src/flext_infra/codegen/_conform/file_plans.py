@@ -252,51 +252,28 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             ``None`` when no manifest content is captured.
 
         """
-        captured = u.Cli.atomic_read_binary_file_state(legacy_path, required=False)
-        if captured.failure:
-            return r[
-                t.Triple[
-                    m.Cli.AtomicFileState,
-                    m.Infra.RepositoryDeltaSpec,
-                    m.Infra.WorkspaceManifestSpec,
-                ]
-            ].from_failure(captured)
-        if captured.value.content is None:
-            return None
-        parsed = u.Infra.read_codegen_config_document(captured.value.content)
-        if parsed.failure:
-            return r[
-                t.Triple[
-                    m.Cli.AtomicFileState,
-                    m.Infra.RepositoryDeltaSpec,
-                    m.Infra.WorkspaceManifestSpec,
-                ]
-            ].from_failure(parsed)
-        legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
-        if legacy.failure:
-            return r[
-                t.Triple[
-                    m.Cli.AtomicFileState,
-                    m.Infra.RepositoryDeltaSpec,
-                    m.Infra.WorkspaceManifestSpec,
-                ]
-            ].from_failure(legacy)
-        delta = u.Infra.repository_declaration_delta(legacy.value)
-        if delta.failure:
-            return r[
-                t.Triple[
-                    m.Cli.AtomicFileState,
-                    m.Infra.RepositoryDeltaSpec,
-                    m.Infra.WorkspaceManifestSpec,
-                ]
-            ].from_failure(delta)
-        return r[
+        result_type = r[
             t.Triple[
                 m.Cli.AtomicFileState,
                 m.Infra.RepositoryDeltaSpec,
                 m.Infra.WorkspaceManifestSpec,
             ]
-        ].ok((captured.value, delta.value, legacy.value))
+        ]
+        captured = u.Cli.atomic_read_binary_file_state(legacy_path, required=False)
+        if captured.failure:
+            return result_type.from_failure(captured)
+        if captured.value.content is None:
+            return None
+        parsed = u.Infra.read_codegen_config_document(captured.value.content)
+        if parsed.failure:
+            return result_type.from_failure(parsed)
+        legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
+        if legacy.failure:
+            return result_type.from_failure(legacy)
+        delta = u.Infra.repository_declaration_delta(legacy.value)
+        if delta.failure:
+            return result_type.from_failure(delta)
+        return result_type.ok((captured.value, delta.value, legacy.value))
 
     @staticmethod
     def _repository_declaration_admits(
@@ -664,6 +641,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             The absence plans carrying the captured source states.
 
         """
+        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         planned: list[m.Infra.CodegenFilePlan] = []
         for destination in destinations:
             path = root / Path(destination)
@@ -671,7 +649,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 continue
             current = u.Cli.files_read_text(path)
             if current.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(current)
+                return result_type.from_failure(current)
             evidence = evidence_by_path.get(destination)
             if evidence is not None:
                 if evidence not in current.value:
@@ -682,13 +660,11 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 continue
             absent_plan = cls._absent_file_plan(root, path)
             if absent_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    absent_plan,
-                )
+                return result_type.from_failure(absent_plan)
             planned.append(
                 absent_plan.value.model_copy(update={"source_states": sources}),
             )
-        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+        return result_type.ok(tuple(planned))
 
 
 __all__: list[str] = ["FlextInfraCodegenConformFilePlans"]

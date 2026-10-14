@@ -25,6 +25,20 @@ from flext_infra._utilities._pyproject.overlay import (
     FlextInfraUtilitiesPyprojectOverlay,
 )
 
+_CustomGroupsPair = t.Pair[
+    t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+]
+_MemberRequirementRows = t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]
+_ConformedProvenance = t.Triple[
+    t.Cli.TomlDocument,
+    str,
+    t.Pair[
+        FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        _MemberRequirementRows,
+    ],
+]
+
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
     """Render root workspace and autonomous library metadata deterministically."""
@@ -177,32 +191,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         workspace: m.Infra.WorkspaceSpec,
         required_dev_dependencies: t.StrSequence,
         options: PyprojectConformOptions | None,
-    ) -> p.Result[
-        t.Triple[
-            t.Cli.TomlDocument,
-            str,
-            t.Pair[
-                FlextInfraUtilitiesPyprojectRequirementsProvenance,
-                t.Triple[t.StrSequence, t.StrSequence, t.StrSequence],
-            ],
-        ]
-    ]:
+    ) -> p.Result[_ConformedProvenance]:
         """Parse the source and compose its provenance and member environment.
 
         Returns:
             The parsed document, its project name, the composed requirement
             provenance, and the member environment requirement triple.
         """
-        result = r[
-            t.Triple[
-                t.Cli.TomlDocument,
-                str,
-                t.Pair[
-                    FlextInfraUtilitiesPyprojectRequirementsProvenance,
-                    t.Triple[t.StrSequence, t.StrSequence, t.StrSequence],
-                ],
-            ]
-        ]
+        result = r[_ConformedProvenance]
         parsed = cls.parsed_pyproject(pyproject_content)
         if parsed.failure:
             return result.from_failure(parsed)
@@ -246,24 +242,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         pyproject_content: str,
         member_groups: t.StrSequence,
         workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[
-        t.Pair[
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-        ]
-    ]:
+    ) -> p.Result[_CustomGroupsPair]:
         """Synchronize root environment groups for workspace-role repositories.
 
         Returns:
             The synchronized custom group pair, empty outside the workspace role.
         """
         if workspace.repository.role != c.Infra.MakeProfile.WORKSPACE:
-            return r[
-                t.Pair[
-                    t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-                    t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-                ]
-            ].ok(((), ()))
+            return r[_CustomGroupsPair].ok(((), ()))
         return cls._sync_root_environment_groups(
             source,
             pyproject_content,
@@ -282,9 +268,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             Local requirements and source mappings, or the original failure.
 
         """
+        result_type = r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]]
         local = cls.document_requirement_lines(source)
         if local.failure:
-            return r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]].from_failure(
+            return result_type.from_failure(
                 local,
             )
         unused_candidates = sorted(
@@ -292,7 +279,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             - set(FlextInfraUtilitiesDependencies.declared_dependency_names(source)),
         )
         if unused_candidates:
-            return r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]].fail(
+            return result_type.fail(
                 "candidate dependencies are not declared requirements: "
                 + ", ".join(unused_candidates),
             )
@@ -303,10 +290,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             family_line=provenance.family_line,
         )
         if normalized.failure:
-            return r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]].from_failure(
+            return result_type.from_failure(
                 normalized,
             )
-        return r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]].ok(
+        return result_type.ok(
             (local.value, provenance.declared_sources, provenance.candidate_sources),
         )
 
@@ -335,24 +322,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         source: t.Cli.TomlDocument,
         original: str,
         member_groups: t.StrSequence,
-    ) -> p.Result[
-        t.Pair[
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-        ]
-    ]:
+    ) -> p.Result[_CustomGroupsPair]:
         """Retain custom development groups before adding current member requirements.
 
         Returns:
             Custom DEV and CODEGEN requirements, or the original parse failure.
 
         """
-        result_type = r[
-            t.Pair[
-                t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-                t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-            ]
-        ]
+        result_type = r[_CustomGroupsPair]
         payload = u.Cli.toml_as_mapping(source)
         if payload is None:
             return result_type.fail(
@@ -392,10 +369,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def _sync_root_environment_provenance(
         cls,
         source: t.Cli.TomlDocument,
-        custom_groups: t.Pair[
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-            t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-        ],
+        custom_groups: _CustomGroupsPair,
         context: FlextInfraUtilitiesPyprojectRequirementsProvenance,
     ) -> p.Result[bool]:
         """Tag derived occurrences after normalizing their declared origins.
@@ -432,7 +406,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         source: t.Cli.TomlDocument,
         workspace: m.Infra.WorkspaceSpec,
         options: PyprojectConformOptions,
-    ) -> p.Result[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]:
+    ) -> p.Result[_MemberRequirementRows]:
         """Compose member extras and groups from authenticated captured declarations.
 
         Args:
@@ -446,7 +420,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             A result containing a triple of string sequences representing the
                 member environment requirements.
         """
-        result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
+        result = r[_MemberRequirementRows]
         members = (
             tuple(member for member in workspace.subprojects if member.package)
             if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
@@ -510,7 +484,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         declarations: t.SequenceOf[m.Cli.AtomicFileState],
         declared_lines: t.StrSequence,
         integration_branch: str | None,
-    ) -> p.Result[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]:
+    ) -> p.Result[_MemberRequirementRows]:
         """Render and aggregate one requirement row set per declared member.
 
         Args:
@@ -522,7 +496,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         Returns:
             The aggregated requests, groups, and declared requirement lines.
         """
-        result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
+        result = r[_MemberRequirementRows]
         requests: list[str] = []
         groups: list[str] = []
         requirements: list[str] = []
@@ -547,7 +521,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         state: m.Cli.AtomicFileState,
         declared_lines: t.StrSequence,
         integration_branch: str | None,
-    ) -> p.Result[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]:
+    ) -> p.Result[_MemberRequirementRows]:
         """Render one member's requests, groups, and declared requirements.
 
         Args:
@@ -560,7 +534,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             The member's rendered requests, dependency groups, and declared
             requirement lines.
         """
-        result = r[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]
+        result = r[_MemberRequirementRows]
         parsed = FlextInfraUtilitiesPyprojectDocument.member_declaration_requirements(
             state,
             member.distribution,

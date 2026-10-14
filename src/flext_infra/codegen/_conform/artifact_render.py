@@ -153,22 +153,17 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if overlay.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(overlay)
             rendered = overlay.value
-        if destination == c.PYPROJECT_FILENAME:
-            composed = cls._composed_pyproject_overlay(
-                repository_root,
-                rendered,
-                render_inputs,
-            )
-        elif destination != c.Infra.MISE_TOML_FILENAME:
-            composed = r[m.Infra.CodegenArtifactComposition].ok(
+        composer = {
+            c.PYPROJECT_FILENAME: cls._composed_pyproject_overlay,
+            c.Infra.MISE_TOML_FILENAME: cls._composed_mise_overlay,
+        }.get(destination)
+        composed = (
+            composer(repository_root, rendered, render_inputs)
+            if composer is not None
+            else r[m.Infra.CodegenArtifactComposition].ok(
                 m.Infra.CodegenArtifactComposition(rendered=rendered),
             )
-        else:
-            composed = cls._composed_mise_overlay(
-                repository_root,
-                rendered,
-                render_inputs,
-            )
+        )
         if composed.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
         captured = FlextInfraCodegenPreconditions.unique_states(
@@ -542,21 +537,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The resulting ``p.Result[p.Model]``.
 
         """
-        repository_context = self._repo_config_context(render_inputs, destination)
-        if repository_context is not None:
-            return repository_context
-        static_context = self._static_spec_context(render_inputs, destination)
-        if static_context is not None:
-            return static_context
-        beads_context = self._beads_context(render_inputs, destination)
-        if beads_context is not None:
-            return beads_context
-        github_context = self._github_context(render_inputs, destination)
-        if github_context is not None:
-            return github_context
-        makefile_context = self._makefile_group_context(render_inputs, destination)
-        if makefile_context is not None:
-            return makefile_context
+        for resolver in (
+            self._repo_config_context,
+            self._static_spec_context,
+            self._beads_context,
+            self._github_context,
+            self._makefile_group_context,
+        ):
+            context = resolver(render_inputs, destination)
+            if context is not None:
+                return context
         return self._project_or_pass_context(render_inputs, project_context)
 
     def _repo_config_context(

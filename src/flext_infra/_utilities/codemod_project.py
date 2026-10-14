@@ -831,7 +831,7 @@ class FlextInfraUtilitiesCodemodProject(
         imports: t.SequenceOf[p.Infra.RopeImportStatement],
         lookup: m.Infra.CodemodImportResources,
     ) -> list[t.Infra.RopeResource]:
-        """Collect the Rope resources of every import inside one module tree.
+        """Resolve native import targets through the shared resource cache.
 
         Returns:
             The pending resources named by the module's import statements.
@@ -839,60 +839,32 @@ class FlextInfraUtilitiesCodemodProject(
         """
         found: list[t.Infra.RopeResource] = []
         for node in imports:
-            found.extend(
-                cls._snapshot_node_import_resources(project, resource, node, lookup)
+            declared = FlextInfraUtilitiesRopeImports.import_statement_module_name(node)
+            names = FlextInfraUtilitiesRopeImports.import_statement_names_and_aliases(
+                node
             )
-        return found
-
-    @classmethod
-    def _snapshot_node_import_resources(
-        cls,
-        project: p.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        node: p.Infra.RopeImportStatement,
-        lookup: m.Infra.CodemodImportResources,
-    ) -> list[t.Infra.RopeResource]:
-        """Collect the Rope resources of one import statement's targets.
-
-        Returns:
-            The pending resources named by the statement, possibly empty.
-
-        """
-        found: list[t.Infra.RopeResource] = []
-        declared = FlextInfraUtilitiesRopeImports.import_statement_module_name(node)
-        names = FlextInfraUtilitiesRopeImports.import_statement_names_and_aliases(node)
-        level = len(declared) - len(declared.lstrip(".")) if declared is not None else 0
-        module_name = declared[level:] if declared is not None else ""
-        imports = (
-            (module_name,)
-            if declared is not None
-            else tuple(name for name, _alias in names)
-        )
-        for name in imports:
-            imported = cls._snapshot_imported_resource(
-                project,
-                resource,
-                name,
-                level=level,
-                lookup=lookup,
+            level = (
+                len(declared) - len(declared.lstrip(".")) if declared is not None else 0
             )
-            if imported is not None:
-                found.append(imported)
-        if declared is None:
-            return found
-        for name, _alias in names:
-            if name == "*":
-                continue
-            qualified = f"{module_name}.{name}" if module_name else name
-            child = cls._snapshot_imported_resource(
-                project,
-                resource,
-                qualified,
-                level=level,
-                lookup=lookup,
+            module_name = declared[level:] if declared is not None else ""
+            targets = (
+                (
+                    module_name,
+                    *(
+                        f"{module_name}.{name}" if module_name else name
+                        for name, _alias in names
+                        if name != "*"
+                    ),
+                )
+                if declared is not None
+                else tuple(name for name, _alias in names)
             )
-            if child is not None:
-                found.append(child)
+            for name in targets:
+                imported = cls._snapshot_imported_resource(
+                    project, resource, name, level=level, lookup=lookup
+                )
+                if imported is not None:
+                    found.append(imported)
         return found
 
     @staticmethod

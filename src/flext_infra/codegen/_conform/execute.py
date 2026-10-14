@@ -19,6 +19,17 @@ from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 
+# The surfaces a partial apply plan may publish; every other non-ALL surface is
+# prohibited outside the complete managed run.
+_PARTIAL_PLAN_SURFACES: frozenset[c.Infra.CodegenConformSurface] = frozenset((
+    c.Infra.CodegenConformSurface.MAKEFILE,
+    c.Infra.CodegenConformSurface.DOCS_CONFIG,
+    c.Infra.CodegenConformSurface.ENVRC,
+    c.Infra.CodegenConformSurface.PYPROJECT,
+    c.Infra.CodegenConformSurface.MISE_CONFIG,
+    c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
+))
+
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     """Transactional execution of conformance plans.
@@ -202,37 +213,37 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 "initial branch is required to initialize the repository "
                 "Git: declare --repository-branch",
             )
-        initialized = u.Cli.run_checked([
-            c.Infra.GIT,
-            "init",
-            "--initial-branch",
-            initial_workspace.integration.branch,
-            str(root),
-        ])
-        if initialized.failure:
-            return r[bool].from_failure(initialized)
-        remote = u.Cli.run_checked([
-            c.Infra.GIT,
-            "-C",
-            str(root),
-            "remote",
-            "add",
-            c.Infra.GIT_DEFAULT_REMOTE,
-            initial_workspace.repository.url,
-        ])
-        if remote.failure:
-            return r[bool].from_failure(remote)
-        committed = u.Cli.run_checked([
-            c.Infra.GIT,
-            "-C",
-            str(root),
-            "commit",
-            "--allow-empty",
-            "-m",
-            "chore: initialize generated project",
-        ])
-        if committed.failure:
-            return r[bool].from_failure(committed)
+        commands: t.SequenceOf[t.StrSequence] = (
+            (
+                c.Infra.GIT,
+                "init",
+                "--initial-branch",
+                initial_workspace.integration.branch,
+                str(root),
+            ),
+            (
+                c.Infra.GIT,
+                "-C",
+                str(root),
+                "remote",
+                "add",
+                c.Infra.GIT_DEFAULT_REMOTE,
+                initial_workspace.repository.url,
+            ),
+            (
+                c.Infra.GIT,
+                "-C",
+                str(root),
+                "commit",
+                "--allow-empty",
+                "-m",
+                "chore: initialize generated project",
+            ),
+        )
+        for command in commands:
+            executed = u.Cli.run_checked(command)
+            if executed.failure:
+                return r[bool].from_failure(executed)
         return r[bool].ok(value=True)
 
     @override
@@ -333,14 +344,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
-            if surface in {
-                c.Infra.CodegenConformSurface.MAKEFILE,
-                c.Infra.CodegenConformSurface.DOCS_CONFIG,
-                c.Infra.CodegenConformSurface.ENVRC,
-                c.Infra.CodegenConformSurface.PYPROJECT,
-                c.Infra.CodegenConformSurface.MISE_CONFIG,
-                c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
-            }:
+            if surface in _PARTIAL_PLAN_SURFACES:
                 return self._execute_plan(request)
             mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
             transaction = FlextInfraCodegenTransaction(
@@ -553,14 +557,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[m.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
         surface = c.Infra.CodegenConformSurface(request.what)
-        if surface not in {
-            c.Infra.CodegenConformSurface.MAKEFILE,
-            c.Infra.CodegenConformSurface.DOCS_CONFIG,
-            c.Infra.CodegenConformSurface.ENVRC,
-            c.Infra.CodegenConformSurface.PYPROJECT,
-            c.Infra.CodegenConformSurface.MISE_CONFIG,
-            c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
-        }:
+        if surface not in _PARTIAL_PLAN_SURFACES:
             return r[m.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",
             )
@@ -695,6 +692,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             repository root.
 
         """
+        result_type = r[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]]
         expected_owners: t.MutableMappingKV[Path, Path] = {}
         for repository in plan.repositories:
             repository_root = (
@@ -702,15 +700,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ).resolve()
             inputs = u.Infra.load_codegen_inputs(repository_root)
             if inputs.failure:
-                return r[
-                    t.Pair[set[Path], t.MutableMappingKV[Path, Path]]
-                ].from_failure(inputs)
+                return result_type.from_failure(inputs)
             destinations = self.surface_contract(
                 surface,
                 codegen=inputs.value.spec,
             ).destinations
             if not destinations:
-                return r[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]].fail(
+                return result_type.fail(
                     f"bootstrap requires declared destinations for {surface}",
                 )
             expected_owners.update(
@@ -742,9 +738,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 error = ValueError(
                     "runtime tracking dependencies escape declared config layers"
                 )
-                return r[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]].fail(
-                    str(error), exception=error
-                )
+                return result_type.fail(str(error), exception=error)
             expected_paths.update(dependencies)
             expected_owners.update(
                 {
@@ -753,7 +747,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     for dependency in file.tracking_dependencies
                 },
             )
-        return r[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]].ok(
+        return result_type.ok(
             (expected_paths, expected_owners),
         )
 

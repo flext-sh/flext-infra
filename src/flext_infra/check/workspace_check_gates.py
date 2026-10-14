@@ -38,6 +38,10 @@ class FlextInfraWorkspaceCheckGatesMixin:
         Returns:
             The resulting ``m.Infra.GateContext``.
 
+        Raises:
+            ValueError: If the context carries runtime dependency inputs
+                that belong to a different project target.
+
         """
         if (
             ctx.runtime_dependency_inputs is not None

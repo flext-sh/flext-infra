@@ -67,7 +67,18 @@ class FlextInfraDepsGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Repair native-evidenced declarations under the shared mutation lease."""
+        """Repair native-evidenced declarations under the shared mutation lease.
+
+        Args:
+            project_dir: The root directory of the project to repair.
+            ctx: The gate context containing configuration and report directories.
+
+        Returns:
+            The unchanged check receipt in check-only mode, the scan receipt
+            when nothing is repairable, an ERROR receipt when provenance from
+            the selected interpreter is missing, or the post-repair rescan
+            receipt.
+        """
         if ctx.check_only or not ctx.apply_fixes:
             return self.check(project_dir, ctx)
         started = time.monotonic()
@@ -84,7 +95,10 @@ class FlextInfraDepsGate(FlextInfraGate):
                     line=0,
                     column=0,
                     code=c.Infra.ToolOutcome.ERROR.value,
-                    message="dependency repair requires provenance from the selected interpreter",
+                    message=(
+                        "dependency repair requires provenance"
+                        " from the selected interpreter"
+                    ),
                     severity=c.Infra.GateSeverity.ERROR.value,
                 )
                 return self._build_gate_execution(
@@ -113,28 +127,59 @@ class FlextInfraDepsGate(FlextInfraGate):
             )
         )
 
+    def _prepare_report_dir(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> Path:
+        """Plan and create the private report directory for one deptry run.
+
+        Guarded creation failures surface as ``OSError`` to the caller.
+
+        Args:
+            project_dir: The root directory of the project being scanned.
+            ctx: The gate context holding the base reports directory.
+
+        Returns:
+            The absolute report directory path for this gate execution.
+
+        Raises:
+            FileExistsError: If the planned directory chain resolves empty.
+        """
+        report_dir = ctx.reports_dir.absolute() / (
+            f"{project_dir.name}-{self.gate_id}-{uuid4().hex}"
+        )
+        planned = u.Cli.atomic_plan_directory_chain(report_dir).unwrap()
+        if not planned.directories:
+            raise FileExistsError(report_dir)
+        u.Cli.atomic_create_directory_chain_guarded(
+            planned,
+            permission_mode=config.Infra.codegen.modes.directory_private,
+        ).unwrap()
+        return report_dir
+
     def _scan(
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[m.Infra.GateExecution, m.Infra.DeptryScan | None]:
-        """Capture and grade one native report for checking or guarded repair."""
+        """Capture and grade one native report for checking or guarded repair.
+
+        Args:
+            project_dir: The root directory of the project to scan.
+            ctx: The gate context containing configuration and report directories.
+
+        Returns:
+            The gate execution receipt plus the native scan when captured,
+            or ``None`` after a guarded capture failure.
+        """
         started = time.monotonic()
         raw_output = ""
         issues: t.VariadicTuple[m.Infra.Issue] = ()
         outcome = c.Infra.ToolOutcome.ERROR
         scan: m.Infra.DeptryScan | None = None
         try:
-            report_dir = ctx.reports_dir.absolute() / (
-                f"{project_dir.name}-{self.gate_id}-{uuid4().hex}"
-            )
-            planned = u.Cli.atomic_plan_directory_chain(report_dir).unwrap()
-            if not planned.directories:
-                raise FileExistsError(report_dir)
-            u.Cli.atomic_create_directory_chain_guarded(
-                planned,
-                permission_mode=config.Infra.codegen.modes.directory_private,
-            ).unwrap()
+            report_dir = self._prepare_report_dir(project_dir, ctx)
             scan = u.Infra.capture_deptry_scan(
                 project_dir,
                 Path(sys.executable).parent,

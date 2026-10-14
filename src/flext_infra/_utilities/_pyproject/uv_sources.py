@@ -186,8 +186,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
             The ordered projects and the virtual distribution name.
 
         """
+        failure = r[t.Pair[list[m.Infra.UvResolutionProject], str]]
         if not directory.is_absolute():
-            return r[t.Pair[list[m.Infra.UvResolutionProject], str]].fail(
+            return failure.fail(
                 f"resolution view directory is not absolute: {directory}",
             )
         projects = [
@@ -198,18 +199,18 @@ class FlextInfraUtilitiesPyprojectUvSources(
             canonicalize_name(project.repository.distribution) for project in projects
         ]
         if len(names) != len(set(names)):
-            return r[t.Pair[list[m.Infra.UvResolutionProject], str]].fail(
+            return failure.fail(
                 "resolution projects have colliding normalized distribution names",
             )
         virtual_name = canonicalize_name(
             root.repository.distribution + policy.virtual_distribution_suffix,
         )
         if virtual_name in names:
-            return r[t.Pair[list[m.Infra.UvResolutionProject], str]].fail(
+            return failure.fail(
                 f"resolution distribution collides with a declared project:"
                 f" {virtual_name}",
             )
-        return r[t.Pair[list[m.Infra.UvResolutionProject], str]].ok((
+        return failure.ok((
             projects,
             virtual_name,
         ))
@@ -337,20 +338,42 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
         if resolved.failure:
             return resolved
-        cls._resolution_extra_sources(state, project, project_sources, resolved.value)
+        relocated = cls._resolution_context_sources(
+            state,
+            project,
+            project_sources,
+            [
+                (target, optional_names, extra)
+                for extra, (target, optional_names) in resolved.value.items()
+            ],
+            qualifier="extra",
+        )
+        if relocated.failure:
+            return relocated
         cls._resolution_group_entries(state, project, declared_groups, renamed.value)
         if not (root and not project.repository.package):
-            failed = cls._resolution_group_source_entries(
-                state, project, project_sources, declared_groups, renamed.value
+            relocated = cls._resolution_context_sources(
+                state,
+                project,
+                project_sources,
+                [
+                    (
+                        renamed[canonicalize_name(group)],
+                        cls._resolution_group_requirement_names(declared_groups, group),
+                        group,
+                    )
+                    for group in declared_groups
+                ],
+                qualifier="group",
             )
-            if failed.failure:
-                return failed
-        return cls._resolution_group_and_index_exports(
+            if relocated.failure:
+                return relocated
+        return cls._resolution_project_exports(
             state, project, project_uv, renamed.value, name
         )
 
     @classmethod
-    def _resolution_group_and_index_exports(
+    def _resolution_project_exports(
         cls,
         state: _ResolutionViewState,
         project: m.Infra.UvResolutionProject,
@@ -565,13 +588,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         resolved: dict[str, t.Pair[str, set[str]]] = {}
+        failure = r[dict[str, t.Pair[str, set[str]]]]
         for extra, raw_requirements in optional.items():
             target = (
                 extra if root else f"{name}{state.policy.member_group_separator}{extra}"
             )
             normalized = canonicalize_name(target)
             if normalized in state.seen_extras:
-                return r[dict[str, t.Pair[str, set[str]]]].fail(
+                return failure.fail(
                     f"resolution optional-dependency names collide: {target}",
                 )
             state.seen_extras.add(normalized)
@@ -580,7 +604,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 raw_requirements,
             ):
                 if not isinstance(requirement, str):
-                    return r[dict[str, t.Pair[str, set[str]]]].fail(
+                    return failure.fail(
                         "optional dependency is not a requirement string",
                     )
                 selected.append(cls._resolution_requirement(requirement, project))
@@ -591,27 +615,36 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 if isinstance(requirement, str)
             }
             resolved[extra] = (target, optional_names)
-        return r[dict[str, t.Pair[str, set[str]]]].ok(resolved)
+        return failure.ok(resolved)
 
     @classmethod
-    def _resolution_extra_sources(
+    def _resolution_context_sources(
         cls,
         state: _ResolutionViewState,
         project: m.Infra.UvResolutionProject,
         project_sources: t.JsonMapping,
-        resolved: t.MappingKV[str, t.Pair[str, set[str]]],
+        contexts: t.SequenceOf[t.Triple[str, t.StrSequence, str]],
+        *,
+        qualifier: str,
     ) -> p.Result[bool]:
-        """Relocate the project's extra-qualified sources to their targets.
+        """Relocate extra- and group-qualified sources to their view targets.
+
+        Each context carries its view-level target name, the canonical
+        dependency names it selects, and the declared qualifier origin. A
+        source carrying the opposite qualifier never relocates, and a
+        mismatched declared qualifier leaves the entry to its owning context.
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
-        for extra, (target, optional_names) in resolved.items():
+        forbidden = "extra" if qualifier == "group" else "group"
+        for target, selected_names, origin in contexts:
             for dependency, raw_sources in project_sources.items():
                 dependency_name = canonicalize_name(dependency)
                 if (
                     dependency_name in state.overridden
-                    or dependency_name not in optional_names
+                    or dependency_name not in selected_names
                 ):
                     continue
                 entries = (
@@ -621,20 +654,21 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 )
                 for raw_source in entries:
                     source = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_source)
-                    source_extra = source.get("extra", extra)
+                    declared = source.get(qualifier, origin)
                     if (
-                        "group" in source
-                        or not isinstance(source_extra, str)
-                        or canonicalize_name(source_extra) != canonicalize_name(extra)
+                        forbidden in source
+                        or not isinstance(declared, str)
+                        or canonicalize_name(declared) != canonicalize_name(origin)
                     ):
                         continue
                     relocated = cls._resolution_source(
                         source,
                         project,
                         directory=state.directory,
-                        group=None,
+                        group=target if qualifier == "group" else None,
                     )
-                    relocated["extra"] = target
+                    if qualifier == "extra":
+                        relocated["extra"] = target
                     added = cls._resolution_add_source(
                         state.sources, dependency, relocated
                     )
@@ -664,60 +698,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
                         "include-group": renamed[canonicalize_name(included)],
                     })
             state.groups[target] = rewritten
-
-    @classmethod
-    def _resolution_group_source_entries(
-        cls,
-        state: _ResolutionViewState,
-        project: m.Infra.UvResolutionProject,
-        project_sources: t.JsonMapping,
-        declared_groups: t.JsonDict,
-        renamed: t.MappingKV[str, str],
-    ) -> p.Result[bool]:
-        """Relocate the project's group-qualified sources to their targets.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-        """
-        for group in declared_groups:
-            target = renamed[canonicalize_name(group)]
-            group_names = cls._resolution_group_requirement_names(
-                declared_groups,
-                group,
-            )
-            for dependency, raw_sources in project_sources.items():
-                dependency_name = canonicalize_name(dependency)
-                if (
-                    dependency_name in state.overridden
-                    or dependency_name not in group_names
-                ):
-                    continue
-                entries = (
-                    t.Cli.JSON_LIST_ADAPTER.validate_python(raw_sources)
-                    if isinstance(raw_sources, list)
-                    else [raw_sources]
-                )
-                for raw_source in entries:
-                    source = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_source)
-                    source_group = source.get("group", group)
-                    if (
-                        "extra" in source
-                        or not isinstance(source_group, str)
-                        or canonicalize_name(source_group) != canonicalize_name(group)
-                    ):
-                        continue
-                    relocated = cls._resolution_source(
-                        source,
-                        project,
-                        directory=state.directory,
-                        group=target,
-                    )
-                    added = cls._resolution_add_source(
-                        state.sources, dependency, relocated
-                    )
-                    if added.failure:
-                        return r[bool].from_failure(added)
-        return r[bool].ok(value=True)
 
     @classmethod
     def _resolution_group_metadata(

@@ -25,6 +25,13 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSource,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesRopeImports:
@@ -41,21 +48,18 @@ class FlextInfraUtilitiesRopeImports:
         Native token occurrences exclude strings and comments. Native logical
         regions bound each fragment, and Rope's import tables parse the actual
         declaration, including inline suites and multiple imports on one line.
-        """
-        from flext_infra._utilities.rope_runtime_modules import (
-            FlextInfraUtilitiesRopeRuntimeModules,
-        )
-        from flext_infra._utilities.rope_runtime_refactors import (
-            FlextInfraUtilitiesRopeRuntimeRefactors,
-        )
-        from flext_infra._utilities.rope_structure import (
-            FlextInfraUtilitiesRopeStructure,
-        )
 
+        Args:
+            project: The Rope project instance.
+            source: The source code to analyze.
+
+        Returns:
+            A tuple of Rope import statements found in the source.
+
+        """
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project,
             source,
-            force_errors=True,
         )
         imports = tuple(
             occurrence.offset
@@ -107,13 +111,19 @@ class FlextInfraUtilitiesRopeImports:
             fragment = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
                 project,
                 source[start : region.end_offset],
-                force_errors=True,
             )
             table = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
                 project,
                 fragment,
             )
-            statements.extend(cls.import_statements(table))
+            line_offset = module.lines.get_line_number(start) - 1
+            for statement in cls.import_statements(table):
+                # Every table owns its fragment records. Preserve the native
+                # import-info object and project the record's coordinates back
+                # to the complete immutable source before returning it.
+                statement.start_line += line_offset
+                statement.end_line += line_offset
+                statements.append(statement)
             while position < len(imports) and imports[position] < region.end_offset:
                 position += 1
         return tuple(statements)

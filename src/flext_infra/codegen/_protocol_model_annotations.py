@@ -56,6 +56,9 @@ class FlextInfraCodegenProtocolModelAnnotations:
         package_name: str = m.Field(
             description="Member package name (pyproject name, underscore form).",
         )
+        protocol_directory: Path = m.Field(
+            description="Discovered protocol-family directory relative to the project.",
+        )
         facade_container: str = m.Field(
             description="CamelCase member container prefix (for example AiHub).",
         )

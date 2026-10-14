@@ -33,7 +33,7 @@ class TestsFlextInfraCodemodDuplicateApply:
         self,
         tmp_path: Path,
     ) -> None:
-        """Census cure contracts retain Rope source regions during transport."""
+        """Census cure contracts consume the same typed source objects directly."""
         path = tmp_path / "definition.py"
         path.write_text(_CORE_CONSTANT, encoding=c.DEFAULT_ENCODING)
         statement = u.Infra.logical_statements(_CORE_CONSTANT)[0]
@@ -63,11 +63,10 @@ class TestsFlextInfraCodemodDuplicateApply:
             copies=(),
             edits=(),
         )
-        transported = m.Infra.DuplicateGroupCure.model_validate(
-            planned.model_dump(),
-        )
-        assert transported.owner.definition.statement == statement
-        assert transported.owner.definition.source == path.read_text(
+        assert planned.owner is copy
+        assert planned.owner.definition is definition
+        assert planned.owner.definition.statement is statement
+        assert planned.owner.definition.source == path.read_text(
             encoding=c.DEFAULT_ENCODING,
         )
         deletion = m.Infra.DuplicateDeletion(
@@ -76,12 +75,8 @@ class TestsFlextInfraCodemodDuplicateApply:
             line=item.line,
             project=item.project,
         )
-        assert (
-            m.Infra.DuplicateDeletion.model_validate_json(
-                deletion.model_dump_json(),
-            )
-            == deletion
-        )
+        assert deletion.path == definition.path
+        assert deletion.name == definition.item.name
 
     @staticmethod
     def _module(summary: str) -> str:

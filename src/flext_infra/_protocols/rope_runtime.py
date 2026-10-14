@@ -249,6 +249,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         source_code: str
 
+        @property
+        def lines(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceLines: ...
+
         def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
 
         def get_attribute(

@@ -496,19 +496,15 @@ class FlextInfraModGateEngine:
                 c.Infra.AST_GREP_ERROR_FINDING_RECEIPT.format(count=errors),
                 c.Infra.AST_GREP_ERROR_FINDING_HELP,
             ))
-            + "\n"
+            + "\n\n"
         ).encode(c.DEFAULT_ENCODING)
-        if stderr.size != len(expected):
-            return r[bool].fail(
-                f"ast-grep finding receipt mismatch: parsed_errors={errors} "
-                f"expected={expected!r} actual={stderr.path} "
-                f"size={stderr.size} sha256={stderr.sha256}",
-            )
         with u.Cli.atomic_binary_file_reader(stderr) as reader:
-            if reader.read_range(0, len(expected)) != expected:
+            actual = reader.read_range(0, stderr.size)
+            if actual != expected:
                 return r[bool].fail(
                     f"ast-grep finding receipt mismatch: parsed_errors={errors} "
-                    f"expected={expected!r} actual={stderr.path} "
+                    f"expected={expected!r} actual_bytes={actual!r} "
+                    f"actual={stderr.path} "
                     f"size={stderr.size} sha256={stderr.sha256}"
                 )
         return r[bool].ok(value=True)

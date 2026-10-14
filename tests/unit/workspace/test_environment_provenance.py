@@ -1099,8 +1099,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "            raise AssertionError('unadmitted parameter accessor ran')\n"
             "    module.Payload.__dataclass_params__ = ForeignParameters()\n"
             "if defect == 'none':\n"
-            "    assert repr(module.Payload('authenticated')) == \"Payload(value='authenticated')\"\n"
-            "    observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "    assert repr(module.Payload('authenticated')) == "
+            "\"Payload(value='authenticated')\"\n"
+            "    observed = "
+            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
             "    generated = [item for item in observed if item[2]]\n"
             "    assert generated\n"
             "    assert all(pathlib.Path(item[2]) == "
@@ -1230,7 +1232,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tmp_path: Path,
         defect: str,
     ) -> None:
-        """Real native wrappers retain function links and reject cache-assisted forgery."""
+        """Real native wrappers retain function links and reject cache-assisted."""
         package = tmp_path / "native_wrapper_provider"
         package.mkdir()
         tm.ok(
@@ -1283,7 +1285,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     def test_source_preflight_does_not_reimport_authored_effects(
         tmp_path: Path,
     ) -> None:
-        """Static provenance fails generated admission without replaying import effects."""
+        """Static provenance fails generated admission without replaying import."""
         package = tmp_path / "import_effect_provider"
         package.mkdir()
         tm.ok(
@@ -1335,7 +1337,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "elif defect == 'kwdefaults':\n"
             "    Len.__init__.__kwdefaults__ = {'foreign': None}\n"
             "elif defect == 'closure':\n"
-            "    cells = dict(zip(Len.__init__.__code__.co_freevars, Len.__init__.__closure__))\n"
+            "    cells = "
+            "dict(zip(Len.__init__.__code__.co_freevars, Len.__init__.__closure__))\n"
             "    cells['__dataclass_builtins_object__'].cell_contents = str\n"
             "if defect == 'none':\n"
             "    assert Len().min_length == 0\n"
@@ -1375,7 +1378,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "module = importlib.import_module('attrs_provider')\n"
             "defect = sys.argv[2]\n"
             "if defect == 'code':\n"
-            "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__.replace(co_name='foreign')\n"
+            "    module.Payload.__init__.__code__ = module."
+            "Payload.__init__.__code__.replace(co_name='foreign')\n"
             "elif defect == 'defaults':\n"
             "    module.Payload.__init__.__defaults__ = ('foreign',)\n"
             "elif defect == 'kwdefaults':\n"
@@ -1383,8 +1387,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "if defect == 'none':\n"
             "    assert module.Payload().value == 'captured'\n"
             "    assert module.Payload(value='native').value == 'native'\n"
-            "    observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
-            "    assert any(item[2] == str(pathlib.Path(module.__file__)) for item in observed)\n"
+            "    observed = "
+            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "    assert any(item[2] == str(pathlib.Path(module.__file__)) "
+            "for item in observed)\n"
             "else:\n"
             "    assert provenance.loaded_import_sources(module.__name__).failure\n"
         )
@@ -1419,7 +1425,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    operation.__defaults__ = ('foreign',)\n"
             "observed = provenance.loaded_import_sources(ImageMode.__name__)\n"
             "if defect == 'none':\n"
-            "    assert isinstance(ImageMode.getmode('RGB'), ImageMode.ModeDescriptor)\n"
+            "    assert isinstance(ImageMode.getmode('RGB'), "
+            "ImageMode.ModeDescriptor)\n"
             "    sources = observed.unwrap()\n"
             "    assert any(item[2] == ImageMode.__file__ for item in sources)\n"
             "    paths = {pathlib.Path(item[2] or item[1]) for item in sources}\n"
@@ -1903,7 +1910,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 [
                     str(u.Infra.runtime_python(root)),
                     "-c",
-                    "import json, sysconfig; print(json.dumps([sysconfig.get_path('purelib')]))",
+                    (
+                        "import json, sysconfig; "
+                        "print(json.dumps([sysconfig.get_path('purelib')]))"
+                    ),
                 ],
                 cwd=root,
             )
@@ -1962,7 +1972,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         self,
         installed_artifact_consumer: Path,
     ) -> None:
-        """Real installation bindings survive unrelated defects; producer proof rejects code."""
+        """Real installation bindings survive unrelated defects."""
         root = installed_artifact_consumer
         package_name = u.Infra.project_package_name(root)
         source = root / "src" / package_name / c.Infra.INIT_PY
