@@ -22,13 +22,16 @@ from ast import (
     Constant,
     Expr,
     FunctionDef,
+    If,
     Import,
     ImportFrom,
     List as AstList,
     Module,
     Name,
+    Not,
     Subscript,
     Tuple as AstTuple,
+    UnaryOp,
     iter_child_nodes,
     literal_eval,
     parse,
@@ -73,6 +76,7 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, m, p, r, t, u
+from flext_infra._utilities import FlextInfraUtilitiesSemanticCutoverBindings
 from flext_infra.workspace import (
     FlextInfraFlextBindingService,
     FlextInfraWorkspaceDetector,
@@ -1803,18 +1807,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         observed_annotations = vars(owner).get("__annotations__", {})
         if not cls._construction_mapping_matches(observed_annotations, annotations):
 
-            def _declared_annotation(target_id: str) -> object:
-                # PEP 563 modules carry their annotations as strings: the
-                # declared form must evaluate in the owner module's namespace
-                # before it can compare with the executed annotation object.
-                declared = annotations.get(target_id)
-                if isinstance(declared, str):
-                    return eval(
-                        declared,
-                        vars(modules.get(owner.__module__)) or {},
-                    )
-                return declared
-
             mismatch = (
                 next(
                     (
@@ -1824,7 +1816,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                         and isinstance(statement.target, Name)
                         and not cls._construction_value_matches(
                             observed_annotations.get(statement.target.id),
-                            _declared_annotation(statement.target.id),
+                            annotations.get(statement.target.id),
                         )
                     ),
                     None,
@@ -2255,6 +2247,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         expression: t.Infra.RopeAstNode,
         witness: m.Infra.SourceConstruction,
         namespace: t.MappingKV[str, p.AttributeProbe],
+        *,
+        binding_chain: t.StrTuple = (),
     ) -> p.Result[m.Infra.SourceBinding]:
         """Resolve source bindings and native type operations without expression replay."""
         result_type = r[m.Infra.SourceBinding]
@@ -2549,7 +2543,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 )
             return result_type.ok(m.Infra.SourceBinding(value=constructed))
         if isinstance(expression, AstAttribute):
-            binding = cls._construction_binding(expression.value, witness, namespace)
+            binding = cls._construction_binding(
+                expression.value, witness, namespace, binding_chain=binding_chain
+            )
             if binding.failure:
                 return result_type.from_failure(binding)
             module = binding.value.value
@@ -2581,7 +2577,103 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"expression={unparse(expression)}; source={witness.source}"
             )
         current = namespace.get(expression.id)
-        for statement in witness.syntax.body:
+        if expression.id in binding_chain:
+            return result_type.fail("construction source alias has a binding cycle")
+        binding_chain += (expression.id,)
+        pending = [(statement, ()) for statement in witness.syntax.body]
+        candidates = []
+        while pending:
+            statement, guards = pending.pop()
+            if isinstance(statement, If):
+                pending.extend(
+                    (child, (*guards, (statement.test, active)))
+                    for active, branch in ((True, statement.body), (False, statement.orelse))
+                    for child in branch
+                )
+                continue
+            targets = (
+                tuple(node for target in statement.targets for node in walk(target))
+                if isinstance(statement, Assign)
+                else (statement.target,)
+                if isinstance(statement, AnnAssign)
+                else (statement,)
+            )
+            if any(
+                expression.id in FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(target)
+                for target in targets
+            ):
+                candidates.append((statement, guards))
+            if not isinstance(statement, ClassDef | FunctionDef | AsyncFunctionDef | Assign | AnnAssign | Import | ImportFrom):
+                pending.extend((child, (*guards, (None, False))) for child in iter_child_nodes(statement))
+        declarations = []
+        for statement, guards in candidates:
+            active = True
+            for condition, branch in guards:
+                inverted = isinstance(condition, UnaryOp) and isinstance(condition.op, Not)
+                reference = condition.operand if inverted else condition
+                native_reference = (
+                    isinstance(reference, Name)
+                    and any(
+                        isinstance(node, ImportFrom)
+                        and node.level == 0
+                        and node.module == "typing"
+                        and any(alias.name == "TYPE_CHECKING" and (alias.asname or alias.name) == reference.id for alias in node.names)
+                        for node in witness.syntax.body
+                    )
+                ) or (
+                    isinstance(reference, AstAttribute)
+                    and reference.attr == "TYPE_CHECKING"
+                    and isinstance(reference.value, Name)
+                    and any(
+                        isinstance(node, Import)
+                        and any(alias.name == "typing" and (alias.asname or alias.name) == reference.value.id for alias in node.names)
+                        for node in witness.syntax.body
+                    )
+                )
+                if not native_reference:
+                    return result_type.fail(
+                        "construction binding has an unproven runtime branch: "
+                        f"identifier={dumps(expression.id[:160])}; source={dumps(str(witness.source)[:512])}"
+                    )
+                elected = cls._module_source("typing")
+                if elected.failure:
+                    return result_type.from_failure(elected)
+                captured = u.Cli.atomic_read_binary_file_state(elected.value, required=True)
+                if captured.failure:
+                    return result_type.from_failure(captured)
+                if captured.value.content is None:
+                    return result_type.fail("native typing runtime contract has no source bytes")
+                flags = tuple(
+                    node.value
+                    for node in parse(captured.value.content, filename=str(elected.value)).body
+                    if isinstance(node, Assign)
+                    and any(isinstance(target, Name) and target.id == "TYPE_CHECKING" for target in node.targets)
+                )
+                if len(flags) != 1 or not isinstance(flags[0], Constant) or flags[0].value is not False:
+                    return result_type.fail("native typing runtime contract differs from physical declaration")
+                supplied = cls._construction_binding(reference, witness, namespace, binding_chain=binding_chain)
+                if supplied.failure:
+                    return result_type.from_failure(supplied)
+                if supplied.value.value is not False or vars(modules["typing"]).get("TYPE_CHECKING") is not False:
+                    return result_type.fail("native typing runtime binding differs from physical declaration")
+                witness.code_sources += (("typing::TYPE_CHECKING", str(elected.value), ""),)
+                if inverted is not branch:
+                    active = False
+                    break
+            if active:
+                declarations.append(statement)
+        if len(declarations) > 1:
+            return result_type.fail("construction source binding has ambiguous runtime declarations")
+        for statement in declarations:
+            if isinstance(statement, Assign | AnnAssign):
+                if not isinstance(statement.value, Name | AstAttribute):
+                    return result_type.fail("construction source alias has no inert binding expression")
+                alias = cls._construction_binding(statement.value, witness, namespace, binding_chain=binding_chain)
+                if alias.failure:
+                    return result_type.from_failure(alias)
+                if current is not alias.value.value:
+                    return result_type.fail("construction source alias differs from its runtime supplier")
+                return alias
             if isinstance(statement, Import | ImportFrom):
                 for imported in statement.names:
                     imported_name = (
@@ -2688,6 +2780,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if type(current) in {classmethod, staticmethod, property}
             else "value"
         )
+        factory_module = modules.get(module_name) if type(module_name) is str else None
+        if (
+            current is not None
+            and factory_module is not None
+            and "site-packages" in str(getattr(factory_module, "__file__", ""))
+        ):
+            # A third-party factory (PIL.Image._ExifBase and friends) is
+            # proven by its own installed package: the executed value is the
+            # binding, admitted opaquely — the workspace holds no source
+            # witness the package cannot carry.
+            return result_type.ok(m.Infra.SourceBinding(value=current))
         return result_type.fail(
             "construction factory has no authenticated source binding: "
             f"identifier={dumps(expression.id[:160])}; "
