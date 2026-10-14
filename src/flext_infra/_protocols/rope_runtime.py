@@ -148,6 +148,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_line_end(self, lineno: int) -> int: ...
 
+        def get_line_number(self, offset: int) -> int: ...
+
     @runtime_checkable
     class RopeLogicalLineFinder(Protocol):
         """Native logical-line regions produced by Rope's source analyzer."""

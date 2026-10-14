@@ -6,11 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import importlib.util
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, p, t
+from flext_infra._utilities.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
 
 
 class FlextInfraUtilitiesRopeSourceBasesAliases:
@@ -51,6 +56,8 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         module: str,
         path: Path,
         source: str,
+        *,
+        project: p.Infra.RopeProject | None = None,
     ) -> t.StrDict:
         """Read the ``install_lazy_exports`` namespace alias map of one module.
 
@@ -72,42 +79,49 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         if path.name != c.Infra.INIT_PY:
             return {}
         # A required initializer that does not parse remains a real input error.
-        parsed = ast.parse(source, filename=str(path))
+        parsed = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project, source
+        )
+        if not isinstance(parsed, p.Infra.RopeSourceModule):
+            message = "Lazy aliases require a native Rope source module"
+            raise TypeError(message)
+        finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+            parsed.pycore.project, "install_lazy_exports"
+        )
+        words = FlextInfraUtilitiesRopeRuntimeModules.runtime_callable(
+            "rope.base.worder", "Worder"
+        )(source, handle_ignores=True)
+        if not isinstance(words, p.Infra.RopeWorder):
+            message = "Lazy aliases require Rope's native parameter reader"
+            raise TypeError(message)
         package = module
         aliases: t.StrDict = {}
-        for node in ast.walk(parsed):
-            if not (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Name)
-                and node.func.id == "install_lazy_exports"
-            ):
+        for occurrence in finder.find_occurrences(pymodule=parsed):
+            if not words.is_a_function_being_called(occurrence.offset):
                 continue
+            first, last = words.get_word_parens_range(occurrence.offset)
+            arguments, keywords = words.get_parameters(first, last - 1)
             mapping = next(
                 (
                     arg
-                    for arg in (*node.args, *node.keywords)
-                    if isinstance(arg, ast.Dict)
-                    or (
-                        isinstance(arg, ast.Call)
-                        and isinstance(arg.func, ast.Name)
-                        and arg.func.id == "MappingProxyType"
-                    )
+                    for arg in (*arguments, *(value for _name, value in keywords))
+                    if arg.lstrip().startswith("{")
+                    or arg.partition("(")[0].strip() == "MappingProxyType"
                 ),
                 None,
             )
-            if isinstance(mapping, ast.Call):
-                mapping = mapping.args[0] if mapping.args else None
-            if not isinstance(mapping, ast.Dict):
+            if mapping is None:
                 continue
-            for key_node, value_node in zip(mapping.keys, mapping.values, strict=False):
-                if not (
-                    isinstance(key_node, ast.Constant)
-                    and isinstance(key_node.value, str)
-                    and isinstance(value_node, ast.Constant)
-                    and isinstance(value_node.value, str)
-                ):
-                    continue
-                value = value_node.value
+            mapping_start = source.index(mapping, first + 1, last)
+            if mapping.partition("(")[0].strip() == "MappingProxyType":
+                first, last = words.get_word_parens_range(mapping_start)
+                mapping = source[first + 1 : last - 1].strip()
+            else:
+                first, last = words.code_finder.get_word_parens_range(
+                    mapping_start, "{", "}"
+                )
+                mapping = source[first:last]
+            for key, value in cls._literal_mapping(mapping).items():
                 if value.startswith("."):
                     parts = package.split(".") if package else []
                     depth = len(value) - len(value.lstrip("."))
@@ -118,8 +132,47 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                         ".".join(parts[: len(parts) - depth + 1]) if depth else package
                     )
                     value = ".".join(part for part in (base, remainder) if part)
-                aliases[key_node.value] = value
+                aliases[key] = value
         return aliases
+
+    @staticmethod
+    def _literal_mapping(source: str) -> t.StrDict:
+        """Decode flat alias data from complete native Rope string tokens.
+
+        Returns:
+            Constant alias pairs, or no aliases for dynamic mapping data.
+        """
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        regions = refactors.ignored_regions(source)
+        strings = tuple(
+            (start, end)
+            for start, end, metadata in regions
+            if metadata.get("prefix") is not None
+        )
+        if not strings or len(strings) % 2:
+            return {}
+        remaining = list(source)
+        for start, end, metadata in regions:
+            if metadata.get("prefix") is None:
+                remaining[start:end] = " " * (end - start)
+        text = "".join(remaining)
+        if text[: strings[0][0]].strip() != "{":
+            return {}
+        result: t.StrDict = {}
+        for index in range(0, len(strings), 2):
+            key_start, key_end = strings[index]
+            value_start, value_end = strings[index + 1]
+            if text[key_end:value_start].strip() != ":":
+                return {}
+            key = refactors.literal_string(source[key_start:key_end])
+            value = refactors.literal_string(source[value_start:value_end])
+            if key is None or value is None:
+                return {}
+            if index and text[strings[index - 1][1] : key_start].strip() != ",":
+                return {}
+            result[key] = value
+        tail = "".join(text[strings[-1][1] :].split())
+        return result if tail in {"}", ",}"} else {}
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeSourceBasesAliases"]

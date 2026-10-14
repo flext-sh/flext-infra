@@ -321,7 +321,9 @@ class TestsFlextInfraDeclarationRelocation:
                     ),
                 ),
                 cwd=root,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(target.parent.parent.parent)}),
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(target.parent.parent.parent)}
+                ),
             ),
         )
         tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
@@ -886,7 +888,12 @@ class TestsFlextInfraDeclarationRelocation:
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    def test_validator_and_computed_field_runtime_preserved(tmp_path: Path) -> None:
+    @pytest.mark.parametrize("nested_local", [False, True])
+    def test_validator_and_computed_field_runtime_preserved(
+        tmp_path: Path,
+        *,
+        nested_local: bool,
+    ) -> None:
         """Test validator and computed field runtime preserved.
 
         Raises:
@@ -899,8 +906,13 @@ class TestsFlextInfraDeclarationRelocation:
                 "        @field_validator('value')\n"
                 "        @classmethod\n"
                 "        def normalize(cls, value: int) -> int:\n"
-                "            return value * 2\n"
-                "        @computed_field\n"
+                + (
+                    "            scratch = [item * 2 for item in (value,)]\n"
+                    "            return scratch[0]\n"
+                    if nested_local
+                    else "            return value * 2\n"
+                )
+                + "        @computed_field\n"
                 "        @property\n"
                 "        def derived(self) -> int:\n"
                 "            return self.value + 1"
@@ -944,34 +956,12 @@ class TestsFlextInfraDeclarationRelocation:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("guard", ["generated", "nested-validator"])
-    def test_unsafe_sources_refuse_the_whole_plan(tmp_path: Path, guard: str) -> None:
+    def test_generated_sources_refuse_the_whole_plan(tmp_path: Path) -> None:
         """Test unsafe sources refuse the whole plan."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(tmp_path)
-        if guard == "generated":
-            path = next(path for path in sources if path.name == "consumer.py")
-            sources[path] = c.Infra.AUTOGEN_HEADERS[0] + "\n" + sources[path]
-            expected = "generated consumer"
-        else:
-            path = next(
-                path
-                for path in sources
-                if path.parent.name
-                == u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
-            )
-            sources[path] = sources[path].replace(
-                "value: str = Field(default='payload')",
-                (
-                    "value: str = Field(default='payload')\n"
-                    "        @field_validator('value')\n"
-                    "        @classmethod\n"
-                    "        def normalize(cls, value: str) -> str:\n"
-                    "            scratch = [value for value in ()]\n"
-                    "            return value"
-                ),
-            )
-            sources[path] = "from pydantic import field_validator\n" + sources[path]
-            expected = "unproven nested validator scope"
+        path = next(path for path in sources if path.name == "consumer.py")
+        sources[path] = c.Infra.AUTOGEN_HEADERS[0] + "\n" + sources[path]
+        expected = "generated consumer"
         path.write_text(sources[path], encoding="utf-8")
         with (
             infra.rope_workspace(root) as rope,

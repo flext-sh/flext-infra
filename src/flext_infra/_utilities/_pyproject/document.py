@@ -45,7 +45,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         member_declarations: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState] | None,
             m.Field(
-                description="Pre-render captured member declarations in declared order"
+                description=(
+                    "Authenticated declarations in member order, required "
+                    "for packaged workspace members"
+                )
             ),
         ] = None
 
@@ -351,7 +354,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         workspace: m.Infra.WorkspaceSpec,
         options: PyprojectConformOptions,
     ) -> p.Result[t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]]:
-        """Retain all declared member extras and groups in the root environment.
+        """Compose member extras and groups from authenticated captured declarations.
 
         Args:
             source: Parsed root requirements before environment composition.

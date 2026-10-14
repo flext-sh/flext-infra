@@ -460,7 +460,9 @@ class FlextInfraModGateEngine:
                 f"timed_out={outcome.timed_out} "
                 f"forwarded_signal={outcome.forwarded_signal}\n{detail}",
             )
-        stderr = u.Cli.atomic_read_binary_file_receipt(stderr_file, required=True).unwrap()
+        stderr = u.Cli.atomic_read_binary_file_receipt(
+            stderr_file, required=True
+        ).unwrap()
         if stderr.size != 0:
             receipt = u.Infra.publish_mod_native_artifact(artifact_root, stderr_file)
             return r[p.Cli.ProcessOutcome].fail(
@@ -480,23 +482,35 @@ class FlextInfraModGateEngine:
         return len(path.parts)
 
     @staticmethod
-    def _validate_finding_receipt(stderr: str, errors: int) -> p.Result[bool]:
+    def _validate_finding_receipt(
+        stderr: m.Cli.AtomicFileReceipt, errors: int
+    ) -> p.Result[bool]:
         """Authenticate ast-grep's exact error-finding stderr receipt.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        expected = "\n".join((
-            c.Infra.AST_GREP_ERROR_FINDING_RECEIPT.format(count=errors),
-            c.Infra.AST_GREP_ERROR_FINDING_HELP,
-        ))
-        receipt = stderr.strip()
-        if receipt != expected:
+        expected = (
+            "\n".join((
+                c.Infra.AST_GREP_ERROR_FINDING_RECEIPT.format(count=errors),
+                c.Infra.AST_GREP_ERROR_FINDING_HELP,
+            ))
+            + "\n"
+        ).encode(c.DEFAULT_ENCODING)
+        if stderr.size != len(expected):
             return r[bool].fail(
                 f"ast-grep finding receipt mismatch: parsed_errors={errors} "
-                f"expected={expected!r} actual={receipt!r}",
+                f"expected={expected!r} actual={stderr.path} "
+                f"size={stderr.size} sha256={stderr.sha256}",
             )
+        with u.Cli.atomic_binary_file_reader(stderr) as reader:
+            if reader.read_range(0, len(expected)) != expected:
+                return r[bool].fail(
+                    f"ast-grep finding receipt mismatch: parsed_errors={errors} "
+                    f"expected={expected!r} actual={stderr.path} "
+                    f"size={stderr.size} sha256={stderr.sha256}"
+                )
         return r[bool].ok(value=True)
 
     @staticmethod
@@ -1139,6 +1153,7 @@ class FlextInfraModGateEngine:
             ).unwrap()
             sys.stderr.write(f"mod: native findings={report.findings}\n")
             sys.stderr.flush()
+            stderr = u.Infra.publish_mod_native_artifact(artifact_root, stderr_file)
             if run.value.raw_return_code != 0:
                 error_findings = sum(
                     entry.severity == "error" for entry in report.entries
@@ -1147,19 +1162,17 @@ class FlextInfraModGateEngine:
                     return r[m.Infra.ModScanReport].fail(
                         "ast-grep finding exit has no error-severity occurrence"
                     )
-                stderr = (
-                    u.Cli
-                    .atomic_read_binary_file_state(stderr_file, required=True)
-                    .unwrap()
-                    .content
-                )
-                if stderr is None:
-                    return r[m.Infra.ModScanReport].fail(
-                        f"ast-grep finding receipt is missing: {stderr_file}"
-                    )
-                cls._validate_finding_receipt(
-                    stderr.decode("utf-8"), error_findings
-                ).unwrap()
+                cls._validate_finding_receipt(stderr, error_findings).unwrap()
+            report = cls.recounted(
+                report.entries,
+                source_states=report.source_states,
+                native_artifacts=tuple(
+                    {
+                        receipt.path: receipt
+                        for receipt in (*report.native_artifacts, stderr)
+                    }.values()
+                ),
+            )
         return r[m.Infra.ModScanReport].ok(report)
 
     @staticmethod

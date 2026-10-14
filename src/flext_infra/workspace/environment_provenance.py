@@ -9,10 +9,10 @@ from __future__ import annotations
 import hashlib
 import sys
 import sysconfig
-from inspect import getsourcefile
 from base64 import urlsafe_b64encode
 from functools import lru_cache
 from importlib.machinery import BuiltinImporter, FrozenImporter
+from inspect import getsourcefile
 from json import dumps
 from pathlib import Path
 from sys import modules

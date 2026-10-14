@@ -334,8 +334,6 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                         match, "subscription_receiver"
                     )
                 )
-                if receiver is None:
-                    return False
                 first, last = receiver
                 if left <= start < end <= right and not cls._stable_binding_chain(
                     (
@@ -707,11 +705,13 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 }
             ):
                 return True
-            matches = tuple(
-                FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(
-                    holder
-                ).get_matches("${binding_target} = ${binding_value}", {})
+            finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(holder)
+            pattern = (
+                "${binding_target}: ${binding_annotation} = ${binding_value}"
+                if declaration.category == c.Infra.StatementCategory.ANN_ASSIGN
+                else "${binding_target} = ${binding_value}"
             )
+            matches = tuple(finder.get_matches(pattern, {}))
             regions = tuple(
                 FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
                     match, "binding_value"
@@ -725,7 +725,9 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             first, last = regions[0]
             value = cls._binding_expression(holder_text[first:last])
             if value is None:
-                return cls._literal_assignment_value(holder_text[first:last])
+                return FlextInfraUtilitiesRopeRuntimeRefactors.literal_constant(
+                    holder_text[first:last]
+                )
             # The guard keys the link chased next (the assigned value), never the
             # link already proven: an import hop records (module, name) before this
             # declaration hop holds that same name, which is one chain, not a cycle.
@@ -820,9 +822,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             Returns:
                 The resulting ``bool``.
             """
-            declarations = cls._single_reaching_declarations(
-                module, scope, expression
-            )
+            declarations = cls._single_reaching_declarations(module, scope, expression)
             if "." in expression:
                 return not declarations
             if len(declarations) != 1:
@@ -866,7 +866,8 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                     (
                         statement
                         for statement in rows
-                        if statement.start_offset <= occurrence.offset
+                        if statement.start_offset
+                        <= occurrence.offset
                         < statement.end_offset
                     ),
                     None,

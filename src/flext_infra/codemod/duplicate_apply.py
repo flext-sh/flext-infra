@@ -300,7 +300,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if binding is None:
             return None
         owner, line = binding.get_definition_location()
-        if owner is not module or line is None:
+        if owner is not module or line != item.line:
             return None
         statements = u.Infra.logical_statements(source)
         statement = next(
@@ -363,6 +363,15 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if statement is None:
             return False
         module = u.Infra.build_string_module(project, definition.source)
+        module_scope = module.get_scope()
+        if module_scope is None:
+            return False
+        binding = module_scope.get_defined_names().get(definition.item.name)
+        if binding is None or (
+            isinstance(binding, p.Infra.RopeAssignedName)
+            and len(binding.assignments) != 1
+        ):
+            return False
         targets = frozenset(
             row.start_offset + len(row.text) - len(row.text.lstrip())
             for row in u.Infra.logical_statements(definition.source)
@@ -759,7 +768,21 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             matches the planned definition.
 
         """
-        statement = cls._definition_statement(project, source, definition.item)
+        if not definition.body or source.count(definition.body) != 1:
+            return None
+        start = source.index(definition.body)
+        declaration_line = (
+            source.count("\n", 0, start)
+            + 1
+            + definition.item.line
+            - (
+                definition.statement.line
+                if definition.statement is not None
+                else definition.item.line
+            )
+        )
+        item = definition.item.model_copy(update={"line": declaration_line})
+        statement = cls._definition_statement(project, source, item)
         if statement is None or cls._statement_body(statement, source) != (
             definition.body
         ):
@@ -930,14 +953,9 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         """
         for deletion in deletions:
             published = Path(deletion.path).read_text(encoding=c.DEFAULT_ENCODING)
-            probe = m.Infra.Object(
-                name=deletion.name,
-                kind="constant",
-                file_path=str(deletion.path),
-                line=deletion.line,
-                project=deletion.project,
-            )
-            if cls._definition_statement(project, published, probe) is not None:
+            module = u.Infra.build_string_module(project, published)
+            scope = module.get_scope()
+            if scope is not None and deletion.name in scope.get_defined_names():
                 return f"published source still defines the copy: {deletion.path}"
         for edit in edits:
             published = Path(edit.file_path).read_text(encoding=c.DEFAULT_ENCODING)

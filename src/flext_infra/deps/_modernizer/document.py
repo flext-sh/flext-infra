@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -24,6 +24,30 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import p
+
+
+class _RenderPolicy(m.ArbitraryTypesModel):
+    """Keyword policy for one document render and optional durable write."""
+
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+
+    dry_run: bool = m.Field(description="Skip the durable write when set.")
+    skip_comments: bool = m.Field(
+        description="Keep the managed inject-comments phase out of the render.",
+    )
+    format_source: bool = m.Field(
+        default=True,
+        description="Run the canonical TOML formatter over the rendered source.",
+    )
+    preserve_layout: bool = m.Field(
+        default=False,
+        description="Synchronize values through the original TOML tree instead of "
+        "reordering.",
+    )
 
 
 class FlextInfraPyprojectModernizerDocument:
@@ -242,10 +266,12 @@ class FlextInfraPyprojectModernizerDocument:
             return self._render_document_state(
                 state,
                 migrated.value,
-                dry_run=dry_run,
-                skip_comments=True,
-                format_source=False,
-                preserve_layout=True,
+                policy=_RenderPolicy(
+                    dry_run=dry_run,
+                    skip_comments=True,
+                    format_source=False,
+                    preserve_layout=True,
+                ),
             )
         return self._render_document_state(
             state,
@@ -254,8 +280,7 @@ class FlextInfraPyprojectModernizerDocument:
                 canonical_dev=canonical_dev,
                 topology=m.Infra.PyprojectDeclaredTopology(),
             ),
-            dry_run=dry_run,
-            skip_comments=skip_comments,
+            policy=_RenderPolicy(dry_run=dry_run, skip_comments=skip_comments),
         )
 
     def _apply_document_phases(
@@ -355,21 +380,23 @@ class FlextInfraPyprojectModernizerDocument:
         state: m.Infra.PyprojectDocumentState,
         changes: t.StrSequence,
         *,
-        dry_run: bool,
-        skip_comments: bool,
-        format_source: bool = True,
-        preserve_layout: bool = False,
+        policy: _RenderPolicy,
     ) -> p.Result[t.StrSequence]:
         """Order, annotate, and format one payload; write unless ``dry_run``.
 
         A formatter failure is the result's failure, never a reported change.
+
+        Args:
+            state: The parsed document state to render and durably write.
+            changes: The already-accumulated change entries to extend.
+            policy: The render-and-write policy for this invocation.
 
         Returns:
             The resulting ``p.Result[t.StrSequence]``.
 
         """
         path = state.pyproject_path
-        if preserve_layout:
+        if policy.preserve_layout:
             if state.document is None:
                 return r[t.StrSequence].fail(
                     f"original TOML document is unavailable: {path}"
@@ -381,9 +408,9 @@ class FlextInfraPyprojectModernizerDocument:
             self._reorder_document(doc, preferred_first=self.tomlsort_sort_first)
         rendered = doc.as_string()
         comment_changes: t.StrSequence = ()
-        if not skip_comments:
+        if not policy.skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        if format_source:
+        if policy.format_source:
             formatted = u.Infra.format_toml_source(
                 rendered,
                 path=path,
@@ -399,7 +426,7 @@ class FlextInfraPyprojectModernizerDocument:
         state.rendered = rendered.rstrip() + "\n"
         if state.rendered == state.original_rendered.rstrip() + "\n":
             return r[t.StrSequence].ok(())
-        if not dry_run:
+        if not policy.dry_run:
             u.write_file(path, state.rendered, encoding=c.DEFAULT_ENCODING)
         return r[t.StrSequence].ok((*changes, *comment_changes))
 

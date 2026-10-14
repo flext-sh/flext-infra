@@ -352,10 +352,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         source_states: list[m.Cli.AtomicFileState] = [locked.value]
         declarations: list[m.Cli.AtomicFileState] = []
         for member in members:
-            declaration = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
-                repository_root,
-                member,
-                lock_state=locked.value,
+            declaration = (
+                FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+                    repository_root,
+                    member,
+                    lock_state=locked.value,
+                )
             )
             if declaration.failure:
                 return result_type.from_failure(declaration)

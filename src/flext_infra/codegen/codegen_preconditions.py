@@ -273,7 +273,7 @@ class FlextInfraCodegenPreconditions:
 
     @classmethod
     def capture_producer(cls) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Strengthen cold authority with the actual isolated native producer."""
+        """Authenticate the loaded producer against its cold physical authority."""
         from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
         cold = cls.capture_source_authority()
@@ -298,11 +298,6 @@ class FlextInfraCodegenPreconditions:
                 modules=names,
                 inputs=inputs.value,
                 source_authority=cold.value,
-                import_roots=tuple(
-                    dict.fromkeys(
-                        root.parent for _name, root in cold.value.generator_modules
-                    )
-                ),
             ),
         )
         if reference.failure:
@@ -474,7 +469,8 @@ class FlextInfraCodegenPreconditions:
         if current.failure:
             return current
         return cls.producer_trees_current(
-            producer.generator_trees, modules=producer.generator_modules,
+            producer.generator_trees,
+            modules=producer.generator_modules,
             reference=producer.generator_reference,
         )
 
@@ -489,9 +485,14 @@ class FlextInfraCodegenPreconditions:
         """Check the original native epoch without minting namespace-local proofs."""
         if reference is None:
             return r[bool].fail("producer closure lacks its pre-planning native epoch")
-        if tuple(trees) != reference.source_authority.generator_trees or modules != reference.source_authority.generator_modules:
+        if (
+            tuple(trees) != reference.source_authority.generator_trees
+            or modules != reference.source_authority.generator_modules
+        ):
             return r[bool].fail("producer native epoch belongs to another election")
-        from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
+        )
 
         current = FlextInfraWorkspaceNativeReference.authority_current(
             reference.source_authority, outputs=outputs

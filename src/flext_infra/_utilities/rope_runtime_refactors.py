@@ -30,8 +30,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         if code.co_names or code.co_freevars or len(code.co_consts) != 1:
             return r[p.AttributeProbe].fail("expression has no sole native constant")
         value = code.co_consts[0]
-        if type(value) not in {str, bytes, int, float, complex, bool, type(None)} and value is not Ellipsis:
-            return r[p.AttributeProbe].fail("expression has no primitive native constant")
+        if (
+            type(value) not in {str, bytes, int, float, complex, bool, type(None)}
+            and value is not Ellipsis
+        ):
+            return r[p.AttributeProbe].fail(
+                "expression has no primitive native constant"
+            )
         return r[p.AttributeProbe].ok(value)
 
     @classmethod

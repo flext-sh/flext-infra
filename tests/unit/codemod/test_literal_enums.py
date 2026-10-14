@@ -201,7 +201,7 @@ class TestsFlextInfraLiteralEnums:
         for path, source in sources.items():
             path.write_text(source, encoding=c.DEFAULT_ENCODING)
         message = (
-            "literal enum facade c is shadowed"
+            "literal constant facade c is shadowed"
             if case == "shadowed"
             else "literal annotation has ambiguous enum owners"
         )

@@ -152,12 +152,16 @@ admission still require their own measured performance evidence.
 The native scanner writes stdout and stderr to separate files through the CLI
 runner. JSONL admission consumes authenticated byte blocks and retains record
 boundaries across blocks, including Unicode and a final unterminated record.
-Schema 4 retains the original native JSONL once in a digest-addressed artifact.
+Schema 4 retains original native streams once in digest-addressed artifacts.
 Each native occurrence records its byte offset, length, and record digest; the
 report stores the artifact receipt once. Explicit hydration uses an operation's
 scoped CLI readers and checks both the record digest and operational fields.
 Unknown native fields remain available in the original record. Candidate scans
 publish these artifacts outside their disposable source view before admission.
+Failures retain complete stdout and stderr bytes and report the raw process status
+with their authenticated paths, lengths, and digests. They do not decode entire
+streams into a failure message. Expected finding stderr is compared against the
+native receipt bytes using its derived exact length.
 Semantic planning consumes the shared operational occurrence model; it does not
 fabricate native artifact receipts.
 Immutable overlays use the same ruleset reader as the ordinary scan. Native

@@ -356,6 +356,33 @@ class TestsFlextInfraCodemodDuplicateApply:
         tm.that(outcome.plans, length=1)
         tm.that((first.read_bytes(), second.read_bytes()), eq=before)
 
+    def test_rebound_module_definition_never_deletes_another_occurrence(
+        self,
+        duplicate_project: Path,
+    ) -> None:
+        """A module with two same-name assignments has no single cure owner."""
+        root, package = self._workspace(duplicate_project)
+        first, second = package / "left.py", package / "right.py"
+        for path in (first, second):
+            path.write_text(
+                self._module("Rebound declaration") + "LIMIT = 42\nLIMIT = 99\n",
+                encoding="utf-8",
+            )
+        before = first.read_bytes(), second.read_bytes()
+        with infra.rope_workspace(root) as workspace:
+            group = self._group(
+                self._objects(workspace, (first, second), "LIMIT"),
+                value_identical=True,
+            )
+            outcome = tm.ok(
+                FlextInfraCodemodDuplicateApply.census_duplicates(
+                    root, workspace, (group,), apply=True
+                )
+            )
+        tm.that(outcome.edits, empty=True)
+        tm.that(outcome.plans, length=1)
+        tm.that((first.read_bytes(), second.read_bytes()), eq=before)
+
     def test_structural_clone_is_planned_without_writes(
         self,
         duplicate_project: Path,

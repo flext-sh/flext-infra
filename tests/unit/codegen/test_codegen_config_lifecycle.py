@@ -183,13 +183,16 @@ import sys
 from pathlib import Path
 
 from flext_infra import c, config, u
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 
 root = Path(sys.argv[1])
 repository = u.Infra.configured_repository_ref(
     codegen=config.Infra.codegen,
     repository_root=root,
 ).unwrap()
-state = u.Infra.member_project_declaration(root, repository).unwrap()
+state = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+    root, repository
+).unwrap()
 assert state.path.is_relative_to(Path(sys.prefix))
 metadata, requirements = u.Infra.member_declaration_requirements(
     state,
@@ -222,7 +225,9 @@ u.Cli.atomic_write_binary_file_guarded(
     state.content + b"\\n",
     permission_mode=state.mode,
 ).unwrap()
-changed = u.Infra.member_project_declaration(root, repository)
+changed = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+    root, repository
+)
 assert changed.failure
 assert "RECORD" in changed.error
 print("installed Git declaration: complete groups, extras and RECORD authentication")

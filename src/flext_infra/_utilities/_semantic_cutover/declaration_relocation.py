@@ -27,9 +27,6 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
-from flext_infra._utilities.protected_edit_linting import (
-    FlextInfraUtilitiesProtectedEditLinting,
-)
 
 
 class FlextInfraUtilitiesSemanticDeclarationRelocation(
@@ -729,12 +726,107 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         for path, source in sources.items():
             if updated[path] != source:
                 updated[path] = (
-                    FlextInfraUtilitiesProtectedEditLinting.remove_orphaned_imports(
-                        source,
-                        updated[path],
+                    cls._remove_orphaned_imports(
+                        project,
+                        project.get_resource(path.relative_to(root).as_posix()),
+                        source, updated[path],
                     )
                 )
         return updated
+
+    @classmethod
+    def _remove_orphaned_imports(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        original: str,
+        proposed: str,
+    ) -> str:
+        """Remove only native imports whose last proven use this cutover removed."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        before = runtime.build_string_module(project, original, resource=resource)
+        after = runtime.build_string_module(project, proposed, resource=resource)
+        orphaned = cls._used_import_names(project, before) - cls._used_import_names(
+            project, after,
+        )
+        if not orphaned:
+            return proposed
+        rewrites = []
+        lines = cls._source_lines(proposed)
+        for statement in runtime.module_imports_for_pymodule(project, after).imports:
+            information = statement.import_info
+            retained = tuple(
+                (name, alias)
+                for name, alias in information.names_and_aliases
+                if (alias or name.partition(".")[0]) not in orphaned
+            )
+            if retained == tuple(information.names_and_aliases):
+                continue
+            replacement = (
+                runtime.from_import(
+                    information.module_name, information.level, retained,
+                )
+                if isinstance(information, p.Infra.RopeFromImport)
+                else cls._normal_import(retained)
+            )
+            rewrites.append(
+                m.Infra.SourceRewrite(
+                    start=lines.get_line_start(statement.start_line),
+                    end=min(lines.get_line_start(statement.end_line), len(proposed)),
+                    text=replacement.get_import_statement() + "\n" if retained else "",
+                ),
+            )
+        return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource, proposed, tuple(rewrites),
+        ).new_contents
+
+    @classmethod
+    def _used_import_names(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+    ) -> set[str]:
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        resource = module.get_resource()
+        imports = cls._native_import_infos(project, module)
+        names = {
+            alias or name.partition(".")[0]
+            for information in imports
+            for name, alias in information.names_and_aliases
+        }
+        used = set()
+        for name in names:
+            binding = module.get_scope().get_names().get(name)
+            if binding is None:
+                continue
+            finder = FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
+                project, name, binding, imports=False, in_hierarchy=False,
+            )
+            if any(
+                not occurrence.is_defined()
+                for occurrence in finder.find_occurrences(pymodule=module)
+            ):
+                used.add(name)
+        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        for _begin, _end, literal, scope in types.quoted_type_regions(
+            module.source_code, project, module,
+        ):
+            used.update(cls._quoted_dependency_names(project, scope, literal) & names)
+        exported = tuple(
+            statement
+            for statement in FlextInfraUtilitiesRopeStructure.logical_statements(module.source_code)
+            if FlextInfraUtilitiesRopeStructure.target_name(statement) == "__all__"
+        )
+        for start, stop, _metadata in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(module.source_code):
+            if module.source_code[start] == "#" or not any(
+                statement.start_offset <= start < stop <= statement.end_offset
+                for statement in exported
+            ):
+                continue
+            literal = types.string_constant(module.source_code[start:stop])
+            if literal in names:
+                used.add(literal)
+        return used
 
     @classmethod
     def _payload_reference_rewrites(
@@ -992,7 +1084,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         declaration: t.Triple[Path, p.Infra.RopeScope, p.Infra.RopePyName],
         target: t.Triple[Path, str, str],
         imports: t.VariadicTuple[p.Infra.RopeImportInfo],
-        dependencies: t.MappingKV[str, str],
+        dependencies: t.MappingKV[t.Pair[int, int], str],
     ) -> None:
         origin, node, _binding = declaration
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1014,9 +1106,11 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         lines = cls._source_lines(updated[origin])
         start = lines.get_line_start(payload.get_start())
         end = min(lines.get_line_end(payload.get_end()) + 1, len(updated[origin]))
-        transferred = cls._dependency_source(
-            dedent(updated[origin][start:end]),
-            dependencies,
+        transferred = dedent(
+            cls._dependency_source(
+                updated[origin][start:end],
+                dependencies,
+            )
         )
         body_statements = tuple(
             statement
@@ -1080,7 +1174,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         origin: Path,
         target: Path,
         node: p.Infra.RopeScope,
-    ) -> t.Pair[t.VariadicTuple[p.Infra.RopeImportInfo], t.MappingKV[str, str]]:
+    ) -> t.Pair[
+        t.VariadicTuple[p.Infra.RopeImportInfo],
+        t.MappingKV[t.Pair[int, int], str],
+    ]:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
         source = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
@@ -1187,19 +1284,17 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         return information
 
     @staticmethod
-    def _dependency_source(source: str, dependencies: t.MappingKV[str, str]) -> str:
+    def _dependency_source(
+        source: str,
+        dependencies: t.MappingKV[t.Pair[int, int], str],
+    ) -> str:
         """Rewrite only bound executable attributes, retaining ordinary strings.
 
         Returns:
             Source rebound to the resolved dependency owners.
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
         rewrites = sorted(
-            (start, stop - start, dependencies[source[start:stop]])
-            for start, stop in FlextInfraUtilitiesSemanticFamilyTypeReferences.reference_regions(
-                source
-            )
-            if source[start:stop] in dependencies
+            (start, stop - start, text) for (start, stop), text in dependencies.items()
         )
         end = -1
         selected: list[t.Triple[int, int, str]] = []
@@ -1220,14 +1315,16 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         module: p.Infra.RopePyModule,
         node: p.Infra.RopeScope,
         source: str,
-        dependencies: t.MappingKV[str, str],
+        dependencies: t.MappingKV[t.Pair[int, int], str],
     ) -> set[str]:
         """Keep original imports only when transferred code still loads them.
 
         Returns:
             The unreplaced original dependency roots.
         """
-        begin, end = node.get_region()
+        lines = cls._source_lines(source)
+        begin = lines.get_line_start(node.get_start())
+        end = min(lines.get_line_end(node.get_end()) + 1, len(source))
         changed = cls._dependency_source(source[begin:end], dependencies)
         remaining = {
             changed[start:stop].split(".")[0]
@@ -1235,9 +1332,27 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 changed
             )
         }
-        return cls._payload_loaded_names(project, module, node, source) - (
-            {expression.split(".")[0] for expression in dependencies} - remaining
-        )
+        original = cls._payload_loaded_names(project, module, node, source)
+        replaced = {
+            source[begin + first : begin + last].split(".", maxsplit=1)[0]
+            for first, last in dependencies
+            if source[begin + first : begin + last]
+            .split(".", maxsplit=1)[0]
+            .isidentifier()
+        }
+        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        for (first, last), text in dependencies.items():
+            old = types.string_constant(source[begin + first : begin + last])
+            new = types.string_constant(text)
+            if old is not None and new is not None:
+                replaced.update(
+                    cls._quoted_dependency_names(project, module.get_scope(), old)
+                    - cls._quoted_dependency_names(project, module.get_scope(), new),
+                )
+                remaining.update(
+                    cls._quoted_dependency_names(project, module.get_scope(), new),
+                )
+        return original - (replaced - remaining)
 
     @classmethod
     def _payload_dependency_routes(
@@ -1246,7 +1361,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         destination: p.Infra.RopeScope,
         target: Path,
         node: p.Infra.RopeScope,
-    ) -> t.Pair[t.MappingKV[str, str], list[p.Infra.RopeImportInfo]]:
+    ) -> t.Pair[
+        t.MappingKV[t.Pair[int, int], str],
+        list[p.Infra.RopeImportInfo],
+    ]:
         """Resolve nested dependencies to their authored declaration identities.
 
         Returns:
@@ -1255,10 +1373,15 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         Raises:
             ValueError: If a direct owner name conflicts with a destination binding.
         """
-        dependencies: t.MutableMappingKV[str, str] = {}
+        dependencies: t.MutableMappingKV[t.Pair[int, int], str] = {}
         imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo] = {}
-        source = context[1].pyobject.get_module().source_code
-        first, last = node.get_region()
+        module = context[1].pyobject.get_module()
+        source = module.source_code
+        lines = cls._source_lines(source)
+        first = lines.get_line_start(node.get_start())
+        last = min(lines.get_line_end(node.get_end()) + 1, len(source))
+        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        annotations = types.annotation_regions(source, module)
         for (
             begin,
             end,
@@ -1268,36 +1391,129 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             item = source[first + begin : first + end]
             if "." not in item:
                 continue
-            owner = cls._payload_dependency_owner(context, item, target)
-            if owner is None:
+            line = next(
+                (
+                    declaration_line
+                    for start, stop, declaration_line in annotations
+                    if start <= first + begin < first + end <= stop
+                ),
+                None,
+            )
+            lexical = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+                module,
+                first + begin,
+                declaration_line=line,
+            )
+            replacement = cls._dependency_replacement(
+                (context[0], lexical),
+                destination,
+                target,
+                item,
+                imports,
+            )
+            if replacement is None:
                 continue
-            provider, outer, child = owner
-            resource = provider.get_resource()
-            if resource is not None and Path(resource.real_path).resolve() == target:
-                replacement = child
-            else:
-                existing = destination.get_names().get(outer)
-                declared = provider.get_attribute(outer)
-                if (
-                    existing is not None
-                    and not FlextInfraUtilitiesRopeRuntimeModules.same_name(
-                        existing, declared
-                    )
-                ):
-                    msg = (
-                        "declaration-relocation: conflicting dependency "
-                        f"{target}:{outer}"
-                    )
-                    raise ValueError(msg)
-                if existing is None:
-                    imports[outer] = FlextInfraUtilitiesRopeRuntimeModules.from_import(
-                        provider.get_name(),
-                        0,
-                        ((outer, None),),
-                    )
-                replacement = f"{outer}.{child}"
-            dependencies[item] = replacement
+            dependencies[begin, end] = replacement
+        for begin, end, literal, lexical in types.quoted_type_regions(
+            source,
+            context[0],
+            module,
+        ):
+            if not first <= begin < end <= last:
+                continue
+            changed = cls._quoted_dependency_source(
+                (context[0], lexical),
+                destination,
+                target,
+                literal,
+                imports,
+            )
+            if changed != literal:
+                dependencies[begin - first, end - first] = repr(changed)
         return dependencies, list(imports.values())
+
+    @classmethod
+    def _dependency_replacement(
+        cls,
+        context: t.Pair[p.Infra.RopeProject, p.Infra.RopeScope],
+        destination: p.Infra.RopeScope,
+        target: Path,
+        expression: str,
+        imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo],
+    ) -> str | None:
+        owner = cls._payload_dependency_owner(context, expression, target)
+        if owner is None:
+            return None
+        provider, outer, child = owner
+        resource = provider.get_resource()
+        if resource is not None and Path(resource.real_path).resolve() == target:
+            return child
+        existing = destination.get_names().get(outer)
+        declared = provider.get_attribute(outer)
+        if existing is not None and not FlextInfraUtilitiesRopeRuntimeModules.same_name(
+            existing,
+            declared,
+        ):
+            msg = f"declaration-relocation: conflicting dependency {target}:{outer}"
+            raise ValueError(msg)
+        if existing is None:
+            imports[outer] = FlextInfraUtilitiesRopeRuntimeModules.from_import(
+                provider.get_name(),
+                0,
+                ((outer, None),),
+            )
+        return f"{outer}.{child}"
+
+    @classmethod
+    def _quoted_dependency_source(
+        cls,
+        context: t.Pair[p.Infra.RopeProject, p.Infra.RopeScope],
+        destination: p.Infra.RopeScope,
+        target: Path,
+        source: str,
+        imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo],
+    ) -> str:
+        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        protected = types.expression_payload_ranges(source, *context)
+        edits = []
+        for begin, end in types.reference_regions(source):
+            if any(first <= begin and end <= last for first, last in protected):
+                continue
+            expression = source[begin:end]
+            if "." not in expression:
+                continue
+            replacement = cls._dependency_replacement(
+                context,
+                destination,
+                target,
+                expression,
+                imports,
+            )
+            if replacement is not None:
+                edits.append((begin, end, replacement))
+        for (
+            begin,
+            end,
+            _metadata,
+        ) in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source):
+            if source[begin] == "#" or any(
+                first <= begin and end <= last for first, last in protected
+            ):
+                continue
+            literal = types.string_constant(source[begin:end])
+            if literal is not None:
+                changed = cls._quoted_dependency_source(
+                    context,
+                    destination,
+                    target,
+                    literal,
+                    imports,
+                )
+                if changed != literal:
+                    edits.append((begin, end, repr(changed)))
+        for begin, end, replacement in sorted(edits, reverse=True):
+            source = source[:begin] + replacement + source[end:]
+        return source
 
     @classmethod
     def _payload_dependency_owner(
@@ -1313,7 +1529,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         """
         project, scope = context
         segments = item.split(".")
-        imported = scope.get_names().get(segments[0])
+        imported = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+            scope,
+            segments[0],
+        )
         if (
             isinstance(imported, p.Infra.RopeImportedName)
             and imported.imported_module.module_name is not None

@@ -14,7 +14,6 @@ from __future__ import annotations
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
@@ -88,7 +87,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         cls,
         request: m.Infra.NativeImportRequest,
     ) -> p.Result[m.Infra.NativeImportReference]:
-        """Authenticate one complete epoch against a cold native consumer."""
+        """Authenticate loaded producers through captured native source evidence."""
         current = FlextInfraCodegenPreconditions.source_authority_current(
             request.source_authority,
         )
@@ -100,11 +99,11 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         observed = FlextInfraWorkspaceNativeReference.capture(request.modules)
         if observed.failure:
             return r[m.Infra.NativeImportReference].from_failure(observed)
-        authored = FlextInfraWorkspaceNativeReference.authored_sources_current(
+        proof = FlextInfraWorkspaceNativeReference.authored_sources_current(
             observed.value, request.source_authority.inputs
         )
-        if authored.failure:
-            return r[m.Infra.NativeImportReference].from_failure(authored)
+        if proof.failure:
+            return r[m.Infra.NativeImportReference].from_failure(proof)
         runtime_root = Path(sys.prefix).absolute().parent
         environment = u.Infra.runtime_environment_dir(
             runtime_root, runtime_root=runtime_root
@@ -120,45 +119,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             return r[m.Infra.NativeImportReference].fail(
                 "native reference runtime authority differs"
             )
-        roots = tuple(str(root) for root in request.import_roots)
-        code = (
-            "import importlib, json, sys\n"
-            "payload = json.loads(sys.stdin.read())\n"
-            "sys.path[:0] = payload['roots']\n"
-            "from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native\n"
-            "for name in payload['modules']: importlib.import_module(name)\n"
-            "sys.stdout.write(native.capture(tuple(payload['modules'])).unwrap().model_dump_json())\n"
-        )
-        from json import dumps
-
-        with TemporaryDirectory() as cache:
-            child = u.Cli.run_raw(
-                [
-                    str(runtime),
-                    *("-O",) * request.source_authority.optimize,
-                    "-B",
-                    "-X",
-                    f"pycache_prefix={cache}",
-                    "-c",
-                    code,
-                ],
-                cwd=runtime_root,
-                options=m.Cli.ProcessOptions(
-                    input_data=dumps({"roots": roots, "modules": request.modules})
-                ),
-            )
-        if child.failure:
-            return r[m.Infra.NativeImportReference].from_failure(child)
-        if not u.Cli.process_succeeded(child.value.outcome):
-            return r[m.Infra.NativeImportReference].fail(
-                "cold native reference import failed: " + child.value.stderr
-            )
-        reference = m.Infra.NativeImportObservation.model_validate_json(
-            child.value.stdout
-        )
-        compared = FlextInfraWorkspaceNativeReference.compare(observed.value, reference)
-        if compared.failure:
-            return r[m.Infra.NativeImportReference].from_failure(compared)
         current = FlextInfraCodegenPreconditions.source_authority_current(
             request.source_authority,
         )
@@ -167,11 +127,72 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
         if inputs.failure:
             return r[m.Infra.NativeImportReference].from_failure(inputs)
+        from json import dumps
+
+        code = (
+            "import importlib, json, sys\n"
+            "from pathlib import Path\n"
+            "payload = json.loads(sys.stdin.read())\n"
+            "sys.path[:0] = payload['roots']\n"
+            "from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native\n"
+            "for name in payload['modules']: importlib.import_module(name)\n"
+            "reference = native.capture(tuple(payload['modules']), paths=((Path(payload['view']), Path(payload['anchor'])),)).unwrap()\n"
+            "sys.stdout.write(reference.model_dump_json())\n"
+        )
+        with TemporaryDirectory() as temporary:
+            view = Path(temporary) / "source"
+            anchor = Path(request.inputs[0].path.anchor)
+            created = u.Cli.ensure_dir(view)
+            if created.failure:
+                return r[m.Infra.NativeImportReference].from_failure(created)
+            for source in request.inputs:
+                if source.content is None:
+                    continue
+                target = view / source.path.relative_to(anchor)
+                if not target.is_relative_to(view):
+                    return r[m.Infra.NativeImportReference].fail("native source view escapes cold authority")
+                parent = u.Cli.ensure_dir(target.parent)
+                if parent.failure:
+                    return r[m.Infra.NativeImportReference].from_failure(parent)
+                before = u.Cli.atomic_read_binary_file_state(target)
+                if before.failure:
+                    return r[m.Infra.NativeImportReference].from_failure(before)
+                if source.mode is None:
+                    return r[m.Infra.NativeImportReference].fail("native source view has no source mode")
+                written = u.Cli.atomic_write_binary_file_guarded(
+                    before.value, source.content, permission_mode=source.mode
+                )
+                if written.failure:
+                    return r[m.Infra.NativeImportReference].from_failure(written)
+            child = u.Cli.run_raw(
+                [str(runtime), *("-O",) * request.source_authority.optimize,
+                 "-B", "-X", f"pycache_prefix={Path(temporary) / 'cache'}", "-c", code],
+                cwd=view,
+                options=m.Cli.ProcessOptions(input_data=dumps({
+                    "modules": request.modules, "view": str(view), "anchor": str(anchor),
+                    "roots": tuple(str(view / root.relative_to(anchor)) for root in request.import_roots),
+                })),
+            )
+            if child.failure:
+                return r[m.Infra.NativeImportReference].from_failure(child)
+            if not u.Cli.process_succeeded(child.value.outcome):
+                return r[m.Infra.NativeImportReference].fail("cold native source import failed: " + child.value.stderr)
+            reference = m.Infra.NativeImportObservation.model_validate_json(child.value.stdout)
+            compared = FlextInfraWorkspaceNativeReference.compare(observed.value, reference)
+            if compared.failure:
+                return r[m.Infra.NativeImportReference].from_failure(compared)
+        current = FlextInfraCodegenPreconditions.source_authority_current(request.source_authority)
+        if current.failure:
+            return r[m.Infra.NativeImportReference].from_failure(current)
         return r[m.Infra.NativeImportReference].ok(
-            m.Infra.NativeImportReference.model_validate({
-                **reference.model_dump(),
-                "source_authority": request.source_authority,
-            }),
+            m.Infra.NativeImportReference(
+                runtime=reference.runtime,
+                runtime_prefix=reference.runtime_prefix,
+                modules=reference.modules,
+                sources=reference.sources,
+                bindings=reference.bindings,
+                source_authority=request.source_authority,
+            ),
         )
 
     def build_report(

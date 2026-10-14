@@ -121,11 +121,8 @@ class FlextInfraModelsWorkspace:
             description="Cold authority for reference consumption, not publication",
         )
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
-            description="Pinned payloads used exclusively by the source-view writer",
+            description="Pinned source inputs checked before and after authentication",
             exclude=True,
-        )
-        import_roots: t.VariadicTuple[Path] = m.Field(
-            description="Physical import roots of all nominated and elected modules"
         )
 
     class WorkspaceEnvironmentRequest(m.ContractModel):

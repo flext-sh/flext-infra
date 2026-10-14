@@ -144,11 +144,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     @staticmethod
     def string_constant(literal: str) -> str | None:
         """Decode one literal through CPython compilation without executing code."""
-        code = compile(literal, "<native type literal>", "eval", dont_inherit=True)
-        if code.co_names or len(code.co_consts) != 1:
-            return None
-        value = code.co_consts[0]
-        return value if type(value) is str else None
+        return FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(literal)
 
     @staticmethod
     def reference_regions(

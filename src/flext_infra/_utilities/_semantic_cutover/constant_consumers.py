@@ -243,15 +243,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         )
 
     @classmethod
-    def _constant_is_str_enum(
-        cls,
-        project: p.Infra.RopeProject,
-        candidate: p.Infra.RopePyName,
-    ) -> bool:
-        """Prove a member's declaring class derives from native enum.StrEnum."""
-        return cls._constant_derives_from(project, candidate, "enum.StrEnum")
-
-    @classmethod
     def _constant_derives_from(
         cls,
         project: p.Infra.RopeProject,
@@ -454,7 +445,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
         for literal, reference in cls._literal_constant_patterns(project, public):
-            if not cls._constant_is_str_enum(project, public[reference]):
+            if not cls._constant_derives_from(
+                project, public[reference], "enum.StrEnum"
+            ):
                 continue
             annotation = f"${{name}}: ${{literal}}[{literal}]"
             for pattern in (annotation, f"{annotation} = ${{default}}"):
@@ -469,24 +462,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                         for statement in statements
                     ):
                         continue
-                    scope = runtime.scope_at(module, start)
-                    existing = scope.lookup("c")
-                    if existing is not None and not runtime.same_name(
-                        public["c"], existing
-                    ):
-                        message = f"literal enum facade c is shadowed in {path}"
-                        raise ValueError(message)
-                    if isinstance(
-                        existing,
-                        (p.Infra.RopeImportedName, p.Infra.RopeImportedModule),
-                    ) and not runtime.imported_binding_precedes(
-                        project, module, "c", start
-                    ):
-                        message = (
-                            f"literal enum facade c has no preceding "
-                            f"unconditional import in {path}"
-                        )
-                        raise ValueError(message)
+                    cls._admit_literal_facade(project, module, public["c"], start, path)
                     annotations = refactors.semantic_regions(
                         module,
                         f"${{literal}}[{literal}]",

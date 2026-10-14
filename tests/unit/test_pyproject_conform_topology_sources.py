@@ -108,6 +108,12 @@ class TestsFlextInfraPyprojectConformTopologySources:
         captured = tm.ok(
             u.Cli.atomic_read_binary_file_state(declaration, required=True),
         )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                declaration,
+                "captured declarations are the parser input, not the live path",
+            ),
+        )
         marker = 'implementation_name == "cpython"'
         request = f"{member.distribution} @ git+{member.url}@{source_line}; {marker}"
         source = (
@@ -148,6 +154,31 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(
             any(f"[{member.distribution}-feature]" in line for line in selected),
             eq=True,
+        )
+
+    def test_member_provisioning_requires_captured_declarations(
+        self, tmp_path: Path
+    ) -> None:
+        """A pure metadata renderer never elects an installed producer itself."""
+        member = self._member_ref(config.Infra.name, "member")
+        workspace = self._workspace(member)
+        source = (
+            "[project]\n"
+            f'name = "{workspace.repository.distribution}"\n'
+            'version = "1.0"\n'
+            "dependencies = []\n"
+        )
+        rendered = u.Infra.pyproject_conform(
+            source,
+            workspace=workspace,
+            required_dev_dependencies=(),
+            uv_resolution=self._toolchain_resolution(),
+            options=u.Infra.PyprojectConformOptions(repository_root=tmp_path),
+        )
+        tm.that(rendered.failure, eq=True)
+        tm.that(
+            rendered.error,
+            has="member provisioning requires captured authenticated declarations",
         )
 
     @pytest.mark.parametrize("package", [False, True])
