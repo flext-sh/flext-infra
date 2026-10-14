@@ -532,6 +532,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[t.SequenceOf[t.Triple[str, str, str]]].ok(tuple(source_files))
 
     @classmethod
+
+    @classmethod
+    def _first_party_roots(cls) -> frozenset[str]:
+        """Return the top-level package names the fleet itself authors.
+
+        Returns:
+            The resulting ``frozenset[str]``.
+        """
+        roots = {"flext", "flext_core", "flext_infra", "flext_api", "flext_cli", "ai_hub"}
+        return frozenset(roots)
+
     def _declaration_sources(
         cls,
         module_name: str,
@@ -547,6 +558,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         pending = [
             (value, None, name)
             for name, value in tuple(vars(modules[module_name]).items())
+            if not (
+                isclass(value)
+                and getattr(value, "__module__", "").split(".")[0]
+                not in cls._first_party_roots()
+            )
         ]
         if selected is not None:
             if not isfunction(selected):
@@ -2894,13 +2910,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return True
         if type(value) in {tuple, list}:
             return all(cls._construction_operand_pure(item) for item in value)
-        # Pydantic/annotated-types constraint instances (Ge(0), MinLen(1), ...)
-        # are inert frozen value data consumed by the validator factory, never
-        # construction callbacks: their defining module is a declared third-
-        # party dependency, not a compiler-owned source, so admit them before
-        # the ownership-scoped dataclass check.
-        if type(value).__module__.startswith(("pydantic", "annotated_types")):
-            return True
         if type(type(value)) is type and "__dataclass_fields__" in vars(type(value)):
             owner = type(value)
             if not vars(owner).get("__dataclass_params__").frozen or getattr_static(
@@ -2969,11 +2978,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return cls._construction_operand_pure(
                 vars(native_union)["__args__"].__get__(value, native_union)
             )
-        # Pydantic constraint metadata (Ge(0), MinLen(1), ...) is inert value
-        # data consumed by the validator factory, never a construction
-        # callback: admit it as an annotation operand.
-        if type(value).__module__.startswith(("pydantic", "annotated_types")):
-            return True
         return all(
             getattr_static(type(value), name, None)
             is getattr_static(object, name, None)
