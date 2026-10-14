@@ -35,9 +35,12 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         owner: p.Infra.MiseArtifactsOwner,
         *,
         participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
+        producer: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> None:
         """Initialize the transaction with its configured Mise artifact owner."""
-        super().__init__(owner, participant_policy=participant_policy)
+        super().__init__(
+            owner, participant_policy=participant_policy, producer=producer
+        )
         self._owner = owner
         self._mise_staging = FlextInfraMiseStaging()
 
@@ -80,6 +83,11 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        if self._producer.failure:
+            return result_type.from_failure(self._producer)
+        producer = FlextInfraCodegenPreconditions.producer_current(self._producer.value)
+        if producer.failure:
+            return result_type.from_failure(producer)
         by_path = {item.path: item for item in file_plans}
         if any(by_path.get(item.path) != item for item in config_plans):
             return result_type.fail(

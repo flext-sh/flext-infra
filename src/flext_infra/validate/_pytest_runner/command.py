@@ -275,6 +275,14 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *self._plugin_policy_args(execution_mode=execution_mode),
             "--benchmark-disable",
             "--strict-markers",
+            (
+                "--timeout=0"
+                if self.unbounded
+                else (
+                    "--timeout="
+                    f"{config.Infra.tooling.tools.pytest.case_timeout_seconds}"
+                )
+            ),
             "-o",
             "filterwarnings=",
             "-p",

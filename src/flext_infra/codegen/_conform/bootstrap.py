@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, assert_never
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, s, t, u
+from flext_infra import c, m, s, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -223,7 +223,13 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         Returns:
             The contract owned by the declared conformance surface.
 
+        Raises:
+            ValueError: If the surface is not a declared conformance surface.
+            TypeError: If unsupported codegen conform surface.
         """
+        if not isinstance(surface, c.Infra.CodegenConformSurface):
+            message = f"unsupported codegen conform surface: {surface}"
+            raise TypeError(message)
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
                 contract = m.Infra.CodegenConformSurfaceContract(complete_governed=True)

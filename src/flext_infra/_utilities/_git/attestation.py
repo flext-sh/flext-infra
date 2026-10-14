@@ -965,8 +965,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
         for path in (context.pyproject_path, context.lock_path):
             relative = path.relative_to(context.runtime_root).as_posix()
             if relative not in runtime_commit.tree:
+                msg = f"selected resolver input is absent from the runtime commit: {relative}"
                 raise FileNotFoundError(
-                    f"selected resolver input is absent from the runtime commit: {relative}",
+                    msg,
                 )
             tracked.append(
                 f"runtime:{relative}:{(runtime_commit.tree / relative).hexsha}"

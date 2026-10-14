@@ -22,59 +22,73 @@ class TestsFlextInfraDeclarationPayload:
         ("definition", "accepted"),
         [
             (
-                "class Parent(ForeignBase):\n"
-                "    value: str = 'payload'\n"
-                "class Holder:\n"
-                "    class Payload(Parent):\n"
-                "        pass\n",
+                (
+                    "class Parent(ForeignBase):\n"
+                    "    value: str = 'payload'\n"
+                    "class Holder:\n"
+                    "    class Payload(Parent):\n"
+                    "        pass\n"
+                ),
                 True,
             ),
             (
-                "class Holder:\n"
-                "    class Payload(ForeignBase):\n"
-                "        value: str = 'payload'\n"
-                "        @field_serializer('value')\n"
-                "        def serialize(self, value: str) -> str:\n"
-                "            return value.upper()\n",
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                    "        @field_serializer('value')\n"
+                    "        def serialize(self, value: str) -> str:\n"
+                    "            return value.upper()\n"
+                ),
                 True,
             ),
             (
-                "class Holder:\n"
-                "    class Payload(ForeignBase):\n"
-                "        value: str = 'payload'\n"
-                "        @computed_field\n"
-                "        @property\n"
-                "        def size(self) -> int:\n"
-                "            return len(self.value)\n",
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                    "        @computed_field\n"
+                    "        @property\n"
+                    "        def size(self) -> int:\n"
+                    "            return len(self.value)\n"
+                ),
                 True,
             ),
             (
-                "class ForeignBase:\n"
-                "    pass\n"
-                "class Holder:\n"
-                "    class Payload(ForeignBase):\n"
-                "        value: str = 'payload'\n",
+                (
+                    "class ForeignBase:\n"
+                    "    pass\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                ),
                 False,
             ),
             (
-                "class Holder:\n"
-                "    class Payload(BaseSettings):\n"
-                "        value: str = 'payload'\n",
+                (
+                    "class Holder:\n"
+                    "    class Payload(BaseSettings):\n"
+                    "        value: str = 'payload'\n"
+                ),
                 False,
             ),
             (
-                "class Holder:\n"
-                "    class Payload(ForeignBase):\n"
-                "        value: str = 'payload'\n"
-                "        def execute(self) -> str:\n"
-                "            return self.value.upper()\n",
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                    "        def execute(self) -> str:\n"
+                    "            return self.value.upper()\n"
+                ),
                 False,
             ),
             (
-                "class Holder:\n"
-                "    class Payload(ForeignBase):\n"
-                "        value: str = 'payload'\n"
-                "        print('class body effect')\n",
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                    "        print('class body effect')\n"
+                ),
                 False,
             ),
         ],
@@ -90,8 +104,7 @@ class TestsFlextInfraDeclarationPayload:
         source = (
             "from pydantic import BaseModel as ForeignBase, "
             "field_serializer, computed_field\n"
-            "from pydantic_settings import BaseSettings\n"
-            + definition
+            "from pydantic_settings import BaseSettings\n" + definition
         )
         path = package / "payload.py"
         path.write_text(source, encoding="utf-8")

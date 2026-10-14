@@ -14,6 +14,7 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -139,7 +140,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 if value in found:
                     continue
                 found.append(value)
-                if isinstance(value, p.Infra.RopePyClass):
+                if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
                     pending.extend(value.get_superclasses())
             if ancestors and not any(value in found for value in ancestors):
                 return False

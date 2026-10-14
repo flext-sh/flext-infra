@@ -297,8 +297,10 @@ class TestsFlextInfraUvNativeResolution:
         )
         overrides = (
             (
-                f"{root_name}>=1.0.0,<2.0.0; python_full_version >= "
-                f'"{config.Infra.codegen.toolchain.python_version}"',
+                (
+                    f"{root_name}>=1.0.0,<2.0.0; python_full_version >= "
+                    f'"{config.Infra.codegen.toolchain.python_version}"'
+                ),
                 f"{member_name}>=1.0.0,<2.0.0",
             )
             if explicit_overrides and not content_only
@@ -478,14 +480,18 @@ class TestsFlextInfraUvNativeResolution:
             ("global-self", None, False),
             (
                 "scoped-self-unmapped",
-                "`identity-root` is included as a workspace member, "
-                "but is missing an entry in `tool.uv.sources`",
+                (
+                    "`identity-root` is included as a workspace member, "
+                    "but is missing an entry in `tool.uv.sources`"
+                ),
                 False,
             ),
             (
                 "scoped-self",
-                "Scoped override for `identity-provider` cannot use a URL "
-                "or path source for `identity-root`",
+                (
+                    "Scoped override for `identity-provider` cannot use a URL "
+                    "or path source for `identity-root`"
+                ),
                 False,
             ),
             ("virtual-root", None, True),
@@ -554,12 +560,16 @@ class TestsFlextInfraUvNativeResolution:
             f"{json.dumps(examples)}]\n"
         )
         optional = (
-            f"identity-extra @ {leaves['identity-extra'].as_uri()}"
-            " ; python_full_version >= "
-            f'"{config.Infra.codegen.toolchain.python_version}"',
-            f"identity-inactive @ {leaves['identity-inactive'].as_uri()}"
-            " ; python_full_version < "
-            f'"{config.Infra.codegen.toolchain.python_version}"',
+            (
+                f"identity-extra @ {leaves['identity-extra'].as_uri()}"
+                " ; python_full_version >= "
+                f'"{config.Infra.codegen.toolchain.python_version}"'
+            ),
+            (
+                f"identity-inactive @ {leaves['identity-inactive'].as_uri()}"
+                " ; python_full_version < "
+                f'"{config.Infra.codegen.toolchain.python_version}"'
+            ),
         )
         policy = '[tool.uv]\nconstraint-dependencies = ["identity-runtime==1.0.0"]\n'
         match identity:

@@ -149,15 +149,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             if existing is not None and not runtime.same_name(classvar, existing):
                 message = f"constant ClassVar binding is shadowed in {path}"
                 raise ValueError(message)
+            qualifiers_in_statement = refactors.semantic_regions(
+                module,
+                "${qualifier}",
+                arguments=qualifiers,
+                start=start,
+                end=end,
+            )
             rewrites.extend(
                 m.Infra.SourceRewrite(start=left, end=right, text="ClassVar")
-                for left, right in refactors.semantic_regions(
-                    module,
-                    "${qualifier}",
-                    arguments=qualifiers,
-                    start=start,
-                    end=end,
-                )
+                for left, right in qualifiers_in_statement[:1]
             )
         if not rewrites:
             return None

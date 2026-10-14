@@ -312,6 +312,26 @@ class FlextInfraCodegenPreconditions:
                 return r[bool].fail(
                     f"producer resource membership changed: {tree.root.path}"
                 )
+            for path, receipt in own.items():
+                if receipt.sha256 is None:
+                    continue
+                after = observed[path]
+                if (
+                    after.sha256,
+                    after.mode,
+                    after.device,
+                    after.inode,
+                    after.parent_device,
+                    after.parent_inode,
+                ) != (
+                    receipt.sha256,
+                    receipt.mode,
+                    receipt.device,
+                    receipt.inode,
+                    receipt.parent_device,
+                    receipt.parent_inode,
+                ):
+                    return r[bool].fail(f"producer effect receipt changed: {path}")
             for path, before in expected.items():
                 if path in own:
                     continue

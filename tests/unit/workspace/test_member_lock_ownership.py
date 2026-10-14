@@ -14,7 +14,6 @@ from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import (
     FlextInfraWorkspaceLockCompleteness,
-    FlextInfraWorkspacePropagation,
 )
 from tests import c, t, tm, u
 

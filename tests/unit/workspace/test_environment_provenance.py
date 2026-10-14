@@ -68,10 +68,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 (
                     executable,
                     "-c",
-                    "from flext_infra.workspace import "
-                    "FlextInfraWorkspaceEnvironmentProvenance\n"
-                    "print(FlextInfraWorkspaceEnvironmentProvenance"
-                    ".installed_toolchain_identity())\n",
+                    (
+                        "from flext_infra.workspace import "
+                        "FlextInfraWorkspaceEnvironmentProvenance\n"
+                        "print(FlextInfraWorkspaceEnvironmentProvenance"
+                        ".installed_toolchain_identity())\n"
+                    ),
                 ),
                 cwd=site_packages.parent,
                 options=m.Cli.ProcessOptions(
