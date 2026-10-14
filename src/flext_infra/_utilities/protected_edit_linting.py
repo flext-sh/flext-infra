@@ -48,6 +48,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Normalized source, or the original Ruff subprocess failure.
+
         """
         executable = cls._workspace_tool_command(c.Infra.RUFF)[0]
         project_root = cls._command_cwd(path, repository_root)
@@ -98,6 +99,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             The candidate retaining existing unused, string, and exported bindings.
+
         """
         before = ast.parse(original)
         after = ast.parse(proposed)
@@ -155,6 +157,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Raises:
             RuntimeError: If a Ruff subprocess rejects the touched files.
+
         """
         grouped: MutableMapping[Path, list[str]] = {}
         for path in sorted({path.resolve() for path in paths if path.is_file()}):
@@ -649,6 +652,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Diagnostic evidence and the independent first execution failure.
+
         """
         if executed.failure:
             return m.Infra.LintGateResult(
@@ -708,6 +712,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Complete diagnostic lines, or the original malformed-report failure.
+
         """
         result = r[t.StrSequence]
         if tool_name == c.Infra.MYPY:
@@ -756,6 +761,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Complete diagnostic lines, or the original malformed-report failure.
+
         """
         result = r[t.StrSequence]
         lines: list[str] = []
@@ -781,6 +787,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Complete diagnostic lines, or the original malformed-report failure.
+
         """
         result = r[t.StrSequence]
         loaded = u.Cli.json_parse(source)
@@ -831,6 +838,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Every native execution failure in declared tool order.
+
         """
         return tuple(
             result.execution_error
@@ -872,6 +880,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Raises:
             ValueError: If source snapshots select a tool other than Ruff.
+
         """
         selected_tools = cls._selected_lint_tools(gates)
         if source is not None:

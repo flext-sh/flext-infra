@@ -98,6 +98,7 @@ class TestsArtifactRuntime:
         Returns:
             The repository, its distribution, the excluded dev distributions
             and the facades the runtime probe must observe.
+
         """
         if subject == "infra":
             return (
@@ -183,6 +184,7 @@ class TestsArtifactRuntime:
 
         Returns:
             The isolated wheel artifact with the untouched build manifest.
+
         """
         direct = artifacts / "direct"
         source = artifacts / "source"
@@ -234,6 +236,7 @@ class TestsArtifactRuntime:
         Args:
             wheel: The built wheel artifact to inspect.
             excluded: Distributions that must never become runtime requirements.
+
         """
         with zipfile.ZipFile(wheel) as archive:
             metadata_files = tuple(
@@ -277,6 +280,7 @@ class TestsArtifactRuntime:
         Returns:
             The consumer project, its synced runtime interpreter and the
             consumer process options.
+
         """
         consumer = tmp_path / "consumer"
         consumer.mkdir()

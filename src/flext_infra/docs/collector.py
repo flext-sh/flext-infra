@@ -94,6 +94,7 @@ class FlextInfraDocCollector:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         unchanged = cls._require_unchanged(
             publication.configuration_path,
@@ -154,6 +155,7 @@ class FlextInfraDocCollector:
 
         Returns:
             The staged phase analysis, or the first unique-state failure.
+
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         inputs = FlextInfraCodegenPreconditions.unique_states(
@@ -191,6 +193,7 @@ class FlextInfraDocCollector:
 
         Returns:
             Whether the scope published and re-verified completely.
+
         """
         unchanged = cls._require_unchanged(
             publication.configuration_path,

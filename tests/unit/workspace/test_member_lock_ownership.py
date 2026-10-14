@@ -29,6 +29,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
 
         Returns:
             The containing root and the project selected for conformance.
+
         """
         root = tmp_path / "workspace"
         if attached:

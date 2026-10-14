@@ -50,6 +50,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         Raises:
             RuntimeError: When the self-served producer authority capture
                 fails.
+
         """
         if producer is None and source_authority is None:
             # Self-serve the pre-planning producer authority: every transaction
@@ -161,6 +162,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             The unique source states of the complete file plan, or a
             failure when the producer lacks authority or the configuration
             plans differ from the complete file plan.
+
         """
         if self._producer.failure:
             return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
@@ -713,6 +715,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         Returns:
             The journaled conform state and staged set bound to the journal, or
             the first validation failure.
+
         """
         result_type = r[
             t.Pair[
@@ -768,6 +771,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
 
         Returns:
             The bound session with its staged set, or the first failure.
+
         """
         result_type = r[
             t.Pair[

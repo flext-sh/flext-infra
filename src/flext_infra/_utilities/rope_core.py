@@ -119,6 +119,7 @@ class FlextInfraUtilitiesRopeCore(
 
         Raises:
             ValueError: If the containing workspace declaration is invalid.
+
         """
         resolved = source_root.resolve()
         for parent in (resolved, *resolved.parents):
@@ -147,6 +148,7 @@ class FlextInfraUtilitiesRopeCore(
 
         Yields:
             A source-scoped project or its declared workspace import graph.
+
         """
         roots = FlextInfraUtilitiesRopeCore.import_project_roots(source_root)
         with FlextInfraUtilitiesRopeCore.open_project(

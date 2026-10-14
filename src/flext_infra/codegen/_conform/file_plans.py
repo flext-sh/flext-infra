@@ -10,6 +10,7 @@ from functools import partial
 from pathlib import Path
 
 from flext_core import FlextStrictYamlConfigSource
+
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
 from flext_infra._utilities.workspace_inventory import (
     FlextInfraUtilitiesWorkspaceInventory,
@@ -31,6 +32,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
 
         Returns:
             A guarded source declaration, or the original input conflict.
+
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         effective = inputs.spec.repository
@@ -131,6 +133,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
 
         Returns:
             A guarded source plan preserving all unrelated configuration values.
+
         """
         result_type = r[m.Infra.CodegenFilePlan]
         captured = cls.file_plan(
@@ -192,6 +195,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
 
         Returns:
             The guarded own declaration and independent retirement diagnostics.
+
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         legacy_path = u.Infra.workspace_manifest_path(root)
@@ -303,6 +307,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
 
         Returns:
             Whether the captured declaration admits the migration input.
+
         """
         own_document = u.Infra.read_codegen_config_document(content)
         if own_document.failure:
@@ -342,6 +347,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
 
         Returns:
             The guarded source declaration and its dependent retirement.
+
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         layers = FlextInfraConfig.config_layer_paths_for_repository(

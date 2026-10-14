@@ -1327,6 +1327,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
         Returns:
             The fingerprint emitted by the workspace provenance owner.
+
         """
         outcome = tm.ok(
             u.Cli.run_raw(

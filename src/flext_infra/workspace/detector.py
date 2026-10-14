@@ -690,6 +690,7 @@ class FlextInfraWorkspaceDetector(
 
         Returns:
             Its observed identity, or its pending Git declaration for setup.
+
         """
         result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
         if not (subproject_root / c.Infra.GIT_DIR).exists():

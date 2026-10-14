@@ -30,6 +30,7 @@ class FlextInfraMiseArtifactsFiles:
 
         Returns:
             The editable source and metadata, or no entries for a noneditable source.
+
         """
         result_type = r[
             t.VariadicTuple[t.Pair[m.Cli.AtomicFileState, p.ProjectMetadata]]
@@ -69,6 +70,7 @@ class FlextInfraMiseArtifactsFiles:
 
         Returns:
             Exact authenticated file states in the caller's original order.
+
         """
         sources: list[m.Cli.AtomicFileState] = []
         for path in paths:
@@ -89,6 +91,7 @@ class FlextInfraMiseArtifactsFiles:
 
         Returns:
             The physical inventory and its exact ordered source states.
+
         """
         return u.Cli.atomic_inventory_physical_tree(root).flat_map(
             lambda inventory: cls.capture_sources(
@@ -114,6 +117,7 @@ class FlextInfraMiseArtifactsFiles:
 
         Returns:
             Physical metadata trees, all source states and declared file paths.
+
         """
         result_type = r[
             t.Triple[

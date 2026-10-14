@@ -33,6 +33,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
         Returns:
             The resulting ``bool``.
+
         """
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             (report_dir / "selection-plan.json").read_text(encoding="utf-8"),

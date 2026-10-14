@@ -317,6 +317,7 @@ class FlextInfraGitLanes:
         Raises:
             ValueError: If lane governance file must be declared by the selected host or
                 target.
+
         """
         source = (
             request.governance_file

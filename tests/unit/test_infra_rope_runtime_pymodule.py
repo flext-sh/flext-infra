@@ -35,6 +35,7 @@ class TestsFlextInfraRopeRuntimePymodule:
 
         Raises:
             AssertionError: If declared package root did not resolve its qualified name.
+
         """
         package = tmp_path / "qualified_package"
         initializer = package / c.Infra.INIT_PY
@@ -71,6 +72,7 @@ class TestsFlextInfraRopeRuntimePymodule:
 
         Raises:
             AssertionError: If Native Rope finder did not resolve the fixture module.
+
         """
         root = tmp_path / "consumer"
         source = root / "src"

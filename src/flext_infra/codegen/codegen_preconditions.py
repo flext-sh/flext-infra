@@ -46,6 +46,7 @@ class FlextInfraCodegenPreconditions:
         Raises:
             TypeError: If an elected producer dependency resource is not a
                 file.
+
         """
         result_type = r[t.VariadicTuple[t.Pair[str, Path]]]
         elected: dict[str, Path] = {}
@@ -104,6 +105,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The native spec owning the import binding's physical module prefix.
+
         """
         result_type = r[p.Infra.NativeModuleSpec]
         spec = PathFinder.find_spec(namespace)
@@ -131,6 +133,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The elected physical package root or module origin.
+
         """
         result_type = r[Path]
         spec = PathFinder.find_spec(namespace)
@@ -161,6 +164,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The authenticated immutable producer closure.
+
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
         names = tuple(nominated)
@@ -207,6 +211,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The elected namespace roots and their per-namespace ownership sets.
+
         """
         result_type = r[
             t.Pair[
@@ -248,6 +253,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The authenticated native observation of the loaded producer.
+
         """
         result_type = r[m.Infra.NativeImportObservation]
         from flext_infra.workspace.native_reference import (
@@ -288,6 +294,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Success when every producer tree and source state is captured.
+
         """
         result_type = r[bool]
         source_files: list[Path] = []
@@ -356,6 +363,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Success when every producer namespace owns one physical identity.
+
         """
         result_type = r[bool]
         for distribution in u.installed_distributions():
@@ -399,6 +407,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The authenticated immutable producer closure.
+
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
         from flext_infra.workspace.native_reference import (
@@ -445,6 +454,7 @@ class FlextInfraCodegenPreconditions:
         Returns:
             Success only for an unchanged capturing runtime, module election,
             pinned inputs and resource trees.
+
         """
         modules = cls._authority_modules_current(authority)
         if modules.failure:
@@ -460,6 +470,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Success only for the capturing runtime and unchanged elections.
+
         """
         result_type = r[bool]
         if authority.runtime != Path(sys.executable).resolve():
@@ -483,6 +494,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Success only for unchanged pinned inputs and resource trees.
+
         """
         result_type = r[bool]
         for expected in authority.inputs:
@@ -523,6 +535,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The pinned atomic file states carrying their re-read payloads.
+
         """
         result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
         states: list[m.Cli.AtomicFileState] = []
@@ -565,6 +578,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The authenticated producer phase analysis snapshot.
+
         """
         from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
@@ -630,6 +644,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Each owned namespace bound to this descriptor's metadata identities.
+
         """
         result_type = r[
             t.MappingKV[str, t.VariadicTuple[m.Cli.AtomicPhysicalTreeEntry]]
@@ -704,6 +719,7 @@ class FlextInfraCodegenPreconditions:
         Returns:
             Success only when every captured input, tree and native epoch is
             unchanged since capture.
+
         """
         if not producer.inputs or producer.generator_reference is None:
             return r[bool].fail("producer context lacks authenticated source closure")
@@ -745,6 +761,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             The covered paths and one representative file path per tree.
+
         """
         result_type = r[t.Pair[set[Path], set[Path]]]
         covered: set[Path] = set()
@@ -801,6 +818,7 @@ class FlextInfraCodegenPreconditions:
         Returns:
             Success only for the unchanged native epoch, its membership and
             its re-captured loaded bindings.
+
         """
         if reference is None:
             return r[bool].fail("producer closure lacks its pre-planning native epoch")
@@ -838,6 +856,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Success only for unchanged trees, election and executing sources.
+
         """
         for tree in trees:
             current = FlextInfraCodegenPreconditions._producer_tree_current(
@@ -865,6 +884,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Success only for this tree's native identities and journaled effects.
+
         """
         inventory = u.Cli.atomic_inventory_physical_tree(tree.root.path)
         if inventory.failure:
@@ -922,6 +942,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Success for exact membership, byte, mode and physical identities.
+
         """
         expected = {
             item.path: item
@@ -972,6 +993,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Success only for the declared rendering origin and registry version.
+
         """
         result_type = r[bool]
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
@@ -1030,6 +1052,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             Success for an unpinned/editable engine or its exact artifact origin.
+
         """
         result_type = r[bool]
         pinned = tuple(
@@ -1084,6 +1107,7 @@ class FlextInfraCodegenPreconditions:
 
         Returns:
             A new analysis retaining the authenticated producer's full closure.
+
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         current = cls.producer_current(producer)

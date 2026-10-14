@@ -245,6 +245,7 @@ class FlextInfraModelsTransformers:
 
             Returns:
                 The resulting ``bool``.
+
             """
             return bool(self.category_b or self.category_c or self.category_d)
 

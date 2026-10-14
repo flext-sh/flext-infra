@@ -32,6 +32,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
 
         Returns:
             An instance of `m.Infra.Object` representing the census record.
+
         """
         return m.Infra.Object(
             name=name,

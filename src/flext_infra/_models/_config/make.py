@@ -82,6 +82,7 @@ class FlextInfraConfigModelsMake(
             Raises:
                 ValueError: If a UV resolution directory is not a nonempty
                     relative path or the two views share a directory.
+
             """
             for directory in (self.local_directory, self.standalone_directory):
                 if (
@@ -130,6 +131,7 @@ class FlextInfraConfigModelsMake(
 
             Raises:
                 ValueError: If make.ci.local_check_gates contains unknown gates.
+
             """
             allowed = set(FlextInfraConfigVocabulary.CANONICAL_GATE_IDS)
             unknown = sorted(set(self.local_check_gates) - allowed)
@@ -279,6 +281,7 @@ class FlextInfraConfigModelsMake(
             Raises:
                 ValueError: If testmon cache quota ladder must ascend warning <
                     maintenance < block <= 100.
+
             """
             full_scale = 100
             if not (
@@ -330,6 +333,7 @@ class FlextInfraConfigModelsMake(
 
             Raises:
                 ValueError: If mypy cache.
+
             """
             for name, actual, expected in (
                 (
@@ -1008,6 +1012,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return (
                 *FlextInfraConfigVocabulary.CANONICAL_GATE_IDS,
@@ -1030,6 +1035,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return self.check_gates_default
 
@@ -1040,6 +1046,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             local = frozenset(self.ci.local_check_gates)
             return tuple(gate for gate in self.check_gates_default if gate not in local)
@@ -1055,6 +1062,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return FlextInfraConfigVocabulary.CANONICAL_FIXABLE_GATE_IDS
 
@@ -1074,6 +1082,7 @@ class FlextInfraConfigModelsMake(
             Returns:
                 The resulting ``Mapping[str,
                     FlextInfraConfigModelsMake.CustomHandlerPolicy]``.
+
             """
             base = self.custom_handler_policy
             overrides = self.custom_handler_profile_overrides

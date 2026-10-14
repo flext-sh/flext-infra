@@ -138,6 +138,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
 
         Returns:
             Native ordered CUSTOM entries, or their original parse failure.
+
         """
         groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
         group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
@@ -224,6 +225,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         rendered_groups = dict(
             u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {},

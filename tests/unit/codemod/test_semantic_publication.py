@@ -86,6 +86,7 @@ class TestsFlextInfraSemanticPublication:
 
         Returns:
             The captured source candidate and its separate driver identity.
+
         """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.provision_checkout(root)

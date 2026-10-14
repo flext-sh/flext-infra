@@ -39,6 +39,7 @@ class FlextInfraUtilitiesCodemodRules:
 
         Raises:
             ValueError: If the provider config content is absent.
+
         """
         state = u.Cli.atomic_read_binary_file_state(config_path, required=True).unwrap()
         if state.content is None:
@@ -56,6 +57,7 @@ class FlextInfraUtilitiesCodemodRules:
 
         Raises:
             ValueError: If two providers declare conflicting native values.
+
         """
         projected_inputs = {
             c.Infra.CODEMOD_RULE_DIRS_KEY,
@@ -84,6 +86,7 @@ class FlextInfraUtilitiesCodemodRules:
         Raises:
             ValueError: If the directories are not a sequence of existing
                 paths inside the provider owner.
+
         """
         if not isinstance(raw_directories, Sequence) or isinstance(
             raw_directories, str
@@ -115,6 +118,7 @@ class FlextInfraUtilitiesCodemodRules:
         Raises:
             ValueError: If the utility input is absent or one of its
                 documents lacks a unique native identity and language.
+
         """
         observed = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
         if observed.content is None:
@@ -146,6 +150,7 @@ class FlextInfraUtilitiesCodemodRules:
             The provider's utility documents keyed by (language, identity).
             Malformed directories or ambiguous documents fail through the
             validation helpers with ``ValueError``.
+
         """
         global_documents: dict[tuple[str, str], t.JsonMapping] = {}
         raw_directories = declaration.get(c.Infra.CODEMOD_UTIL_DIRS_KEY)
@@ -171,6 +176,7 @@ class FlextInfraUtilitiesCodemodRules:
         Raises:
             ValueError: If a provider config is absent, its native values
                 conflict, or its projected utility is not a mapping.
+
         """
         declaration = cls._read_provider_declaration(config_path)
         cls._merge_native_config(native_config, declaration, config_path)
@@ -208,6 +214,7 @@ class FlextInfraUtilitiesCodemodRules:
         Raises:
             ValueError: If the rule input is absent, its election is
                 ambiguous, or it changed before projection.
+
         """
         path = rule.resource.resolve()
         if path not in documents:
@@ -252,6 +259,7 @@ class FlextInfraUtilitiesCodemodRules:
 
         Returns:
             The staged native scan ruleset and its projected configuration.
+
         """
         rule_directory = destination / c.Infra.CODEMOD_RULE_DIRS_KEY
         utility_directory = destination / c.Infra.CODEMOD_UTIL_DIRS_KEY
@@ -300,6 +308,7 @@ class FlextInfraUtilitiesCodemodRules:
         Raises:
             ValueError: If a qualified global utility conflicts with a
                 native local utility.
+
         """
         if isinstance(value, Mapping):
             local = value.get("utils")
@@ -406,6 +415,7 @@ class FlextInfraUtilitiesCodemodRules:
 
         Returns:
             The project's applicable rule plan.
+
         """
         project = cls.codemod_project_requirements(root)
         if project.failure:
@@ -454,6 +464,7 @@ class FlextInfraUtilitiesCodemodRules:
 
         Returns:
             The conflict-free union with project-specific applicability.
+
         """
         rules: t.MutableMappingKV[str, m.Infra.CodemodRule] = {}
         rulesets: t.MutableMappingKV[Path, m.Infra.CodemodRuleset] = {}
@@ -778,6 +789,7 @@ class FlextInfraUtilitiesCodemodRules:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         parsed = u.Cli.yaml_parse(config.read_text(encoding=c.DEFAULT_ENCODING))
         if parsed.failure:
@@ -940,6 +952,7 @@ class FlextInfraUtilitiesCodemodRules:
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRule]]``.
+
         """
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.DEFAULT_ENCODING),

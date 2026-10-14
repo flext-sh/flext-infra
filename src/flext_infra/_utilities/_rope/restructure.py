@@ -79,6 +79,7 @@ class FlextInfraRopeRestructure(Restructure):
 
         Raises:
             TypeError: When Rope does not satisfy its change-computer contract.
+
         """
         selected = (
             list(matches)
@@ -104,6 +105,7 @@ class FlextInfraRopeRestructure(Restructure):
 
         Returns:
             Source emitted by the native import manager.
+
         """
         selected = imports
         if isinstance(self.import_policy, Mapping):

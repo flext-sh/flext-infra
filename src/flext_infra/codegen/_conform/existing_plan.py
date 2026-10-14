@@ -166,6 +166,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         Returns:
             The original file identity and its recovered regeneration source.
+
         """
         result_type = r[t.Pair[m.Cli.AtomicFileState, str]]
         before = u.Cli.atomic_read_binary_file_state(path, required=True)
@@ -492,6 +493,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         Returns:
             The authenticated template path with its managed-file spec, or a
             failure when the destination lacks a unique binding.
+
         """
         result_type = r[t.Pair[Path, m.Infra.ManagedFileSpec]]
         entries = tuple(
@@ -912,6 +914,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         Returns:
             The declared facade plans, or no effects for a recorded failure.
+
         """
         facade_path = u.Infra.facade_module_path(package_dir, family)
         failure_path = facade_path if facade_path is not None else package_dir
@@ -1091,6 +1094,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         Returns:
             Runtime-local file plans, including missing declared bindings.
+
         """
         planned = self._represent_ungoverned_artifacts(
             target
@@ -1220,6 +1224,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         Returns:
             Source declaration plans followed by the runtime-local binding plan.
+
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         captured = u.Infra.git_capture_index_file(
@@ -1258,6 +1263,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         Returns:
             Indexed and live settings with their original parse failures.
+
         """
         result_type = r[t.Pair[t.JsonMapping, t.JsonMapping]]
         content = state.content
@@ -1294,6 +1300,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         Returns:
             Effective inputs and guarded source declaration plans.
+
         """
         result_type = r[
             t.Pair[m.Infra.CodegenInputs, t.VariadicTuple[m.Infra.CodegenFilePlan]]
@@ -1357,6 +1364,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         Returns:
             A project-layer projection only when indexed settings differ.
+
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenLayerProjection]]
         baseline = u.Infra.project_codegen_inputs(
@@ -1407,6 +1415,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         Returns:
             Guarded project and local configuration plans in dependency order.
+
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         library = FlextInfraConfig.config_layer_paths_for_repository(
@@ -1449,6 +1458,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
 
         Returns:
             Source declarations followed by their guarded editor binding.
+
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         binding = cls._vscode_merged_plan(

@@ -79,6 +79,7 @@ def binding_probe_rule() -> m.Infra.CodemodRule:
 
     Returns:
         The probe rule whose consumer supplies its context conditions.
+
     """
     return m.Infra.CodemodRule(
         id="binding-probe",
@@ -178,6 +179,7 @@ def _consumer_pyproject_source(distribution: str) -> str:
 
     Returns:
         The pyproject source declaring the governed consumer contract.
+
     """
     modules = c.Tests.CONSUMER_MODULES
     # A governed FLEXT consumer declares exactly one runtime upstream profile;
@@ -236,6 +238,7 @@ def _provision_consumer_template(
 
     Returns:
         The provisioned consumer with committed locks and a physical environment.
+
     """
     distribution = "flext-demo"
     root = u.Tests.mk_project(
@@ -678,6 +681,7 @@ def _ensure_provisioned(
 
     Raises:
         ValueError: If a Make profile is requested without its Git environment.
+
     """
     parent.mkdir(parents=True, exist_ok=True)
     with u.Infra.codegen_transaction_lease(parent / receipt):
@@ -734,6 +738,7 @@ def generated_make_template(
 
     Returns:
         The declared profile and its generated project checkout.
+
     """
     profile = c.Infra.MakeProfile(request.param)
     root, _ = u.Tests.render_make_environment(
@@ -814,6 +819,7 @@ def real_detector_project(
 
     Yields:
         The shared physical checkout restored after dependency mutation.
+
     """
     modules = t.Infra.STR_SEQ_ADAPTER.validate_python(request.param)
     with session_runtime.lease(
@@ -863,6 +869,7 @@ def installed_artifact_consumer(
 
     Yields:
         The leased consumer repository root.
+
     """
     with session_runtime.lease(
         _provision_consumer_template,
@@ -879,6 +886,7 @@ def duplicate_project(
 
     Yields:
         The stable editable checkout with case-local source, Git and report state.
+
     """
     with session_runtime.lease(_provision_consumer_template) as root:
         yield root

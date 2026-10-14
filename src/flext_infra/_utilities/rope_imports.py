@@ -782,6 +782,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             The declared project package or no owned relocation target.
+
         """
         own = FlextInfraUtilitiesPyproject.project_package_name(project_root)
         return own if source_module.split(".", maxsplit=1)[0] == own else None
@@ -802,6 +803,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             A typed source edit, no-op, or an explicit resource/ownership failure.
+
         """
         entry = rope_workspace.module(file_path)
         root = entry.project_root if entry is not None else None
@@ -856,6 +858,7 @@ class FlextInfraUtilitiesRopeImports:
         Raises:
             RuntimeError: If an import identity is unresolved, unsupported, or
                 conflicts with a target binding in the same lexical scope.
+
         """
         aliases_to_move = frozenset(aliases)
         if not aliases_to_move:
@@ -935,6 +938,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             The character offset in the original source snapshot.
+
         """
         return sum(map(len, lines[: line - 1])) + len(
             lines[line - 1].encode("utf-8")[:column].decode("utf-8"),
@@ -956,6 +960,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             RuntimeError: If an attribute consumes a selected source export.
+
         """
         selected_names = (
             tuple(
@@ -1031,6 +1036,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             Resolved imports and their innermost lexical scopes.
+
         """
         imports: list[t.Triple[ast.ImportFrom, str, ast.AST]] = []
         scopes = [
@@ -1082,6 +1088,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             The absolute module name, or None for an unresolved relative import.
+
         """
         if not statement.level:
             return statement.module or ""
@@ -1118,6 +1125,7 @@ class FlextInfraUtilitiesRopeImports:
         Raises:
             TypeError: If the imported module has no valid module AST.
             RuntimeError: If the star import exposes a selected source export.
+
         """
         imported_resource = (
             rope_project.find_relative_module(
@@ -1207,6 +1215,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             RuntimeError: If source bindings repeat or conflict.
+
         """
         moved = [name for name in statement.names if name.name in aliases]
         if not moved:
@@ -1253,6 +1262,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             RuntimeError: If a mixed import occurs in an inline suite.
+
         """
         start = cls._ast_character_offset(lines, statement.lineno, statement.col_offset)
         end = cls._ast_character_offset(
@@ -1300,6 +1310,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             TypeError: If CST returns an invalid import representation.
+
         """
         line = parsed.body[0]
         if not isinstance(line, cst.SimpleStatementLine):

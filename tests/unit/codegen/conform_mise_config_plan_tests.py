@@ -34,6 +34,7 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
 
         Returns:
             An instance of `m.Infra.CodegenPlan` representing the public plan carrier.
+
         """
         request = m.Infra.CodegenConformRequest(
             root=root,
@@ -58,6 +59,7 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
 
         Returns:
             An instance of `m.Infra.CodegenFilePlan` representing the planned file.
+
         """
         path = root / c.Infra.MISE_TOML_FILENAME
         path.write_text('min_version = "2024"\n', encoding="utf-8")

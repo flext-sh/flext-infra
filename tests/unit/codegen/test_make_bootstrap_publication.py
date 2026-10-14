@@ -94,6 +94,7 @@ class TestsMakeBootstrapPublication:
 
         Returns:
             The completed CLI command outcome.
+
         """
         policy = config.Infra.codegen.make.uv_resolution
         ci = config.Infra.codegen.make.ci

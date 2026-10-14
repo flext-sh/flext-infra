@@ -76,6 +76,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         Returns:
             The owner-first resolution projects, or the first collection
             failure.
+
         """
         result_type = r[list[m.Infra.UvResolutionProject]]
         desired = {file.path: file for file in planned}
@@ -142,6 +143,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
         Returns:
             The managed resolution view plans, or the first planning failure.
+
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         policy = inputs.spec.make.uv_resolution
@@ -216,6 +218,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
         Returns:
             The formatted view source, or the first render or format failure.
+
         """
         rendered = u.Infra.pyproject_native_resolution_view(
             owner,

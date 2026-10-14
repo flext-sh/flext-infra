@@ -113,6 +113,7 @@ class FlextInfraConfigModelsScaffold:
 
             Returns:
                 The original requirements, retaining markers, extras and sources.
+
             """
             for requirement in requirements:
                 Requirement(requirement)

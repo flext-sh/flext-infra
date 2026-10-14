@@ -31,6 +31,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Returns:
             The plan entry electing the copied rule resource.
+
         """
         rule = self._catalog(tmp_path) / "rules" / name
         tm.ok(
@@ -402,6 +403,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Raises:
             TypeError: If the snapshot or fix is not of the expected type.
+
         """
         owner = Path(__file__).resolve().parents[3]
         original = (
@@ -735,6 +737,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Returns:
             The path to the live provider catalog.
+
         """
         plan = tm.ok(u.Infra.codemod_rule_plan(root))
         catalogs = tuple(
@@ -834,6 +837,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Returns:
             The resulting ``tuple[Path, Path]``.
+
         """
         name = "snapshot-fixture-provider"
         package = site / name.replace("-", "_")

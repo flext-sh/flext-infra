@@ -90,6 +90,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         Returns:
             Result carrying the sealed native import reference, or a failure
             when the loaded epoch does not satisfy the request.
+
         """
         return FlextInfraWorkspaceNativeReference.authenticate(request)
 
@@ -140,6 +141,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The destination proof or the first journal authority failure.
+
         """
         authority = FlextInfraMiseArtifactsState.unchanged_journal(
             session, "staged view journal authority changed"
@@ -181,6 +183,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only for the matching destination journal entry.
+
         """
         original_layout = next(
             (
@@ -223,6 +226,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success or the first missing, unreadable or changed source authority.
+
         """
         for source in plan.inputs:
             previous = next(
@@ -253,6 +257,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The unchanged view only after every pre-consumer proof succeeds.
+
         """
         authority = self._stage_journal_authority(view, session)
         if authority.failure:
@@ -285,6 +290,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only after authentication, import and post-consumer barriers.
+
         """
         authenticated = self._authenticate_stage_view(view, session)
         if authenticated.failure:
@@ -364,6 +370,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only if the consumer changed none of its authenticated inputs.
+
         """
         after = u.Cli.atomic_inventory_physical_tree(view.root)
         if after.failure:
@@ -383,6 +390,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only when source states and every inventory remain pinned.
+
         """
         states = FlextInfraMiseArtifactsVerification.states_current(plan.inputs)
         if states.failure:
@@ -413,6 +421,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The observed inventory or the first symlink failure.
+
         """
         actual: set[Path] = set()
         for root in roots:
@@ -434,6 +443,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The directory's files outside bytecode caches, or the first symlink.
+
         """
         files: set[Path] = set()
         for path in root.rglob("*"):
@@ -704,6 +714,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             Result carrying the consumer's command output, or a failure when
             the runtime is not a physical directory or the interpreter is
             missing.
+
         """
         interpreter = u.Infra.runtime_python(
             self.repository_root,

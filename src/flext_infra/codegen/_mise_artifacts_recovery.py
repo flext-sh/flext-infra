@@ -34,6 +34,7 @@ class FlextInfraMiseRecovery:
 
         Returns:
             The cleanup outcome, preserving its original failure.
+
         """
         topology = FlextInfraMiseArtifactsVerification.journal_topology(layout, journal)
         if topology.failure:
@@ -86,6 +87,7 @@ class FlextInfraMiseRecovery:
 
         Returns:
             Whether every selected effect was safely recovered.
+
         """
         for entry in reversed(journal.entries):
             if entry.dependency_group is None or not entry.recover_group:
@@ -107,6 +109,7 @@ class FlextInfraMiseRecovery:
 
         Returns:
             Whether this authenticated destination required compensation.
+
         """
         path = FlextInfraMiseArtifactsFiles.resolve_transaction(
             layout, entry.path, purpose="dependent-group recovery"
@@ -185,6 +188,7 @@ class FlextInfraMiseRecovery:
 
         Returns:
             Whether the journal-owned preimage was consumed.
+
         """
         if entry.original_staging is None or entry.original_content_hex is None:
             return r[bool].fail(f"group preimage missing: {entry.path}")
@@ -263,6 +267,7 @@ class FlextInfraMiseRecovery:
 
         Returns:
             The authenticated physical preimage snapshot.
+
         """
         backup = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
         if backup.failure:

@@ -152,6 +152,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
             Returns:
                 The resulting ``set[str]``.
+
             """
             names = set[str]()
             for base in node.bases:

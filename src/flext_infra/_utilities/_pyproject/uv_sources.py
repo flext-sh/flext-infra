@@ -153,6 +153,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         if state.view_project:
             state.view_project["dependencies"] = state.dependencies
@@ -229,6 +230,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         Returns:
             The resolution view state seeded from the root project.
+
         """
         root_payload = cls._resolution_project_payload(root)
         root_project = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
@@ -295,6 +297,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         payload = cls._resolution_project_payload(project)
         metadata = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
@@ -388,6 +391,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         failed = cls._resolution_group_metadata(state, project_uv, renamed, name)
         if failed.failure:
@@ -418,6 +422,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         Returns:
             The canonical dependency names of the declared override entries.
+
         """
         return {
             FlextInfraUtilitiesDependencies.dep_name(entry)
@@ -468,6 +473,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         for requirement in t.Cli.JSON_LIST_ADAPTER.validate_python(
             metadata.get(c.Infra.DEPENDENCIES, []),
@@ -489,6 +495,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         Returns:
             The project's declared groups in their view-level wire form.
+
         """
         declared_groups = dict(
             t.Cli.JSON_MAPPING_ADAPTER.validate_python(
@@ -714,6 +721,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         for group, metadata_value in t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             project_uv.get("dependency-groups", {}),
@@ -738,6 +746,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         for raw_index in t.Cli.JSON_LIST_ADAPTER.validate_python(
             project_uv.get("index", []),

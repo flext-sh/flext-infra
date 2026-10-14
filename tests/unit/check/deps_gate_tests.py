@@ -44,6 +44,7 @@ class TestsFlextInfraDepsGate:
         Returns:
             Runtime dependency inputs binding the elected supplier to the
             target's own lock, metadata state and executed source.
+
         """
         artifact = distribution("requests")
         files = tm.not_none(artifact.files)

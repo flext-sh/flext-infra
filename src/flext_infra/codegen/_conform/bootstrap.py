@@ -146,6 +146,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Raises:
             ValueError: If declared package namespace is unresolved.
+
         """
         roots: list[t.Pair[str, Path]] = []
         if target.repository.package:
@@ -222,6 +223,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Returns:
             The contract owned by the declared conformance surface.
+
         """
         return cls._declared_surface_contract(surface, codegen=codegen)
 
@@ -240,6 +242,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Returns:
             The contract owned by the declared conformance surface.
+
         """
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
@@ -322,6 +325,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Returns:
             The managed runtime binding paths as POSIX strings.
+
         """
         return frozenset(
             item.path.as_posix()
@@ -340,6 +344,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Returns:
             The root and resolution pyproject paths as POSIX strings.
+
         """
         return frozenset(
             path.as_posix()

@@ -115,6 +115,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         return FlextInfraGateRegistry.default().runtime_identity(
             gate_ids,

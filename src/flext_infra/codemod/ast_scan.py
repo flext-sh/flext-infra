@@ -180,6 +180,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
+
         """
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
@@ -274,6 +275,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         Returns:
             The published after evidence with its whole-catalog report, or the
             observation or publication failure.
+
         """
         result_type = r[t.Pair[m.Infra.ModScanEvidenceReceipt, m.Infra.ModScanReport]]
         after = FlextInfraModGateEngine.scan(root, fix=False)
@@ -312,6 +314,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         Raises:
             ValueError: If the whole-catalog observation failed or the rule
                 plan changed during the selected apply.
+
         """
         if catalog_after.failure:
             msg = f"ast: whole-catalog observation failed: {catalog_after.error}"

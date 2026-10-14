@@ -96,6 +96,7 @@ class FlextInfraDocGenerator(
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+
         """
         roots = {
             f"@docs-{index}": path

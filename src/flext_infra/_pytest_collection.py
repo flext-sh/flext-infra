@@ -52,6 +52,7 @@ class FlextInfraPytestCollection:
 
         Returns:
             The resulting ``FlextInfraModelsCore.PytestMarkdownOrigin``.
+
         """
         return FlextInfraModelsCore.PytestMarkdownOrigin(
             source_path=definition.source_path.resolve().relative_to(root).as_posix(),
@@ -124,6 +125,7 @@ class FlextInfraPytestCollection:
 
         Raises:
             RuntimeError: If Markdown execution requires exactly one runner attempt.
+
         """
         if not isinstance(item, MarkdownInlinePythonItem) or not isinstance(
             item.parent,
@@ -340,6 +342,7 @@ class FlextInfraPytestCollection:
 
             Raises:
                 TypeError: If the native distributed controller has no stop port.
+
             """
             session = self.session
             if session is None or report.when != "teardown":

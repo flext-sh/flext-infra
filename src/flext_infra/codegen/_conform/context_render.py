@@ -580,6 +580,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         Returns:
             The non-empty declared dependency names with their declared
             development extras, or the first metadata failure.
+
         """
         result_type = r[
             t.Pair[t.VariadicTuple[t.NonEmptyStr], t.VariadicTuple[t.NonEmptyStr]]
@@ -622,6 +623,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         Returns:
             The validated scaffold project, or the first resolution or
             validation failure.
+
         """
         resolved = self._resolved_render_project(render_inputs)
         if resolved.failure:
@@ -654,6 +656,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
         Returns:
             The resolved packaged data selection of the render.
+
         """
         if profile is c.Infra.MakeProfile.WORKSPACE:
             return m.Infra.PackagedDataSelection()

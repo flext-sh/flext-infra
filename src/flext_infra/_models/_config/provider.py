@@ -57,6 +57,7 @@ class FlextInfraConfigModelsProvider:
 
             Returns:
                 The resulting ``str``.
+
             """
             namespace, _, _ = self.distribution.partition("-")
             return f"{namespace}-"

@@ -104,6 +104,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         Returns:
             The fixture root, its loaded workspace, and the declared candidate.
+
         """
         root, _ = u.Tests.render_make_environment(
             tmp_path / "modern",

@@ -30,6 +30,7 @@ class FlextInfraRenameSymbols:
 
         Raises:
             ValueError: If the domain supplied competing decisions for one owner.
+
         """
         decisions = tuple(
             decision
@@ -52,6 +53,7 @@ class FlextInfraRenameSymbols:
 
         Raises:
             ValueError: If the identity is missing, inherited, or ambiguous.
+
         """
         owner, _, name = qualified_name.rpartition(".")
         binding = cls.resolve_member(workspace.rope_project, owner, name)
@@ -144,6 +146,7 @@ class FlextInfraRenameSymbols:
         Raises:
             ValueError: If a decision changes identity, repeats an owner, or names
                 an inherited declaration or incompatible independent contract.
+
         """
         planned: t.MutableMappingKV[
             Path, t.MutableSequenceOf[m.Infra.SourceRewrite]
@@ -214,6 +217,7 @@ class FlextInfraRenameSymbols:
 
         Raises:
             ValueError: If discovery does not identify the actual declaration.
+
         """
         owner, _, name = declaration.scope_path.rpartition(".")
         binding = cls.resolve_member(
@@ -680,6 +684,7 @@ class FlextInfraRenameSymbols:
             TypeError: If the campaign produced a non-content effect.
             ValueError: If an edit has no single authenticated span or escapes
                 the known inventory.
+
         """
         project, sources = context
         if not isinstance(change, p.Infra.RopeChangeContents):

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import itertools
 import marshal
 import sys
 from base64 import b64decode, b64encode
@@ -569,9 +570,7 @@ class FlextInfraWorkspaceNativeReference:
         """Recognize authored call behavior separately from function metadata."""
         return any(
             type(cls._class_namespace(owner).get("__call__")) is FunctionType
-            for owner in vars(type)["__mro__"].__get__(
-                type(value), type(type(value))
-            )
+            for owner in vars(type)["__mro__"].__get__(type(value), type(type(value)))
         )
 
     @staticmethod
@@ -1109,16 +1108,14 @@ class FlextInfraWorkspaceNativeReference:
             # Factory-created classes retain their existing complete native
             # payload and generated-code/declaration provenance.
             return result.ok(())
-        return result.ok(
-            (
-                frozenset(
-                    instruction.argval
-                    for instruction in cls._instructions(candidates[0], instructions)
-                    if instruction.opname == "STORE_NAME"
-                    and isinstance(instruction.argval, str)
-                ),
-            )
-        )
+        return result.ok((
+            frozenset(
+                instruction.argval
+                for instruction in cls._instructions(candidates[0], instructions)
+                if instruction.opname == "STORE_NAME"
+                and isinstance(instruction.argval, str)
+            ),
+        ))
 
     @staticmethod
     def _class_state_writers(
@@ -1176,9 +1173,7 @@ class FlextInfraWorkspaceNativeReference:
             }
             fields = frozenset(
                 instruction.argval
-                for previous, instruction in zip(
-                    instructions, instructions[1:], strict=False
-                )
+                for previous, instruction in itertools.pairwise(instructions)
                 if instruction.opname == "STORE_ATTR"
                 and isinstance(instruction.argval, str)
                 and instruction.argval in declarations
@@ -1190,8 +1185,7 @@ class FlextInfraWorkspaceNativeReference:
                     )
                     or (
                         receiver is not None
-                        and
-                        previous.opname == "LOAD_FAST_LOAD_FAST"
+                        and previous.opname == "LOAD_FAST_LOAD_FAST"
                         and type(previous.argval) is tuple
                         and previous.argval[-1] == receiver
                     )
@@ -1319,7 +1313,9 @@ class FlextInfraWorkspaceNativeReference:
                     continue
                 mutable_globals.update(
                     instruction.argval
-                    for instruction in cls._instructions(function.__code__, instructions)
+                    for instruction in cls._instructions(
+                        function.__code__, instructions
+                    )
                     if instruction.opname == "STORE_GLOBAL"
                 )
             evidence.extend(
@@ -1608,10 +1604,12 @@ class FlextInfraWorkspaceNativeReference:
                         supplier="types",
                         name="",
                         qualname="",
-                        operands=((
-                            "alias",
-                            observe_value(value, construction=True),
-                        ),),
+                        operands=(
+                            (
+                                "alias",
+                                observe_value(value, construction=True),
+                            ),
+                        ),
                     ),
                 )
                 pending.extend(
@@ -1703,9 +1701,9 @@ class FlextInfraWorkspaceNativeReference:
                 continue
             if type(value) is not FunctionType:
                 native_builtin = cls._native_builtin(value)
-                if cls._native_callable_instance(value) or cls._python_callable_instance(
+                if cls._native_callable_instance(
                     value
-                ):
+                ) or cls._python_callable_instance(value):
                     native = type(value)
                     evidence.append(
                         m.Infra.NativeBindingEvidence(
@@ -1718,10 +1716,12 @@ class FlextInfraWorkspaceNativeReference:
                             qualname=vars(type)["__qualname__"].__get__(
                                 native, type(native)
                             ),
-                            operands=((
-                                "storage",
-                                observe_value(value, construction=True),
-                            ),),
+                            operands=(
+                                (
+                                    "storage",
+                                    observe_value(value, construction=True),
+                                ),
+                            ),
                         ),
                     )
                     pending.append((
@@ -2106,6 +2106,7 @@ class FlextInfraWorkspaceNativeReference:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         if (
             observed.runtime != reference.runtime

@@ -152,6 +152,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``int``.
+
             """
             return self.memory_limit_mb * c.Infra.BYTES_PER_MIB
 
@@ -238,6 +239,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``t.JsonMapping``.
+
             """
             region: t.JsonDict = {}
             if self.start_line is not None:
@@ -301,6 +303,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``str``.
+
             """
             code_part = f"[{self.code}] " if self.code else ""
             return (
@@ -371,6 +374,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``int``.
+
             """
             return len(self.issues)
 
@@ -394,6 +398,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``bool``.
+
             """
             return bool(self.gates) and all(
                 v.result.passed for v in self.gates.values()
@@ -406,6 +411,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``int``.
+
             """
             return sum(v.finding_count for v in self.gates.values())
 

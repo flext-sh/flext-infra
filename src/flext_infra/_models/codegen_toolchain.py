@@ -36,6 +36,7 @@ class FlextInfraModelsCodegenToolchain:
             Raises:
                 ValueError: If generation authorization requires unique existing
                     physical roots.
+
             """
             paths = tuple(root.target for root in self.roots)
             if (
@@ -244,6 +245,7 @@ class FlextInfraModelsCodegenToolchain:
 
             Returns:
                 The resulting ``t.VariadicTuple[m.Cli.AtomicFileState]``.
+
             """
             return tuple(
                 state for project in self.projects for state in project.config.sources

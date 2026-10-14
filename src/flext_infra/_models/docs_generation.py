@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m as cli_m
-
 from flext_core import m
+
 from flext_infra import t
 from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
 from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
@@ -92,6 +92,7 @@ class FlextInfraModelsDocsGeneration:
 
             Returns:
                 The resulting ``Path``.
+
             """
             return (
                 self.path

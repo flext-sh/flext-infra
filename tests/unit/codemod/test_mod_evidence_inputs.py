@@ -315,6 +315,7 @@ class TestsFlextInfraModEvidenceInputs:
 
         Returns:
             The binding selections with their captured consumer states.
+
         """
         selections: list[m.Infra.CodemodBindingProject] = []
         inputs: list[m.Cli.AtomicFileState] = []
@@ -353,6 +354,7 @@ class TestsFlextInfraModEvidenceInputs:
         Args:
             selections: The binding selections under proof.
             snapshot: The shared immutable binding capture.
+
         """
         paths = [state.path for state in snapshot.states]
         tm.that(len(paths), eq=len(set(paths)))
@@ -505,6 +507,7 @@ class TestsFlextInfraModEvidenceInputs:
         Returns:
             The scanned report, its binding snapshot, the captured inputs,
             the consumer source and the binding owner.
+
         """
         source = mod_workspace / "consumer.py"
         owner = mod_workspace / "binding_owner.py"
@@ -548,6 +551,7 @@ class TestsFlextInfraModEvidenceInputs:
 
         Returns:
             The nested evidence receipt with its identity proof.
+
         """
         nested_path = tm.ok(
             u.Infra.publish_refactor_report_evidence(
@@ -583,6 +587,7 @@ class TestsFlextInfraModEvidenceInputs:
         Args:
             restored: The restored evidence payload to tamper with.
             snapshot: The binding snapshot whose duplicate states are invalid.
+
         """
         for updates, expected_key in (
             (

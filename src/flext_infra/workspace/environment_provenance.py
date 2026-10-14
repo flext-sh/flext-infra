@@ -12,7 +12,6 @@ import sysconfig
 from base64 import urlsafe_b64encode
 from functools import lru_cache
 from importlib.machinery import BuiltinImporter, FrozenImporter
-from inspect import getsourcefile
 from json import dumps
 from pathlib import Path
 from sys import modules
@@ -50,6 +49,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         Returns:
             Declaration bytes authenticated by editable ownership or the
             installed locked artifact's RECORD and producer build contract.
+
         """
         result = r[m.Cli.AtomicFileState]
         matches = u.installed_distributions(name=repository.distribution)
@@ -286,6 +286,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
 
         Returns:
             The installed environment's deterministic SHA-256 identity.
+
         """
         provenance: t.MutableSequenceOf[str] = []
         for distribution in u.installed_distributions():
@@ -391,6 +392,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
 
         Returns:
             A result indicating whether the installation is authenticated.
+
         """
         expected_root = (resolved_root / repository.path).resolve()
         origin = cls._editable_url_verdict(
@@ -492,6 +494,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
 
         Returns:
             A result containing the observed Python environment.
+
         """
         context = FlextInfraWorkspaceDetector.resolution_context(root)
         if context.failure:
@@ -672,6 +675,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         Executable declarations have a separate producer/check admission owner.
         Environment verification never traverses functions, classes or libraries
         exported by these module namespaces.
+
         """
         package_name = u.Infra.project_package_name(expected_root)
         package = u.Infra.declared_package_dir(package_name)
@@ -723,6 +727,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
 
         Returns:
             The resulting ``p.Result[int]``.
+
         """
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
         if context.failure:

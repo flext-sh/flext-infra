@@ -521,6 +521,7 @@ class FlextInfraModGateEngine:
 
         Returns:
             Findings admitted by their own project's rules and semantic context.
+
         """
         elected = {
             project: frozenset(rule_ids)
@@ -1001,6 +1002,7 @@ class FlextInfraModGateEngine:
 
         Yields:
             Complete JSONL records as bytes.
+
         """
         pending = b""
         offset = 0
@@ -1027,6 +1029,7 @@ class FlextInfraModGateEngine:
 
         Returns:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
+
         """
         entries: list[m.Infra.ModScanFinding] = []
         with closing(cls._native_records(stdout)) as lines:
@@ -1186,6 +1189,7 @@ class FlextInfraModGateEngine:
 
         Returns:
             A frozenset of resolved Python file paths within the target directories.
+
         """
         return frozenset(
             path.resolve()
@@ -1215,6 +1219,7 @@ class FlextInfraModGateEngine:
 
         Returns:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
+
         """
         rules_by_id = {rule.id: rule for rule in plan.rules}
         u.Cli.ensure_dir(settings.work_dir).unwrap()
@@ -1255,6 +1260,7 @@ class FlextInfraModGateEngine:
 
         Returns:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
+
         """
         sys.stderr.write(f"mod: publish evidence findings={report.findings}\n")
         sys.stderr.flush()
@@ -1371,6 +1377,7 @@ class FlextInfraModGateEngine:
 
         Returns:
             Full-catalog findings authenticated to candidate bytes and bindings.
+
         """
         plan = u.Infra.codemod_rule_plan(root).unwrap()
         rules_by_id = {rule.id: rule for rule in plan.rules}

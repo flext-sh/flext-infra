@@ -538,6 +538,7 @@ class FlextInfraUtilitiesRopeInventory:
 
         Returns:
             Definition line and name pairs proven by native Rope matches.
+
         """
         bindings: set[t.Pair[int, str]] = set()
         for pattern in (

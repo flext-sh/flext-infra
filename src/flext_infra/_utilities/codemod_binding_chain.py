@@ -125,6 +125,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             Returns:
                 The resulting ``bool``.
+
             """
             root, source, project = frame
             capture = m.Infra.AstGrepCapture.model_validate(
@@ -193,6 +194,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             Returns:
                 Whether the occurrence satisfies its binding predicate.
+
             """
             if (
                 condition.predicate
@@ -524,6 +526,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             Returns:
                 The normalized native binding expression, or ``None``.
+
             """
             parts = tuple(part.strip() for part in text.split("."))
             return (
@@ -549,6 +552,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             Returns:
                 The resulting ``bool``.
+
             """
             project, module, scope = frame
             binding = cls._chain_base_binding(
@@ -907,6 +911,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             Returns:
                 The resulting ``bool``.
+
             """
             declarations = cls._single_reaching_declarations(module, scope, expression)
             if "." in expression:

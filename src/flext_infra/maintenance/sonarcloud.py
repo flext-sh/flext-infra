@@ -135,6 +135,7 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``p.Result[m.Infra.SonarcloudSettingsValues]``.
+
         """
         body = cls.call(
             plan.api_url,
@@ -253,6 +254,7 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``p.Result[t.Pair[t.SecretStr, str]]``.
+
         """
         token_result = self.optional_token()
         if token_result.failure:
@@ -279,6 +281,7 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         authentication = self._authenticate(plan, token)
         if authentication.failure:

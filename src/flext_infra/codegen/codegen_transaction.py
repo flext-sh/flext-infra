@@ -49,6 +49,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
+
         """
         if self._source_authority is not None and updates:
             return r[T].fail(
@@ -128,6 +129,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         Returns:
             The captured value after clean recovery, or the recovery failure
             annotated with its residual cleanup error.
+
         """
         cleaned = self._recover_prepared(prepared.plan.layout)
         if cleaned.failure:
@@ -154,6 +156,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             The prepared cursor and its authenticated candidate manifest.
+
         """
         return self._materialize_package_writes(
             session,
@@ -174,6 +177,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             Actual native consumer success or its first causal failure.
+
         """
         if runtime_root is None:
             return r[bool].ok(value=True)
@@ -293,6 +297,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             Success only while every pre-consumer observation remains current.
+
         """
         current = u.Cli.atomic_inventory_physical_tree(manifest.root.path)
         if current.failure:
@@ -522,6 +527,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             Whether the active authority is current, or its first failure.
+
         """
         if self._source_authority is not None:
             return FlextInfraCodegenPreconditions.source_authority_current(
@@ -722,6 +728,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         Returns:
             The analysis bound to the current producer, or the authority
             failure.
+
         """
         if self._producer.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(self._producer)
@@ -743,6 +750,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             The effective batch admission, or the first admission failure.
+
         """
         if batch_admission is not None:
             if batch_admission.analysis != analysis:
@@ -767,6 +775,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             The proof-bound file session, or the first failure.
+
         """
         result_type = r[m.Infra.CodegenTransactionSession]
         started = self.begin_files_locked(scope_root, roots, analysis.inputs)

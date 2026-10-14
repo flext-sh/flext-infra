@@ -178,6 +178,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             The published report only when its actual native comparisons permit it.
+
         """
         if any(delta.introduced for delta in report.rule_deltas):
             return r[m.Infra.ViolationsSweepReport].fail(
@@ -200,6 +201,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             The elected rule identities and declared selector-free verbs.
+
         """
         result = r[t.Pair[t.StrSequence | None, t.StrSequence]]
         if any(
@@ -264,6 +266,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             Completed verbs, stage receipts, first failed verb and original failure.
+
         """
         completed: list[str] = []
         stages: list[m.Infra.ViolationsSweepStage] = []
@@ -339,6 +342,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             The process receipt and its causal verdict.
+
         """
         command = (
             (c.Infra.MAKE, "-f", str(project / c.Infra.MAKEFILE_FILENAME), verb)
@@ -427,6 +431,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             Full scan, immutable publication, elected plan and source digests.
+
         """
         result = r[
             t.Triple[
@@ -514,6 +519,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             Authenticated source, scope, topology and elected catalog identities.
+
         """
         inventory = cls._source_inventory(root)
         if inventory.failure:
@@ -568,6 +574,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             Existing owner contracts, or their original preflight failure.
+
         """
         result = r[
             t.Quad[
@@ -612,6 +619,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             Actual binary states; absent or invalid inputs preserve their failure.
+
         """
         states: list[m.Cli.AtomicFileState] = []
         for path in paths:
@@ -635,6 +643,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             Full native evidence; failed scanners remain explicitly unobserved.
+
         """
         ast_scan = (
             r[m.Infra.ModScanReport].ok(previous.ast_report)
@@ -692,6 +701,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             Per-rule dispositions and full collateral evidence for this observation.
+
         """
         started = monotonic()
         before = self._source_snapshot(project, observe=True, previous=initial)
@@ -737,6 +747,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             The input closure and independent text-inventory observation errors.
+
         """
         paths = {rule.resource.resolve() for rule in plan.rules}
         configs = {ruleset.config.resolve() for ruleset in plan.rulesets}
@@ -789,6 +800,7 @@ class FlextInfraRefactorViolationsSweep(
 
         Returns:
             Success only for the inventory and sources actually scanned.
+
         """
         verified = u.Cli.atomic_verify_binary_file_states(states)
         if verified.failure:

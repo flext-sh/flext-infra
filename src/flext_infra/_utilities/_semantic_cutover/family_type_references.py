@@ -404,6 +404,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
 
         Returns:
             The resulting ``frozenset[t.Pair[int, int]]``.
+
         """
         protected: set[t.Pair[int, int]] = set()
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors

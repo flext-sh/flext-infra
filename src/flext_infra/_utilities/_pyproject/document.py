@@ -197,6 +197,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         Returns:
             The parsed document, its project name, the composed requirement
             provenance, and the member environment requirement triple.
+
         """
         result = r[_ConformedProvenance]
         parsed = cls.parsed_pyproject(pyproject_content)
@@ -247,6 +248,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
         Returns:
             The synchronized custom group pair, empty outside the workspace role.
+
         """
         if workspace.repository.role != c.Infra.MakeProfile.WORKSPACE:
             return r[_CustomGroupsPair].ok(((), ()))
@@ -419,6 +421,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         Returns:
             A result containing a triple of string sequences representing the
                 member environment requirements.
+
         """
         result = r[_MemberRequirementRows]
         members = (
@@ -466,6 +469,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
         Returns:
             The captured declarations aligned with the elected members.
+
         """
         declarations = options.member_declarations
         if declarations is None:
@@ -495,6 +499,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
         Returns:
             The aggregated requests, groups, and declared requirement lines.
+
         """
         result = r[_MemberRequirementRows]
         requests: list[str] = []
@@ -533,6 +538,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         Returns:
             The member's rendered requests, dependency groups, and declared
             requirement lines.
+
         """
         result = r[_MemberRequirementRows]
         parsed = FlextInfraUtilitiesPyprojectDocument.member_declaration_requirements(
@@ -650,6 +656,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
         Returns:
             The validated member requirements, or the first validation failure.
+
         """
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):

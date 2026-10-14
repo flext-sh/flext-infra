@@ -28,6 +28,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         Returns:
             Render inputs with the source-derived tooling fields reconciled.
+
         """
         root = render_inputs.target.root
         python_plans = tuple(
@@ -283,6 +284,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         Returns:
             The recovered live text, or ``None`` when no live file exists.
+
         """
         live_path = repository_root / c.PYPROJECT_FILENAME
         if not live_path.is_file():
@@ -320,6 +322,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The collected source states with their member declarations, or
             the first read failure. The pair is empty when the repository
             declares no workspace role or elects no packaged members.
+
         """
         result_type = r[
             t.Pair[
@@ -371,6 +374,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         Returns:
             The resulting ``str``.
+
         """
         return f"{c.Infra.RENDERED_BY_MARKER}{__version__}"
 

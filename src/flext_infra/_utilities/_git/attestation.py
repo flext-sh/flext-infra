@@ -73,6 +73,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             Declared public metadata and each native configuration query outcome.
+
         """
         root = request.repo_root.expanduser().resolve()
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
@@ -142,6 +143,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The effective scope/origin/value, or a native absent-key observation.
+
         """
         query = u.Cli.run_raw(
             ("git", "config", "get", "--null", "--show-origin", "--show-scope", key),
@@ -205,6 +207,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The resulting ``p.Result[m.Infra.GateCaptureReport]``.
+
         """
         root = request.repository_root.resolve()
         directory = inputs.spec.make.gate_receipts_directory
@@ -338,6 +341,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The digest of the effective configuration and execution context.
+
         """
         sources = "\n".join(
             f"{source.path.name}:"
@@ -472,6 +476,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.GateReportEvidence]]``.
+
         """
         reports: list[m.Infra.GateReportEvidence] = []
         for path, kind in paths:
@@ -505,6 +510,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The resulting ``p.Result[m.Infra.GateCommandEvidence]``.
+
         """
         if not reports:
             return r[m.Infra.GateCommandEvidence].fail(
@@ -735,6 +741,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The resulting ``p.Result[c.Infra.ToolOutcome]``.
+
         """
         result_type = r[c.Infra.ToolOutcome]
         try:
@@ -752,6 +759,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The producer classification or its first admission failure.
+
         """
         result_type = r[c.Infra.ToolOutcome]
         if evidence.gate == c.Infra.VERB_CHECK:

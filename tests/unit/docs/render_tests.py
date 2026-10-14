@@ -56,6 +56,7 @@ def mkdocs_project_config(
 
     Raises:
         TypeError: If the native module does not satisfy its loader port.
+
     """
     if not isinstance(module, MkDocsConfigModulePort):
         msg = "mkdocs.config does not satisfy its loader port"

@@ -106,6 +106,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
 
         Returns:
             The resulting ``t.Pair[int, str]``.
+
         """
         result = tm.ok(
             u.Cli.run_raw(

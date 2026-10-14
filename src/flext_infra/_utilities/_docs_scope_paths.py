@@ -98,6 +98,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
         from flext_core.result import FlextResult as r
+
         """
         root = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(repository_root)
         if not FlextInfraUtilitiesDocsScopePathsMixin.physical_directory_exists(root):

@@ -35,6 +35,7 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             A reversible authenticated artifact, without changing live sources.
+
         """
         decisions = tuple(
             m.Infra.SemanticRenameDecision(
@@ -96,6 +97,7 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             The first authentication/runtime failure, or the accepted candidate.
+
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         loaded = cls._load_rename_artifact(root, request)
@@ -377,6 +379,7 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             The first phase failure or the verified joint fixed point.
+
         """
         for phase in phases:
             fixed_point = cls._check_residue(
@@ -612,6 +615,7 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         with workspace_factory(root, None) as workspace:
             return cls._validate_published(root, preflight, workspace, reports_root)

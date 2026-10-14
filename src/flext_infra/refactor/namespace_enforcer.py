@@ -59,6 +59,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
 
         Raises:
             ValueError: If namespace scope requires one owned module.
+
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
         if not project_roots:

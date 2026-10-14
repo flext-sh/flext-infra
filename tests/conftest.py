@@ -39,6 +39,7 @@ def rope_contract_consumer(
 
     Yields:
         The live workspace and its isolated consumer source path.
+
     """
     root, package = u.Tests.create_lazy_init_workspace(tmp_path)
     with infra.rope_workspace(root) as workspace:
@@ -63,6 +64,7 @@ def constants_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
 
     Returns:
         The governed workspace root and its package directory.
+
     """
     return u.Tests.create_lazy_init_workspace(tmp_path)
 
@@ -75,6 +77,7 @@ def constant_candidate(
 
     Returns:
         A factory that checks and publishes the complete source candidate.
+
     """
     root, _package = constants_workspace
 
@@ -85,6 +88,7 @@ def constant_candidate(
 
         Returns:
             The published sources after a proven fixed point.
+
         """
         for path, source in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(path, source))
@@ -175,6 +179,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
     Raises:
         ValueError: If requires_engine arguments must be canonical engine names.
+
     """
     policy = config.Infra.codegen.make.ci
     if u.Infra.env_value(policy.variable).strip() != policy.value:

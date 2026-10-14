@@ -26,6 +26,7 @@ from flext_infra.codegen._codegen_transaction_recovery import (
     FlextInfraCodegenTransactionRecovery,
 )
 
+
 class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
     """Append dependent phases and directories, then commit the journal."""
 
@@ -169,6 +170,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         Returns:
             The unchanged session, or the re-proof failure.
+
         """
         result_type = r[m.Infra.CodegenTransactionSession]
         if batch_admission is None:
@@ -264,6 +266,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         Returns:
             The session advanced to the durably published phase.
+
         """
         result_type = r[m.Infra.CodegenTransactionSession]
         published = self._publish_verified_phase(
@@ -677,6 +680,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         Returns:
             The persisted journal and its exact physical receipt.
+
         """
         result_type = r[
             t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
@@ -798,6 +802,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         Returns:
             The journal with its durable staging intentions and physical receipt.
+
         """
         result_type = r[
             t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
@@ -1230,6 +1235,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         Returns:
             The journal carrying every created directory's physical receipt.
+
         """
         result_type = r[
             t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]

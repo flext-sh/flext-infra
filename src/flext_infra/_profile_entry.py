@@ -25,6 +25,7 @@ class FlextInfraProfileEntry:
 
         Returns:
             The canonical CLI exit status.
+
         """
         output = Path(sys.argv[1])
         profiler = cProfile.Profile()

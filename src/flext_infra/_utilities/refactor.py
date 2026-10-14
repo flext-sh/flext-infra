@@ -94,6 +94,7 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: When the staged artifact lacks its authenticated
                 digest or the store already holds different bytes.
+
         """
         staged = u.Cli.atomic_read_binary_file_receipt(
             staged_path, required=True
@@ -130,6 +131,7 @@ class FlextInfraUtilitiesRefactor:
 
         Raises:
             ValueError: When the artifact inventory has duplicate paths.
+
         """
         with ExitStack() as stack:
             readers = {
@@ -161,6 +163,7 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: When the finding lacks its artifact or the hydrated
                 record differs from its captured evidence.
+
         """
         receipt = finding.native_receipt
         if receipt is None:
@@ -204,6 +207,7 @@ class FlextInfraUtilitiesRefactor:
 
         Returns:
             The measured totals from the complete native report.
+
         """
         return m.Infra.ViolationsTotals(
             findings=report.findings,
@@ -228,6 +232,7 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: When the scan lacks a complete source inventory or
                 two captured states disagree for one path.
+
         """
         if report.source_states is None:
             msg = "semantic correspondence lacks complete source inventory"
@@ -255,6 +260,7 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: When the catalog correspondence changed or the
                 finding differs from the complete scan inventory.
+
         """
         key = (entry.repository, entry.rule_id)
         descriptor = (entry.catalog_digest, entry.module_absence)
@@ -286,6 +292,7 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: When publication identity continuity is broken or a
                 receipt is not an admitted destination.
+
         """
         endpoints: dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]] = {}
         for receipt in publication_chain:
@@ -317,6 +324,7 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: When the original or final source identity drifted,
                 or a source was removed without authenticated provenance.
+
         """
         for path in sorted(sources[0].keys() | sources[1].keys() | endpoints.keys()):
             original, final = endpoints.get(
@@ -357,6 +365,7 @@ class FlextInfraUtilitiesRefactor:
 
         Returns:
             The indexed source inventories and the publication endpoints.
+
         """
         sources: list[dict[Path, m.Cli.AtomicFileState]] = []
         catalog: dict[tuple[str, str], tuple[str | None, bool]] = {}
@@ -389,6 +398,7 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: When a text finding lacks declared project topology
                 or falls outside it.
+
         """
         if isinstance(entry, m.Infra.ModOccurrence):
             return entry.repository
@@ -419,6 +429,7 @@ class FlextInfraUtilitiesRefactor:
 
         Raises:
             ValueError: When the module occurrence lacks authentication.
+
         """
         state = entry.source_state
         if state is None or state.content is None or not entry.catalog_digest:
@@ -448,6 +459,7 @@ class FlextInfraUtilitiesRefactor:
 
         Raises:
             ValueError: When the module occurrence is not the native root.
+
         """
         start, end = byte_offsets.get("start"), byte_offsets.get("end")
         content = state.content
@@ -497,6 +509,7 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: When a text finding lacks project ownership or a
                 module absence lacks authentication or a native range.
+
         """
         occurrences: t.MutableMappingKV[
             t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
@@ -548,6 +561,7 @@ class FlextInfraUtilitiesRefactor:
 
         Returns:
             One occurrence delta for every declared or observed rule key.
+
         """
         before_entries, after_entries = counters
         deltas: list[m.Infra.ViolationsRuleDelta] = []
@@ -601,6 +615,7 @@ class FlextInfraUtilitiesRefactor:
         Raises:
             ValueError: Native engines differ, a text finding lacks project
                 ownership, or the publication chain fails authentication.
+
         """
         engine = (
             "ast-grep" if isinstance(before, m.Infra.ModOccurrenceReport) else "text"
@@ -657,6 +672,7 @@ class FlextInfraUtilitiesRefactor:
 
         Returns:
             Whether one scope target resolves to the audited project.
+
         """
         topology = sorted(
             before.repository_roots, key=lambda item: len(item.parts), reverse=True
@@ -694,6 +710,7 @@ class FlextInfraUtilitiesRefactor:
 
         Returns:
             Every engine's actual observation coverage disposition.
+
         """
         text_observed = before.text_report is not None and after.text_report is not None
         lint_observed = before.lint is not None and after.lint is not None
@@ -746,6 +763,7 @@ class FlextInfraUtilitiesRefactor:
 
         Returns:
             The stage receipt with every rule's actual disposition and collateral.
+
         """
         if stage.audit_before is None or stage.audit_after is None:
             return stage.model_copy(
@@ -1002,6 +1020,7 @@ class FlextInfraUtilitiesRefactor:
 
         Returns:
             Actual native text findings introduced relative to the baseline.
+
         """
         remaining = Counter(
             (entry.file, entry.rule_id, entry.text) for entry in before.entries
@@ -1099,6 +1118,7 @@ class FlextInfraUtilitiesRefactor:
         Returns:
             One binding snapshot uniting the report's source states with each
             distinct captured binding state.
+
         """
         bindings = {
             id(entry.binding_states): entry.binding_states for entry in report.entries
@@ -1136,6 +1156,7 @@ class FlextInfraUtilitiesRefactor:
 
         Raises:
             ValueError: When the report lacks a captured native artifact.
+
         """
         repository_totals = Counter(dict.fromkeys(publication.repositories, 0))
         rule_totals = Counter(dict.fromkeys(publication.rule_ids, 0))

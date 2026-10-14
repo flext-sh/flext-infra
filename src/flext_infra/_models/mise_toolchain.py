@@ -11,6 +11,7 @@ from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_core import m
+
 from flext_infra import c, t
 
 
@@ -546,6 +547,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``str``.
+
             """
             major, minor = self.python_version.split(".")[:2]
             next_minor = int(minor) + 1
@@ -558,6 +560,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``str``.
+
             """
             return self.python_version
 
@@ -568,6 +571,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: self.tool_version_pins.get(entry.name, entry.version)
@@ -581,6 +585,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: entry.selector
@@ -597,6 +602,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {entry.name: entry.selector or entry.name for entry in self.tools}
 
@@ -620,6 +626,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return (
                 "python",
@@ -634,6 +641,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: entry.version_prefix

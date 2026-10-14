@@ -165,6 +165,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             Whether the exact authored class identity occurs in public ancestry.
+
         """
         directory = FlextInfraUtilitiesCodegenNamespace.facade_families()[
             family
@@ -192,6 +193,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             The owning family letter, including split-source descendants.
+
         """
         for parent in path.parents:
             family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
@@ -597,6 +599,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             Preset-owning candidates, or the unresolved composition candidates.
+
         """
         root = Path(project.root.real_path)
         outer, name = declaration[1].split(".", 1)
@@ -1352,6 +1355,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             Source rebound to the resolved dependency owners.
+
         """
         rewrites = sorted(
             (start, stop - start, text) for (start, stop), text in dependencies.items()
@@ -1381,6 +1385,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             The unreplaced original dependency roots.
+
         """
         lines = cls._source_lines(source)
         begin = lines.get_line_start(node.get_start())
@@ -1429,6 +1434,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             Attribute replacements and required direct owner imports.
+
         """
         dependencies: t.MutableMappingKV[t.Pair[int, int], str] = {}
         imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo] = {}
@@ -1537,6 +1543,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             The declaring module, outer class and nested declaration, if unique.
+
         """
         project, scope = context
         segments = item.split(".")
@@ -1610,6 +1617,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Raises:
             ValueError: If multiple authored owners declare the dependency.
+
         """
         owners: list[t.Triple[p.Infra.RopePyModule, str, str]] = []
         for ancestor in cls.class_ancestry(composed):
@@ -1715,6 +1723,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Raises:
             ValueError: If declaration-relocation.
+
         """
         before = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             workspace.rope_project,

@@ -40,6 +40,7 @@ class FlextInfraUtilitiesWorkspaceManifest:
 
         Returns:
             The validated declaration belonging to the document's own repository.
+
         """
         result_type = r[m.Infra.RepositoryDeltaSpec]
         fields = set(m.Infra.RepositoryDeltaSpec.model_fields)

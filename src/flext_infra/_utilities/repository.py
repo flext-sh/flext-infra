@@ -43,6 +43,7 @@ class FlextInfraUtilitiesRepository:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         parsed = Requirement(requirement)
         if parsed.url is None or not parsed.url.startswith(
@@ -76,6 +77,7 @@ class FlextInfraUtilitiesRepository:
             Every raw dependency array of project dependencies, optional
             dependencies, dependency groups and UV override and constraint
             tables.
+
         """
         project = u.Cli.toml_mapping_path(payload, (c.Infra.PROJECT,))
         if project is not None:
@@ -111,6 +113,7 @@ class FlextInfraUtilitiesRepository:
         Returns:
             The change notes of every rewritten requirement, or the first
             rewrite failure.
+
         """
         changes: list[str] = []
         for entries in requirements:
@@ -141,6 +144,7 @@ class FlextInfraUtilitiesRepository:
 
         Returns:
             Every mutable source table that may carry Git source entries.
+
         """
         tables: list[t.MutableJsonMapping] = []
         uv_sources = u.Cli.toml_mapping_path(payload, ("tool", "uv", "sources"))
@@ -177,6 +181,7 @@ class FlextInfraUtilitiesRepository:
         Returns:
             The change notes of every rewritten table entry, or the first
             rewrite failure.
+
         """
         changes: list[str] = []
         for table in tables:
@@ -200,6 +205,7 @@ class FlextInfraUtilitiesRepository:
 
         Returns:
             The resulting ``p.Result[t.StrSequence]``.
+
         """
         rewritten_requirements = cls._rewritten_requirement_arrays(
             cls._dependency_requirement_arrays(payload),
@@ -228,6 +234,7 @@ class FlextInfraUtilitiesRepository:
 
         Returns:
             The resulting ``p.Result[t.StrSequence]``.
+
         """
         remote = source.get("git")
         if not isinstance(remote, str):
@@ -528,6 +535,7 @@ class FlextInfraUtilitiesRepository:
 
         Returns:
             The validated origin URL and integration branch.
+
         """
         origin = FlextInfraUtilitiesGitSemanticPublishMixin.git_remote_url(
             m.Infra.GitRemoteUrlRequest(
@@ -773,6 +781,7 @@ class FlextInfraUtilitiesRepository:
 
         Returns:
             Requirement strings from all declared dependency groups.
+
         """
         requirements: list[str] = []
         project = payload.get(c.Infra.PROJECT)
@@ -800,6 +809,7 @@ class FlextInfraUtilitiesRepository:
 
         Returns:
             The provider URL and ref, or the empty pair for a non-line.
+
         """
         name = FlextInfraUtilitiesDependencies.dep_name(requirement)
         if name is None or not name.startswith(prefix):
@@ -838,6 +848,7 @@ class FlextInfraUtilitiesRepository:
 
         Returns:
             The matching native Git URL, or an empty absence payload.
+
         """
         result_type = r[str]
         declarations = (
@@ -951,6 +962,7 @@ class FlextInfraUtilitiesRepository:
 
         Returns:
             The effective codegen inputs, or the load failure.
+
         """
         if inputs is not None:
             return r[m.Infra.CodegenInputs].ok(inputs)
@@ -976,6 +988,7 @@ class FlextInfraUtilitiesRepository:
         Returns:
             The member's declared integration branch, the superproject's
             recursive resolution, or the first declaration failure.
+
         """
         primary_root = identity.primary_root
         if not primary_root.is_relative_to(superproject_root):
@@ -1026,6 +1039,7 @@ class FlextInfraUtilitiesRepository:
         Returns:
             The published integration baseline, or the loud publication
             failure.
+
         """
         baseline = cls.repository_baseline_branch(
             repository_root,

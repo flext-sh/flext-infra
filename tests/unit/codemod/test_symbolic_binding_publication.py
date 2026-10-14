@@ -27,6 +27,7 @@ def symbolic_workspace(mod_workspace: Path) -> Path:
 
     Returns:
         The resulting ``Path``.
+
     """
     tests = mod_workspace / "tests"
     (tests / "unit" / "codegen").mkdir(parents=True)

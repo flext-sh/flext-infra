@@ -106,6 +106,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         Raises:
             TypeError: If the native parser does not return an AST.
+
         """
         value = cls.runtime_callable(
             "rope.refactor.patchedast",
@@ -125,6 +126,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         Raises:
             TypeError: If the native writer does not return source text.
+
         """
         value = cls.runtime_callable(
             "rope.refactor.patchedast",
@@ -339,6 +341,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         Returns:
             Matched character ranges from the module's immutable source snapshot.
+
         """
         finder = cls.semantic_finder(module)
         return tuple(finder.get_match_regions(pattern, arguments, start=start, end=end))
@@ -358,6 +361,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         Raises:
             TypeError: If Rope does not expose its semantic region contract.
+
         """
         finder = cls.runtime_callable("rope.refactor.similarfinder", "SimilarFinder")(
             module,
@@ -496,6 +500,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         Raises:
             TypeError: When Rope cannot provide its declared word facts.
+
         """
         finder = cls._word_finder(source)
         if not isinstance(finder, p.Infra.RopeWorder):

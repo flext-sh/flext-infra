@@ -51,6 +51,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Yields:
             Results of the documentation generation bundle preparation for each batch.
+
         """
         roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
@@ -93,6 +94,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Yields:
             Results of the documentation generation bundle preparation for each batch.
+
         """
         from flext_infra.docs.generator import FlextInfraDocGenerator
 
@@ -325,6 +327,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Returns:
             The rendered scope artifacts, or the first resolution failure.
+
         """
         output_dir = u.Cli.resolve_optional_path(
             request.output_dir,
@@ -408,6 +411,7 @@ class FlextInfraDocGeneratorBundleMixin:
         Returns:
             The authenticated source states with every declared absence
             witness retained.
+
         """
         result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
         captured = u.Infra.required_file_states(paths)
@@ -651,6 +655,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenBootstrapSource]``.
+
         """
         result_type = r[m.Infra.CodegenBootstrapSource]
         inputs = u.Infra.load_codegen_inputs(repository_root)
@@ -693,6 +698,7 @@ class FlextInfraDocGeneratorBundleMixin:
         Returns:
             The governance owner's Git reference, or the first resolution
             failure.
+
         """
         result_type = r[str]
         identity = u.Infra.git_identity(
@@ -724,6 +730,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Returns:
             The dependency family branch, or the first resolution failure.
+
         """
         result_type = r[str]
         line = u.Infra.flext_integration_line(
@@ -761,6 +768,7 @@ class FlextInfraDocGeneratorBundleMixin:
         Returns:
             The owned governance branch, or ``None`` when another owner's
             family line governs, or the first resolution failure.
+
         """
         result_type = r[str | None]
         if origin is None:
