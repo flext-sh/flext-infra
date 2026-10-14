@@ -1634,10 +1634,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 package = source_root / name
                 tm.ok(u.Cli.ensure_dir(package))
                 if layout in {"multiple", "hatch-sources"}:
-                    u.Tests.write_package_init(
-                        package,
-                        "",
-                    )
+                    tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, ""))
                 else:
                     tm.ok(u.Cli.atomic_write_text_file(package / "portion.py", ""))
                 declarations.append(package.relative_to(root).as_posix())
