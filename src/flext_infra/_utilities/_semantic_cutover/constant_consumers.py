@@ -600,7 +600,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                             and (start, end) not in literal_regions
                         ):
                             continue
-                        if literal_type == "__builtin__.int" and not literal.isdecimal():
+                        if (
+                            literal_type == "__builtin__.int"
+                            and not literal.isdecimal()
+                        ):
                             continue
                         expression = (
                             f"${{frozen}}({{{literal}}})" if frozen else literal
