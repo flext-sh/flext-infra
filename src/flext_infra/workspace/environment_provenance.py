@@ -2632,9 +2632,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             binding_file = str(getattr(binding_module, "__file__", "") or "")
             if (
                 "site-packages" in binding_file
-                and expression.id in namespace
                 and current is not None
             ):
+                # Private third-party factories (pydantic's _RootModelMetaclass
+                # and siblings) never bind a public name the AST walk can see:
+                # demanding ``expression.id in namespace`` here demanded a
+                # public witness a private factory cannot carry (aihub-l42it.11
+                # workspace zero-hunt). The package owns the proof either way.
                 return result_type.ok(m.Infra.SourceBinding(value=current))
         supplier_kind = (
             "absent"
