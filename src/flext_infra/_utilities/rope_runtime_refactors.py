@@ -7,25 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import ClassVar
 
 from flext_cli import u
 
 from flext_infra import m, p, r, t
+from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 _NATIVE_REGION_SPAN = 2
 """Character-region tuples carry exactly one begin and one end coordinate."""
 
 
-class _RopeRestructureOptions(m.ArbitraryTypesModel):
+class _RopeRestructureOptions(FlextInfraModelsBase.FrozenArbitrary):
     """Match, admission, and import policies for one Rope restructuring."""
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-        frozen=True,
-        extra="forbid",
-        arbitrary_types_allowed=True,
-    )
 
     arguments: t.MappingKV[str, str] = m.Field(
         description="Pattern argument bindings of the restructuring.",

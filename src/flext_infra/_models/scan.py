@@ -21,6 +21,7 @@ from flext_infra._models import (
     FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,
 )
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsScan:
@@ -139,10 +140,8 @@ class FlextInfraModelsScan:
             m.Field(ge=0, strict=True, description="Exclusive end byte"),
         ]
 
-    class ModOccurrence(m.ArbitraryTypesModel):
+    class ModOccurrence(FlextInfraModelsBase.FrozenArbitrary):
         """Operational rule occurrence consumed by semantic planning and transport."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         rule_file: Annotated[
             t.NonEmptyStr,
@@ -366,10 +365,8 @@ class FlextInfraModelsScan:
                     raise ValueError(msg)
             return self
 
-    class ModTextRule(m.ArbitraryTypesModel):
+    class ModTextRule(FlextInfraModelsBase.FrozenArbitrary):
         """One declarative sed-by-list entry with its exact rewrite receipt."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         rule_id: Annotated[
             t.NonEmptyStr,
@@ -420,10 +417,8 @@ class FlextInfraModelsScan:
             ),
         ] = None
 
-    class ModTextFinding(m.ArbitraryTypesModel):
+    class ModTextFinding(FlextInfraModelsBase.FrozenArbitrary):
         """One text-rule match with its computed replacement."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         rule_id: Annotated[
             t.NonEmptyStr,
@@ -437,10 +432,8 @@ class FlextInfraModelsScan:
             m.Field(description="Expanded replacement for the match"),
         ]
 
-    class ModTextReport(m.ArbitraryTypesModel):
+    class ModTextReport(FlextInfraModelsBase.FrozenArbitrary):
         """Complete text-rule findings for one fixed-point pass."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         findings: Annotated[
             t.NonNegativeInt,
@@ -575,10 +568,8 @@ class FlextInfraModelsScan:
                 )
             return self.model_copy(update={"entries": tuple(entries)})
 
-    class ModScanEvidenceReceipt(m.ArbitraryTypesModel):
+    class ModScanEvidenceReceipt(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticated publication identity and its exact evidence payload."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         path: Annotated[Path, m.Field(description="Published evidence destination")]
         sha256: Annotated[t.NonEmptyStr, m.Field(description="Published byte digest")]

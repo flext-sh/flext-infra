@@ -8,22 +8,17 @@ from __future__ import annotations
 
 from functools import partial
 from pathlib import Path
-from typing import ClassVar, Protocol
+from typing import Protocol
 
 from flext_cli import u as cli_u
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
+from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._utilities import FlextInfraUtilitiesDocsScope
 
 
-class _DocsTopologyOptions(m.ArbitraryTypesModel):
+class _DocsTopologyOptions(FlextInfraModelsBase.FrozenArbitrary):
     """One docs batch's source membership and directory ancestry inputs."""
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-        frozen=True,
-        extra="forbid",
-        arbitrary_types_allowed=True,
-    )
 
     repository_root: Path = m.Field(
         description="Repository receiving the documentation render.",

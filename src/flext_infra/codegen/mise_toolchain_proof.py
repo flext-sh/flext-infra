@@ -29,27 +29,22 @@ import re
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class _DeclaredProofOptions(m.ArbitraryTypesModel):
+class _DeclaredProofOptions(FlextInfraModelsBase.FrozenArbitrary):
     """Frozen read-only inputs proving one declared tool against Mise.
 
     The frozen model is itself the structural read-only contract every proof
     step consumes; no parallel protocol re-declares its fields.
     """
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-        frozen=True,
-        extra="forbid",
-        arbitrary_types_allowed=True,
-    )
 
     entry: m.Infra.MiseToolEntry = m.Field(
         description="Declared tool entry currently under proof.",

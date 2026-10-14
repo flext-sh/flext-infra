@@ -14,24 +14,19 @@ from collections.abc import Generator, Mapping
 from contextlib import ExitStack, contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import ClassVar, Protocol
+from typing import Protocol
 
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
+from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
 
 
-class _RuleDeltaOptions(m.ArbitraryTypesModel):
+class _RuleDeltaOptions(FlextInfraModelsBase.FrozenArbitrary):
     """Optional scope and authentication inputs for one rule delta comparison."""
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-        frozen=True,
-        extra="forbid",
-        arbitrary_types_allowed=True,
-    )
 
     inventory: t.VariadicTuple[t.Pair[str, str]] = m.Field(
         default=(),

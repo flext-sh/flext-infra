@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, Literal, Self
 
 from flext_cli import m as cli_m
 
@@ -15,19 +15,14 @@ from flext_core import m
 from flext_infra import t
 from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
 from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsDocsGeneration:
     """Declaration-only documentation generation contracts."""
 
-    class DocScope(m.ArbitraryTypesModel):
+    class DocScope(FlextInfraModelsBase.FrozenArbitrary):
         """Documentation scope targeting a project or workspace root."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True,
-            extra="forbid",
-            frozen=True,
-        )
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Scope name")]
         path: Annotated[Path, m.Field(description="Absolute lexical scope root")]
@@ -118,14 +113,8 @@ class FlextInfraModelsDocsGeneration:
                 raise ValueError(msg)
             return self
 
-    class DocsRenderedArtifact(m.ArbitraryTypesModel):
+    class DocsRenderedArtifact(FlextInfraModelsBase.FrozenArbitrary):
         """One immutable desired docs artifact relative to its owning scope."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True,
-            extra="forbid",
-            frozen=True,
-        )
 
         relative_path: Annotated[
             Path,
@@ -160,14 +149,8 @@ class FlextInfraModelsDocsGeneration:
                 raise ValueError(msg)
             return self
 
-    class DocsScopeArtifacts(m.ArbitraryTypesModel):
+    class DocsScopeArtifacts(FlextInfraModelsBase.FrozenArbitrary):
         """One scope paired with its complete rendered artifact inventory."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True,
-            extra="forbid",
-            frozen=True,
-        )
 
         scope: Annotated[
             FlextInfraModelsDocsGeneration.DocScope,
@@ -178,14 +161,8 @@ class FlextInfraModelsDocsGeneration:
             m.Field(description="Complete ordered desired artifact inventory"),
         ]
 
-    class DocsGenerationBundle(m.ArbitraryTypesModel):
+    class DocsGenerationBundle(FlextInfraModelsBase.FrozenArbitrary):
         """Single render and source snapshot consumed through publication."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True,
-            extra="forbid",
-            frozen=True,
-        )
 
         producer: Annotated[
             FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis,

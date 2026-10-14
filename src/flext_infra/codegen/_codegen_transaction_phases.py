@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from flext_infra import c, m, r, t, u
+from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenStaging,
@@ -127,14 +128,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         @property
         def batch_admission(self) -> m.Infra.CodegenPhaseOutcome | None: ...
 
-    class _PendingPhase(m.ArbitraryTypesModel):
+    class _PendingPhase(FlextInfraModelsBase.FrozenArbitrary):
         """Dependent-phase append request bound by the phase entry point."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True,
-            extra="forbid",
-            arbitrary_types_allowed=True,
-        )
 
         phase: str = m.Field(
             description="Dependent phase awaiting transaction admission"

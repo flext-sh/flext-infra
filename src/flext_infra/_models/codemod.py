@@ -15,6 +15,7 @@ from typing_extensions import TypeForm
 
 from flext_core import u
 from flext_infra import c, t
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsCodemod:
@@ -41,10 +42,8 @@ class FlextInfraModelsCodemod:
             ),
         ]
 
-    class CodemodBindingSnapshot(m.ArbitraryTypesModel):
+    class CodemodBindingSnapshot(FlextInfraModelsBase.FrozenArbitrary):
         """Closed descriptor-authenticated sources used by occurrence admission."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         states: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
@@ -72,10 +71,9 @@ class FlextInfraModelsCodemod:
                     raise ValueError(msg)
             return tuple(indexed.values())
 
-    class CodemodSourceEpoch(m.ArbitraryTypesModel):
+    class CodemodSourceEpoch(FlextInfraModelsBase.FrozenArbitrary):
         """One shared authenticated text view for an immutable capture operation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
         snapshot: FlextInfraModelsCodemod.CodemodBindingSnapshot = m.Field(
             description="Authenticated binding snapshot defining this source epoch"
         )
@@ -273,10 +271,8 @@ class FlextInfraModelsCodemod:
             m.Field(description="Ordered, identity-constrained Rope contract rules"),
         ]
 
-    class ModFixtureDirectories(m.ArbitraryTypesModel):
+    class ModFixtureDirectories(FlextInfraModelsBase.FrozenArbitrary):
         """Validated physical directories selected by one ast-grep owner."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         rule_dirs: t.VariadicTuple[Path] = m.Field(
             description="Validated rule directories declared by the ast-grep owner",
@@ -288,10 +284,8 @@ class FlextInfraModelsCodemod:
             description="Validated fixture directories declared by the ast-grep owner",
         )
 
-    class ModRuleBatch(m.ArbitraryTypesModel):
+    class ModRuleBatch(FlextInfraModelsBase.FrozenArbitrary):
         """Validated executable ast-grep documents prepared for one circuit."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         inline_rules: Annotated[
             t.NonEmptyStr,

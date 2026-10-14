@@ -101,10 +101,9 @@ class FlextInfraModelsWorkspace:
             description="Cold authority pinned by the capture call",
         )
 
-    class NativeImportRequest(m.ArbitraryTypesModel):
+    class NativeImportRequest(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Loaded producer identities and pinned inputs for source authentication."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         repository_root: Path = m.Field(
             description="Declared workspace whose unchanged source view is consumed",
         )
@@ -126,19 +125,12 @@ class FlextInfraModelsWorkspace:
             exclude=True,
         )
 
-    class WorkspaceEnvironmentRequest(m.ContractModel):
-        """Read-only request for validating the active workspace environment."""
+    class WorkspaceRequest(
+        FlextInfraModelsMixins.RepositoryRootPathMixin, m.ContractModel
+    ):
+        """One explicit repository target for read-only workspace operations."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-        repository_root: Annotated[Path, m.Field(description="Repository root path")]
-
-    class WorkspaceLockRequest(m.ContractModel):
-        """Read-only request for validating the committed uv.lock completeness."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-        repository_root: Annotated[Path, m.Field(description="Repository root path")]
 
     class LifecycleFileObservation(m.ContractModel):
         """Bounded physical file evidence without retaining source contents."""
@@ -254,8 +246,6 @@ class FlextInfraModelsWorkspace:
 
     class WorkspaceRuntimeContext(m.ContractModel):
         """Physical runtime ownership and its selected native resolution input."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         project_root: Annotated[
             Path, m.Field(description="Submitted Git worktree root")
@@ -396,8 +386,6 @@ class FlextInfraModelsWorkspace:
 
     class WorkspaceProjectContext(m.ContractModel):
         """Canonical context derived from one runtime working directory."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         cwd: Annotated[Path, m.Field(description="Resolved submitted directory")]
         identity: Annotated[
@@ -620,8 +608,6 @@ class FlextInfraModelsWorkspace:
 
     class FleetPullRequest(m.ContractModel):
         """One open pull request observed in a member repository."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         number: Annotated[
             int,

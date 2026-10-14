@@ -414,7 +414,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
     class RuffProjectFacts(m.ContractModel):
         """Measured per-project facts the canonical Ruff phase derives from."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         first_party: Annotated[
             t.StrSequence,
             m.Field(description="Detected first-party namespaces"),

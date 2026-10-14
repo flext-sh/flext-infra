@@ -170,8 +170,6 @@ class FlextInfraModelsRefactor(
     class ViolationsTotals(m.ContractModel):
         """One mod scan's violation totals as the sweep compares them."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
         findings: Annotated[
             int,
             m.Field(description="Total mod scan findings"),
@@ -739,10 +737,8 @@ class FlextInfraModelsRefactor(
             m.Field(description="Decorator names applied to this method"),
         ] = m.Field(default_factory=tuple)
 
-    class ProjectClassification(m.ArbitraryTypesModel):
+    class ProjectClassification(FlextInfraModelsBase.FrozenArbitrary):
         """Result of classifying a project by kind and family chains."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_kind: Annotated[
             t.NonEmptyStr,
@@ -879,10 +875,8 @@ class FlextInfraModelsRefactor(
             ),
         ] = ()
 
-    class ApplyRenamesReport(m.ArbitraryTypesModel):
+    class ApplyRenamesReport(FlextInfraModelsBase.FrozenArbitrary):
         """Summary of one CSV-driven rename pass."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         label: Annotated[t.NonEmptyStr, m.Field(description="Rename-list label")]
         files_scanned: Annotated[
@@ -905,10 +899,8 @@ class FlextInfraModelsRefactor(
 
     # -- Namespace Enforcer Models ---------------------------------------------
 
-    class ParsedPythonModule(m.ArbitraryTypesModel):
+    class ParsedPythonModule(FlextInfraModelsBase.FrozenArbitrary):
         """Result of parsing a Python source file into AST."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         source: Annotated[str, m.Field(description="Raw source text")]
         tree: Annotated[
@@ -916,10 +908,8 @@ class FlextInfraModelsRefactor(
             m.Field(description="Parsed PyObject module representation"),
         ]
 
-    class ImportLawScope(m.ArbitraryTypesModel):
+    class ImportLawScope(FlextInfraModelsBase.FrozenArbitrary):
         """Immutable facts one import-law pass decides a module's imports on."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_root: Annotated[Path, m.Field(description="Governed project root")]
         file_path: Annotated[Path, m.Field(description="Normalized module path")]
@@ -971,10 +961,8 @@ class FlextInfraModelsRefactor(
             """
             return self.namespace_dir.name
 
-    class ImportLawPass(m.ArbitraryTypesModel):
+    class ImportLawPass(FlextInfraModelsBase.FrozenArbitrary):
         """One parsed module and the facts one import-law pass reads from it."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         scope: Annotated[
             FlextInfraModelsRefactor.ImportLawScope,
