@@ -261,12 +261,26 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         scope_roots: t.VariadicTuple[Path] = (),
         source_scope: Path | None = None,
         phase: c.Infra.CodegenStagedFilePhase | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Persist the complete native output set without rendering or byte copies."""
         outputs = {item.path: item for item in session.journal.outputs}
+        if batch_admission is not None:
+            if (
+                batch_admission.analysis is None
+                or batch_admission.analysis.files != plans
+                or {item.path for item in batch_admission.outputs}
+                != {item.path for item in plans}
+            ):
+                return r[m.Infra.CodegenTransactionSession].fail(
+                    "output proof differs from its native admitted plan",
+                )
+            outputs.update({item.path: item for item in batch_admission.outputs})
         admitted = {item.before.path: item for item in session.published_files}
         for plan in plans:
             actual = admitted.get(plan.path)
+            if actual is None and plan.path in outputs:
+                continue
             if actual is not None and actual.replacement is not None:
                 state: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = (
                     actual.replacement

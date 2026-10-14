@@ -58,24 +58,26 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 return r[m.Infra.GitSigningIdentityReport].from_failure(observed)
             observations.append(observed.value)
         signing_format, signing_key, allowed_signers = observations
-        if not signing_key.value or not allowed_signers.value:
+        if any(item.value == "" for item in observations):
             return r[m.Infra.GitSigningIdentityReport].fail(
-                "native Git signing configuration declares an empty key "
-                "or trust reference",
+                "native Git signing configuration declares an empty reference",
             )
-        inline = signing_format.value == "ssh" and signing_key.value.startswith("key::")
+        if signing_format.value not in {None, "openpgp", "x509", "ssh"}:
+            return r[m.Infra.GitSigningIdentityReport].fail(
+                "native Git signing configuration declares an unsupported format",
+            )
+        key = signing_key.value
+        trust = allowed_signers.value
+        ssh = signing_format.value == "ssh"
+        inline = ssh and key is not None and key.startswith("key::")
         return r[m.Infra.GitSigningIdentityReport].ok(
             m.Infra.GitSigningIdentityReport(
                 repo_root=root,
                 signing_format=signing_format.value,
-                key_path=(
-                    Path(signing_key.value)
-                    if signing_format.value == "ssh" and not inline
-                    else None
-                ),
+                key_path=Path(key) if ssh and key is not None and not inline else None,
                 inline_public_key=inline,
                 public_fingerprint=None,
-                allowed_signers_path=(Path(allowed_signers.value)),
+                allowed_signers_path=Path(trust) if trust is not None else None,
                 observations=tuple(observations),
             ),
         )
@@ -108,16 +110,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             and not output.stdout
             and not output.stderr
         ):
-            return r[m.Infra.GitSigningConfigObservation].ok(
-                m.Infra.GitSigningConfigObservation(
-                    key=key,
-                    scope=None,
-                    origin=None,
-                    value=None,
-                    process=process,
-                ),
-            )
-        if not u.Cli.process_succeeded(process):
+            scope = origin = value = None
+        elif not u.Cli.process_succeeded(process):
             if not output.stderr:
                 return r[m.Infra.GitSigningConfigObservation].fail(
                     f"native Git signing query failed: {key}; "
@@ -128,14 +122,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GitSigningConfigObservation].fail(
                 output.stderr,
             )
-        fields = output.stdout.split("\0")
-        match fields:
-            case [scope, origin, value, ""] if scope and origin:
-                pass
-            case _:
-                return r[m.Infra.GitSigningConfigObservation].fail(
-                    "native Git signing configuration returned malformed origin data",
-                )
+        else:
+            match output.stdout.split("\0"):
+                case [scope, origin, value, ""] if scope and origin:
+                    pass
+                case _:
+                    return r[m.Infra.GitSigningConfigObservation].fail(
+                        "native Git signing configuration returned malformed origin data",
+                    )
         return r[m.Infra.GitSigningConfigObservation].ok(
             m.Infra.GitSigningConfigObservation(
                 key=key,

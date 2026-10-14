@@ -22,6 +22,26 @@ class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
 
     @staticmethod
+    def test_upgrade_qualifies_source_bindings_before_the_producer(
+        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """Every profile rebinds the resolved lock before its next producer."""
+        _profile, project_root = generated_make_template
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        recipe = makefile.split("_upg_lifecycle: _builtin_setup_submodules\n", 1)[1]
+        recipe = recipe.split("\n_upg_converge:", 1)[0]
+        resolved = recipe.index('$(UV) lock --project "$(PROJECT_ROOT)"')
+        tm.that(
+            resolved
+            < recipe.index("$(SELF_MAKE) _upg_install_runtime", resolved)
+            < recipe.index("workspace verify-environment", resolved)
+            < recipe.index("--what mise-config", resolved),
+            eq=True,
+        )
+
+    @staticmethod
     def test_setup_installs_dependencies_before_importing_infra(
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:

@@ -10,12 +10,14 @@ from collections.abc import Mapping
 from html import unescape
 from typing import TYPE_CHECKING
 
-from flext_cli import u
 from markdown import Markdown
 from markdown.extensions.toc import slugify
 
 from flext_infra import c, m, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesDocsScope,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -288,7 +290,7 @@ class FlextInfraUtilitiesDocsContract:
             return r[m.Infra.CodegenFilePlan].fail(
                 f"docs desired bytes and mode differ: {path}",
             )
-        before = u.Cli.atomic_read_binary_file_state(path, required=False)
+        before = FlextInfraUtilitiesCodegenFilePlan.codegen_target_snapshot(path)
         if before.failure:
             return r[m.Infra.CodegenFilePlan].from_failure(before)
         return r[m.Infra.CodegenFilePlan].ok(

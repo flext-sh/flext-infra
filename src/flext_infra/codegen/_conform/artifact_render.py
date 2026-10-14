@@ -227,7 +227,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if render_inputs is not None:
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
-                render_inputs=render_inputs,
+                target=render_inputs.target,
+                workspace=render_inputs.workspace,
+                codegen=render_inputs.codegen,
             )
             if conformed.failure:
                 return result_type.from_failure(conformed)

@@ -382,10 +382,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 owner="mise",
             )
             session = tm.ok(owner.begin_locked(scope_root, (plan,), (plan,)))
-            return owner.commit_locked(
-                session,
-                lambda: mise_owner.validate_artifacts(root, scope_root),
-            )
+            return owner.commit_locked(session)
 
         tm.ok(owner.run_locked(prepare=True, operation=publish))
         tm.that(stat.S_IMODE(config_path.stat().st_mode), eq=desired_mode)
@@ -869,10 +866,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 tm.fail(
                     owner.publish_prepared_locked(
                         session,
-                        lambda current: owner.commit_locked(
-                            current,
-                            lambda: r[bool].ok(value=True),
-                        ),
+                        owner.commit_locked,
                     ),
                     has="journal changed",
                 )

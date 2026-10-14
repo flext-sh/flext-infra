@@ -113,7 +113,7 @@ class FlextInfraApplyRenames:
         csv_path, driver = state
         plans, pending = planned
 
-        def verify() -> p.Result[bool]:
+        def verify(candidate_root: Path) -> p.Result[bool]:
             nonlocal pending
             current_driver = u.Cli.atomic_read_binary_file_state(
                 csv_path,
@@ -123,11 +123,15 @@ class FlextInfraApplyRenames:
                 return r[bool].fail(
                     f"rename campaign driver changed during publish: {csv_path}",
                 )
-            _fresh, remaining = cls._plan(params, roots, pairs)
+            publication_root = Path(commonpath(roots))
+            candidate_roots = tuple(
+                candidate_root / path.relative_to(publication_root) for path in roots
+            )
+            _fresh, remaining = cls._plan(params, candidate_roots, pairs)
             pending = remaining
             if remaining:
                 return r[bool].fail(
-                    f"CSV campaign post-scan found {remaining} pending edits",
+                    f"CSV campaign candidate scan found {remaining} pending edits",
                 )
             return r[bool].ok(value=True)
 

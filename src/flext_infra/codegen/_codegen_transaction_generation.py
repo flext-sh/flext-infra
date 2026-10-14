@@ -570,6 +570,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
             session,
             all_plans,
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+            batch_admission=admission,
         )
         if bound.failure:
             return result_type.from_failure(bound)

@@ -6,13 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models.check import FlextInfraModelsCheck
@@ -27,17 +26,6 @@ class FlextInfraModelsCodegenTransactionModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         directories: t.VariadicTuple[Path] = m.Field(
             description="Exact generated directories requested by the caller",
-        )
-        validator: Callable[[], p.Result[bool]] | None = m.Field(
-            default=None,
-            description="Caller validation required before committing the phase",
-        )
-        admission: (
-            Callable[[t.VariadicTuple[m.Cli.AtomicDirectoryState]], p.Result[bool]]
-            | None
-        ) = m.Field(
-            default=None,
-            description="Batch topology admission bound to journal-owned directories",
         )
 
     class StagePackagePlan(m.ArbitraryTypesModel):

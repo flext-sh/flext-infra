@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
@@ -105,9 +106,15 @@ class FlextInfraModelsCodegenPipelineModels:
                     or if codegen phase receipt input paths must be unique.
 
             """
-            file_paths = tuple(file.path for file in self.files)
-            if len(set(file_paths)) != len(file_paths):
-                msg = "codegen phase receipt destination paths must be unique"
+            file_paths = Counter(file.path for file in self.files)
+            duplicates = tuple(path for path, count in file_paths.items() if count > 1)
+            if duplicates:
+                msg = (
+                    "codegen phase receipt destination paths must be unique: "
+                    + ", ".join(
+                        f"{path} ({file_paths[path]} plans)" for path in duplicates
+                    )
+                )
                 raise ValueError(msg)
             input_paths = tuple(state.path for state in self.inputs)
             if len(set(input_paths)) != len(input_paths):

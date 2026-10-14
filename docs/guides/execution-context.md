@@ -94,6 +94,13 @@ wheel consumers use the same namespace owner; a missing declared packaged file f
 without borrowing repository or sibling defaults. Target and local overlays remain
 explicit repository inputs, separate from the frozen library singleton.
 
+Upgrade installs the newly resolved lock through its existing frozen provisioning
+owner and verifies its runtime provenance before the next producer. Package election
+resolves the current physical import path independently of loaded-module caches;
+a retired wheel origin does not
+prove the source tree that a new producer will execute. Native provisioning failure
+stops that producer without rewriting the resolved lock or undoing published files.
+
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from
@@ -686,10 +693,17 @@ payloads and machine paths are not exported with these fingerprints.
 through the existing workspace CLI. The report names the declared signing format,
 file references and each setting's effective origin/scope and native process outcome.
 It does not read key/trust files, invoke signing/default-key commands or consult a
-keyring. A missing setting preserves Git's absent-key outcome. File references can
-point to unavailable files; discovery does not claim verified trust or an observed
-public fingerprint. The native signature verifier remains the authority for those
-claims.
+keyring. Undeclared settings preserve Git's absent-key outcome (`1`, with no stdout
+or stderr) and nullable references, not an empty path. Empty declarations, unsupported
+signing formats and native query failures remain errors. File references can point to
+unavailable files; discovery does not claim verified trust or an observed fingerprint.
+The CLI emits the typed report as JSON, excluding native values. Neither `status` nor
+original check/test capture selects signing: capture binds the typed target policy and
+producer evidence. Direct `u.Infra.git_create_gate_attestation` and
+`u.Infra.git_verify_gate_attestation` select signing/publication or signature verification;
+their required trust input and native key/signature failures remain fail-loud. A valid
+observation is never signed proof, and absent signing material does not gate unrelated
+offline producers.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. The

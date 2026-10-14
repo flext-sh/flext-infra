@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_cli import u as cli_u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import FlextInfraConfig, c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesDocsScope
 
 
@@ -175,7 +175,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             if collected.failure:
                 return r[t.VariadicTuple[Path]].from_failure(collected)
             paths.update(collected.value)
-        templates_root = Path(__file__).absolute().parent.parent / "templates"
+        templates_root = FlextInfraConfig.ssot_config_dir().parent / "templates"
         templates = cli_u.Cli.template_capture_sources((
             templates_root / c.Infra.TEMPLATE_MKDOCS_PROJECT,
             templates_root / c.Infra.TEMPLATE_MKDOCS_ROOT,

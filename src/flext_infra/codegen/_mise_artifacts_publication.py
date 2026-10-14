@@ -13,6 +13,7 @@ from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles as files,
+    FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
 )
 
@@ -174,11 +175,20 @@ class FlextInfraMisePublication:
         )
         if destinations.failure:
             return result_type.from_failure(destinations)
+        outputs: list[m.Infra.CodegenJournalSource] = []
+        for plan in analysis.files:
+            captured = FlextInfraMiseArtifactsJournal.source_record(
+                "output", plan.before, path=plan.path
+            )
+            if captured.failure:
+                return result_type.from_failure(captured)
+            outputs.append(captured.value)
         return result_type.ok(
             m.Infra.CodegenPhaseOutcome(
                 analysis=analysis,
                 admitted_states=inputs.value,
                 phase=analysis.phase,
+                outputs=tuple(outputs),
             )
         )
 
@@ -214,10 +224,28 @@ class FlextInfraMisePublication:
                 if u.Infra.codegen_file_requires_effect(plan)
             }
             if expected != {item.before.path for item in publications} or any(
-                item.phase != batch_analysis.phase for item in publications
+                item.phase != batch_analysis.phase
+                and not (
+                    batch_analysis.phase
+                    == c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP
+                    and item.phase == c.Infra.CodegenStagedFilePhase.MISE
+                )
+                for item in publications
             ):
                 return r[m.Infra.CodegenPhaseOutcome].fail(
                     "staged publications differ from admitted batch",
+                )
+            plans = {item.path: item for item in batch_analysis.files}
+            if any(
+                item.project != plans[item.before.path].project
+                or (None if item.replacement is None else item.replacement.content)
+                != plans[item.before.path].desired_content
+                or (None if item.replacement is None else item.replacement.mode)
+                != plans[item.before.path].desired_mode
+                for item in publications
+            ):
+                return r[m.Infra.CodegenPhaseOutcome].fail(
+                    "staged candidates differ from admitted desired outputs",
                 )
             destinations = FlextInfraMiseArtifactsVerification.plans_current(
                 batch_analysis.files, journal=journal
