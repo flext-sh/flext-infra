@@ -285,7 +285,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     "override_dependencies": tuple(
                         dict.fromkeys((
                             *resolution.override_dependencies,
-                            *(member.distribution for member in members),
+                            *(
+                                member.distribution
+                                + FlextInfraUtilitiesDependencyRequirements.dependency_extras(
+                                    local_requirements, member.distribution
+                                )
+                                for member in members
+                            ),
                         ))
                     ),
                 },
