@@ -393,6 +393,19 @@ class FlextInfraWorkspaceNativeReference:
         paths: t.SequenceOf[t.Pair[Path, Path]] = (),
     ) -> p.Result[m.Infra.NativeImportReference]:
         """Capture already-imported native definitions once for the complete epoch."""
+        with u.Infra.open_import_project(Path.cwd()) as project:
+            return cls._capture(names, project, {}, paths=paths)
+
+    @classmethod
+    def _capture(
+        cls,
+        names: t.StrSequence,
+        project: p.Infra.RopeProject,
+        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+        *,
+        paths: t.SequenceOf[t.Pair[Path, Path]] = (),
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Observe the complete epoch with one semantic graph and source inventory."""
         from flext_infra.workspace.environment_provenance import (
             FlextInfraWorkspaceEnvironmentProvenance,
         )
@@ -539,7 +552,26 @@ class FlextInfraWorkspaceNativeReference:
                     ),
                 )
                 continue
-            code = cls._relocate_code(value.__code__, paths)
+            raw_code = value.__code__
+            if not raw_code.co_filename.startswith("<"):
+                declared_supplier = value.__globals__.get("__name__")
+                if type(declared_supplier) is not str:
+                    return r[m.Infra.NativeImportReference].fail(
+                        f"producer physical executable has no source supplier: {binding}",
+                    )
+                captured_source = cls._source_witness(
+                    declared_supplier,
+                    project,
+                    witnesses,
+                )
+                if captured_source.failure:
+                    return r[m.Infra.NativeImportReference].from_failure(
+                        captured_source,
+                    )
+                source_code = cls._compiled_function(captured_source.value, raw_code)
+                if source_code.failure:
+                    return r[m.Infra.NativeImportReference].from_failure(source_code)
+            code = cls._relocate_code(raw_code, paths)
             generated = code.co_filename.startswith("<")
             actual_supplier = value.__globals__.get("__name__")
             if isinstance(actual_supplier, str):

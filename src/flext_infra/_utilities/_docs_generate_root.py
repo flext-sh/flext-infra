@@ -19,6 +19,26 @@ from flext_infra._utilities import (
 )
 
 
+class _DocsRootInputs(m.FrozenModel):
+    """Workspace-level inputs shared by the aggregate root page rendering."""
+
+    workspace_contract: t.JsonMapping = m.Field(
+        description="Validated workspace contract of the repository",
+    )
+    exclude_docs: t.StrSequence = m.Field(
+        default=(),
+        description="Excluded documentation page names",
+    )
+    source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = m.Field(
+        default=None,
+        description="Optional authenticated source states replacing live reads",
+    )
+    source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+        default=(),
+        description="Planned source directory chains of every scope",
+    )
+
+
 class FlextInfraUtilitiesDocsGenerateRootMixin(
     FlextInfraUtilitiesDocsGenerateProjectMixin,
 ):

@@ -43,8 +43,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         scope: p.Infra.RopeScope,
         module: p.Infra.RopePyModule,
     ) -> (
-        t.Pair[m.Infra.LogicalStatement, t.Triple[p.Infra.RopeWorder, int, int]]
-        | None
+        t.Pair[m.Infra.LogicalStatement, t.Triple[p.Infra.RopeWorder, int, int]] | None
     ):
         """Locate the class header base list through Rope's native reader.
 
@@ -203,7 +202,9 @@ class FlextInfraUtilitiesDeclarationPayload:
         """
         argument_words = cls._worder(specialization)
         owner_first, _last = argument_words.code_finder.get_word_parens_range(
-            0, "[", "]",
+            0,
+            "[",
+            "]",
         )
         expression = argument_words.get_primary_at(owner_first - 1)
         binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
