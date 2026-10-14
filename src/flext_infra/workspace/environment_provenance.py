@@ -640,9 +640,14 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     if getattr_static(
                         type(definition), "__getattribute__", None
                     ) is not getattr_static(type, "__getattribute__", None):
+                        storage = vars(type)["__dict__"].__get__(
+                            definition, type(definition)
+                        )
                         return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
                             "producer class has an unadmitted metadata accessor: "
-                            f"module={module_name} binding={binding_name}"
+                            f"module={module_name} binding={binding_name} "
+                            f"stored_module={storage.get('__module__')} "
+                            f"stored_qualname={storage.get('__qualname__')}"
                         )
                     visited[id(definition)] = definition
                     if native:
