@@ -17,7 +17,6 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerificationManifest,
     FlextInfraMiseArtifactsVerificationTopology,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -189,6 +188,10 @@ class FlextInfraMiseArtifactsVerification(
         """
         if outcome.batches:
             return r[bool].ok(value=True)
+        from flext_infra.codegen.codegen_preconditions import (
+            FlextInfraCodegenPreconditions,
+        )
+
         if (
             not outcome.generator_sources
             or not outcome.generator_trees
