@@ -97,7 +97,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         published = cls._publish(
             root,
             working=working,
-            rope_workspace=rope_workspace,
             edits=tuple(edits),
             deletions=tuple(deletions),
         )
@@ -735,7 +734,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         root: Path,
         *,
         working: t.MappingKV[Path, str],
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
         deletions: t.SequenceOf[m.Infra.DuplicateDeletion],
     ) -> p.Result[bool]:

@@ -33,9 +33,6 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
-from flext_infra._utilities._semantic_cutover.family_type_references import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
 
 
 class FlextInfraFlextUtilitiesCodemodBindingChain:

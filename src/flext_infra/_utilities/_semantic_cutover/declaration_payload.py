@@ -88,6 +88,20 @@ class FlextInfraUtilitiesDeclarationPayload:
             return bases
         first, last = words.get_word_parens_range(end - 1)
         arguments, _keywords = words.get_parameters(first, last - 1)
+        specialized_arguments = tuple(
+            argument for argument in arguments if "[" in argument
+        )
+        if not specialized_arguments:
+            return bases
+        finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
+        subscriptions_in_header = tuple(
+            finder.get_match_regions(
+                "${generic_owner}[${generic_arguments}]",
+                {},
+                start=header.start_offset,
+                end=header.end_offset,
+            )
+        )
         parent = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
             module,
             header.start_offset,
@@ -98,6 +112,7 @@ class FlextInfraUtilitiesDeclarationPayload:
             for provider, owner in (
                 ("pydantic", "BaseModel"),
                 ("typing", "Protocol"),
+                ("typing_extensions", "Protocol"),
             )
             if (
                 binding := project
@@ -109,9 +124,25 @@ class FlextInfraUtilitiesDeclarationPayload:
             )
             is not None
         )
-        for argument in arguments:
-            if "[" not in argument:
+        for argument in specialized_arguments:
+            argument_start = header.text.index(argument, first + 1)
+            argument_end = argument_start + len(argument)
+            native_subscriptions = tuple(
+                (start - header.start_offset, stop - header.start_offset)
+                for start, stop in subscriptions_in_header
+                if argument_start <= start - header.start_offset
+                and stop - header.start_offset <= argument_end
+                and not header.text[argument_start : start - header.start_offset].strip(
+                    "() \t\r\n"
+                )
+                and not header.text[stop - header.start_offset : argument_end].strip(
+                    "() \t\r\n"
+                )
+            )
+            if len(native_subscriptions) != 1:
                 continue
+            start, stop = native_subscriptions[0]
+            argument = header.text[start:stop]
             argument_words = cls._worder(argument)
             first, _last = argument_words.code_finder.get_word_parens_range(0, "[", "]")
             expression = argument_words.get_primary_at(first - 1)
@@ -321,8 +352,16 @@ class FlextInfraUtilitiesDeclarationPayload:
         if resolved is None:
             return None
         _module, binding = resolved
-        protocol = project.get_module("typing").get_attribute("Protocol").get_object()
-        return binding if protocol in cls._direct_bases(binding.get_object()) else None
+        bases = cls._direct_bases(binding.get_object())
+        return (
+            binding
+            if any(
+                project.get_module(provider).get_attribute("Protocol").get_object()
+                in bases
+                for provider in ("typing", "typing_extensions")
+            )
+            else None
+        )
 
     @staticmethod
     def _payload_body(

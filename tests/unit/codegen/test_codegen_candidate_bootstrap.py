@@ -23,7 +23,15 @@ def _write_candidate_targets(
     root: Path,
     targets: t.SequenceOf[m.Infra.CandidateBootstrapTargetSpec],
 ) -> Path:
-    """Declare recovery targets through the repository's current config owner."""
+    """Declare recovery targets through the repository's current config owner.
+
+    Args:
+        root: Workspace root whose conformed config file is rewritten.
+        targets: Candidate bootstrap target specs to declare.
+
+    Returns:
+        Path of the rewritten codegen config file declaring the targets.
+    """
     inputs = tm.ok(u.Infra.load_codegen_inputs(root))
     declaration = (inputs.spec.repository or m.Infra.RepositoryDeltaSpec()).model_copy(
         update={"candidate_bootstrap_targets": tuple(targets)},

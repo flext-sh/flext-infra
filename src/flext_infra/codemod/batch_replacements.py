@@ -82,6 +82,10 @@ class FlextInfraModReplacements:
         Args:
             root: Repository root the finding paths are relative to.
             report: The scanned findings whose actionable fixes publish.
+            exact_replacements: Publish exact byte-span replacements instead
+                of recomposed CST output.
+            published_plans: Mutable sink receiving every published file
+                plan; publishing proceeds without capture when omitted.
 
         Returns:
             The resulting ``p.Result[bool]``.

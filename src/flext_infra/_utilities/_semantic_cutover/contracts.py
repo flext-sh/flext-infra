@@ -47,7 +47,15 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
 
     @staticmethod
     def declared_contract_rules() -> t.SequenceOf[m.Infra.RopeContractRule]:
-        """Load typed policy; reject duplicate identities and undeclared families."""
+        """Load typed policy; reject duplicate identities and undeclared families.
+
+        Returns:
+            Declared Rope contract rules in configuration order.
+
+        Raises:
+            ValueError: If two rules share an identity or a rule names an
+                undeclared facade family.
+        """
         rules = m.Infra.RopeContractRules.model_validate(
             u.Cli.yaml_safe_load(
                 type(config).ssot_config_dir().parent

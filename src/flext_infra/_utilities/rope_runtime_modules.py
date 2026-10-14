@@ -423,9 +423,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         Returns:
             The resulting ``Path``.
 
-        Raises:
-            ValueError: If unresolved imported module; or if import has no declared
-                module location.
+        A ``ValueError`` propagates from ``imported_module_resource`` when the
+        imported module is unresolved or the import has no declared module
+        location.
 
         """
         return Path(

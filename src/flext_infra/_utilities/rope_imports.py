@@ -25,9 +25,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSource,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
-from flext_infra._utilities._semantic_cutover.family_type_references import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
 
 
 class FlextInfraUtilitiesRopeImports:

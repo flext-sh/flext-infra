@@ -11,8 +11,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import base64
+import importlib
+import json
+import marshal
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from types import (
+    BuiltinFunctionType,
+    CodeType,
+    FunctionType,
+    GetSetDescriptorType,
+    MemberDescriptorType,
+    MethodType,
+    ModuleType,
+)
 from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
@@ -26,6 +40,79 @@ from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPrecondit
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     """Verify consumers and publication contracts without inherited import state."""
+
+    @classmethod
+    def capture_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Compare executing bindings with an isolated import of pinned sources."""
+        result_type = r[m.Infra.NativeImportReference]
+        for state in request.inputs:
+            current = u.Cli.atomic_read_binary_file_state(state.path, required=True)
+            if current.failure:
+                return result_type.from_failure(current)
+            if current.value != state:
+                return result_type.fail(
+                    f"native import source changed before admission: {state.path}",
+                )
+        code = (
+            "import importlib, sys\n"
+            "from flext_infra import m\n"
+            "from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport\n"
+            "request = m.Infra.NativeImportRequest.model_validate_json(sys.argv[1])\n"
+            "for name in request.modules:\n"
+            "    importlib.import_module(name)\n"
+            "reference = FlextInfraValidateFreshImport.observe_native_reference(request).unwrap()\n"
+            "print(reference.model_dump_json())\n"
+        )
+        observed = u.Cli.run_raw(
+            [
+                str(u.Infra.runtime_python(request.runtime_root)),
+                "-c",
+                code,
+                request.model_dump_json(),
+            ],
+            cwd=request.repository_root,
+        )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        if not u.Cli.process_succeeded(observed.value.outcome):
+            return result_type.fail(
+                "native reference import failed: "
+                + observed.value.stderr
+                + observed.value.stdout,
+            )
+        reference = m.Infra.NativeImportReference.model_validate_json(
+            observed.value.stdout,
+        )
+        current = cls.observe_native_reference(request)
+        if current.failure:
+            return result_type.from_failure(current)
+        if current.value != reference:
+            expected = {item.binding: item for item in reference.bindings}
+            actual = {item.binding: item for item in current.value.bindings}
+            changed = tuple(
+                name
+                for name in sorted(expected.keys() | actual.keys())
+                if expected.get(name) != actual.get(name)
+            )
+            return result_type.fail(
+                "executing producer differs from its isolated native import: "
+                f"bindings={changed}; "
+                f"sources_changed={current.value.sources != reference.sources}",
+            )
+        for state in request.inputs:
+            current_state = u.Cli.atomic_read_binary_file_state(
+                state.path, required=True,
+            )
+            if current_state.failure:
+                return result_type.from_failure(current_state)
+            if current_state.value != state:
+                return result_type.fail(
+                    f"native import source changed during admission: {state.path}",
+                )
+        return result_type.ok(reference)
 
     packages: Annotated[
         t.StrSequence,

@@ -176,6 +176,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         Args:
             request: The conform request containing the root and destination module.
+            inputs: The effective codegen policy with its consulted input states.
 
         Returns:
             The plan and authenticated phase analysis, or the first failure.

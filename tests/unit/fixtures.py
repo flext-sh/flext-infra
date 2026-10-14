@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 from collections.abc import Iterator
+from functools import partial
 from pathlib import Path
 from shlex import quote
 
@@ -18,6 +20,7 @@ import pytest
 
 from flext_infra import config, infra
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 from tests import c, m, p, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
@@ -121,7 +124,11 @@ _CONSUMER_UPGRADE_RECEIPT = "upgrade-receipt.json"
 _CONSUMER_BUILD_RECEIPT = "build-receipt.json"
 
 
-def _provision_consumer_template(parent: Path) -> Path:
+def _provision_consumer_template(
+    parent: Path,
+    *,
+    member_dependencies: t.MappingKV[str, t.StrSequence] | None = None,
+) -> Path:
     """Upgrade and set up the shared worker consumer once through real Make.
 
     The installed session owner keeps this physical checkout at a stable path,
@@ -186,9 +193,51 @@ def _provision_consumer_template(parent: Path) -> Path:
     u.Tests.copy_tracked_mise_seeds(root)
     repository = u.Tests.repository_ref(
         root.name,
-        role=c.Infra.MakeProfile.STANDALONE,
+        role=(
+            c.Infra.MakeProfile.WORKSPACE
+            if member_dependencies
+            else c.Infra.MakeProfile.STANDALONE
+        ),
     ).model_copy(update={"editable": True})
     u.Tests.initialize_git_repo(root, origin_url=repository.url)
+    if member_dependencies:
+        beads = u.Tests.BeadsIdentity(
+            workspace=distribution,
+            database=distribution.replace("-", "_"),
+            issue_prefix="fleet",
+        )
+        for name, requirements in member_dependencies.items():
+            member = root / name
+            u.Tests.WorktreeFixture.initialize_governed_project(
+                member,
+                name,
+                beads=beads,
+            )
+            manifest = member / c.PYPROJECT_FILENAME
+            payload = u.Tests.toml_payload(manifest.read_text(encoding="utf-8"))
+            project = u.Tests.toml_mapping(payload["project"])
+            tm.ok(
+                u.Cli.toml_write_mapping(
+                    manifest,
+                    {
+                        **payload,
+                        "project": {
+                            **project,
+                            "dependencies": [
+                                *u.Tests.toml_strings(project["dependencies"]),
+                                *requirements,
+                            ],
+                        },
+                    },
+                ),
+            )
+            u.Tests.commit_git_changes(member, "declare fleet runtime requirements")
+            u.Tests.WorktreeFixture.attach_submodule(
+                root,
+                member,
+                distribution=name,
+                relative_path=name,
+            )
     workspace = u.Tests.workspace_spec(
         repository,
         project=u.Tests.project_spec(root.name),
@@ -245,6 +294,114 @@ def _provision_consumer_template(parent: Path) -> Path:
     environment = u.Infra.runtime_environment_dir(root)
     tm.that(environment.is_symlink(), eq=False)
     tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+    return root
+
+
+_FLEET_PROVISION = partial(
+    _provision_consumer_template,
+    member_dependencies={
+        "fleet-provider": (),
+        "fleet-consumer": ("fleet-provider",),
+    },
+)
+
+
+@pytest.fixture(scope="session")
+def fleet_session_runtime(
+    tmp_path_factory: pytest.TempPathFactory,
+    run_namespace: m.Tests.TestNamespace,
+) -> Iterator[p.Tests.SessionRuntime]:
+    """Own the distinct installed workspace seed through the shared runtime owner.
+
+    A runtime accepts one provision callback. This topology has Git members,
+    while the ordinary consumer seed deliberately remains standalone.
+    """
+    runtime = u.Tests.SessionRuntime(
+        tmp_path_factory.mktemp(f"{run_namespace.token}-fleet"),
+    )
+    try:
+        yield runtime
+    finally:
+        runtime.close()
+
+
+@pytest.fixture
+def installed_fleet_workspace(
+    fleet_session_runtime: p.Tests.SessionRuntime,
+) -> Iterator[Path]:
+    """Lease actual generated members and frozen installed metadata at stable paths."""
+    with fleet_session_runtime.lease(
+        _FLEET_PROVISION,
+        mutable_environment=True,
+    ) as root:
+        yield root
+
+
+@pytest.fixture
+def native_fleet_signal_hook(installed_fleet_workspace: Path) -> Path:
+    """Inject SIGTERM through the generated hook on the Linux acceptance platform.
+
+    The procfs ancestry contract belongs only to this fault-injection fixture.
+    Other native platforms require their own equivalent proof, never a skip
+    reported as successful signal handling.
+    """
+    if sys.platform != "linux":
+        pytest.fail(
+            "Linux procfs signal injection is inapplicable; this platform "
+            "requires its own configured native Make signal proof",
+        )
+    root = installed_fleet_workspace
+    members = tm.ok(
+        FlextInfraWorkspaceEnvironmentProvenance.editable_members(root),
+    )
+    ordered = u.Infra.workspace_dependency_order(root, members)
+    provider = next(member for member in members if member.distribution == ordered[0])
+    member_root = root / provider.path
+    fault = member_root / "scripts" / "fleet_signal_fault.py"
+    fault.parent.mkdir(parents=True, exist_ok=True)
+    fault.write_text(
+        """\
+import os
+import sys
+from pathlib import Path
+from signal import SIGTERM
+
+executable = Path(sys.argv[1]).resolve(strict=True)
+makefile = Path(sys.argv[2]).resolve(strict=True)
+pid = os.getppid()
+targets = []
+while pid > 1:
+    process = Path("/proc") / str(pid)
+    arguments = process.joinpath("cmdline").read_bytes().split(b"\\0")
+    arguments = [os.fsdecode(argument) for argument in arguments if argument]
+    if process.joinpath("exe").resolve(strict=True) == executable and "-f" in arguments:
+        selected = Path(arguments[arguments.index("-f") + 1])
+        selected = process.joinpath("cwd").resolve(strict=True) / selected
+        if selected.resolve(strict=True) == makefile:
+            targets.append(pid)
+    parent = next(
+        line for line in process.joinpath("status").read_text().splitlines()
+        if line.startswith("PPid:")
+    )
+    pid = int(parent.split()[1])
+if not targets:
+    raise RuntimeError("No exact fleet Make invocation owns this native hook")
+print("Native fleet hook sends SIGTERM to its exact Make ancestry", flush=True)
+for target in reversed(targets):
+    os.kill(target, SIGTERM)
+""",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    custom = member_root / c.Infra.CUSTOM_MAKE_FILENAME
+    content = custom.read_text(encoding=c.DEFAULT_ENCODING) if custom.exists() else ""
+    tm.that("pre-fmt:" in content, eq=False)
+    custom.write_text(
+        content
+        + "\n.PHONY: pre-fmt\npre-fmt:\n"
+        + f"\t@$(PROJECT_INFRA_RUN) {quote(str(fault))} "
+        + f'"$(SELF_MAKE_EXECUTABLE)" {quote(str(member_root / c.Infra.MAKEFILE_FILENAME))}\n',
+        encoding=c.DEFAULT_ENCODING,
+    )
     return root
 
 

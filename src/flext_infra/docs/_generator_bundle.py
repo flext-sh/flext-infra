@@ -11,6 +11,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -99,6 +100,10 @@ class FlextInfraDocGeneratorBundleMixin:
         for scope in selected:
             if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
                 continue
+            producer = FlextInfraCodegenPreconditions.capture_producer()
+            if producer.failure:
+                yield r[m.Infra.DocsGenerationBundle].from_failure(producer)
+                return
             captured = cls._scope_batch_captures(root, declaration, scope, aggregate)
             if captured.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(captured)
@@ -133,11 +138,10 @@ class FlextInfraDocGeneratorBundleMixin:
                 root,
                 rendered.value,
                 states,
-                sources=(
-                    source_roots,
-                    scope.path if scope.name != c.Infra.RK_ROOT else None,
-                    directories,
-                ),
+                producer=producer.value,
+                source_roots=source_roots,
+                source_scope=scope.path if scope.name != c.Infra.RK_ROOT else None,
+                source_directories=directories,
             )
 
     @classmethod
@@ -258,6 +262,9 @@ class FlextInfraDocGeneratorBundleMixin:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
+        producer = FlextInfraCodegenPreconditions.capture_producer()
+        if producer.failure:
+            return r[m.Infra.DocsGenerationBundle].from_failure(producer)
         started_at = perf_counter()
         sources = cls._discovered_sources(request, started_at)
         if sources.failure:
@@ -295,6 +302,7 @@ class FlextInfraDocGeneratorBundleMixin:
             repository_root,
             rendered.value,
             source_states,
+            producer=producer.value,
             source_roots=roots.value,
             source_directories=directories.value,
         )
@@ -519,6 +527,7 @@ class FlextInfraDocGeneratorBundleMixin:
         rendered: list[_DocsScopeArtifacts],
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         *,
+        producer: m.Infra.CodegenPhaseAnalysis,
         source_roots: t.VariadicTuple[Path] = (),
         source_scope: Path | None = None,
         source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
@@ -544,6 +553,7 @@ class FlextInfraDocGeneratorBundleMixin:
             m.Infra.DocsGenerationBundle,
             {
                 "scopes": tuple(normalized.value),
+                "producer": producer,
                 "source_states": source_states,
                 "source_roots": source_roots,
                 "source_scope": source_scope,

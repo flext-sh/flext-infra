@@ -7,76 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
-import re
 import sys
 import sysconfig
-from ast import (
-    AnnAssign,
-    Assign,
-    AsyncFunctionDef,
-    Attribute as AstAttribute,
-    BinOp,
-    BitOr,
-    Call,
-    ClassDef,
-    Constant,
-    Expr,
-    FunctionDef,
-    If,
-    Import,
-    ImportFrom,
-    List as AstList,
-    Module,
-    Name,
-    Not,
-    Subscript,
-    Tuple as AstTuple,
-    UnaryOp,
-    iter_child_nodes,
-    literal_eval,
-    parse,
-    unparse,
-    walk,
-)
-from collections import namedtuple
-from dataclasses import field, is_dataclass
 from functools import lru_cache
-from importlib.machinery import (
-    BuiltinImporter,
-    ExtensionFileLoader,
-    FrozenImporter,
-    PathFinder,
-)
-from importlib.util import resolve_name
-from inspect import (
-    getattr_static,
-    getclosurevars,
-    getsourcefile,
-    isbuiltin,
-    isclass,
-    isfunction,
-    ismethoddescriptor,
-    signature,
-)
+from importlib.machinery import BuiltinImporter, FrozenImporter, PathFinder
+from inspect import getsourcefile
 from json import dumps
 from pathlib import Path
 from sys import modules
-from types import (
-    ClassMethodDescriptorType,
-    CodeType,
-    FunctionType,
-    MemberDescriptorType,
-    MethodDescriptorType,
-    MethodType,
-    SimpleNamespace,
-    WrapperDescriptorType,
-)
-from typing import TYPE_CHECKING, get_args, get_origin
+from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra._utilities import FlextInfraUtilitiesSemanticCutoverBindings
 from flext_infra.workspace import (
     FlextInfraFlextBindingService,
     FlextInfraWorkspaceDetector,
@@ -177,7 +120,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             authenticated = cls.validate_editable_installation(
                 repository,
                 root,
-                metadata_paths=metadata_paths,
+                matches[0],
+                receipt,
             )
             if authenticated.failure:
                 return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(
@@ -505,10 +449,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         An independent public call creates its own complete immutable epoch.
         Mutable configuration and model instances remain their owners' concern.
         """
-        names = tuple(sorted(
-            name for name in tuple(modules)
-            if name == package_name or name.startswith(f"{package_name}.")
-        ))
+        names = tuple(
+            sorted(
+                name
+                for name in tuple(modules)
+                if name == package_name or name.startswith(f"{package_name}.")
+            )
+        )
         if not names:
             return r[t.SequenceOf[t.Triple[str, str, str]]].ok(())
         if reference is None:
@@ -518,10 +465,16 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             for name in names:
                 elected = cls._module_source(name)
                 if elected.failure:
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(elected)
-                observed = u.Cli.atomic_read_binary_file_state(elected.value, required=True)
+                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
+                        elected
+                    )
+                observed = u.Cli.atomic_read_binary_file_state(
+                    elected.value, required=True
+                )
                 if observed.failure:
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(observed)
+                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
+                        observed
+                    )
                 inputs[elected.value] = observed.value
             captured = FlextInfraValidateFreshImport.capture_native_reference(
                 m.Infra.NativeImportRequest(
@@ -542,10 +495,27 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
                 "native reference belongs to another runtime",
             )
+        from flext_infra.workspace.native_reference import (
+            FlextInfraWorkspaceNativeReference,
+        )
+
+        observed = FlextInfraWorkspaceNativeReference.capture(names)
+        if observed.failure:
+            return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(observed)
+        authenticated = FlextInfraWorkspaceNativeReference.compare(
+            observed.value,
+            reference,
+        )
+        if authenticated.failure:
+            return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
+                authenticated,
+            )
         if expected_root is not None:
             for name, origin, declaration in reference.sources:
                 supplier = name.partition("::")[0]
-                if (supplier == package_name or supplier.startswith(f"{package_name}.")) and not Path(
+                if (
+                    supplier == package_name or supplier.startswith(f"{package_name}.")
+                ) and not Path(
                     declaration or origin,
                 ).is_relative_to(expected_root):
                     return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
@@ -1170,7 +1140,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             packages.append((package_name, None))
         exposed: set[t.Pair[str, Path | None]] = set()
         for entry in entries:
-            if re.match(r"^import\s", entry) or not Path(entry).is_absolute():
+            if not Path(entry).is_absolute():
                 return r[bool].fail(
                     "editable provenance pth entry is not an absolute source path: "
                     f"distribution={distribution} entry={entry}",

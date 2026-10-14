@@ -155,11 +155,13 @@ class FlextInfraWorkspaceLifecycle:
                         report = report.model_copy(update={"receipts": tuple(receipts)})
                         published = cls._publish(report)
                         if published.failure:
-                            return r[m.Infra.LifecycleReport].fail(
-                                f"{selected.error}; receipt publication failed: "
-                                f"{published.error}",
-                                exception=selected.exception,
+                            u.Cli.error(
+                                f"receipt publication failed: {published.error}",
                             )
+                            if selected.exception is not None:
+                                selected.exception.add_note(
+                                    f"receipt publication failed: {published.error}",
+                                )
                         return r[m.Infra.LifecycleReport].from_failure(selected)
                     eligible = frozenset(
                         report.workspace_root / member.path for member in selected.value
@@ -174,22 +176,24 @@ class FlextInfraWorkspaceLifecycle:
                         },
                     )
                 else:
-                    receipts[index], original = cls._run(receipt, report.observed_files)
+                    receipts[index], original = cls.run_receipt(
+                        receipt, report.observed_files
+                    )
             else:
-                receipts[index], original = cls._run(receipt, report.observed_files)
+                receipts[index], original = cls.run_receipt(
+                    receipt, report.observed_files
+                )
             report = report.model_copy(update={"receipts": tuple(receipts)})
             published = cls._publish(report)
             if published.failure:
-                failed = receipts[index]
-                return r[m.Infra.LifecycleReport].fail(
-                    f"{failed.error + '; ' if failed.error else ''}"
-                    f"receipt publication failed: {published.error}",
-                    exception=(
-                        original.exception
-                        if original is not None and original.failure
-                        else published.exception
-                    ),
-                )
+                if original is not None and original.failure:
+                    u.Cli.error(f"receipt publication failed: {published.error}")
+                    if original.exception is not None:
+                        original.exception.add_note(
+                            f"receipt publication failed: {published.error}",
+                        )
+                    return r[m.Infra.LifecycleReport].from_failure(original)
+                return r[m.Infra.LifecycleReport].from_failure(published)
             failed = receipts[index]
             if failed.error is not None:
                 return (
@@ -233,7 +237,7 @@ class FlextInfraWorkspaceLifecycle:
         return r[t.VariadicTuple[m.Infra.LifecycleFileObservation]].ok(tuple(states))
 
     @classmethod
-    def _run(
+    def run_receipt(
         cls,
         receipt: m.Infra.LifecycleReceipt,
         relative_paths: t.VariadicTuple[Path],
@@ -276,6 +280,7 @@ class FlextInfraWorkspaceLifecycle:
                 f"forwarded_signal={run.value.forwarded_signal}; "
                 f"output={receipt.output_file}"
             )
+            run = r[p.Cli.ProcessOutcome].fail(error)
         if error is None and after.failure:
             error = after.error
             run = r[p.Cli.ProcessOutcome].from_failure(after)

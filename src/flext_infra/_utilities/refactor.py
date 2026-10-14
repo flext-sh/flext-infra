@@ -648,7 +648,15 @@ class FlextInfraUtilitiesRefactor:
     def mod_scan_inputs(
         report: m.Infra.ModScanReport,
     ) -> m.Infra.CodemodBindingSnapshot:
-        """Union captured sources and distinct binding graphs once per operation."""
+        """Union captured sources and distinct binding graphs once per operation.
+
+        Args:
+            report: Completed mod scan whose entries carry captured states.
+
+        Returns:
+            One binding snapshot uniting the report's source states with each
+            distinct captured binding state.
+        """
         bindings = {
             id(entry.binding_states): entry.binding_states for entry in report.entries
         }

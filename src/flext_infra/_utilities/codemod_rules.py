@@ -805,6 +805,39 @@ class FlextInfraUtilitiesCodemodRules:
         return body
 
     @classmethod
+    def _validated_rule_identity(
+        cls,
+        parsed_rule: t.JsonMapping,
+        resource: Path,
+    ) -> p.Result[t.Triple[str, str, t.VariadicTuple[int]]]:
+        """Validate the rule id, canonical form and declared finding receipt.
+
+        Returns:
+            The rule id with its canonical JSON and declared receipt, or the
+            first validation failure.
+
+        """
+        rule_id = parsed_rule.get("id")
+        if not isinstance(rule_id, str) or not rule_id.strip():
+            return r[t.Triple[str, str, t.VariadicTuple[int]]].fail(
+                f"ast-grep rule document missing id: {resource}",
+            )
+        canonical = u.Cli.json_dumps(
+            dict(parsed_rule),
+            sort_keys=True,
+        )
+        if canonical.failure:
+            return r[t.Triple[str, str, t.VariadicTuple[int]]].from_failure(canonical)
+        declared = cls._declared_expected(parsed_rule)
+        if declared.failure:
+            return r[t.Triple[str, str, t.VariadicTuple[int]]].fail(
+                f"{declared.error}: {resource}",
+            )
+        return r[t.Triple[str, str, t.VariadicTuple[int]]].ok(
+            (rule_id, canonical.value, declared.value),
+        )
+
+    @classmethod
     def _validated_document_rule(
         cls,
         provider: str,
@@ -817,20 +850,10 @@ class FlextInfraUtilitiesCodemodRules:
             The resulting ``p.Result[m.Infra.CodemodRule]``.
 
         """
-        rule_id = parsed_rule.get("id")
-        if not isinstance(rule_id, str) or not rule_id.strip():
-            return r[m.Infra.CodemodRule].fail(
-                f"ast-grep rule document missing id: {resource}",
-            )
-        canonical = u.Cli.json_dumps(
-            dict(parsed_rule),
-            sort_keys=True,
-        )
-        if canonical.failure:
-            return r[m.Infra.CodemodRule].from_failure(canonical)
-        declared = cls._declared_expected(parsed_rule)
-        if declared.failure:
-            return r[m.Infra.CodemodRule].fail(f"{declared.error}: {resource}")
+        identity = cls._validated_rule_identity(parsed_rule, resource)
+        if identity.failure:
+            return r[m.Infra.CodemodRule].from_failure(identity)
+        rule_id, canonical_json, declared_receipt = identity.value
         metadata = parsed_rule.get(c.Infra.CODEMOD_RULE_METADATA_KEY)
         declared_metadata: t.JsonMapping = (
             metadata if isinstance(metadata, Mapping) else {}

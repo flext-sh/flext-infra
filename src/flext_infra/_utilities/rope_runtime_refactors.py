@@ -307,9 +307,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         Returns:
             Matched character ranges from the module's immutable source snapshot.
-
-        Raises:
-            TypeError: If Rope does not expose its semantic region contract.
         """
         finder = cls.semantic_finder(module)
         return tuple(finder.get_match_regions(pattern, arguments, start=start, end=end))

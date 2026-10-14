@@ -36,7 +36,12 @@ class FlextInfraUtilitiesCodegenFilePlan:
     def codegen_target_snapshot(
         path: Path,
     ) -> p.Result[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]:
-        """Capture the original leaf or the exact still-missing parent chain."""
+        """Capture the original leaf or the exact still-missing parent chain.
+
+        Returns:
+            The observed file state when the leaf exists, the missing-parent
+            chain plan when it does not, or the propagated read failure.
+        """
         result_type = r[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]
         observed = u.Cli.atomic_read_binary_file_state(path, required=False)
         if observed.failure:

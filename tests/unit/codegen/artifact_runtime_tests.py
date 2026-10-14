@@ -1,4 +1,8 @@
-"""Real candidate archives must serve consumers with runtime dependencies alone."""
+"""Real candidate archives must serve consumers with runtime dependencies alone.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -268,7 +272,7 @@ class TestsArtifactRuntime:
             eq=True,
             msg=synced.stdout + synced.stderr,
         )
-        print(
+        u.Cli.emit_raw(
             json.dumps(
                 {
                     "consumer": str(consumer),
@@ -278,6 +282,7 @@ class TestsArtifactRuntime:
                 },
                 sort_keys=True,
             )
+            + "\n",
         )
         tm.ok(
             u.Cli.run_checked(
@@ -308,7 +313,7 @@ class TestsArtifactRuntime:
             (repository / c.PYPROJECT_FILENAME).read_bytes(),
             eq=manifest_before,
         )
-        print(
+        u.Cli.emit_raw(
             json.dumps(
                 {
                     "distribution": distribution,
@@ -317,4 +322,5 @@ class TestsArtifactRuntime:
                 },
                 sort_keys=True,
             )
+            + "\n",
         )

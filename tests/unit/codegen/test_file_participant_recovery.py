@@ -742,7 +742,10 @@ class TestsFlextInfraFileParticipantRecovery:
             session = tm.ok(owner.begin_files_locked(scope, roots, ()))
             staging = session.plan.layout.file_participants[0].transaction_root
             before = tm.ok(u.Cli.atomic_inventory_physical_tree(staging))
-            with pytest.raises(ValueError) as rejected:
+            with pytest.raises(
+                ValueError,
+                match=c.ERR_RESULT_FAILURE_REQUIRED,
+            ) as rejected:
                 owner.abort_locked(session, r[bool].ok(value=True))
             tm.that(str(rejected.value), eq=c.ERR_RESULT_FAILURE_REQUIRED)
             tm.that(

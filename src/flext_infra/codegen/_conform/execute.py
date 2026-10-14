@@ -256,8 +256,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         if verified_producer.failure:
             return r[m.Infra.CodegenResult].from_failure(verified_producer)
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            return self._observe_publication(request)
+        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        if inputs.failure:
+            return r[m.Infra.CodegenResult].from_failure(inputs)
         if (
             c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY
             and self.surface_contract(
