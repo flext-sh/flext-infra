@@ -248,7 +248,7 @@ print('physical-provider-proof=' + mutation)
     def test_optional_external_producer_input_retains_exact_absence(
         tmp_path: Path,
     ) -> None:
-        """An optional path outside inventoried trees is still an authenticated input."""
+        """An optional path outside inventoried trees stays an authenticated input."""
         producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
         optional = tmp_path / "not-materialized" / "optional-source.json"
         state = tm.ok(u.Cli.atomic_read_binary_file_state(optional, required=False))

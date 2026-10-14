@@ -130,7 +130,8 @@ class TestsFlextInfraMisePinBootstrap:
         (tmp_path / ".mise.toml").write_text(
             f"[settings]\nlockfile = {str(toolchain.mise_lockfile).lower()}\n"
             "[tools]\n"
-            f'"{toolchain.mise_selector}" = "{mise_version or toolchain.mise_version}"\n',
+            f'"{toolchain.mise_selector}" = '
+            f'"{mise_version or toolchain.mise_version}"\n',
             encoding="utf-8",
         )
         tm.ok(

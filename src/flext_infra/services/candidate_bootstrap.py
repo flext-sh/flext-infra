@@ -222,7 +222,8 @@ class FlextInfraCandidateBootstrapService:
             if publication is not None:
                 if publication.before != state or publication.replacement is None:
                     return r[bool].fail(
-                        "candidate bootstrap declaration lacks its captured publication",
+                        "candidate bootstrap declaration lacks its "
+                        "captured publication",
                     )
                 expected = publication.replacement
             observed = u.Cli.atomic_read_binary_file_state(

@@ -244,11 +244,17 @@ class FlextInfraMisePublication:
                 for path in sorted(input_states.keys() & declared_states.keys())
                 if input_states[path] != declared_states[path]
             )
+            analysis_only = sorted(
+                map(str, input_states.keys() - declared_states.keys()),
+            )
+            publication_only = sorted(
+                map(str, declared_states.keys() - input_states.keys()),
+            )
             return result_type.fail(
                 "batch inputs differ from publication dependencies: "
                 f"phase={analysis.phase}; "
-                f"analysis_only={sorted(map(str, input_states.keys() - declared_states.keys()))}; "
-                f"publication_only={sorted(map(str, declared_states.keys() - input_states.keys()))}; "
+                f"analysis_only={analysis_only}; "
+                f"publication_only={publication_only}; "
                 f"differing_fields={differing}"
             )
         return result_type.ok(inputs.value)

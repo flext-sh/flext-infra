@@ -395,11 +395,12 @@ for target in reversed(targets):
     custom = member_root / c.Infra.CUSTOM_MAKE_FILENAME
     content = custom.read_text(encoding=c.DEFAULT_ENCODING) if custom.exists() else ""
     tm.that("pre-fmt:" in content, eq=False)
+    makefile = quote(str(member_root / c.Infra.MAKEFILE_FILENAME))
     custom.write_text(
         content
         + "\n.PHONY: pre-fmt\npre-fmt:\n"
         + f"\t@$(PROJECT_INFRA_RUN) {quote(str(fault))} "
-        + f'"$(SELF_MAKE_EXECUTABLE)" {quote(str(member_root / c.Infra.MAKEFILE_FILENAME))}\n',
+        + f'"$(SELF_MAKE_EXECUTABLE)" {makefile}\n',
         encoding=c.DEFAULT_ENCODING,
     )
     return root

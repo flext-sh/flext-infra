@@ -212,7 +212,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                     "-c",
                     (
                         "from pathlib import Path; import sys; "
-                        "from flext_infra.workspace import FlextInfraWorkspaceDetector; "
+                        "from flext_infra.workspace import "
+                        "FlextInfraWorkspaceDetector; "
                         "context=FlextInfraWorkspaceDetector.resolution_context("
                         "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())"
                     ),
