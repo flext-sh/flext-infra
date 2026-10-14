@@ -170,6 +170,12 @@ class FlextInfraMisePublication:
         current = FlextInfraMisePublication._source_prerequisites(inputs.value, {})
         if current.failure:
             return result_type.from_failure(current)
+        if analysis.generator_trees:
+            producer = FlextInfraCodegenPreconditions.producer_trees_current(
+                analysis.generator_trees
+            )
+            if producer.failure:
+                return result_type.from_failure(producer)
         destinations = FlextInfraMiseArtifactsVerification.plans_current(
             analysis.files, journal=journal
         )
@@ -271,6 +277,27 @@ class FlextInfraMisePublication:
                 publications,
                 written,
             )
+            if ready.success and journal is not None and journal.generator_trees:
+                authority = {item.path: item for item in journal.outputs}
+                for staged in ordered:
+                    if staged.replacement is None or staged.before.path in published_states:
+                        continue
+                    encoded = FlextInfraMiseArtifactsJournal.source_record("staging", staged.replacement)
+                    if encoded.failure:
+                        ready = r[bool].from_failure(encoded)
+                        break
+                    authority[encoded.value.path] = encoded.value
+                if ready.success:
+                    for _before, after in published_states.values():
+                        encoded = FlextInfraMiseArtifactsJournal.source_record("output", after)
+                        if encoded.failure:
+                            ready = r[bool].from_failure(encoded)
+                            break
+                        authority[encoded.value.path] = encoded.value
+                if ready.success:
+                    ready = FlextInfraCodegenPreconditions.producer_trees_current(
+                        journal.generator_trees, tuple(authority.values())
+                    )
             if ready.success and batch_admission is None:
                 ready = FlextInfraMisePublication._source_prerequisites(
                     publication.source_states,
