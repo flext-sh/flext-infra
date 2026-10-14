@@ -131,6 +131,11 @@ class FlextInfraUtilitiesDeclarationPayload:
             and the native subscription bindings of declared generic owners.
         """
         finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
+        parent = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+            module,
+            header.start_offset,
+            declaration_line=scope.get_start(),
+        )
         try:
             subscriptions_in_header = tuple(
                 finder.get_match_regions(
@@ -145,11 +150,6 @@ class FlextInfraUtilitiesDeclarationPayload:
             # Subscript node inside the matched span carries no region): a
             # header it cannot region simply has no matchable subscription.
             return (), parent, ()
-        parent = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
-            module,
-            header.start_offset,
-            declaration_line=scope.get_start(),
-        )
         subscriptions = cls._native_subscription_bindings(module.pycore.project)
         return subscriptions_in_header, parent, subscriptions
 
