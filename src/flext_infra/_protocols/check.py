@@ -109,6 +109,9 @@ class FlextInfraProtocolsCheck(Protocol):
     class NativeCodeIdentity(Protocol):
         """Immutable native code metadata consumed by source provenance."""
 
+        co_argcount: int
+        co_posonlyargcount: int
+        co_kwonlyargcount: int
         co_filename: str
         co_qualname: str
         co_firstlineno: int
@@ -126,6 +129,44 @@ class FlextInfraProtocolsCheck(Protocol):
             self,
             **changes: p.AttributeProbe | None,
         ) -> FlextInfraProtocolsCheck.NativeCodeIdentity: ...
+
+    class NativeClosureCell(Protocol):
+        """Expose the interpreter-owned contents of one closure cell."""
+
+        @property
+        def cell_contents(self) -> p.AttributeProbe | None: ...
+
+    class NativePythonFunction(Protocol):
+        """Read an elected native Python function through precise contracts."""
+
+        @property
+        def __code__(self) -> FlextInfraProtocolsCheck.NativeCodeIdentity: ...
+
+        @property
+        def __defaults__(self) -> tuple[p.AttributeProbe | None, ...] | None: ...
+
+        @property
+        def __kwdefaults__(self) -> t.MappingKV[str, p.AttributeProbe | None] | None: ...
+
+        @property
+        def __globals__(self) -> t.MappingKV[str, p.AttributeProbe | None]: ...
+
+        @property
+        def __closure__(
+            self,
+        ) -> tuple[FlextInfraProtocolsCheck.NativeClosureCell, ...] | None: ...
+
+        @property
+        def __name__(self) -> str: ...
+
+        @property
+        def __qualname__(self) -> str: ...
+
+        @property
+        def __module__(self) -> str | None: ...
+
+        @property
+        def __dict__(self) -> t.MappingKV[str, p.AttributeProbe | None]: ...
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):

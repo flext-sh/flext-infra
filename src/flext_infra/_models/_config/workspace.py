@@ -65,7 +65,72 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Allowed file extensions (empty = all by pattern)"),
         ] = m.Field(default_factory=tuple)
 
-    class RepositoryDeltaSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class DependencyCommitSourceSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One dependency distribution resolved to an immutable Git commit.
+
+        A staged candidate and a workspace member's recorded gitlink are the
+        same fact: a distribution, its canonical repository and the exact
+        commit it resolves to.
+        """
+
+        distribution: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact dependency distribution name"),
+        ]
+        url: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical HTTPS Git repository URL"),
+        ]
+        commit: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Full immutable Git commit OID"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_source(self) -> Self:
+            if not self.url.startswith("https://") or not self.url.endswith(".git"):
+                msg = "dependency commit source URL must be canonical HTTPS Git"
+                raise ValueError(msg)
+            if (
+                FlextInfraConfigVocabulary.GIT_COMMIT_OID_RE.fullmatch(self.commit)
+                is None
+            ):
+                msg = "dependency commit source must pin a full Git OID"
+                raise ValueError(msg)
+            return self
+
+    class CandidateDependenciesSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Share exact candidate-source validation without changing declaration shape."""
+
+        candidate_dependencies: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec],
+            m.Field(description="Candidate-only exact dependency Git sources"),
+        ] = ()
+
+        @m.field_validator("candidate_dependencies")
+        @classmethod
+        def _validate_candidate_dependencies(
+            cls,
+            values: t.VariadicTuple[
+                FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec
+            ],
+        ) -> t.VariadicTuple[
+            FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec
+        ]:
+            """Require one immutable candidate per distribution and repository."""
+            distributions = tuple(
+                canonicalize_name(item.distribution, validate=True) for item in values
+            )
+            if len(set(distributions)) != len(distributions):
+                msg = "candidate dependency distributions must be unique"
+                raise ValueError(msg)
+            urls = tuple(item.url for item in values)
+            if len(set(urls)) != len(urls):
+                msg = "candidate dependency repository URLs must be unique"
+                raise ValueError(msg)
+            return values
+
+    class RepositoryDeltaSpec(CandidateDependenciesSpec):
         """Own repository differences; Git and project metadata own identity.
 
         The effective codegen configuration composes this declaration from the
@@ -198,40 +263,6 @@ class FlextInfraConfigModelsWorkspace:
         def _validate_path(self) -> Self:
             if self.path.is_absolute():
                 msg = "candidate bootstrap path must be relative"
-                raise ValueError(msg)
-            return self
-
-    class DependencyCommitSourceSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One dependency distribution resolved to an immutable Git commit.
-
-        A staged candidate and a workspace member's recorded gitlink are the
-        same fact: a distribution, its canonical repository and the exact
-        commit it resolves to.
-        """
-
-        distribution: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact dependency distribution name"),
-        ]
-        url: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical HTTPS Git repository URL"),
-        ]
-        commit: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Full immutable Git commit OID"),
-        ]
-
-        @m.model_validator(mode="after")
-        def _validate_source(self) -> Self:
-            if not self.url.startswith("https://") or not self.url.endswith(".git"):
-                msg = "dependency commit source URL must be canonical HTTPS Git"
-                raise ValueError(msg)
-            if (
-                FlextInfraConfigVocabulary.GIT_COMMIT_OID_RE.fullmatch(self.commit)
-                is None
-            ):
-                msg = "dependency commit source must pin a full Git OID"
                 raise ValueError(msg)
             return self
 
@@ -488,7 +519,7 @@ class FlextInfraConfigModelsWorkspace:
         path: Annotated[Path, m.Field(description="Workspace-relative path")]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
 
-    class WorkspaceManifestSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class WorkspaceManifestSpec(CandidateDependenciesSpec):
         """Complete versioned input contract for ``config/workspace.yaml``."""
 
         version: Annotated[
@@ -558,10 +589,6 @@ class FlextInfraConfigModelsWorkspace:
             FlextInfraConfigModelsContexts.WorkspaceIntegrationSpec | None,
             m.Field(description="Optional integration provider overlay"),
         ] = None
-        candidate_dependencies: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec],
-            m.Field(description="Candidate-only exact dependency Git sources"),
-        ] = ()
         candidate_bootstrap_targets: Annotated[
             FlextInfraConfigModelsWorkspace.CandidateBootstrapTargets,
             m.Field(description="Declared candidate worktrees conformed by Infra"),
@@ -632,12 +659,6 @@ class FlextInfraConfigModelsWorkspace:
                     "repository policy overlays reference unknown projects: "
                     + ", ".join(sorted(unknown_projects))
                 )
-                raise ValueError(msg)
-            candidate_names = tuple(
-                item.distribution for item in self.candidate_dependencies
-            )
-            if len(set(candidate_names)) != len(candidate_names):
-                msg = "candidate dependency distributions must be unique"
                 raise ValueError(msg)
             targets = self.candidate_bootstrap_targets
             if len({target.path for target in targets}) != len(targets):
@@ -720,7 +741,7 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Run the consumer's make fix-accessors verb"),
         ] = True
 
-    class WorkspaceSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class WorkspaceSpec(CandidateDependenciesSpec):
         """Local identity plus topology read from this repository's Git inputs."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
@@ -782,10 +803,6 @@ class FlextInfraConfigModelsWorkspace:
                 ),
             ),
         ] = None
-        candidate_dependencies: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec],
-            m.Field(description="Candidate-only exact dependency Git sources"),
-        ] = ()
         candidate_bootstrap_targets: Annotated[
             FlextInfraConfigModelsWorkspace.CandidateBootstrapTargets,
             m.Field(description="Declared candidate worktrees for bootstrap"),

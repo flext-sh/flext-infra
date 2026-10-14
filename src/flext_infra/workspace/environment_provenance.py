@@ -16,6 +16,7 @@ from inspect import getsourcefile
 from json import dumps
 from pathlib import Path
 from sys import modules
+from types import ModuleType
 from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
@@ -206,7 +207,14 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[Path].fail(
                 f"producer source module is not registered: {module_name}"
             )
-        namespace = vars(module)
+        ancestry = vars(type)["__mro__"].__get__(
+            type(module), type(type(module))
+        )
+        if not any(owner is ModuleType for owner in ancestry):
+            return r[Path].fail(
+                f"producer source supplier has no native module storage: {module_name}"
+            )
+        namespace = vars(ModuleType)["__dict__"].__get__(module, type(module))
         native = namespace.get("__spec__")
         if native is None or modules.get(native.name) is not module:
             return r[Path].fail(f"producer module lacks its native spec: {module_name}")
@@ -226,7 +234,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 )
             if native.origin == "frozen" and (
                 native.loader_state != expected.loader_state
-                or getsourcefile(module) != native.loader_state.filename
+                or namespace.get("__file__") != native.loader_state.filename
             ):
                 return r[Path].fail(
                     f"producer frozen source differs from interpreter: {module_name}"

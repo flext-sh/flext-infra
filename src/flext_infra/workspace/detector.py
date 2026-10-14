@@ -859,6 +859,7 @@ class FlextInfraWorkspaceDetector(
                 project=resolved_refs[0][2],
                 namespace_scan_dirs=declaration.namespace_scan_dirs,
                 integration=declaration.integration,
+                candidate_dependencies=declaration.candidate_dependencies,
                 candidate_bootstrap_targets=declaration.candidate_bootstrap_targets,
                 docs_audit=declaration.docs_audit,
                 subprojects=tuple(resolved_refs[1][0]),

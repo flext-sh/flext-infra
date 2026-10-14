@@ -343,8 +343,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         if not members:
             return result_type.ok(((), ()))
+        from flext_infra.workspace import FlextInfraWorkspaceDetector
+
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return result_type.from_failure(context)
         locked = u.Cli.atomic_read_binary_file_state(
-            repository_root / c.Infra.UV_LOCK_FILENAME,
+            context.value.lock_path,
             required=False,
         )
         if locked.failure:

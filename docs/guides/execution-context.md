@@ -157,6 +157,12 @@ the native MRO without invoking descriptor callbacks. The receiver alias must re
 that descriptor identity, and the actual supplier declaration and executed function
 must match physical source. Replacing either side, its source, or its code fails;
 membership of the supplier in the receiver's MRO does not waive alias authentication.
+An alias assigned after a method declaration in the same class resolves from
+that class's physical namespace before the module namespace. An assignment
+before that declaration retains its source-bound module reference. A later
+class-local name never changes an earlier binding. An absent binding remains a
+failure; authentication never manufactures an operand from a path or a missing
+name.
 Native class attribute access preserves method/property identity, exposes a
 staticmethod's exact function, and binds a classmethod to the exact accessed class.
 Alias checks verify those source-declared forms against raw receiver storage without
@@ -175,6 +181,9 @@ construction hook. Function compilation uses authenticated native suppliers and
 data-only attachment targets; alias operands and compiler constructor bindings
 require admission before invocation. Value comparison must not invoke authored
 equality, hashing, or attribute access.
+Compiler field defaults use the existing native operand-admission contract.
+Immutable scalar defaults are valid inputs; a default with a `__set_name__`
+callback remains inadmissible before native class assembly.
 Dataclass ancestry is compared with its source-declared bindings and retained as
 supplier evidence, not replayed to construct compiler data. Native assembly uses an
 object-rooted data-only class with authenticated declarations and fields; neither
@@ -282,6 +291,11 @@ The project's authored dependency categories retain their identity. Native
 resolver views derive from those declarations without promoting dev or examples
 requirements to runtime dependencies. Sources, overrides and Make routing come
 from the generator and are never repaired in their projections.
+In particular, Infra consumes Tests through its development requirements; Core
+consumes Infra and Tests through development and example requirements. These
+reciprocal development requirements remain resolver inputs and do not create
+runtime dependency cycles. Tests' runtime use of Infra keeps its declared
+category.
 
 Fleet execution consumes the canonical runtime dependency waves, with names
 ordered within each wave. It invokes each selected member's public Makefile

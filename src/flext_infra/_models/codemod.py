@@ -93,7 +93,7 @@ class FlextInfraModelsCodemod:
                 for state in self.snapshot.states
                 if state.content is not None
             }
-            if self.sources.keys() != expected or self.contents.keys() != expected:
+            if set(self.sources) != expected or set(self.contents) != expected:
                 msg = "source epoch must contain every present captured input"
                 raise ValueError(msg)
             for state in self.snapshot.states:

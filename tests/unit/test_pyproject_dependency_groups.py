@@ -19,6 +19,84 @@ from tests import c, m, p, t, tm, u
 class TestsPyprojectDependencyGroups:
     """Exercise the same public TOML boundary consumed by native resolution."""
 
+    @pytest.mark.parametrize("variant", ["same", "extras", "marker", "origin", "bound"])
+    def test_development_composition_preserves_complete_requirement_identity(
+        self,
+        variant: str,
+    ) -> None:
+        """Authored occurrences and distinct policy obligations survive composition."""
+        own = self._workspace(c.Infra.MakeProfile.STANDALONE).repository.distribution
+        floor = "composition-floor>=1.0,<3.0"
+        parsed = Requirement(floor)
+        requirements = {
+            "same": f"{parsed.name.upper()}{parsed.specifier}",
+            "extras": f"{parsed.name}[feature]{parsed.specifier}",
+            "marker": f"{floor}; implementation_name == 'cpython'",
+            "origin": (
+                f"{parsed.name} @ git+"
+                f"{u.Tests.repository_ref(parsed.name).url}@{u.Tests.provider_branch()}"
+            ),
+            "bound": f"{parsed.name}>=2.0,<3.0",
+        }
+        authored = requirements[variant]
+        declared = (authored, authored, f"{own}[feature]")
+        policy = config.Infra.codegen.scaffold.project.model_copy(
+            update={
+                "dev": (floor, own, floor),
+                "required_flext_dev": (),
+            },
+        )
+
+        composed = u.Infra.project_development_requirements(
+            policy,
+            distribution=own,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+            declared=declared,
+        )
+
+        tm.that(composed[: len(declared)], eq=declared)
+        tm.that(
+            composed[len(declared) :],
+            eq=() if Requirement(authored) == Requirement(floor) else (floor,),
+        )
+        source = self._source(
+            f"dev = {json.dumps(list(declared))}\n"
+            'examples = [{include-group = "dev"}]',
+            project_fields="[project.optional-dependencies]\nfeature = []",
+        )
+        rendered = tm.ok(
+            self._conform(
+                source,
+                c.Infra.MakeProfile.STANDALONE,
+                required_dev_dependencies=composed,
+            ),
+        )
+        actual = u.Tests.toml_mapping(u.Tests.toml_doc(rendered))
+        groups = u.Tests.toml_mapping(actual["dependency-groups"])
+        actual_entries = tuple(
+            Requirement(requirement)
+            for requirement in u.Tests.toml_strings(groups["dev"])
+        )
+        actual_requirements = set(actual_entries)
+        tm.that(Requirement(authored) in actual_requirements, eq=True)
+        tm.that(actual_entries.count(Requirement(authored)), eq=2)
+        tm.that(Requirement(floor) in actual_requirements, eq=True)
+        tm.that(Requirement(f"{own}[feature]") in actual_requirements, eq=True)
+        tm.that(groups["examples"], eq=[{"include-group": "dev"}])
+        project = u.Tests.toml_mapping(actual["project"])
+        tm.that(project["dependencies"], eq=[])
+        tm.that(project["optional-dependencies"], eq={"feature": []})
+        tm.that(
+            tm.ok(
+                self._conform(
+                    rendered,
+                    c.Infra.MakeProfile.STANDALONE,
+                    required_dev_dependencies=composed,
+                ),
+            ),
+            eq=rendered,
+        )
+
     @staticmethod
     def _workspace(role: c.Infra.MakeProfile) -> m.Infra.WorkspaceSpec:
         return u.Tests.workspace_spec(
@@ -188,10 +266,10 @@ class TestsPyprojectDependencyGroups:
         self,
         role: c.Infra.MakeProfile,
     ) -> None:
-        """A floor owns its dimension while extra, marker and Git variants survive."""
+        """Floors retain authored bounds, extras, markers and Git occurrences."""
         name = "variant-floor"
         floor = f"{name}>=2.0"
-        replaced = f"{name}>=1.0"
+        authored_bound = f"{name}>=1.0"
         extra = f"{name}[feature]>=1.0,<3.0"
         marked = f"{name}>=1.0; sys_platform == 'linux'"
         origin = u.Tests.repository_ref(name)
@@ -200,7 +278,7 @@ class TestsPyprojectDependencyGroups:
         codegen = str(c.Infra.DependencyGroup.CODEGEN)
         authored_name = dev.capitalize()
         source = self._source(
-            f"{authored_name} = [{json.dumps(replaced)}, {json.dumps(marked)}, "
+            f"{authored_name} = [{json.dumps(authored_bound)}, {json.dumps(marked)}, "
             '{include-group = "base"}, '
             f"{json.dumps(extra)}, {json.dumps(direct)}, {json.dumps(marked)}]\n"
             f"{codegen} = []\n"
@@ -227,7 +305,10 @@ class TestsPyprojectDependencyGroups:
         )
         tm.that(
             u.Tests.toml_list(groups[authored_name]),
-            eq=[floor, marked, {"include-group": "base"}, extra, direct, marked],
+            eq=[
+                floor, authored_bound, marked, {"include-group": "base"},
+                extra, direct, marked,
+            ],
         )
         tm.that(
             groups["examples"],

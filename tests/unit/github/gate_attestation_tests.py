@@ -614,6 +614,7 @@ class TestsFlextInfraGithubGateAttestation:
                 policy=evidence[0].policy,
                 policy_digest=evidence[0].policy_digest,
             ),
+            TestsFlextInfraGithubGateAttestation._context(root),
         )
 
     def test_signed_gate_attestation_round_trip_is_local(
@@ -623,7 +624,10 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test signed gate attestation round trip is local."""
         allowed_signers = signed_repository_factory(tmp_path)
-        created = u.Infra.git_create_gate_attestation(self._request(tmp_path))
+        created = u.Infra.git_create_gate_attestation(
+            self._request(tmp_path),
+            self._context(tmp_path),
+        )
 
         tm.ok(created)
         head = self._head(tmp_path)

@@ -438,14 +438,8 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             Authored requirements followed by missing applicable suppliers.
         """
         own = canonicalize_name(distribution)
-        authored = tuple(
-            dict.fromkeys(
-                item
-                for item in declared
-                if canonicalize_name(Requirement(item).name) != own
-            )
-        )
-        names = {canonicalize_name(Requirement(item).name) for item in authored}
+        authored = tuple(declared)
+        retained = {Requirement(item) for item in authored}
         policy = (
             *scaffold.dev,
             *(
@@ -454,14 +448,14 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                 else ()
             ),
         )
-        return (
-            *authored,
-            *(
-                requirement
-                for requirement in policy
-                if canonicalize_name(Requirement(requirement).name) not in {*names, own}
-            ),
-        )
+        additions: list[str] = []
+        for requirement in policy:
+            parsed = Requirement(requirement)
+            if canonicalize_name(parsed.name) == own or parsed in retained:
+                continue
+            retained.add(parsed)
+            additions.append(requirement)
+        return (*authored, *additions)
 
     @classmethod
     def project_dependency_names_from_payload(
