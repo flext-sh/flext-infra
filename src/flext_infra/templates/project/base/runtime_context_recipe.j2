@@ -1,0 +1,63 @@
+{#- Native Git owns physical boundaries; native UV owns membership. The same
+    shell readers serve Make parsing and direnv without importing Python or
+    inspecting workspace member patterns. Reading never installs a tool. -#}
+{% macro git_discovery_context(project_root, make_syntax=false) -%}
+{% set d = "$$" if make_syntax else "$" -%}
+set -eu; \
+unset GIT_CEILING_DIRECTORIES; \
+git_local_keys="{{ d }}(git rev-parse --local-env-vars)"; \
+for git_local_key in {{ d }}git_local_keys; do \
+	case "{{ d }}git_local_key" in (GIT_CONFIG|GIT_CONFIG_PARAMETERS|GIT_CONFIG_COUNT) ;; (*) unset "{{ d }}git_local_key" ;; esac; \
+done; \
+project_root={{ project_root }}; \
+git_root="{{ d }}(git -C "{{ d }}project_root" rev-parse --show-toplevel)"; \
+git_root="{{ d }}(cd "{{ d }}git_root" && pwd -P)";
+{%- endmacro %}
+
+{% macro git_root_reader(project_root, make_syntax=false) -%}
+{% set d = "$$" if make_syntax else "$" -%}
+{{ git_discovery_context(project_root, make_syntax) }} \
+printf '%s\n' "{{ d }}git_root"
+{%- endmacro %}
+
+{% macro runtime_root_reader(project_root, uv_tool, make_syntax=false) -%}
+{% set d = "$$" if make_syntax else "$" -%}
+{{ git_discovery_context(project_root, make_syntax) }} \
+superproject="{{ d }}(git -C "{{ d }}project_root" rev-parse --show-superproject-working-tree)"; \
+if [ -n "{{ d }}superproject" ]; then \
+	cd "{{ d }}superproject" && pwd -P; \
+	exit 0; \
+fi; \
+scope="{{ d }}git_root"; \
+if [ "{{ d }}project_root" = "{{ d }}git_root" ]; then \
+	parent="{{ d }}(dirname "{{ d }}project_root")"; \
+	while [ "{{ d }}parent" != / ]; do \
+		if [ -f "{{ d }}parent/pyproject.toml" ]; then \
+			git_parent="{{ d }}parent"; \
+			while [ "{{ d }}git_parent" != / ] && [ ! -e "{{ d }}git_parent/.git" ]; do git_parent="{{ d }}(dirname "{{ d }}git_parent")"; done; \
+			if [ -e "{{ d }}git_parent/.git" ]; then scope="{{ d }}(git -C "{{ d }}parent" rev-parse --show-toplevel)"; fi; \
+			break; \
+		fi; \
+		parent="{{ d }}(dirname "{{ d }}parent")"; \
+	done; \
+fi; \
+scope="{{ d }}(cd "{{ d }}scope" && pwd -P)"; \
+case "{{ d }}project_root/" in ("{{ d }}scope/"*) ;; (*) printf 'ERROR: native workspace discovery scope does not contain this project: %s\n' "{{ d }}scope" >&2; exit 2 ;; esac; \
+if [ "{{ d }}scope" = "{{ d }}project_root" ]; then printf '%s\n' "{{ d }}project_root"; exit 0; fi; \
+unset MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE UV_PROJECT UV_PROJECT_ENVIRONMENT UV_WORKING_DIRECTORY UV_NO_CONFIG; \
+MISE_CONFIG_DIR="{{ d }}scope/.mise"; \
+MISE_SYSTEM_CONFIG_DIR="{{ d }}MISE_CONFIG_DIR"; \
+MISE_GLOBAL_CONFIG_FILE="{{ d }}scope/.mise.toml"; \
+if [ -f "{{ d }}MISE_CONFIG_DIR/config.toml" ]; then MISE_GLOBAL_CONFIG_FILE="{{ d }}MISE_CONFIG_DIR/config.toml"; fi; \
+MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}scope")"; \
+export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
+uv_requested="{{ d }}(mise -C "{{ d }}scope" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
+uv_binary="{{ d }}(mise -C "{{ d }}scope" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@{{ d }}uv_requested")"; \
+if [ ! -x "{{ d }}uv_binary" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
+owner="{{ d }}("{{ d }}uv_binary" workspace dir --project "{{ d }}project_root")"; \
+case "{{ d }}owner" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "{{ d }}owner" >&2; exit 2 ;; esac; \
+owner="{{ d }}(cd "{{ d }}owner" && pwd -P)"; \
+case "{{ d }}owner/" in ("{{ d }}scope/"*) ;; (*) printf 'ERROR: native UV workspace owner leaves its Git scope: %s\n' "{{ d }}owner" >&2; exit 2 ;; esac; \
+case "{{ d }}project_root/" in ("{{ d }}owner/"*) ;; (*) printf 'ERROR: native UV workspace owner does not contain this project: %s\n' "{{ d }}owner" >&2; exit 2 ;; esac; \
+printf '%s\n' "{{ d }}owner"
+{%- endmacro %}

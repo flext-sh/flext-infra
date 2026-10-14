@@ -1128,22 +1128,6 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Planning failures retained alongside valid outputs"),
         ] = ()
 
-    class CodegenResult(FlextInfraConfigModelsContract.ConfigContract):
-        """Public conformance outcome for check and apply modes."""
-
-        plan: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenPlan,
-            m.Field(description="Plan that governed the operation"),
-        ]
-        written_files: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Files atomically replaced by apply"),
-        ] = ()
-        errors: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Fail-closed validation or write errors"),
-        ] = ()
-
     class RenameCampaignSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared CSV-driven rename campaign applied by the mod verb."""
 

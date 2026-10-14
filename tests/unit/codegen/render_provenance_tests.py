@@ -6,30 +6,105 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib.metadata
+import shutil
 from pathlib import Path
+from shlex import quote
 
-from flext_infra import c
-from flext_infra.__version__ import __version__
-from flext_infra.codegen._conform.artifact_render import (
-    FlextInfraCodegenConformArtifactRender,
-)
+import pytest
+
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConform
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraRenderProvenance:
-    """The pyproject composition stamps the running generator's identity."""
+    """Rendered Make controls execute the installed, metadata-owned namespace."""
 
-    def test_composed_pyproject_carries_the_rendered_by_stamp(
-        self, tmp_path: Path
+    @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
+    @pytest.mark.parametrize("ci_context", [False, True])
+    def test_controller_ignores_undeclared_and_caller_sources(
+        self,
+        tmp_path: Path,
+        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        profile: c.Infra.MakeProfile,
+        *,
+        ci_context: bool,
     ) -> None:
-        """The one generated header names the motor version that rendered it.
-
-        Why (aihub-l42it.11): a Makefile emitted by a template generation that
-        exists in no commit poisoned every bootstrap; a stamped artifact makes
-        the drift report name both sides (rendered-by vs consumed) instead of
-        a bare byte diff.
-        """
-        stamp = FlextInfraCodegenConformArtifactRender.rendered_by_stamp()
-
-        assert stamp == f"{c.Infra.RENDERED_BY_MARKER}{__version__}"
-        assert c.Infra.RENDERED_BY_MARKER in stamp
-        assert __version__ in stamp
+        """Real provisioned consumers reject both source-shadowing entry points."""
+        project = resolved_make_templates[profile]
+        tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=project,
+                    what=c.Infra.CodegenConformSurface.MAKEFILE,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                ),
+                ports=None,
+            )
+        )
+        tm.that(
+            (project / c.Infra.MAKEFILE_FILENAME).read_text(),
+            has=f"{c.Infra.RENDERED_BY_MARKER}{importlib.metadata.version(config.Infra.name)}",
+        )
+        override = tmp_path / "caller-source"
+        marker = tmp_path / "undeclared-controller-executed"
+        nested = project / "flext-infra"
+        tm.that(nested.exists(), eq=False)
+        for source in (nested / "src", override):
+            package = source / "flext_infra"
+            package.mkdir(parents=True, exist_ok=True)
+            (package / c.Infra.INIT_PY).write_text(
+                f"from pathlib import Path\nPath({str(marker)!r}).touch()\n"
+                "raise RuntimeError('undeclared controller executed')\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        custom = project / c.Infra.CUSTOM_MAKE_FILENAME
+        original = custom.read_bytes()
+        probe = (
+            "import importlib.metadata as md,pathlib,flext_infra; "
+            f"d=md.distribution({config.Infra.name!r}); "
+            "p=pathlib.Path(flext_infra.__file__).resolve(); "
+            "print('controller-file='+str(p)); print('controller-owned='+str(any("
+            "d.locate_file(f).resolve()==p for f in d.files)))"
+        )
+        try:
+            custom.write_bytes(
+                original
+                + (
+                    f"\npost-help:\n\t@$(PROJECT_INFRA_RUN) -c {quote(probe)}\n"
+                    '\t@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"\n'
+                ).encode(c.DEFAULT_ENCODING)
+            )
+            process = tm.ok(
+                u.Tests.run_isolated_make(
+                    [f"FLEXT_INFRA_SUBMODULE_SRC={override}", "help"],
+                    cwd=project,
+                    env={
+                        "PYTHONPATH": str(override),
+                        "MYPYPATH": str(override),
+                        "VIRTUAL_ENV": str(override),
+                        "UV_PROJECT": str(override),
+                        "UV_PROJECT_ENVIRONMENT": str(override),
+                        config.Infra.codegen.make.ci.variable: (
+                            config.Infra.codegen.make.ci.value if ci_context else ""
+                        ),
+                    },
+                )
+            )
+        finally:
+            custom.write_bytes(original)
+            shutil.rmtree(nested)
+        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stderr)
+        tm.that(process.stdout, has="controller-owned=True")
+        selected = Path(
+            next(
+                line.removeprefix("controller-file=")
+                for line in process.stdout.splitlines()
+                if line.startswith("controller-file=")
+            )
+        )
+        tm.that(
+            selected.is_relative_to(u.Infra.runtime_environment_dir(project)), eq=True
+        )
+        tm.that(marker.exists(), eq=False)

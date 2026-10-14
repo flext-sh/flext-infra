@@ -604,6 +604,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         analysis: m.Infra.CodegenPhaseAnalysis,
         policy: m.Infra.CodegenPhasePublicationPolicy,
         *,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+        | None = None,
+        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
         staged_validator: Callable[
             [
                 m.Infra.CodegenTransactionSession,
@@ -623,9 +626,12 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         started = self.begin_files_locked(scope_root, roots, analysis.inputs)
         if started.failure:
             return result_type.from_failure(started)
+        bound = self.bind_publication_proof(started.value, analysis.files)
+        if bound.failure:
+            return result_type.from_failure(bound)
         prepared = self.append_directories_locked(
-            started.value.model_copy(
-                update={"exception": started.value.exception or analysis.exception},
+            bound.value.model_copy(
+                update={"exception": bound.value.exception or analysis.exception},
             ),
             analysis.phase,
             policy.directories,
@@ -638,10 +644,16 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             analysis.files,
             issues=analysis.issues,
             staged_validator=staged_validator,
+            batch_analysis=batch_analysis,
+            admission=policy.admission,
         )
         if published.failure:
             return result_type.from_failure(published)
-        return self.commit_locked(published.value, policy.validator)
+        return self.commit_locked(
+            published.value,
+            policy.validator,
+            publication_receipts=publication_receipts,
+        )
 
     def validate(
         self,
@@ -772,9 +784,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     def abort_locked(
         self,
         session: m.Infra.CodegenTransactionSession,
-        failure: str,
+        failure: p.FailureLike,
     ) -> p.Result[bool]:
-        """Recover the complete prepared transaction and preserve the cause.
+        """Recover a native failure; reject a success before touching its journal.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -805,21 +817,18 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         try:
             outcome = operation(session)
         except Exception as exc:
-            self._recover_failure(layout, str(exc), exception=exc)
+            self._recover_failure(layout, r[bool].fail(str(exc), exception=exc))
             raise
-        if outcome.success or (
-            outcome.error_data is not None and "cleanup_error" in outcome.error_data
-        ):
-            return outcome
-        return r[T].from_failure(
-            self._recover_failure(
-                layout,
-                outcome.error or "generation phase failed",
-                exception=outcome.exception,
-                error_code=outcome.error_code,
-                error_data=outcome.error_data,
-            ),
-        )
+        if outcome.failure:
+            if outcome.error_data is not None and "cleanup_error" in outcome.error_data:
+                return outcome
+            return r[T].from_failure(
+                self._recover_failure(
+                    layout,
+                    outcome,
+                ),
+            )
+        return outcome
 
 
 __all__: list[str] = ["FlextInfraCodegenTransaction"]

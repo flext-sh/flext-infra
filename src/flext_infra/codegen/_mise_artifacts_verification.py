@@ -28,6 +28,217 @@ class FlextInfraMiseArtifactsVerification(
     """Manifest, topology, and liveness verification for Mise transactions."""
 
     @classmethod
+    def publication_current(
+        cls,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Authenticate a completed publication without planning or rendering."""
+        root = request.root.expanduser().resolve()
+        observed = cls._read_publication(root)
+        result = r[m.Infra.CodegenPhaseOutcome]
+        if observed.failure:
+            return result.from_failure(observed)
+        outcome = observed.value
+        surface = c.Infra.CodegenConformSurface(request.what)
+        scope = c.Infra.CodegenConformScope(request.scope)
+        covers_surface = outcome.surface == surface or (
+            outcome.surface is c.Infra.CodegenConformSurface.ALL
+            and surface is not c.Infra.CodegenConformSurface.ALL
+        )
+        covers_scope = outcome.scope == scope or (
+            outcome.scope is c.Infra.CodegenConformScope.ALL
+            and scope is c.Infra.CodegenConformScope.SELF
+            and root in outcome.scope_roots
+        )
+        if (
+            not covers_surface
+            or not covers_scope
+            or not outcome.scope_roots
+            or (
+                scope
+                in {
+                    c.Infra.CodegenConformScope.SELF,
+                    c.Infra.CodegenConformScope.ALL,
+                }
+                and root not in outcome.scope_roots
+            )
+        ):
+            return result.fail(
+                "generation publication does not cover this request: "
+                f"{root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH}; "
+                "run make gen",
+            )
+        return result.ok(outcome)
+
+    @classmethod
+    def _read_publication(
+        cls,
+        root: Path,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Authenticate the stored native receipt before testing request coverage."""
+        root = root.expanduser().resolve()
+        report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        captured = FlextInfraMiseArtifactsFiles.read_state(report, required=False)
+        result = r[m.Infra.CodegenPhaseOutcome]
+        if captured.failure:
+            return result.from_failure(captured)
+        content = captured.value.content
+        if content is None:
+            return result.fail(
+                f"generation publication receipt is missing: {report}; run make gen",
+            )
+        parsed = result.create_from_callable(
+            lambda: m.Infra.CodegenPhaseOutcome.model_validate_json(content),
+        )
+        if parsed.failure:
+            return result.from_failure(parsed)
+        outcome = parsed.value
+        if (
+            not outcome.completed
+            or outcome.error
+            or outcome.issues
+            or outcome.pending_files
+            or not (outcome.outputs or outcome.batches)
+            or outcome.root != root
+            or outcome.transaction_id is None
+        ):
+            return result.fail(
+                f"generation publication does not cover this request: {report}; "
+                "run make gen",
+            )
+        current = cls.publication_states_current(outcome)
+        if current.failure:
+            return result.from_failure(current)
+        unchanged = cls.states_current((captured.value,))
+        if unchanged.failure:
+            return result.from_failure(unchanged)
+        return result.ok(outcome)
+
+    @classmethod
+    def publication_states_current(
+        cls,
+        outcome: m.Infra.CodegenPhaseOutcome,
+    ) -> p.Result[bool]:
+        """Verify the terminal frontier of the actual ordered journal batches."""
+        from flext_infra.codegen import FlextInfraMiseArtifactsJournal
+
+        frontier: dict[Path, m.Infra.CodegenJournalSource] = {}
+        advanced = cls._publication_frontier(outcome, frontier)
+        if advanced.failure:
+            return advanced
+        for expected in frontier.values():
+            if expected.absent_parent is not None:
+                ancestry = u.Cli.atomic_plan_directory_chain(expected.path.parent)
+                if ancestry.failure:
+                    return r[bool].from_failure(ancestry)
+                if ancestry.value != expected.absent_parent:
+                    return r[bool].fail(
+                        f"generation source ancestry changed: {expected.path}; "
+                        "run make gen",
+                    )
+            observed = FlextInfraMiseArtifactsFiles.read_state(
+                expected.path,
+                required=expected.sha256 is not None,
+            )
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            recorded = FlextInfraMiseArtifactsJournal.source_record(
+                expected.phase,
+                observed.value,
+                previous=expected,
+            )
+            if recorded.failure:
+                return r[bool].from_failure(recorded)
+            if recorded.value != expected:
+                return r[bool].fail(
+                    f"generation publication state changed: {expected.path}; "
+                    "run make gen",
+                )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _publication_frontier(
+        cls,
+        outcome: m.Infra.CodegenPhaseOutcome,
+        frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
+    ) -> p.Result[bool]:
+        """Advance only through outputs authorized by their native effect journal."""
+        if (
+            not outcome.completed
+            or outcome.error
+            or outcome.issues
+            or outcome.pending_files
+            or outcome.root is None
+            or outcome.transaction_id is None
+            or not (outcome.outputs or outcome.batches)
+        ):
+            return r[bool].fail("generation batch is incomplete; run make gen")
+        for witness in outcome.source_topology:
+            observed = u.Cli.atomic_plan_directory_chain(witness.target)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != witness:
+                return r[bool].fail(
+                    f"generation source topology changed: {witness.target}; run make gen",
+                )
+        outputs = {item.path: item for item in outcome.outputs}
+        written = set(outcome.written_files)
+        if outcome.batches:
+            if written != {
+                path for batch in outcome.batches for path in batch.written_files
+            }:
+                return r[bool].fail(
+                    "generation operation differs from its actual batches",
+                )
+        elif not written.issubset(
+            set(outcome.effect_targets)
+            & set(outcome.attempted_files)
+            & outputs.keys(),
+        ):
+            return r[bool].fail("generation writes have no journal effect authority")
+        inputs: dict[Path, list[m.Infra.CodegenJournalSource]] = {}
+        for source in (*outcome.sources, *outcome.generator_sources):
+            inputs.setdefault(source.path, []).append(source)
+        for path, records in inputs.items():
+            previous = frontier.get(path)
+            if previous is not None and not any(
+                record.model_dump(exclude={"phase"})
+                == previous.model_dump(exclude={"phase"})
+                for record in records
+            ):
+                return r[bool].fail(
+                    f"generation batch input differs from preceding output: {path}",
+                )
+            if path not in written and any(
+                record.model_dump(exclude={"phase"})
+                != records[0].model_dump(exclude={"phase"})
+                for record in records[1:]
+            ):
+                return r[bool].fail(
+                    f"generation inputs disagree without an owned write: {path}",
+                )
+            frontier[path] = records[0]
+        for path, output in outputs.items():
+            if path in written:
+                if path not in inputs:
+                    return r[bool].fail(
+                        f"generation output has no authenticated preimage: {path}",
+                    )
+            elif path in frontier and (
+                frontier[path].model_dump(exclude={"phase"})
+                != output.model_dump(exclude={"phase"})
+            ):
+                return r[bool].fail(
+                    f"generation output changed without an owned write: {path}",
+                )
+            frontier[path] = output
+        for batch in outcome.batches:
+            advanced = cls._publication_frontier(batch, frontier)
+            if advanced.failure:
+                return advanced
+        return r[bool].ok(value=True)
+
+    @classmethod
     def states_current(
         cls,
         states: t.VariadicTuple[m.Cli.AtomicFileState],
@@ -59,7 +270,7 @@ class FlextInfraMiseArtifactsVerification(
         for original_expected in states:
             expected = original_expected
             if expected.parent_device is None and journal is not None:
-                rebound = cls._bind_source_parent(expected, journal)
+                rebound = cls.bind_source_parent(expected, journal)
                 if rebound.failure:
                     return r[bool].from_failure(rebound)
                 rebound_expected = rebound.value
@@ -83,7 +294,7 @@ class FlextInfraMiseArtifactsVerification(
         return r[bool].ok(value=True)
 
     @classmethod
-    def _bind_source_parent(
+    def bind_source_parent(
         cls,
         expected: m.Cli.AtomicFileState,
         journal: m.Infra.CodegenTransactionJournal,
@@ -96,7 +307,11 @@ class FlextInfraMiseArtifactsVerification(
         """
         result = r[m.Cli.AtomicFileState]
         source = next(
-            (item for item in journal.sources if item.path == expected.path),
+            (
+                item
+                for item in (*journal.sources, *journal.outputs)
+                if item.path == expected.path and item.absent_parent is not None
+            ),
             None,
         )
         if (

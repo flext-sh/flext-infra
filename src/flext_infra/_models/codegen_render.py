@@ -238,6 +238,10 @@ class FlextInfraModelsCodegenRender:
     class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed only by the generated project ``.envrc``."""
 
+        toolchain: Annotated[
+            FlextInfraConfigModelsContract.ToolchainSpec,
+            m.Field(description="Governed native reader shared with Make"),
+        ]
         uv_resolution: Annotated[
             FlextInfraConfigModelsMake.MakeUvResolutionSpec,
             m.Field(description="Native resolver input ownership shared with Make"),

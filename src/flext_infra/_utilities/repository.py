@@ -16,9 +16,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from urllib.parse import urlparse
 
-from packaging.requirements import Requirement
-
 from flext_cli import u
+from packaging.requirements import Requirement
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -168,7 +167,8 @@ class FlextInfraUtilitiesRepository:
         source[reference_key] = migration.target_ref
         return r[t.StrSequence].ok((
             (
-                f"Git {reference_key} {migration.source_ref} -> {migration.target_ref}: "
+                f"Git {reference_key} {migration.source_ref} -> "
+                f"{migration.target_ref}: "
                 f"{name}"
             ),
         ))

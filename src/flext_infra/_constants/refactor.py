@@ -33,7 +33,7 @@ class FlextInfraConstantsRefactor:
         / "mod-findings.json"
     )
     "Canonical single-file evidence snapshot for the latest mod scan."
-    MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[int] = 2
+    MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[int] = 3
     "Exact structured mod evidence schema version."
     MOD_SCAN_SOURCE_DRIFT_ERROR_CODE: ClassVar[str] = "MOD_SCAN_SOURCE_DRIFT"
     "Typed failure code: one finding's source bytes changed during scanning."

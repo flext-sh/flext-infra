@@ -78,8 +78,16 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
 
     @pytest.mark.parametrize("package", [False, True])
-    def test_root_identity_is_not_overridden(self, package: bool) -> None:
-        """Native root identity preserves its complete dependency groups."""
+    def test_packaged_root_renders_workspace_source_without_self_override(
+        self, package: bool
+    ) -> None:
+        """A packaged root renders its native workspace identity source only.
+
+        The self distribution never enters ``override-dependencies``: an
+        empty SSOT resolution removes the key entirely, so a standalone
+        repository locks exactly like a fleet member and keeps its full dev
+        closure in the lock.
+        """
         workspace = self._workspace(role=self._ROLE.STANDALONE)
         workspace = workspace.model_copy(
             update={
@@ -114,6 +122,14 @@ class TestsFlextInfraPyprojectConformTopologySources:
             u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
             eq=(),
         )
+        if package:
+            tm.that(
+                u.Tests.toml_mapping(uv.get("sources")),
+                eq={workspace.repository.distribution: {"workspace": True}},
+            )
+        else:
+            tm.that("sources" in uv, eq=False)
+        tm.that("override-dependencies" in uv, eq=False)
         repeated = tm.ok(
             u.Infra.pyproject_conform(
                 rendered,
@@ -270,6 +286,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         consumer = self._member_ref("acme-driver", "plugins/driver")
         workspace = self._workspace(provider, consumer)
         bound = f'{provider.distribution}[feature]>=1; python_version >= "3.13"'
+        runtime_requirement = 'typing-extensions>=4; python_version >= "3.13"'
         provider_path = tmp_path / provider.path / c.PYPROJECT_FILENAME
         provider_path.parent.mkdir(parents=True)
         provider_path.write_text(
@@ -282,7 +299,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         consumer_path.parent.mkdir(parents=True)
         consumer_path.write_text(
             f'[project]\nname = "{consumer.distribution}"\nversion = "1.0.0"\n'
-            f"dependencies = ['{bound}']\n"
+            f"dependencies = ['{bound}', '{runtime_requirement}']\n"
             '[dependency-groups]\nchecks = ["hypothesis>=6"]\n'
             'qa = [{include-group = "checks"}]\n',
             encoding="utf-8",
@@ -311,6 +328,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             eq={"build>=1", "hypothesis>=6", "pytest>=8"},
         )
         tm.that({"pytest>=8", "hypothesis>=6"}.issubset(dev), eq=True)
+        tm.that({"idna>=3", runtime_requirement}.issubset(dev), eq=True)
         tm.that(
             f"{provider.distribution}[feature] @ "
             f"git+{provider.url}@{u.Tests.integration().branch}" in dev,
@@ -952,6 +970,29 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 ),
             ),
             eq=rendered,
+        )
+
+    def test_standalone_preserves_declared_nonlocal_source(self) -> None:
+        """Conformance owns local topology, not a user's independent Git source."""
+        dependency = self._member_ref("flext-custom", "flext-custom")
+        source_entry = {"git": dependency.url, "rev": u.Tests.provider_branch()}
+        source = u.Cli.toml_dumps(
+            u.Cli.toml_document_from_mapping({
+                "project": {"name": "consumer", "version": "0.1.0", "dependencies": []},
+                "tool": {"uv": {"sources": {dependency.distribution: source_entry}}},
+            }),
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=self._workspace(role=self._ROLE.STANDALONE),
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+            ),
+        )
+        tm.that(
+            u.Tests.toml_table_at(rendered, "tool", "uv", "sources"),
+            eq={dependency.distribution: source_entry},
         )
 
     def test_external_consumer_keeps_direct_git_requirement(self) -> None:

@@ -8,9 +8,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, m, r, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra import c, m, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
+    FlextInfraCodegenTransaction,
+)
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,11 +48,45 @@ class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
             if self.effective_dry_run
             else c.Infra.CodegenConformMode.APPLY
         )
-        return self.conform_target(
-            self.repository_root,
-            surface=c.Infra.CodegenConformSurface.MAKEFILE,
-            mode=mode,
-        )
+        roots: t.VariadicTuple[Path] = (requested,)
+        context = FlextInfraWorkspaceDetector.resolution_context(requested)
+        if context.failure:
+            return r[bool].from_failure(context)
+        if not context.value.standalone:
+            members = FlextInfraWorkspaceEnvironmentProvenance.editable_members(
+                requested,
+            )
+            if members.failure:
+                return r[bool].from_failure(members)
+            roots = (
+                requested,
+                *(requested / member.path for member in members.value),
+            )
+        receipts: list[m.Infra.CodegenPhaseOutcome] = []
+        for root in roots:
+            conformed = self.conform_target(
+                root,
+                surface=c.Infra.CodegenConformSurface.MAKEFILE,
+                mode=mode,
+                publication_receipts=receipts,
+            )
+            if conformed.failure:
+                return conformed
+        if mode is c.Infra.CodegenConformMode.APPLY and len(roots) > 1:
+            qualified = FlextInfraCodegenTransaction.publish_operation_receipt(
+                m.Infra.CodegenConformRequest(
+                    root=requested,
+                    what=c.Infra.CodegenConformSurface.MAKEFILE,
+                    scope=c.Infra.CodegenConformScope.ALL,
+                    mode=mode,
+                ),
+                tuple(receipts),
+                scope_roots=roots,
+                completed=True,
+            )
+            if qualified.failure:
+                return r[bool].from_failure(qualified)
+        return r[bool].ok(value=True)
 
     @staticmethod
     def conform_target(
@@ -53,6 +94,8 @@ class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
         *,
         surface: c.Infra.CodegenConformSurface,
         mode: c.Infra.CodegenConformMode,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+        | None = None,
     ) -> p.Result[bool]:
         """Run the owned conform transaction for a checked bootstrap target.
 
@@ -73,6 +116,14 @@ class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
         )
         if conformed.failure:
             return r[bool].from_failure(conformed)
+        if mode is c.Infra.CodegenConformMode.APPLY:
+            receipt = conformed.value.publication_receipt
+            if receipt is None:
+                return r[bool].fail(
+                    f"Makefile bootstrap has no completed publication receipt: {root}",
+                )
+            if publication_receipts is not None:
+                publication_receipts.append(receipt)
         return r[bool].ok(value=True)
 
 

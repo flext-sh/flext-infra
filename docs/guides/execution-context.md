@@ -179,8 +179,10 @@ declared generation and repair verbs; dependency resolution requires a separate,
 explicit `make upg` at the selected workspace or standalone owner.
 Git dependencies follow their declared integration branches, and `APPLY` stays removed.
 
-One `make upg` run converges. It resolves the Mise lock before provisioning,
-upgrades `uv.lock`, installs the upgraded generator and conforms dependency floors.
+One `make upg` run provisions the frozen producer before corrective pyproject
+projection, without requiring final runtime admission. The elected runtime
+owner resolves both native views; attached members delegate that operation
+to their workspace.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -190,11 +192,16 @@ native lock payloads or substitute manual installation commands.
 
 `codegen.scaffold.project.retired_dev` declares development distributions that
 must no longer reach managed `dev` or `codegen` groups. Conformance filters them
-from existing groups, optional development extras, and member contributions;
+from existing groups and member contributions;
 declaring the same distribution as a required development floor fails. Retire
 obsolete typing stubs here when their runtime SDK supplies inline typing, then
 regenerate and run `make upg` to reconcile locks and the installed environment.
 Do not uninstall packages manually or weaken the type checker.
+
+PEP 621 optional extras and PEP 735 dependency groups retain their separate
+categories, including when both declare a name such as `dev` or `codegen`.
+Conformance preserves each extra's requirement strings, bounds, markers and
+origins; a matching group name does not authorize moving or deleting the extra.
 
 Member contributions carry per-occurrence provenance in both managed development
 groups. CUSTOM entries retain their full constraints and origins; removing a
@@ -250,8 +257,8 @@ are parsed by Git's native boolean GET operation. A malformed value fails before
 provisioning and preserves Git's diagnostic; it never becomes an exclusion.
 Run runtime actions through the root Make dispatcher. Its recipes use the
 setup-owned interpreter without selecting a member's lock for synchronization. Only
-setup and upgrade provision dependencies. A provenance failure is repaired through setup,
-not through a `--no-sync` override or a source-path injection.
+setup and upgrade provision dependencies. A stale Git binding requires canonical
+generation and `make upg`, then setup; never a manual installer or source override.
 
 ## Runtime environment
 
@@ -280,8 +287,9 @@ borrowed from another checkout fails before candidate checks or publication.
 
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
 release as a `[tools]` entry, and `mise.lock` pins it like every other tool. One host
-Mise capable of reading the committed lock provisions that entry; setup verifies
-the installed release and enters the recursive Make lifecycle through it. Every
+Mise provisions that entry; setup enters the recursive Make lifecycle through the
+verified executable. Without a self-pin, setup qualifies the installed host Mise;
+the absent pin remains an audit defect, never an invented release. Every
 later `mise` resolved through the shims is the pinned release, and `make audit`
 (`codegen mise-proof`) fails when the running Mise differs from the lock.
 
@@ -302,8 +310,8 @@ release metadata publishes no checksum declares `lock_checksum: false`.
 `make setup` and `make upg` pass the explicit declared key list
 (`toolchain.mise_install_keys`) to `mise install`. A bare `mise install` would also
 provision every tool of the operator's global Mise registry, so no generated recipe
-runs one. After the environment is provisioned, `make setup` runs the reality proof
-(`flext-infra codegen mise-proof`) before `post-setup`. For each declared tool, in
+runs one. After setup provisions the environment, `make audit` runs the reality proof
+(`flext-infra codegen mise-proof`). For each declared tool, in
 order, it stops at the first defect:
 
 1. the `mise.lock` entry exists, names a version the toolchain selector accepts, and
@@ -325,9 +333,8 @@ Mise reaches GitHub to install a tool missing from its cache and to resolve
 releases during `make upg`. Only `make upg` writes `mise.lock` and `uv.lock`;
 `make setup` never writes either. A missing or incompatible Mise lock entry fails
 with its original diagnostic and exit status, without disabling lockfiles or
-retrying. Setup checks whether `uv.lock` agrees with the manifests. A matching lock uses
-`--locked`; a drifted lock emits its diagnostic and installs the committed lock
-with `--frozen`, without rewriting it. Drift and any resulting dependency
+retrying. Setup installs `uv.lock` with `--frozen`, without a lock verdict or rewrite.
+Audit judges manifest satisfaction and lock integrity. Drift and resulting dependency
 incompatibility remain red until `make upg` produces matching locks. A missing
 lock fails with an actionable diagnostic. A failed native resolver or installer
 retains its original failure; no downgrade, retry or disabled lock policy masks it.
@@ -404,6 +411,36 @@ targets account for attempted effects; remaining targets stay pending. Final
 accounting cannot mark an invocation complete while any authorized effect is
 pending. This inventory covers publication effects, not unchanged files or a
 repository's unexecuted checks.
+
+The operation receipt separately records its requested surface, elected repository
+roots, and the actual completed transaction batches, including unchanged outputs.
+`initialize` qualifies only its Makefile bootstrap; its read-only verification does
+not require or certify complete generation. Complete generation qualifies its
+managed and documentation batches after each has settled. A complete `all` scope
+can verify the `self` subset only when that repository root is in its recorded
+coverage. Checks authenticate source, generator, output and physical identities
+without planning, rendering, repairing or replacing the receipt. Missing coverage
+and changed identities remain failures.
+
+Workspace Make bootstrap composes the root and eligible members' actual receipts
+after each has published once. A member failure prevents completed aggregate
+coverage. Member eligibility reads PEP 610 metadata, editable path inventory and
+package resolution from the elected physical Python environment. A foreign API
+caller does not lend its installed packages to that decision. Resolution observed
+in that Python is distinguished from loaded-code execution; loaded-code provenance
+remains checked when the caller is the elected interpreter. Hosted topology uses
+the declared hosted-provider flag independently of the local CI gate partition.
+
+Installed metadata comes from that Python's physical `purelib` and `platlib`
+directories. Its `sys.path` supplies separate import-resolution observations.
+Editable source-tree `egg-info` stays outside the installed inventory; duplicate
+installed metadata and directories outside the elected prefix remain failures.
+
+PEP 735 dependency groups retain string requirements and `include-group` tables
+in order, including repeated occurrences. Group references are local to their
+declaring project; absent references, cycles and normalized name collisions fail.
+Runtime and optional dependency metadata retain PEP 508 strings. Development
+groups remain groups and are never promoted into distribution runtime metadata.
 
 The pytest runner retains the native exit code when startup fails before a final
 JUnit report is produced. Its process-outcome receipt and raw log remain available,
@@ -503,6 +540,12 @@ planning report at `.reports/codegen-plan.json` records each selected repository
 outcome, exception type and original traceback. Generation reports failures at
 their affected files and retains successfully generated files. Changes made
 outside the generator do not authorize restoration of earlier workspace bytes.
+Transaction recovery and public `abort_locked` consume native `p.FailureLike` values,
+not error strings. A successful result is rejected before journal inspection or cleanup;
+an empty failure remains a failure. The initiating exception, error code and metadata
+survive recovery, while `cleanup_error`, `recovery_context` and exception notes record
+secondary diagnostics. A validator's `ok(False)` is an explicit publication rejection,
+not a native failure whose metadata may be reconstructed from its message.
 Lazy binding discovery parses package initializers only, so unrelated malformed
 consumer code cannot invalidate an otherwise valid declaration projection.
 

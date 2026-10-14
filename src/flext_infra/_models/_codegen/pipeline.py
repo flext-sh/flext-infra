@@ -18,6 +18,7 @@ from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalM
 from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
 from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
 from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models.check import FlextInfraModelsCheck
 
 
@@ -184,6 +185,86 @@ class FlextInfraModelsCodegenPipelineModels:
             default=False,
             description="Whether the entire invocation reached final accounting",
         )
+        sources: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(
+            default=(), description="Captured source identities without raw bytes"
+        )
+        outputs: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Every planned output, including no-ops")
+        generator_sources: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Loaded generator implementation identity")
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(),
+            description="Captured source directory ancestry and presence",
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Roots elected by this receipt's native source owner",
+        )
+        surface: c.Infra.CodegenConformSurface | None = m.Field(
+            default=None,
+            description="Actual operation surface when composed by conform",
+        )
+        scope: c.Infra.CodegenConformScope | None = m.Field(
+            default=None,
+            description="Actual operation scope when composed by conform",
+        )
+        batches: t.VariadicTuple[Self] = m.Field(
+            default=(),
+            description="Actual completed native scope-batch receipts",
+        )
+
+    class CodegenResult(FlextInfraConfigModelsContract.ConfigContract):
+        """An actual generation plan or an authenticated observational receipt."""
+
+        plan: FlextInfraConfigModels.CodegenPlan | None = m.Field(
+            default=None,
+            description="The plan actually used by the producer",
+        )
+        verified_publication: (
+            FlextInfraModelsCodegenPipelineModels.CodegenPhaseOutcome | None
+        ) = m.Field(
+            default=None, description="Native publication proof verified by observer"
+        )
+        publication_receipt: (
+            FlextInfraModelsCodegenPipelineModels.CodegenPhaseOutcome | None
+        ) = m.Field(
+            default=None,
+            description="Exact settled operation receipt returned by its producer",
+        )
+        written_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Files atomically replaced by apply",
+        )
+        errors: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Fail-closed validation or write errors",
+        )
+
+        @m.model_validator(mode="after")
+        def _validate_actual_capability(self) -> Self:
+            if (self.plan is None) == (self.verified_publication is None):
+                msg = "conform result requires exactly one actual capability"
+                raise ValueError(msg)
+            if self.publication_receipt is not None and self.plan is None:
+                msg = "producer publication requires its actual generation plan"
+                raise ValueError(msg)
+            for receipt in (self.verified_publication, self.publication_receipt):
+                if receipt is not None and (
+                    not receipt.completed
+                    or receipt.error
+                    or receipt.issues
+                    or receipt.pending_files
+                    or receipt.root is None
+                    or receipt.transaction_id is None
+                    or not (receipt.outputs or receipt.batches)
+                ):
+                    msg = "publication requires complete output evidence"
+                    raise ValueError(msg)
+            return self
 
     class CodegenConformPorts(m.ArbitraryTypesModel):
         """Collaborators the complete conform crosses into, wired by the facade.

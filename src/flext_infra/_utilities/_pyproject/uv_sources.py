@@ -192,6 +192,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 )
                 development.extend(t.Cli.JSON_LIST_ADAPTER.validate_python(legacy_dev))
                 declared_groups["dev"] = development
+            validated_groups = m.Infra.DependencyGroupDeclarations.model_validate(
+                {"dependency-groups": declared_groups},
+            )
+            declared_groups = {
+                group: cls.dependency_group_wire(entries)
+                for group, entries in validated_groups.dependency_groups.items()
+            }
             renamed = {
                 canonicalize_name(group): (
                     group
@@ -298,16 +305,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     if isinstance(entry, str):
                         rewritten.append(cls._resolution_requirement(entry, project))
                     else:
-                        inclusion = t.Cli.JSON_MAPPING_ADAPTER.validate_python(entry)
-                        included = inclusion.get("include-group")
-                        if (
-                            len(inclusion) != 1
-                            or not isinstance(included, str)
-                            or canonicalize_name(included) not in renamed
-                        ):
-                            return r[t.Cli.TomlDocument].fail(
-                                f"invalid resolution group inclusion: {name}:{group}",
-                            )
+                        inclusion = m.Infra.DependencyGroupInclude.model_validate(entry)
+                        included = inclusion.include_group
                         rewritten.append({
                             "include-group": renamed[canonicalize_name(included)],
                         })
@@ -424,12 +423,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     if name is not None:
                         names.add(name)
                 else:
-                    inclusion = t.Cli.JSON_MAPPING_ADAPTER.validate_python(requirement)
-                    included = inclusion["include-group"]
-                    if not isinstance(included, str):
-                        msg = "dependency-group inclusion is not a group name"
-                        raise ValueError(msg)
-                    pending.append(canonicalize_name(included))
+                    inclusion = m.Infra.DependencyGroupInclude.model_validate(requirement)
+                    pending.append(canonicalize_name(inclusion.include_group))
         return tuple(sorted(names))
 
     @staticmethod
@@ -752,20 +747,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 "candidate source overrides local members: "
                 + ", ".join(sorted(conflicting)),
             )
-        # Source replacement must not discard declared version/marker bounds.
-        constraints = tuple(
-            sorted({
-                *resolution.constraint_dependencies,
-                *(
-                    FlextInfraUtilitiesDependencies.dependency_constraint(
-                        line,
-                        replace_source=True,
-                    )
-                    for line in local_requirements
-                    if FlextInfraUtilitiesDependencies.dep_name(line) in local_names
-                ),
-            }),
-        )
+        # Authored metadata retains declared policy. Native resolution views own
+        # local source overrides and the constraints preserving replaced sources.
         cls._sync_uv_candidates(
             uv,
             candidate_sources,
@@ -773,10 +756,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             resolution,
         )
         u.Cli.toml_remove_key_if_present(uv, "required-version")
-        cls._sync_uv_constraints(
-            uv,
-            resolution.model_copy(update={"constraint_dependencies": constraints}),
-        )
+        cls._sync_uv_constraints(uv, resolution)
         cls._sync_uv_environments(uv, resolution)
         u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         cls._retire_generated_local_sources(

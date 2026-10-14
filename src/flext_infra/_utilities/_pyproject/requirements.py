@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, config, r, t
+from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesRepository,
@@ -28,6 +28,71 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesPyprojectRequirements:
     """Render internal requirements for the active workspace topology."""
+
+    @staticmethod
+    def dependency_group_entries(
+        value: t.JsonPayload,
+    ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
+        """Parse the shared native entry grammar without expanding inclusions."""
+        return m.Infra.DependencyGroupEntries.model_validate(value).root
+
+    @staticmethod
+    def dependency_group_wire(
+        entries: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    ) -> list[t.JsonValue]:
+        """Serialize native entries without turning inclusion tables into strings."""
+        return [
+            entry
+            if isinstance(entry, str)
+            else t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                entry.model_dump(mode="json", by_alias=True),
+            )
+            for entry in entries
+        ]
+
+    @classmethod
+    def read_dependency_group(
+        cls,
+        container: t.Cli.TomlTable,
+        name: str,
+    ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
+        """Read an absent or native array without permissive string extraction."""
+        value = u.Cli.toml_value(container, name)
+        return (
+            ()
+            if value is None
+            else cls.dependency_group_entries(u.Cli.toml_unwrap_item(value))
+        )
+
+    @classmethod
+    def merge_dependency_group_entries(
+        cls,
+        generated: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
+        """Keep generated floor ownership and authored native occurrence order."""
+        owned = {
+            FlextInfraUtilitiesDependencies.dep_name(entry)
+            for entry in generated
+            if isinstance(entry, str)
+        }
+        active = frozenset(
+            cls.active_development_requirements(
+                tuple(entry for entry in custom if isinstance(entry, str)),
+            ),
+        )
+        return (
+            *generated,
+            *(
+                entry
+                for entry in custom
+                if not isinstance(entry, str)
+                or (
+                    entry in active
+                    and FlextInfraUtilitiesDependencies.dep_name(entry) not in owned
+                )
+            ),
+        )
 
     @staticmethod
     def requirement_group_fields(
@@ -85,14 +150,48 @@ class FlextInfraUtilitiesPyprojectRequirements:
         )
         if normalized.failure:
             return normalized
-        for section, group_name in cls.requirement_group_fields(document, project):
-            group_result = cls._normalize_requirement_field(
-                section,
-                group_name,
-                provenance=provenance,
-            )
-            if group_result.failure:
-                return group_result
+        optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
+        if optional is not None:
+            for group_name in t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                u.Cli.toml_unwrap_item(optional),
+            ):
+                group_result = cls._normalize_requirement_field(
+                    optional,
+                    group_name,
+                    provenance=provenance,
+                )
+                if group_result.failure:
+                    return group_result
+        return cls._normalize_dependency_groups(document, provenance=provenance)
+
+    @classmethod
+    def _normalize_dependency_groups(
+        cls,
+        document: t.Cli.TomlDocument,
+        *,
+        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+    ) -> p.Result[bool]:
+        """Normalize PEP 508 strings in place around native inclusion entries."""
+        section = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if section is None:
+            return r[bool].ok(value=True)
+        parsed = u.validate_value(
+            m.Infra.DependencyGroupDeclarations,
+            {"dependency-groups": u.Cli.toml_unwrap_item(section)},
+        )
+        if parsed.failure:
+            return r[bool].from_failure(parsed)
+        for group_name, entries in parsed.value.dependency_groups.items():
+            values: list[str | m.Infra.DependencyGroupInclude] = []
+            for entry in entries:
+                if not isinstance(entry, str):
+                    values.append(entry)
+                    continue
+                normalized = cls._canonical_requirement(entry, provenance=provenance)
+                if normalized.failure:
+                    return r[bool].from_failure(normalized)
+                values.append(normalized.value)
+            u.Cli.toml_sync_value(section, group_name, cls.dependency_group_wire(values))
         return r[bool].ok(value=True)
 
     @classmethod
@@ -454,7 +553,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         project_name: str,
         required_dev_dependencies: t.StrSequence,
     ) -> None:
-        """Migrate development groups while applying explicit retirement policy.
+        """Sync development groups while applying explicit retirement policy.
 
         Raises:
             ValueError: Retirement conflicts with required development dependencies.
@@ -465,14 +564,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         ):
             msg = "Canonical development requirements include retired distributions"
             raise ValueError(msg)
-        project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
-        optional_dev: t.StrSequence = ()
-        if optional is not None:
-            optional_dev = u.Cli.toml_as_string_list(
-                u.Cli.toml_value(optional, str(c.Infra.DEV)),
-            )
         # SSOT required floors win over existing same-name pins: dedupe_specs
         # keeps the first occurrence, so toolchain floors must lead the merge.
         # Otherwise stale member pins override the declared fleet floor. One
@@ -480,11 +572,12 @@ class FlextInfraUtilitiesPyprojectRequirements:
         # source and no version to enforce, so a live requirement that declares
         # its own direct source is the authority for that dependency and the
         # floor yields to it.
-        live_dev = u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV)))
+        live_dev = cls.read_dependency_group(groups, str(c.Infra.DEV))
         sourced_live_names = {
             name
             for requirement in live_dev
-            if (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
+            if isinstance(requirement, str)
+            and (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
             and cls._declares_direct_source(requirement)
         }
         required_dev = tuple(
@@ -496,36 +589,32 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 sourced_live_names,
             )
         )
-        dev = [
-            *required_dev,
-            *cls.active_development_requirements((*live_dev, *optional_dev)),
-        ]
-        if dev:
-            u.Cli.toml_sync_string_list(
+        dev = cls.merge_dependency_group_entries(
+            FlextInfraUtilitiesDependencies.dedupe_specs(required_dev),
+            live_dev,
+        )
+        if dev or u.Cli.toml_value(groups, str(c.Infra.DEV)) is not None:
+            u.Cli.toml_sync_value(
                 groups,
                 str(c.Infra.DEV),
-                FlextInfraUtilitiesDependencies.dedupe_specs(tuple(dev)),
+                cls.dependency_group_wire(dev),
             )
         else:
             u.Cli.toml_remove_key_if_present(groups, str(c.Infra.DEV))
 
-        codegen = cls.active_development_requirements(
-            u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen")),
+        codegen = cls.merge_dependency_group_entries(
+            (),
+            cls.read_dependency_group(groups, "codegen"),
         )
-        if codegen:
-            u.Cli.toml_sync_string_list(
+        if codegen or u.Cli.toml_value(groups, "codegen") is not None:
+            u.Cli.toml_sync_value(
                 groups,
                 "codegen",
-                FlextInfraUtilitiesDependencies.dedupe_specs(tuple(codegen)),
+                cls.dependency_group_wire(codegen),
             )
         else:
             u.Cli.toml_remove_key_if_present(groups, "codegen")
         cls._remove_workspace_dependency_group(document)
-
-        if optional is not None:
-            u.Cli.toml_remove_key_if_present(optional, str(c.Infra.DEV))
-            if not tuple(optional):
-                u.Cli.toml_remove_key_if_present(project, c.Infra.OPTIONAL_DEPENDENCIES)
 
     @staticmethod
     def _declares_direct_source(requirement: str) -> bool:
@@ -629,8 +718,15 @@ class FlextInfraUtilitiesPyprojectRequirements:
                     raw_values.extend(u.Cli.toml_as_string_list(value))
         groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
         if isinstance(groups, Mapping):
-            for group in groups.values():
-                raw_values.extend(u.Cli.toml_as_string_list(group))
+            declared = m.Infra.DependencyGroupDeclarations.model_validate(
+                {"dependency-groups": groups},
+            )
+            raw_values.extend(
+                entry
+                for group in declared.dependency_groups.values()
+                for entry in group
+                if isinstance(entry, str)
+            )
         return tuple(raw_values)
 
     @staticmethod

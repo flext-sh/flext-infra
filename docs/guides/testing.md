@@ -111,10 +111,19 @@ consumer as `make mod-rules`, including semantic admission and evidence
 publication. The profile checkpoint on SIGTERM retains measured progress while
 the interrupted command remains a failure.
 
-Mod evidence publishes authenticated input bodies once. Occurrences retain explicit
-ordered path references; publication and JSON hydration reuse each binding group
-within that receipt, preserving distinct closures and deferred findings. Path tokens
-remain per occurrence in JSON; tuple sharing is not an end-to-end linear-time claim.
+Mod evidence publishes authenticated input bodies and binding graphs once.
+Each occurrence references its source and a graph index. Graphs retain path order
+and multiplicity; JSON hydration resolves each graph once and shares its immutable
+inputs across occurrences. Missing sources or graph references fail validation.
+This removes repeated graph serialization; native JSONL ingestion and semantic
+admission still require their own measured performance evidence.
+
+The native scanner writes stdout and stderr to separate files through the CLI
+runner. JSONL admission consumes authenticated byte blocks and retains record
+boundaries across blocks, including Unicode and a final unterminated record.
+Immutable overlays use the same ruleset reader as the ordinary scan. Native
+finding exits require the complete parsed error count and exact stderr receipt;
+timeouts, forwarded signals and unrelated stderr remain failures.
 
 Codemod admission resolves the declared package namespace once in the typed facts
 of each pass. Findings consume that snapshot; a later pass reads the current

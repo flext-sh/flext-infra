@@ -502,6 +502,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # A repository without one must not render ledger activation.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
+                    toolchain=codegen.toolchain,
                     uv_resolution=codegen.make.uv_resolution,
                     repository_root_rel=self._repository_root_rel(workspace),
                     environment_path_prepends=(

@@ -103,13 +103,25 @@ class FlextInfraCodegenPipelineStagesMixin:
                 ports=self.conform_collaborators,
             )
 
+        def _emit(result: m.Infra.CodegenResult) -> t.JsonMapping:
+            plan = result.plan
+            if plan is not None:
+                count = len(plan.repositories)
+            else:
+                proof = result.verified_publication
+                if proof is None:
+                    msg = "conform outcome has no publication proof"
+                    raise ValueError(msg)
+                count = len(proof.scope_roots)
+            return {
+                "repositories_conformed": count,
+                "files_written": len(result.written_files),
+            }
+
         return self._run_stage(
             c.Infra.PipelineStage.TOOLCHAIN,
             _action,
-            lambda result: {
-                "repositories_conformed": len(result.plan.repositories),
-                "files_written": len(result.written_files),
-            },
+            _emit,
         )
 
     def _stage_deps(

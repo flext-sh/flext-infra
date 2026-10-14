@@ -27,11 +27,11 @@ from flext_infra._utilities import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-from flext_infra._utilities.protected_edit_linting import (
-    FlextInfraUtilitiesProtectedEditLinting,
-)
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
+)
+from flext_infra._utilities.protected_edit_linting import (
+    FlextInfraUtilitiesProtectedEditLinting,
 )
 
 

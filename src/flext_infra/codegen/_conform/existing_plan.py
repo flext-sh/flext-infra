@@ -127,6 +127,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         if contract.destinations == frozenset({c.Infra.ENVRC_FILENAME}):
             context = m.Infra.EnvrcRenderSpec(
+                toolchain=codegen.toolchain,
                 uv_resolution=codegen.make.uv_resolution,
                 repository_root_rel=self._repository_root_rel(workspace),
                 environment_path_prepends=codegen.toolchain.environment_path_prepends,

@@ -109,18 +109,11 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
+            journal.model_dump()
+            | {
                 "state": "prepared",
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
                 "sources": encoded_sources.value,
-                "directories": journal.directories,
                 "entries": tuple(entries),
-                "staging_intents": journal.staging_intents,
             },
         )
         if validated.failure:
@@ -192,18 +185,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             )
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
-                "state": journal.state,
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
-                "sources": journal.sources,
+            journal.model_dump()
+            | {
                 "directories": (*journal.directories, *directories),
-                "entries": journal.entries,
-                "staging_intents": journal.staging_intents,
             },
         )
         if validated.failure:
@@ -306,19 +290,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 return result_type.from_failure(compared)
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
-                "state": journal.state,
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
-                "sources": journal.sources,
-                "directories": directories,
-                "entries": journal.entries,
-                "staging_intents": journal.staging_intents,
-            },
+            journal.model_dump() | {"directories": directories},
         )
         if validated.failure:
             return result_type.fail_op(
@@ -384,19 +356,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             )
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
-            {
-                "version": 9,
-                "transaction_id": journal.transaction_id,
-                "scope_device": journal.scope_device,
-                "scope_inode": journal.scope_inode,
-                "state": "committed",
-                "projects": journal.projects,
-                "file_participants": journal.file_participants,
-                "sources": journal.sources,
-                "directories": journal.directories,
-                "entries": journal.entries,
-                "staging_intents": journal.staging_intents,
-            },
+            journal.model_dump() | {"state": "committed"},
         )
         if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(
@@ -506,9 +466,30 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
     def source_record(
         cls,
         phase: str,
-        source: m.Cli.AtomicFileState,
+        source: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
         previous: m.Infra.CodegenJournalSource | None = None,
+        *,
+        path: Path | None = None,
     ) -> p.Result[m.Infra.CodegenJournalSource]:
+        if isinstance(source, m.Cli.AtomicDirectoryChainPlan):
+            if path is None or path.parent != source.target:
+                return r[m.Infra.CodegenJournalSource].fail(
+                    "absent output requires its exact captured parent witness",
+                )
+            return r[m.Infra.CodegenJournalSource].ok(
+                m.Infra.CodegenJournalSource(
+                    phase=phase,
+                    path=path,
+                    parent_device=None,
+                    parent_inode=None,
+                    sha256=None,
+                    mode=None,
+                    device=None,
+                    inode=None,
+                    link_count=None,
+                    absent_parent=source,
+                )
+            )
         absent_parent = None
         if source.parent_device is None or source.parent_inode is None:
             if previous is not None:

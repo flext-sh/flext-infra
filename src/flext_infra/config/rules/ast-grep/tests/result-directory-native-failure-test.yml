@@ -1,0 +1,15 @@
+id: result-directory-native-failure
+valid:
+  - |
+    if other.failure:
+        return compensate(layout, created, result.error or "directory failed", journal_write=True)
+  - |
+    if result.failure:
+        return compensate(layout, created, result, journal_write=True, context="directory failed")
+invalid:
+  - |
+    if result.failure:
+        return compensate(layout, created, result.error or "directory failed", journal_write=True)
+  - |
+    if result.failure:
+        return compensate(layout, created, result.error or f"directory {path}", journal_write=False)

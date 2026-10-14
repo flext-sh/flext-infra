@@ -7,16 +7,287 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraUvNativeResolution:
     """Resolve real local Git packages without external-service prerequisites."""
+
+    @staticmethod
+    def _profile_requirement(requirement: str) -> str:
+        """Declare authored internal sources through the fixture's public provider."""
+        parsed = Requirement(requirement)
+        if not parsed.name.startswith("flext-") or parsed.url is not None:
+            return requirement
+        source = Requirement(u.Tests.flext_source(parsed.name))
+        extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
+        marker = f" ; {parsed.marker}" if parsed.marker else ""
+        return f"{parsed.name}{extras} @ {source.url}{marker}"
+
+    @classmethod
+    def _conformed_first_party_profiles(
+        cls,
+        root: Path,
+    ) -> t.MappingKV[str, t.Cli.TomlDocument]:
+        """Retain complete conformed profile documents before internal qualification."""
+        documents: dict[str, t.Cli.TomlDocument] = {}
+        profiles = config.Infra.codegen.scaffold.project.dependency_profiles
+        toolchain = config.Infra.codegen.toolchain
+        line = u.Tests.integration().model_copy(
+            update={"base_url": u.Tests.provider().base_url},
+        )
+        resolution = m.Infra.UvResolutionSpec(
+            link_mode=toolchain.uv_link_mode,
+            constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
+            environments=tuple(toolchain.uv_environments),
+        )
+        for name, upstream in (
+            ("flext-core", "flext_core"),
+            ("flext-cli", "flext_core"),
+            ("flext-infra", "flext_cli"),
+            ("flext-tests", "flext_cli"),
+        ):
+            profile = tm.not_none(
+                u.Infra.composed_dependency_profile(
+                    profiles, upstream=upstream, distribution=name,
+                ),
+            )
+            runtime = tuple(
+                requirement
+                for requirement in profile.runtime
+                if u.Infra.dep_name(requirement) != name
+            )
+            codegen = tuple(
+                requirement
+                for requirement in profile.codegen
+                if u.Infra.dep_name(requirement) != name
+            )
+            development = [
+                cls._profile_requirement(requirement)
+                for requirement in config.Infra.codegen.scaffold.project.dev
+                if u.Infra.dep_name(requirement) != name
+            ]
+            path = root / name
+            u.Tests.write_native_resolution_project(
+                path,
+                name,
+                dependencies=tuple(cls._profile_requirement(item) for item in runtime),
+                groups=(
+                    "[dependency-groups]\n"
+                    f"dev = {json.dumps(development)}\n"
+                    "codegen = "
+                    f"{json.dumps([cls._profile_requirement(item) for item in codegen])}\n"
+                    'examples = [{include-group = "dev"}]\n'
+                ),
+            )
+            repository = u.Tests.repository_ref(name)
+            workspace = u.Tests.workspace_spec(
+                repository,
+                project=u.Tests.project_spec(name).model_copy(
+                    update={"upstream": upstream},
+                ),
+            )
+            conformed = tm.ok(
+                u.Infra.pyproject_conform(
+                    (path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+                    workspace=workspace,
+                    required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                    uv_resolution=resolution,
+                    options=u.Infra.PyprojectConformOptions(
+                        flext_line=line,
+                    ),
+                ),
+            )
+            cls._assert_profile_tiers(conformed, name, runtime, codegen)
+            tm.ok(u.Cli.atomic_write_text_file(path / c.PYPROJECT_FILENAME, conformed))
+            documents[name] = u.Tests.toml_doc(conformed)
+        return documents
+
+    @staticmethod
+    def _assert_profile_tiers(
+        conformed: str,
+        name: str,
+        runtime: t.StrSequence,
+        codegen: t.StrSequence,
+    ) -> None:
+        """Read the complete consumer document without replacing its declared tiers."""
+        observed_runtime = {
+            Requirement(requirement).name: Requirement(requirement)
+            for requirement in u.Tests.toml_strings_at(
+                conformed, "project", "dependencies",
+            )
+        }
+        tm.that(
+            set(observed_runtime),
+            eq={Requirement(requirement).name for requirement in runtime},
+        )
+        for raw in runtime:
+            requirement = Requirement(raw)
+            observed = observed_runtime[requirement.name]
+            tm.that(
+                (observed.extras, str(observed.marker), str(observed.specifier)),
+                eq=(
+                    requirement.extras,
+                    str(requirement.marker),
+                    str(requirement.specifier),
+                ),
+            )
+        tm.that(
+            {
+                Requirement(requirement).name
+                for requirement in u.Tests.toml_strings_at(
+                    conformed, "dependency-groups", "codegen",
+                )
+            },
+            eq={Requirement(requirement).name for requirement in codegen},
+        )
+        expected_dev = {
+            Requirement(requirement).name
+            for requirement in u.Infra.active_development_requirements(
+                config.Infra.codegen.scaffold.project.dev,
+            )
+            if Requirement(requirement).name != name
+        }
+        tm.that(
+            {
+                Requirement(requirement).name
+                for requirement in u.Tests.toml_strings_at(
+                    conformed, "dependency-groups", str(c.Infra.DEV),
+                )
+            },
+            eq=expected_dev,
+        )
+
+    @staticmethod
+    def _internal_profile_document(
+        document: t.Cli.TomlDocument,
+        packages: t.MappingKV[str, Path],
+    ) -> t.Cli.TomlDocument:
+        """Qualify only the real internal edges, without fabricating third parties."""
+        payload = deepcopy(u.Tests.toml_mapping(u.Cli.toml_unwrap_item(document)))
+
+        def internal(requirements: t.JsonValue) -> list[t.JsonValue]:
+            selected: list[t.JsonValue] = []
+            for raw in u.Tests.toml_list(requirements):
+                if not isinstance(raw, str):
+                    selected.append(raw)
+                    continue
+                requirement = Requirement(raw)
+                if requirement.name not in packages:
+                    continue
+                extras = (
+                    f"[{','.join(sorted(requirement.extras))}]"
+                    if requirement.extras else ""
+                )
+                marker = f" ; {requirement.marker}" if requirement.marker else ""
+                selected.append(
+                    f"{requirement.name}{extras} @ git+"
+                    f"{packages[requirement.name].as_uri()}@"
+                    f"{u.Tests.integration().branch}{marker}",
+                )
+            return selected
+
+        project = u.Tests.toml_mapping(payload["project"])
+        project["dependencies"] = internal(project.get("dependencies", []))
+        groups = u.Tests.toml_mapping(payload.get("dependency-groups", {}))
+        for group, requirements in groups.items():
+            groups[group] = internal(requirements)
+        payload["project"] = project
+        payload["dependency-groups"] = groups
+        return u.Cli.toml_document_from_mapping(payload)
+
+    @pytest.mark.parametrize("root_name", ["flext-core", "flext-infra"])
+    def test_real_first_party_profile_groups_survive_native_composition(
+        self,
+        tmp_path: Path,
+        root_name: str,
+    ) -> None:
+        """Dev backedges remain groups through conform and both native views.
+
+        Full conformed metadata is retained independently. Native no-index
+        resolution qualifies its first-party graph only; it does not prove
+        third-party resolution or wheel runtime installation.
+        """
+        complete = self._conformed_first_party_profiles(tmp_path / "complete")
+        packages = {name: tmp_path / "native" / name for name in complete}
+        original = {
+            name: u.Cli.toml_dumps(document)
+            for name, document in complete.items()
+        }
+        inputs: dict[str, m.Infra.UvResolutionProject] = {}
+        for name, document in complete.items():
+            directory = packages[name]
+            limited = self._internal_profile_document(document, packages)
+            directory.mkdir(parents=True)
+            tm.ok(u.Cli.toml_write_document(directory / c.PYPROJECT_FILENAME, limited))
+            package = directory / "src" / name.replace("-", "_")
+            package.mkdir(parents=True)
+            (package / "__init__.py").write_text("", encoding="utf-8")
+            u.Tests.initialize_git_repo(directory)
+            u.Tests.checkout_integration(directory)
+            inputs[name] = m.Infra.UvResolutionProject(
+                repository=u.Tests.repository_ref(name),
+                directory=directory,
+                document=limited,
+            )
+        order = u.Infra.workspace_dependency_order(
+            tmp_path / "native",
+            tuple(
+                project.repository.model_copy(update={"path": Path(name)})
+                for name, project in inputs.items()
+            ),
+        )
+        for name, project in inputs.items():
+            runtime = u.Tests.toml_strings_at(
+                u.Cli.toml_dumps(project.document), "project", "dependencies",
+            )
+            for requirement in runtime:
+                provider = Requirement(requirement).name
+                tm.that(order.index(provider) < order.index(name), eq=True)
+        for mode in ("local", "standalone"):
+            directory = tmp_path / mode
+            directory.mkdir()
+            view = tm.ok(
+                u.Infra.pyproject_native_resolution_view(
+                    inputs[root_name],
+                    members=(
+                        tuple(
+                            project for name, project in inputs.items()
+                            if name != root_name
+                        )
+                        if mode == "local"
+                        else ()
+                    ),
+                    directory=directory,
+                    policy=config.Infra.codegen.make.uv_resolution,
+                ),
+            )
+            tm.ok(u.Cli.toml_write_document(directory / c.PYPROJECT_FILENAME, view))
+            resolved = tm.ok(u.Tests.resolve_native_identity_fixture(directory))
+            tm.that(
+                u.Cli.process_succeeded(resolved.outcome),
+                eq=True,
+                msg=resolved.stdout + resolved.stderr,
+            )
+            locked = u.Tests.toml_tables_at(
+                (directory / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
+                "package",
+            )
+            tm.that(
+                set(packages).issubset({package["name"] for package in locked}),
+                eq=True,
+            )
+        tm.that(
+            {name: u.Cli.toml_dumps(document) for name, document in complete.items()},
+            eq=original,
+        )
 
     @staticmethod
     @pytest.mark.parametrize("consumer", ["root", "member"])

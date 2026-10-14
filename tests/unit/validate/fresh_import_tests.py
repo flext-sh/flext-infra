@@ -140,7 +140,11 @@ class TestsFlextInfraFreshImport:
     @staticmethod
     @pytest.mark.parametrize(
         ("content", "missing_export"),
-        [("", False), ("__all__ = ()\n", False), ("__all__ = ('missing_export',)\n", True)],
+        [
+            ("", False),
+            ("__all__ = ()\n", False),
+            ("__all__ = ('missing_export',)\n", True),
+        ],
     )
     def test_preserved_initializer_uses_real_publication_contract(
         tmp_path: Path,

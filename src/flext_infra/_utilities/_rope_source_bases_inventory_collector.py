@@ -257,6 +257,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return
         if cls._opaque_attribute_mutation(targets, node):
             return
+        if cls._subscript_mutation(targets):
+            return
         message = cls._mutation_message(spec, node)
         raise ValueError(message)
 
@@ -281,6 +283,25 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return False
         return bool(targets) and all(
             isinstance(target, ast.Attribute) for target in targets
+        )
+
+    @staticmethod
+    def _subscript_mutation(targets: t.SequenceOf[ast.expr]) -> bool:
+        """Whether every target writes through an already-declared container.
+
+        A ``name[...] = ...`` statement mutates a binding the class body
+        declared earlier; it can never introduce a new class-attribute
+        binding, so the inventory records nothing and stays silent. The
+        stdlib ships this shape (``http.server``'s
+        ``_control_char_table[ord(...)] = ...``), and a captured stdlib
+        module must inventory, not fail.
+
+        Returns:
+            ``True`` if the mutation is a pure subscript write.
+
+        """
+        return bool(targets) and all(
+            isinstance(target, ast.Subscript) for target in targets
         )
 
     @staticmethod

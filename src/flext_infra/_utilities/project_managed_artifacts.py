@@ -14,8 +14,8 @@ from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import FlextStrictYamlConfigSource
 
+from flext_core import FlextStrictYamlConfigSource
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import FlextInfraUtilitiesGit
@@ -44,9 +44,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
         if document.failure:
             return result_type.from_failure(document)
-        loaded = u.validate_value(
-            m.Infra.CodegenConfigSpec,
-            u.Cli.json_walk_path(document.value.values, ("Infra", "codegen")),
+        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            partial(cls._repository_codegen_spec, document.value.values),
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
@@ -137,10 +136,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             )
             return result_type.fail(str(error), exception=error)
         snapshots: list[m.Cli.AtomicFileState] = []
-        for path in elected.value:
-            if path not in selected:
-                continue
-            observed = u.Cli.atomic_read_binary_file_state(path, required=True)
+        for path in selected:
+            observed = u.Cli.atomic_read_binary_file_state(
+                path,
+                required=path == selected[0] or path in elected.value,
+            )
             if observed.failure:
                 return result_type.from_failure(observed)
             snapshots.append(observed.value)
@@ -175,7 +175,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         for before in snapshots:
-            observed = u.Cli.atomic_read_binary_file_state(before.path, required=True)
+            observed = u.Cli.atomic_read_binary_file_state(
+                before.path,
+                required=before.content is not None,
+            )
             if observed.failure:
                 return r[bool].from_failure(observed)
             if observed.value != before:
@@ -247,11 +250,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             )
             return result_type.fail(str(error), exception=error)
         loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
-            partial(
-                cls._repository_codegen_spec,
-                selected,
-                captured.sources,
-                projections,
+            lambda: cls._repository_codegen_spec(
+                cls._repository_config_document(
+                    selected, captured.sources, projections
+                ),
             ),
         )
         return loaded.map(
@@ -303,25 +305,13 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @staticmethod
     def _repository_codegen_spec(
-        sources: tuple[Path, ...],
-        snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
-        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
+        document: t.JsonMapping,
     ) -> m.Infra.CodegenConfigSpec:
-        """Compose ordered original and projected layers with the public merge owner.
+        """Validate composed policy with its model's already-compiled schema.
 
         Returns:
             The validated full repository codegen policy.
-
-        Raises:
-            ValueError: If a captured configuration input has no bytes.
         """
-        document = (
-            FlextInfraUtilitiesProjectManagedArtifacts._repository_config_document(
-                sources,
-                snapshots,
-                projections,
-            )
-        )
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         return m.Infra.CodegenConfigSpec.model_validate(codegen)
 
@@ -336,8 +326,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         Returns:
             The composed document; schema consumers validate their owned section.
 
-        Raises:
-            ValueError: If captured config input has no bytes.
         """
         merged: t.JsonDict = {}
         parse_document = (
@@ -345,14 +333,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
         for path in sources:
             captured = next((item for item in snapshots if item.path == path), None)
-            if captured is None:
+            if captured is None or captured.content is None:
                 payload: t.JsonMapping = {}
             else:
-                content = captured.content
-                if content is None:
-                    msg = f"captured config input has no bytes: {path}"
-                    raise ValueError(msg)
-                payload = parse_document(content)
+                payload = parse_document(captured.content)
             projected = next(
                 (item for item in projections if item.path == path),
                 None,

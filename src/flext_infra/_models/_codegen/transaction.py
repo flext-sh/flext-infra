@@ -22,14 +22,22 @@ class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
 
     class CodegenPhasePublicationPolicy(m.ArbitraryTypesModel):
-        """Caller-owned directories and final validation for one publication."""
+        """Caller-owned directories and native admission for one publication."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         directories: t.VariadicTuple[Path] = m.Field(
             description="Exact generated directories requested by the caller",
         )
-        validator: Callable[[], p.Result[bool]] = m.Field(
+        validator: Callable[[], p.Result[bool]] | None = m.Field(
+            default=None,
             description="Caller validation required before committing the phase",
+        )
+        admission: (
+            Callable[[t.VariadicTuple[m.Cli.AtomicDirectoryState]], p.Result[bool]]
+            | None
+        ) = m.Field(
+            default=None,
+            description="Batch topology admission bound to journal-owned directories",
         )
 
     class StagePackagePlan(m.ArbitraryTypesModel):
@@ -137,6 +145,20 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalSource],
             m.Field(description="Source identities used by staging"),
         ]
+        outputs: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Complete output proof, including no-ops")
+        generator_sources: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Captured loaded generator implementation")
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(),
+            description="Source-owner directory witnesses for observation",
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Source-owner roots for topology observation",
+        )
         directories: Annotated[
             t.VariadicTuple[
                 FlextInfraModelsCodegenJournalModels.CodegenJournalDirectory

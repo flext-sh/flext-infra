@@ -322,6 +322,63 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         else:
             tm.ok(result, eq=1)
 
+    def test_member_eligibility_reads_installed_editable_independently_of_ci(
+        self,
+        tmp_path: Path,
+        site_packages: Path,
+    ) -> None:
+        """Changing the invocation context never changes a live source election."""
+        workspace = self._locked_workspace(tmp_path)
+        member = workspace / "sample-member"
+        self._installed_editable(
+            site_packages,
+            "sample-member",
+            direct_root=member,
+            source_root=member / "src",
+        )
+        ci = config.Infra.codegen.make.ci
+        for token in ("", ci.value):
+            with u.Tests.env_vars_context(env_vars={ci.variable: token}):
+                selected = tm.ok(
+                    FlextInfraWorkspaceEnvironmentProvenance.editable_members(
+                        workspace,
+                        metadata_paths=(str(site_packages),),
+                    ),
+                )
+            tm.that(tuple(item.path for item in selected), eq=(Path("sample-member"),))
+
+    def test_frozen_member_remains_a_library_when_its_checkout_is_present(
+        self,
+        tmp_path: Path,
+        site_packages: Path,
+    ) -> None:
+        """A native noneditable PEP 610 receipt authorizes no member mutation."""
+        workspace = self._locked_workspace(tmp_path)
+        member = workspace / "sample-member"
+        self._installed_editable(
+            site_packages,
+            "sample-member",
+            direct_root=member,
+            source_root=member / "src",
+        )
+        direct_url = site_packages / "sample_member-1.0.dist-info/direct_url.json"
+        receipt = m.Infra.DirectUrlReceipt.model_validate_json(direct_url.read_bytes())
+        tm.that(receipt.dir_info is not None, eq=True)
+        if receipt.dir_info is not None:
+            frozen = receipt.model_copy(
+                update={
+                    "dir_info": receipt.dir_info.model_copy(update={"editable": False}),
+                },
+            )
+            direct_url.write_text(frozen.model_dump_json(), encoding=c.DEFAULT_ENCODING)
+        selected = tm.ok(
+            FlextInfraWorkspaceEnvironmentProvenance.editable_members(
+                workspace,
+                metadata_paths=(str(site_packages),),
+            ),
+        )
+        tm.that(selected, empty=True)
+
     def test_rejects_stale_direct_url(
         self,
         tmp_path: Path,

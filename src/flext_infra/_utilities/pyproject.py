@@ -746,6 +746,8 @@ class FlextInfraUtilitiesPyproject:
         project_root: Path,
         payload: t.JsonMapping,
         docs_meta: t.JsonMapping,
+        *,
+        source_paths: t.SequenceOf[Path] | None = None,
     ) -> str:
         """Return the primary package name using pre-loaded pyproject payload.
 
@@ -762,7 +764,19 @@ class FlextInfraUtilitiesPyproject:
         wheel_package = FlextInfraUtilitiesPyproject._hatch_wheel_package(payload)
         if wheel_package is not None:
             return wheel_package
-        source_package = FlextInfraUtilitiesPyproject._src_dir_package(project_root)
+        source_package = (
+            next(
+                (
+                    path.parent.name
+                    for path in sorted(source_paths)
+                    if path.name == c.Infra.INIT_PY
+                    and path.parent.parent == project_root / c.Infra.DEFAULT_SRC_DIR
+                ),
+                None,
+            )
+            if source_paths is not None
+            else FlextInfraUtilitiesPyproject._src_dir_package(project_root)
+        )
         if source_package is not None:
             return source_package
         project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(
