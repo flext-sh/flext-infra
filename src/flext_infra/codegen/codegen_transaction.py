@@ -416,9 +416,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             The scope identity report of the transaction scope.
 
         """
-        if self._producer.failure:
-            return r[m.Infra.GitIdentityReport].from_failure(self._producer)
-        producer = FlextInfraCodegenPreconditions.producer_current(self._producer.value)
+        producer = self._file_session_authority()
         if producer.failure:
             return r[m.Infra.GitIdentityReport].from_failure(producer)
         identity = self._planner.scope_identity()

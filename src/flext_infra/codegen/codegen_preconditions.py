@@ -271,18 +271,13 @@ class FlextInfraCodegenPreconditions:
             Success when every producer tree and source state is captured.
         """
         result_type = r[bool]
-        for root in roots.values():
-            if not root.is_dir():
-                continue
-            captured_tree = FlextInfraMiseArtifactsFiles.capture_tree_sources(root)
-            if captured_tree.failure:
-                return result_type.from_failure(captured_tree)
-            trees[root] = captured_tree.value[0]
-            states.update((item.path, item) for item in captured_tree.value[1])
         source_files: list[Path] = []
-        for path in dict.fromkeys(
-            Path(declaration or origin) for _, origin, declaration in observed.sources
-        ):
+        for path in dict.fromkeys((
+            *roots.values(),
+            *(Path(declaration or origin) for _, origin, declaration in observed.sources),
+        )):
+            if path in trees or path in states:
+                continue
             if path.is_dir():
                 captured_tree = FlextInfraMiseArtifactsFiles.capture_tree_sources(path)
                 if captured_tree.failure:
@@ -291,7 +286,9 @@ class FlextInfraCodegenPreconditions:
                 states.update((item.path, item) for item in captured_tree.value[1])
             else:
                 source_files.append(path)
-        captured_sources = FlextInfraMiseArtifactsFiles.capture_sources(source_files)
+        captured_sources = FlextInfraMiseArtifactsFiles.capture_sources(
+            tuple(path for path in source_files if path not in states)
+        )
         if captured_sources.failure:
             return result_type.from_failure(captured_sources)
         states.update((item.path, item) for item in captured_sources.value)

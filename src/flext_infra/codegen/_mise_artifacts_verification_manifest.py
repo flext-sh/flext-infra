@@ -315,6 +315,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
 
         """
         result_type = r[t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry]]
+        remaining = dict(current)
         for intent in journal.staging_intents:
             path = intent.before.path
             participant = next(
@@ -331,7 +332,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
                 return result_type.fail(
                     f"staging intention escapes transaction root: {path}",
                 )
-            entry = current.get(path)
+            entry = remaining.get(path)
             if entry is None or path in expected:
                 continue
             if intent.created is not None:
@@ -339,7 +340,6 @@ class FlextInfraMiseArtifactsVerificationManifest:
                     return result_type.fail(
                         f"finalized staging identity changed: {path}",
                     )
-                current = {key: value for key, value in current.items() if key != path}
             elif (
                 entry.kind,
                 entry.sha256,
@@ -358,11 +358,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
                 return result_type.fail(
                     f"pending staging identity differs from intention: {path}",
                 )
-            else:
-                # These exact bytes were authorized before creation; recovery
-                # must not pretend a finalized physical receipt already exists.
-                current = {key: value for key, value in current.items() if key != path}
-        return result_type.ok(current)
+            # Exact bytes or a finalized identity have now been authenticated.
+            del remaining[path]
+        return result_type.ok(remaining)
 
     @classmethod
     def _verified_expected_entries(

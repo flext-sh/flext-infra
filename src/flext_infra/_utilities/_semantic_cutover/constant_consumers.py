@@ -195,7 +195,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         public = paths[package]
         if not public:
             return source, ()
-        contexts = (
+        contexts: t.VariadicTuple[t.Pair[str, t.MappingKV[t.Pair[int, int], str]]] = (
             (
                 "literal returns",
                 cls._literal_return_matches(
@@ -614,7 +614,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                         expression = (
                             f"${{frozen}}({{{literal}}})" if frozen else literal
                         )
-                        arguments = (
+                        arguments: t.StrMapping = (
                             {"frozen": "name=__builtin__.frozenset"} if frozen else {}
                         )
                         pattern = (
