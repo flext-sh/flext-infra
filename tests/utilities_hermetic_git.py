@@ -119,18 +119,42 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             Every ``(url, rev, sha)`` Git source the checkout lock pins.
 
         """
+        from flext_infra.workspace import FlextInfraWorkspaceDetector
+
         toml = TestsFlextInfraUtilitiesTomlMixin
-        lock = (project_root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8")
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project_root))
+        lock = context.lock_path.read_text(encoding="utf-8")
         sources: t.MutableMappingKV[str, t.Triple[str, str, str]] = {}
         for package in toml.toml_tables_at(lock, "package"):
             source = toml.toml_mapping(package.get("source"))
             locator = source.get("git")
-            if not isinstance(locator, str):
+            if isinstance(locator, str):
+                parts = urlsplit(locator)
+                url = f"{parts.scheme}://{parts.netloc}{parts.path}"
+                (rev,) = parse_qs(parts.query)["rev"]
+                sources[url] = (url, unquote(rev), parts.fragment)
                 continue
-            parts = urlsplit(locator)
-            url = f"{parts.scheme}://{parts.netloc}{parts.path}"
-            (rev,) = parse_qs(parts.query)["rev"]
-            sources[url] = (url, unquote(rev), parts.fragment)
+            local = source.get("editable", source.get("directory"))
+            if isinstance(local, str):
+                directory = (context.lock_path.parent / local).resolve()
+                workspace = tm.ok(
+                    FlextInfraWorkspaceDetector.load_workspace_spec(directory),
+                )
+                repository = workspace.repository
+                tm.that(repository.distribution, eq=package.get("name"))
+                line = tm.ok(
+                    u.Infra.flext_integration_line(
+                        codegen=tm.ok(u.Infra.load_codegen_inputs(directory)).spec,
+                        repository_root=directory,
+                    ),
+                )
+                head = tm.ok(
+                    u.Cli.capture(
+                        [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD],
+                        cwd=directory,
+                    ),
+                ).strip()
+                sources[repository.url] = (repository.url, line.branch, head)
         fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
         infra = fixture.repository_ref(
             config.Infra.codegen.infra_repository.distribution,
@@ -170,7 +194,18 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
                 u.Cli.capture([c.Infra.UV, "cache", "dir"], cwd=project_root),
             ).strip(),
         )
-        databases = (project_root, *sorted(cache.glob("git-v*/db/*")))
+        from flext_infra.workspace import FlextInfraWorkspaceDetector
+
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project_root))
+        workspace = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(context.runtime_root),
+        )
+        databases = (
+            project_root,
+            context.runtime_root,
+            *(context.runtime_root / member.path for member in workspace.subprojects),
+            *sorted(cache.glob("git-v*/db/*")),
+        )
         mirrored: list[str] = []
         for (
             url,

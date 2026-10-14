@@ -350,6 +350,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     project_root / name
                     for name in (c.PYPROJECT_FILENAME, c.Infra.MISE_TOML_FILENAME)
                 )
+                paths.update(
+                    project_root / directory / c.PYPROJECT_FILENAME
+                    for directory in (
+                        plan.make_spec.uv_resolution.local_directory,
+                        plan.make_spec.uv_resolution.standalone_directory,
+                    )
+                )
             artifacts = tuple(
                 file
                 for file in plan.files
