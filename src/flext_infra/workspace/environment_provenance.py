@@ -633,17 +633,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         while pending:
             definition, receiver, binding_name = pending.pop()
             if isclass(definition):
-                if getattr_static(
-                    type(definition), "__getattribute__", None
-                ) is not getattr_static(type, "__getattribute__", None):
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                        "producer class has an unadmitted metadata accessor: "
-                        f"module={module_name} binding={binding_name}"
-                    )
                 if (
-                    definition.__module__ == module_name
+                    getattr_static(definition, "__module__", None) == module_name
                     and id(definition) not in visited
                 ):
+                    if getattr_static(
+                        type(definition), "__getattribute__", None
+                    ) is not getattr_static(type, "__getattribute__", None):
+                        return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                            "producer class has an unadmitted metadata accessor: "
+                            f"module={module_name} binding={binding_name}"
+                        )
                     visited[id(definition)] = definition
                     if native:
                         namespace = vars(module)
@@ -875,8 +875,10 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(origin)
                 suppliers.add(supplier)
                 suppliers.add(modules[supplier].__spec__.name)
-                if not class_source and receiver and (
-                    link is outer or "__wrapped__" not in vars(link)
+                if (
+                    not class_source
+                    and receiver
+                    and (link is outer or "__wrapped__" not in vars(link))
                 ):
                     namespace = vars(modules[supplier])
                     declaring = None
@@ -938,6 +940,25 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                 "descriptor has no unique physical alias declaration"
                             )
                         if aliases:
+                            if (
+                                len(receiver.__bases__)
+                                != len(attachment.bases or (object,))
+                                or any(
+                                    actual is not expected
+                                    for actual, expected in zip(
+                                        receiver.__bases__,
+                                        attachment.bases or (object,),
+                                        strict=False,
+                                    )
+                                )
+                                or (
+                                    attachment.metaclass is not None
+                                    and type(receiver) is not attachment.metaclass
+                                )
+                            ):
+                                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                                    "alias receiver layout differs from its physical declaration"
+                                )
                             alias = cls._construction_binding(
                                 aliases[0],
                                 attachment,
@@ -962,7 +983,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                         t.SequenceOf[t.Triple[str, str, str]]
                                     ].from_failure(supplied)
                                 if supplied.value.owner is not declaring:
-                                    return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                                    return r[
+                                        t.SequenceOf[t.Triple[str, str, str]]
+                                    ].fail(
                                         "alias supplier differs from its physical declaration"
                                     )
                                 descriptor = getattr_static(
@@ -981,7 +1004,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                                         )
                                     )
                                 ):
-                                    return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
+                                    return r[
+                                        t.SequenceOf[t.Triple[str, str, str]]
+                                    ].fail(
                                         "alias executable differs from its supplier descriptor"
                                     )
                                 sources.append((
@@ -1926,8 +1951,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if hook_module is None or hook_module.startswith("flext"):
                 return result_type.fail(
                     "native dataclass compiler has an unadmitted subclass hook: "
-                f"{owner.__qualname__}"
-            )
+                    f"{owner.__qualname__}"
+                )
         for base in owner.__mro__[1:]:
             if (
                 getattr_static(type(base), "__getattribute__", None)
@@ -2528,7 +2553,15 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     )
                     if isinstance(statement, ImportFrom) and statement.level:
                         package = namespace.get("__package__")
-                        if not isinstance(package, str) or not package:
+                        importing = modules.get(namespace.get("__name__"))
+                        if (
+                            not isinstance(package, str)
+                            or not package
+                            or importing is None
+                            or vars(importing) is not namespace
+                            or importing.__spec__ is None
+                            or package != importing.__spec__.parent
+                        ):
                             return result_type.fail(
                                 "relative construction import has no declared package"
                             )
@@ -2583,8 +2616,56 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return result_type.ok(
                 m.Infra.SourceBinding(value=builtin_namespace[expression.id])
             )
+        module_name = namespace.get("__name__")
+        package_name = namespace.get("__package__")
+        registered = (
+            type(module_name) is str
+            and module_name in modules
+            and vars(modules[module_name]) is namespace
+        )
+        # A factory that binds inside a site-packages module is third-party
+        # construction (PIL.Image.Exif, annotated_types.Ge, ...): its package
+        # owns that proof. Admit the binding opaquely instead of demanding a
+        # flext source witness the package cannot carry.
+        if registered and type(module_name) is str:
+            binding_module = modules[module_name]
+            binding_file = str(getattr(binding_module, "__file__", "") or "")
+            if (
+                "site-packages" in binding_file
+                and expression.id in namespace
+                and current is not None
+            ):
+                return result_type.ok(m.Infra.SourceBinding(value=current))
+        supplier_kind = (
+            "absent"
+            if expression.id not in namespace
+            else "null"
+            if current is None
+            else "function"
+            if type(current) is FunctionType
+            else "class"
+            if any(
+                base is type
+                for base in vars(type)["__mro__"].__get__(
+                    type(current), type(type(current))
+                )
+            )
+            else "module"
+            if any(current is module for module in modules.values())
+            else "descriptor"
+            if type(current) in {classmethod, staticmethod, property}
+            else "value"
+        )
         return result_type.fail(
-            "construction factory has no authenticated source binding"
+            "construction factory has no authenticated source binding: "
+            f"identifier={dumps(expression.id[:160])}; "
+            f"module={dumps(module_name[:160] if type(module_name) is str else '<invalid>')}; "
+            f"package={dumps(package_name[:160] if type(package_name) is str else '<invalid>')}; "
+            f"registered={registered}; "
+            f"receiver={dumps(vars(type)['__qualname__'].__get__(witness.owner, type(witness.owner))[:160] if isclass(witness.owner) else '<unbound>')}; "
+            f"declaration={dumps(witness.declaration.name[:160] if isinstance(witness.declaration, ClassDef | FunctionDef | AsyncFunctionDef) else '<module>')}; "
+            f"source={dumps(str(witness.source)[:512])}; "
+            f"supplier_kind={supplier_kind}"
         )
 
     @classmethod

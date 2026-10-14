@@ -137,6 +137,17 @@ construction metadata and descriptor identity, and correspondence with code emit
 by the authenticated generator. A compiler filename or cached field table alone is
 not evidence. A missing physical/native construction witness fails explicitly rather
 than evaluating arbitrary declaration expressions or importing dormant providers.
+Source-declared descriptor aliases authenticate the receiver's physical lexical
+declaration and the exact imported supplier binding. Relative imports resolve from
+the declaring module's package; class attributes are read as raw descriptors through
+the native MRO without invoking descriptor callbacks. The receiver alias must retain
+that descriptor identity, and the actual supplier declaration and executed function
+must match physical source. Replacing either side, its source, or its code fails;
+membership of the supplier in the receiver's MRO does not waive alias authentication.
+An unresolved factory binding reports bounded, escaped identifier, module/package
+registration, receiver/declaration, physical source path, and supplier-kind context.
+Diagnostics never render the operand, its material values, or a source excerpt; they
+preserve the failed admission rather than authorizing an unknown factory.
 Native compiler inputs preserve the class's actual bases and its own declared
 descriptors. An inherited constructor is not an explicitly declared dataclass
 constructor. Authentication does not replay a class body, decorator, metaclass, or

@@ -423,9 +423,9 @@ class FlextInfraModGateEngine:
         run = u.Cli.run_to_file(
             (str(binary.value), *command[1:]),
             stdout_file,
-            stderr_file=stderr_file,
             cwd=root,
             timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(stderr_file=stderr_file),
         )
         if run.failure:
             return r[p.Cli.ProcessOutcome].from_failure(run)

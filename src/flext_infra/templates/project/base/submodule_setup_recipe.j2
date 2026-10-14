@@ -77,7 +77,7 @@
 		fi; \
 		owner=$$(git -C "$$child" rev-parse --show-superproject-working-tree); \
 		checkout_root=$$(git -C "$$child" rev-parse --show-toplevel); \
-		if [ "$$owner" != "$$root" ] || [ "$$checkout_root" != "$$child" ]; then \
+		if [ "$${owner}" != "$$root" ] || [ "$$checkout_root" != "$$child" ]; then \
 			printf 'ERROR: %s: checkout identity does not match the governed child\n' "$$path" >&2; \
 			exit 2; \
 		fi; \
@@ -134,9 +134,9 @@
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
-		child_root="$$superproject/$$child_path"; \
+		child_root="$${superproject}/$$child_path"; \
 		keys=""; \
-		if keys=$$(git -C "$$superproject" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
+		if keys=$$(git -C "$${superproject}" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
 			keys_status=0; \
 		else \
 			keys_status=$$?; \
@@ -147,7 +147,7 @@
 		fi; \
 		section=""; \
 		for key in $$keys; do \
-			declared=$$(git -C "$$superproject" config -f .gitmodules --get "$$key"); \
+			declared=$$(git -C "$${superproject}" config -f .gitmodules --get "$$key"); \
 			if [ "$$declared" = "$$child_path" ]; then \
 				if [ -n "$$section" ]; then \
 					printf 'ERROR: governed gitlink path is duplicated: %s\n' "$$child_path" >&2; \
@@ -160,12 +160,12 @@
 			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$$child_path" >&2; \
 			exit 2; \
 		fi; \
-		branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$section.branch"); \
+		branch=$$(git -C "$${superproject}" config -f .gitmodules --get --default "" "$$section.branch"); \
 		if [ -z "$$branch" ]; then \
 			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$$child_path" >&2; \
 			exit 2; \
 		fi; \
-		super_branch=$$(git -C "$$superproject" branch --show-current); \
+		super_branch=$$(git -C "$${superproject}" branch --show-current); \
 		if [ "$$branch" = "." ]; then \
 			branch="$$super_branch"; \
 			if [ -z "$$branch" ]; then \
@@ -178,7 +178,7 @@
 			printf 'ERROR: branch validator changed %s to %s\n' "$$branch" "$$validated_branch" >&2; \
 			exit 2; \
 		fi; \
-		gitlink_entry=$$(git -C "$$superproject" ls-files --stage -- "$$child_path"); \
+		gitlink_entry=$$(git -C "$${superproject}" ls-files --stage -- "$$child_path"); \
 		if [ -z "$$gitlink_entry" ]; then \
 			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$$child_path" >&2; \
 			exit 2; \

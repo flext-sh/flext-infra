@@ -472,8 +472,8 @@ _builtin_require_upg_lock_owner:
 	@set -eu; \
 	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
 		owner="$$($(UV) workspace dir --project "$$resolution")"; \
-		if [ "$$owner" != "$$resolution" ]; then \
-			printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the native resolution inputs before upgrading.\n' "$$owner" "$$resolution" >&2; \
+		if [ "$${owner}" != "$$resolution" ]; then \
+			printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the native resolution inputs before upgrading.\n' "$${owner}" "$$resolution" >&2; \
 			exit 2; \
 		fi; \
 	done

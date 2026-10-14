@@ -294,7 +294,7 @@ class FlextInfraUtilitiesRopeInventory:
         if kind == "parameter":
             # Rope reports a parameter at its function's ``def`` line; in a
             # multi-line signature the identifier lives on its own line.
-            line = options.parameter_lines.get((line, options.name), line)
+            line = options.parameter_lines[line, options.name]
         elif (line, options.name) in options.constant_bindings and (
             options.scope_chain or options.name != expected_alias
         ):
