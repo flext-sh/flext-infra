@@ -975,41 +975,41 @@ class FlextInfraUtilitiesRopeImports:
         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         protected = FlextInfraUtilitiesSemanticFamilyTypeReferences.type_payload_ranges(
             "".join(lines),
+            rope_project,
             pymodule,
         )
-        for node in ast.walk(ast.parse("".join(lines))):
-            if not isinstance(node, ast.Attribute) or any(
-                start
-                <= cls._ast_character_offset(lines, node.lineno, node.col_offset)
-                < end
-                for start, end in protected
+        source = "".join(lines)
+        for (
+            begin,
+            end,
+        ) in FlextInfraUtilitiesSemanticFamilyTypeReferences.reference_regions(source):
+            expression = source[begin:end]
+            if "." not in expression or any(
+                start <= begin < end <= stop for start, stop in protected
             ):
                 continue
-            binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                FlextInfraUtilitiesRopeRuntime.scope_at(
-                    pymodule,
-                    cls._ast_character_offset(lines, node.lineno, node.col_offset),
-                ),
-                node,
+            binding = FlextInfraUtilitiesRopeRuntime.expression_name(
+                FlextInfraUtilitiesRopeRuntime.scope_at(pymodule, begin),
+                expression,
             )
             if any(
                 FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
                 for expected in selected_names
             ):
-                msg = f"unsupported Rope module consumer: {resource.path}:{node.lineno}"
+                msg = f"unsupported Rope module consumer: {resource.path}:{pymodule.lines.get_line_number(begin)}"
                 raise RuntimeError(msg)
         for (
-            node,
+            expression,
             scope,
             line,
-        ) in FlextInfraUtilitiesSemanticFamilyTypeReferences.scoped_quoted_type_nodes(
+        ) in FlextInfraUtilitiesSemanticFamilyTypeReferences.scoped_quoted_type_references(
             "".join(lines),
             rope_project,
             pymodule,
         ):
-            if not isinstance(node, ast.Attribute):
+            if "." not in expression:
                 continue
-            binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, node)
+            binding = FlextInfraUtilitiesRopeRuntime.expression_name(scope, expression)
             if any(
                 FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
                 for expected in selected_names

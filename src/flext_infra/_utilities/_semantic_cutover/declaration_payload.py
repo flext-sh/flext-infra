@@ -36,7 +36,7 @@ class FlextInfraUtilitiesDeclarationPayload:
                 continue
             found.append(current)
             if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(current):
-                pending.extend(cls._direct_bases(current))
+                pending.extend(cls.direct_bases(current))
         return found
 
     @classmethod
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         return header, (words, first, last)
 
     @classmethod
-    def _direct_bases(
+    def direct_bases(
         cls, value: p.Infra.RopePyObject
     ) -> t.SequenceOf[p.Infra.RopePyObject]:
         """Return native bases and proven generic owners in their original scope.
@@ -140,8 +140,10 @@ class FlextInfraUtilitiesDeclarationPayload:
             argument = header.text[begin:end]
             regions = tuple(
                 (left, right)
-                for left, right in FlextInfraUtilitiesRopeRuntimeRefactors.expression_regions(
-                    argument, "${generic_owner}[${generic_arguments}]"
+                for left, right in FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
+                    runtime.build_string_module(None, argument),
+                    "${generic_owner}[${generic_arguments}]",
+                    arguments={},
                 )
                 if not argument[:left].strip("() \t\r\n")
                 and not argument[right:].strip("() \t\r\n")
@@ -323,11 +325,14 @@ class FlextInfraUtilitiesDeclarationPayload:
         if located is not None:
             header, (_words, _first, last) = located
             inline = header.text[last:].lstrip()
-            if inline.startswith(":") and inline[1:].strip():
-                if not cls._payload_statement_sequence(
+            if (
+                inline.startswith(":")
+                and inline[1:].strip()
+                and not cls._payload_statement_sequence(
                     inline[1:].strip(), docstring=value.get_doc() is not None
-                ):
-                    return None
+                )
+            ):
+                return None
         if not cls._payload_body(value, scope, statements):
             return None
         return statements
@@ -383,7 +388,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         if resolved is None:
             return None
         _module, binding = resolved
-        bases = cls._direct_bases(binding.get_object())
+        bases = cls.direct_bases(binding.get_object())
         return (
             binding
             if any(

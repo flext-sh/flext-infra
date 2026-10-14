@@ -225,15 +225,11 @@ Infra:
           # script and turned its failures silent). Ruff keeps reporting them;
           # the author decides. Also guards direct and IDE Ruff runs.
           unfixable:
-          - duplicate-value
           - multi-value-repeated-key-literal
           - multi-value-repeated-key-variable
-          - outdated-version-block
           - p-print
           - print
           - pytest-duplicate-parametrize-test-cases
-          - redefined-while-unused
-          - unused-variable
           # OPERATOR LAW 2026-10-05 (direct order, OBLIGATORY, NEVER DISABLED
           # AGAIN): `make fix` ALWAYS applies Ruff's unsafe fixes — the
           # mandatory lint_fix surface carries --unsafe-fix in codegen.yaml

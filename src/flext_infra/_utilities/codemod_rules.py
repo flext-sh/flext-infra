@@ -89,12 +89,12 @@ class FlextInfraUtilitiesCodemodRules:
             raw_directories, str
         ):
             msg = f"codemod utility directories are not a sequence: {config_path}"
-            raise ValueError(msg)
+            raise TypeError(msg)
         directories: list[Path] = []
         for relative in raw_directories:
             if not isinstance(relative, str):
                 msg = f"codemod utility directory is not a path: {config_path}"
-                raise ValueError(msg)
+                raise TypeError(msg)
             directory = (config_path.parent / relative).resolve()
             if not directory.is_relative_to(config_path.parent):
                 msg = f"codemod utility directory escapes its owner: {directory}"
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesCodemodRules:
             language = document.get("language")
             if not isinstance(identity, str) or not isinstance(language, str):
                 msg = f"codemod utility lacks native identity/language: {path}"
-                raise ValueError(msg)
+                raise TypeError(msg)
             key = (language, identity)
             if key in global_documents and global_documents[key] != document:
                 msg = f"codemod utility identity is ambiguous: {path}:{identity}"
@@ -190,7 +190,7 @@ class FlextInfraUtilitiesCodemodRules:
             projected = cls._qualified_global_matches(document, qualified)
             if not isinstance(projected, Mapping):
                 msg = "projected codemod utility is not a mapping"
-                raise ValueError(msg)
+                raise TypeError(msg)
             projected = {**projected, "id": qualified[str(document["id"])]}
             serialized = u.Cli.json_dumps(projected, sort_keys=True).unwrap()
             utilities[u.Cli.sha256_content(serialized)] = projected
@@ -375,14 +375,12 @@ class FlextInfraUtilitiesCodemodRules:
         rulesets = tuple(
             ruleset.model_copy(
                 update={
-                    "rule_ids": tuple(
-                        rule_id for rule_id in ruleset.rule_ids if rule_id in selected
-                    ),
-                    "fixable_rule_ids": tuple(
+                    field: tuple(
                         rule_id
-                        for rule_id in ruleset.fixable_rule_ids
+                        for rule_id in getattr(ruleset, field)
                         if rule_id in selected
-                    ),
+                    )
+                    for field in ("rule_ids", "fixable_rule_ids")
                 }
             )
             for ruleset in plan.rulesets
@@ -495,19 +493,15 @@ class FlextInfraUtilitiesCodemodRules:
                     if previous is None
                     else previous.model_copy(
                         update={
-                            "rule_ids": tuple(
-                                dict.fromkeys(
-                                    (*previous.rule_ids, *elected_ruleset.rule_ids),
-                                )
-                            ),
-                            "fixable_rule_ids": tuple(
+                            field: tuple(
                                 dict.fromkeys(
                                     (
-                                        *previous.fixable_rule_ids,
-                                        *elected_ruleset.fixable_rule_ids,
+                                        *getattr(previous, field),
+                                        *getattr(elected_ruleset, field),
                                     ),
                                 )
-                            ),
+                            )
+                            for field in ("rule_ids", "fixable_rule_ids")
                         }
                     )
                 )
@@ -984,31 +978,6 @@ class FlextInfraUtilitiesCodemodRules:
         return cls._cached_rules(provider, tuple(sources))
 
     @staticmethod
-    def _load_cached_rules(
-        cache_file: Path,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]] | None:
-        """Load one cached rule list, or ``None`` when the cache entry is absent.
-
-        Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRule]] | None``.
-
-        """
-        if not cache_file.is_file():
-            return None
-        loaded = u.Cli.json_loads(
-            cache_file.read_text(encoding=c.DEFAULT_ENCODING),
-        )
-        if loaded.failure:
-            return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(loaded)
-        if not isinstance(loaded.value, list):
-            return r[t.SequenceOf[m.Infra.CodemodRule]].fail(
-                f"codemod rule cache is not a rule list: {cache_file}",
-            )
-        return r[t.SequenceOf[m.Infra.CodemodRule]].ok(
-            tuple(m.Infra.CodemodRule.model_validate(item) for item in loaded.value),
-        )
-
-    @staticmethod
     def _write_rule_cache(
         cache_file: Path,
         parsed: p.Result[t.SequenceOf[m.Infra.CodemodRule]],
@@ -1064,9 +1033,21 @@ class FlextInfraUtilitiesCodemodRules:
             )
             / f"{u.Cli.sha256_content(identity.value)}.json"
         )
-        loaded = cls._load_cached_rules(cache_file)
-        if loaded is not None:
-            return loaded
+        if cache_file.is_file():
+            loaded = u.Cli.json_loads(
+                cache_file.read_text(encoding=c.DEFAULT_ENCODING),
+            )
+            if loaded.failure:
+                return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(loaded)
+            if not isinstance(loaded.value, list):
+                return r[t.SequenceOf[m.Infra.CodemodRule]].fail(
+                    f"codemod rule cache is not a rule list: {cache_file}",
+                )
+            return r[t.SequenceOf[m.Infra.CodemodRule]].ok(
+                tuple(
+                    m.Infra.CodemodRule.model_validate(item) for item in loaded.value
+                ),
+            )
         parsed = cls._parse_rules(provider, sources)
         return cls._write_rule_cache(cache_file, parsed)
 
@@ -1157,16 +1138,20 @@ class FlextInfraUtilitiesCodemodRules:
         declared_metadata: t.JsonMapping = (
             metadata if isinstance(metadata, Mapping) else {}
         )
-        context = cls._declared_context(
-            declared_metadata.get(c.Infra.CODEMOD_RULE_CONTEXT_KEY),
+        declared_fields = (
+            cls._declared_context(
+                declared_metadata.get(c.Infra.CODEMOD_RULE_CONTEXT_KEY),
+            ),
+            cls._declared_ensure_imports(
+                declared_metadata.get(c.Infra.CODEMOD_RULE_ENSURE_IMPORTS_KEY),
+            ),
         )
-        if context.failure:
-            return r[m.Infra.CodemodRule].fail(f"{context.error}: {resource}")
-        ensure_imports = cls._declared_ensure_imports(
-            declared_metadata.get(c.Infra.CODEMOD_RULE_ENSURE_IMPORTS_KEY),
-        )
-        if ensure_imports.failure:
-            return r[m.Infra.CodemodRule].fail(f"{ensure_imports.error}: {resource}")
+        for declared_field in declared_fields:
+            if declared_field.failure:
+                return r[m.Infra.CodemodRule].fail(
+                    f"{declared_field.error}: {resource}"
+                )
+        context, ensure_imports = declared_fields
         binding = cls._rule_binding_result(parsed_rule, context.value, rule_id)
         if binding.failure:
             return r[m.Infra.CodemodRule].fail(f"{binding.error}: {resource}")

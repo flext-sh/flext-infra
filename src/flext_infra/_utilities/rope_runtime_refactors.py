@@ -46,6 +46,33 @@ class _RopeRestructureOptions(FlextInfraModelsBase.FrozenArbitrary):
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
     """Load Rope refactor helpers behind protocols."""
 
+    @classmethod
+    def reindent_source(cls, source: str, amount: int) -> str:
+        """Move source indentation while retaining every multiline literal value."""
+        literals = tuple(
+            (begin, end)
+            for begin, end, _metadata in cls.ignored_regions(source)
+            if source[begin] != "#"
+        )
+        result = []
+        offset = 0
+        for line in source.splitlines(keepends=True):
+            inside_literal = any(begin < offset < end for begin, end in literals)
+            if not inside_literal and line.strip():
+                if amount >= 0:
+                    changed = " " * amount + line
+                else:
+                    removable = len(line) - len(line.lstrip(" \t"))
+                    if removable < -amount:
+                        msg = "source indentation is smaller than its native move"
+                        raise ValueError(msg)
+                    changed = line[-amount:]
+            else:
+                changed = line
+            result.append(changed)
+            offset += len(line)
+        return "".join(result)
+
     @staticmethod
     def compiled_constant(source: str) -> p.Result[p.AttributeProbe]:
         """Read a primitive compiler constant without executing authored source.
@@ -329,26 +356,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             message = "Rope SimilarFinder returned an invalid match"
             raise TypeError(message)
         return matches
-
-    @classmethod
-    def expression_regions(
-        cls, source: str, pattern: str
-    ) -> t.VariadicTuple[t.Pair[int, int]]:
-        """Return structural matches from an isolated native Rope expression.
-
-        Returns:
-            Native regions; symbol identity remains owned by the caller's scope.
-
-        Raises:
-            TypeError: If the native matcher violates its pattern contract.
-        """
-        finder = cls.runtime_callable(
-            "rope.refactor.similarfinder", "RawSimilarFinder"
-        )(source)
-        if not isinstance(finder, p.Infra.RopePatternFinder):
-            message = "Native Rope expression matcher violates its pattern contract"
-            raise TypeError(message)
-        return tuple(match.get_region() for match in finder.get_matches(pattern))
 
     @classmethod
     def semantic_regions(

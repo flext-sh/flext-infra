@@ -24,7 +24,7 @@ class TestsFlextInfraNativeModelProvenance:
     @staticmethod
     @pytest.mark.parametrize(
         "entrypoint",
-        [RootModel.model_construct, inspect_annotation],
+        [RootModel.model_construct, inspect_annotation, m.ContractModel.model_validate],
     )
     def test_real_model_module_retains_authenticated_native_sources(
         entrypoint: p.AttributeProbe,

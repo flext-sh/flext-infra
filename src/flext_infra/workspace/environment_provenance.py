@@ -87,19 +87,22 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 repository_root / repository.path / c.PYPROJECT_FILENAME,
                 required=True,
             )
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return result.from_failure(context)
         if lock_state is None:
             lock_read = u.Cli.atomic_read_binary_file_state(
-                repository_root / c.Infra.UV_LOCK_FILENAME,
+                context.value.lock_path,
                 required=True,
             )
             if lock_read.failure:
                 return result.from_failure(lock_read)
             lock_state = lock_read.value
         if (
-            lock_state.path != (repository_root / c.Infra.UV_LOCK_FILENAME).resolve()
+            lock_state.path != context.value.lock_path.resolve()
             or lock_state.content is None
         ):
-            return result.fail("member artifact needs its captured root lock")
+            return result.fail("member artifact needs its captured elected lock")
         locked_document = u.Cli.toml_parse_text(
             lock_state.content.decode(c.DEFAULT_ENCODING),
         )
@@ -228,13 +231,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if expected is None or native.loader is not expected.loader:
                 return r[Path].fail(
                     f"producer native interpreter loader differs: {module_name}"
-                )
-            if native.origin == "frozen" and (
-                native.loader_state != expected.loader_state
-                or namespace.get("__file__") != native.loader_state.filename
-            ):
-                return r[Path].fail(
-                    f"producer frozen source differs from interpreter: {module_name}"
                 )
             return r[Path].ok(interpreter)
         if native.origin is None:
@@ -420,7 +416,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     @classmethod
     def execute_request(
         cls,
-        request: p.Infra.WorkspaceEnvironmentRequest,
+        request: p.Infra.WorkspaceRequest,
     ) -> p.Result[int]:
         """Validate one CLI request without mutating the environment.
 

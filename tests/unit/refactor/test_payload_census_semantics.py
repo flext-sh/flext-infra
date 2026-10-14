@@ -7,16 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra
+from flext_infra import c, p
 from flext_infra.refactor import FlextInfraRefactorCensus
 from tests import m, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraPayloadCensusSemantics:
@@ -37,14 +34,14 @@ class TestsFlextInfraPayloadCensusSemantics:
         ],
     )
     def test_payload_candidates_cross_names_without_claiming_equivalence(
-        tmp_path: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
         change: str,
         *,
         expected_candidate: bool,
     ) -> None:
         """Different holders match only when every native declaration input matches."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "payloads.py"
+        root = Path(rope_workspace.rope_project.root.real_path)
+        path = root / "payloads.py"
         generic = "[T]" if change == "generic" else ""
         second_generic = "[T: int]" if change == "generic" else ""
         default = "'a b'"
@@ -100,17 +97,17 @@ class TestsFlextInfraPayloadCensusSemantics:
             + second_validator
             + second_serializer
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as workspace:
-            objects = tuple(
-                item
-                for item in workspace.objects(
-                    path,
-                    include_local_scopes=False,
-                    include_references=False,
-                )
-                if item.scope_path in {"InputHolder.Input", "OutputHolder.Output"}
+        tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rope_workspace.refresh()
+        objects = tuple(
+            item
+            for item in rope_workspace.objects(
+                path,
+                include_local_scopes=False,
+                include_references=False,
             )
+            if item.scope_path in {"InputHolder.Input", "OutputHolder.Output"}
+        )
         tm.that(len(objects), eq=2)
         tm.that(all(item.payload_fingerprint for item in objects), eq=True)
         groups = FlextInfraRefactorCensus.duplicate_groups((objects,))
@@ -126,7 +123,7 @@ class TestsFlextInfraPayloadCensusSemantics:
                         "-B",
                         "-c",
                         (
-                            f"from {package.name}.payloads import InputHolder, OutputHolder; "
+                            "from payloads import InputHolder, OutputHolder; "
                             "left = InputHolder.Input; right = OutputHolder.Output; "
                             "assert left is not right; "
                             "assert left.model_json_schema()['title'] != right.model_json_schema()['title']; "
@@ -134,32 +131,33 @@ class TestsFlextInfraPayloadCensusSemantics:
                         ),
                     ),
                     cwd=root,
-                    options=m.Cli.ProcessOptions(
-                        env={"PYTHONPATH": str(package.parent)}
-                    ),
+                    options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(root)}),
                 ),
             )
             tm.that(u.Cli.process_succeeded(observed.outcome), eq=True)
 
     @staticmethod
-    def test_non_pydantic_homonyms_have_no_payload_candidate(tmp_path: Path) -> None:
+    def test_non_pydantic_homonyms_have_no_payload_candidate(
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> None:
         """A class named BaseModel cannot enter the native Pydantic candidate route."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "homonyms.py"
-        path.write_text(
-            "class BaseModel:\n    pass\n"
-            "class InputHolder:\n"
-            "    class Input(BaseModel):\n        value: str = 'same'\n"
-            "class OutputHolder:\n"
-            "    class Output(BaseModel):\n        value: str = 'same'\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        with infra.rope_workspace(root) as workspace:
-            objects = workspace.objects(
+        path = Path(rope_workspace.rope_project.root.real_path) / "homonyms.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
                 path,
-                include_local_scopes=False,
-                include_references=False,
+                "class BaseModel:\n    pass\n"
+                "class InputHolder:\n"
+                "    class Input(BaseModel):\n        value: str = 'same'\n"
+                "class OutputHolder:\n"
+                "    class Output(BaseModel):\n        value: str = 'same'\n",
             )
+        )
+        rope_workspace.refresh()
+        objects = rope_workspace.objects(
+            path,
+            include_local_scopes=False,
+            include_references=False,
+        )
         tm.that(any(item.payload_fingerprint for item in objects), eq=False)
         tm.that(
             any(

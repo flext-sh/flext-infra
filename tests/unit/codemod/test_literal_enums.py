@@ -7,12 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from flext_infra import infra
-from tests import c, m, tm, u
+from tests import c, m, p, t, tm
 
 
 class TestsFlextInfraLiteralEnums:
@@ -28,10 +28,16 @@ class TestsFlextInfraLiteralEnums:
         ],
     )
     def test_singleton_enum_fields_preserve_discriminator_json(
-        tmp_path: Path, imports: str, qualifier: str
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: Callable[
+            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
+        ],
+        infra_subprocess: p.Cli.CommandRunner,
+        imports: str,
+        qualifier: str,
     ) -> None:
         """Aliases retain their Literal shape and real models serialize strings."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        root, package = constants_workspace
         owner = package / c.Infra.CONSTANTS_PY
         initializer = package / c.Infra.INIT_PY
         consumer = package / "consumer.py"
@@ -63,33 +69,9 @@ class TestsFlextInfraLiteralEnums:
                 "    return 'alpha'\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as workspace:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources=sources,
-                )
-            )
-            tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
-            proposed = {
-                **sources,
-                **{edit.file_path: edit.updated_source for edit in edits},
-            }
-            repeated = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources=proposed,
-                )
-            )
-            tm.that(repeated, empty=True)
-        for path, source in proposed.items():
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        result = tm.ok(
-            u.Cli.run(
+        constant_candidate(sources, (consumer,))
+        tm.ok(
+            infra_subprocess.capture(
                 (
                     sys.executable,
                     "-W",
@@ -130,12 +112,16 @@ class TestsFlextInfraLiteralEnums:
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             )
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @staticmethod
-    def test_literal_homonym_does_not_acquire_enum_semantics(tmp_path: Path) -> None:
+    def test_literal_homonym_does_not_acquire_enum_semantics(
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: Callable[
+            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
+        ],
+    ) -> None:
         """A user-owned Literal class retains its actual subscription behavior."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        _root, package = constants_workspace
         owner = package / c.Infra.CONSTANTS_PY
         consumer = package / "consumer.py"
         sources = {
@@ -155,25 +141,19 @@ class TestsFlextInfraLiteralEnums:
                 "    kind: Literal['alpha']\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as workspace:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources=sources,
-                )
-            )
-        tm.that(edits, empty=True)
+        constant_candidate(sources, ())
 
     @staticmethod
     @pytest.mark.parametrize("case", ["shadowed", "ambiguous"])
     def test_competing_enum_bindings_fail_before_publication(
-        tmp_path: Path, case: str
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: Callable[
+            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
+        ],
+        case: str,
     ) -> None:
         """A singleton annotation never selects an arbitrary member or facade."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        _root, package = constants_workspace
         owner = package / c.Infra.CONSTANTS_PY
         consumer = package / "consumer.py"
         extra = (
@@ -198,19 +178,10 @@ class TestsFlextInfraLiteralEnums:
                 "    kind: Literal['alpha']\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
         message = (
             "literal constant facade c is shadowed"
             if case == "shadowed"
             else "literal annotation has ambiguous enum owners"
         )
-        with (
-            infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match=message),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                rope_workspace=workspace,
-                sources=sources,
-            )
+        with pytest.raises(ValueError, match=message):
+            constant_candidate(sources, ())

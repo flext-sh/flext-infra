@@ -9,7 +9,7 @@ from __future__ import annotations
 import importlib
 import sys
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -41,6 +41,51 @@ def rope_workspace(tmp_path: Path) -> Iterator[p.Infra.RopeWorkspaceDsl]:
     """
     with infra.rope_workspace(tmp_path) as workspace:
         yield workspace
+
+
+@pytest.fixture
+def constants_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+    """Use the shared real project factory for constants phase consumers."""
+    return u.Tests.create_lazy_init_workspace(tmp_path)
+
+
+@pytest.fixture
+def constant_candidate(
+    constants_workspace: t.Pair[Path, Path],
+) -> Callable[[t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]]:
+    """Publish a public constants plan only after its complete fixed-point check."""
+    root, _package = constants_workspace
+
+    def candidate(
+        sources: t.MappingKV[Path, str], expected_paths: t.VariadicTuple[Path]
+    ) -> t.MappingKV[Path, str]:
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        with infra.rope_workspace(root) as workspace:
+            phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=workspace, sources=sources
+                )
+            )
+            tm.that(tuple(edit.file_path for edit in edits), eq=expected_paths)
+            proposed = {
+                **sources,
+                **{edit.file_path: edit.updated_source for edit in edits},
+            }
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        phase, rope_workspace=workspace, sources=proposed
+                    )
+                ),
+                empty=True,
+            )
+        for path, source in proposed.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        return proposed
+
+    return candidate
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

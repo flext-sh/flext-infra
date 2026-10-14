@@ -7,12 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from flext_infra import infra
-from tests import c, m, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraConstantDeclarations:
@@ -32,10 +32,17 @@ class TestsFlextInfraConstantDeclarations:
         ],
     )
     def test_class_constants_do_not_become_pydantic_fields(
-        tmp_path: Path, imports: str, qualifier: str, provider: str
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: Callable[
+            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
+        ],
+        infra_subprocess: p.Cli.CommandRunner,
+        imports: str,
+        qualifier: str,
+        provider: str,
     ) -> None:
         """The migrated namespace publishes scalars and an immutable collection."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        root, package = constants_workspace
         family = package / u.Infra.facade_families()["c"].directory
         family.mkdir()
         path = family / "values.py"
@@ -47,28 +54,9 @@ class TestsFlextInfraConstantDeclarations:
             f"    FIELDS: {qualifier}[frozenset[str]] = "
             "frozenset({provider.DEFAULT_ENCODING})\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as workspace:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources={path: source},
-                )
-            )
-            tm.that(len(edits), eq=1)
-            proposed = {path: edits[0].updated_source}
-            repeated = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources=proposed,
-                )
-            )
-            tm.that(repeated, empty=True)
-        path.write_text(proposed[path], encoding=c.DEFAULT_ENCODING)
-        result = tm.ok(
-            u.Cli.run(
+        constant_candidate({path: source}, (path,))
+        tm.ok(
+            infra_subprocess.capture(
                 (
                     sys.executable,
                     "-W",
@@ -88,15 +76,18 @@ class TestsFlextInfraConstantDeclarations:
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             )
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @staticmethod
     @pytest.mark.parametrize("relative", ["_constants/values.py", "consumer.py"])
     def test_nonconstant_final_bindings_keep_their_contract(
-        tmp_path: Path, relative: str
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: Callable[
+            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
+        ],
+        relative: str,
     ) -> None:
         """Module values, locals and non-typing homonyms do not acquire ClassVar."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        _root, package = constants_workspace
         path = package / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         source = (
@@ -113,21 +104,17 @@ class TestsFlextInfraConstantDeclarations:
             "        local: Immutable[str] = 'local'\n"
             "        return local\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as workspace:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources={path: source},
-                )
-            )
-        tm.that(edits, empty=True)
+        constant_candidate({path: source}, ())
 
     @staticmethod
-    def test_shadowed_classvar_fails_before_a_source_edit(tmp_path: Path) -> None:
+    def test_shadowed_classvar_fails_before_a_source_edit(
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: Callable[
+            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
+        ],
+    ) -> None:
         """An occupied binding cannot silently change an annotation's meaning."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        _root, package = constants_workspace
         family = package / u.Infra.facade_families()["c"].directory
         family.mkdir()
         path = family / "values.py"
@@ -137,14 +124,6 @@ class TestsFlextInfraConstantDeclarations:
             "class Values:\n"
             "    TOKEN: Final[str] = 'consumer-token'\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with (
-            infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match="destination ClassVar is shadowed"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                rope_workspace=workspace,
-                sources={path: source},
-            )
+        with pytest.raises(ValueError, match="destination ClassVar is shadowed"):
+            constant_candidate({path: source}, ())
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)

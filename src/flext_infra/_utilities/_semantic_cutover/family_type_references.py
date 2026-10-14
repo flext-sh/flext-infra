@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import operator
-import re
 from collections.abc import Callable, Iterator
 
 from flext_infra import c, m, p, t
@@ -190,7 +188,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         """
         start = statement.start_offset + statement.indent
         end = statement.end_offset
-        name = FlextInfraUtilitiesRopeStructure._header_name(statement.text)
+        name = FlextInfraUtilitiesRopeStructure.header_name(statement.text)
         prefix = source.find(name, start, end)
         if prefix < 0:
             msg = "native declaration header has no named region"
@@ -289,7 +287,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     def quoted_type_regions(
         cls,
         source: str,
-        project: p.Infra.RopeProject,
+        _project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
     ) -> t.VariadicTuple[tuple[int, int, str, p.Infra.RopeScope]]:
         """Return only string constants occupying native annotation type positions."""
@@ -369,46 +367,24 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         return tuple(sorted(regions))
 
     @classmethod
-    def scoped_quoted_type_nodes(
+    def scoped_quoted_type_references(
         cls,
         source: str,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-    ) -> Iterator[t.Triple[ast.expr, p.Infra.RopeScope, int]]:
-        """Yield quoted type nodes in their original annotation declaration scope.
+    ) -> Iterator[t.Triple[str, p.Infra.RopeScope, int]]:
+        """Yield native type primaries in quoted annotations, with original scope."""
+        for begin, _end, literal, scope in cls.quoted_type_regions(
+            source, project, module
+        ):
+            line = module.lines.get_line_number(begin)
+            selected: list[str] = []
 
-        Yields:
-            The expression, original Rope scope, and physical annotation line.
-            Literal values and Annotated metadata are never type references.
-        """
-        for annotation, declaration_line in cls._annotation_roots(ast.parse(source)):
-            start, _end = cls.expression_range(source, annotation)
-            scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
-                module,
-                start,
-                declaration_line=declaration_line,
-            )
-            pending = [annotation]
-            while pending:
-                expression = pending.pop()
-                for node in cls._type_nodes(expression, project, scope):
-                    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                        pending.append(ast.parse(node.value, mode="eval").body)
-                    elif expression is not annotation:
-                        yield (node, scope, annotation.lineno)
+            def collect(_scope: p.Infra.RopeScope, expression: str) -> None:
+                selected.append(expression)
 
-    @classmethod
-    def typeexpression_ranges(cls, source: str) -> frozenset[t.Pair[int, int]]:
-        """Expose the same structural roots to concrete-syntax consumer adapters.
-
-        Returns:
-            The resulting ``frozenset[t.Pair[int, int]]``.
-
-        """
-        return frozenset(
-            cls.expression_range(source, expression)
-            for expression, _line in cls._annotation_roots(ast.parse(source))
-        )
+            cls.rewrite_type_source(literal, project, scope, collect)
+            yield from ((expression, scope, line) for expression in selected)
 
     @classmethod
     def type_payload_ranges(
@@ -556,264 +532,72 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
-
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = flatten.project.get_pymodule(resource)
-        edits: list[m.Infra.SourceRewrite] = []
-        for annotation, declaration_line in cls._annotation_roots(ast.parse(source)):
-            start, _end = cls.expression_range(source, annotation)
-            scope = runtime.scope_at(module, start, declaration_line=declaration_line)
-            for node in cls._type_nodes(annotation, flatten.project, scope):
-                if not isinstance(node, ast.Constant) or not isinstance(
-                    node.value,
-                    str,
-                ):
-                    continue
-                blocked, updated = cls._quoted_type_source(
-                    node.value,
-                    resource,
-                    scope,
-                    flatten=flatten,
+        edits = []
+        for begin, end, literal, scope in cls.quoted_type_regions(
+            source, flatten.project, module
+        ):
+            blocked, changed = cls._quoted_type_source(
+                literal, resource, scope, flatten=flatten
+            )
+            if blocked:
+                return True, ()
+            if changed != literal:
+                edits.append(
+                    m.Infra.SourceRewrite(start=begin, end=end, text=repr(changed))
                 )
-                if blocked:
-                    return (True, ())
-                if updated != node.value:
-                    start, end = cls.expression_range(source, node)
-                    edits.append(
-                        m.Infra.SourceRewrite(start=start, end=end, text=repr(updated)),
-                    )
-        return (False, tuple(edits))
+        return False, tuple(edits)
 
     @classmethod
     def _quoted_type_source(
         cls,
         source: str,
-        resource: p.Infra.RopeResource,
+        _resource: p.Infra.RopeResource,
         scope: p.Infra.RopeScope,
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, str]:
-
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        nodes = tuple(
-            cls._type_nodes(
-                ast.parse(source, mode="eval").body,
-                flatten.project,
-                scope,
-            ),
-        )
-        edits: list[m.Infra.SourceRewrite] = []
-        for node in nodes:
-            blocked, edit = cls._quoted_node_rewrite(
-                node,
-                source,
-                resource,
-                scope,
-                flatten=flatten,
-            )
-            if blocked:
-                return (True, source)
-            if edit is not None:
-                edits.append(edit)
-        for node in nodes:
-            start, end = cls.expression_range(source, node)
-            if not any(
-                edit.start <= start and end <= edit.end for edit in edits
-            ) and runtime.same_name(
-                flatten.wrapper,
-                runtime.resolve_symbol(scope, node),
+        unresolved = False
+
+        def replace(lexical: p.Infra.RopeScope, expression: str) -> str | None:
+            nonlocal unresolved
+            prefix, separator, name = expression.rpartition(".")
+            if separator and runtime.same_name(
+                flatten.wrapper, runtime.expression_name(lexical, prefix)
             ):
-                return (True, source)
-        change = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-            resource,
-            source,
-            edits,
+                if name not in flatten.names:
+                    unresolved = True
+                    return None
+                parent, dotted, _wrapper = prefix.rpartition(".")
+                if dotted:
+                    return f"{parent}.{flatten.names[name]}"
+                return (
+                    f"{flatten.owner_name}.{flatten.names[name]}"
+                    if lexical.get_kind() == c.Infra.RopeScopeKind.FUNCTION
+                    and flatten.owner_name
+                    else flatten.names[name]
+                )
+            if expression in flatten.names and runtime.same_name(
+                flatten.wrapper.get_object().get_attribute(expression),
+                runtime.expression_name(lexical, expression),
+            ):
+                return flatten.names[expression]
+            return None
+
+        changed = cls.rewrite_type_source(source, flatten.project, scope, replace)
+        primaries = cls.reference_regions(changed)
+        blocked = any(
+            runtime.same_name(
+                flatten.wrapper, runtime.expression_name(scope, changed[begin:end])
+            )
+            for begin, end in primaries
+            if not any(
+                other_begin <= begin and end < other_end
+                for other_begin, other_end in primaries
+            )
         )
-        return (False, change.new_contents)
-
-    @classmethod
-    def _quoted_node_rewrite(
-        cls,
-        node: ast.expr,
-        source: str,
-        resource: p.Infra.RopeResource,
-        scope: p.Infra.RopeScope,
-        *,
-        flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> t.Pair[bool, m.Infra.SourceRewrite | None]:
-        """Resolve one selected node; nested strings retain their original scope.
-
-        Returns:
-            The resulting ``t.Pair[bool, m.Infra.SourceRewrite | None]``.
-
-        """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        names = flatten.names
-        start, end = cls.expression_range(source, node)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            blocked, updated = cls._quoted_type_source(
-                node.value,
-                resource,
-                scope,
-                flatten=flatten,
-            )
-            if blocked or updated == node.value:
-                return (blocked, None)
-            return (
-                False,
-                m.Infra.SourceRewrite(start=start, end=end, text=repr(updated)),
-            )
-        if isinstance(node, ast.Attribute) and runtime.same_name(
-            flatten.wrapper,
-            runtime.resolve_symbol(scope, node.value),
-        ):
-            if node.attr not in names:
-                return (True, None)
-            text = cls._promoted_attribute(
-                node,
-                scope,
-                flatten.owner_name,
-                names[node.attr],
-            )
-            return (False, m.Infra.SourceRewrite(start=start, end=end, text=text))
-        if (
-            isinstance(node, ast.Name)
-            and node.id in names
-            and runtime.same_name(
-                flatten.wrapper.get_object().get_attribute(node.id),
-                runtime.resolve_symbol(scope, node),
-            )
-        ):
-            return (
-                False,
-                m.Infra.SourceRewrite(start=start, end=end, text=names[node.id]),
-            )
-        return (False, None)
-
-    @staticmethod
-    def _promoted_attribute(
-        node: ast.Attribute,
-        scope: p.Infra.RopeScope,
-        owner_name: str,
-        name: str,
-    ) -> str:
-        """Keep an explicit parent or the method's owning class after promotion.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        if isinstance(node.value, ast.Attribute):
-            return f"{ast.unparse(node.value.value)}.{name}"
-        if scope.get_kind() == c.Infra.RopeScopeKind.FUNCTION:
-            return f"{owner_name}.{name}" if owner_name else name
-        return name
-
-    @classmethod
-    def _annotation_roots(
-        cls,
-        module: ast.Module,
-    ) -> Iterator[t.Pair[ast.expr, int | None]]:
-        for node in ast.walk(module):
-            if isinstance(node, ast.AnnAssign):
-                yield (node.annotation, None)
-            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                yield from cls._function_annotations(node)
-            elif isinstance(node, ast.TypeAlias):
-                yield (node.value, None)
-            elif isinstance(node, ast.ClassDef):
-                for base in node.bases:
-                    yield (base, node.lineno)
-            elif isinstance(node, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple):
-                yield from cls._type_parameter_annotations(node)
-
-    @staticmethod
-    def _type_parameter_annotations(
-        node: ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple,
-    ) -> Iterator[t.Pair[ast.expr, int | None]]:
-        """Yield a type parameter's bound before its optional default.
-
-        Yields:
-            Each ``t.Pair[ast.expr, int | None]``.
-
-        """
-        if isinstance(node, ast.TypeVar) and node.bound is not None:
-            yield (node.bound, None)
-        if node.default_value is not None:
-            yield (node.default_value, None)
-
-    @staticmethod
-    def _function_annotations(
-        node: ast.FunctionDef | ast.AsyncFunctionDef,
-    ) -> Iterator[t.Pair[ast.expr, int | None]]:
-        """Yield each parameter and return annotation in declaration order.
-
-        Yields:
-            Each ``t.Pair[ast.expr, int | None]``.
-
-        """
-        arguments = (
-            *node.args.posonlyargs,
-            *node.args.args,
-            *node.args.kwonlyargs,
-            node.args.vararg,
-            node.args.kwarg,
-        )
-        for argument in arguments:
-            if argument is not None and argument.annotation is not None:
-                yield (argument.annotation, node.lineno)
-        if node.returns is not None:
-            yield (node.returns, node.lineno)
-
-    @classmethod
-    def _type_nodes(
-        cls,
-        node: ast.expr,
-        project: p.Infra.RopeProject,
-        scope: p.Infra.RopeScope,
-    ) -> Iterator[ast.expr]:
-
-        yield node
-        if isinstance(node, ast.Subscript):
-            yield from cls._type_nodes(node.value, project, scope)
-            runtime = FlextInfraUtilitiesRopeRuntimeModules
-            binding = runtime.resolve_symbol(scope, node.value)
-            typing = project.get_module("typing")
-            if runtime.same_name(typing.get_attribute("Literal"), binding):
-                return
-            arguments = (
-                node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
-            )
-            if runtime.same_name(typing.get_attribute("Annotated"), binding):
-                arguments = arguments[:1]
-            for argument in arguments:
-                yield from cls._type_nodes(argument, project, scope)
-        elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-            yield from cls._type_nodes(node.left, project, scope)
-            yield from cls._type_nodes(node.right, project, scope)
-        elif isinstance(node, ast.Tuple | ast.List):
-            for element in node.elts:
-                yield from cls._type_nodes(element, project, scope)
-        elif isinstance(node, ast.Attribute | ast.Starred):
-            yield from cls._type_nodes(node.value, project, scope)
-
-    @staticmethod
-    def expression_range(source: str, expression: ast.expr) -> t.Pair[int, int]:
-        if expression.end_lineno is None or expression.end_col_offset is None:
-            msg = "Parsed type expression has no complete source coordinates"
-            raise ValueError(msg)
-        lines = re.split(r"(?<=\n)|(?<=\r)(?!\n)", source)
-        start = sum(map(len, lines[: expression.lineno - 1])) + len(
-            lines[expression.lineno - 1]
-            .encode("utf-8")[: expression.col_offset]
-            .decode("utf-8"),
-        )
-        end = sum(map(len, lines[: expression.end_lineno - 1])) + len(
-            lines[expression.end_lineno - 1]
-            .encode("utf-8")[: expression.end_col_offset]
-            .decode("utf-8"),
-        )
-        return (start, end)
+        return unresolved or blocked, changed
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticFamilyTypeReferences"]

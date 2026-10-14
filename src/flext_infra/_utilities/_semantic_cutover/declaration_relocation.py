@@ -612,7 +612,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             .get_attribute(name)
             .get_object()
         )
-        bases = cls._direct_bases(declared)
+        bases = cls.direct_bases(declared)
         related: list[t.Triple[Path, str, str]] = []
         for path, owner, route in targets:
             value = (
@@ -1001,7 +1001,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 start, stop = begin + first, begin + last
                 changed = replace(scope, source[start:stop])
                 if changed is not None:
-                    edits.append(m.Infra.SourceRewrite(start=start, end=stop, text=changed))
+                    edits.append(
+                        m.Infra.SourceRewrite(start=start, end=stop, text=changed)
+                    )
         for begin, end, literal, scope in types.quoted_type_regions(
             source,
             project,

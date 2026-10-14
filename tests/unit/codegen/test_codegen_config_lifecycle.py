@@ -183,11 +183,10 @@ import sys
 from pathlib import Path
 
 from flext_infra import c, config, u
-<<<<<<< HEAD
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
-=======
-from flext_infra.workspace import FlextInfraWorkspaceDetector
->>>>>>> 78954c012a56cd9a5b986d549fed6759c7eb3808
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 root = Path(sys.argv[1])
 context = FlextInfraWorkspaceDetector.resolution_context(root).unwrap()
@@ -209,19 +208,16 @@ repository = u.Infra.configured_repository_ref(
     codegen=config.Infra.codegen,
     repository_root=root,
 ).unwrap()
-<<<<<<< HEAD
 state = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
     root, repository
 ).unwrap()
-=======
-state = u.Infra.member_project_declaration(root, repository).unwrap()
-explicit = u.Infra.member_project_declaration(
+explicit = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
     root, repository, lock_state=lock_state,
 ).unwrap()
 assert explicit == state
 if obsolete != context.lock_path:
     foreign_lock = lock_state.model_copy(update={"path": obsolete})
-    refused = u.Infra.member_project_declaration(
+    refused = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
         root, repository, lock_state=foreign_lock,
     )
     assert refused.failure
@@ -230,7 +226,6 @@ assert u.Cli.atomic_read_binary_file_state(
     context.lock_path, required=True,
 ).unwrap() == lock_state
 print("installed declaration elected-lock=" + str(context.lock_path))
->>>>>>> 78954c012a56cd9a5b986d549fed6759c7eb3808
 assert state.path.is_relative_to(Path(sys.prefix))
 metadata, requirements = u.Infra.member_declaration_requirements(
     state,

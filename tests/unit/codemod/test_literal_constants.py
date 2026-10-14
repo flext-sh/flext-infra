@@ -7,12 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from flext_infra import infra
-from tests import c, m, tm, u
+from tests import c, m, p, t, tm
 
 
 class TestsFlextInfraLiteralConstants:
@@ -31,10 +31,16 @@ class TestsFlextInfraLiteralConstants:
         ],
     )
     def test_literal_return_reuses_owner_and_reaches_fixed_point(
-        tmp_path: Path, literal_source: str, return_source: str
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: Callable[
+            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
+        ],
+        infra_subprocess: p.Cli.CommandRunner,
+        literal_source: str,
+        return_source: str,
     ) -> None:
         """Equivalent quote forms reuse c while computed strings keep behavior."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        root, package = constants_workspace
         owner = package / c.Infra.CONSTANTS_PY
         initializer = package / c.Infra.INIT_PY
         consumer = package / "consumer.py"
@@ -63,33 +69,9 @@ class TestsFlextInfraLiteralConstants:
                 "    return value\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as workspace:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources=sources,
-                )
-            )
-            tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
-            proposed = {
-                **sources,
-                **{edit.file_path: edit.updated_source for edit in edits},
-            }
-            repeated = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources=proposed,
-                )
-            )
-            tm.that(repeated, empty=True)
-        for path, source in proposed.items():
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        result = tm.ok(
-            u.Cli.run(
+        constant_candidate(sources, (consumer,))
+        tm.ok(
+            infra_subprocess.capture(
                 (
                     sys.executable,
                     "-W",
@@ -116,15 +98,18 @@ class TestsFlextInfraLiteralConstants:
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             )
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @staticmethod
     @pytest.mark.parametrize("case", ["shadowed", "ambiguous"])
     def test_unproven_literal_owner_fails_before_publication(
-        tmp_path: Path, case: str
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: Callable[
+            [t.MappingKV[Path, str], t.VariadicTuple[Path]], t.MappingKV[Path, str]
+        ],
+        case: str,
     ) -> None:
         """Lexical facade collisions and competing string owners fail closed."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        _root, package = constants_workspace
         owner = package / c.Infra.CONSTANTS_PY
         consumer = package / "consumer.py"
         extra = (
@@ -145,19 +130,10 @@ class TestsFlextInfraLiteralConstants:
             ),
             consumer: source,
         }
-        for path, text in sources.items():
-            path.write_text(text, encoding=c.DEFAULT_ENCODING)
         message = (
             "literal constant facade c is shadowed"
             if case == "shadowed"
             else "literal return has ambiguous public constant owners"
         )
-        with (
-            infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match=message),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                rope_workspace=workspace,
-                sources=sources,
-            )
+        with pytest.raises(ValueError, match=message):
+            constant_candidate(sources, ())

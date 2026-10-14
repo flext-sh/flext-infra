@@ -338,25 +338,19 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
         if resolved.failure:
             return resolved
-        relocated = cls._resolution_context_sources(
-            state,
-            project,
-            project_sources,
-            [
-                (target, optional_names, extra)
-                for extra, (target, optional_names) in resolved.value.items()
-            ],
-            qualifier="extra",
-        )
-        if relocated.failure:
-            return relocated
-        cls._resolution_group_entries(state, project, declared_groups, renamed.value)
-        if not (root and not project.repository.package):
-            relocated = cls._resolution_context_sources(
-                state,
-                project,
-                project_sources,
+        phases: tuple[tuple[str, list[t.Triple[str, t.StrSequence, str]]], ...] = (
+            (
+                "extra",
                 [
+                    (target, optional_names, extra)
+                    for extra, (target, optional_names) in resolved.value.items()
+                ],
+            ),
+            (
+                "group",
+                []
+                if root and not project.repository.package
+                else [
                     (
                         renamed[canonicalize_name(group)],
                         cls._resolution_group_requirement_names(declared_groups, group),
@@ -364,10 +358,19 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     )
                     for group in declared_groups
                 ],
-                qualifier="group",
+            ),
+        )
+        for qualifier, context_list in phases:
+            relocated = cls._resolution_context_sources(
+                state,
+                project,
+                project_sources,
+                context_list,
+                qualifier=qualifier,
             )
             if relocated.failure:
                 return relocated
+        cls._resolution_group_entries(state, project, declared_groups, renamed.value)
         return cls._resolution_project_exports(
             state, project, project_uv, renamed.value, name
         )

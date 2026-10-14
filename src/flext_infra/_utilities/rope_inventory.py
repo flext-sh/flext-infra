@@ -392,7 +392,7 @@ class FlextInfraUtilitiesRopeInventory:
             return ""
         bases = tuple(
             cls._native_object_identity(base)
-            for base in payloads._direct_bases(binding.get_object())
+            for base in payloads.direct_bases(binding.get_object())
         )
         if any(not base for base in bases):
             return ""

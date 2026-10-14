@@ -216,11 +216,13 @@ an uninitialized native slot from a slot shadowed by a derived declaration;
 neither state supplies a fabricated field value or executes the derived accessor.
 Optional native reads require the standard attribute reader and no custom missing
 attribute hook.
-Operand observations retain structured JSON values until the transport boundary.
+Operand observations share one recursive encoder, parameterized by construction
+mode, and retain structured JSON values until the transport boundary.
 Recursive JSON strings are prohibited: re-encoding their escapes amplifies memory
-with nesting depth. Nested compiler locations use a flat list with each code
-unit's position in `co_consts`; neither optimization replaces executable equality or operand evidence
-with a digest.
+with nesting depth. Compiler locations compare as a flat structure containing
+the root and every nested code unit's position in `co_consts`, without JSON
+conversion or repeated root checks. Executable equality and full operand evidence
+remain required.
 Import dependency discovery uses the shared import maps; class-lineage validation remains
 with the queries that request class information. Namespace packages contribute
 their physical portions to source authority without requiring an executable

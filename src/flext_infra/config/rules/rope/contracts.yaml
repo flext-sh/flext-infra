@@ -1,4 +1,12 @@
 rules:
+  - id: ldif-helper-must-may
+    pattern: '${extractor}(${definition})'
+    goal: 'u.Ldif.extract_objectclass_must_may(${definition}, must_separator=c.Ldif.SCHEMA_MUST_SEPARATOR, may_separator=c.Ldif.SCHEMA_MAY_SEPARATOR)'
+    arguments:
+      extractor: name=flext_ldif.servers.relaxed_schema.FlextLdifServersRelaxedSchema._extract_must_may_from_objectclass
+    imports: {u: 'from flext_ldif import u', c: 'from flext_ldif import c'}
+    bindings:
+      u.Ldif.extract_objectclass_must_may: flext_ldif._utilities.schema_extract.FlextLdifUtilitiesSchemaExtract.extract_objectclass_must_may
   - id: ldif-helper-oid
     pattern: '${extractor}(${definition})'
     goal: 'u.Ldif.extract_from_definition(${definition}, patterns=(c.Ldif.SCHEMA_OID_LEADING_RE,), empty_error=c.Ldif.SCHEMA_OID_EMPTY_ERROR)'
