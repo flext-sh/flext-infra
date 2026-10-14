@@ -22,7 +22,15 @@ class TestsFlextInfraUvNativeResolution:
 
     @staticmethod
     def _profile_requirement(requirement: str) -> str:
-        """Declare authored internal sources through the fixture's public provider."""
+        """Declare authored internal sources through the fixture's public provider.
+
+        Args:
+            requirement: Authored requirement string from the dependency profile.
+
+        Returns:
+            The requirement bound to the internal provider URL for first-party
+            names, or unchanged when it already pins a source or is external.
+        """
         parsed = Requirement(requirement)
         if not parsed.name.startswith("flext-") or parsed.url is not None:
             return requirement
@@ -36,7 +44,14 @@ class TestsFlextInfraUvNativeResolution:
         cls,
         root: Path,
     ) -> t.MappingKV[str, t.Cli.TomlDocument]:
-        """Retain complete conformed profile documents before internal qualification."""
+        """Retain complete conformed profile documents before internal qualification.
+
+        Args:
+            root: Directory receiving one conformed project per first-party member.
+
+        Returns:
+            Mapping of member distribution name to its conformed TOML document.
+        """
         documents: dict[str, t.Cli.TomlDocument] = {}
         profiles = config.Infra.codegen.scaffold.project.dependency_profiles
         toolchain = config.Infra.codegen.toolchain
@@ -77,6 +92,9 @@ class TestsFlextInfraUvNativeResolution:
                 if u.Infra.dep_name(requirement) != name
             ]
             path = root / name
+            codegen_group = json.dumps(
+                [cls._profile_requirement(item) for item in codegen],
+            )
             u.Tests.write_native_resolution_project(
                 path,
                 name,
@@ -84,8 +102,7 @@ class TestsFlextInfraUvNativeResolution:
                 groups=(
                     "[dependency-groups]\n"
                     f"dev = {json.dumps(development)}\n"
-                    "codegen = "
-                    f"{json.dumps([cls._profile_requirement(item) for item in codegen])}\n"
+                    f"codegen = {codegen_group}\n"
                     'examples = [{include-group = "dev"}]\n'
                 ),
             )
@@ -178,7 +195,16 @@ class TestsFlextInfraUvNativeResolution:
         document: t.Cli.TomlDocument,
         packages: t.MappingKV[str, Path],
     ) -> t.Cli.TomlDocument:
-        """Qualify only the real internal edges, without fabricating third parties."""
+        """Qualify only the real internal edges, without fabricating third parties.
+
+        Args:
+            document: Conformed project document whose requirements are scoped.
+            packages: Internal distributions mapped to their local checkout paths.
+
+        Returns:
+            Copy of the document with each internal requirement rewritten to the
+            mapped checkout URI and every external requirement left untouched.
+        """
         payload = deepcopy(u.Tests.toml_mapping(u.Cli.toml_unwrap_item(document)))
 
         def internal(requirements: t.JsonValue) -> list[t.JsonValue]:
@@ -324,7 +350,10 @@ class TestsFlextInfraUvNativeResolution:
                     cwd=provider,
                 ),
             ).strip()
-            source = f"{{git = {json.dumps(provider.as_uri())}, rev = {json.dumps(revision)}}}"
+            source = (
+                f"{{git = {json.dumps(provider.as_uri())},"
+                f" rev = {json.dumps(revision)}}}"
+            )
         else:
             source = f"{{path = {json.dumps(str(provider))}, editable = false}}"
         inputs: list[m.Infra.UvResolutionProject] = []
@@ -625,6 +654,7 @@ class TestsFlextInfraUvNativeResolution:
                 f"{root_extra_source}"
             ),
         )
+        required_python = config.Infra.codegen.toolchain.python_required_version
         u.Tests.write_native_resolution_project(
             member,
             member_name,
@@ -647,7 +677,7 @@ class TestsFlextInfraUvNativeResolution:
                 'group = "dev"}\n'
                 f"{member_extra_source}"
                 "[tool.uv.dependency-groups]\n"
-                f'dev = {{requires-python = "{config.Infra.codegen.toolchain.python_required_version}"}}\n'
+                f'dev = {{requires-python = "{required_python}"}}\n'
             ),
         )
         root_document = u.Tests.toml_doc(

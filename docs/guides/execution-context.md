@@ -149,6 +149,13 @@ the native MRO without invoking descriptor callbacks. The receiver alias must re
 that descriptor identity, and the actual supplier declaration and executed function
 must match physical source. Replacing either side, its source, or its code fails;
 membership of the supplier in the receiver's MRO does not waive alias authentication.
+Native class attribute access preserves method/property identity, exposes a
+staticmethod's exact function, and binds a classmethod to the exact accessed class.
+Alias checks verify those source-declared forms against raw receiver storage without
+calling descriptor hooks. Bound methods enter the same supplier/source/code checks;
+matching functions with a different bound class are not equivalent. An alias mismatch
+retains its failure and reports bounded receiver/module/attribute, source identifier,
+supplier owner, and raw binding-kind metadata, never operand representations.
 An unresolved factory binding reports bounded, escaped identifier, module/package
 registration, receiver/declaration, physical source path, and supplier-kind context.
 Diagnostics never render the operand, its material values, or a source excerpt; they

@@ -777,11 +777,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
             if not isfunction(outer):
                 continue
-            if "site-packages" in str(outer.__code__.co_filename):
-                # A third-party function owns its wrapper proof: its package
-                # tests verify the chain, and this workspace holds no source
-                # witness for the package's internal wrapper patterns.
-                continue
             link = outer
             chain: set[int] = set()
             suppliers: set[str] = set()
@@ -1449,19 +1444,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             for expression, role in references:
                 binding = cls._construction_binding(expression, witness, namespace)
                 if binding.failure:
-                    if "site-packages" in str(witness.source):
-                        # The third-party module defined this member
-                        # conditionally: its own import proved the real object.
-                        continue
                     return result_type.from_failure(binding)
                 factory = binding.value.value
-                if "site-packages" in str(witness.source) and not (
-                    isclass(factory) or isfunction(factory)
-                ):
-                    # The third-party module defined this member conditionally:
-                    # its own import proved the real object. Skip the proof the
-                    # workspace cannot carry instead of failing the run.
-                    continue
                 if role == "metaclass":
                     witness.metaclass = factory
                 elif role == "base":
@@ -1807,6 +1791,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             declared_fields[statement.target.id] = compiler_field
         observed_annotations = vars(owner).get("__annotations__", {})
         if not cls._construction_mapping_matches(observed_annotations, annotations):
+
             def _declared_annotation(target_id: str) -> object:
                 # PEP 563 modules carry their annotations as strings: the
                 # declared form must evaluate in the owner module's namespace
@@ -2262,21 +2247,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     ) -> p.Result[m.Infra.SourceBinding]:
         """Resolve source bindings and native type operations without expression replay."""
         result_type = r[m.Infra.SourceBinding]
-        if "site-packages" in str(witness.source):
-            # A third-party module's construction (PIL.Image.Exif and friends)
-            # is proven by its own package: this workspace holds no source
-            # witness for it, so bind the executed name when the module
-            # carries it and admit the construction opaquely otherwise.
-            executed = namespace.get(getattr(expression, "id", None))
-            if executed is not None:
-                return result_type.ok(m.Infra.SourceBinding(value=executed))
-            # An absent name is a conditional definition of the package: the
-            # references-loop skip owns it — never a stand-in value that
-            # poisons first-party consumers downstream.
-            return result_type.fail(
-                "third-party conditional definition has no executed binding: "
-                f"{getattr(expression, 'id', '')}"
-            )
         if isinstance(expression, Call):
             return cls._construction_literal(expression, witness, namespace)
         if isinstance(expression, Call):
@@ -2678,23 +2648,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             and module_name in modules
             and vars(modules[module_name]) is namespace
         )
-        # A factory that binds inside a site-packages module is third-party
-        # construction (PIL.Image._ExifBase, pydantic internals, ...): the
-        # package owns that proof and the walk's registry only tracks
-        # flext-authored modules, so the module file must come from the
-        # registered namespace itself. Admit the binding opaquely instead of
-        # demanding a flext source witness the package cannot carry.
-        if registered:
-            # The registered identity already proves the namespace is the
-            # module's own dict; where the module lives (site-packages or a
-            # workspace checkout) cannot un-own the factory it binds. An
-            # absent name is the module's own lazy-import or __getattr__
-            # laziness: the package owns its namespace completeness, so the
-            # opaque sentinel carries the provenance for the third party.
-            sentinel = f"<third-party:{module_name}.{expression.id}>"
-            return result_type.ok(
-                m.Infra.SourceBinding(value=current if current is not None else sentinel)
-            )
         supplier_kind = (
             "absent"
             if expression.id not in namespace
@@ -2715,19 +2668,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if type(current) in {classmethod, staticmethod, property}
             else "value"
         )
-        # First-party class-scope factories (the fleet parts idiom): a nested
-        # ContractModel constructs with a name bound in the enclosing class
-        # body (FlextModelsBase.StrictModel), which no module-level namespace
-        # carries. The declaring file is the first-party witness.
-        for scoped in walk(witness.syntax):
-            if isinstance(scoped, ClassDef) and scoped.name == expression.id:
-                # Class-scope names are absent from the module namespace by
-                # construction: the nested ClassDef node itself is the
-                # physical declaration witness (file, name, line — all
-                # authenticated by the walk that found it).
-                return result_type.ok(
-                    m.Infra.SourceBinding(value=namespace.get(expression.id))
-                )
         return result_type.fail(
             "construction factory has no authenticated source binding: "
             f"identifier={dumps(expression.id[:160])}; "

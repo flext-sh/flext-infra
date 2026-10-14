@@ -186,8 +186,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             A tuple of pairs representing the lineage of the behavior, where each
             pair contains the module and class name.
 
-        Raises:
-            TypeError: If an unsupported facade inheritance identity is encountered.
+        A ``ValueError`` fails on a cyclic or inconsistent facade inheritance
+        identity, and a ``TypeError`` propagates from unsupported facade
+        inheritance identities through ``_behavior_base_identity``.
         """
         resolved = cls._facade_declared_class(modules, module, receiver, frozenset())
         if resolved is None:

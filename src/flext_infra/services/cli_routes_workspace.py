@@ -183,7 +183,9 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             ),
             m.Cli.ResultCommandRoute(
                 name="editable-members",
-                help_text="List declared members with authenticated installed editables",
+                help_text=(
+                    "List declared members with authenticated installed editables"
+                ),
                 model_cls=m.Infra.WorkspaceEnvironmentRequest,
                 handler=_editable_members,
             ),

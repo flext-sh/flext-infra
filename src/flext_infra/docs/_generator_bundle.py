@@ -21,6 +21,16 @@ type _DocsScopeArtifacts = t.Pair[
     m.Infra.DocScope,
     t.VariadicTuple[t.Triple[Path, Path, str | None]],
 ]
+type _DocsBundleSources = t.Triple[
+    t.VariadicTuple[Path],
+    Path | None,
+    t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
+]
+type _DocsScopeCaptures = t.Triple[
+    t.VariadicTuple[Path],
+    t.VariadicTuple[m.Cli.AtomicFileState],
+    t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
+]
 
 
 class FlextInfraDocGeneratorBundleMixin:
@@ -61,6 +71,27 @@ class FlextInfraDocGeneratorBundleMixin:
             yield r[m.Infra.DocsGenerationBundle].from_failure(scopes)
             return
         selected, aggregate = scopes.value
+        yield from cls._scope_batches(root, declaration.value, selected, aggregate)
+
+    @classmethod
+    def _scope_batches(
+        cls,
+        root: Path,
+        declaration: m.Cli.AtomicFileState,
+        selected: t.VariadicTuple[m.Infra.DocScope],
+        aggregate: t.VariadicTuple[m.Infra.DocScope],
+    ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
+        """Yield one settled bundle per non-collocated selected scope.
+
+        Args:
+            root: The authenticated repository root.
+            declaration: The frozen ``.gitmodules`` file state.
+            selected: The selected documentation output scopes.
+            aggregate: The aggregate scopes over the complete project catalog.
+
+        Yields:
+            Results of the documentation generation bundle preparation for each batch.
+        """
         root_scope = next(
             (scope for scope in selected if scope.name == c.Infra.RK_ROOT),
             None,
@@ -68,53 +99,14 @@ class FlextInfraDocGeneratorBundleMixin:
         for scope in selected:
             if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
                 continue
-            source_roots = u.Infra.docs_scope_source_roots(root, scope, aggregate)
-            source_scope = scope.path if scope.name != c.Infra.RK_ROOT else None
-            paths = u.Infra.docs_source_paths_for_roots(
-                source_roots,
-                source_scope=source_scope,
-            )
-            if paths.failure:
-                yield r[m.Infra.DocsGenerationBundle].from_failure(paths)
+            captured = cls._scope_batch_captures(root, declaration, scope, aggregate)
+            if captured.failure:
+                yield r[m.Infra.DocsGenerationBundle].from_failure(captured)
                 return
-            sources = u.Infra.required_file_states(paths.value)
-            if sources.failure:
-                yield r[m.Infra.DocsGenerationBundle].from_failure(sources)
-                return
-            manifest = u.Cli.atomic_read_binary_file_state(
-                declaration.value.path,
-                required=False,
-            )
-            if manifest.failure:
-                yield r[m.Infra.DocsGenerationBundle].from_failure(manifest)
-                return
-            if manifest.value != declaration.value:
-                yield r[m.Infra.DocsGenerationBundle].fail(
-                    "docs scope inventory changed before batch admission",
-                )
-                return
-            states = tuple(
-                sorted(
-                    {
-                        item.path: item
-                        for item in (
-                            *sources.value,
-                            declaration.value,
-                        )
-                    }.values(),
-                    key=lambda item: item.path,
-                )
-            )
+            source_roots, states, directories = captured.value
             governance = cls._captured_governance_source(root, states)
             if governance.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(governance)
-                return
-            directories = u.Infra.docs_source_directories(
-                source_roots,
-                source_scope=source_scope,
-            )
-            if directories.failure:
-                yield r[m.Infra.DocsGenerationBundle].from_failure(directories)
                 return
             batch_scopes = (
                 scope,
@@ -131,7 +123,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 root,
                 (batch_scopes, aggregate),
                 states,
-                directories.value,
+                directories,
                 governance.value,
             )
             if rendered.failure:
@@ -141,10 +133,75 @@ class FlextInfraDocGeneratorBundleMixin:
                 root,
                 rendered.value,
                 states,
-                source_roots=source_roots,
-                source_scope=source_scope,
-                source_directories=directories.value,
+                sources=(
+                    source_roots,
+                    scope.path if scope.name != c.Infra.RK_ROOT else None,
+                    directories,
+                ),
             )
+
+    @classmethod
+    def _scope_batch_captures(
+        cls,
+        root: Path,
+        declaration: m.Cli.AtomicFileState,
+        scope: m.Infra.DocScope,
+        aggregate: t.VariadicTuple[m.Infra.DocScope],
+    ) -> p.Result[_DocsScopeCaptures]:
+        """Authenticate one scope's sources against the frozen declaration.
+
+        Args:
+            root: The authenticated repository root.
+            declaration: The frozen ``.gitmodules`` file state.
+            scope: The documentation output scope being captured.
+            aggregate: The aggregate scopes over the complete project catalog.
+
+        Returns:
+            The resulting ``(source_roots, source_states, source_directories)``
+            triple.
+
+        """
+        result_type = r[_DocsScopeCaptures]
+        source_roots = u.Infra.docs_scope_source_roots(root, scope, aggregate)
+        source_scope = scope.path if scope.name != c.Infra.RK_ROOT else None
+        paths = u.Infra.docs_source_paths_for_roots(
+            source_roots,
+            source_scope=source_scope,
+        )
+        if paths.failure:
+            return result_type.from_failure(paths)
+        sources = u.Infra.required_file_states(paths.value)
+        if sources.failure:
+            return result_type.from_failure(sources)
+        manifest = u.Cli.atomic_read_binary_file_state(
+            declaration.path,
+            required=False,
+        )
+        if manifest.failure:
+            return result_type.from_failure(manifest)
+        if manifest.value != declaration:
+            return result_type.fail(
+                "docs scope inventory changed before batch admission",
+            )
+        states = tuple(
+            sorted(
+                {
+                    item.path: item
+                    for item in (
+                        *sources.value,
+                        declaration,
+                    )
+                }.values(),
+                key=lambda item: item.path,
+            )
+        )
+        directories = u.Infra.docs_source_directories(
+            source_roots,
+            source_scope=source_scope,
+        )
+        if directories.failure:
+            return result_type.from_failure(directories)
+        return result_type.ok((source_roots, states, directories.value))
 
     @staticmethod
     def _is_collocated_workspace_project(

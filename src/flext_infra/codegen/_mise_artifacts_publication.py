@@ -344,12 +344,7 @@ class FlextInfraMisePublication:
                 exception = exception or ready.exception
                 continue
             observed = files.read_state(publication.before.path, required=False)
-            if (
-                observed.success
-                and publication.phase != c.Infra.CodegenStagedFilePhase.SEMANTIC
-                and publication.before.path.name == c.Infra.INIT_PY
-                and u.Infra.codegen_initializer_is_authored(observed.value.content)
-            ):
+            if FlextInfraMisePublication._authored_retention(publication, observed):
                 retained.append(publication.before.path)
                 u.Cli.info(
                     "ownership=authored disposition=retained "
@@ -406,26 +401,24 @@ class FlextInfraMisePublication:
                     }
                 )
             )
-            retired = (
-                publication.index_before is not None
-                and u.Infra.git_retire_index_file(
+            if publication.index_before is not None:
+                retired = u.Infra.git_retire_index_file(
                     m.Infra.GitIndexRetirementRequest(
                         repo_root=publication.project,
                         entry=publication.index_before,
                     ),
                 )
-            )
-            if retired is not None and retired.failure:
-                issues.append(
-                    m.Infra.Issue(
-                        file=str(publication.before.path),
-                        line=0,
-                        column=0,
-                        code=c.Infra.ToolOutcome.ERROR.value,
-                        message=retired.error or "index retirement failed",
-                    ),
-                )
-                exception = exception or retired.exception
+                if retired.failure:
+                    issues.append(
+                        m.Infra.Issue(
+                            file=str(publication.before.path),
+                            line=0,
+                            column=0,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=retired.error or "index retirement failed",
+                        ),
+                    )
+                    exception = exception or retired.exception
         return result_type.ok(
             m.Infra.CodegenPhaseOutcome(
                 written_files=tuple(written),
@@ -434,6 +427,25 @@ class FlextInfraMisePublication:
                 issues=tuple(issues),
                 exception=exception,
             ),
+        )
+
+    @staticmethod
+    def _authored_retention(
+        publication: m.Infra.CodegenStagedFile,
+        observed: p.Result[m.Cli.AtomicFileState],
+    ) -> bool:
+        """Report whether an authored initializer destination stays untouched.
+
+        Returns:
+            True when the observed destination is an authored initializer
+            outside the semantic phase.
+
+        """
+        return (
+            observed.success
+            and publication.phase != c.Infra.CodegenStagedFilePhase.SEMANTIC
+            and publication.before.path.name == c.Infra.INIT_PY
+            and u.Infra.codegen_initializer_is_authored(observed.value.content)
         )
 
     @staticmethod
@@ -586,25 +598,6 @@ class FlextInfraMisePublication:
             )
             return r[m.Cli.AtomicFileState].fail(str(cause), exception=cause)
         return r[m.Cli.AtomicFileState].ok(receipt.value)
-
-    @staticmethod
-    def _retire_index_file(
-        publication: m.Infra.CodegenStagedFile,
-    ) -> p.Result[m.Infra.GitBoolReport]:
-        """Retire one portable index binding after its publication.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
-
-        """
-        if publication.index_before is None:
-            return r[m.Infra.GitBoolReport].ok(value=m.Infra.GitBoolReport())
-        return u.Infra.git_retire_index_file(
-            m.Infra.GitIndexRetirementRequest(
-                repo_root=publication.project,
-                entry=publication.index_before,
-            ),
-        )
 
     @staticmethod
     def _source_prerequisites(

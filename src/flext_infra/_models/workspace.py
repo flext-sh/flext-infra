@@ -65,11 +65,16 @@ class FlextInfraModelsWorkspace:
         )
         code_sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
             default=(),
-            description="Authenticated source and binary suppliers of native annotation operations",
+            description=(
+                "Authenticated source and binary suppliers of native annotation"
+                " operations"
+            ),
         )
         dataclass_fields: t.MappingKV[str, p.AttributeProbe] | None = m.Field(
             default=None,
-            description="Native field contract reconstructed from source-proven class ancestry",
+            description=(
+                "Native field contract reconstructed from source-proven class ancestry"
+            ),
         )
 
     class WorkspaceEnvironmentRequest(m.ContractModel):
