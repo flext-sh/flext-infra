@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, main
+from flext_infra import c, infra, m, main
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import tm, u
 
@@ -20,27 +20,37 @@ class TestsFlextInfraModEvidenceInputs:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "declarations",
+        ("declarations", "expected_lines"),
         [
             (
-                "def load():\n"
-                "    import first_owner as selected\n"
-                "    import second_owner as selected\n"
+                (
+                    "def load():\n"
+                    "    import first_owner as selected\n"
+                    "    import second_owner as selected\n"
+                ),
+                ((4, 5), (5, 6)),
             ),
             (
-                "enabled = True\n"
-                "if enabled: from first_owner import Value\n"
-                "else: import second_owner\n"
+                (
+                    "enabled = True\n"
+                    "if enabled: from first_owner import Value\n"
+                    "else: import second_owner\n"
+                ),
+                ((4, 5), (5, 6)),
             ),
             (
-                "def load():\n"
-                "    yield from (); import first_owner; import second_owner\n"
+                (
+                    "def load():\n"
+                    "    yield from (); import first_owner; import second_owner\n"
+                ),
+                ((4, 5), (4, 5)),
             ),
         ],
     )
     def test_binding_snapshot_captures_all_native_import_scopes(
         mod_workspace: Path,
         declarations: str,
+        expected_lines: tuple[tuple[int, int], ...],
     ) -> None:
         """Capture conditional and rebound imports while excluding textual decoys."""
         owners = tuple(
@@ -68,6 +78,15 @@ class TestsFlextInfraModEvidenceInputs:
         captured = {item.path for item in snapshot.states}
         tm.that(set(owners).issubset(captured))
         tm.that(decoy in captured, eq=False)
+        with infra.rope_workspace(mod_workspace) as workspace:
+            statements = u.Infra.source_import_statements(
+                workspace.rope_project,
+                consumer.read_text(encoding=c.DEFAULT_ENCODING),
+            )
+        tm.that(
+            tuple((item.start_line, item.end_line) for item in statements),
+            eq=expected_lines,
+        )
 
     @staticmethod
     def test_composed_native_scan_preserves_provider_utils_and_local_shadows(
@@ -75,7 +94,7 @@ class TestsFlextInfraModEvidenceInputs:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """One real invocation keeps separate provider bindings and native local utilities."""
+        """One invocation keeps provider bindings and local utilities separate."""
         rules: list[m.Infra.CodemodRule] = []
         rulesets: list[m.Infra.CodemodRuleset] = []
         for provider, literal in (("left", "left"), ("right", "right")):
@@ -446,7 +465,7 @@ class TestsFlextInfraModEvidenceInputs:
             }),
         )
         nested = TestsFlextInfraModEvidenceInputs._verified_nested_evidence(
-            mod_workspace, receipt, restored, inputs
+            mod_workspace, receipt, restored, inputs, report
         )
         closure = nested.evidence.entries[0].binding_states
         tm.that(closure[-1] is closure[0])
@@ -516,6 +535,7 @@ class TestsFlextInfraModEvidenceInputs:
         receipt: m.Infra.ModScanEvidenceReceipt,
         restored: m.Infra.ModScanEvidence,
         inputs: list[m.Cli.AtomicFileState],
+        report: m.Infra.ModScanReport,
     ) -> m.Infra.ModScanEvidenceReceipt:
         """Publish the evidence again and prove nested identity sharing.
 
@@ -524,6 +544,7 @@ class TestsFlextInfraModEvidenceInputs:
             receipt: The original evidence publication receipt.
             restored: The restored evidence payload.
             inputs: Every captured input state of the run.
+            report: The original scanner's source inventory.
 
         Returns:
             The nested evidence receipt with its identity proof.
@@ -547,7 +568,7 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(
             len(restored.inputs.states),
             eq=len({
-                state.path for state in (*tm.not_none(restored.source_states), *inputs)
+                state.path for state in (*tm.not_none(report.source_states), *inputs)
             }),
         )
         return nested

@@ -34,47 +34,12 @@ class TestsFlextInfraPyprojectConformTopologySources:
         source_matches: bool,
     ) -> None:
         """Modern config pins declared categories without changing their line."""
-        root, _ = u.Tests.render_make_environment(
-            tmp_path / "modern",
-            self._ROLE.STANDALONE,
+        _root, workspace, candidate = self._modern_candidate_fixture(
+            tmp_path,
+            source_matches=source_matches,
         )
         dependency = self._member_ref("flext-tests", "flext-tests")
-        candidate = m.Infra.DependencyCommitSourceSpec(
-            distribution=dependency.distribution,
-            url=(
-                dependency.url
-                if source_matches
-                else u.Tests.repository_ref("flext-other").url
-            ),
-            commit="a" * 40,
-        )
         line = u.Tests.integration()
-        layer = FlextInfraConfig.config_layer_paths_for_repository(
-            root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
-        )[-1]
-        tm.ok(
-            u.Cli.yaml_dump(
-                layer,
-                {
-                    "Infra": {
-                        "codegen": {
-                            "repository": {
-                                "integration": line.model_dump(mode="json"),
-                                "candidate_dependencies": [
-                                    candidate.model_dump(mode="json")
-                                ],
-                            }
-                        }
-                    }
-                },
-            ),
-        )
-        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        workspace = tm.ok(
-            FlextInfraWorkspaceDetector.load_workspace_spec(root, inputs=inputs),
-        )
-        tm.that(workspace.candidate_dependencies, eq=(candidate,))
-        tm.that(workspace.integration, eq=line)
         requirement = (
             f"{self._inline_requirement(dependency)} ; implementation_name == 'cpython'"
         )
@@ -124,6 +89,64 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
             eq=rendered,
         )
+
+    def _modern_candidate_fixture(
+        self,
+        tmp_path: Path,
+        *,
+        source_matches: bool,
+    ) -> t.Triple[
+        Path,
+        m.Infra.WorkspaceSpec,
+        m.Infra.DependencyCommitSourceSpec,
+    ]:
+        """Render the modern fixture declaring one candidate dependency.
+
+        Returns:
+            The fixture root, its loaded workspace, and the declared candidate.
+        """
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "modern",
+            self._ROLE.STANDALONE,
+        )
+        dependency = self._member_ref("flext-tests", "flext-tests")
+        candidate = m.Infra.DependencyCommitSourceSpec(
+            distribution=dependency.distribution,
+            url=(
+                dependency.url
+                if source_matches
+                else u.Tests.repository_ref("flext-other").url
+            ),
+            commit="a" * 40,
+        )
+        line = u.Tests.integration()
+        layer = FlextInfraConfig.config_layer_paths_for_repository(
+            root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+        )[-1]
+        tm.ok(
+            u.Cli.yaml_dump(
+                layer,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "integration": line.model_dump(mode="json"),
+                                "candidate_dependencies": [
+                                    candidate.model_dump(mode="json")
+                                ],
+                            }
+                        }
+                    }
+                },
+            ),
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        workspace = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(root, inputs=inputs),
+        )
+        tm.that(workspace.candidate_dependencies, eq=(candidate,))
+        tm.that(workspace.integration, eq=line)
+        return root, workspace, candidate
 
     @staticmethod
     @pytest.mark.slow

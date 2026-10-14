@@ -39,7 +39,12 @@ class TestsFlextInfraDepsGate:
 
     @staticmethod
     def _dependency_inputs(root: Path) -> m.Infra.RuntimeDependencyInputs:
-        """Capture a real installed supplier and a target-owned native lock input."""
+        """Capture a real installed supplier and a target-owned native lock input.
+
+        Returns:
+            Runtime dependency inputs binding the elected supplier to the
+            target's own lock, metadata state and executed source.
+        """
         artifact = distribution("requests")
         files = tm.not_none(artifact.files)
         metadata_path = next(
@@ -259,7 +264,10 @@ class TestsFlextInfraDepsGate:
         root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
         inputs = TestsFlextInfraDepsGate._dependency_inputs(root)
         supplier = inputs.providers[0]
-        authored = f"{supplier.package.name}[socks]>={supplier.package.version}; python_version > '0'"
+        authored = (
+            f"{supplier.package.name}[socks]>={supplier.package.version};"
+            " python_version > '0'"
+        )
         pyproject = root / c.PYPROJECT_FILENAME
         pyproject.write_text(
             pyproject.read_text(encoding="utf-8")

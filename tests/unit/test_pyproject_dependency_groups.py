@@ -267,8 +267,44 @@ class TestsPyprojectDependencyGroups:
         role: c.Infra.MakeProfile,
     ) -> None:
         """Floors retain authored bounds, extras, markers and Git occurrences."""
+        authored_name, source, seed = self._variant_authored_sources()
+        floor = "variant-floor>=2.0"
+        overlaid = tm.ok(u.Infra.overlay_preserved(seed, source))
+        expected = u.Tests.toml_mapping(u.Tests.toml_doc(source))
+        overlaid_payload = u.Tests.toml_mapping(u.Tests.toml_doc(overlaid))
+        tm.that(
+            overlaid_payload["dependency-groups"],
+            eq=expected["dependency-groups"],
+        )
+        conformed = tm.ok(
+            self._conform(
+                overlaid,
+                role,
+                required_dev_dependencies=(floor,),
+            ),
+        )
+        self._assert_variant_floor_group(conformed, source, authored_name)
+        repeated = tm.ok(u.Infra.overlay_preserved(seed, conformed))
+        tm.that(
+            tm.ok(
+                self._conform(
+                    repeated,
+                    role,
+                    required_dev_dependencies=(floor,),
+                ),
+            ),
+            eq=conformed,
+        )
+
+    def _variant_authored_sources(self) -> t.Triple[str, str, str]:
+        """Compose the authored variant project text with its empty seed.
+
+        Returns:
+            The authored dependency-group name with the authored and seed
+            project texts.
+
+        """
         name = "variant-floor"
-        floor = f"{name}>=2.0"
         authored_bound = f"{name}>=1.0"
         extra = f"{name}[feature]>=1.0,<3.0"
         marked = f"{name}>=1.0; sys_platform == 'linux'"
@@ -286,20 +322,22 @@ class TestsPyprojectDependencyGroups:
             f'examples = [{{include-group = "{authored_name}"}}]',
         )
         seed = self._source(f"{dev} = []\n{codegen} = []")
-        overlaid = tm.ok(u.Infra.overlay_preserved(seed, source))
-        expected = u.Tests.toml_mapping(u.Tests.toml_doc(source))
-        overlaid_payload = u.Tests.toml_mapping(u.Tests.toml_doc(overlaid))
-        tm.that(
-            overlaid_payload["dependency-groups"],
-            eq=expected["dependency-groups"],
-        )
-        conformed = tm.ok(
-            self._conform(
-                overlaid,
-                role,
-                required_dev_dependencies=(floor,),
-            ),
-        )
+        return (authored_name, source, seed)
+
+    def _assert_variant_floor_group(
+        self,
+        conformed: str,
+        source: str,
+        authored_name: str,
+    ) -> None:
+        """Require the conformed floor group to retain every authored variant."""
+        name = "variant-floor"
+        floor = f"{name}>=2.0"
+        authored_bound = f"{name}>=1.0"
+        extra = f"{name}[feature]>=1.0,<3.0"
+        marked = f"{name}>=1.0; sys_platform == 'linux'"
+        origin = u.Tests.repository_ref(name)
+        direct = f"{name} @ git+{origin.url}@{u.Tests.provider_branch()}"
         groups = u.Tests.toml_mapping(
             u.Tests.toml_mapping(u.Tests.toml_doc(conformed))["dependency-groups"],
         )
@@ -317,18 +355,9 @@ class TestsPyprojectDependencyGroups:
         )
         tm.that(
             groups["examples"],
-            eq=u.Tests.toml_mapping(expected["dependency-groups"])["examples"],
-        )
-        repeated = tm.ok(u.Infra.overlay_preserved(seed, conformed))
-        tm.that(
-            tm.ok(
-                self._conform(
-                    repeated,
-                    role,
-                    required_dev_dependencies=(floor,),
-                ),
-            ),
-            eq=conformed,
+            eq=u.Tests.toml_mapping(u.Tests.toml_doc(source))["dependency-groups"][
+                "examples"
+            ],
         )
 
     @pytest.mark.parametrize(

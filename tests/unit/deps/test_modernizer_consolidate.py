@@ -38,7 +38,9 @@ class TestsFlextInfraDepsModernizerConsolidate:
         payload, changes = self._consolidated("")
         tm.that(
             changes,
-            has=f"tool.deptry.optional_dependencies_dev_groups set to {[c.Infra.DEV]!r}",
+            has=(
+                f"tool.deptry.optional_dependencies_dev_groups set to {[c.Infra.DEV]!r}"
+            ),
         )
         deptry = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["deptry"])
         tm.that(
