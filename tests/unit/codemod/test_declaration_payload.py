@@ -137,6 +137,19 @@ class TestsFlextInfraDeclarationPayload:
             ),
             (
                 (
+                    "def opaque(function):\n"
+                    "    return function\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str = 'payload'\n"
+                    "        @opaque(field_serializer('value'))\n"
+                    "        def serialize(self, value: str) -> str:\n"
+                    "            return value.upper()\n"
+                ),
+                False,
+            ),
+            (
+                (
                     "class Holder:\n"
                     "    class Payload(BaseSettings):\n"
                     "        value: str = 'payload'\n"

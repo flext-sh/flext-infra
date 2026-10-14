@@ -89,6 +89,101 @@ class TestsFlextInfraRopeContracts:
             tm.that(remaining, empty=True)
 
     @staticmethod
+    def test_strict_json_boundary_and_validator_modes_survive_factory_migration(
+        tmp_path: Path,
+    ) -> None:
+        """A safe factory migration must preserve distinct validation contracts."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from datetime import date\n"
+            "from json import loads\n"
+            "from pydantic import BaseModel, ConfigDict, Field, "
+            "ValidationError, field_validator\n"
+            "events = []\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(strict=True)\n"
+            "    when: date\n"
+            "    where: tuple[int, int]\n"
+            "    values: list[str] = Field(default_factory=list)\n"
+            "    @field_validator('where', mode='before')\n"
+            "    @classmethod\n"
+            "    def observe(cls, value, info):\n"
+            "        events.append((info.mode, info.context))\n"
+            "        return value\n"
+            'raw = \'{"when": "2000-01-02", "where": [1, 2]}\'\n'
+            "try:\n"
+            "    Payload.model_validate(loads(raw), context={'consumer': 'python'})\n"
+            "except ValidationError as error:\n"
+            "    rejected = tuple((item['type'], item['loc']) "
+            "for item in error.errors())\n"
+            "accepted = Payload.model_validate_json(raw, "
+            "context={'consumer': 'json'})\n"
+            "evidence = (rejected, accepted.model_dump_json(), tuple(events))\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        tm.that(before[0], empty=False)
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=rope,
+                    sources={path: source},
+                )
+            )
+            tm.that(len(edits), eq=1)
+            path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+
+    @staticmethod
+    def test_dependent_factory_preserves_call_order_and_instance_isolation(
+        tmp_path: Path,
+    ) -> None:
+        """Moving sole Field metadata preserves data-dependent factory effects."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from typing import Annotated\n"
+            "from pydantic import BaseModel, Field\n"
+            "calls = []\n"
+            "def factory(data):\n"
+            "    calls.append(data['seed'])\n"
+            "    return [data['seed']]\n"
+            "class Payload(BaseModel):\n"
+            "    seed: str\n"
+            "    values: Annotated[list[str], Field(default_factory=factory)]\n"
+            "first = Payload(seed='first')\n"
+            "second = Payload(seed='second')\n"
+            "first.values.append('changed')\n"
+            "explicit = Payload(seed='explicit', values=['supplied'])\n"
+            "evidence = (tuple(calls), first.model_dump_json(), "
+            "second.model_dump_json(), explicit.model_dump_json())\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=rope,
+                    sources={path: source},
+                )
+            )
+            tm.that(len(edits), eq=1)
+            updated = edits[0].updated_source
+            path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+            tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+            remaining = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=rope,
+                    sources={path: updated},
+                )
+            )
+        tm.that(remaining, empty=True)
+
+    @staticmethod
     def test_unrelated_field_factory_is_not_a_pydantic_field(tmp_path: Path) -> None:
         """Same-spelled functions do not establish a Pydantic identity."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -184,6 +279,33 @@ class TestsFlextInfraRopeContracts:
                 sources={path: source},
             )
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    def test_late_destination_import_cannot_change_class_execution(
+        tmp_path: Path,
+    ) -> None:
+        """A late utility binding cannot become a new class-definition failure."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = (
+            "from pydantic import BaseModel, Field\n"
+            "class Payload(BaseModel):\n"
+            "    values: list[str] = Field(default_factory=list)\n"
+            "from flext_core import u\n"
+            "evidence = Payload().model_dump_json()\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match="no preceding unconditional import"),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=rope,
+                sources={path: source},
+            )
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
     def test_existing_cli_facade_and_unrelated_field_info_are_preserved(

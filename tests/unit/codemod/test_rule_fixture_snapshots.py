@@ -78,6 +78,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 + "class PublicInput(p.Input, Contract):\n    pass\n",
                 ["Reader", "Input", "PublicInput"],
             ),
+            (
+                negative
+                + "class First:\n    class Input(Contract):\n        value: str\n"
+                + "class Second:\n    class Input(Base):\n        value: str\n",
+                ["Input"],
+            ),
         ):
             source = imports + declarations
             tm.ok(u.Cli.atomic_write_text_file(sample, source))

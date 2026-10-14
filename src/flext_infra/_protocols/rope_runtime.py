@@ -11,9 +11,7 @@ from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    # This boundary also supplies t.Infra's aliases, so it cannot depend on them.
-    from flext_core import p
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 @runtime_checkable
@@ -377,12 +375,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         end_line: int
 
     @runtime_checkable
-    class RopeWorder(Protocol):
-        """Rope word/call classifier consumed by the static fact engine."""
-
-        def get_primary_at(self, offset: int) -> str: ...
-
-        def is_a_function_being_called(self, offset: int) -> bool: ...
+    class RopeWordFinder(Protocol):
+        """Native delimiter reader owned by Worder's code finder."""
 
         def get_word_parens_range(
             self,
@@ -391,13 +385,19 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             closing: str = ")",
         ) -> tuple[int, int]: ...
 
-        def get_word_range(self, offset: int) -> tuple[int, int]: ...
+    @runtime_checkable
+    class RopeWorder(Protocol):
+        """Rope word/call classifier consumed by the static fact engine."""
 
-        def find_function_offset(
-            self,
-            offset: int,
-            definition: str = "def ",
-        ) -> int: ...
+        code_finder: FlextInfraProtocolsRopeRuntime.RopeWordFinder
+
+        def get_primary_at(self, offset: int) -> str: ...
+
+        def is_a_function_being_called(self, offset: int) -> bool: ...
+
+        def get_word_parens_range(self, offset: int) -> tuple[int, int]: ...
+
+        def get_word_range(self, offset: int) -> tuple[int, int]: ...
 
         def get_parameters(
             self,

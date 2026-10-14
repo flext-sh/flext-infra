@@ -1849,7 +1849,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 "native dataclass bases differ from their authenticated source bindings"
             )
         for base in source_bases:
-            if type(base) is not type:
+            base_metaclass = type(base)
+            base_abc_meta = vars(__import__("abc")).get("ABCMeta")
+            if base_metaclass is not type and not (
+                base_abc_meta is not None and issubclass(base_metaclass, base_abc_meta)
+            ):
                 return result_type.fail(
                     "native dataclass base has an unproven metaclass"
                 )

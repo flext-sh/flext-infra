@@ -183,13 +183,24 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         for expression, expected in rule.bindings.items():
             identity = runtime.qualified_name(project, expected)
             root = expression.split(".", 1)[0]
-            if runtime.expression_name(scope, root) is None:
+            root_name = runtime.expression_name(scope, root)
+            if root_name is None:
                 continue
             actual = runtime.expression_name(scope, expression)
             if not runtime.same_name(identity, actual):
                 message = (
                     f"{rule.id}: destination {expression} is shadowed "
                     f"in {module.get_name()}:{scope.get_start()}"
+                )
+                raise ValueError(message)
+            if isinstance(
+                root_name, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
+            ) and not runtime.imported_binding_precedes(
+                project, module, root, match.get_region()[0]
+            ):
+                message = (
+                    f"{rule.id}: destination {expression} has no preceding "
+                    f"unconditional import in {module.get_name()}:{scope.get_start()}"
                 )
                 raise ValueError(message)
         return True

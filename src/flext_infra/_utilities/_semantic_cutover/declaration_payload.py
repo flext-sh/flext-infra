@@ -47,8 +47,14 @@ class FlextInfraUtilitiesDeclarationPayload:
         contributes its owner only when it inherits the native Pydantic/typing
         subscription contract; custom class subscription behavior is not assumed.
 
+        Args:
+            value: The class whose direct bases are to be resolved.
+
         Returns:
             Native direct bases, including proven generic declaration owners.
+
+        Raises:
+            TypeError: If the class module has no native project owner.
         """
         bases = list(value.get_superclasses())
         if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
@@ -77,7 +83,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         name = header.text.index(value.get_name(), keyword_end)
         _begin, end = words.get_word_range(name)
         if header.text[end:].lstrip().startswith("["):
-            _begin, end = words.get_word_parens_range(name, "[", "]")
+            _begin, end = words.code_finder.get_word_parens_range(name, "[", "]")
         if not header.text[end:].lstrip().startswith("("):
             return bases
         first, last = words.get_word_parens_range(end - 1)
@@ -107,7 +113,7 @@ class FlextInfraUtilitiesDeclarationPayload:
             if "[" not in argument:
                 continue
             argument_words = cls._worder(argument)
-            first, _last = argument_words.get_word_parens_range(0, "[", "]")
+            first, _last = argument_words.code_finder.get_word_parens_range(0, "[", "]")
             expression = argument_words.get_primary_at(first - 1)
             binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
                 parent,
@@ -199,8 +205,7 @@ class FlextInfraUtilitiesDeclarationPayload:
                 local_name = child.pyobject.get_name()
                 qualified_name = f"{prefix}.{local_name}" if prefix else local_name
                 if local_name == name and (
-                    declaration_lines is None
-                    or child.get_start() in declaration_lines
+                    declaration_lines is None or child.get_start() in declaration_lines
                 ):
                     names.append(qualified_name)
                 pending.append((child, qualified_name))
@@ -369,14 +374,27 @@ class FlextInfraUtilitiesDeclarationPayload:
                 begin < statement.end_offset and statement.line < scope.get_start()
             ):
                 continue
+            decorator = statement.text.lstrip()
+            if not decorator.startswith("@"):
+                return False
+            expression = decorator[1:]
+            callee_start = (
+                statement.start_offset
+                + len(statement.text)
+                - len(decorator)
+                + 1
+                + len(expression)
+                - len(expression.lstrip())
+            )
             identities = tuple(
                 identity
                 for identity in (
                     *c.Infra.PYDANTIC_PAYLOAD_DECORATORS,
                     *c.Infra.PAYLOAD_DESCRIPTOR_DECORATORS,
                 )
-                if tuple(
-                    finder.get_match_regions(
+                if any(
+                    start == callee_start
+                    for start, _end in finder.get_match_regions(
                         f"${{{identity.rsplit('.', 1)[-1]}}}",
                         {identity.rsplit(".", 1)[-1]: f"object={identity}"},
                         start=statement.start_offset,

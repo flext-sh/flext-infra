@@ -57,6 +57,7 @@ class FlextInfraUtilitiesRopeInventory:
         # come from one snapshot even when the file changed on disk since.
         source = pymodule.source_code
         parameter_lines = cls._parameter_lines(rope_project, pymodule)
+        constant_bindings = cls._constant_bindings(pymodule)
         items: t.MutableSequenceOf[m.Infra.Object] = []
         module_scope = pymodule.get_scope()
         if module_scope is None:
@@ -69,6 +70,7 @@ class FlextInfraUtilitiesRopeInventory:
                 resource=resource,
                 source=source,
                 parameter_lines=parameter_lines,
+                constant_bindings=constant_bindings,
                 name=name,
                 pyname=pyname,
                 module_name=module_entry.module_name
@@ -293,6 +295,10 @@ class FlextInfraUtilitiesRopeInventory:
             # Rope reports a parameter at its function's ``def`` line; in a
             # multi-line signature the identifier lives on its own line.
             line = options.parameter_lines.get((line, options.name), line)
+        elif (line, options.name) in options.constant_bindings and (
+            options.scope_chain or options.name != expected_alias
+        ):
+            kind = "constant"
         is_facade_member = cls._is_facade_member(
             options.convention,
             name=options.name,
@@ -345,6 +351,35 @@ class FlextInfraUtilitiesRopeInventory:
                 child_scope=options.child_scope,
             ),
         )
+
+    @staticmethod
+    def _constant_bindings(
+        pymodule: t.Infra.RopePyModule,
+    ) -> frozenset[t.Pair[int, str]]:
+        """Recognize immutable declarations by typing identity, independent of case.
+
+        Returns:
+            Definition line and name pairs proven by native Rope matches.
+        """
+        bindings: set[t.Pair[int, str]] = set()
+        for pattern in (
+            "${constant}: ${immutable}[${contract}] = ${value}",
+            "${constant}: ${immutable} = ${value}",
+        ):
+            for start, _ in FlextInfraUtilitiesRopeRuntime.semantic_regions(
+                pymodule,
+                pattern,
+                arguments={"immutable": "name=typing.Final"},
+            ):
+                first, last = FlextInfraUtilitiesRopeRuntime.word_primary_range(
+                    pymodule.source_code,
+                    start,
+                )
+                bindings.add((
+                    pymodule.lines.get_line_number(start),
+                    pymodule.source_code[first:last],
+                ))
+        return frozenset(bindings)
 
     @staticmethod
     def _parameter_lines(

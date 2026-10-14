@@ -532,6 +532,38 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         return result
 
     @classmethod
+    def imported_binding_precedes(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        name: str,
+        offset: int,
+    ) -> bool:
+        """Prove a binding is imported unconditionally before an occurrence.
+
+        Returns:
+            Whether Rope's module import inventory proves runtime availability.
+        """
+        line = module.lines.get_line_number(offset)
+        imports = cls.module_imports_for_pymodule(project, module)
+        return any(
+            statement.start_line < line
+            and any(
+                (
+                    alias
+                    or (
+                        imported
+                        if isinstance(statement.import_info, p.Infra.RopeFromImport)
+                        else imported.partition(".")[0]
+                    )
+                )
+                == name
+                for imported, alias in statement.import_info.names_and_aliases
+            )
+            for statement in imports.imports
+        )
+
+    @classmethod
     def import_binding(
         cls,
         project: p.Infra.RopeProject,

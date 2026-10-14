@@ -14,8 +14,10 @@ from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
-from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenFixModels,
+    FlextInfraModelsCodegenLazyInitModels,
+)
 
 
 class FlextInfraModelsRope:
@@ -586,6 +588,12 @@ class FlextInfraModelsRope:
             t.MappingKV[t.Pair[int, str], int],
             m.Field(description="Parameter positions from the module snapshot"),
         ]
+        constant_bindings: Annotated[
+            frozenset[t.Pair[int, str]],
+            m.Field(
+                description="Identity-proven immutable declarations in the snapshot"
+            ),
+        ] = frozenset()
         name: Annotated[str, m.Field(description="Resolved symbol name being recorded")]
         pyname: Annotated[
             t.Infra.RopePyName,
