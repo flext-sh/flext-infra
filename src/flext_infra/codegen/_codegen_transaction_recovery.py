@@ -77,10 +77,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
         outputs = {item.path: item for item in session.journal.outputs}
         written = set(session.written_files)
-        source_records = {
-            item.path: item
-            for item in session.journal.sources
-        }
+        source_records = {item.path: item for item in session.journal.sources}
         if session.journal.phase == c.Infra.CodegenStagedFilePhase.DOCS:
             for path in written:
                 if path in outputs and u.Infra.docs_source_path_is_input(
@@ -208,6 +205,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 operation.root != root
                 or operation.surface != request.what
                 or operation.scope != request.scope
+                or operation.module != request.module
             )
         ):
             return r[m.Infra.CodegenPhaseOutcome].fail(
@@ -239,6 +237,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             phase=c.Infra.CodegenStagedFilePhase.CONFORM,
             surface=request.what,
             scope=request.scope,
+            module=request.module,
             scope_roots=scope_roots,
             completed=completed,
             batches=batches,

@@ -90,9 +90,7 @@ class FlextInfraMiseArtifactsVerification(
             if membership.failure:
                 return r[bool].from_failure(membership)
             expected_paths = {
-                source.path
-                for source in outcome.sources
-                if source.sha256 is not None
+                source.path for source in outcome.sources if source.sha256 is not None
             }
             if set(membership.value) != expected_paths:
                 return r[bool].fail(
@@ -180,9 +178,7 @@ class FlextInfraMiseArtifactsVerification(
                 return r[bool].fail(
                     f"generation destination parent identity changed: {plan.path}",
                 )
-            absent = FlextInfraMiseArtifactsFiles.read_state(
-                plan.path, required=False
-            )
+            absent = FlextInfraMiseArtifactsFiles.read_state(plan.path, required=False)
             if absent.failure:
                 return r[bool].from_failure(absent)
             if absent.value.content is not None:

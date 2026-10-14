@@ -47,7 +47,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             p.Result[m.Infra.CodegenTransactionSession],
         ]
         | None = None,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
         admission: Callable[
             [t.VariadicTuple[m.Cli.AtomicDirectoryState]], p.Result[bool]
         ]
@@ -60,8 +60,11 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        if batch_analysis is not None and (
-            batch_analysis.phase != phase or batch_analysis.files != plans
+        if batch_admission is not None and (
+            batch_admission.analysis is None
+            or batch_admission.analysis.phase != phase
+            or batch_admission.analysis.files != plans
+            or batch_admission.admitted_states != batch_admission.analysis.inputs
         ):
             return result_type.fail("batch analysis differs from requested phase")
         bound = self.bind_publication_proof(session, plans)
@@ -91,8 +94,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     return result_type.from_failure(admitted)
                 if not admitted.value:
                     return result_type.fail("batch topology admission rejected")
-            if batch_analysis is not None:
-                admitted = FlextInfraMisePublication.admit_batch(batch_analysis)
+            if batch_admission is not None:
+                admitted = FlextInfraMiseArtifactsVerification.plans_current(
+                    plans, journal=session.journal
+                )
                 if admitted.failure:
                     return result_type.from_failure(admitted)
             return result_type.ok(session)
@@ -105,7 +110,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             phase,
             changed,
             staged_validator,
-            batch_analysis,
+            batch_admission,
             admission,
             plans,
         )
@@ -128,7 +133,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             p.Result[m.Infra.CodegenTransactionSession],
         ]
         | None = None,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
         admission: Callable[
             [t.VariadicTuple[m.Cli.AtomicDirectoryState]], p.Result[bool]
         ]
@@ -191,7 +196,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             prepared.value.plan.layout,
             phase,
             staged.value,
-            batch_analysis=batch_analysis,
+            batch_admission=batch_admission,
+            journal=current.journal,
         )
         if published.success:
             journal, journal_state = current.journal, current.journal_state
@@ -888,7 +894,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         phase: str,
         staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
+        journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Publish the verified staged set and prove it live.
 
@@ -899,7 +906,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         """
         published = FlextInfraMisePublication.publish(
             staged,
-            batch_analysis=batch_analysis,
+            batch_admission=batch_admission,
+            journal=journal,
         )
         if published.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(

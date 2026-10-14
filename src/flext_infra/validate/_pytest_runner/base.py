@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Self
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, settings, t, u
 from flext_infra.base import s
 
 
@@ -114,10 +114,14 @@ class FlextInfraPytestRunnerBase(s[int]):
 
         """
         ci = config.Infra.codegen.make.ci
+        repository_root = Path(
+            settings.env_required(c.Infra.PYTEST_ENV_REPOSITORY_ROOT)
+        )
+        if not repository_root.is_absolute():
+            msg = "Make-owned pytest repository root must be absolute"
+            raise ValueError(msg)
         return cls(
-            repository_root=Path(
-                cls._environment_value(c.Infra.PYTEST_ENV_REPOSITORY_ROOT)
-            ),
+            repository_root=repository_root,
             started_at_monotonic=started_at_monotonic,
             collection_command_prefix=collection_command_prefix,
             profile_enabled=profile_enabled,

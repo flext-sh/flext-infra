@@ -151,32 +151,42 @@ class FlextInfraMisePublication:
         analysis: m.Infra.CodegenPhaseAnalysis,
         *,
         journal: m.Infra.CodegenTransactionJournal | None = None,
-    ) -> p.Result[bool]:
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate batch inputs and original destination states once."""
+        result_type = r[m.Infra.CodegenPhaseOutcome]
         inputs = FlextInfraCodegenPreconditions.unique_states(analysis.inputs)
         declared = FlextInfraCodegenPreconditions.unique_states(
             tuple(source for plan in analysis.files for source in plan.source_states)
         )
         if inputs.failure:
-            return r[bool].from_failure(inputs)
+            return result_type.from_failure(inputs)
         if declared.failure:
-            return r[bool].from_failure(declared)
+            return result_type.from_failure(declared)
         if {item.path: item for item in inputs.value} != {
             item.path: item for item in declared.value
         }:
-            return r[bool].fail("batch inputs differ from publication dependencies")
+            return result_type.fail("batch inputs differ from publication dependencies")
         current = FlextInfraMisePublication._source_prerequisites(inputs.value, {})
         if current.failure:
-            return current
-        return FlextInfraMiseArtifactsVerification.plans_current(
+            return result_type.from_failure(current)
+        destinations = FlextInfraMiseArtifactsVerification.plans_current(
             analysis.files, journal=journal
+        )
+        if destinations.failure:
+            return result_type.from_failure(destinations)
+        return result_type.ok(
+            m.Infra.CodegenPhaseOutcome(
+                analysis=analysis,
+                admitted_states=inputs.value,
+                phase=analysis.phase,
+            )
         )
 
     @staticmethod
     def publish(
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
         journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Publish every target independently and retain all native failures.
@@ -185,7 +195,19 @@ class FlextInfraMisePublication:
             The complete written paths and target issues.
 
         """
-        if batch_analysis is not None:
+        if batch_admission is not None:
+            batch_analysis = batch_admission.analysis
+            if (
+                batch_analysis is None
+                or batch_admission.error
+                or batch_admission.issues
+                or batch_admission.exception is not None
+                or batch_admission.phase != batch_analysis.phase
+                or batch_admission.admitted_states != batch_analysis.inputs
+            ):
+                return r[m.Infra.CodegenPhaseOutcome].fail(
+                    "publication requires its exact native batch admission",
+                )
             expected = {
                 plan.path
                 for plan in batch_analysis.files
@@ -197,11 +219,11 @@ class FlextInfraMisePublication:
                 return r[m.Infra.CodegenPhaseOutcome].fail(
                     "staged publications differ from admitted batch",
                 )
-            admitted_batch = FlextInfraMisePublication.admit_batch(
-                batch_analysis, journal=journal
+            destinations = FlextInfraMiseArtifactsVerification.plans_current(
+                batch_analysis.files, journal=journal
             )
-            if admitted_batch.failure:
-                return r[m.Infra.CodegenPhaseOutcome].from_failure(admitted_batch)
+            if destinations.failure:
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(destinations)
         written: list[Path] = []
         admitted: list[m.Infra.CodegenStagedFile] = []
         retained: list[Path] = []
@@ -221,7 +243,7 @@ class FlextInfraMisePublication:
                 publications,
                 written,
             )
-            if ready.success and batch_analysis is None:
+            if ready.success and batch_admission is None:
                 ready = FlextInfraMisePublication._source_prerequisites(
                     publication.source_states,
                     published_states,

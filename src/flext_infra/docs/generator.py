@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.docs import FlextInfraDocGeneratorBundleMixin
 from flext_infra.docs.base import FlextInfraDocServiceBase
 
@@ -90,6 +91,26 @@ class FlextInfraDocGenerator(
         def publish(
             scope_root: Path,
         ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+            topology = u.Infra.docs_verify_source_topology(
+                bundle.repository_root,
+                bundle.source_states,
+                source_roots=bundle.source_roots,
+                source_scope=bundle.source_scope,
+                source_directories=bundle.source_directories,
+            )
+            if topology.failure:
+                return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(topology)
+            plans = self.plan_files(bundle)
+            if plans.failure:
+                return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(plans)
+            analysis = m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.DOCS,
+                files=plans.value,
+                inputs=bundle.source_states,
+            )
+            admitted = FlextInfraMisePublication.admit_batch(analysis)
+            if admitted.failure:
+                return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(admitted)
             started = transaction.begin_files_locked(
                 scope_root,
                 roots,
@@ -136,27 +157,11 @@ class FlextInfraDocGenerator(
                     return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(
                         prepared
                     )
-                plans = self.plan_files(bundle)
-                if plans.failure:
-                    return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(plans)
-                analysis = m.Infra.CodegenPhaseAnalysis(
-                    phase=c.Infra.CodegenStagedFilePhase.DOCS,
-                    files=plans.value,
-                    inputs=bundle.source_states,
-                )
                 written = transaction.append_phase_locked(
                     prepared.value,
                     analysis.phase,
                     analysis.files,
-                    batch_analysis=analysis,
-                    admission=lambda created: u.Infra.docs_verify_source_topology(
-                        bundle.repository_root,
-                        bundle.source_states,
-                        source_roots=bundle.source_roots,
-                        source_scope=bundle.source_scope,
-                        source_directories=bundle.source_directories,
-                        created_directories=created,
-                    ),
+                    batch_admission=admitted.value,
                 )
                 if written.failure:
                     return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(

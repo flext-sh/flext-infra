@@ -43,7 +43,7 @@ class TestsFlextInfraDocsGeneratorBundle:
         for directory in required.value:
             directory.mkdir(parents=True, exist_ok=True)
 
-    def test_plan_files_rejects_source_change_after_directory_preflight(
+    def test_publication_rejects_changed_captured_source(
         self,
         tmp_path: Path,
     ) -> None:
@@ -55,15 +55,13 @@ class TestsFlextInfraDocsGeneratorBundle:
         generator = self._generator(workspace)
         prepared = generator.prepare_bundle()
         tm.ok(prepared)
-        self._materialize_required_parents(generator, prepared.value)
-
         guide.write_text("# Changed\n", encoding="utf-8")
-        planned = generator.plan_files(prepared.value)
+        published = generator.publish_batch(prepared.value)
 
-        tm.fail(planned)
-        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
+        tm.fail(published)
+        tm.that(published.error or "", has=str(guide))
 
-    def test_plan_files_rejects_source_topology_addition_after_bundle(
+    def test_publication_rejects_source_topology_addition_after_bundle(
         self,
         tmp_path: Path,
     ) -> None:
@@ -72,14 +70,41 @@ class TestsFlextInfraDocsGeneratorBundle:
         generator = self._generator(workspace)
         prepared = generator.prepare_bundle()
         tm.ok(prepared)
-        self._materialize_required_parents(generator, prepared.value)
-
         added = workspace / "flext-a/src/flext_a/added.py"
         added.write_text('"""Added after render."""\n', encoding="utf-8")
-        planned = generator.plan_files(prepared.value)
+        published = generator.publish_batch(prepared.value)
 
-        tm.fail(planned)
-        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER)
+        tm.fail(published)
+        tm.that(published.error or "", has=c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER)
+
+    @staticmethod
+    def test_member_batch_survives_later_member_source_change(
+        tmp_path: Path,
+    ) -> None:
+        """Settle an admitted member without a later member's source barrier."""
+        workspace = u.Tests.create_docs_workspace(
+            tmp_path, project_names=("flext-a", "flext-b")
+        )
+        generator = FlextInfraDocGenerator(
+            repository_root=workspace,
+            selected_projects=["flext-a", "flext-b"],
+            include_root=False,
+        )
+        batches = generator.prepare_batches()
+        first = next(batches)
+        tm.ok(first)
+        later = workspace / "flext-b/src/flext_b/later.py"
+        later.write_text('"""Later member input."""\n', encoding="utf-8")
+
+        published = generator.publish_batch(first.value)
+
+        tm.ok(published)
+        earlier_readme = workspace / "flext-a/README.md"
+        admitted = earlier_readme.read_bytes()
+        second = next(batches)
+        tm.ok(second)
+        tm.ok(generator.publish_batch(second.value))
+        tm.that(earlier_readme.read_bytes(), eq=admitted)
 
     def test_docs_target_leaf_symlink_to_in_project_file_is_rejected(
         self,

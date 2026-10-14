@@ -608,7 +608,7 @@ class FlextInfraCodegenTransaction(
         analysis: m.Infra.CodegenPhaseAnalysis,
         policy: m.Infra.CodegenPhasePublicationPolicy,
         *,
-        batch_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
         staged_validator: Callable[
             [
                 m.Infra.CodegenTransactionSession,
@@ -643,7 +643,7 @@ class FlextInfraCodegenTransaction(
             analysis.files,
             issues=analysis.issues,
             staged_validator=staged_validator,
-            batch_analysis=batch_analysis,
+            batch_admission=batch_admission,
             admission=policy.admission,
         )
         if published.failure:

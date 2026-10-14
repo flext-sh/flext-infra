@@ -124,6 +124,11 @@ class FlextInfraModelsCodegenPipelineModels:
             FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis | None,
             m.Field(description="Phase analysis on success"),
         ] = None
+        admitted_states: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(),
+            exclude=True,
+            description="Exact immutable inputs authenticated by native batch admission",
+        )
         error: Annotated[
             str,
             m.Field(description="Phase failure, empty on success"),
@@ -214,6 +219,9 @@ class FlextInfraModelsCodegenPipelineModels:
         scope: c.Infra.CodegenConformScope | None = m.Field(
             default=None,
             description="Actual operation scope when composed by conform",
+        )
+        module: str | None = m.Field(
+            default=None, description="Exact module selector of the publication"
         )
         batches: t.VariadicTuple[Self] = m.Field(
             default=(),

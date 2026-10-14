@@ -107,7 +107,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         if settled.failure:
             return result_type.from_failure(settled)
         published = self._publish_generation_transaction(
-            settled.value, file_plans
+            settled.value, file_plans, destinations.value
         )
         if published.failure:
             return result_type.from_failure(published)
@@ -489,6 +489,8 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        admission: m.Infra.CodegenPhaseOutcome,
+        journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Publish the staged set and prove publication and real-consumer liveness.
 
@@ -497,7 +499,9 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
             files.
 
         """
-        published = FlextInfraMisePublication.publish(publications)
+        published = FlextInfraMisePublication.publish(
+            publications, batch_admission=admission, journal=journal
+        )
         if published.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(
                 self._recover_failure(
@@ -518,6 +522,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
             t.VariadicTuple[m.Infra.CodegenFilePlan],
         ],
         all_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        admission: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Validate staged configs, prepare the journal, and publish.
 
@@ -574,6 +579,8 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionRecover
         finalized = self._publish_prepared_generation(
             layout,
             publications.value,
+            admission,
+            bound.value.journal,
         )
         if finalized.failure:
             return result_type.from_failure(finalized)
