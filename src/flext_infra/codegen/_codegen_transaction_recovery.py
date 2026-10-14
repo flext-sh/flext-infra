@@ -195,6 +195,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             generator_sources=session.journal.generator_sources,
             generator_trees=session.journal.generator_trees,
             generator_modules=session.journal.generator_modules,
+            generator_reference=session.journal.generator_reference,
             source_topology=topology,
             scope_roots=session.journal.scope_roots,
             source_scope=session.journal.source_scope,

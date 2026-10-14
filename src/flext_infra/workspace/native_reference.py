@@ -202,6 +202,8 @@ class FlextInfraWorkspaceNativeReference:
         if (
             type(exported) is not ModuleType
             or vars(exported).get(binding.imported_name) is not value
+            or vars(type)["__name__"].__get__(value, type(value))
+            != binding.imported_name
         ):
             return r[t.Triple[str, str, str]].fail(
                 f"native class export differs from its source import: {qualified}",
@@ -212,7 +214,7 @@ class FlextInfraWorkspaceNativeReference:
         specification = vars(exported)["__spec__"]
         if (
             specification.origin not in {"built-in", "frozen"}
-            and type(specification.loader).__module__ != "_frozen_importlib_external"
+            and type(specification.loader) is not ExtensionFileLoader
         ):
             return r[t.Triple[str, str, str]].fail(
                 f"native class supplier is not an interpreter extension: {supplier}",

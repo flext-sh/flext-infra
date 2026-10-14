@@ -809,9 +809,9 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
         @classmethod
         def _single_reaching_binding(
             cls,
-            source: str,
+            module: p.Infra.RopePyModule,
             scope: p.Infra.RopeScope,
-            expression: ast.expr,
+            expression: str,
             offset: int,
             declared_routes: t.StrMapping | None = None,
         ) -> bool:
@@ -820,78 +820,111 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             Returns:
                 The resulting ``bool``.
             """
-            tree = ast.parse(source)
-            parents = {
-                child: parent
-                for parent in ast.walk(tree)
-                for child in ast.iter_child_nodes(parent)
-            }
             declarations = cls._single_reaching_declarations(
-                tree, parents, scope, expression
+                module, scope, expression
             )
-            if isinstance(expression, ast.Attribute):
+            if "." in expression:
                 return not declarations
             if len(declarations) != 1:
                 return False
-            declaration = declarations[0]
-            if isinstance(declaration, ast.arg):
-                return False
-            start = FlextInfraUtilitiesRopeRuntimeModules.source_offset(
-                source, declaration
-            )
+            declaration, start = declarations[0]
             if start >= offset:
                 return False
             return cls._declaration_reaches_unconditionally(
-                parents, declaration, expression, declared_routes
+                module, scope, declaration, expression, declared_routes
             )
 
-        @staticmethod
+        @classmethod
         def _single_reaching_declarations(
-            tree: ast.Module,
-            parents: t.MappingKV[ast.AST, ast.AST],
+            cls,
+            module: p.Infra.RopePyModule,
             scope: p.Infra.RopeScope,
-            expression: ast.expr,
-        ) -> list[ast.AST]:
+            expression: str,
+        ) -> t.SequenceOf[t.Pair[m.Infra.LogicalStatement, int]]:
             """Collect the frame-local declarations competing with the expression.
 
             Returns:
                 The declarations of the expression's spelling at the scope frame.
 
             """
-            frames = (
-                ast.Module,
-                ast.FunctionDef,
-                ast.AsyncFunctionDef,
-                ast.ClassDef,
-                ast.Lambda,
+            if not isinstance(module, p.Infra.RopeSourceModule):
+                return ()
+            source = module.source_code
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            rows = FlextInfraUtilitiesRopeStructure.logical_statements(source)
+            name = expression.rpartition(".")[-1]
+            finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+                module.pycore.project, name
             )
-            spelling = ast.unparse(expression)
-            declarations: list[ast.AST] = []
-            for node in ast.walk(tree):
-                names = FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
-                    node
+            declarations: list[t.Pair[m.Infra.LogicalStatement, int]] = []
+            seen: set[t.Pair[int, int]] = set()
+            for occurrence in finder.find_occurrences(pymodule=module):
+                start, end = occurrence.get_primary_range()
+                if cls._binding_expression(source[start:end]) != expression:
+                    continue
+                row = next(
+                    (
+                        statement
+                        for statement in rows
+                        if statement.start_offset <= occurrence.offset
+                        < statement.end_offset
+                    ),
+                    None,
                 )
-                attribute = isinstance(node, ast.Attribute) and isinstance(
-                    node.ctx, ast.Store | ast.Del
+                if row is None:
+                    continue
+                found_scope = runtime.scope_at(
+                    module,
+                    occurrence.offset,
+                    declaration_line=(
+                        row.line
+                        if row.category
+                        in {
+                            c.Infra.StatementCategory.CLASS_DEF,
+                            c.Infra.StatementCategory.FUNC_DEF,
+                        }
+                        else None
+                    ),
                 )
-                if spelling not in names and not (
-                    attribute and ast.unparse(node) == spelling
+                if found_scope is not scope and (
+                    found_scope.get_kind() != c.Infra.RopeScopeKind.MODULE
                 ):
                     continue
-                parent = parents.get(node)
-                while parent is not None and not isinstance(parent, frames):
-                    parent = parents.get(parent)
-                if parent is not None and (
-                    isinstance(parent, ast.Module) or parent.lineno == scope.get_start()
-                ):
-                    declarations.append(node)
+                imported = False
+                if row.category in {
+                    c.Infra.StatementCategory.IMPORT,
+                    c.Infra.StatementCategory.FROM_IMPORT,
+                }:
+                    imported_module = runtime.build_string_module(
+                        module.pycore.project, row.text.strip()
+                    )
+                    imported_scope = imported_module.get_scope()
+                    imported = (
+                        imported_scope is not None
+                        and expression in imported_scope.get_defined_names()
+                    )
+                assigned = occurrence.is_written() or occurrence.is_defined()
+                if row.category == c.Infra.StatementCategory.ANN_ASSIGN:
+                    assigned |= (
+                        cls._binding_expression(row.text.partition(":")[0])
+                        == expression
+                    )
+                if row.text.lstrip().startswith("del "):
+                    assigned = True
+                if not (assigned or imported):
+                    continue
+                key = row.start_offset, occurrence.offset
+                if key not in seen:
+                    seen.add(key)
+                    declarations.append((row, occurrence.offset))
             return declarations
 
         @staticmethod
         def _declaration_reaches_unconditionally(
-            parents: t.MappingKV[ast.AST, ast.AST],
-            declaration: ast.AST,
-            expression: ast.expr,
+            module: p.Infra.RopePyModule,
+            scope: p.Infra.RopeScope,
+            declaration: m.Infra.LogicalStatement,
+            expression: str,
             declared_routes: t.StrMapping | None,
         ) -> bool:
             """Report whether the declaration dominates the queried offset.
@@ -901,27 +934,43 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 declared lazy-module routes.
 
             """
-            frames = (
-                ast.Module,
-                ast.FunctionDef,
-                ast.AsyncFunctionDef,
-                ast.ClassDef,
-                ast.Lambda,
-            )
-            spelling = ast.unparse(expression)
-            parent = parents.get(declaration)
-            while parent is not None and not isinstance(parent, frames):
-                conditional = isinstance(
-                    parent, ast.If | ast.Try | ast.For | ast.While | ast.With
+            rows = tuple(
+                row
+                for row in FlextInfraUtilitiesRopeStructure.logical_statements(
+                    module.source_code
                 )
-                if conditional and not (
-                    isinstance(parent, ast.If)
-                    and declared_routes is not None
-                    and spelling in declared_routes
-                ):
-                    return False
-                parent = parents.get(parent)
-            return True
+                if (
+                    scope.get_kind() == c.Infra.RopeScopeKind.MODULE
+                    and row.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+                )
+                or (
+                    scope.get_start() < row.line <= scope.get_end()
+                    and row.enclosing_kind == scope.get_kind()
+                    and row.enclosing_name == scope.pyobject.get_name()
+                )
+            )
+            direct_indent = (
+                0
+                if scope.get_kind() == c.Infra.RopeScopeKind.MODULE
+                else min((row.indent for row in rows), default=declaration.indent)
+            )
+            if declaration.indent <= direct_indent:
+                return True
+            if declared_routes is None or expression not in declared_routes:
+                return False
+            guards: list[m.Infra.LogicalStatement] = []
+            for row in rows:
+                if row.start_offset >= declaration.start_offset:
+                    break
+                while guards and row.indent <= guards[-1].indent:
+                    guards.pop()
+                if row.text.rstrip().endswith(":"):
+                    guards.append(row)
+            return bool(guards) and all(
+                row.category == c.Infra.StatementCategory.IF_GUARD
+                or row.text.lstrip().startswith(("else:", "elif "))
+                for row in guards
+            )
 
 
 __all__: list[str] = ["FlextInfraFlextUtilitiesCodemodBindingChain"]

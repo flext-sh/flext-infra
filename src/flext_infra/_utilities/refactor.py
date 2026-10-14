@@ -37,7 +37,20 @@ class FlextInfraUtilitiesRefactor:
     def publish_mod_native_artifact(
         root: Path, staged_path: Path
     ) -> m.Cli.AtomicFileReceipt:
-        """Retain exact scanner bytes before disposing its operation staging."""
+        """Retain exact scanner bytes before disposing its operation staging.
+
+        Args:
+            root: The scan root owning the native artifact store.
+            staged_path: The operation staging path holding scanner bytes.
+
+        Returns:
+            The retained native artifact receipt in its content-addressed
+            store.
+
+        Raises:
+            ValueError: When the staged artifact lacks its authenticated
+                digest or the store already holds different bytes.
+        """
         staged = u.Cli.atomic_read_binary_file_receipt(
             staged_path, required=True
         ).unwrap()
@@ -115,22 +128,26 @@ class FlextInfraUtilitiesRefactor:
             msg = "mod native record digest differs from its captured evidence"
             raise ValueError(msg)
         payload = u.Cli.json_loads(content).unwrap()
-        if not isinstance(payload, Mapping):
+        hydrated = isinstance(payload, Mapping)
+        if not hydrated:
             msg = "mod native record is not a JSON object"
             raise ValueError(msg)
-        if (
-            payload.get("ruleId") != finding.rule_id
-            or payload.get("text") != finding.text
-            or payload.get("range") != finding.range
-            or payload.get("replacement") != finding.replacement
-            or payload.get("severity") != finding.severity
-            or payload.get("replacementOffsets")
-            != (
+        identity_admitted = (
+            payload.get("ruleId") == finding.rule_id
+            and payload.get("text") == finding.text
+            and payload.get("range") == finding.range
+        )
+        content_admitted = (
+            payload.get("replacement") == finding.replacement
+            and payload.get("severity") == finding.severity
+            and payload.get("replacementOffsets")
+            == (
                 None
                 if finding.replacement_offsets is None
                 else finding.replacement_offsets.model_dump()
             )
-        ):
+        )
+        if not (identity_admitted and content_admitted):
             msg = "mod operational fields differ from their native record"
             raise ValueError(msg)
         return payload
@@ -1065,9 +1082,16 @@ class FlextInfraUtilitiesRefactor:
     ) -> p.Result[m.Infra.ModScanEvidenceReceipt]:
         """Atomically replace the complete structured evidence for one mod scan.
 
+        Args:
+            root: The scan root owning the published evidence report.
+            report: The completed native scan being published.
+            publication: The publication declaration naming the report.
+
         Returns:
             The resulting ``p.Result[m.Infra.ModScanEvidenceReceipt]``.
 
+        Raises:
+            ValueError: When the report lacks a captured native artifact.
         """
         repository_totals = Counter(dict.fromkeys(publication.repositories, 0))
         rule_totals = Counter(dict.fromkeys(publication.rule_ids, 0))

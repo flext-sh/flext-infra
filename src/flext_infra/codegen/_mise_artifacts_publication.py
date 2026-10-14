@@ -274,6 +274,7 @@ class FlextInfraMisePublication:
             producer = FlextInfraCodegenPreconditions.producer_trees_current(
                 analysis.generator_trees,
                 modules=analysis.generator_modules,
+                reference=analysis.generator_reference,
             )
             if producer.failure:
                 return r[bool].from_failure(producer)
@@ -641,6 +642,7 @@ class FlextInfraMisePublication:
             journal.generator_trees,
             tuple(authority.values()),
             modules=journal.generator_modules,
+            reference=journal.generator_reference,
         )
 
     @staticmethod

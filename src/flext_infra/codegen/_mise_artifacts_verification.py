@@ -205,11 +205,14 @@ class FlextInfraMiseArtifactsVerification(
                 outcome.generator_trees,
                 outcome.outputs,
                 modules=outcome.generator_modules,
+                reference=outcome.generator_reference,
             )
         else:
             producer = FlextInfraCodegenPreconditions.producer_trees_current(
                 outcome.generator_trees,
                 outcome.outputs,
+                modules=outcome.generator_modules,
+                reference=outcome.generator_reference,
             )
         if producer.failure:
             return producer
