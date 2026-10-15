@@ -513,12 +513,12 @@ class TestsFlextInfraPytestProfile:
         command = tm.ok(
             u.Cli.files_read_text(reports_root / latest_name / "command.txt"),
         )
-        # A complete selection runs the whole target; the collection plugin
-        # enforces exactly the selected node ids in the recorded order.
+        # Selection runs once before workers record dependencies; the collection
+        # plugin enforces exactly the selected node ids in the recorded order.
         tm.that(selection.splitlines(), has="tests/test_runtime.py::test_runtime")
         tm.that(command, has=c.Infra.PYTEST_SELECTED_COLLECTION_OPTION)
         tm.that(command, has="--no-cov")
-        tm.that(command, has="--testmon --testmon-forceselect")
+        tm.that(command, has="--testmon --testmon-noselect")
         tm.that((reports_root / latest_name / "coverage.xml").is_file(), eq=False)
         # A cold run has no database to inspect before pytest; its only cache
         # receipt is the post-run seed decision.

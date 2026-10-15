@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import traceback
+from functools import partial
 from pathlib import Path
 from typing import Self, override
 
@@ -14,6 +15,7 @@ from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
+    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -676,9 +678,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     }),
                 ),
                 staged_validator=(
-                    self._validate_mise_stage
+                    partial(self._validate_mise_stage, plans=plan.files)
                     if surface is c.Infra.CodegenConformSurface.MISE_CONFIG
-                    else self._validate_pyproject_stage
+                    else partial(self._validate_pyproject_stage, plans=plan.files)
                     if surface is c.Infra.CodegenConformSurface.PYPROJECT
                     else None
                 ),
@@ -759,9 +761,57 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
 
     @staticmethod
-    def _validate_pyproject_stage(
+    def _bootstrap_validation_paths(
         session: m.Infra.CodegenTransactionSession,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Authenticate the exact staged effects or unchanged physical plans.
+
+        Returns:
+            Paths admitted for consumption, or the first plan identity failure.
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        if not plans or len({plan.path for plan in plans}) != len(plans):
+            return result_type.fail("bootstrap validation requires unique file plans")
+        expected = {
+            plan.path: (plan.project, plan.desired_content, plan.desired_mode)
+            for plan in plans
+            if u.Infra.codegen_file_requires_effect(plan)
+        }
+        actual = {
+            publication.before.path: (
+                publication.project,
+                publication.replacement.content,
+                publication.replacement.mode,
+            )
+            for publication in publications
+            if publication.replacement is not None
+        }
+        if len(actual) != len(publications) or actual != expected:
+            return result_type.fail("bootstrap replacements differ from file plans")
+        current = FlextInfraMiseArtifactsVerification.plans_current(
+            plans, journal=session.journal
+        )
+        if current.failure:
+            return result_type.from_failure(current)
+        staged_paths = {
+            publication.before.path: publication.replacement.path
+            for publication in publications
+            if publication.replacement is not None
+        }
+        return result_type.ok(
+            tuple(staged_paths.get(plan.path, plan.path) for plan in plans)
+        )
+
+    @classmethod
+    def _validate_pyproject_stage(
+        cls,
+        session: m.Infra.CodegenTransactionSession,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        *,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Parse the staged replacement before publishing semantic prerequisites.
 
@@ -770,26 +820,31 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        if not publications:
-            return result_type.fail("pyproject bootstrap requires staged replacements")
-        for publication in publications:
-            if publication.replacement is None:
-                return result_type.fail(
-                    "pyproject bootstrap requires a replacement for every publication",
-                )
-            parsed = u.Cli.toml_read_document(publication.replacement.path)
+        paths = cls._bootstrap_validation_paths(session, publications, plans)
+        if paths.failure:
+            return result_type.from_failure(paths)
+        for path in paths.value:
+            parsed = u.Cli.toml_read_document(path)
             if parsed.failure:
                 return result_type.from_failure(parsed)
+        current = FlextInfraMiseArtifactsVerification.plans_current(
+            plans, journal=session.journal
+        )
+        if current.failure:
+            return result_type.from_failure(current)
         u.Cli.info(
-            f"stage=pyproject-staged-validation files={len(publications)} "
+            f"stage=pyproject-staged-validation files={len(paths.value)} "
             "semantic-analysis=next-gen",
         )
         return result_type.ok(session)
 
-    @staticmethod
+    @classmethod
     def _validate_mise_stage(
+        cls,
         session: m.Infra.CodegenTransactionSession,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        *,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Reject invalid staged TOML before the journal publishes its replacement.
 
@@ -798,13 +853,21 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        if len(publications) != 1 or publications[0].replacement is None:
-            return result_type.fail("mise-config requires one staged replacement")
+        if len(plans) != 1:
+            return result_type.fail("mise-config requires one file plan")
+        paths = cls._bootstrap_validation_paths(session, publications, plans)
+        if paths.failure:
+            return result_type.from_failure(paths)
         checked = FlextInfraCodegenMiseArtifacts.validate_config_file(
-            publications[0].replacement.path,
+            paths.value[0],
         )
         if checked.failure:
             return result_type.from_failure(checked)
+        current = FlextInfraMiseArtifactsVerification.plans_current(
+            plans, journal=session.journal
+        )
+        if current.failure:
+            return result_type.from_failure(current)
         u.Cli.info("stage=mise-config-staged-validation files=1 installs=0")
         return result_type.ok(session)
 
