@@ -21,7 +21,11 @@ _APPLY = "apply"
 
 
 def _lazy_map_of(init: Path) -> dict[str, str]:
-    """Read the ``"Name": ".module"`` lazy-export map of one package init."""
+    """Read the ``"Name": ".module"`` lazy-export map of one package init.
+
+    Returns:
+        The resulting ``dict[str, str]``.
+    """
     mapping: dict[str, str] = {}
     try:
         tree = ast.parse(init.read_text())
@@ -43,7 +47,11 @@ def _lazy_map_of(init: Path) -> dict[str, str]:
 
 
 def _module_of_name(root: Path, package_parts: list[str], name: str) -> str | None:
-    """Resolve one facade-root export to its owning submodule via the lazy map."""
+    """Resolve one facade-root export to its owning submodule via the lazy map.
+
+    Returns:
+        The resulting ``str | None``.
+    """
     for depth in range(len(package_parts), 0, -1):
         init = root.joinpath(*package_parts[:depth], "__init__.py")
         if init.is_file() and name in _lazy_map_of(init):
@@ -52,7 +60,11 @@ def _module_of_name(root: Path, package_parts: list[str], name: str) -> str | No
 
 
 def _header_end(tree: ast.Module) -> int:
-    """Line number after the module docstring, __future__, and top imports."""
+    """Line number after the module docstring, __future__, and top imports.
+
+    Returns:
+        The resulting ``int``.
+    """
     end = 0
     body = list(tree.body)
     if (
@@ -74,7 +86,11 @@ def _header_end(tree: ast.Module) -> int:
 
 
 def _plan(root: Path, path: Path) -> dict[str, object] | None:
-    """Plan the hoisting edits for one file without touching it."""
+    """Plan the hoisting edits for one file without touching it.
+
+    Returns:
+        The resulting ``dict[str, object] | None``.
+    """
     source = path.read_text()
     tree = ast.parse(source)
     package_parts = [
@@ -142,7 +158,11 @@ def _plan(root: Path, path: Path) -> dict[str, object] | None:
 
 
 def main() -> int:
-    """Report or apply the function-body import hoisting across the tree."""
+    """Report or apply the function-body import hoisting across the tree.
+
+    Returns:
+        The resulting ``int``.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=(_REPORT_ONLY, _APPLY))
     parser.add_argument("--root", default=".")

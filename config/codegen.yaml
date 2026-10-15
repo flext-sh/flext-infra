@@ -23,7 +23,6 @@ Infra:
     - path: bin/mise-lock-converge.py
       evidence: "Hold broken tool releases inside a ``make upg`` Mise lock stage."
     - mise.version
-
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
 
@@ -338,7 +337,6 @@ Infra:
       package:
         name: flext-infra
       dependencies: [ flext-tests ]
-
     # No provider registry exists: a repository's provider identity is
     # detected from its own config/workspace.yaml (provider key plus canonical
     # URL) and from each internal dependency's declared direct Git source.
@@ -814,7 +812,7 @@ Infra:
         python.analysis.includeAliasesFromUserFiles: false
         python.analysis.includeExtraPathSymbolsInSymbolSearch: false
         python.analysis.includeVenvInWorkspaceSymbols: false
-        python.analysis.useNearestConfiguration: false
+        python.analysis.useNearestConfiguration: true
         python.analysis.usePerProjectEnvironments: false
         python.analysis.userFileIndexingLimit: 2000
         python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
