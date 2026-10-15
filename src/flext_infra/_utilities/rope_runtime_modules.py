@@ -1,4 +1,4 @@
-"""Rope project, module and import factory boundary methods.
+"""Rope lexical queries and module/import construction.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,320 +7,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import sys
-import sysconfig
-from importlib.machinery import BuiltinImporter, FrozenImporter, ModuleSpec, PathFinder
-from inspect import getsourcefile
 from pathlib import Path
 
-from flext_cli import u
-
-from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeRuntimeBase,
-    FlextInfraUtilitiesRopeRuntimeTypes,
+from flext_infra import c, p, t
+from flext_infra._utilities.rope_runtime_module_queries import (
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
 )
 
 
-class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntimeBase):
-    """Resolve Rope native, lexical and module facts behind protocols."""
-
-    @classmethod
-    def native_module_source(cls, module_name: str) -> p.Result[Path]:
-        """Authenticate native module election without calling an upper service.
-
-        Returns:
-            The physical supplier source, or the authenticated native interpreter.
-
-        """
-        module = sys.modules[module_name]
-        native = module.__spec__
-        if (
-            native is None
-            or sys.modules.get(native.name) is not module
-            or (
-                native.name != module_name
-                and (
-                    native.origin not in {"built-in", "frozen"}
-                    or module_name.partition(".")[0] not in sys.stdlib_module_names
-                )
-            )
-        ):
-            return r[Path].fail(f"producer module lacks its native spec: {module_name}")
-        components = module_name.split(".")
-        interpreter = Path(sys.executable).resolve()
-        if components[0] in sys.stdlib_module_names:
-            base = Path(sys.base_prefix).resolve()
-            standard = Path(
-                sysconfig.get_path(
-                    "stdlib",
-                    vars={"base": sys.base_prefix, "platbase": sys.base_exec_prefix},
-                )
-            ).resolve()
-            extension = sysconfig.get_config_var("DESTSHARED")
-            if not isinstance(extension, str):
-                return r[Path].fail(
-                    "producer Python base lacks its native extension directory"
-                )
-            extension_root = Path(extension).resolve()
-            if (
-                not interpreter.is_relative_to(base)
-                or not standard.is_relative_to(base)
-                or not extension_root.is_relative_to(base)
-            ):
-                return r[Path].fail(
-                    "producer standard library differs from native Python base"
-                )
-            physical = u.Cli.atomic_plan_directory_chain(standard)
-            if physical.failure:
-                return r[Path].from_failure(physical)
-            if native.origin == "built-in":
-                spec = BuiltinImporter.find_spec(native.name)
-            elif native.origin == "frozen":
-                spec = FrozenImporter.find_spec(native.name)
-            else:
-                spec = PathFinder.find_spec(
-                    components[0], [str(standard), str(extension_root)]
-                )
-        else:
-            spec = PathFinder.find_spec(components[0])
-        parent_path = None
-        if native.origin not in {"built-in", "frozen"}:
-            for index in range(1, len(components)):
-                if spec is None or not spec.submodule_search_locations:
-                    return r[Path].fail(
-                        f"producer module has no cold parent: {module_name}"
-                    )
-                parent_path = spec.submodule_search_locations
-                spec = PathFinder.find_spec(
-                    ".".join(components[: index + 1]),
-                    parent_path,
-                )
-            registered = cls.runtime_callable("importlib._bootstrap", "_find_spec")(
-                module_name, parent_path
-            )
-            if (
-                not isinstance(registered, ModuleSpec)
-                or spec is None
-                or registered.origin != spec.origin
-                or registered.submodule_search_locations
-                != spec.submodule_search_locations
-            ):
-                return r[Path].fail(
-                    f"registered producer importer disagrees with physical election: "
-                    f"{module_name}"
-                )
-            spec = registered
-        if (
-            spec is None
-            or spec.origin != native.origin
-            or type(spec.loader) is not type(native.loader)
-            or module.__loader__ is not native.loader
-        ):
-            return r[Path].fail(
-                f"producer module election differs from loaded spec: {module_name}; "
-                f"loaded_origin={native.origin!r}; "
-                f"cold_origin={None if spec is None else spec.origin!r}; "
-                f"loaded_loader={type(native.loader).__module__}."
-                f"{type(native.loader).__qualname__}; "
-                f"cold_loader={type(None if spec is None else spec.loader).__module__}."
-                f"{type(None if spec is None else spec.loader).__qualname__}"
-            )
-        if spec.origin == "frozen" and (
-            native.loader is not spec.loader
-            or native.loader_state.origname != spec.loader_state.origname
-            or (
-                native.loader_state.filename is not None
-                and native.loader_state.filename != spec.loader_state.filename
-            )
-            or (
-                spec.loader_state.filename is not None
-                and getsourcefile(module) != spec.loader_state.filename
-            )
-        ):
-            return r[Path].fail(
-                f"producer frozen declaration source differs from native loader: "
-                f"{module_name}; loaded_state={native.loader_state!r}; "
-                f"cold_state={spec.loader_state!r}; source={getsourcefile(module)!r}"
-            )
-        if spec.origin in {"built-in", "frozen"}:
-            return r[Path].ok(interpreter)
-        if spec.origin is None or getattr(module, "__file__", None) != spec.origin:
-            return r[Path].fail(
-                f"producer loaded module differs from cold origin: {module_name}"
-            )
-        return r[Path].ok(Path(spec.origin).absolute())
-
-    @classmethod
-    def native_class(
-        cls,
-        native: p.Infra.NativeClassMetadata,
-    ) -> t.Infra.RopePyObject:
-        """Wrap an observed native class without requiring a module export.
-
-        Returns:
-            Rope's class object retaining the exact native identity.
-
-        Raises:
-            TypeError: If the input is not a class or Rope changes its identity.
-
-        """
-        if not isinstance(native, type):
-            msg = "Rope native class input is not a class"
-            raise TypeError(msg)
-        wrapped = cls.runtime_callable("rope.base.builtins", "BuiltinClass")(
-            native,
-            {},
-        )
-        if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(wrapped):
-            msg = "Rope native class factory did not return a class"
-            raise TypeError(msg)
-        if (
-            not isinstance(wrapped, p.Infra.RopeBuiltinClass)
-            or wrapped.builtin is not native
-        ):
-            msg = "Rope native class factory did not preserve native identity"
-            raise TypeError(msg)
-        return wrapped
-
-    @classmethod
-    def native_class_primary_base(
-        cls,
-        native: p.Infra.NativeClassMetadata,
-    ) -> t.Infra.RopePyObject:
-        """Resolve the native type descriptor, not an inherited class member.
-
-        Returns:
-            Rope's wrapper retaining the observed primary base identity.
-
-        Raises:
-            TypeError: If the primary base is None rather than a class.
-
-        """
-        base = native.__base__
-        if base is None:
-            msg = "Rope native primary base is not a class"
-            raise TypeError(msg)
-        return cls.native_class(base)
-
-    @classmethod
-    def parse_rope_module(cls, source: str, *, filename: str) -> t.Infra.RopeAstNode:
-        """Parse one source snapshot through Rope's canonical syntax boundary.
-
-        Returns:
-            The resulting ``t.Infra.RopeAstNode``.
-
-        Raises:
-            TypeError: If rope parser returned an invalid module node.
-
-        """
-        parsed = cls.runtime_callable("rope.base.ast", "parse")(
-            source,
-            filename=filename,
-        )
-        if not isinstance(parsed, p.Infra.RopeAstNode):
-            msg = "rope parser returned an invalid module node"
-            raise TypeError(msg)
-        return parsed
-
-    @classmethod
-    def snapshot_project(
-        cls,
-        project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
-        *,
-        captured: m.Infra.CodemodSourceEpoch | None = None,
-    ) -> p.Infra.RopeProject:
-        """Capture a complete identity graph with proposed sources authoritative.
-
-        Unchanged dependencies are captured once before graph construction;
-        subsequent imports and MRO resolution only read that closed inventory.
-        Governed project-root entry modules (e.g. conftest.py) are real project
-        resources outside every source folder; they join the closed inventory
-        from disk so consumer rewrites still resolve inside the snapshot.
-
-        Returns:
-            The resulting ``p.Infra.RopeProject``.
-
-        Raises:
-            TypeError: If Rope project owner does not expose snapshot construction; or
-                if Rope snapshot does not satisfy its project contract.
-            ValueError: If Rope proposed source is outside its input inventory.
-
-        """
-        inventory = (
-            {
-                Path(resource.real_path).resolve(): resource.read()
-                for resource in project.get_python_files()
-            }
-            if captured is None
-            else dict(captured.sources)
-        )
-        contents = (
-            {path: source.encode("utf-8") for path, source in inventory.items()}
-            if captured is None
-            else dict(captured.contents)
-        )
-        root = Path(project.root.real_path).resolve()
-        for path, source in sources.items():
-            resolved = path.resolve()
-            if resolved not in inventory:
-                if captured is not None:
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg)
-                try:
-                    relative = resolved.relative_to(root)
-                except ValueError as error:
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg) from error
-                candidate_resource = project.get_resource(relative.as_posix())
-                if not FlextInfraUtilitiesRopeRuntimeTypes.file_resource(
-                    candidate_resource,
-                ):
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg)
-                resource = candidate_resource
-                if not Path(resource.real_path).is_file():
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg)
-                inventory[resolved] = resource.read()
-            if resolved not in contents or inventory[resolved] != source:
-                contents[resolved] = source.encode("utf-8")
-            inventory[resolved] = source
-        owner = cls.runtime_type(
-            "flext_infra._utilities._rope.project",
-            "FlextInfraRopeProject",
-        )
-        factory = getattr(owner, "from_snapshot", None)
-        if not callable(factory):
-            msg = "Rope project owner does not expose snapshot construction"
-            raise TypeError(msg)
-        snapshot = factory(
-            project.root.real_path,
-            contents,
-            [folder.path for folder in project.get_source_folders()],
-            ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
-        )
-        if not isinstance(snapshot, p.Infra.RopeProject):
-            msg = "Rope snapshot does not satisfy its project contract"
-            raise TypeError(msg)
-        return snapshot
-
-    @classmethod
-    def imported_name_at(
-        cls,
-        pymodule: t.Infra.RopePyModule,
-        offset: int,
-    ) -> p.Infra.RopeImportedName | None:
-        """Resolve a lexical binding; local shadows are not imported names.
-
-        Returns:
-            The resulting ``p.Infra.RopeImportedName | None``.
-
-        """
-        resolver = cls.runtime_callable("rope.base.evaluate", "eval_location")
-        result = resolver(pymodule, offset)
-        return result if isinstance(result, p.Infra.RopeImportedName) else None
+class FlextInfraUtilitiesRopeRuntimeModules(
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
+):
+    """Resolve lexical identities and construct Rope module/import objects."""
 
     @classmethod
     def expression_name(
@@ -493,12 +191,6 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             return parent
         return result
 
-
-class FlextInfraUtilitiesRopeRuntimeModules(
-    FlextInfraUtilitiesRopeRuntimeModuleQueries,
-):
-    """Load Rope project/module/import objects behind protocols."""
-
     @classmethod
     def resolve_symbol(
         cls,
@@ -556,11 +248,15 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     def imported_module_path(
         project: p.Infra.RopeProject,
         binding: p.Infra.RopeImportedName,
+        *,
+        resolved: t.MutableMappingKV[p.Infra.RopeImportedModule, Path] | None = None,
     ) -> Path:
         """Resolve import provenance through Rope without evaluating its target.
 
         Generated initializers may still await publication. Their content is
         not required to identify which module an authored import names.
+        A caller may retain resolutions for the same native import objects
+        within its source observation.
 
         Returns:
             The resulting ``Path``.
@@ -570,11 +266,16 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         location.
 
         """
-        return Path(
+        if resolved is not None and binding.imported_module in resolved:
+            return resolved[binding.imported_module]
+        path = Path(
             FlextInfraUtilitiesRopeRuntimeModules.imported_module_resource(
                 project, binding
             ).real_path
         ).resolve()
+        if resolved is not None:
+            resolved[binding.imported_module] = path
+        return path
 
     @staticmethod
     def imported_module_resource(

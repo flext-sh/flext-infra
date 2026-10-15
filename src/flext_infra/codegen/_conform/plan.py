@@ -12,14 +12,14 @@ from pathlib import Path
 from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
-from flext_infra.codegen._mise_artifacts_journal import FlextInfraMiseArtifactsJournal
-from flext_infra.codegen._mise_artifacts_verification import (
+from flext_infra.codegen import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPreconditions,
+    FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
@@ -177,15 +177,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenPlan].from_failure(inputs)
-        if request.what in {
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-            c.Infra.CodegenConformSurface.FACADES,
-        }:
-            planned = self._plan_single_surface(request, inputs=inputs.value)
-            if planned.failure:
-                return r[m.Infra.CodegenPlan].from_failure(planned)
-            return r[m.Infra.CodegenPlan].ok(planned.value[0])
-        return self._plan_repositories(request, inputs.value)
+        return self.plan_repositories(request, inputs.value)
 
     def _required_producer(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return the current captured producer, capturing one when absent.
@@ -231,17 +223,25 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return self._plan_facade(request, inputs)
         return self._plan_lazy_init(request, inputs)
 
-    def _plan_repositories(
+    def plan_repositories(
         self,
         request: m.Infra.CodegenConformRequest,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[m.Infra.CodegenPlan]:
-        """Build the governed plans for the selected repository topology.
+        """Dispatch the declared surface using its captured repository inputs.
 
         Returns:
             The complete repository plan or its first planning failure.
 
         """
+        if request.what in {
+            c.Infra.CodegenConformSurface.LAZY_INIT,
+            c.Infra.CodegenConformSurface.FACADES,
+        }:
+            planned = self._plan_single_surface(request, inputs=inputs)
+            if planned.failure:
+                return r[m.Infra.CodegenPlan].from_failure(planned)
+            return r[m.Infra.CodegenPlan].ok(planned.value[0])
         config_spec = inputs.spec
         root = request.root.expanduser().resolve()
         targets = self._planning_workspace(request, root, inputs=inputs)

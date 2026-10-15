@@ -514,8 +514,13 @@ class FlextInfraUtilitiesRopeInventory:
     ) -> str:
         """Keep literal bytes separate from normalized executable whitespace.
 
+        Args:
+            source: The source code of the statement.
+            offset: The starting character offset of the statement within the source code.
+            references: A sequence of triples containing the start and end offsets and the identity of referenced objects.
+
         Returns:
-            The resulting ``str``.
+            A string representing the fingerprint of the statement, with literal bytes separated from normalized executable whitespace.
 
         """
         edits = []

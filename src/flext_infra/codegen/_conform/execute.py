@@ -18,6 +18,7 @@ from flext_infra.codegen import (
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 # The surfaces a partial apply plan may publish; every other non-ALL surface is
 # prohibited outside the complete managed run.
@@ -58,33 +59,37 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            return cls._observe_publication(request)
-        root = request.root.expanduser().resolve()
-        producer = FlextInfraCodegenPreconditions.capture_producer(
-            root, entrypoint=cls.execute_request
-        )
-        if producer.failure:
-            return r[m.Infra.CodegenResult].from_failure(producer)
-        prelude = cls._validated_request_prelude(root, initial_workspace)
-        if prelude.failure:
-            return r[m.Infra.CodegenResult].from_failure(prelude)
-        if initial_workspace is not None and not root.is_dir():
-            created = cls._bootstrap_request_root(root)
-            if created.failure:
-                return r[m.Infra.CodegenResult].from_failure(created)
-        if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
-            initialized = cls._initialize_request_git(root, initial_workspace)
-            if initialized.failure:
-                return r[m.Infra.CodegenResult].from_failure(initialized)
-        service = cls(
-            repository_root=root,
-            request=request,
-            initial_workspace=initial_workspace,
-            ports=ports,
-            producer=producer.value,
-        )
-        return service.execute()
+        with FlextInfraWorkspaceNativeReference.compilation_scope():
+            if (
+                c.Infra.CodegenConformMode(request.mode)
+                is c.Infra.CodegenConformMode.CHECK
+            ):
+                return cls._observe_publication(request)
+            root = request.root.expanduser().resolve()
+            producer = FlextInfraCodegenPreconditions.capture_producer(
+                root, entrypoint=cls.execute_request
+            )
+            if producer.failure:
+                return r[m.Infra.CodegenResult].from_failure(producer)
+            prelude = cls._validated_request_prelude(root, initial_workspace)
+            if prelude.failure:
+                return r[m.Infra.CodegenResult].from_failure(prelude)
+            if initial_workspace is not None and not root.is_dir():
+                created = cls._bootstrap_request_root(root)
+                if created.failure:
+                    return r[m.Infra.CodegenResult].from_failure(created)
+            if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
+                initialized = cls._initialize_request_git(root, initial_workspace)
+                if initialized.failure:
+                    return r[m.Infra.CodegenResult].from_failure(initialized)
+            service = cls(
+                repository_root=root,
+                request=request,
+                initial_workspace=initial_workspace,
+                ports=ports,
+                producer=producer.value,
+            )
+            return service.execute()
 
     @staticmethod
     def _validated_request_prelude(
@@ -670,13 +675,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                         if not file.path.parent.is_dir()
                     }),
                 ),
-            ),
-            staged_validator=(
-                self._validate_mise_stage
-                if surface is c.Infra.CodegenConformSurface.MISE_CONFIG
-                else self._validate_pyproject_stage
-                if surface is c.Infra.CodegenConformSurface.PYPROJECT
-                else None
+                staged_validator=(
+                    self._validate_mise_stage
+                    if surface is c.Infra.CodegenConformSurface.MISE_CONFIG
+                    else self._validate_pyproject_stage
+                    if surface is c.Infra.CodegenConformSurface.PYPROJECT
+                    else None
+                ),
             ),
             publication_receipts=publication_receipts,
         )
@@ -857,10 +862,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         ports = self.ports
-        if ports is None:
+        producer = self.producer
+        if ports is None or producer is None:
             return r[m.Infra.CodegenResult].fail(
                 "complete conform requires the facade-wired docs and fresh-import "
-                "ports; run it through FlextInfra.codegen_conform",
+                "ports and an authenticated producer; "
+                "run it through FlextInfra.codegen_conform",
             )
         seeded = self._seed_declared_beads_identity(request.root)
         if seeded.failure:
@@ -868,6 +875,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         policy = ports.participant_policy(
             request.root,
             initial_workspace=self.initial_workspace,
+            producer=producer,
         )
         if policy.failure:
             return r[m.Infra.CodegenResult].from_failure(policy)
@@ -875,7 +883,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         transaction = FlextInfraCodegenTransaction(
             mise_owner,
             participant_policy=policy.value,
-            producer=self.producer,
+            producer=producer,
         )
         batches: list[m.Infra.CodegenPhaseOutcome] = []
 
@@ -893,7 +901,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         return self._publish_docs_batches(
             request,
             published.value,
-            ports,
             tuple(batches),
         )
 
@@ -1043,6 +1050,33 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
+        owned = tuple(
+            repository.name
+            for repository in plan.repositories
+            if repository.path == Path()
+        )
+        self.docs_planner = None
+        self.docs_producer = None
+        if owned:
+            ports = self.ports
+            if ports is None:
+                return r[m.Infra.CodegenResult].fail(
+                    "docs planning requires the facade-wired planner before effects"
+                )
+            planner = ports.docs_planner(
+                repository_root=request.root,
+                projects=owned,
+                include_root=True,
+            )
+            captured = FlextInfraCodegenPreconditions.capture_producer(
+                request.root,
+                entrypoint=planner.prepare_batches,
+                collaborators=(planner.publish_batch, ports.docs_planner),
+            )
+            if captured.failure:
+                return r[m.Infra.CodegenResult].from_failure(captured)
+            self.docs_planner = planner
+            self.docs_producer = captured.value
         config_plans = self.mise_config_plans(plan)
         if config_plans.failure:
             return r[m.Infra.CodegenResult].from_failure(config_plans)
@@ -1157,11 +1191,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return result_type.from_failure(extended)
         return result_type.ok((extended.value, owned_lazy_analysis))
 
-    @staticmethod
     def _publish_docs_batches(
+        self,
         request: m.Infra.CodegenConformRequest,
         result: m.Infra.CodegenResult,
-        ports: m.Infra.CodegenConformPorts,
         batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
         """Publish only invocation-owned docs after the managed batch releases.
@@ -1182,12 +1215,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         written = list(result.written_files)
         receipts = list(batches)
         if owned:
-            docs_generator = ports.docs_planner(
-                repository_root=request.root,
-                projects=owned,
-                include_root=True,
-            )
-            for prepared in docs_generator.prepare_batches():
+            docs_generator = self.docs_planner
+            producer = self.docs_producer
+            if docs_generator is None or producer is None:
+                return r[m.Infra.CodegenResult].fail(
+                    "docs publication lacks its original planner and producer"
+                )
+            for prepared in docs_generator.prepare_batches(
+                producer=producer,
+                publication_receipts=receipts,
+            ):
                 if prepared.failure:
                     return r[m.Infra.CodegenResult].from_failure(prepared)
                 published = docs_generator.publish_batch(

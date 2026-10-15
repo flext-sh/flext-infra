@@ -16,6 +16,7 @@ from flext_infra import m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 _NATIVE_REGION_SPAN = 2
+"""Character-region tuples carry exactly one begin and one end coordinate."""
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
@@ -25,11 +26,15 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     def reindent_source(cls, source: str, amount: int) -> str:
         """Move source indentation while retaining every multiline literal value.
 
+        Args:
+            source: The source code whose indentation is to be adjusted.
+            amount: The number of spaces to add (positive) or remove (negative) from the indentation of each line.
+
         Returns:
-            The resulting ``str``.
+            The source code with adjusted indentation.
 
         Raises:
-            ValueError: If source indentation is smaller than its native move.
+            ValueError: If the source contains lines with indentation smaller than the amount to be removed.
 
         """
         literals = tuple(
@@ -320,6 +325,10 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     ) -> p.Infra.RopeChangeSet:
         """Plan Rope 1.14 semantic changes without invoking Project.do.
 
+        Args:
+            rope_project: Native Rope project owning the restructured sources.
+            request: Immutable native pattern, admission, and import policies.
+
         Returns:
             The resulting ``p.Infra.RopeChangeSet``.
 
@@ -398,13 +407,16 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     ) -> t.Pair[int, int]:
         """Read a captured region through Rope's native match boundary.
 
+        Args:
+            match: The Rope match object containing captured variables.
+            variable: The name of the captured variable to retrieve the region for.
+
         Returns:
-            The resulting ``t.Pair[int, int]``.
+            A pair of integers representing the start and end character positions of the captured region.
 
         Raises:
-            TypeError: If Rope capture does not expose its native character region; or
-                if Rope capture region contains non-integer coordinates.
-            ValueError: If Rope match has no captured variable.
+            ValueError: If the specified variable is not captured in the match.
+            TypeError: If the captured region does not conform to the expected format.
 
         """
         captured = match.get_ast(variable)
@@ -496,11 +508,15 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     ) -> p.Infra.RopeOccurrenceFinder:
         """Find native lexical occurrences without last-binding inference.
 
+        Args:
+            project: The Rope project in which to search for occurrences.
+            name: The name of the variable or function to find occurrences for.
+
         Returns:
-            The resulting ``p.Infra.RopeOccurrenceFinder``.
+            An instance of RopeOccurrenceFinder that can be used to locate occurrences of the specified name.
 
         Raises:
-            TypeError: If Rope lexical finder does not satisfy its native contract.
+            TypeError: If the created finder does not satisfy the expected RopeOccurrenceFinder interface.
 
         """
         finder = cls.runtime_callable("rope.refactor.occurrences", "Finder")(

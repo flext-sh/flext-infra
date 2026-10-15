@@ -41,6 +41,7 @@ class FlextInfraProfileEntry:
             primary = sys.exception() if status is None else None
             try:
                 FlextInfraPytestClock.publish_profile(profiler, output)
+                profiler.print_stats(sort="cumtime")
             except BaseException as publication_failure:
                 if primary is not None:
                     primary.add_note(

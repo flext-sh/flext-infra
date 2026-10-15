@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Self
 
 from flext_cli import m, u
 from typing_extensions import TypeForm
@@ -56,17 +56,65 @@ class FlextInfraModelsWorkspace:
             )
         )
 
+    class NativeCodeEvidence(m.Value):
+        """Complete compiler bytes or an explicit nonportable-constant refusal."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            strict=True,
+            ser_json_bytes="base64",
+            val_json_bytes="base64",
+        )
+
+        filename: str = m.Field(description="Actual relocated compiler filename")
+        name: str = m.Field(description="Native code-unit name")
+        firstlineno: int = m.Field(description="Actual compiler starting line")
+        witness: Annotated[bytes, m.Field(min_length=1)] | None = m.Field(
+            description="Complete native compiler witness, never deserialized"
+        )
+        locations: t.VariadicTuple[t.JsonValue] | None = m.Field(
+            description="Flat root and nested compiler locations"
+        )
+        nonportable_constants: t.VariadicTuple[t.Pair[t.VariadicTuple[int], str]] = (
+            m.Field(
+                description="Constant paths and native types requiring identity "
+                "or containing NaN"
+            )
+        )
+
+        @m.model_validator(mode="after")
+        def _require_complete_witness_or_refusal(self) -> Self:
+            """Require either complete compiler evidence or explicit rejection.
+
+            Returns:
+                The coherent compiler observation.
+
+            Raises:
+                ValueError: Witness bytes and constant eligibility disagree.
+
+            """
+            if bool(self.nonportable_constants) != (self.witness is None):
+                message = "native code witness and constant eligibility disagree"
+                raise ValueError(message)
+            if (self.locations is None) != (self.witness is None):
+                message = "native code witness requires complete compiler locations"
+                raise ValueError(message)
+            return self
+
     class NativeBindingEvidence(m.Value):
         """Static binding and strict native executable transport."""
 
-        binding: str = m.Field(description="Module and lexical binding path")
+        binding: str = m.Field(
+            description="Root anchors, identity nodes and labeled native edges"
+        )
         kind: str = m.Field(description="Observed native descriptor category")
         supplier: str = m.Field(description="Actual defining module")
         name: str = m.Field(description="Advertised native name")
         qualname: str = m.Field(description="Advertised qualified name")
         code: str | None = m.Field(
             default=None,
-            description="Native marshal transport compared through CodeType equality",
+            description="Validated JSON compiler witness or explicit "
+            "nonportable-constant refusal",
         )
         operands: t.VariadicTuple[t.Pair[str, str]] = m.Field(
             default=(),

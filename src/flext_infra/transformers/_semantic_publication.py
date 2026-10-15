@@ -15,8 +15,8 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
+    FlextInfraStagedPackage,
 )
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
 
 class _PublicationOptions(m.FrozenModel):

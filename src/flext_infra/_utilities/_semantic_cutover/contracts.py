@@ -25,10 +25,7 @@ from flext_infra._utilities._semantic_cutover.edits import (
 )
 
 
-class FlextInfraUtilitiesSemanticContracts(
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticCutoverEdits,
-):
+class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdits):
     """Reuse the joint semantic loop and immutable Rope source inventory."""
 
     @classmethod
@@ -58,6 +55,7 @@ class FlextInfraUtilitiesSemanticContracts(
         Raises:
             ValueError: If two rules share an identity or a rule names an
                 undeclared facade family.
+
 
         """
         rules = m.Infra.RopeContractRules.model_validate(
@@ -216,37 +214,55 @@ class FlextInfraUtilitiesSemanticContracts(
                 raise ValueError(message)
         return True
 
-    @staticmethod
-    def _admit_contract_scope(
+    @classmethod
+    def _admit_contract_match(
+        cls,
         project: p.Infra.RopeProject,
         rule: m.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
-        scope: p.Infra.RopeScope,
+        match: p.Infra.RopeContractMatch,
     ) -> bool:
-        """Admit a declared scope through the configured facade family owner.
+        """Prove each occurrence's model ancestry and destination bindings.
 
         Returns:
-            Whether the native scope belongs to the configured rule domain.
+            Whether the native occurrence belongs to this rule's model domain.
 
         Raises:
             ValueError: If a family-constrained occurrence has no source resource.
 
         """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        scope = runtime.scope_at(module, match.get_region()[0])
         if rule.scope_kinds and scope.get_kind() not in rule.scope_kinds:
             return False
-        if not rule.families:
-            return True
-        resource = module.get_resource()
-        if resource is None:
-            message = f"{rule.id}: source module has no declared resource"
-            raise ValueError(message)
-        families = (
-            FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(parent.name)
-            for parent in Path(resource.real_path).parents
-            if parent.is_relative_to(Path(project.root.real_path))
+        if rule.families and not cls._admitted_family(project, rule, module):
+            return False
+        ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(scope.pyobject)
+        if rule.model_bases and not any(
+            runtime.qualified_name(project, name).get_object() in ancestry
+            for name in rule.model_bases
+        ):
+            return False
+        if rule.repeats_annotation or rule.reorders_annotation:
+            calls = FlextInfraUtilitiesRopeRuntimeRefactors.word_call_regions(
+                module.source_code, match.get_region()
+            )
+            if len(calls) != 1:
+                message = (
+                    f"{rule.id}: annotation evaluation cannot repeat or reorder "
+                    f"authored calls "
+                    f"in {module.get_name()}:{scope.get_start()}"
+                )
+                raise ValueError(message)
+        if not cls._admitted_unshadowed_builtins(rule, scope):
+            return False
+        return cls._admitted_bindings(
+            project,
+            rule,
+            module,
+            scope,
+            match.get_region()[0],
         )
-        family = next((value for value in families if value is not None), None)
-        return family in rule.families
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticContracts"]

@@ -167,8 +167,9 @@ MAKE_PROFILE := standalone
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
-# Computed: traversal projects observed members; provisioning reads local .gitmodules.
+# Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
 WORKSPACE_SUBPROJECTS :=
+MANAGED_GITLINKS :=
 UV_LINK_MODE := copy
 # End SECTION: project identity
 
@@ -1702,7 +1703,7 @@ test:
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make test to execute it.'
 
 test-full:
-	@printf '  %-16s %s\n' 'test-full' 'Run every test once, including slow, external and CI-excluded markers, locally only, without testmon and without any time limit.'
+	@printf '  %-16s %s\n' 'test-full' 'Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make test-full to execute it.'
 
 test-file:
@@ -1911,7 +1912,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'test' 'Run incremental tests through the persistent testmon cache.';
 
-	@printf '  %-16s %s\n' 'test-full' 'Run every test once, including slow, external and CI-excluded markers, locally only, without testmon and without any time limit.';
+	@printf '  %-16s %s\n' 'test-full' 'Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.';
 
 	@printf '  %-16s %s\n' 'test-file' 'Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).';
 
@@ -2486,7 +2487,7 @@ _builtin_fmt_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "format,markdown-format" --apply
 
 _builtin_fix_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code,deps" --apply
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code" --apply
 
 # SonarCloud server-side issue exclusions (SSOT: codegen.sonarcloud). The verb
 # writes an external service with SONAR_TOKEN from the environment; it belongs

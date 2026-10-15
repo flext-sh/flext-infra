@@ -71,6 +71,8 @@ Repository = "https://github.com/flext-sh/flext-infra"
 [project.entry-points.pytest11]
 "flext_infra._pytest_collection" = "flext_infra._pytest_collection:FlextInfraPytestCollection"
 
+[project.optional-dependencies]
+
 [dependency-groups]
 dev = [
   "actionlint-py>=1.7.12.24",

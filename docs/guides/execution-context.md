@@ -162,7 +162,9 @@ filename change outside those mappings remains observable.
 
 Producer authentication compiles pinned physical declarations without executing
 their callbacks, then compares loaded bindings with an isolated native import from
-the elected physical roots. This read-only proof creates no source preview or
+the elected physical roots. Observation remains passive in the original process;
+the isolated child performs the real import and may produce its actual import
+effects, which are validated separately. This proof creates no source preview or
 publication journal. Source and runtime receipts are checked before observation
 and again before returning the authenticated reference; the cold import's executed
 code must also match those captured source bytes. Candidate publication still owns
@@ -207,11 +209,12 @@ executing either branch, decorators, or class bodies. The selected metaclass ret
 the same physical supplier/source/code authentication as an unconditional import.
 Native compiler inputs preserve the class's actual bases and its own declared
 descriptors. An inherited constructor is not an explicitly declared dataclass
-constructor. Authentication does not replay a class body, decorator, metaclass, or
-construction hook. Function compilation uses authenticated native suppliers and
-data-only attachment targets; alias operands and compiler constructor bindings
-require admission before invocation. Value comparison must not invoke authored
-equality, hashing, or attribute access.
+constructor. Observation and pinned-source compilation do not replay a class body,
+decorator, metaclass, or construction hook in the original process. The isolated
+child retains the effects of its real import. Function compilation uses
+authenticated native suppliers and data-only attachment targets. Alias operands
+and compiler constructor bindings require admission before invocation. Value
+comparison must not invoke authored equality, hashing, or attribute access.
 Compiler field defaults use the existing native operand-admission contract.
 Immutable scalar defaults are valid inputs; a default with a `__set_name__`
 callback remains inadmissible before native class assembly.
@@ -223,9 +226,9 @@ inherited subclass hook again.
 Source bindings retain null literals inside a typed value; a null annotation or
 default never becomes a successful null `FlextResult` payload or a substituted type.
 Native generated methods are compiled in batches whose starting lines depend on
-other generated methods. Their comparison uses the same fixed starting line on
-immutable copies of both code objects, preserving compiler filenames, executable
-code, metadata and closure checks. Authored functions retain exact source positions.
+other generated methods. Their evidence retains actual compiler filenames, source
+positions, executable metadata and closure checks against the same authenticated
+construction inputs. Authored functions retain exact source positions.
 
 Every phase binds that same captured context to its staged consumer inputs. Journal
 transitions preserve it instead of rediscovering loaded origins after publication.
@@ -236,6 +239,12 @@ membership changes. Independent file work outside a lexical producer's consumed
 inputs does not invalidate its proof. Publication still authenticates each
 participant's relevant inputs and effects. None of this proves an earlier process
 whose source context was not captured.
+
+Documentation targets and the executing producer can have different roots.
+Programmatic preparation receives the original authenticated producer explicitly
+when the target does not own the executing environment. Both single-bundle and
+per-scope preparation verify the actual entrypoints and current producer before
+consuming inputs; a target directory never supplies an implicit borrowed runtime.
 
 Native callback identity follows the elected supplier's actual registrations.
 Conditional attribute references record native absence as binding evidence;
@@ -251,13 +260,28 @@ an uninitialized native slot from a slot shadowed by a derived declaration;
 neither state supplies a fabricated field value or executes the derived accessor.
 Optional native reads require the standard attribute reader and no custom missing
 attribute hook.
+Native callable observations retain both interpreter-exposed descriptor and slot
+values and their native argument referents. Neither storage form replaces the
+other, so changed callable arguments remain detectable.
+Native type-family selection uses identity comparisons and remains passive for
+metaclasses with hashing or equality hooks.
 Operand observations share one recursive encoder, parameterized by construction
 mode, and retain structured JSON values until the transport boundary.
 Recursive JSON strings are prohibited: re-encoding their escapes amplifies memory
 with nesting depth. Compiler locations compare as a flat structure containing
 the root and every nested code unit's position in `co_consts`, without JSON
-conversion or repeated root checks. Executable equality and full operand evidence
-remain required.
+conversion or repeated root checks. Full operand evidence remains required.
+Code observations carry one Pydantic-validated JSON payload with the filename,
+unit identity, flat locations and complete native compiler witness bytes.
+CPython marshal format 2 encodes the witness without reference or string-interning
+flags; Pydantic owns its base64 transport. Witnesses are compared without code
+deserialization, hashes or inferred locals layouts. This compiler identity is
+stricter than `CodeType.__eq__`: it also retains stack size and locals kinds.
+Exact native constants are elected before relocation and encoding. NaN, mutable
+constants and buffers retain explicit nonportable markers and cannot compare
+equal, even to another rejected observation. Unknown constant types fail before
+authored iteration, hashing or buffer conversion. Physical source receipts and
+fresh compilation remain necessary to authenticate the witness.
 Import dependency discovery uses the shared import maps; class-lineage validation remains
 with the queries that request class information. Namespace packages contribute
 their physical portions to source authority without requiring an executable
@@ -1110,6 +1134,16 @@ rules with actual occurrences. Syntax-only findings need no import closure.
 The check gate and the mod scanner share this input election, deduplicating
 source reads without reducing the rule inventory or its diagnostic evidence.
 
+Facade consumer discovery resolves each native Rope `ImportedModule` once within
+the current source file. Repeated occurrences retain their binding and owner checks;
+the resolution map holds the native import objects, not a separate name registry.
+Rope's line tables convert AST byte columns to character offsets before resolving
+each binding. Each receiver is already a native AST `Name`: the same parsed
+module supplies its lexical scope at that offset, and Rope resolves the existing
+node without tokenizing and parsing its text again. Local shadows and native
+import identity remain checked. The resolution map does not persist across source
+observations or replace source, producer, or publication proof.
+
 AST replacements publish through the authenticated file-plan boundary, then reuse
 the import normalizer on only the rewritten files. Unused imports and formatting
 are normalized before the next mod check; normalization failures remain blocking.
@@ -1127,6 +1161,12 @@ staging after validation. Parser or validator exceptions retain their original c
 and leave live source bytes and modification times unchanged. Native Ruff uses the
 declared external project cache so its cache files never enter the authenticated
 source view.
+
+A nonempty admitted file phase with no required byte, permission, or directory
+effects publishes a fresh observation under the same root lease. It still verifies
+its producer, input and output identities, and rejects pending journals or foreign
+residue. It does not materialize a candidate source view or a publication staging
+tree. Equal desired bytes alone do not authorize this path.
 
 Journal footprint inspection and authorization hold the same root journal lease
 as publication. Authorization observes the current journal under that lease;

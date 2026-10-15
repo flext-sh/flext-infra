@@ -316,19 +316,14 @@ class FlextInfraMiseArtifactsVerificationManifest:
         """
         result_type = r[t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry]]
         remaining = dict(current)
+        roots = frozenset(
+            item.transaction_root
+            for item in files.transaction_participants(layout)
+            if item.transaction_root is not None
+        )
         for intent in journal.staging_intents:
             path = intent.before.path
-            participant = next(
-                (
-                    item
-                    for item in files.transaction_participants(layout)
-                    if item.transaction_root is not None
-                    and path != item.transaction_root
-                    and path.is_relative_to(item.transaction_root)
-                ),
-                None,
-            )
-            if participant is None:
+            if roots.isdisjoint(path.parents):
                 return result_type.fail(
                     f"staging intention escapes transaction root: {path}",
                 )

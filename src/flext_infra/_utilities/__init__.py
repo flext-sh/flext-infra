@@ -436,6 +436,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.rope_runtime_base import (
         FlextInfraUtilitiesRopeRuntimeBase,
     )
+    from flext_infra._utilities.rope_runtime_module_queries import (
+        FlextInfraUtilitiesRopeRuntimeModuleQueries,
+    )
     from flext_infra._utilities.rope_runtime_modules import (
         FlextInfraUtilitiesRopeRuntimeModules,
     )
@@ -614,6 +617,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
+    "FlextInfraUtilitiesRopeRuntimeModuleQueries",
     "FlextInfraUtilitiesRopeRuntimeModules",
     "FlextInfraUtilitiesRopeRuntimeRefactors",
     "FlextInfraUtilitiesRopeRuntimeTypes",
@@ -823,6 +827,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeModulePatch": ".rope_module_patch",
         "FlextInfraUtilitiesRopeRuntime": ".rope_runtime",
         "FlextInfraUtilitiesRopeRuntimeBase": ".rope_runtime_base",
+        "FlextInfraUtilitiesRopeRuntimeModuleQueries": ".rope_runtime_module_queries",
         "FlextInfraUtilitiesRopeRuntimeModules": ".rope_runtime_modules",
         "FlextInfraUtilitiesRopeRuntimeRefactors": ".rope_runtime_refactors",
         "FlextInfraUtilitiesRopeRuntimeTypes": ".rope_runtime_types",

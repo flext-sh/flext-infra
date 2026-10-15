@@ -111,6 +111,12 @@ assert compared.success, compared.error
 from typing import Unpack
 call_count = 0
 accessor_calls = 0
+metaclass_hash_calls = 0
+class ReceiverMeta(type):
+    def __hash__(cls) -> t.StrictInt:
+        global metaclass_hash_calls
+        metaclass_hash_calls += 1
+        return type.__hash__(cls)
 class CallableBase:
     __slots__ = ()
     def __call__(self, value: t.StrictInt) -> t.StrictInt:
@@ -121,7 +127,7 @@ class CallableBase:
         global call_count
         call_count += 1
         return self.offset - value
-class Receiver(CallableBase):
+class Receiver(CallableBase, metaclass=ReceiverMeta):
     {"__slots__ = ('offset',)" if storage == "slots" else ""}
     def __init__(self, offset: t.StrictInt) -> None:
         self.offset = offset
@@ -148,6 +154,7 @@ assert module.Consumer.execute(4) == 7
 assert hasattr(module.Consumer.callback, '__dict__') is ({storage!r} == 'dict')
 assert module.accessor_calls > 0
 module.accessor_calls = 0
+module.metaclass_hash_calls = 0
 before = module.call_count
 annotation = module.Unpack[tuple[int, str]]
 assert get_origin(annotation) is module.Unpack
@@ -158,9 +165,11 @@ selection = (
 )
 original = native.capture(selection).unwrap()
 assert module.call_count == before and module.accessor_calls == 0
+assert module.metaclass_hash_calls == 0
 repeated = native.capture(selection).unwrap()
 assert native.compare(original, repeated).unwrap() is True
 assert module.call_count == before and module.accessor_calls == 0
+assert module.metaclass_hash_calls == 0
 defect = {defect!r}
 if defect == 'state':
     module.Consumer.callback.offset = 11
@@ -172,6 +181,7 @@ observed = native.capture(selection).unwrap()
 compared = native.compare(original, observed)
 assert compared.success == (defect == 'none'), compared.error
 assert module.call_count == before and module.accessor_calls == 0
+assert module.metaclass_hash_calls == 0
 assert module.Unpack[tuple[int, str]] == annotation
 assert module.Consumer.execute(4) == {expected}
 assert module.call_count == before + 1 and module.accessor_calls > 0

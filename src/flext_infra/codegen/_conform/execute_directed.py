@@ -278,8 +278,8 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
                         if not file.path.parent.is_dir()
                     }),
                 ),
+                staged_validator=validate_stage if stage_plan is not None else None,
             ),
-            staged_validator=validate_stage if stage_plan is not None else None,
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)

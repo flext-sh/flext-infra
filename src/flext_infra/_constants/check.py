@@ -24,6 +24,8 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Run every independent quality gate unless fail-fast is requested."""
     SERVICE_FAIL_FAST: ClassVar[bool] = True
     """Stop mutating service workflows at the first failed project or rule."""
+    NATIVE_CODE_WITNESS_MARSHAL_VERSION: ClassVar[int] = 2
+    """Complete CPython code encoding without reference or interning flags."""
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"

@@ -23,7 +23,6 @@ from typing import ClassVar
 from warnings import WarningMessage
 
 import pytest
-from flext_cli import u
 from pytest_markdown_docs.definitions import FenceTestDefinition
 from pytest_markdown_docs.plugin import (
     FenceSyntax,
@@ -32,29 +31,28 @@ from pytest_markdown_docs.plugin import (
     extract_fence_tests,
 )
 
-from flext_infra import c, p
-from flext_infra._models import FlextInfraModelsCore
+from flext_infra import c, m, p, u
 
 
 class FlextInfraPytestCollection:
     """Pytest entry-point plugin for the runner's explicit selection contract."""
 
-    _markdown: ClassVar[
-        pytest.StashKey[FlextInfraModelsCore.PytestMarkdownCollection]
-    ] = pytest.StashKey()
+    _markdown: ClassVar[pytest.StashKey[m.Infra.PytestMarkdownCollection]] = (
+        pytest.StashKey()
+    )
 
     @staticmethod
     def _origin(
         definition: FenceTestDefinition,
         root: Path,
-    ) -> FlextInfraModelsCore.PytestMarkdownOrigin:
+    ) -> m.Infra.PytestMarkdownOrigin:
         """Bind the SDK definition without compiling or interpreting its source.
 
         Returns:
-            The resulting ``FlextInfraModelsCore.PytestMarkdownOrigin``.
+            The resulting ``m.Infra.PytestMarkdownOrigin``.
 
         """
-        return FlextInfraModelsCore.PytestMarkdownOrigin(
+        return m.Infra.PytestMarkdownOrigin(
             source_path=definition.source_path.resolve().relative_to(root).as_posix(),
             start_line=definition.start_line,
             source_sha256=sha256(definition.source.encode("utf-8")).hexdigest(),
@@ -91,7 +89,7 @@ class FlextInfraPytestCollection:
         ):
             return
         state = item.config.stash[FlextInfraPytestCollection._markdown]
-        observation = FlextInfraModelsCore.PytestMarkdownItem(
+        observation = m.Infra.PytestMarkdownItem(
             node_id=item.nodeid,
             origin=FlextInfraPytestCollection._origin(
                 item.test_definition,
@@ -160,7 +158,7 @@ class FlextInfraPytestCollection:
                     raise observer.first_error from error
                 raise
             finally:
-                proof = FlextInfraModelsCore.PytestMarkdownAttempt(
+                proof = m.Infra.PytestMarkdownAttempt(
                     node_id=item.nodeid,
                     attempts=observer.attempts,
                     first_exception_type=(
@@ -239,7 +237,7 @@ class FlextInfraPytestCollection:
     def pytest_configure(config: pytest.Config) -> None:
         """Record warnings once, on the controller or in serial execution."""
         config.stash[FlextInfraPytestCollection._markdown] = (
-            FlextInfraModelsCore.PytestMarkdownCollection()
+            m.Infra.PytestMarkdownCollection()
         )
         report_log = config.getoption("report_log")
         if report_log and not hasattr(config, "workerinput"):
@@ -271,10 +269,8 @@ class FlextInfraPytestCollection:
             c.Infra.PYTEST_SELECTED_COLLECTION_OPTION,
         )
         if selected is not None:
-            manifest = (
-                FlextInfraModelsCore.PytestCollectionManifest.model_validate_json(
-                    Path(selected).read_text(encoding="utf-8"),
-                )
+            manifest = m.Infra.PytestCollectionManifest.model_validate_json(
+                Path(selected).read_text(encoding="utf-8"),
             )
             order = {node_id: index for index, node_id in enumerate(manifest.node_ids)}
             collected = [item.nodeid for item in session.items]
@@ -303,7 +299,7 @@ class FlextInfraPytestCollection:
     def _write_collection_manifest(session: pytest.Session, target: Path) -> None:
         """Publish final selected items after testmon and every collection hook."""
         state = session.config.stash[FlextInfraPytestCollection._markdown]
-        manifest = FlextInfraModelsCore.PytestCollectionManifest(
+        manifest = m.Infra.PytestCollectionManifest(
             node_ids=tuple(item.nodeid for item in session.items),
             markdown_eligible=tuple(state.eligible),
             markdown_collected=tuple(state.collected),
@@ -396,7 +392,7 @@ class FlextInfraPytestCollection:
         def pytest_warning_recorded(self, warning_message: WarningMessage) -> None:
             """Record the real warning once before report-log serializes it."""
             category = warning_message.category
-            event = FlextInfraModelsCore.PytestWarningEvent(
+            event = m.Infra.PytestWarningEvent(
                 category=category.__name__,
                 category_module=category.__module__,
                 category_qualname=category.__qualname__,

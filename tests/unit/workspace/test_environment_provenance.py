@@ -149,6 +149,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    class unproven: pass\n",
         )
         consumer = (
+            "import json\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('diagnostic_provider')\n"
             "authenticate(module.__name__).unwrap()\n"
@@ -167,6 +168,18 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert result.failure, result\n"
             "error = result.error\n"
             "assert module.__name__ in error, error\n"
+            "assert error.startswith('construction factory has no authenticated source "
+            "binding:'), error\n"
+            "assert 'identifier=' + json.dumps('unproven') in error, error\n"
+            "assert 'module=' + json.dumps(module.__name__) in error, error\n"
+            "assert 'package=' + json.dumps(module.__package__) in error, error\n"
+            "assert 'registered=True' in error, error\n"
+            "assert 'receiver=' + json.dumps(module.Payload.__qualname__) in error, "
+            "error\n"
+            "assert 'declaration=' + json.dumps(module.Payload.__name__) in error, "
+            "error\n"
+            "assert 'source=' + json.dumps(str(source)) in error, error\n"
+            "assert 'supplier_kind=' + kind in error, error\n"
             "assert 'private-material-must-not-appear' not in error\n"
             "assert not effects\n"
         )
@@ -189,6 +202,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    def operation(self): return 'physical-before'\n",
         )
         consumer = (
+            "class Derived(fresh): pass\n"
+            "fresh = Derived\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module(sys.argv[2])\n"
             "module.Payload.instance = module.Payload()\n"
@@ -353,6 +368,19 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "else:\n"
             "    assert observed.failure, observed\n"
             "    assert module.__name__ in observed.error, observed\n"
+            "    if defect in {'receiver', 'supplier', 'receiver-source', 'wrapped', "
+            "'class-bound', 'static-wrapped', 'property'}:\n"
+            "        error = observed.error\n"
+            "        assert error.startswith('descriptor differs from its physical "
+            "alias supplier:'), error\n"
+            "        assert 'module=\"alias_provider\"' in error, error\n"
+            "        assert 'receiver=\"Receiver\"' in error, error\n"
+            "        assert 'attribute=' in error and 'alias_identifier=' in error, "
+            "error\n"
+            "        assert 'supplier_module=' in error and 'supplier_owner=' in "
+            "error, error\n"
+            "        assert 'receiver_kind=' in error and 'supplier_kind=' in error, "
+            "error\n"
         )
         native_consumer(consumer, str(import_root), defect)
 
@@ -950,7 +978,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    assert repr(module.Payload('authenticated')) == "
             "\"Payload(value='authenticated')\"\n"
             "    observed = "
-            "authenticate(module.__name__).unwrap()\n"
+            "authenticate(module.__name__).unwrap().sources\n"
             "    generated = [item for item in observed if item[2]]\n"
             "    assert generated\n"
             "    assert all(pathlib.Path(item[2]) == "
@@ -1184,7 +1212,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    assert module.Payload().value == 'captured'\n"
             "    assert module.Payload(value='native').value == 'native'\n"
             "    observed = "
-            "authenticate(module.__name__).unwrap()\n"
+            "authenticate(module.__name__).unwrap().sources\n"
             "    assert any(item[2] == str(pathlib.Path(module.__file__)) "
             "for item in observed)\n"
             "else:\n"

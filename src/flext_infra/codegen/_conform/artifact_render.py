@@ -233,7 +233,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         composed_rendered = overlaid.value
         source_states: list[m.Cli.AtomicFileState] = []
         if render_inputs is not None:
-            collected = cls._member_declaration_states(repository_root, render_inputs)
+            collected = cls._member_declaration_states(
+                repository_root, render_inputs.workspace
+            )
             if collected.failure:
                 return result_type.from_failure(collected)
             source_states.extend(collected.value[0])
@@ -308,7 +310,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     def _member_declaration_states(
         cls,
         repository_root: Path,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[
         t.Pair[
             t.VariadicTuple[m.Cli.AtomicFileState],
@@ -319,7 +321,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         Args:
             repository_root: The repository root holding the lock file.
-            render_inputs: The render inputs declaring the workspace role.
+            workspace: The workspace declaration electing packaged members.
 
         Returns:
             The collected source states with their member declarations, or
@@ -334,12 +336,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             ]
         ]
         members = (
-            tuple(
-                member
-                for member in render_inputs.workspace.subprojects
-                if member.package
-            )
-            if render_inputs.workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            tuple(member for member in workspace.subprojects if member.package)
+            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         if not members:

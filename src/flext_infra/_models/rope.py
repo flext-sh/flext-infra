@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 
@@ -24,7 +24,7 @@ from flext_infra._models.base import FlextInfraModelsBase
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
 
-    class RopeRestructureRequest(m.ArbitraryTypesModel):
+    class RopeRestructureRequest(FlextInfraModelsBase.FrozenArbitrary):
         """One complete native restructuring operation and its admitted inputs."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)

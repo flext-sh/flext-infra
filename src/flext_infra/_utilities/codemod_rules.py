@@ -40,6 +40,7 @@ class FlextInfraUtilitiesCodemodRules:
         Raises:
             ValueError: If the provider config content is absent.
 
+
         """
         state = u.Cli.atomic_read_binary_file_state(config_path, required=True).unwrap()
         if state.content is None:

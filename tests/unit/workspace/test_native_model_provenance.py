@@ -15,7 +15,11 @@ from pydantic import RootModel
 from ruamel.yaml.compat import check_namespace_char
 from typing_inspection.introspection import AnnotationSource, inspect_annotation
 
-from flext_infra.codegen import FlextInfraCodegenPreconditions
+from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
+    FlextInfraMiseArtifactsFiles,
+)
+from flext_infra.docs import FlextInfraDocGenerator
 from tests import p, tm, u
 
 
@@ -97,7 +101,14 @@ assert changed.read_text(encoding='utf-8') == replacement
     @staticmethod
     @pytest.mark.parametrize(
         "entrypoint",
-        [RootModel.model_construct, inspect_annotation, m.ContractModel.model_validate],
+        [
+            RootModel.model_construct,
+            inspect_annotation,
+            m.ContractModel.model_validate,
+            u.Infra.docs_scope_artifacts,
+            FlextInfraDocGenerator.plan_files,
+            FlextInfraMiseArtifactsFiles.write_publication,
+        ],
     )
     def test_real_model_module_retains_authenticated_native_sources(
         entrypoint: p.AttributeProbe,
