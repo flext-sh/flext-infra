@@ -147,7 +147,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             The unchanged input and runtime proof, or its first failure.
 
         """
-        current = FlextInfraCodegenPreconditions.source_authority_current(
+        # The producer authority owner imports this validator to capture its
+        # reference, so it is reached through the lazy codegen facade.
+        current = codegen.FlextInfraCodegenPreconditions.source_authority_current(
             request.source_authority
         ).flat_map(
             lambda _: FlextInfraMiseArtifactsVerification.states_current(request.inputs)
