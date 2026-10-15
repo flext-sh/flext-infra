@@ -2683,12 +2683,14 @@ class FlextInfraWorkspaceNativeReference:
                 supplier=name,
                 name=key,
                 qualname=key,
-                operands=((
-                    "value",
-                    cls._value(
-                        value, references=context.references, paths=context.paths
+                operands=(
+                    (
+                        "value",
+                        cls._value(
+                            value, references=context.references, paths=context.paths
+                        ),
                     ),
-                ),),
+                ),
             )
             for key, value in sorted(namespace.items())
             if type(value) is bool and key not in mutable
@@ -2865,9 +2867,7 @@ class FlextInfraWorkspaceNativeReference:
             and (not declared or name in declared[0])
             and not cls._is_class(item)
             and not cls._callable_storage(item)
-            and not (
-                cls._is_native(item, property) or cls._is_function_binding(item)
-            )
+            and not (cls._is_native(item, property) or cls._is_function_binding(item))
         }
 
     @classmethod
@@ -2876,9 +2876,7 @@ class FlextInfraWorkspaceNativeReference:
         context: m.Infra.NativeObservationContext,
         value: t.Infra.NativeType,
         binding: str,
-        identity: t.Quad[
-            str, str, str, t.MappingKV[str, t.Infra.NativeOperand]
-        ],
+        identity: t.Quad[str, str, str, t.MappingKV[str, t.Infra.NativeOperand]],
     ) -> None:
         """Queue the original class members, metaclass and bases in that order."""
         supplier, source, _qualname, namespace = identity
@@ -2907,9 +2905,7 @@ class FlextInfraWorkspaceNativeReference:
         context: m.Infra.NativeObservationContext,
         value: t.Infra.NativeType,
         binding: str,
-        identity: t.Quad[
-            str, str, str, t.MappingKV[str, t.Infra.NativeOperand]
-        ],
+        identity: t.Quad[str, str, str, t.MappingKV[str, t.Infra.NativeOperand]],
         instructions: t.Infra.NativeInstructionFacts,
     ) -> p.Result[bool]:
         """Observe a source class body before enqueuing its executable children.
@@ -2950,10 +2946,14 @@ class FlextInfraWorkspaceNativeReference:
                     ("metaclass", cls._symbol(type(value))),
                     (
                         "bases",
-                        dumps(tuple(
-                            cls._symbol(base)
-                            for base in cls._type_attr("__bases__", value, type(value))
-                        )),
+                        dumps(
+                            tuple(
+                                cls._symbol(base)
+                                for base in cls._type_attr(
+                                    "__bases__", value, type(value)
+                                )
+                            )
+                        ),
                     ),
                     (
                         "annotations",
@@ -2964,11 +2964,13 @@ class FlextInfraWorkspaceNativeReference:
                     ("slots", observe_value(namespace.get("__slots__"))),
                     (
                         "declaration",
-                        dumps(tuple(
-                            (name, observe_value(item))
-                            for name, item in declaration.items()
-                            if name not in operational
-                        )),
+                        dumps(
+                            tuple(
+                                (name, observe_value(item))
+                                for name, item in declaration.items()
+                                if name not in operational
+                            )
+                        ),
                     ),
                 ),
                 operational=tuple(
@@ -3000,9 +3002,7 @@ class FlextInfraWorkspaceNativeReference:
             return r[bool].fail(
                 f"producer class has no native source supplier: {binding}",
             )
-        cls._remember_generated_descriptors(
-            value, supplier, context.generated_owners
-        )
+        cls._remember_generated_descriptors(value, supplier, context.generated_owners)
         origin = context.origins.get(supplier)
         if origin is None:
             observed = FlextInfraWorkspaceEnvironmentProvenance.module_source(supplier)
@@ -3017,7 +3017,11 @@ class FlextInfraWorkspaceNativeReference:
             )
         context.sources.add((f"{supplier}::{qualname}", source, ""))
         return cls._capture_class_body(
-            context, value, binding, (supplier, source, qualname, namespace), instructions
+            context,
+            value,
+            binding,
+            (supplier, source, qualname, namespace),
+            instructions,
         )
 
     @classmethod
@@ -3126,9 +3130,7 @@ class FlextInfraWorkspaceNativeReference:
             if captured is not None:
                 continue
             visited[id(value)] = (value, binding)
-            context.binding_context = (
-                f"{incoming}; body={binding}; supplier={supplier}"
-            )
+            context.binding_context = f"{incoming}; body={binding}; supplier={supplier}"
             observe_value = partial(
                 cls._value,
                 references=references,

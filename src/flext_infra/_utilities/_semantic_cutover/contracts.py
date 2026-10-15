@@ -277,9 +277,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 raise ValueError(message)
             if isinstance(
                 root_name, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
-            ) and not runtime.imported_binding_precedes(
-                project, module, root, offset
-            ):
+            ) and not runtime.imported_binding_precedes(project, module, root, offset):
                 message = (
                     f"{rule.id}: destination {expression} has no preceding "
                     f"unconditional import in {module.get_name()}:{scope.get_start()}"

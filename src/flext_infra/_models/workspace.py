@@ -199,11 +199,11 @@ class FlextInfraModelsWorkspace:
             default_factory=list,
             description="Ordered native binding and executable observations",
         )
-        generated_owners: t.DictKV[
-            int, t.Triple[str, str, p.AttributeProbe | None]
-        ] = m.Field(
-            default_factory=dict,
-            description="Strongly retained generated function source receivers",
+        generated_owners: t.DictKV[int, t.Triple[str, str, p.AttributeProbe | None]] = (
+            m.Field(
+                default_factory=dict,
+                description="Strongly retained generated function source receivers",
+            )
         )
         references: list[t.Pair[str, t.Infra.NativeOperand]] = m.Field(
             default_factory=list,
