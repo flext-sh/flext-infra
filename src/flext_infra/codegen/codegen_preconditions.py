@@ -17,6 +17,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
     FlextInfraMiseArtifactsFiles,
 )
+from flext_infra.validate import FlextInfraValidateFreshImport
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -574,8 +575,6 @@ class FlextInfraCodegenPreconditions:
             The authenticated producer phase analysis snapshot.
 
         """
-        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
         if context.failure:
