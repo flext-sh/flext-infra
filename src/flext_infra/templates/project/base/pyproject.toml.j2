@@ -26,7 +26,7 @@ requires = [
 
 # [CUSTOM] name, description, authors, maintainers, scripts, entry-points, classifiers, keywords, license, urls, readme, version, dependencies, optional-dependencies
 # [MANAGED] requires-python
-# Runtime profile requirements take precedence over same-name CUSTOM dependencies.
+# Runtime requirements retain the target's own declaration.
 [project]
 classifiers = [
 {% for item in scaffold.project.classifiers %}
@@ -34,10 +34,7 @@ classifiers = [
 {% endfor %}
 ]
 dependencies = [
-{% for item in runtime_dependency_overlay %}
-  {{ flext_requirement(item) }},
-{% endfor %}
-{% for item in dependency_profile.runtime if item != dist %}
+{% for item in project_dependencies %}
   {{ flext_requirement(item) }},
 {% endfor %}
 ]
@@ -62,13 +59,8 @@ email = "{{ author_email }}"
 name = "{{ author_name }}"
 
 [dependency-groups]
-codegen = [
-{% for item in dependency_profile.codegen if item != dist %}
-  {{ flext_requirement(item) }},
-{% endfor %}
-]
 dev = [
-{% for item in scaffold.project.dev if item != dist %}
+{% for item in development_dependencies %}
   {{ flext_requirement(item) }},
 {% endfor %}
 ]
@@ -112,12 +104,12 @@ omit = [
 
 [tool.deptry]
 known_first_party = [
-{% for item in tooling_runtime.first_party %}
+{% for item in tooling_runtime.deptry_first_party %}
   {{ item | tojson }},
 {% endfor %}
 ]
-pep621_dev_dependency_groups = [
-{% for item in tooling.tools.deptry.pep621_dev_dependency_groups %}
+optional_dependencies_dev_groups = [
+{% for item in tooling.tools.deptry.optional_dependencies_dev_groups %}
   {{ item | tojson }},
 {% endfor %}
 ]
@@ -127,6 +119,14 @@ package_name = {{ package_name | tojson }}
 
 [tool.hatch.metadata]
 allow-direct-references = {{ tooling.tools.hatch.allow_direct_references | lower }}
+{% if make_profile == "workspace" and project_declaration_resource %}
+
+[tool.hatch.build.targets.wheel.force-include]
+{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
+
+[tool.hatch.build.targets.sdist.force-include]
+{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[0] | tojson }}
+{% endif %}
 {% if make_profile != "workspace" %}
 {% if hatch_build_hook_path %}
 
@@ -167,10 +167,13 @@ include = [
 {% for namespace in repository_namespace_packages %}
 {{ namespace | tojson }} = {{ namespace | tojson }}
 {% endfor %}
-{% if packaged_data_files or root_modules %}
+{% if packaged_data_files or root_modules or project_declaration_resource %}
 
 [tool.hatch.build.targets.wheel.force-include]
-{% for data_dir in packaged_data_files %}
+{% if project_declaration_resource %}
+{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
+{% endif %}
+{% for data_dir in packaged_data_files if not project_declaration_resource or data_dir != project_declaration_resource[0] %}
 {{ data_dir | tojson }} = {{ (package_name ~ "/" ~ data_dir) | tojson }}
 {% endfor %}
 {% for module in root_modules %}
@@ -198,10 +201,13 @@ include = [
   {{ ("/" ~ namespace ~ "/**") | tojson }},
 {% endfor %}
 ]
-{% if packaged_data_files or root_modules or hatch_build_hook_path %}
+{% if packaged_data_files or root_modules or hatch_build_hook_path or project_declaration_resource %}
 
 [tool.hatch.build.targets.sdist.force-include]
-{% for data_file in packaged_data_files %}
+{% if project_declaration_resource %}
+{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[0] | tojson }}
+{% endif %}
+{% for data_file in packaged_data_files if not project_declaration_resource or data_file != project_declaration_resource[0] %}
 {{ data_file | tojson }} = {{ data_file | tojson }}
 {% endfor %}
 {% for module in root_modules %}
@@ -357,7 +363,6 @@ addopts = [
 {% for item in tooling.tools.pytest.standard_addopts %}
   {{ item | tojson }},
 {% endfor %}
-  "--timeout={{ tooling.tools.pytest.case_timeout_seconds }}",
 ]
 flext_slow_timeout_seconds = "{{ tooling.tools.pytest.slow_timeout_seconds }}"
 asyncio_default_fixture_loop_scope = {{ tooling.tools.pytest.asyncio_default_fixture_loop_scope | tojson }}
@@ -425,6 +430,13 @@ extend-safe-fixes = [
   {{ item | tojson }},
 {% endfor %}
 ]
+{% if tooling.tools.ruff.lint.extend_select %}
+extend-select = [
+{% for item in tooling.tools.ruff.lint.extend_select | sort %}
+  {{ item | tojson }},
+{% endfor %}
+]
+{% endif %}
 {# ignore holds only the unscoped operator-authorized exceptions declared at
    the tooling owner; repositories declare no exception. #}
 ignore = [
@@ -530,20 +542,6 @@ whitelines = {{ tooling.tools.yamlfix.whitelines }}
 # [MANAGED] tool.uv
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
-{% if make_profile == "workspace" %}
-
-# [MANAGED] tool.uv.workspace
-# Every declared member is a native uv workspace member: the root environment
-# provisions them as editables (`uv sync --all-packages`; CI installs the
-# frozen builds through --no-editable) and the workspace identity replaces the
-# retired git-pinned "workspace" dependency group.
-[tool.uv.workspace]
-members = [
-{% for item in workspace_subprojects %}
-  {{ item | tojson }},
-{% endfor %}
-]
-{% endif %}
 
 # [MANAGED] tool.flext.namespace
 {% if namespace_scan_dirs %}

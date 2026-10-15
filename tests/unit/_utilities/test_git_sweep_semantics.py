@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraGitSweepSemantics:
@@ -60,6 +59,7 @@ class TestsFlextInfraGitSweepSemantics:
 
         Returns:
             Real retained state and its independently verified live publication.
+
         """
         snapshot = tm.ok(
             u.Infra.git_snapshot_worktree_state(

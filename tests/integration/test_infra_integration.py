@@ -14,10 +14,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraMarkdownGate, FlextInfraRefactorCensus, c, infra, m
-from tests import u
+from flext_infra import c, infra, m
+from flext_infra.gates import FlextInfraMarkdownGate
+from flext_infra.refactor import FlextInfraRefactorCensus
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -150,12 +151,16 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(status, has=f"?? {c.Infra.DIR_TESTS}/")
 
         report = FlextInfraRefactorCensus(
+            workspace_factory=infra.rope_workspace,
+            source_preview=infra.source_preview(root),
             repository_root=root,
             apply_changes=False,
             dry_run=False,
-            kinds=("function",),
-            rules=("unused",),
-            include_local_scopes=False,
+            options=m.Infra.CensusOptions(
+                kinds=("function",),
+                rules=("unused",),
+                include_local_scopes=False,
+            ),
         ).build_report()
         item = next(
             item
@@ -261,6 +266,44 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(item.script_reference_sites, eq=())
 
     @staticmethod
+    def test_census_multiline_parameters_keep_native_definition_positions(
+        tmp_path: Path,
+    ) -> None:
+        """Native parameter bindings retain positional and keyword signature lines."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-evidence",
+            package_name="flext_evidence",
+        )
+        definition = package / "helpers.py"
+        definition.write_text(
+            "def consume(\n"
+            "    first,\n"
+            "    /,\n"
+            "    second=None,\n"
+            "    *items,\n"
+            "    named=None,\n"
+            "    **options,\n"
+            "):\n"
+            "    return first, second, items, named, options\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with infra.rope_workspace(root) as rope:
+            parameters = {
+                item.name: item.line
+                for item in rope.objects(
+                    definition,
+                    include_local_scopes=True,
+                    include_references=False,
+                )
+                if item.kind == "parameter"
+            }
+        tm.that(
+            parameters,
+            eq={"first": 2, "second": 4, "items": 5, "named": 6, "options": 7},
+        )
+
+    @staticmethod
     def test_census_same_line_function_and_parameter_bindings_are_separate(
         tmp_path: Path,
     ) -> None:
@@ -305,7 +348,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         )
 
     @staticmethod
-    def test_census_same_binding_definition_and_use_on_one_line_fails_ambiguity(
+    def test_census_same_line_binding_evidence_is_anchored_not_guessed(
         tmp_path: Path,
     ) -> None:
         """Same-line binding matches never acquire a guessed definition token."""
@@ -315,18 +358,34 @@ class TestsFlextInfraIntegrationInfraIntegration:
             package_name="flext_evidence",
         )
         definition = package / "helpers.py"
-        definition.write_text(
-            "def _helper(_helper): return _helper\nuse = _helper\n",
-            encoding="utf-8",
+        source = "def _helper(_helper): return _helper\nuse = _helper\n"
+        definition.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            objects = rope.objects(definition, include_local_scopes=True)
+        # The function record anchors its exact definition token (the line-2
+        # module use is found); the parameter's same-line tokens stay
+        # ambiguous and are reported uncollected instead of guessed.
+        helper = next(item for item in objects if item.scope_path == "_helper")
+        parameter = next(
+            item for item in objects if item.scope_path == "_helper._helper"
         )
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(
-                RuntimeError,
-                match="definition binding token is ambiguous",
-            ),
-        ):
-            rope.objects(definition, include_local_scopes=True)
+        tm.that(helper.reference_evidence_collected, eq=True)
+        tm.that(
+            [
+                (site.file_path, site.line, site.offset)
+                for site in helper.all_reference_sites
+            ],
+            eq=[
+                (
+                    str(definition.resolve()),
+                    2,
+                    source.index("_helper", source.index("use = _helper")),
+                ),
+            ],
+        )
+        tm.that(parameter.reference_evidence_collected, eq=False)
+        tm.that(parameter.all_reference_sites, empty=True)
+        tm.that(parameter.references_count, eq=0)
 
     @staticmethod
     @pytest.mark.integration
@@ -344,11 +403,11 @@ class TestsFlextInfraIntegrationInfraIntegration:
 
         execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
 
-        # rumdl completed under its declared findings status: the repair
-        # verb does not break (FINDINGS, never ERROR), the residual finding
-        # stays reported, and a residual finding never counts as passed.
-        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
-        tm.that(execution.result.passed, eq=False)
+        # The repair verb fixes what rumdl can fix (trailing spaces) and
+        # completes with the unfixable residual (MD041) reported: the fix
+        # verdict is the repair tool's own status, and the read-only check
+        # gate is what enforces the residual finding.
+        tm.that(execution.result.passed, eq=True)
         tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
         tm.that(execution.issues[0].code, eq="MD041")
 

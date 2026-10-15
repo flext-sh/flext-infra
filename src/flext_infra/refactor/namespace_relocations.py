@@ -12,7 +12,7 @@ from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraModGateEngine, c, m, u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -27,8 +27,8 @@ class FlextInfraNamespaceRelocationCascade:
     the one scan engine evaluates. A rule that a rope relocation repairs
     names it under ``metadata.relocation``; this cascade runs those
     relocations over the captured findings — both for the standalone
-    namespace enforcer and as the mod loop's relocation callback — and
-    rescans to report the residue that remains.
+    namespace enforcer and as the mod loop's relocation callback. Callers
+    retain the complete scans used to measure progress and regressions.
     """
 
     @staticmethod
@@ -82,12 +82,15 @@ class FlextInfraNamespaceRelocationCascade:
         project_root: Path,
         py_files: t.SequenceOf[Path],
         entries: t.SequenceOf[m.Infra.ModScanFinding],
+        *,
+        scan_root: Path,
     ) -> t.VariadicTuple[t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]]:
         """Filter one scan report's entries down to in-scope relocation findings.
 
         The scope is the project's namespace file set (its declared scan
         directories), so a relocation never reaches a file the namespace pass
-        does not govern.
+        does not govern. Finding paths belong to ``scan_root``; returned targets
+        are project-relative even when captured by the workspace scan.
 
         Returns:
             The resulting ``t.VariadicTuple[
@@ -97,29 +100,19 @@ class FlextInfraNamespaceRelocationCascade:
         relocation_by_rule = cls.relocation_by_rule(project_root)
         scoped = frozenset(path.resolve() for path in py_files)
         return tuple(
-            (relocation_by_rule[entry.rule_id], entry)
+            (
+                relocation_by_rule[entry.rule_id],
+                entry.model_copy(
+                    update={
+                        "file": (scan_root / entry.file)
+                        .resolve()
+                        .relative_to(project_root),
+                    }
+                ),
+            )
             for entry in entries
             if entry.rule_id in relocation_by_rule
-            and (project_root / entry.file).resolve() in scoped
-        )
-
-    @staticmethod
-    def scan_findings(
-        project_root: Path,
-        py_files: t.SequenceOf[Path],
-    ) -> t.VariadicTuple[t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]]:
-        """Scan the project and return its in-scope relocation findings.
-
-        Returns:
-            The resulting ``t.VariadicTuple[
-                t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]]``.
-
-        """
-        report = FlextInfraModGateEngine.scan(project_root, fix=False).unwrap()
-        return FlextInfraNamespaceRelocationCascade.findings_from_report(
-            project_root,
-            py_files,
-            report.entries,
+            and (scan_root / entry.file).resolve() in scoped
         )
 
     def run(
@@ -132,15 +125,10 @@ class FlextInfraNamespaceRelocationCascade:
         ],
         py_files: t.SequenceOf[Path],
         gates: t.StrSequence | None = None,
-    ) -> t.NonNegativeInt:
-        """Apply each declared relocation once, then rescan for the residue.
-
-        Returns:
-            The resulting ``t.NonNegativeInt``.
-
-        """
+    ) -> None:
+        """Apply captured relocations; the caller owns full-catalog observation."""
         if not findings:
-            return 0
+            return
         names, spans, imports, classes = self._grouped_targets(
             project_root,
             findings,
@@ -158,7 +146,6 @@ class FlextInfraNamespaceRelocationCascade:
                 gates=gates,
             )
         rope_project.validate(rope_project.root)
-        return len(self.scan_findings(project_root, py_files))
 
     @classmethod
     def import_relocation_targets(

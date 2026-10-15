@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from flext_infra._constants import (
-    FlextInfraConstantsBase,
     FlextInfraConstantsCodegenProject,
     FlextInfraConstantsSharedInfra,
+    FlextInfraConstantsSourceCode,
 )
 
 if TYPE_CHECKING:
@@ -22,6 +22,9 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsWorkspace:
     """Workspace infrastructure constants."""
+
+    # CPython Include/object.h: Py_TPFLAGS_IMMUTABLETYPE.
+    CPYTHON_IMMUTABLE_TYPE_FLAG: ClassVar[int] = 1 << 8
 
     @unique
     class BeadIssueStatus(StrEnum):
@@ -111,6 +114,29 @@ class FlextInfraConstantsWorkspace:
         ("--constraints", "constraints.txt"),
     )
     "UV resolution inputs written only inside the consumer environment."
+    BINDING_PACKAGE_SCRIPT: ClassVar[
+        str
+    ] = """import importlib.util, json, sys, sysconfig
+from pathlib import Path
+packages = {}
+for name in sys.argv[1:]:
+    spec = importlib.util.find_spec(name)
+    packages[name] = (
+        list(spec.submodule_search_locations)
+        if spec is not None and spec.submodule_search_locations is not None
+        else []
+    )
+print(json.dumps({
+    "prefix": sys.prefix,
+    "metadata_paths": list(dict.fromkeys(
+        str(Path(sysconfig.get_path(kind)).resolve(strict=True))
+        for kind in ("purelib", "platlib")
+    )),
+    "import_paths": sys.path,
+    "package_directories": packages,
+}))
+"""
+
     BINDING_MARKER_SCRIPT: ClassVar[str] = """import json, os, platform, sys
 version = sys.implementation.version
 implementation_version = '.'.join(str(part) for part in version[:3])
@@ -148,21 +174,43 @@ print(json.dumps({
 
     FLEET_GAPS_ROUTE_NAME: ClassVar[str] = "fleet-gaps"
     "Canonical workspace CLI verb that reports per-repository fleet gaps."
-    LIFECYCLE_VERBS: ClassVar[t.StrSequence] = (
-        "setup",
-        "gen",
-        "upg",
-        "setup",
-        "gen",
-        "gen",
+
+    @unique
+    class FleetVerb(StrEnum):
+        """Mutating verbs a local workspace run carries to every governed member."""
+
+        MOD = "mod"
+        FIX = "fix"
+        FMT = "fmt"
+
+    FLEET_ROUTE_NAME: ClassVar[str] = "fleet"
+    "Canonical workspace CLI verb that runs one verb in every governed member."
+    FLEET_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "fleet-verb.json"
     )
-    "Fixed serial lifecycle, including the post-upgrade generation fixed point."
+    "Typed receipts of the latest fleet verb run, one per governed member."
     LIFECYCLE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "validate-lifecycle.json"
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "validate-lifecycle.json"
+    )
+    WORKSPACE_OPERATION_REPORT_DIRECTORY: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "setup-operations"
+    )
+    WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        WORKSPACE_OPERATION_REPORT_DIRECTORY / "tool-bootstrap.json"
+    )
+    CODEGEN_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-plan.json"
+    )
+    CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
+        / "codegen-publication.json"
+    )
+    CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-lazy-plan.json"
     )
     "Typed receipts for the invoking workspace root and governed members."
     FLEET_GAPS_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsBase.REPORTS_DIR_NAME) / "fleet-gaps.json"
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "fleet-gaps.json"
     )
     "Canonical single-file receipt for the latest fleet-gaps report."
     FLEET_GAPS_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1

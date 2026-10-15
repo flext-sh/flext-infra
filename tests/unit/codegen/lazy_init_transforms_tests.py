@@ -9,10 +9,8 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import c, p
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,19 +31,19 @@ class TestsFlextInfraLazyInitTransforms:
         utilities_dir.mkdir()
         (utilities_dir / c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (utilities_dir / "mapper.py").write_text(
             "from __future__ import annotations\n\n"
             "class FlextDemoUtilitiesMapper:\n"
             "    pass\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         result = u.Tests.run_lazy_init(repository_root)
 
         init_content = (utilities_dir / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(result, eq=0)
         tm.that(
@@ -70,10 +68,10 @@ class TestsFlextInfraLazyInitTransforms:
         )
         models_dir = package_root / "_models"
         models_dir.mkdir()
-        (models_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (models_dir / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (models_dir / "model.py").write_text(
             "from __future__ import annotations\n\nclass FlextDemoModel:\n    pass\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         test_modules = (
             ("_test_tmp.py", "PrivateTestArtifact"),
@@ -85,12 +83,12 @@ class TestsFlextInfraLazyInitTransforms:
                 "from __future__ import annotations\n\n"
                 f"class {class_name}:\n"
                 "    pass\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
 
         result = u.Tests.run_lazy_init(repository_root)
         init_content = (models_dir / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         tm.that(result, eq=0)
@@ -117,13 +115,13 @@ class TestsFlextInfraLazyInitTransforms:
             "from __future__ import annotations\n\n"
             '__version__ = "1.0.0"\n'
             "__version_info__ = (1, 0, 0)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         result = u.Tests.run_lazy_init(repository_root)
 
         content = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(result, eq=0)
         source_root = repository_root / c.Infra.DEFAULT_SRC_DIR

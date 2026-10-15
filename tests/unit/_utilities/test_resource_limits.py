@@ -11,10 +11,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, m, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraUtilitiesResourceLimits:
@@ -41,6 +40,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
 
     @staticmethod
     @pytest.mark.requires_engine("mypy")
+    @pytest.mark.slow
     def test_mypy_profile_records_the_real_checker(tmp_path: Path) -> None:
         """Keep the public profiling contract while removing executable selection."""
         project = u.Tests.mypy_workload(tmp_path)
@@ -259,8 +259,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
         tm.that(result.value.outcome.raw_return_code, eq=expected)
         tm.that(bool(result.value.stdout.splitlines()), eq=True)
         pid = int(result.value.stdout.splitlines()[0])
-        tm.that(int(pid_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)), eq=pid)
-        tm.that(error_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), empty=True)
+        tm.that(int(pid_file.read_text(encoding=c.DEFAULT_ENCODING)), eq=pid)
+        tm.that(error_file.read_text(encoding=c.DEFAULT_ENCODING), empty=True)
         remaining = u.Cli.run_raw(
             ("/bin/ps", "-p", str(pid), "-o", "stat="),
             timeout=policy.termination_grace_seconds,

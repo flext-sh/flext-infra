@@ -2,5 +2,5 @@
 	runner,
 	command_prefix="@"
 ) -%}
-{{ "\t" }}{{ command_prefix }}{{ runner }}
+{{ "\t" }}{{ command_prefix }}{{ runner | trim | replace("\n", "\n\t") }}
 {%- endmacro %}

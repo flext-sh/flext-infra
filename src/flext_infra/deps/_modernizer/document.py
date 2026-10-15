@@ -6,30 +6,58 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraConsolidateGroupsPhase,
-    FlextInfraEnsurePackagingPhase,
-    FlextInfraEnsurePyreflyConfigPhase,
-    FlextInfraEnsurePyrightConfigPhase,
-    FlextInfraEnsureRuffConfigPhase,
-    FlextInfraExtraPathsManager,
-    FlextInfraInjectCommentsPhase,
-    FlextInfraProjectClassifier,
-    FlextInfraToolTablesPhase,
-    c,
-    config,
-    m,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, config, m, r, t, u
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
+from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
+from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
+from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
+from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import Protocol
 
     from flext_infra import p
+
+    class RenderPolicySpec(Protocol):
+        """Read-only render policy contract crossing modernizer module bounds."""
+
+        @property
+        def dry_run(self) -> bool: ...
+
+        @property
+        def skip_comments(self) -> bool: ...
+
+        @property
+        def format_source(self) -> bool: ...
+
+        @property
+        def preserve_layout(self) -> bool: ...
+
+
+class RenderPolicy(m.Infra.FrozenArbitrary):
+    """Keyword policy for one document render and optional durable write."""
+
+    dry_run: bool = m.Field(description="Skip the durable write when set.")
+    skip_comments: bool = m.Field(
+        description="Keep the managed inject-comments phase out of the render.",
+    )
+    format_source: bool = m.Field(
+        default=True,
+        description="Run the canonical TOML formatter over the rendered source.",
+    )
+    preserve_layout: bool = m.Field(
+        default=False,
+        description="Synchronize values through the original TOML tree instead of "
+        "reordering.",
+    )
 
 
 class FlextInfraPyprojectModernizerDocument:
@@ -86,9 +114,10 @@ class FlextInfraPyprojectModernizerDocument:
         recovered = u.Infra.recover_live_pyproject_text(source)
         if recovered.failure:
             return result_type.from_failure(recovered)
-        payload_source = u.Cli.toml_mapping_from_text(recovered.value)
-        if payload_source is None:
+        document = u.Cli.toml_parse_text(recovered.value)
+        if document is None:
             return result_type.fail(f"invalid TOML: {path}")
+        payload_source = u.normalize_to_json_value(document.unwrap())
         validated: p.Result[t.MutableJsonMapping] = u.validate_value(
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER,
             payload_source,
@@ -100,6 +129,7 @@ class FlextInfraPyprojectModernizerDocument:
                 pyproject_path=path,
                 original_rendered=source,
                 payload=validated.value,
+                document=document,
             ),
         )
 
@@ -226,6 +256,7 @@ class FlextInfraPyprojectModernizerDocument:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        source_migration: m.Infra.GitSourceReferenceMigration | None = None,
     ) -> p.Result[t.StrSequence]:
         """Run every phase over one discovered state; write unless ``dry_run``.
 
@@ -233,6 +264,25 @@ class FlextInfraPyprojectModernizerDocument:
             The resulting ``p.Result[t.StrSequence]``.
 
         """
+        if source_migration is not None:
+            migrated = u.Infra.rewrite_git_source_references(
+                state.payload, source_migration
+            )
+            if migrated.failure:
+                return r[t.StrSequence].from_failure(migrated)
+            if not migrated.value:
+                state.rendered = state.original_rendered
+                return r[t.StrSequence].ok(())
+            return self._render_document_state(
+                state,
+                migrated.value,
+                policy=RenderPolicy(
+                    dry_run=dry_run,
+                    skip_comments=True,
+                    format_source=False,
+                    preserve_layout=True,
+                ),
+            )
         return self._render_document_state(
             state,
             self._apply_document_phases(
@@ -240,8 +290,7 @@ class FlextInfraPyprojectModernizerDocument:
                 canonical_dev=canonical_dev,
                 topology=m.Infra.PyprojectDeclaredTopology(),
             ),
-            dry_run=dry_run,
-            skip_comments=skip_comments,
+            policy=RenderPolicy(dry_run=dry_run, skip_comments=skip_comments),
         )
 
     def _apply_document_phases(
@@ -281,6 +330,11 @@ class FlextInfraPyprojectModernizerDocument:
             ),
         )
         tooling = config.Infra.tooling
+        managed_artifacts = self.managed_artifacts
+        if managed_artifacts is None:
+            managed_artifacts = u.Infra.load_project_managed_artifacts(
+                path.parent,
+            ).unwrap()
         changes: t.MutableSequenceOf[str] = [
             *self._normalize_build_payload(payload),
             *FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
@@ -306,7 +360,10 @@ class FlextInfraPyprojectModernizerDocument:
                 ),
                 paths_manager=paths_manager,
             ),
-            *FlextInfraEnsureRuffConfigPhase(tooling).apply_payload(
+            *FlextInfraEnsureRuffConfigPhase(
+                tooling,
+                managed_artifacts.artifacts.Ruff,
+            ).apply_payload(
                 payload,
                 path=path,
                 analysis_exclusions=topology.analysis_exclusions,
@@ -333,26 +390,37 @@ class FlextInfraPyprojectModernizerDocument:
         state: m.Infra.PyprojectDocumentState,
         changes: t.StrSequence,
         *,
-        dry_run: bool,
-        skip_comments: bool,
-        format_source: bool = True,
+        policy: RenderPolicySpec,
     ) -> p.Result[t.StrSequence]:
         """Order, annotate, and format one payload; write unless ``dry_run``.
 
         A formatter failure is the result's failure, never a reported change.
+
+        Args:
+            state: The parsed document state to render and durably write.
+            changes: The already-accumulated change entries to extend.
+            policy: The render-and-write policy for this invocation.
 
         Returns:
             The resulting ``p.Result[t.StrSequence]``.
 
         """
         path = state.pyproject_path
-        doc = u.Cli.toml_document_from_mapping(state.payload)
-        self._reorder_document(doc, preferred_first=self.tomlsort_sort_first)
+        if policy.preserve_layout:
+            if state.document is None:
+                return r[t.StrSequence].fail(
+                    f"original TOML document is unavailable: {path}"
+                )
+            doc = state.document
+            self._sync_document_values(doc, state.payload)
+        else:
+            doc = u.Cli.toml_document_from_mapping(state.payload)
+            self._reorder_document(doc, preferred_first=self.tomlsort_sort_first)
         rendered = doc.as_string()
         comment_changes: t.StrSequence = ()
-        if not skip_comments:
+        if not policy.skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        if format_source:
+        if policy.format_source:
             formatted = u.Infra.format_toml_source(
                 rendered,
                 path=path,
@@ -368,9 +436,33 @@ class FlextInfraPyprojectModernizerDocument:
         state.rendered = rendered.rstrip() + "\n"
         if state.rendered == state.original_rendered.rstrip() + "\n":
             return r[t.StrSequence].ok(())
-        if not dry_run:
-            u.write_file(path, state.rendered, encoding=c.Cli.ENCODING_DEFAULT)
+        if not policy.dry_run:
+            u.write_file(path, state.rendered, encoding=c.DEFAULT_ENCODING)
         return r[t.StrSequence].ok((*changes, *comment_changes))
+
+    @classmethod
+    def _sync_document_values(
+        cls,
+        document: t.Cli.TomlDocument | t.Cli.TomlTable,
+        payload: t.JsonMapping,
+    ) -> None:
+        """Synchronize changed semantic values through the original TOML tree."""
+        for key, value in payload.items():
+            if u.Cli.toml_value(document, key) == value:
+                continue
+            child = u.Cli.toml_table_child(document, key)
+            if child is not None and isinstance(value, Mapping):
+                cls._sync_document_values(child, value)
+            elif isinstance(value, list) and all(
+                isinstance(item, str) for item in value
+            ):
+                u.Cli.toml_sync_string_list(
+                    document,
+                    key,
+                    tuple(item for item in value if isinstance(item, str)),
+                )
+            else:
+                u.Cli.toml_sync_value(document, key, value)
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerDocument"]

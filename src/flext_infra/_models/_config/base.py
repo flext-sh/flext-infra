@@ -37,3 +37,6 @@ class FlextInfraConfigModels(
     FlextInfraConfigModelsArtifact,
 ):
     """Every config family joined in dependency order, foundations first."""
+
+
+__all__: list[str] = ["FlextInfraConfigModels"]

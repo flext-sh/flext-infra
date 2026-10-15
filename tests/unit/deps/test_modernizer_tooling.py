@@ -9,10 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraEnsureRuffConfigPhase
-from tests import m, t, u
+from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
+from tests import m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,7 +35,10 @@ class TestsFlextInfraDepsModernizerTooling:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(f'[project]\nname = "{project_dir.name}"\n{source}'),
         )
-        phase = FlextInfraEnsureRuffConfigPhase(tool_config_document)
+        phase = FlextInfraEnsureRuffConfigPhase(
+            tool_config_document,
+            u.Infra.empty_snapshot().resolution.artifacts.Ruff,
+        )
         path = project_dir / "pyproject.toml"
         _ = phase.apply_payload(payload, path=path)
         tm.that(phase.apply_payload(payload, path=path), empty=True)
@@ -143,7 +145,6 @@ class TestsFlextInfraDepsModernizerTooling:
                 ),
             ),
             eq=sorted({
-                *tool_config_document.tools.deptry.known_first_party,
                 "flext_sample",
             }),
         )

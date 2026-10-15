@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import config
-from tests import c, p, t, u
+from flext_infra import config, m
+from tests import c, p, t, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -35,6 +34,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
         project_root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
+            shape=u.Tests.MakeEnvironmentShape(package=False),
         )
         tm.ok(u.Tests.create_python_environment(project_root))
         (project_root / "auth_probe.py").write_text(
@@ -148,6 +148,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
         project_root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
+            shape=u.Tests.MakeEnvironmentShape(package=False),
         )
         if verb == "status":
             tm.ok(u.Tests.create_python_environment(project_root))
@@ -221,6 +222,18 @@ class TestsFlextInfraCodegenMakeAuthentication:
         )
         tm.that(process.stderr, has=f"Error {extraction_exit}")
         tm.that(process.stdout + process.stderr, lacks="oauth_token")
+        report = m.Infra.WorkspaceOperationReport.model_validate_json(
+            (
+                project_root / c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
+            ).read_bytes(),
+        )
+        tm.that(len(report.receipts), eq=1)
+        receipt = report.receipts[0]
+        tm.that(receipt.stage, eq="network-auth")
+        tm.that(receipt.native_exit_code, eq=int(extraction_exit))
+        tm.that(receipt.completed, eq=False)
+        tm.that(receipt.files, eq=())
+        tm.that(receipt.root, eq=Path())
         tm.that(u.Infra.runtime_environment_dir(project_root).exists(), eq=False)
         for path, content in locks.items():
             tm.that(path.read_bytes(), eq=content)

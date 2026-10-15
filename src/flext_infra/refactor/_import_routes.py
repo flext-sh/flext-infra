@@ -178,12 +178,15 @@ class FlextInfraImportNormalizationRoutesMixin(
             )
         return edits
 
-    @staticmethod
-    def _unbound_root_aliases(state: m.Infra.ImportLawPass) -> frozenset[str]:
+    @classmethod
+    def _unbound_root_aliases(cls, state: m.Infra.ImportLawPass) -> frozenset[str]:
         """Return root aliases read at module scope or below but bound nowhere.
 
         Returns:
             The resulting ``frozenset[str]``.
+
+        Raises:
+            ValueError: If a loaded alias requires a forbidden reverse import.
 
         """
         scope = state.scope
@@ -211,7 +214,7 @@ class FlextInfraImportNormalizationRoutesMixin(
                 case _:
                     pass
         aliases = c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS
-        return frozenset(
+        missing = frozenset(
             name
             for name in loaded - bound
             if name in aliases
@@ -220,6 +223,19 @@ class FlextInfraImportNormalizationRoutesMixin(
             and name != scope.family_letter
             and name not in scope.facade_dependencies
         )
+        for name in missing:
+            provider = state.root_exports[name]
+            if (
+                provider.split(".")[0] == scope.namespace
+                and u.Infra.module_import_layer(provider) > scope.layer
+                and cls._runtime_uses(state.tree, name, state.parents)
+            ):
+                msg = (
+                    f"{scope.file_path}: unbound runtime alias {name} requires "
+                    "a forbidden reverse namespace import"
+                )
+                raise ValueError(msg)
+        return missing
 
     @staticmethod
     def _import_anchor(tree: ast.Module) -> int:
@@ -255,6 +271,8 @@ class FlextInfraImportNormalizationRoutesMixin(
 
         Facade declarations and their runtime dependencies retain external
         providers instead of importing the facade they are constructing.
+        Renamed facade letters retain their original provider and binding until
+        a semantic reference cutover can remove the local alias atomically.
 
         Returns:
             The namespace root, or ``None`` when the binding is no root alias.
@@ -262,30 +280,53 @@ class FlextInfraImportNormalizationRoutesMixin(
         """
         scope = state.scope
         bound = alias.asname or alias.name
+        aliases = c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+        if bound != alias.name and (alias.name in aliases or bound not in aliases):
+            # The imported letter owns the role, not its local spelling: m as tm
+            # is still models even when the root publishes tm as matchers.
+            # A shared provider module also does not prove two exports identical.
+            return None
         published = state.root_exports.get(bound)
         if module == scope.namespace or published is None:
             return None
-        aliases = c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS
-        if bound not in aliases and published != module:
+        renamed_external = alias.name != bound and not published.startswith(
+            f"{scope.namespace}.",
+        )
+        different_provider = (bound not in aliases or alias.name != bound) and (
+            published != module
+        )
+        if renamed_external or different_provider:
             return None
+        external_family = (
+            scope.family_letter is not None
+            and bound in c.Infra.ALIAS_NAMES
+            and not module.startswith(f"{scope.namespace}.")
+        )
         if (
             bound in scope.own_exports
             or bound == scope.family_letter
             or bound in scope.facade_dependencies
+            or external_family
         ):
+            # A declaration retains its own role and external facade provider.
             return None
-        if (
-            scope.family_letter is not None
-            and bound in c.Infra.ALIAS_NAMES
-            and not module.startswith(f"{scope.namespace}.")
+        if any(
+            isinstance(reference, ast.Name) and reference.id == bound
+            for declaration in state.tree.body
+            if isinstance(
+                declaration,
+                ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+            )
+            for parameter in declaration.type_params
+            if isinstance(parameter, ast.TypeVar) and parameter.bound is not None
+            for reference in ast.walk(parameter.bound)
         ):
-            # Declaration families must retain an external facade's provider.
-            # Routing its base models/utilities back through self creates a cycle.
             return None
         return scope.namespace
 
-    @staticmethod
+    @classmethod
     def _lazy_source(
+        cls,
         scope: m.Infra.ImportLawScope,
         module: str,
         name: str,
@@ -298,6 +339,9 @@ class FlextInfraImportNormalizationRoutesMixin(
 
         """
         package = module.rpartition(".")[0]
+        directory = u.Infra.import_package_dir(scope.project_root, module)
+        if directory is not None:
+            return cls._declared_subpackage_source(scope, module, name)
         if not package or module == scope.module:
             return None
         if u.Infra.import_lazy_exports(scope.project_root, module) is not None:
@@ -306,6 +350,240 @@ class FlextInfraImportNormalizationRoutesMixin(
         if exports is None or exports.get(name) != module:
             return None
         return package
+
+    @classmethod
+    def _declared_subpackage_source(
+        cls,
+        scope: m.Infra.ImportLawScope,
+        module: str,
+        name: str,
+    ) -> str | None:
+        """Discover a unique source declaration published by its own package.
+
+        Returns:
+            The declaring public package, or no declared destination.
+
+        Raises:
+            ValueError: When independent declarations publish the same name.
+
+        """
+        directory = u.Infra.import_package_dir(scope.project_root, module)
+        if directory is None:
+            return None
+        candidates: t.MutableMappingKV[str, str] = {}
+        for source_path in sorted(
+            directory.rglob("*.py"),
+            key=lambda path: (len(path.parts), path),
+        ):
+            if source_path.name == c.Infra.INIT_PY:
+                continue
+            source = source_path.read_text(encoding=c.DEFAULT_ENCODING)
+            if name not in u.Infra.public_export_names_source(source):
+                continue
+            declaration = cls._module_bindings(ast.parse(source)).get(name)
+            if not isinstance(
+                declaration,
+                ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef | ast.ImportFrom,
+            ):
+                continue
+            relative = source_path.relative_to(directory)
+            owner = ".".join((module, *relative.parent.parts))
+            identity = cls._declaration_identity(
+                scope,
+                f"{owner}.{source_path.stem}",
+                name,
+                frozenset(),
+            )
+            candidates.setdefault(identity, owner)
+        ancestors = cls._declared_ancestors(scope, tuple(candidates))
+        candidates = {
+            identity: owner
+            for identity, owner in candidates.items()
+            if identity not in ancestors
+        }
+        if len(candidates) > 1:
+            msg = (
+                f"Ambiguous declared public import {module}.{name}: "
+                f"{sorted(candidates)}"
+            )
+            raise ValueError(msg)
+        return next(iter(candidates.values()), None)
+
+    @classmethod
+    def _declared_ancestors(
+        cls,
+        scope: m.Infra.ImportLawScope,
+        identities: t.StrTuple,
+    ) -> frozenset[str]:
+        """Find explicit source ancestors of the published declarations.
+
+        Returns:
+            Canonical identities extended by another declaration.
+
+        """
+        ancestors: set[str] = set()
+        for identity in identities:
+            provider, _, symbol = identity.rpartition(".")
+            parent = u.Infra.import_package_dir(
+                scope.project_root,
+                provider.rpartition(".")[0],
+            )
+            if parent is None:
+                continue
+            tree = ast.parse(
+                (parent / f"{provider.rpartition('.')[2]}.py").read_text(
+                    encoding=c.DEFAULT_ENCODING,
+                ),
+            )
+            declaration = cls._module_bindings(tree).get(symbol)
+            if not isinstance(declaration, ast.ClassDef):
+                continue
+            for expression in declaration.bases:
+                base = (
+                    expression.value
+                    if isinstance(expression, ast.Subscript)
+                    else expression
+                )
+                if isinstance(base, ast.Attribute) and base.attr != symbol:
+                    continue
+                receiver = base.value if isinstance(base, ast.Attribute) else base
+                if not isinstance(receiver, ast.Name):
+                    continue
+                bound, binding = cls._declared_binding(tree, receiver.id)
+                if isinstance(binding, ast.ImportFrom) and binding.module:
+                    imported = next(
+                        (
+                            alias
+                            for alias in binding.names
+                            if (alias.asname or alias.name) == bound
+                        ),
+                        None,
+                    )
+                    if imported is not None and (
+                        isinstance(base, ast.Attribute) or imported.name == symbol
+                    ):
+                        ancestors.add(
+                            cls._declaration_identity(
+                                scope,
+                                f"{binding.module}.{imported.name}"
+                                if isinstance(base, ast.Attribute)
+                                else binding.module,
+                                base.attr
+                                if isinstance(base, ast.Attribute)
+                                else imported.name,
+                                frozenset(),
+                            ),
+                        )
+        return frozenset(ancestors)
+
+    @classmethod
+    def _declared_binding(
+        cls,
+        tree: ast.Module,
+        name: str,
+    ) -> tuple[str, ast.stmt | None]:
+        """Follow module-level name aliases without executing the provider.
+
+        Returns:
+            The original bound name and its declaring statement.
+
+        Raises:
+            ValueError: When aliases form a cycle.
+
+        """
+        bindings = cls._module_bindings(tree)
+        seen: set[str] = set()
+        while name not in seen:
+            seen.add(name)
+            binding = bindings.get(name)
+            if not isinstance(binding, ast.Assign | ast.AnnAssign) or not isinstance(
+                binding.value,
+                ast.Name,
+            ):
+                return name, binding
+            name = binding.value.id
+        msg = f"Cyclic declared binding: {name}"
+        raise ValueError(msg)
+
+    @classmethod
+    def _declaration_identity(
+        cls,
+        scope: m.Infra.ImportLawScope,
+        module: str,
+        name: str,
+        seen: frozenset[str],
+    ) -> str:
+        """Follow explicit reexports to their source, rejecting cyclic bindings.
+
+        Returns:
+            The canonical declaration's qualified identity.
+
+        Raises:
+            ValueError: When a reexport cycles or has no declared binding.
+            TypeError: When the binding is not a source declaration.
+
+        """
+        identity = f"{module}.{name}"
+        if identity in seen:
+            msg = f"Cyclic declared public import: {identity}"
+            raise ValueError(msg)
+        exports = u.Infra.import_lazy_exports(scope.project_root, module)
+        if exports is not None and name in exports:
+            return cls._declaration_identity(
+                scope,
+                exports[name],
+                name,
+                seen | {identity},
+            )
+        parent = u.Infra.import_package_dir(
+            scope.project_root,
+            module.rpartition(".")[0],
+        )
+        if parent is None:
+            return identity
+        path = parent / f"{module.rpartition('.')[2]}.py"
+        if not path.is_file():
+            msg = f"Missing declared public import: {identity}"
+            raise ValueError(msg)
+        binding = cls._module_bindings(
+            ast.parse(path.read_text(encoding=c.DEFAULT_ENCODING)),
+        ).get(name)
+        if isinstance(binding, ast.ImportFrom):
+            alias = next(
+                alias for alias in binding.names if (alias.asname or alias.name) == name
+            )
+            parts = module.split(".")[:-1]
+            target = (
+                ".".join(
+                    (*parts[: len(parts) - binding.level + 1], binding.module or ""),
+                ).rstrip(".")
+                if binding.level
+                else binding.module
+            )
+            if target:
+                return cls._declaration_identity(
+                    scope,
+                    target,
+                    alias.name,
+                    seen | {identity},
+                )
+        if isinstance(binding, ast.Assign) and isinstance(binding.value, ast.Name):
+            # A module-level alias such as ``t = FlextTypes`` re-exports the
+            # named declaration; follow it so every facet root's alias form
+            # resolves to its source declaration.
+            return cls._declaration_identity(
+                scope,
+                module,
+                binding.value.id,
+                seen | {identity},
+            )
+        if not isinstance(
+            binding,
+            ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+        ):
+            msg = f"Missing declared public import: {identity}"
+            raise TypeError(msg)
+        return identity
 
 
 __all__: list[str] = ["FlextInfraImportNormalizationRoutesMixin"]

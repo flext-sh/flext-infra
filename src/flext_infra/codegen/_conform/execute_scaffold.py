@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraWorkspaceDetector, c, config, m, p, r, t, u
-from flext_infra.codegen._conform import FlextInfraCodegenConformPlan
+from flext_infra import c, config, m, p, r, t, u
+from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
@@ -131,8 +132,8 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
             tuple(sorted(directories, key=u.Infra.path_depth)),
         )
 
+    @staticmethod
     def _create_scaffold_directories(
-        self,
         directories: t.VariadicTuple[Path],
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]:
         """Materialize the planned scaffold chains, rolling back on any failure.
@@ -147,43 +148,15 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
         for directory in directories:
             planned = u.Cli.atomic_plan_directory_chain(directory)
             if planned.failure:
-                rollback = self._rollback_scaffold_directories(tuple(created))
-                if rollback.failure:
-                    return result_type.fail(
-                        f"{planned.error}; scaffold directory rollback failed: "
-                        f"{rollback.error}",
-                    )
                 return result_type.from_failure(planned)
             materialized = u.Cli.atomic_create_directory_chain_guarded(
                 planned.value,
                 permission_mode=0o755,
             )
             if materialized.failure:
-                rollback = self._rollback_scaffold_directories(tuple(created))
-                if rollback.failure:
-                    return result_type.fail(
-                        f"{materialized.error}; scaffold directory rollback failed: "
-                        f"{rollback.error}",
-                    )
                 return result_type.from_failure(materialized)
             created.extend(materialized.value)
         return result_type.ok(tuple(created))
-
-    @staticmethod
-    def _rollback_scaffold_directories(
-        created: t.VariadicTuple[m.Cli.AtomicDirectoryState],
-    ) -> p.Result[bool]:
-        """Remove only directories created by this locked scaffold attempt.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        for state in reversed(created):
-            removed = u.Cli.atomic_delete_empty_directory_guarded(state)
-            if removed.failure:
-                return removed
-        return r[bool].ok(value=True)
 
 
 __all__: list[str] = ["FlextInfraCodegenConformExecuteScaffold"]

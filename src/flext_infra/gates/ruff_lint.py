@@ -10,7 +10,8 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfraGate, c, config, m, u
+from flext_infra import c, config, m, u
+from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.refactor import FlextInfraImportNormalization
 
 if TYPE_CHECKING:
@@ -26,6 +27,25 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     # can_fix=False made workspace_check_gates skip it, so `make fix`
     # never applied a single lint fix and the command below was dead code.
     can_fix: ClassVar[bool] = True
+
+    @override
+    def _check_env(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> t.StrMapping:
+        """Keep native cache writes outside authenticated source candidates.
+
+        Returns:
+            The resulting ``t.StrMapping``.
+
+        """
+        return {
+            **(super()._check_env(project_dir, ctx) or {}),
+            c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
+                u.Infra.ruff_cache_directory(project_dir)
+            ),
+        }
 
     @override
     def _get_check_dirs(
@@ -143,7 +163,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         }
         return u.Infra.overridden_methods(
             tuple(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                path.read_text(encoding=c.DEFAULT_ENCODING)
                 for directory in self._existing_check_dirs(project_dir)
                 for path in u.Infra.iter_directory_python_files(
                     project_dir / directory,
@@ -182,7 +202,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with self._mutation_lease(project_dir):
-            import_graph = (
+            import_graph: t.MappingKV[str, frozenset[str]] = (
                 u.Infra.project_import_graph(project_dir)[0]
                 if any(
                     recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
@@ -206,7 +226,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     recipes,
                     import_graph=import_graph,
                 )
-                if repaired.encode(c.Cli.ENCODING_DEFAULT) != before.content:
+                if repaired.encode(c.DEFAULT_ENCODING) != before.content:
                     planned.append((before, repaired))
             for before, repaired in planned:
                 u.Cli.atomic_write_text_file_guarded(before, repaired).unwrap()
@@ -231,11 +251,12 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
         Raises:
             FileNotFoundError: If ``before.content is None``.
+
         """
         if before.content is None:
             raise FileNotFoundError(before.path)
         path = before.path
-        source = before.content.decode(c.Cli.ENCODING_DEFAULT)
+        source = before.content.decode(c.DEFAULT_ENCODING)
         owned = {issue.code: recipes[issue.code] for issue in issues}
         if c.Infra.LintFixRecipe.NORMALIZE_IMPORTS in owned.values():
             source = (
@@ -331,7 +352,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             f"{issue.file}:{issue.line}:{issue.code}"
             for path, found in by_file.items()
             for issue in u.Infra.overridden_findings(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                path.read_text(encoding=c.DEFAULT_ENCODING),
                 found,
                 path=path,
                 recipes=recipes,

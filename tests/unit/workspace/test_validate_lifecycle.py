@@ -1,4 +1,4 @@
-"""Exercise serial lifecycle orchestration through real public CLI and Make recipes.
+"""Public lifecycle planning and real native Make first-failure receipts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,177 +7,154 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from shlex import quote
 
-import pytest
-from flext_tests import tm
-
-from flext_infra import main
-from tests import c, m, u
+from flext_infra import config, main
+from flext_infra.workspace import FlextInfraWorkspaceLifecycle
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraWorkspaceLifecycle:
-    """Public Make boundaries retain order, failure, and unreached scope."""
+    """Observe real topology and process boundaries without substitute recipes."""
 
     @staticmethod
-    def _workspace(root: Path, *, fail_at: int = -1) -> Path:
-        """Reuse the governed topology fixture with observable public Make recipes.
+    def _request(root: Path) -> p.Infra.WorkspaceRequest:
+        """Construct the same typed request the public CLI validates.
 
         Returns:
-            The attached member checkout.
+            The repository request.
+
         """
-        member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
-        log = quote(str(root / "lifecycle.log"))
-        verbs = " ".join(dict.fromkeys(c.Infra.LIFECYCLE_VERBS))
-        for cwd in (root, member):
-            (cwd / "Makefile").write_text(
-                f".PHONY: {verbs}\n"
-                f"{verbs}:\n"
-                f"\t@printf '%s|%s\\n' '$(CURDIR)' '$@' >> {log}; "
-                f"step=$$(wc -l < {log}); "
-                f'if [ "$$step" -eq {fail_at + 1} ]; then '
-                "printf 'lifecycle-fixture-failure\\n' >&2; exit 7; fi\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
-        return member
+        return m.Infra.WorkspaceRequest(repository_root=root)
 
-    @staticmethod
-    def _run(root: Path) -> int:
-        """Invoke the public selector-free route.
-
-        Returns:
-            The CLI exit code.
-        """
-        return main([
-            c.Infra.CLI_GROUP_WORKSPACE,
-            "validate-lifecycle",
-            "--repository-root",
-            str(root),
-        ])
-
-    @staticmethod
-    def _report(root: Path) -> m.Infra.LifecycleReport:
-        """Read the same typed receipt the real workspace consumer reads.
-
-        Returns:
-            The published lifecycle report.
-        """
-        return m.Infra.LifecycleReport.model_validate_json(
-            (root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).read_bytes(),
-        )
-
-    def test_runs_root_then_every_member_without_inherited_make_flags(
+    def test_plan_uses_root_cwd_and_declared_steps_without_duplicate_fanout(
         self,
         tmp_path: Path,
     ) -> None:
-        """Inherited dry-run/parallel flags cannot turn unevaluated recipes green."""
+        """Root-owned stages execute once; member consumers use their Makefile."""
         root = tmp_path / "workspace"
-        member = self._workspace(root)
-        manifest = tm.ok(u.Infra.load_workspace_manifest(root))[0]
-        declaration = manifest.model_copy(
-            update={
-                "external_consumers": (
-                    m.Infra.ExternalConsumerSpec(
-                        name="outside-scope",
-                        root=tmp_path / "absent-consumer",
-                    ),
-                ),
-            }
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                u.Infra.workspace_manifest_path(root),
-                declaration.model_dump(mode="json", exclude_computed_fields=True),
-            ),
-        )
-        with u.Tests.env_vars_context(env_vars={"MAKEFLAGS": "-n -j8"}):
-            tm.that(self._run(root), eq=0)
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
 
-        report = self._report(root)
-        tm.that(report.workspace_root, eq=root)
+        report = tm.ok(
+            FlextInfraWorkspaceLifecycle.plan_request(self._request(root)),
+        )
+
         tm.that(report.scope, eq=(root, member))
         expected = tuple(
-            (cwd, (c.Infra.MAKE, verb))
-            for cwd in report.scope
-            for verb in c.Infra.LIFECYCLE_VERBS
+            (repository, step.verb)
+            for step in config.Infra.codegen.make.lifecycle_steps
+            for repository in (
+                report.scope if step.scope == "each" else (report.workspace_root,)
+            )
         )
         tm.that(
-            tuple((row.cwd, row.command) for row in report.receipts),
+            tuple((row.repository_root, row.command[-1]) for row in report.receipts),
             eq=expected,
         )
-        tm.that(all(row.exit_code == 0 for row in report.receipts), eq=True)
-        tm.that(all(row.error is None for row in report.receipts), eq=True)
-        tm.that(all(row.output_file.is_file() for row in report.receipts), eq=True)
-        tm.that(
-            (root / "lifecycle.log")
-            .read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
-            .splitlines(),
-            eq=[f"{cwd}|{command[-1]}" for cwd, command in expected],
-        )
+        for receipt in report.receipts:
+            tm.that(receipt.cwd, eq=root)
+            tm.that(receipt.outcome, eq=None)
+            if receipt.repository_root == member:
+                tm.that(
+                    receipt.command[:-1],
+                    eq=(c.Infra.MAKE, "-f", str(member / c.Infra.MAKEFILE_FILENAME)),
+                )
+            else:
+                tm.that(receipt.command[:-1], eq=(c.Infra.MAKE,))
+        tm.that((root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).exists(), eq=False)
 
-    @pytest.mark.parametrize("fail_at", range(len(c.Infra.LIFECYCLE_VERBS) * 2))
-    def test_first_failure_stops_and_keeps_unreached_receipts_not_green(
-        self,
-        tmp_path: Path,
-        fail_at: int,
-    ) -> None:
-        """Every lifecycle position can fail without running any later operation."""
-        root = tmp_path / "workspace"
-        self._workspace(root, fail_at=fail_at)
-
-        tm.that(self._run(root) != 0, eq=True)
-
-        report = self._report(root)
-        tm.that(
-            len(report.receipts),
-            eq=len(report.scope) * len(c.Infra.LIFECYCLE_VERBS),
-        )
-        tm.that(all(row.exit_code == 0 for row in report.receipts[:fail_at]), eq=True)
-        failed = report.receipts[fail_at]
-        tm.that(failed.exit_code not in {None, 0}, eq=True)
-        tm.that(failed.error is not None, eq=True)
-        tm.that(
-            failed.output_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-            has="lifecycle-fixture-failure",
-        )
-        tm.that(
-            all(row.exit_code is None for row in report.receipts[fail_at + 1 :]),
-            eq=True,
-        )
-        tm.that(
-            all(not row.output_file.exists() for row in report.receipts[fail_at + 1 :]),
-            eq=True,
-        )
-        tm.that(
-            len(
-                (root / "lifecycle.log")
-                .read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                .splitlines(),
-            ),
-            eq=fail_at + 1,
-        )
-
-    def test_standalone_rejects_before_any_lifecycle_effect(
+    def test_standalone_plan_has_the_same_public_acceptance_boundary(
         self,
         tmp_path: Path,
     ) -> None:
-        """A public route cannot bypass the workspace-only Make applicability."""
+        """A standalone project retains every declared acceptance command."""
         root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "standalone")
 
-        tm.that(self._run(root) != 0, eq=True)
+        report = tm.ok(
+            FlextInfraWorkspaceLifecycle.plan_request(self._request(root)),
+        )
 
-        tm.that((root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).exists(), eq=False)
-        tm.that((root / "lifecycle.log").exists(), eq=False)
+        tm.that(report.scope, eq=(root,))
+        tm.that(
+            tuple(row.command[-1] for row in report.receipts),
+            eq=tuple(step.verb for step in config.Infra.codegen.make.lifecycle_steps),
+        )
 
-    def test_route_rejects_project_selection_before_any_effect(
+    def test_native_make_failure_retains_first_outcome_and_unreached_commands(
         self,
         tmp_path: Path,
     ) -> None:
-        """The route accepts only the root boundary, never a partial fleet selector."""
-        root = tmp_path / "workspace"
-        self._workspace(root)
+        """A real unprovisioned fixture has no Makefile; native Make rejects it."""
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "unprovisioned")
+        tm.that((root / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
+        with u.Tests.env_vars_context(env_vars={"MAKEFLAGS": "-n -j8"}):
+            result = FlextInfraWorkspaceLifecycle.execute_request(self._request(root))
+
+        tm.fail(result)
+        report = m.Infra.LifecycleReport.model_validate_json(
+            (root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        first, *unreached = report.receipts
+        tm.that(first.outcome is not None, eq=True)
+        if first.outcome is not None:
+            tm.that(u.Cli.process_succeeded(first.outcome), eq=False)
+        tm.that(first.applicable, eq=True)
+        tm.that(first.error, empty=False)
+        tm.that(first.output_file.is_file(), eq=True)
+        tm.that(first.before_files, eq=first.after_files)
+        tm.that(
+            tuple(item.path for item in first.before_files),
+            eq=tuple(
+                root / relative
+                for relative in config.Infra.codegen.make.lifecycle_observed_files
+            ),
+        )
+        tm.that(
+            all(
+                row.outcome is None
+                and (row.applicable is None or row.applicable is False)
+                for row in unreached
+            ),
+            eq=True,
+        )
+        tm.that(all(not row.output_file.exists() for row in unreached), eq=True)
+        tm.that(report.executed_commands, eq=1)
+        tm.that(report.failed_commands, eq=1)
+        tm.that(
+            report.unreached_commands + report.inapplicable_commands,
+            eq=len(unreached),
+        )
+
+    def test_context_applicability_is_declared_and_not_reported_as_execution(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An inapplicable context row keeps a reason and no process receipt."""
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "standalone")
+        ci = config.Infra.codegen.make.ci
+        with u.Tests.env_vars_context(env_vars={ci.variable: ci.value}):
+            report = tm.ok(
+                FlextInfraWorkspaceLifecycle.plan_request(self._request(root)),
+            )
+        for step, receipt in zip(
+            config.Infra.codegen.make.lifecycle_steps,
+            report.receipts,
+            strict=True,
+        ):
+            tm.that(receipt.execution_context, eq="ci")
+            tm.that(receipt.outcome, eq=None)
+            if "ci" not in step.contexts:
+                tm.that(receipt.applicable, eq=False)
+                tm.that(receipt.applicability_reason, empty=False)
+            else:
+                tm.that(receipt.applicable, eq=None)
+        tm.that(report.executed_commands, eq=0)
+
+    def test_route_rejects_partial_project_selection_without_effects(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The public request never accepts a partial fleet selector."""
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "standalone")
 
         tm.that(
             main([
@@ -191,6 +168,26 @@ class TestsFlextInfraWorkspaceLifecycle:
             != 0,
             eq=True,
         )
-
         tm.that((root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).exists(), eq=False)
-        tm.that((root / "lifecycle.log").exists(), eq=False)
+
+    def test_ci_targets_only_the_invoking_root_without_electing_member_effects(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """CI scope narrows member work independently of editable declarations."""
+        root = tmp_path / "workspace"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
+        ci = config.Infra.codegen.make.ci
+        with u.Tests.env_vars_context(env_vars={ci.variable: ci.value}):
+            report = tm.ok(
+                FlextInfraWorkspaceLifecycle.plan_request(self._request(root)),
+            )
+        member_rows = tuple(
+            row for row in report.receipts if row.repository_root == member
+        )
+        tm.that(member_rows, empty=False)
+        for row in member_rows:
+            tm.that(row.applicable, eq=False)
+            tm.that(row.applicability_reason, empty=False)
+            tm.that(row.outcome, eq=None)
+        tm.that(report.executed_commands, eq=0)

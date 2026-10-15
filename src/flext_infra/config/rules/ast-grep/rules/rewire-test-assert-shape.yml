@@ -1,0 +1,112 @@
+# Type and string-shape raw asserts rewired to the tm matcher facade.
+#
+# Family law, guard, and exclusions are documented in
+# rewire-test-assert-comparison.yml; this file adds:
+#   * `assert isinstance(v, T)` -> `tm.that(isinstance(v, T), truth=True)`;
+#   * `assert s.startswith(p)` -> `tm.that(s.startswith(p), truth=True)`;
+#   * `assert s.endswith(p)` -> `tm.that(s.endswith(p), truth=True)`.
+# Retain each call rather than changing its owner or interpreting its arguments.
+#
+# The isinstance document excludes the two tautology shapes owned by
+# ban-test-tautology (the object just constructed, and the construction
+# assigned immediately before), so the cutover never rewrites an assertion
+# that proves nothing.
+id: rewire-test-assert-isinstance
+language: Python
+severity: error
+metadata:
+  context:
+    V:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert isinstance($V, $C)"
+    - not:
+        pattern: "assert isinstance($C($$$ARGS), $C)"
+    - not:
+        follows:
+          stopBy: end
+          kind: expression_statement
+          has:
+            any:
+              - pattern: "$V = $C($$$ARGS)"
+              - pattern: "$V: $T = $C($$$ARGS)"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that(isinstance($V, $C), truth=True)
+message: Assert the runtime type through the tm matcher facade.
+---
+id: rewire-test-assert-starts
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A.startswith($P)"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A.startswith($P), truth=True)
+message: Assert the string prefix through the tm matcher facade.
+---
+id: rewire-test-assert-ends
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A.endswith($P)"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A.endswith($P), truth=True)
+message: Assert the string suffix through the tm matcher facade.

@@ -193,7 +193,6 @@ class FlextInfraCodegenConsolidatorStepsMixin:
                     ),
                     None,
                 )[-1],
-                restore_fn=lambda: resource.write(original_source),
                 gates=cls._ALL_LINT_GATES,
             ),
         )

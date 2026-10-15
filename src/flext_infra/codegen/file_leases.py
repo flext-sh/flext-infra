@@ -17,6 +17,9 @@ from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
 if TYPE_CHECKING:
     from flext_infra import p
 
+if TYPE_CHECKING:
+    from flext_infra import p
+
 
 class FlextInfraCodegenFileLeases:
     """Hold destination identities for the lifetime of one transaction."""
@@ -82,6 +85,7 @@ class FlextInfraCodegenFileLeases:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         policy = self._participant_policy
         if policy is None:

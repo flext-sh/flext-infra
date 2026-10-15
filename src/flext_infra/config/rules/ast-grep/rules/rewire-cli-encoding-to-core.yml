@@ -1,0 +1,11 @@
+id: rewire-cli-encoding-to-core
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  pattern: c.Cli.ENCODING_DEFAULT
+fix: c.DEFAULT_ENCODING
+message: >-
+  The fixed text encoding is owned by the inherited core constants facade.
+  Consume c.DEFAULT_ENCODING rather than a duplicate CLI declaration.

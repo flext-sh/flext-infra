@@ -24,10 +24,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from tests import tm
 
 if TYPE_CHECKING:
     from tests import t
@@ -52,7 +51,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
             c.Infra.MakeProfile(profile) for profile in handler_policies
         )
 
-        tm.that(declared - covered, eq=frozenset())
+        tm.that(declared - covered, empty=True)
 
     @staticmethod
     def test_repository_root_may_own_public_targets() -> None:

@@ -10,9 +10,10 @@ import ast
 import io
 import re
 import tokenize
+from os.path import commonpath
 from pathlib import Path
 
-from flext_infra import FlextInfraConfig, c, config, m, t, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraRenameSources:
@@ -51,6 +52,30 @@ class FlextInfraRenameSources:
         return tuple(sorted(pairs.items()))
 
     @staticmethod
+    def _rooted_symlink(path: Path, roots: t.SequenceOf[Path]) -> bool:
+        """Authorize an in-tree symlink target and mark the link projected.
+
+        Returns:
+            Whether ``path`` is a symlink whose target stays inside the
+            declared scan roots.
+
+        Raises:
+            ValueError: If the symlink target escapes the declared scan roots.
+
+        """
+        if not path.is_symlink():
+            return False
+        destination = path.resolve(strict=True)
+        if not any(
+            destination.is_relative_to(candidate.resolve()) for candidate in roots
+        ):
+            msg = f"rename source escapes declared scan roots: {path}"
+            raise ValueError(msg)
+        # The target is the writable authority; an in-tree link
+        # remains a projection and is never an atomic destination.
+        return True
+
+    @staticmethod
     def inventory(
         roots: t.SequenceOf[Path],
         params: m.Infra.ApplyRenamesInput,
@@ -61,19 +86,29 @@ class FlextInfraRenameSources:
             The authenticated file states of every electable rename source.
 
         Raises:
-            ValueError: If rename source disappeared.
+            ValueError: If a rename source disappeared or escapes the scan roots.
 
         """
         files: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        ignored = config.Infra.codegen.source_scan_ignored
-        generated = {item.path for item in config.Infra.codegen.managed_files}
-        templates = u.Infra.codegen_template_sources(config.Infra.codegen)
-        config_dir = FlextInfraConfig.ssot_config_dir()
+        configuration_root = (
+            params.repository_root
+            if params.repository_root is not None
+            else Path(commonpath(roots))
+        )
+        codegen = u.Infra.load_codegen_inputs(configuration_root).unwrap().spec
+        ignored = codegen.source_scan_ignored
+        generated = {item.path for item in codegen.managed_file_specs}
+        templates = u.Infra.codegen_template_sources(codegen)
         drivers = {
             Path(params.csv).resolve(),
             *(
-                (config_dir / campaign.csv).resolve()
-                for campaign in config.Infra.refactor_csv_campaigns.campaigns
+                (configuration_root / c.CONFIG_DIR_NAME / campaign.csv).resolve()
+                for campaign in u.Infra
+                .load_refactor_csv_campaigns(
+                    configuration_root,
+                )
+                .unwrap()
+                .campaigns
             ),
         }
         for root in roots:
@@ -97,6 +132,8 @@ class FlextInfraRenameSources:
                 )
                 if not python and not text:
                     continue
+                if FlextInfraRenameSources._rooted_symlink(path, roots):
+                    continue
                 state = u.Cli.atomic_read_binary_file_state(
                     path,
                     required=True,
@@ -104,7 +141,7 @@ class FlextInfraRenameSources:
                 if state.content is None:
                     msg = f"rename source disappeared: {path}"
                     raise ValueError(msg)
-                source = state.content.decode(c.Cli.ENCODING_DEFAULT)
+                source = state.content.decode(c.DEFAULT_ENCODING)
                 if (
                     source.startswith(c.Infra.AUTOGEN_HEADERS)
                     and path.resolve() not in templates
@@ -170,16 +207,16 @@ class FlextInfraRenameSources:
             if isinstance(value, ast.Constant) and isinstance(value.value, str):
                 column = len(
                     lines[value.lineno - 1]
-                    .encode(c.Cli.ENCODING_DEFAULT)[: value.col_offset]
-                    .decode(c.Cli.ENCODING_DEFAULT),
+                    .encode(c.DEFAULT_ENCODING)[: value.col_offset]
+                    .decode(c.DEFAULT_ENCODING),
                 )
                 if value.end_lineno is None or value.end_col_offset is None:
                     msg = "Python docstring lacks an authenticated source span"
                     raise ValueError(msg)
                 end_column = len(
                     lines[value.end_lineno - 1]
-                    .encode(c.Cli.ENCODING_DEFAULT)[: value.end_col_offset]
-                    .decode(c.Cli.ENCODING_DEFAULT),
+                    .encode(c.DEFAULT_ENCODING)[: value.end_col_offset]
+                    .decode(c.DEFAULT_ENCODING),
                 )
                 docstrings.append((
                     (value.lineno, column),

@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import io
 import pstats
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
-from flext_infra import m, r, s, u
+from flext_infra import c, config, m, r, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -108,14 +109,22 @@ class FlextInfraCProfileReport(s[bool]):
         if plan.manifest_path.parent.resolve() != directory.resolve():
             msg = "profile selection plan does not match its run directory"
             raise ValueError(msg)
-        profiles = (
-            self.profile,
-            directory / "testmon-selection.pstats",
-            *(
-                (directory / "testmon-inventory.pstats",)
-                if plan.inventory_collected
-                else ()
-            ),
+        policy = config.Infra.tooling.tools.pytest
+        suite = directory / policy.profile_suite_filename
+        profiles = tuple(
+            dict.fromkeys((
+                self.profile,
+                plan.manifest_path.with_suffix(".pstats"),
+                *(
+                    (directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME,)
+                    if plan.inventory_collected
+                    else ()
+                ),
+                *((suite,) if plan.node_ids or suite.is_file() else ()),
+                *sorted(
+                    (directory / policy.profile_process_directory).glob("*.pstats")
+                ),
+            ))
         )
         for profile in profiles:
             receipt = (
@@ -146,10 +155,7 @@ class FlextInfraCProfileReport(s[bool]):
             return r[bool].fail(f"cProfile artifact does not exist: {self.profile}")
         try:
             stream = io.StringIO()
-            for profile in self._run_profiles():
-                stream.write(f"Profile: {profile}\n")
-                stats = pstats.Stats(str(profile), stream=stream)
-                stats.strip_dirs().sort_stats(self.sort).print_stats(self.limit)
+            self._render_profiles(stream)
             self.output.parent.mkdir(parents=True, exist_ok=True)
         except (OSError, ValueError, TypeError) as exc:
             return r[bool].fail(f"render cProfile report failed: {exc}", exception=exc)
@@ -157,6 +163,16 @@ class FlextInfraCProfileReport(s[bool]):
         if written.failure:
             return r[bool].from_failure(written)
         return r[bool].ok(value=True)
+
+    def _render_profiles(self, stream: io.StringIO) -> None:
+        """Render every cProfile artifact into the shared stream."""
+        root_prefix = re.escape(str(self.repository_root.resolve()) + "/")
+        for profile in self._run_profiles():
+            stream.write(f"Profile: {profile}\n")
+            stream.write(f"Project scope: {self.repository_root.resolve()}\n")
+            stats = pstats.Stats(str(profile), stream=stream)
+            stats.sort_stats(self.sort).print_stats(root_prefix, self.limit)
+            stats.strip_dirs().sort_stats(self.sort).print_stats(self.limit)
 
 
 __all__: list[str] = ["FlextInfraCProfileReport"]

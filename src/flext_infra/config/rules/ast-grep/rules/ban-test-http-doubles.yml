@@ -1,0 +1,55 @@
+# Test law: a test exercises the real collaborator, never a scripted double.
+#
+# `ban-test-doubles` owns mock libraries (`unittest.mock`, `pytest_mock`) and
+# the pytest `monkeypatch` attribute/item verbs. This rule is the single owner
+# of the *functional* doubles that replace a real external boundary with a
+# scripted stand-in, which hide the real owner just as completely:
+#
+#   * HTTP recording/replay doubles — `responses`, `requests_mock`,
+#     `vcrpy`/`vcr` (cassettes), `aioresponses`, `pytest_httpx`, and the
+#     `httpx.MockTransport` stand-in;
+#   * time doubles — `freezegun` and `time_machine`, which fabricate a clock
+#     instead of the test driving real, injectable time.
+#
+# Legitimate homonyms keep their contract: an imported `httpx` client that is
+# used for real transport is not matched; only `httpx.MockTransport` and the
+# named recording/replay/time libraries are. Isolating the process environment
+# (`monkeypatch.setenv/delenv/chdir`, temp dirs, an in-memory database the test
+# owns) is the opposite of a double and stays legal.
+#
+# Detection-only: the replacement is a test that drives the real boundary
+# through its public contract, which a rewrite cannot author. A violating test
+# is deleted and its behaviour re-covered through the public facade.
+id: ban-test-http-doubles
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/examples/**/*.py"
+  - "**/conftest.py"
+rule:
+  any:
+    - kind: import_statement
+      regex: '^import\s+(?:responses|requests_mock|vcr|freezegun|time_machine|aioresponses|pytest_httpx)\b'
+    - kind: import_from_statement
+      regex: '^from\s+(?:responses|requests_mock|vcr|freezegun|time_machine|aioresponses|pytest_httpx)\s+import\b'
+    - all:
+        - kind: import_from_statement
+        - regex: '^from\s+httpx\s+import\b'
+        - has:
+            kind: dotted_name
+            regex: '(?:^|\.)MockTransport$'
+    - all:
+        - kind: attribute
+        - regex: '(?:^|\.)MockTransport$'
+    - all:
+        - kind: call
+        - has:
+            field: function
+            regex: '^(?:responses|requests_mock|aioresponses|pytest_httpx|freezegun|time_machine|vcr)\.'
+message: >-
+  Scripted external doubles are forbidden: HTTP recording/replay libraries
+  (responses, requests_mock, vcr, aioresponses, pytest_httpx, httpx.MockTransport)
+  and time doubles (freezegun, time_machine) hide the real boundary. Delete the
+  test and re-cover the behaviour through the public facade with real typed
+  fixtures.

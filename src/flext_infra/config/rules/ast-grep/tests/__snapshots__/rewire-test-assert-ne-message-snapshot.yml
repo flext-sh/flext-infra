@@ -1,0 +1,98 @@
+id: rewire-test-assert-ne-message
+snapshots:
+  ? |
+    from flext_tests import tm
+    assert left() != right(), explain()
+  : fixed: |
+      from flext_tests import tm
+      if left() != right():
+          pass
+      else:
+          tm.that(False, truth=True, assertion_message=explain())
+    labels:
+    - source: assert left() != right(), explain()
+      style: primary
+      start: 27
+      end: 62
+    - source: from flext_tests import tm
+      style: secondary
+      start: 0
+      end: 26
+    - source: |
+        from flext_tests import tm
+        assert left() != right(), explain()
+      style: secondary
+      start: 0
+      end: 63
+  ? |
+    from tests import tm
+    assert (left if choose() else fallback()) != (right or other()), explain()
+  : fixed: |
+      from tests import tm
+      if (left if choose() else fallback()) != (right or other()):
+          pass
+      else:
+          tm.that(False, truth=True, assertion_message=explain())
+    labels:
+    - source: assert (left if choose() else fallback()) != (right or other()), explain()
+      style: primary
+      start: 21
+      end: 95
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert (left if choose() else fallback()) != (right or other()), explain()
+      style: secondary
+      start: 0
+      end: 96
+  ? |
+    from tests import tm
+    assert (seen := left()) != right(), explain(seen)
+  : fixed: |
+      from tests import tm
+      if (seen := left()) != right():
+          pass
+      else:
+          tm.that(False, truth=True, assertion_message=explain(seen))
+    labels:
+    - source: assert (seen := left()) != right(), explain(seen)
+      style: primary
+      start: 21
+      end: 70
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert (seen := left()) != right(), explain(seen)
+      style: secondary
+      start: 0
+      end: 71
+  ? |
+    from tests import tm
+    assert result.key != other.key, 'keys differ'
+  : fixed: |
+      from tests import tm
+      if result.key != other.key:
+          pass
+      else:
+          tm.that(False, truth=True, assertion_message='keys differ')
+    labels:
+    - source: assert result.key != other.key, 'keys differ'
+      style: primary
+      start: 21
+      end: 66
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert result.key != other.key, 'keys differ'
+      style: secondary
+      start: 0
+      end: 67

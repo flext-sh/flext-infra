@@ -10,12 +10,11 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_tests import api, d, e, h, r, td, tf, tk, tm, x
 
-    from tests import fixtures, integration, refactor, unit
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
     from tests.constants_scan import TestsFlextInfraConstantsScanMixin
@@ -67,13 +66,10 @@ __all__: tuple[str, ...] = (
     "c",
     "d",
     "e",
-    "fixtures",
     "h",
-    "integration",
     "m",
     "p",
     "r",
-    "refactor",
     "s",
     "t",
     "td",
@@ -81,7 +77,6 @@ __all__: tuple[str, ...] = (
     "tk",
     "tm",
     "u",
-    "unit",
     "x",
 )
 
@@ -112,13 +107,10 @@ install_lazy_exports(
         "c": ".constants",
         "d": "flext_tests",
         "e": "flext_tests",
-        "fixtures": ".fixtures",
         "h": "flext_tests",
-        "integration": ".integration",
         "m": ".models",
         "p": ".protocols",
         "r": "flext_tests",
-        "refactor": ".refactor",
         "s": ".base",
         "t": ".typings",
         "td": "flext_tests",
@@ -126,7 +118,6 @@ install_lazy_exports(
         "tk": "flext_tests",
         "tm": "flext_tests",
         "u": ".utilities",
-        "unit": ".unit",
         "x": "flext_tests",
     }),
     public_exports=__all__,

@@ -6,25 +6,63 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
-from flext_tests import tm
-from mkdocs.exceptions import ConfigurationError
+from mkdocs.exceptions import Abort, ConfigurationError
 
-from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.docs.builder import FlextInfraDocBuilder
-from flext_infra.docs.fixer import FlextInfraDocFixer
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.docs.validator import FlextInfraDocValidator
-from tests import u
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from flext_infra.docs import (
+    FlextInfraDocAuditor,
+    FlextInfraDocBuilder,
+    FlextInfraDocFixer,
+    FlextInfraDocGenerator,
+    FlextInfraDocValidator,
+)
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDocsMainCommands:
     """Public service execution tests for docs commands."""
+
+    @staticmethod
+    @pytest.mark.parametrize("invalid_navigation", [False, True])
+    def test_native_mkdocs_strict_build_preserves_its_warning_failure(
+        tmp_path: Path, *, invalid_navigation: bool
+    ) -> None:
+        """The real SDK builds content and rejects warnings in strict mode."""
+        content = tmp_path / "content"
+        content.mkdir()
+        (content / "index.md").write_text(
+            "# Public build proof\n", encoding=c.DEFAULT_ENCODING
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                tmp_path / "mkdocs.yml",
+                {
+                    "site_name": "Strict SDK fixture",
+                    "docs_dir": str(content),
+                    "nav": [
+                        {"Home": "missing.md" if invalid_navigation else "index.md"},
+                    ],
+                    "theme": {"name": "mkdocs"},
+                },
+            ),
+        )
+        scope = m.Infra.DocScope(
+            name="strict-sdk-fixture",
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
+        )
+        if invalid_navigation:
+            with pytest.raises(Abort, match="strict mode"):
+                u.Infra.docs_run_mkdocs(scope)
+        else:
+            report = u.Infra.docs_run_mkdocs(scope)
+            tm.that(report.passed, eq=True)
+            html = Path(report.site_dir) / "index.html"
+            tm.that(
+                html.read_text(encoding=c.DEFAULT_ENCODING), has="Public build proof"
+            )
 
     @staticmethod
     def test_auditor_execute_fails_on_finding(tmp_path: Path) -> None:

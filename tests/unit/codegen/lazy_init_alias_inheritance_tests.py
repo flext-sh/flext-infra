@@ -10,9 +10,42 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from tests import c, u
+from tests import c, t, tm, u
+
+
+def _external_parent_child_sources(
+    repository_root: Path,
+    child_root: Path,
+    *,
+    class_name: str,
+) -> t.MappingKV[str, t.StrSequence]:
+    """Publish an external-parent child and return its installed module mapping.
+
+    The child ``constants`` module inherits ``c`` from the installed
+    ``flext_cli`` facade, so the nearest re-exporting parent owns the letter.
+    The helper runs one lazy-init pass and returns the mapping the generated
+    package root installs.
+
+    Returns:
+        The resulting ``t.MappingKV[str, t.StrSequence]``.
+
+    """
+    child_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+        "from __future__ import annotations\n\n"
+        "from flext_cli import c as cli_c\n\n"
+        f"class {class_name}(cli_c):\n"
+        "    pass\n\n"
+        f"c = {class_name}\n"
+        f'__all__: list[str] = ["{class_name}", "c"]\n',
+        encoding=c.Infra.ENCODING_DEFAULT,
+    )
+    tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+    generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
+        encoding=c.DEFAULT_ENCODING,
+    )
+    entries, _refs = u.Infra.lazy_import_mapping_source(generated)
+    return dict(entries)
 
 
 class TestsFlextInfraLazyInitAliasInheritance:
@@ -38,7 +71,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
         parent.mkdir()
         (parent / c.Infra.INIT_PY).write_text(
             c.Infra.AUTOGEN_HEADERS[0] + "\n__all__ = []\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.write_lazy_init_namespace_module(
             parent / "constants.py",
@@ -47,26 +80,25 @@ class TestsFlextInfraLazyInitAliasInheritance:
         )
         parent_constants = parent / c.Infra.CONSTANTS_PY
         parent_constants.write_text(
-            parent_constants.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            + "\nimport re\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            parent_constants.read_text(encoding=c.DEFAULT_ENCODING) + "\nimport re\n",
+            encoding=c.DEFAULT_ENCODING,
         )
         (parent / "result.py").write_text(
             "from flext_core import FlextResult\nr = FlextResult\n"
             "__all__ = ['FlextResult', 'r']\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (child / "constants.py").write_text(
             "from flext_bootstrap_parent import c as parent_c\n"
             "class BootstrapChildConstants(parent_c):\n    pass\n"
             "c = BootstrapChildConstants\n__all__ = ['BootstrapChildConstants', 'c']\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (child / "consumer.py").write_text(
             "from flext_bootstrap_child import r\n"
             "def execute():\n    return r.ok('bootstrap-ready')\n"
             "__all__ = ['execute']\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         first = (child / c.Infra.INIT_PY).read_bytes()
@@ -134,7 +166,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         tm.that(
@@ -159,22 +191,11 @@ class TestsFlextInfraLazyInitAliasInheritance:
             project_name="flext-test-external",
             package_name="flext_test_external_child",
         )
-        child_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
-            "from __future__ import annotations\n\n"
-            "from flext_cli import c as cli_c\n\n"
-            "class FlextTestExternalChildConstants(cli_c):\n"
-            "    pass\n\n"
-            "c = FlextTestExternalChildConstants\n"
-            '__all__: list[str] = ["FlextTestExternalChildConstants", "c"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+        sources = _external_parent_child_sources(
+            repository_root,
+            child_root,
+            class_name="FlextTestExternalChildConstants",
         )
-
-        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        entries, _refs = u.Infra.lazy_import_mapping_source(generated)
-        sources = dict(entries)
 
         tm.that(sources.get("flext_cli", ()), has="r")
         tm.that(sources.get("flext_cli", ()), lacks="cli")
@@ -203,22 +224,11 @@ class TestsFlextInfraLazyInitAliasInheritance:
             'dev = ["flext-tests"]\n',
             encoding=c.Infra.ENCODING_DEFAULT,
         )
-        child_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
-            "from __future__ import annotations\n\n"
-            "from flext_cli import c as cli_c\n\n"
-            "class FlextTestGroupsChildConstants(cli_c):\n"
-            "    pass\n\n"
-            "c = FlextTestGroupsChildConstants\n"
-            '__all__: list[str] = ["FlextTestGroupsChildConstants", "c"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+        sources = _external_parent_child_sources(
+            repository_root,
+            child_root,
+            class_name="FlextTestGroupsChildConstants",
         )
-
-        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        entries, _refs = u.Infra.lazy_import_mapping_source(generated)
-        sources = dict(entries)
         inherited = {name for names in sources.values() for name in names}
 
         tm.that(sources, lacks="flext_tests")

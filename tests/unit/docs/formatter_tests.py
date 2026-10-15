@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import infra
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.formatter import FlextInfraDocFormatter
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

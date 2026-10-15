@@ -9,9 +9,36 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import m, u
+from flext_infra.docs.collector import FlextInfraDocCollector
+from tests import tm
+
+
+def _projection_config(projection: Path) -> m.Infra.PlanCollectionConfig:
+    """Build the projection-rooted home source configuration.
+
+    Returns:
+        The resulting ``m.Infra.PlanCollectionConfig``.
+
+    """
+    return m.Infra.PlanCollectionConfig(
+        enabled=True,
+        canonical_dir=Path("docs/plans"),
+        projection_root=projection,
+        sources=(
+            m.Infra.PlanCollectionSource(
+                id="home",
+                provider="files",
+                root=projection,
+                adapter="files",
+                driver="fixture",
+                driver_version="1",
+                plan_globs=("*.md",),
+                publication="plan-artifacts",
+            ),
+        ),
+    )
 
 
 class TestsFlextInfraPlanCollection:
@@ -40,6 +67,51 @@ class TestsFlextInfraPlanCollection:
                     publication="plan-artifacts",
                 ),
             ),
+        )
+
+    def test_public_collector_authenticates_configuration_and_repeats(
+        self,
+        infra_git_repo: Path,
+    ) -> None:
+        """The public collector publishes verified plans without policy callbacks."""
+        root = infra_git_repo
+        configuration = self._config()
+        configuration_path = root / "collection.yaml"
+        self._write(
+            configuration_path,
+            u.Cli.yaml_dump_str(configuration.model_dump(mode="json")),
+        )
+        self._write(root / "input" / "plan.md", "# Collected plan\n\nOwned input.\n")
+        configuration_state = tm.ok(
+            u.Cli.atomic_read_binary_file_state(configuration_path, required=True),
+        )
+        bundle = u.Infra.docs_collect_plan_files(root, configuration)
+        request = m.Infra.DocsCollectRequest(
+            repository_root=root,
+            configuration=configuration_path,
+        )
+
+        tm.ok(FlextInfraDocCollector.collect(request))
+        u.Infra.verify_plan_collection_publication(root, configuration, bundle)
+        outputs = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(plan.path, required=True))
+            for plan in bundle.files
+            if plan.desired_content is not None
+        )
+        tm.ok(FlextInfraDocCollector.collect(request))
+
+        tm.that(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(configuration_path, required=True),
+            ),
+            eq=configuration_state,
+        )
+        tm.that(
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(state.path, required=True))
+                for state in outputs
+            ),
+            eq=outputs,
         )
 
     @staticmethod
@@ -91,6 +163,20 @@ class TestsFlextInfraPlanCollection:
                 "canonical_dir": "docs/plans",
                 "sources": "kilo-local-plans",
             })
+
+    @pytest.mark.parametrize(
+        "field",
+        ["plan_globs", "exclude_globs", "updated_fields"],
+    )
+    def test_yaml_sequence_items_keep_their_strict_contract(
+        self,
+        field: str,
+    ) -> None:
+        """Accept YAML lists without coercing their invalid item values."""
+        source = self._config().sources[0].model_dump()
+        source[field] = [3]
+        with pytest.raises(ValueError, match="valid string"):
+            m.Infra.PlanCollectionSource.model_validate(source)
 
     def test_plan_and_companion_are_snapshotted_without_writing(
         self,
@@ -256,23 +342,7 @@ class TestsFlextInfraPlanCollection:
         """Test second collection ignores unchanged projection but detects home edit."""
         projection = tmp_path / "home" / "plans"
         self._write(projection / "design.md", "# Original home plan\n")
-        config = m.Infra.PlanCollectionConfig(
-            enabled=True,
-            canonical_dir=Path("docs/plans"),
-            projection_root=projection,
-            sources=(
-                m.Infra.PlanCollectionSource(
-                    id="home",
-                    provider="files",
-                    root=projection,
-                    adapter="files",
-                    driver="fixture",
-                    driver_version="1",
-                    plan_globs=("*.md",),
-                    publication="plan-artifacts",
-                ),
-            ),
-        )
+        config = _projection_config(projection)
         first = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in first.files:
             assert plan.desired_content is not None
@@ -380,23 +450,7 @@ class TestsFlextInfraPlanCollection:
         projection = tmp_path / "home" / "plans"
         self._write(projection / "design.md", "# Original\n")
         self._write(projection / "design" / "research.md", "# Research\n")
-        config = m.Infra.PlanCollectionConfig(
-            enabled=True,
-            canonical_dir=Path("docs/plans"),
-            projection_root=projection,
-            sources=(
-                m.Infra.PlanCollectionSource(
-                    id="home",
-                    provider="files",
-                    root=projection,
-                    adapter="files",
-                    driver="fixture",
-                    driver_version="1",
-                    plan_globs=("*.md",),
-                    publication="plan-artifacts",
-                ),
-            ),
-        )
+        config = _projection_config(projection)
         initial = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in initial.files:
             assert plan.desired_content is not None

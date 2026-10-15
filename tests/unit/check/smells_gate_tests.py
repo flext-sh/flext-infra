@@ -9,13 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.smells import FlextInfraSmellsGate
-from tests import m, t, u
+from tests import m, t, tm, u
 
 
 @pytest.fixture
@@ -44,10 +43,11 @@ class TestsFlextInfraSmellsGate:
 
         Returns:
             The resulting ``m.ConfigDocument``.
+
         """
         output = tm.ok(u.Cli.run([c.Infra.QLTY_BINARY, "config", "show"], cwd=root))
         path = root / "effective-qlty.yaml"
-        path.write_text(output.stdout, encoding=c.Cli.ENCODING_DEFAULT)
+        path.write_text(output.stdout, encoding=c.DEFAULT_ENCODING)
         return tm.ok(u.Cli.config_load(path, expand_env=False))
 
     @staticmethod
@@ -56,6 +56,7 @@ class TestsFlextInfraSmellsGate:
 
         Returns:
             The resulting ``t.JsonMapping``.
+
         """
         override = u.Cli.json_deep_mapping(
             config.data,
@@ -76,6 +77,7 @@ class TestsFlextInfraSmellsGate:
 
         Returns:
             The resulting ``m.ConfigDocument``.
+
         """
         config = cls._detector_config(root)
         if variation == "current":
@@ -128,6 +130,7 @@ class TestsFlextInfraSmellsGate:
 
         Returns:
             The resulting ``bool``.
+
         """
         language = u.Cli.json_deep_mapping(config.data, "language", "python")
         mode = u.Cli.json_walk_path(language, ("smells", "mode"))
@@ -161,7 +164,7 @@ class TestsFlextInfraSmellsGate:
             )
             (package / name).write_text(
                 f"def {function}(value):\n{body}\n    return value\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
         return (
             language["enabled"] is True
@@ -252,8 +255,8 @@ class TestsFlextInfraSmellsGate:
             / c.Infra.QLTY_CONFIG_FILENAME
         )
         (config_dir / c.Infra.QLTY_CONFIG_FILENAME).write_text(
-            generated_config.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-            encoding=c.Cli.ENCODING_DEFAULT,
+            generated_config.read_text(encoding=c.DEFAULT_ENCODING),
+            encoding=c.DEFAULT_ENCODING,
         )
 
     def test_zero_findings_scan_is_a_pass(
@@ -284,7 +287,7 @@ class TestsFlextInfraSmellsGate:
         )
         (self._package(smells_project) / "wide.py").write_text(
             f"def wide({params}):\n    return p0\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         execution = FlextInfraSmellsGate(tmp_path).check(
@@ -348,7 +351,7 @@ class TestsFlextInfraSmellsGate:
             execution.raw_receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME
         )
         report_text = report_path.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         published = u.Cli.json_as_mapping(tm.ok(u.Cli.json_parse(report_text)))
         native_results = tuple(

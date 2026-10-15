@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import FlextInfraSonarcloudClient, c, config, m, r, t, u
+from flext_infra import c, config, m, r, t, u
+from flext_infra.maintenance.sonarcloud_client import FlextInfraSonarcloudClient
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -134,6 +135,7 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``p.Result[m.Infra.SonarcloudSettingsValues]``.
+
         """
         body = cls.call(
             plan.api_url,
@@ -252,6 +254,7 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``p.Result[t.Pair[t.SecretStr, str]]``.
+
         """
         token_result = self.optional_token()
         if token_result.failure:
@@ -278,6 +281,7 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         authentication = self._authenticate(plan, token)
         if authentication.failure:

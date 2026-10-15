@@ -10,11 +10,8 @@ import shlex
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.check._workspace_check_reports import (
-    FlextInfraWorkspaceCheckReportsMixin,
-)
+from flext_infra import FlextInfraServiceBase, c, config, m, p, r, t, u
+from flext_infra.check import FlextInfraWorkspaceCheckReportsMixin
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.check.workspace_check_gates import FlextInfraWorkspaceCheckGatesMixin
 
@@ -237,11 +234,10 @@ class FlextInfraWorkspaceChecker(
         params: m.Infra.RunCommand,
         selected_files: t.VariadicTuple[Path],
     ) -> p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]:
-        """Resolve the selected projects; an omitted selection is this repository.
+        """Resolve the selected projects from the declared workspace topology.
 
-        Every repository evaluates only itself: an
-        omitted ``--projects`` never widens to the declared members, and a root
-        that is not a project fails loud through the topology owner.
+        An omitted selection covers the root and its first-party members.
+        Standalone repositories resolve their own root through the same owner.
         A literal file selects only its deepest declared project owner.
 
         Returns:
@@ -278,15 +274,12 @@ class FlextInfraWorkspaceChecker(
                     for project_name in requested
                 ),
             )
-        resolved = u.Infra.resolve_projects(params.repository_root, (".",))
-        if resolved.failure:
-            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].from_failure(resolved)
-        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
-            tuple(
-                m.Infra.CheckProjectTarget(name=project.name, path=project.path)
-                for project in resolved.value
+        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok((
+            m.Infra.CheckProjectTarget(
+                name=params.repository_root.name,
+                path=params.repository_root,
             ),
-        )
+        ))
 
     def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project.
@@ -377,6 +370,7 @@ class FlextInfraWorkspaceChecker(
                 "gate context fail_fast disagrees with the requested project policy",
             )
         effective_ctx = effective_ctx.model_copy(update={"reports_dir": report_base})
+        requested_gates = tuple(resolved_gates)
         outcome = self._run_project_loop(
             targets,
             resolved_gates,
@@ -388,6 +382,7 @@ class FlextInfraWorkspaceChecker(
             report_base,
             outcome,
             m.Infra.CheckReportSummary(
+                requested_gates=requested_gates,
                 targets=tuple(
                     m.Infra.CheckProjectTarget(
                         name=target.path.name,

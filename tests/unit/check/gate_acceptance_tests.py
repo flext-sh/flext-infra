@@ -9,18 +9,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraGateRegistry,
-    FlextInfraRuffFormatGate,
-    FlextInfraRuffLintGate,
-    FlextInfraWorkspaceChecker,
-    c,
-    m,
-    p,
-)
-from tests import u
+from flext_infra import c, m, p
+from flext_infra.check import FlextInfraGateRegistry, FlextInfraWorkspaceChecker
+from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -49,7 +42,7 @@ class TestsFlextInfraGateAcceptance:
             params.model_dump_json(),
         )
         boundary: p.Infra.GateExecutionParams = restored
-        tm.that(isinstance(restored, p.Infra.GateExecutionParams), eq=True)
+        tm.that(restored.model_dump(), eq=params.model_dump())
         tm.that(boundary.verdict, eq=verdict)
         tm.that(boundary.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(boundary.raw_output, eq=params.raw_output)

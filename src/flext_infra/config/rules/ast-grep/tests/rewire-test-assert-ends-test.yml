@@ -1,0 +1,10 @@
+id: rewire-test-assert-ends
+valid:
+  - assert name.endswith('.json')
+  - |
+    from tests import tm
+    assert name.endswith('.json'), 'suffixed'
+invalid:
+  - |
+    from tests import tm
+    assert name.endswith('.json')

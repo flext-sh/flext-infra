@@ -9,16 +9,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import (
+from flext_infra import c, config
+from flext_infra.deps import (
     FlextInfraEnsurePyreflyConfigPhase,
     FlextInfraExtraPathsManager,
     FlextInfraPyprojectModernizer,
-    c,
-    config,
 )
-from tests import m, t, u
+from tests import m, t, tm, u
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:
@@ -276,15 +274,11 @@ class TestsFlextInfraModernizerPyrefly:
                 skip_check=True,
             ).resolve_tooling_context(
                 m.Infra.ToolingContextRequest(
+                    planned_sources={},
                     project_name="flext-consumer",
                     package_name="flext_consumer",
                     path=project_dir / c.PYPROJECT_FILENAME,
                     scaffold_project=scaffold_project,
-                    upstream=next(
-                        profile.upstream
-                        for profile in scaffold_project.dependency_profiles
-                        if profile.project is None
-                    ),
                     runtime_dependency_overlay=(),
                     declared_project_dependencies=(),
                     topology=m.Infra.PyprojectDeclaredTopology(

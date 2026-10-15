@@ -35,6 +35,7 @@ class FlextInfraUtilitiesPyproject:
         Returns:
             The absolute executable inside the tool's install root, never a
             PATH shim.
+
         """
         tool = next(
             (
@@ -49,10 +50,20 @@ class FlextInfraUtilitiesPyproject:
         reader = shutil.which(c.Infra.MISE)
         if reader is None:
             return r[Path].fail("Mise executable is absent; run make setup")
+        selector = tool.selector or tool.name
+        requested = FlextInfraUtilitiesPyproject._committed_mise_tool_request(
+            owner_root,
+            selector,
+        )
+        if requested.failure:
+            return r[Path].from_failure(requested)
+        if not requested.value:
+            return r[Path].fail(f"runtime manifest does not declare {selector}")
         return FlextInfraUtilitiesPyproject._managed_mise_path(
             tool.version_probe.binary,
             owner_root,
             Path(reader),
+            f"{selector}@{requested.value[0]}",
         )
 
     @staticmethod
@@ -69,6 +80,7 @@ class FlextInfraUtilitiesPyproject:
 
         Returns:
             The installed self-managed executable, never a tool shim.
+
         """
         selected = shutil.which(c.Infra.MISE)
         if selected is None:
@@ -88,20 +100,21 @@ class FlextInfraUtilitiesPyproject:
     def _qualified_mise_reader(
         reader: Path,
         owner_root: Path,
-        declared: str | None,
+        declared: tuple[str] | tuple[()],
     ) -> p.Result[Path]:
         """Authenticate the reader and its installed release against the lock pin.
 
         Returns:
             The installed self-managed executable, or the physical reader when
             the committed manifest declares no self-managed release.
+
         """
-        if declared is None:
+        if not declared:
             return r[Path].ok(reader.resolve(strict=True))
         return FlextInfraUtilitiesPyproject._locked_mise_version(
             owner_root,
             config.Infra.codegen.toolchain.mise_selector,
-            declared,
+            declared[0],
         ).flat_map(
             lambda pinned: (
                 FlextInfraUtilitiesPyproject
@@ -111,6 +124,7 @@ class FlextInfraUtilitiesPyproject:
                         c.Infra.MISE,
                         owner_root,
                         qualified,
+                        f"{config.Infra.codegen.toolchain.mise_selector}@{pinned}",
                     ),
                 )
                 .flat_map(
@@ -124,7 +138,9 @@ class FlextInfraUtilitiesPyproject:
         )
 
     @staticmethod
-    def _committed_mise_self_release(owner_root: Path) -> p.Result[str | None]:
+    def _committed_mise_self_release(
+        owner_root: Path,
+    ) -> p.Result[tuple[str] | tuple[()]]:
         """Return the self-managed Mise release the committed manifest declares.
 
         The manifest is the ``.mise.toml`` beside the nearest ``mise.lock``.
@@ -132,30 +148,61 @@ class FlextInfraUtilitiesPyproject:
         no self-managed entry, pins no reader release (typed absence).
 
         Returns:
-            The declared release, or None when the tree declares none.
+            One declared release, or an empty tuple when the tree declares none.
+
         """
         lock_path = FlextInfraUtilitiesPyproject._mise_lock_path(owner_root)
         manifest = (
             None if lock_path is None else lock_path.parent / c.Infra.MISE_TOML_FILENAME
         )
         if manifest is None or not manifest.is_file():
-            return r[str | None].ok(None)
+            return r[tuple[str] | tuple[()]].ok(())
+        return FlextInfraUtilitiesPyproject._committed_mise_tool_request(
+            manifest.parent,
+            config.Infra.codegen.toolchain.mise_selector,
+        )
+
+    @staticmethod
+    def _committed_mise_tool_request(
+        owner_root: Path, selector: str
+    ) -> p.Result[tuple[str] | tuple[()]]:
+        """Read the runtime owner's current request, independently of codegen targets.
+
+        Returns:
+            One scalar or table version request, or an empty declaration tuple.
+
+        """
+        manifest = next(
+            (
+                candidate / c.Infra.MISE_TOML_FILENAME
+                for candidate in (owner_root, *owner_root.parents)
+                if (candidate / c.Infra.MISE_TOML_FILENAME).is_file()
+            ),
+            None,
+        )
+        if manifest is None:
+            return r[tuple[str] | tuple[()]].ok(())
         payload = u.Cli.toml_mapping_from_text(
-            manifest.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            manifest.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if payload is None:
-            return r[str | None].fail(f"{manifest} is not valid TOML")
+            return r[tuple[str] | tuple[()]].fail(f"{manifest} is not valid TOML")
         tools = payload.get("tools", {})
         if not isinstance(tools, Mapping):
-            return r[str | None].fail(f"{manifest} has a malformed [tools] table")
-        release = tools.get(config.Infra.codegen.toolchain.mise_selector)
-        if release is None:
-            return r[str | None].ok(None)
-        if not isinstance(release, str) or not release:
-            return r[str | None].fail(
-                f"{manifest} declares a malformed self-managed Mise entry: {release!r}",
+            return r[tuple[str] | tuple[()]].fail(
+                f"{manifest} has a malformed [tools] table",
             )
-        return r[str | None].ok(release)
+        release = tools.get(selector)
+        if release is None:
+            return r[tuple[str] | tuple[()]].ok(())
+        if isinstance(release, Mapping):
+            release = release.get("version")
+        if not isinstance(release, str) or not release:
+            return r[tuple[str] | tuple[()]].fail(
+                f"{manifest} declares a malformed Mise entry for "
+                f"{selector}: {release!r}",
+            )
+        return r[tuple[str] | tuple[()]].ok((release,))
 
     @staticmethod
     def _mise_self_identity(
@@ -165,6 +212,7 @@ class FlextInfraUtilitiesPyproject:
 
         Returns:
             The physical executable matching the committed self pin.
+
         """
         binary = binary.resolve(strict=True)
         identity = u.Cli.run_raw(
@@ -186,9 +234,11 @@ class FlextInfraUtilitiesPyproject:
         return r[Path].ok(binary)
 
     @staticmethod
-    def _managed_mise_path(name: str, owner_root: Path, reader: Path) -> p.Result[Path]:
+    def _managed_mise_path(
+        name: str, owner_root: Path, reader: Path, selector: str
+    ) -> p.Result[Path]:
         located = u.Cli.run_raw(
-            (str(reader), "-C", str(owner_root), "which", name),
+            (str(reader), "-C", str(owner_root), "which", name, "--tool", selector),
             cwd=owner_root,
             timeout=c.Infra.TIMEOUT_SHORT,
         )
@@ -210,7 +260,7 @@ class FlextInfraUtilitiesPyproject:
 
         Unconflicted text is returned unchanged. A conflict is resolved only
         inside owner-declared managed TOML sections
-        (``config.Infra.codegen.managed_files``) via
+        (``config.Infra.codegen.managed_file_specs``) via
         ``FlextInfraUtilitiesManagedConflicts.recover_managed_toml``; a
         conflict outside those sections fails loud through that utility's
         own contract. Read-only: no file is written here.
@@ -246,7 +296,7 @@ class FlextInfraUtilitiesPyproject:
         if content is None:
             return r[str].fail(f"pyproject is absent: {pyproject_path}")
         live = FlextInfraUtilitiesPyproject.recover_live_pyproject_text(
-            content.decode(c.Cli.ENCODING_DEFAULT),
+            content.decode(c.DEFAULT_ENCODING),
         )
         if live.failure or not regenerate_managed_tools:
             return live
@@ -256,45 +306,73 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     def read_project_metadata_result(project_root: Path) -> p.Result[p.ProjectMetadata]:
-        """Read one project's metadata through the canonical owner chain.
-
-        flext-core retired its Result-returning compatibility wrapper; this is
-        the consuming project's typed ingress, keeping every metadata reader on
-        one failure contract instead of three ad-hoc try/except blocks. The
-        declared contract is the canonical structural protocol (the producer
-        builds the exact model behind it), matching every ``p.ProjectMetadata``
-        consumer.
-
-        The document is the live text with managed merge conflicts resolved
-        (``live_pyproject_text``); the file is never written here.
+        """Read retained metadata from the canonical single-document ingress.
 
         Returns:
-            The resulting ``p.Result[p.ProjectMetadata]``.
+            The original structural metadata or its causal ingress failure.
 
         """
+        state = FlextInfraUtilitiesPyproject.read_project_metadata_state(project_root)
+        if state.failure:
+            return r[p.ProjectMetadata].from_failure(state)
+        return r[p.ProjectMetadata].ok(state.value.metadata)
+
+    @staticmethod
+    def read_project_metadata_state(
+        project_root: Path,
+    ) -> p.Result[m.Infra.ProjectMetadataState]:
+        """Parse metadata and packaging declarations without importing source exports.
+
+        Returns:
+            Retained typed metadata and packaging facts from one live TOML read.
+
+        """
+        result_type = r[m.Infra.ProjectMetadataState]
         live = FlextInfraUtilitiesPyproject.live_pyproject_text(
             project_root / c.PYPROJECT_FILENAME,
         )
         if live.failure:
-            return r[p.ProjectMetadata].from_failure(live)
+            return result_type.from_failure(live)
         # The facade returns None for unparseable text rather than raising, so
         # the invalid case is named here instead of reaching model_validate as
         # a None that fails with a shape error about the wrong subject.
         payload = u.Cli.toml_mapping_from_text(live.value)
         if payload is None:
-            return r[p.ProjectMetadata].fail(
+            return result_type.fail(
                 f"cannot read project metadata from {project_root}: "
                 f"{c.PYPROJECT_FILENAME} is not valid TOML",
             )
         try:
             document = u.PyprojectDocument.model_validate(payload)
+            packaging = m.Infra.ProjectPackagingDeclaration.model_validate(payload)
             metadata = u.build_project_metadata(project_root, document)
         except (OSError, ValueError) as exc:
-            return r[p.ProjectMetadata].fail(
+            return result_type.fail(
                 f"cannot read project metadata from {project_root}: {exc}",
                 exception=exc,
             )
-        return r[p.ProjectMetadata].ok(metadata)
+        return result_type.ok(
+            m.Infra.ProjectMetadataState(metadata=metadata, packaging=packaging),
+        )
+
+    @staticmethod
+    def project_package_participation(
+        declaration: m.Infra.ProjectPackagingDeclaration,
+    ) -> bool:
+        """Apply native project defaults without consulting directories or exports.
+
+        Args:
+            declaration: Packaging declaration read from the project payload.
+
+        Returns:
+            Whether the project participates in packaging under native defaults.
+
+        """
+        return (
+            declaration.build_backend is not None
+            if declaration.uv_package is None
+            else declaration.uv_package
+        )
 
     @staticmethod
     def validate_infra_payload(payload: p.AttributeProbe) -> t.JsonMapping:
@@ -384,7 +462,7 @@ class FlextInfraUtilitiesPyproject:
             command,
             cwd=execution_root,
             options=m.Cli.ProcessOptions(
-                input_data=source.encode(c.Cli.ENCODING_DEFAULT),
+                input_data=source.encode(c.DEFAULT_ENCODING),
             ),
             timeout=process_timeout_seconds,
         )
@@ -394,14 +472,14 @@ class FlextInfraUtilitiesPyproject:
         if not u.Cli.process_succeeded(output.outcome):
             detail = (
                 (output.stderr or output.stdout)
-                .decode(c.Cli.ENCODING_DEFAULT, errors="backslashreplace")
+                .decode(c.DEFAULT_ENCODING, errors="backslashreplace")
                 .strip()
             )
             return r[str].fail(
                 f"taplo format failed ({output.outcome.raw_return_code}): {detail}",
             )
         try:
-            formatted = output.stdout.decode(c.Cli.ENCODING_DEFAULT)
+            formatted = output.stdout.decode(c.DEFAULT_ENCODING)
         except UnicodeDecodeError as exc:
             return r[str].fail(
                 f"taplo format returned non-UTF-8 output: {exc}",
@@ -495,7 +573,7 @@ class FlextInfraUtilitiesPyproject:
 
         """
         payload = u.Cli.toml_mapping_from_text(
-            lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            lock_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if payload is None:
             return r[t.SequenceOf[t.JsonValue]].fail(f"{lock_path} is not valid TOML")
@@ -702,6 +780,8 @@ class FlextInfraUtilitiesPyproject:
         project_root: Path,
         payload: t.JsonMapping,
         docs_meta: t.JsonMapping,
+        *,
+        source_paths: t.SequenceOf[Path] | None = None,
     ) -> str:
         """Return the primary package name using pre-loaded pyproject payload.
 
@@ -718,7 +798,19 @@ class FlextInfraUtilitiesPyproject:
         wheel_package = FlextInfraUtilitiesPyproject._hatch_wheel_package(payload)
         if wheel_package is not None:
             return wheel_package
-        source_package = FlextInfraUtilitiesPyproject._src_dir_package(project_root)
+        source_package = (
+            next(
+                (
+                    path.parent.name
+                    for path in sorted(source_paths)
+                    if path.name == c.Infra.INIT_PY
+                    and path.parent.parent == project_root / c.Infra.DEFAULT_SRC_DIR
+                ),
+                None,
+            )
+            if source_paths is not None
+            else FlextInfraUtilitiesPyproject._src_dir_package(project_root)
+        )
         if source_package is not None:
             return source_package
         project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(

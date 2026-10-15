@@ -14,14 +14,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import (
-    FlextInfraCodegenFileLeases,
-    FlextInfraWorkspaceDetector,
-    c,
-    config,
-    m,
-    u,
-)
+from flext_infra import c, config, m, u
+from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -195,7 +190,7 @@ class FlextInfraGate:
         return self._parsed_gate_execution(project_dir, ctx, result, started)
 
     @classmethod
-    def _resolve_binary(cls) -> str | None:
+    def resolve_binary(cls) -> str | None:
         """Locate the provisioned scanner on PATH; None when absent.
 
         Returns:
@@ -454,9 +449,10 @@ class FlextInfraGate:
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from its native outcome and findings.
 
-        Native outcome and acceptance are separate: residual findings block
-        acceptance without being relabeled as machinery failures, so only a
-        clean outcome with no finding passes.
+        Native outcome and acceptance are separate. A repair breaks only on an
+        error; the findings it leaves keep the ``FINDINGS`` outcome and stay
+        reported for ``check``, whose verdict enforces them (tracker memory
+        ``operator-ruling-2026-10-10-fix-residual-verdict``).
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -806,7 +802,7 @@ class FlextInfraGate:
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
-                verdict=outcome is c.Infra.ToolOutcome.CLEAN and not issues,
+                verdict=outcome is not c.Infra.ToolOutcome.ERROR,
                 outcome=outcome,
                 issues=tuple(issues),
                 raw_output=self._raw_output(result),

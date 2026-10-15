@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from importlib import util as importlib_util
+from importlib.machinery import PathFinder
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -207,24 +207,31 @@ class FlextInfraUtilitiesDiscovery(
         return cls._discover_package_from_path(str(file_path))
 
     @staticmethod
-    def declared_package_dir(package_name: str) -> Path | None:
-        """Return the package directory the active environment declares for a name.
-
-        One rule, no alternative source (R32): a name outside the repository
-        index is read from the environment the checkout declares (an editable
-        workspace member or the pinned distribution — `find_spec`, no import
-        executed). ``None`` is the typed absence: the name is not a package
-        in this environment (absent, or a plain module). A caller that
-        REQUIRES the package — a declared facade parent — raises.
+    def declared_package_dir(
+        package_name: str,
+        *,
+        search_paths: t.StrSequence | None = None,
+    ) -> Path | None:
+        """Elect the physical import path without trusting cached module origins.
 
         Returns:
-            The package directory the active environment declares for a name.
+            The unique package directory, or None for an absent name/plain module.
+
+        Raises:
+            ValueError: If the declared package has ambiguous physical origins.
 
         """
-        spec = importlib_util.find_spec(package_name)
-        if spec is None or not spec.submodule_search_locations:
-            return None
-        return Path(next(iter(spec.submodule_search_locations)))
+        locations = search_paths
+        components = package_name.split(".")
+        for index in range(len(components)):
+            spec = PathFinder.find_spec(".".join(components[: index + 1]), locations)
+            if spec is None or not spec.submodule_search_locations:
+                return None
+            locations = spec.submodule_search_locations
+        if locations is None or len(locations) != 1:
+            msg = f"declared package has ambiguous physical origins: {package_name}"
+            raise ValueError(msg)
+        return Path(locations[0])
 
     @classmethod
     def discover_python_dirs(

@@ -159,10 +159,12 @@ class FlextInfraUtilitiesCodegenPathCutover:
         for pattern, goal in transformations:
             changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
                 project,
-                pattern,
-                goal,
-                arguments={"files": owner},
-                resources=resources,
+                m.Infra.RopeRestructureRequest(
+                    pattern=pattern,
+                    goal=goal,
+                    arguments={"files": owner},
+                    resources=resources,
+                ),
             )
             edits = cls._content_edits(changes, sources, selected)
             if edits:

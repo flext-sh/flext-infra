@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraGateRegistry, c, m
-from tests import u
+from flext_infra import c, m
+from flext_infra.check import FlextInfraGateRegistry
+from tests import tm, u
 
 
 class TestsFlextInfraConflictMarkerGate:
@@ -36,7 +36,12 @@ class TestsFlextInfraConflictMarkerGate:
         root = TestsFlextInfraConflictMarkerGate._root(tmp_path)
         kind, token = control
         source = root / "unpublished.txt"
-        content = f"ordinary source\n{token} native conflict\n"
+        marker = (
+            token
+            if kind == c.Infra.MergeConflictControl.SEPARATOR
+            else f"{token}native conflict"
+        )
+        content = f"ordinary source\n{marker}\n"
         source.write_text(content, encoding="utf-8")
         gate = tm.not_none(
             FlextInfraGateRegistry.default().create(c.Infra.CONFLICT_MARKERS, root)
@@ -51,6 +56,31 @@ class TestsFlextInfraConflictMarkerGate:
         tm.that(result.issues[0].line, eq=2)
         tm.that(result.issues[0].code, eq=f"{c.Infra.CONFLICT_MARKERS}-{kind}")
         tm.that(source.read_text(encoding="utf-8"), eq=content)
+
+    @staticmethod
+    def test_decorative_separator_is_not_a_git_conflict(tmp_path: Path) -> None:
+        """Long equals lines remain ordinary source through the public gate."""
+        root = TestsFlextInfraConflictMarkerGate._root(tmp_path)
+        separator = next(
+            token
+            for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
+            if kind == c.Infra.MergeConflictControl.SEPARATOR
+        )
+        content = f"{separator}=\n{separator} section\n"
+        (root / "sections.txt").write_text(content, encoding="utf-8")
+        tm.that(u.Infra.first_merge_conflict_marker(content), eq=None)
+        tm.that(
+            u.Infra.first_merge_conflict_marker(f"{content}{separator}\n"),
+            eq=separator,
+        )
+        gate = tm.not_none(
+            FlextInfraGateRegistry.default().create(c.Infra.CONFLICT_MARKERS, root)
+        )
+        result = gate.check(
+            root, m.Infra.GateContext(repository_root=root, reports_dir=root)
+        )
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.issues, eq=())
 
     @staticmethod
     def test_binary_and_literal_symlink_are_not_followed(tmp_path: Path) -> None:

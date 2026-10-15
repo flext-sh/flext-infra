@@ -8,21 +8,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraEnsurePyrightConfigPhase,
-    FlextInfraExtraPathsManager,
-    c,
-    config,
-    m,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, config, m, r, t, u
+from flext_infra.deps._modernizer.document import RenderPolicy
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import p
+    from flext_infra.deps._modernizer.document import RenderPolicySpec
 
 
 class FlextInfraPyprojectModernizerTooling:
@@ -42,8 +38,8 @@ class FlextInfraPyprojectModernizerTooling:
             project_kind: str | None,
         ) -> str: ...
 
+        @staticmethod
         def _read_document_state(
-            self,
             path: Path,
             *,
             source: str | None = None,
@@ -62,9 +58,7 @@ class FlextInfraPyprojectModernizerTooling:
             state: m.Infra.PyprojectDocumentState,
             changes: t.StrSequence,
             *,
-            dry_run: bool,
-            skip_comments: bool,
-            format_source: bool = True,
+            policy: RenderPolicySpec,
         ) -> p.Result[t.StrSequence]: ...
 
     def conform_source(
@@ -103,9 +97,11 @@ class FlextInfraPyprojectModernizerTooling:
                 canonical_dev=canonical_dev.value,
                 topology=topology,
             ),
-            dry_run=True,
-            skip_comments=False,
-            format_source=format_source,
+            policy=RenderPolicy(
+                dry_run=True,
+                skip_comments=False,
+                format_source=format_source,
+            ),
         )
         if rendered.failure:
             return r[str].from_failure(rendered)
@@ -130,7 +126,6 @@ class FlextInfraPyprojectModernizerTooling:
             (
                 request.runtime_dependency_overlay,
                 request.declared_project_dependencies,
-                request.upstream,
             ),
         )
         if conformed.failure:
@@ -195,6 +190,12 @@ class FlextInfraPyprojectModernizerTooling:
                     request.topology.project_kind,
                 ),
                 "first_party": tools.first_party,
+                "deptry_first_party": tuple(
+                    FlextInfraToolTablesPhase.deptry_first_party_namespaces(
+                        path=project_dir,
+                        planned_sources=tuple(request.planned_sources),
+                    ),
+                ),
                 "mypy_path": (
                     derived_mypy_path
                     if declared_roots
@@ -204,7 +205,7 @@ class FlextInfraPyprojectModernizerTooling:
                 # its planned sources before its final pyproject render.
                 "mypy_facade_rebind_modules": u.Infra.facade_rebind_modules(
                     project_dir,
-                    {},
+                    request.planned_sources,
                 ),
                 "mypy_generated_source_modules": tuple(
                     pattern
@@ -214,7 +215,7 @@ class FlextInfraPyprojectModernizerTooling:
                 "ruff_runtime_evaluated_base_classes": (
                     u.Infra.runtime_evaluated_base_classes(
                         project_dir,
-                        {},
+                        request.planned_sources,
                         config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
                     )
                 ),
@@ -299,7 +300,7 @@ class FlextInfraPyprojectModernizerTooling:
         topology: m.Infra.PyprojectDeclaredTopology,
         scaffold_project: m.Infra.ScaffoldProjectSpec,
         names: t.Pair[t.NonEmptyStr, t.NonEmptyStr],
-        overlays: t.Triple[t.StrSequence, t.StrSequence, t.NonEmptyStr],
+        overlays: t.Pair[t.StrSequence, t.StrSequence],
     ) -> p.Result[t.Pair[m.Infra.ToolingConformedTools, t.MappingKV[str, t.JsonValue]]]:
         """Conform a seeded document and validate its derived tool tables.
 
@@ -308,39 +309,35 @@ class FlextInfraPyprojectModernizerTooling:
 
         """
         project_name, package_name = names
-        runtime_dependency_overlay, declared_project_dependencies, upstream = overlays
+        runtime_dependency_overlay, declared_project_dependencies = overlays
         result_type = r[
             t.Pair[m.Infra.ToolingConformedTools, t.MappingKV[str, t.JsonValue]]
         ]
-        profile = u.Infra.composed_dependency_profile(
-            scaffold_project.dependency_profiles,
-            upstream=upstream,
-            distribution=project_name,
-        )
-        if profile is None:
-            return result_type.fail(f"unsupported scaffold upstream: {upstream}")
+        declaration = u.Infra.load_repository_declaration_inputs(path.parent)
+        if declaration.failure:
+            return result_type.from_failure(declaration)
         live_dev_result = self._live_dev_dependencies(path)
         if live_dev_result.failure:
             return result_type.from_failure(live_dev_result)
         live_dev = live_dev_result.value
-        # Seed the declared dependency families before Ruff derives its
-        # first-party sections. The template emits the profile/config rows and
-        # preserves live project dependencies, so docs and tool tables agree.
+        # Seed only the target's requirements before deriving analyzer ownership.
         seed: t.JsonMapping = {
             c.Infra.PROJECT: {
                 c.Infra.NAME: project_name,
                 c.Infra.DEPENDENCIES: [
                     *declared_project_dependencies,
                     *runtime_dependency_overlay,
-                    *(item for item in profile.runtime if item != project_name),
                 ],
             },
             c.Infra.DEPENDENCY_GROUPS: {
-                "codegen": [item for item in profile.codegen if item != project_name],
-                c.Infra.DEV: [
-                    *(item for item in scaffold_project.dev if item != project_name),
-                    *live_dev,
-                ],
+                c.Infra.DEV: list(
+                    u.Infra.project_development_requirements(
+                        scaffold_project,
+                        distribution=project_name,
+                        kind=declaration.value.spec.kind,
+                        declared=live_dev,
+                    )
+                ),
             },
             c.Infra.TOOL: {"flext": {"docs": {"package_name": package_name}}},
         }

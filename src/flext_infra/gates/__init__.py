@@ -10,12 +10,13 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.base_gate import FlextInfraGate
     from flext_infra.gates.conflict_markers import FlextInfraConflictMarkersGate
+    from flext_infra.gates.deps import FlextInfraDepsGate
     from flext_infra.gates.direnv import FlextInfraDirenvGate
     from flext_infra.gates.duplication import FlextInfraDuplicationGate
     from flext_infra.gates.fresh_import import FlextInfraFreshImportGate
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraBanditGate",
     "FlextInfraConflictMarkersGate",
+    "FlextInfraDepsGate",
     "FlextInfraDirenvGate",
     "FlextInfraDuplicationGate",
     "FlextInfraFreshImportGate",
@@ -68,6 +70,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraBanditGate": ".bandit",
         "FlextInfraConflictMarkersGate": ".conflict_markers",
+        "FlextInfraDepsGate": ".deps",
         "FlextInfraDirenvGate": ".direnv",
         "FlextInfraDuplicationGate": ".duplication",
         "FlextInfraFreshImportGate": ".fresh_import",

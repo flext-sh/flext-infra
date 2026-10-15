@@ -9,13 +9,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
 from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -277,13 +276,13 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         *,
         unformatted: bool,
     ) -> None:
-        """A completed formatter does not approve docstrings it cannot write back."""
+        """A completed formatter reports docstrings it cannot write back for check."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-fix-docstring")
         source_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
         source_dir.mkdir()
         source = source_dir / "widget.py"
         example = "x=1" if unformatted else "x = 1"
-        original = f'\"\"\"Widget.\n\n>>> {example}\n\n\"\"\"'
+        original = f'"""Widget.\n\n>>> {example}\n\n"""'
         source.write_text(original, encoding="utf-8")
         u.Tests.initialize_git_repo(project_dir)
         result = FlextInfraMarkdownCodeGate(tmp_path).fix(
@@ -294,6 +293,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
                 apply_fixes=True,
             ),
         )
+        # An unwritable docstring remains a blocking finding after repair.
         tm.that(result.result.passed, eq=not unformatted)
         tm.that(
             result.outcome,

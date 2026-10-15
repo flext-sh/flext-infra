@@ -9,6 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
+
 from flext_tests import FlextTestsTypes
 
 from flext_infra import FlextInfraTypes
@@ -19,6 +22,14 @@ class TestsFlextInfraTypes(FlextTestsTypes, FlextInfraTypes):
 
     class Tests(FlextTestsTypes.Tests):
         """Tests use inherited flext-tests and production typing contracts."""
+
+        type SourceCandidate = Callable[
+            [
+                FlextInfraTypes.MappingKV[Path, str],
+                FlextInfraTypes.VariadicTuple[Path],
+            ],
+            FlextInfraTypes.MappingKV[Path, str],
+        ]
 
 
 t = TestsFlextInfraTypes

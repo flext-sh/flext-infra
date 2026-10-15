@@ -8,14 +8,223 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+import pytest
 
+from flext_infra import config
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDetectorOwnsNoProjectRegistry:
     """Prove derivation never consults a flext-infra-owned project catalog."""
+
+    @pytest.mark.parametrize(
+        ("path", "managed"),
+        [
+            (Path(), True),
+            (Path("/outside"), True),
+            (Path("..") / "outside", True),
+            (Path("member"), False),
+        ],
+    )
+    def test_pending_declarations_cannot_escape_or_exclude_the_workspace(
+        self,
+        path: Path,
+        *,
+        managed: bool,
+    ) -> None:
+        """The public payload rejects invalid pending topology before effects."""
+        repository = u.Tests.repository_ref("pending-owner")
+        declaration = m.Infra.GitSubmoduleDeclaration(
+            path=path,
+            url=repository.url,
+            branch=c.Infra.FOLLOW_SUPERPROJECT_BRANCH,
+            managed=managed,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="pending subprojects require managed workspace-relative paths",
+        ):
+            m.Infra.WorkspaceSpec(
+                name=repository.name,
+                repository=repository,
+                pending_subprojects=(declaration,),
+            )
+
+    @pytest.mark.parametrize("directory_exists", [False, True])
+    def test_missing_managed_checkout_retains_only_its_git_declaration(
+        self,
+        tmp_path: Path,
+        *,
+        directory_exists: bool,
+    ) -> None:
+        """Setup sees a pending participant; strict discovery retains its cause."""
+        root = u.Tests.WorktreeFixture.self_named_project(
+            tmp_path / "pending-workspace",
+            "pending-workspace",
+        )
+        relative = Path("nested") / "unprovisioned"
+        repository = u.Tests.repository_ref(relative.name)
+        branch = config.Infra.codegen.branch_policy.integration_branch
+        tm.ok(
+            u.Cli.files_write_text(
+                root / c.Infra.GITMODULES,
+                f'[submodule "{relative.as_posix()}"]\n'
+                f"    path = {relative.as_posix()}\n"
+                f"    url = {repository.url}\n"
+                f"    branch = {branch}\n",
+            ),
+        )
+        declaration = m.Infra.RepositoryDeltaSpec(
+            integration=m.Infra.WorkspaceIntegrationSpec(
+                provider=repository.provider,
+                branch=branch,
+            ),
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": declaration.model_dump(
+                                mode="json",
+                                exclude_none=True,
+                                exclude_defaults=True,
+                            ),
+                        },
+                    },
+                },
+            ),
+        )
+        if directory_exists:
+            (root / relative).mkdir(parents=True)
+
+        strict = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        pending = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(
+                root,
+                allow_unprovisioned_members=True,
+            ),
+        )
+        declarations = tm.ok(u.Infra.git_submodule_declarations(root))
+
+        tm.that(strict.failure, eq=True)
+        tm.that(isinstance(strict.exception, FileNotFoundError), eq=True)
+        tm.that(pending.pending_subprojects, eq=declarations)
+        tm.that(pending.subprojects, empty=True)
+        tm.that(pending.external_dependency_paths, empty=True)
+        tm.that(pending.repository.role, eq=c.Infra.MakeProfile.WORKSPACE)
+
+    @pytest.mark.parametrize(
+        ("value", "managed"),
+        [("yes", True), ("on", True), ("off", False), ("0", False)],
+    )
+    def test_management_values_follow_native_git_boolean_grammar(
+        self,
+        tmp_path: Path,
+        value: str,
+        *,
+        managed: bool,
+    ) -> None:
+        """Git's supported boolean spellings retain their native meanings."""
+        root = u.Tests.WorktreeFixture.self_named_project(
+            tmp_path / "native-boolean",
+            "native-boolean",
+        )
+        repository = u.Tests.repository_ref("member")
+        tm.ok(
+            u.Cli.files_write_text(
+                root / c.Infra.GITMODULES,
+                '[submodule "member"]\n'
+                "    path = member\n"
+                f"    url = {repository.url}\n"
+                f"    flext-managed = {value}\n",
+            ),
+        )
+
+        declarations = tm.ok(u.Infra.git_submodule_declarations(root))
+
+        tm.that(declarations[0].managed, eq=managed)
+
+    def test_malformed_management_flag_preserves_the_native_failure(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Invalid management input cannot silently exclude a repository."""
+        root = u.Tests.WorktreeFixture.self_named_project(
+            tmp_path / "invalid-boolean",
+            "invalid-boolean",
+        )
+        repository = u.Tests.repository_ref("member")
+        tm.ok(
+            u.Cli.files_write_text(
+                root / c.Infra.GITMODULES,
+                '[submodule "member"]\n'
+                "    path = member\n"
+                f"    url = {repository.url}\n"
+                "    flext-managed = invalid-boolean\n",
+            ),
+        )
+
+        declarations = u.Infra.git_submodule_declarations(root)
+
+        tm.that(declarations.failure, eq=True)
+        tm.that(declarations.exception is not None, eq=True)
+
+    def test_changed_git_participation_is_observed_without_a_catalog(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A changed Git declaration updates discovery in the same process."""
+        root = u.Tests.WorktreeFixture.self_named_project(
+            tmp_path / "declaration-owner",
+            "declaration-owner",
+        )
+        relative = Path("external") / "library"
+        member = u.Tests.WorktreeFixture.self_named_project(
+            root / relative,
+            relative.name,
+        )
+        repository = u.Tests.repository_ref(relative.name)
+        branch = config.Infra.codegen.branch_policy.integration_branch
+        declaration = (
+            f'[submodule "{relative.as_posix()}"]\n'
+            f"    path = {relative.as_posix()}\n"
+            f"    url = {repository.url}\n"
+            f"    branch = {branch}\n"
+            "    flext-managed = false\n"
+        )
+        modules = root / c.Infra.GITMODULES
+        tm.ok(u.Cli.files_write_text(modules, declaration))
+
+        excluded = u.Infra.repository_nonparticipant_paths(root)
+        targets = tm.ok(
+            u.Infra.repository_operation_targets(
+                root,
+                c.Infra.CodegenConformScope.ALL,
+            ),
+        )
+
+        tm.that(excluded, eq=frozenset({relative.as_posix()}))
+        tm.that(member in u.Infra.discover_project_candidates(root), eq=False)
+        tm.that(member in u.Infra.discover_rope_project_roots(root), eq=False)
+        tm.that(u.Infra.import_project_roots(member), eq=(root, member))
+        tm.that(tuple(target.root for target in targets), eq=(root, root / relative))
+        tm.ok(
+            u.Cli.files_write_text(
+                modules,
+                declaration.replace(
+                    "flext-managed = false",
+                    "flext-managed = true",
+                ),
+            ),
+        )
+        tm.that(u.Infra.repository_nonparticipant_paths(root), empty=True)
+        tm.that(member in u.Infra.discover_project_candidates(root), eq=True)
+        tm.that(member in u.Infra.discover_rope_project_roots(root), eq=True)
+        tm.that(u.Infra.import_project_roots(member), eq=(root, member))
 
     def test_unknown_project_derives_its_own_identity(self, tmp_path: Path) -> None:
         """A repository absent from any catalog still derives from itself."""

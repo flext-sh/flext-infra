@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
@@ -24,8 +24,12 @@ if TYPE_CHECKING:
         FlextInfraWorkspaceEnvironmentProvenance,
     )
     from flext_infra.workspace.fleet_gaps import FlextInfraWorkspaceFleetGaps
+    from flext_infra.workspace.fleet_verbs import FlextInfraWorkspaceFleetVerbs
     from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
     from flext_infra.workspace.lifecycle import FlextInfraWorkspaceLifecycle
+    from flext_infra.workspace.lock_completeness import (
+        FlextInfraWorkspaceLockCompleteness,
+    )
     from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
@@ -39,8 +43,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceFleetGaps",
+    "FlextInfraWorkspaceFleetVerbs",
     "FlextInfraWorkspaceGovernanceMixin",
     "FlextInfraWorkspaceLifecycle",
+    "FlextInfraWorkspaceLockCompleteness",
     "FlextInfraWorkspacePropagation",
 )
 
@@ -56,8 +62,10 @@ install_lazy_exports(
         "FlextInfraWorkspaceEnvironmentMixin": ".environment",
         "FlextInfraWorkspaceEnvironmentProvenance": ".environment_provenance",
         "FlextInfraWorkspaceFleetGaps": ".fleet_gaps",
+        "FlextInfraWorkspaceFleetVerbs": ".fleet_verbs",
         "FlextInfraWorkspaceGovernanceMixin": "._governance",
         "FlextInfraWorkspaceLifecycle": ".lifecycle",
+        "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",
         "FlextInfraWorkspacePropagation": ".propagation",
     }),
     public_exports=__all__,

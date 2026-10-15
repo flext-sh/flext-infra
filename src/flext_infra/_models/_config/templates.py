@@ -6,19 +6,111 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
+from typing_extensions import TypeForm
 
-from flext_infra import t
-from flext_infra._constants import FlextInfraConstantsCodegenProject
+from flext_infra import c, t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 
 
 class FlextInfraConfigModelsTemplates:
     """Managed file and template entry specification models."""
+
+    class CodegenVscodeSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed editor declarations shared by target and artifact planning."""
+
+        scalar_settings: Annotated[
+            Mapping[str, str | bool | int],
+            m.Field(description="VS Code scalar keys enforced on every project"),
+        ]
+        list_settings: Annotated[
+            Mapping[str, t.VariadicTuple[str]],
+            m.Field(description="VS Code list keys enforced on every project"),
+        ]
+        map_union_settings: Annotated[
+            Mapping[str, Mapping[str, str | bool | int]],
+            m.Field(description="VS Code map keys union-merged over project settings"),
+        ]
+        additional_settings: Annotated[
+            t.JsonMapping,
+            m.Field(description="Portable project-owned extension declarations"),
+        ] = m.Field(default_factory=m.empty(TypeForm(t.JsonMapping)))
+        stripped_keys: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "VS Code keys actively stripped from the settings projection "
+                    "because they conflict with a pyrightconfig.json/pyproject.toml "
+                    "owner (Pylance settingsNotOverridable)."
+                ),
+            ),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _validate_setting_ownership(self) -> Self:
+            """Reject extension declarations that compete with managed ownership.
+
+            Returns:
+                The editor specification with one owner per setting.
+
+            Raises:
+                ValueError: If an additional setting redeclares a managed key.
+
+            """
+            managed = (
+                set(self.scalar_settings)
+                | set(self.list_settings)
+                | set(self.map_union_settings)
+                | set(self.stripped_keys)
+            )
+            conflicting = managed.intersection(self.additional_settings)
+            if conflicting:
+                msg = "additional editor settings duplicate managed keys: " + ", ".join(
+                    sorted(conflicting),
+                )
+                raise ValueError(msg)
+            return self
+
+    class CodegenVscodeDeclarationDelta(
+        FlextInfraConfigModelsContract.ConfigContract,
+    ):
+        """Portable editor overrides extracted from one captured document."""
+
+        values: Annotated[
+            t.JsonMapping,
+            m.Field(
+                description="Minimal typed codegen.vscode declaration overrides",
+            ),
+        ]
+
+    class CodegenLayerProjection(FlextInfraConfigModelsContract.ConfigContract):
+        """An owned declaration delta projected into one elected config layer."""
+
+        path: Annotated[Path, m.Field(description="Exact target config layer")]
+        values: Annotated[
+            t.JsonMapping,
+            m.Field(description="JSON-compatible declaration fragment"),
+        ]
+
+    class ConfigDocumentInputs(FlextInfraConfigModelsContract.ConfigContract):
+        """One composed F.yaml document with its consulted physical sources."""
+
+        values: Annotated[
+            t.JsonMapping,
+            m.Field(description="Strictly parsed and ordered configuration document"),
+        ]
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                exclude=True,
+                description="Exact physical files consulted by this document",
+            ),
+        ] = ()
 
     class TemplateEntrySpec(FlextInfraConfigModelsContract.ConfigContract):
         """One scaffold artifact and its typed rendering owner."""
@@ -32,11 +124,11 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="Tokenized repository-relative destination"),
         ]
         profiles: Annotated[
-            t.VariadicTuple[FlextInfraConstantsCodegenProject.MakeProfile],
+            t.VariadicTuple[c.Infra.MakeProfile],
             m.Field(description="Profiles that consume the template"),
         ]
         delegate: Annotated[
-            FlextInfraConstantsCodegenProject.TemplateDelegate,
+            c.Infra.TemplateDelegate,
             m.Field(description="Canonical rendering delegate"),
         ]
         requires_release_protocol: Annotated[
@@ -66,10 +158,7 @@ class FlextInfraConfigModelsTemplates:
                     manifest delegate must not declare a template source.
 
             """
-            if (
-                self.delegate
-                == FlextInfraConstantsCodegenProject.TemplateDelegate.RENDER
-            ):
+            if self.delegate == c.Infra.TemplateDelegate.RENDER:
                 if self.source is None:
                     msg = "render delegate requires a template source"
                     raise ValueError(msg)
@@ -88,10 +177,20 @@ class FlextInfraConfigModelsTemplates:
         ]
 
     class ManagedFileSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One versioned file governed by codegen lifecycle policy."""
+        """One declared file governed by generation and tracking policy."""
 
         path: Annotated[Path, m.Field(description="Repository-relative file path")]
         owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical owner")]
+        tracking: Annotated[
+            Literal["versioned", "runtime-local"],
+            m.Field(description="Versioned declaration or checkout-local projection"),
+        ] = "versioned"
+        runtime_binding: Annotated[
+            bool,
+            m.Field(
+                description="Project this local artifact during runtime provisioning",
+            ),
+        ] = False
         policy: Annotated[
             Literal["full", "merge"],
             m.Field(
@@ -142,6 +241,29 @@ class FlextInfraConfigModelsTemplates:
             ),
         ] = ()
 
+        @m.model_validator(mode="after")
+        def _validate_runtime_tracking(self) -> Self:
+            """Confine local projections and require local tracking for bindings.
+
+            Returns:
+                The validated artifact declaration.
+
+            Raises:
+                ValueError: If a path escapes its repository or a binding is versioned.
+
+            """
+            if (
+                self.path.is_absolute()
+                or ".." in self.path.parts
+                or self.path == Path()
+            ):
+                msg = f"managed artifact path must be repository-relative: {self.path}"
+                raise ValueError(msg)
+            if self.runtime_binding and self.tracking != "runtime-local":
+                msg = f"runtime binding must be runtime-local: {self.path}"
+                raise ValueError(msg)
+            return self
+
         @m.computed_field
         @property
         def managed_tool_tables(self) -> t.VariadicTuple[str]:
@@ -149,6 +271,7 @@ class FlextInfraConfigModelsTemplates:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return tuple(
                 dict.fromkeys(

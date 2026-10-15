@@ -29,6 +29,7 @@ class FlextInfraConstantsBase(
         """Canonical pyproject dependency-group names."""
 
         DEV = "dev"
+        CODEGEN = "codegen"
         DOCS = "docs"
         SECURITY = "security"
         TEST = "test"
@@ -57,8 +58,6 @@ class FlextInfraConstantsBase(
     "Dependencies key within project or poetry sections."
     DYNAMIC: ClassVar[str] = "dynamic"
     "PEP 621 [project] key listing fields a build backend supplies."
-    DEPENDENCY_GROUPS: ClassVar[str] = "dependency-groups"
-    "PEP 735 dependency-groups table key."
     OPTIONAL_DEPENDENCIES: ClassVar[str] = "optional-dependencies"
     "Optional dependencies key within [project]."
     GROUP: ClassVar[str] = "group"
@@ -242,8 +241,6 @@ class FlextInfraConstantsBase(
         "--require-hashes",
     )
     "Fail-closed isolated build of one release artifact from staged source."
-    GATE_ATTESTATION_SCHEMA: ClassVar[str] = "https://flext.sh/attestations/gates/v1"
-    "Canonical schema identifier for signed gate attestations."
     UV_HTTP_CONNECT_TIMEOUT: ClassVar[str] = "UV_HTTP_CONNECT_TIMEOUT"
     "uv HTTP connection timeout environment key."
     UV_HTTP_TIMEOUT: ClassVar[str] = "UV_HTTP_TIMEOUT"
@@ -324,6 +321,7 @@ class FlextInfraConstantsBase(
 
         WRITE = "write"
         REMOVE = "remove"
+        RETAIN = "retain"
         SKIP = "skip"
 
     @unique

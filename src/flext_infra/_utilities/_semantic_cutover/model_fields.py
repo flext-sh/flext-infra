@@ -62,7 +62,9 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         context = CodemodContext()
         AddImportsVisitor.add_needed_import(context, "flext_core", "u")
         updated = (
-            cst.parse_module("".join(lines)).visit(AddImportsVisitor(context)).code
+            AddImportsVisitor(context)
+            .transform_module(cst.parse_module("".join(lines)))
+            .code
         )
         return updated, ("narrowed untrusted model-class boundaries",)
 

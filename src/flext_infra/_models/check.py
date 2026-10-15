@@ -125,8 +125,6 @@ class FlextInfraModelsCheck:
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
         memory_limit_mb: Annotated[
             int,
             m.Field(
@@ -154,6 +152,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``int``.
+
             """
             return self.memory_limit_mb * c.Infra.BYTES_PER_MIB
 
@@ -240,6 +239,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``t.JsonMapping``.
+
             """
             region: t.JsonDict = {}
             if self.start_line is not None:
@@ -303,6 +303,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``str``.
+
             """
             code_part = f"[{self.code}] " if self.code else ""
             return (
@@ -336,26 +337,6 @@ class FlextInfraModelsCheck:
         raw_output: str = m.Field(description="Unmodified native output")
         started: float = m.Field(description="Monotonic execution start time")
 
-    class GateNativeRun(m.ArbitraryTypesModel):
-        """Native tool run payload one gate execution assembles from."""
-
-        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
-            default_factory=tuple,
-            description=(
-                "Complete native gate diagnostics, including informative findings"
-            ),
-        )
-        raw_output: str = m.Field(
-            "",
-            description="Raw tool output",
-        )
-        outcome: c.Infra.ToolOutcome = m.Field(
-            description="Native process/report verdict, independent of findings policy",
-        )
-        started: float = m.Field(
-            description="Monotonic timestamp the gate run started at",
-        )
-
     class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
@@ -370,7 +351,11 @@ class FlextInfraModelsCheck:
         )
         raw_output: str = m.Field(
             "",
-            description="Raw tool output",
+            description=(
+                "In-memory native output; persisted once at raw_receipt rather "
+                "than duplicated inside serialized execution summaries"
+            ),
+            exclude=True,
             validate_default=True,
         )
         raw_receipt: Path | None = m.Field(
@@ -389,6 +374,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``int``.
+
             """
             return len(self.issues)
 
@@ -401,7 +387,7 @@ class FlextInfraModelsCheck:
         """
 
         gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = m.Field(
-            default_factory=dict,
+            default_factory=dict[str, "FlextInfraModelsCheck.GateExecution"],
             description="Gate name to execution mapping",
         )
 
@@ -412,6 +398,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``bool``.
+
             """
             return bool(self.gates) and all(
                 v.result.passed for v in self.gates.values()
@@ -424,6 +411,7 @@ class FlextInfraModelsCheck:
 
             Returns:
                 The resulting ``int``.
+
             """
             return sum(v.finding_count for v in self.gates.values())
 
@@ -591,6 +579,13 @@ class FlextInfraModelsCheck:
     class CheckReportSummary(m.ContractModel):
         """Invocation-owned execution facts retained by the published SARIF."""
 
+        requested_gates: Annotated[
+            t.StrSequence,
+            m.Field(
+                min_length=1,
+                description="Resolved gate inventory requested before execution",
+            ),
+        ]
         targets: Annotated[
             t.VariadicTuple[FlextInfraModelsCheck.CheckProjectTarget],
             m.Field(description="Canonical project roots selected for this invocation"),

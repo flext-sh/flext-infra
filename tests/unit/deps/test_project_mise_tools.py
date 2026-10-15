@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, m
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraProjectMiseTools:

@@ -9,7 +9,19 @@ from __future__ import annotations
 import ast as _ast
 from collections.abc import Callable, Container as _Container, MutableMapping
 from datetime import date, datetime
+from dis import Instruction as _Instruction
 from pathlib import Path as _Path
+from types import (
+    BuiltinFunctionType as _BuiltinFunctionType,
+    ClassMethodDescriptorType as _ClassMethodDescriptorType,
+    CodeType as _CodeType,
+    GetSetDescriptorType as _GetSetDescriptorType,
+    MemberDescriptorType as _MemberDescriptorType,
+    MethodDescriptorType as _MethodDescriptorType,
+    MethodWrapperType as _MethodWrapperType,
+    UnionType as _UnionType,
+    WrapperDescriptorType as _WrapperDescriptorType,
+)
 from typing import Annotated, Literal
 
 # Why: flext_cli owns the pipeline models/result contract; flext_core's m/p
@@ -80,6 +92,36 @@ class FlextInfraTypesBase:
     "Jinja2 template rendering environment."
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
+    type NativeCode = _CodeType
+    "Exact interpreter code identity accepted by disassembly and native encoding."
+    type NativeBuiltinCallable = _BuiltinFunctionType | _MethodWrapperType
+    "The two interpreter callable types with native receiver metadata."
+    type NativeDescriptor = (
+        _GetSetDescriptorType
+        | _MemberDescriptorType
+        | _ClassMethodDescriptorType
+        | _MethodDescriptorType
+        | _WrapperDescriptorType
+    )
+    "Exact interpreter descriptor identities accepted by native observation."
+    type NativeOperand = _cli_p.AttributeProbe | type | _UnionType | None
+    "A passively observed value, including native class identities and nulls."
+    type NativeType = type | type[_UnionType]
+    "Exact native type owners, including the interpreter's union type."
+    type NativeClassDeclarations = t.MappingKV[
+        str, t.VariadicTuple[t.Pair[int, frozenset[str]]]
+    ]
+    "Immutable compiler facts: class qualified names, source lines and stores."
+    type NativeCompilationFacts = t.DictKV[
+        t.Triple[bytes, str, int], NativeClassDeclarations
+    ]
+    "Invocation-local class facts keyed by exact source bytes and compiler inputs."
+    type NativeInstructionFacts = t.DictKV[
+        int, t.Pair[NativeCode, t.VariadicTuple[_Instruction]]
+    ]
+    "Immutable instructions indexed by strong native code identity."
+    type NativeInvocationFacts = t.Pair[NativeCompilationFacts, NativeInstructionFacts]
+    "The two immutable fact caches scoped to one native observation invocation."
 
     type ModelFieldSpec = m.FieldInfo
     "Field metadata a model-field factory returns, from the m facade."
@@ -145,12 +187,25 @@ class FlextInfraTypesBase:
         t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
     ]
     "Resolved private-import specs, declared re-export targets, and facade owners."
+    type ConstantFacadeIndex = tuple[
+        t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
+        t.MappingKV[str, set[str]],
+        t.MappingKV[str, t.VariadicTuple[str]],
+    ]
+    "Live constants facades, export identities, and declared class ancestry."
+    type ConstantConsumerContext = t.Quad[
+        _ast.Module,
+        str,
+        ConstantFacadeIndex,
+        t.MutableMappingKV[t.Pair[str, str], str | None],
+    ]
+    "One module's constants facade selection and shared identity cache."
     type EditResult = tuple[bool, t.StrSequence]
     "Validated edit outcome: (success, report_lines)."
     type EditResultWithDescs = tuple[bool, t.StrSequence, t.StrSequence]
     "(success, descriptions, report_lines) — includes what was attempted."
-    type LintSnapshot = t.MappingKV[str, t.StrSequence]
-    "Lint errors per tool: {tool_name: [error_lines]}."
+    type LintSnapshot[Receipt] = t.MappingKV[str, Receipt]
+    "Native gate receipts or diagnostic deltas, keyed by canonical tool name."
 
     # ── Lint policy types ────────────────────────────────────────────
 
@@ -171,6 +226,8 @@ class FlextInfraTypesBase:
     """
     type PerFileIgnores = t.MappingKV[str, t.SequenceOf[RuffRule]]
     "Ruff per-file exemptions: {path_glob: [named_rule]}, never a blanket mask."
+
+    type LifecycleContext = Literal["local", "ci"]
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."

@@ -9,11 +9,7 @@ from __future__ import annotations
 import operator
 from pathlib import Path
 
-from flext_infra import t
-from flext_infra._constants import (
-    FlextInfraConstantsNamespace,
-    FlextInfraConstantsSharedInfra,
-)
+from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 
 
@@ -89,20 +85,14 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
 
         """
         return (
-            file_path.suffix == FlextInfraConstantsSharedInfra.EXT_PYTHON
+            file_path.suffix == c.Infra.EXT_PYTHON
+            and not (skip_init_py and file_path.name == c.Infra.INIT_PY)
             and not (
-                skip_init_py
-                and file_path.name == FlextInfraConstantsSharedInfra.INIT_PY
-            )
-            and not (
-                skip_protected
-                and file_path.name
-                in FlextInfraConstantsNamespace.NAMESPACE_PROTECTED_FILES
+                skip_protected and file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
             )
             and not (
                 skip_settings
-                and file_path.name
-                in FlextInfraConstantsNamespace.NAMESPACE_SETTINGS_FILE_NAMES
+                and file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
             )
         )
 

@@ -11,9 +11,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
+from tests import tm
 
 _V = FlextInfraManualCommandValidator
 

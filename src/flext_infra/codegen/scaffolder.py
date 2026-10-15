@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, m, r, u
+from flext_infra import c, config, m, r, u
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
     FlextInfraMisePublication,
@@ -69,10 +69,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.projects(self.repository_root)
-            selected_projects = (
-                tuple(projects_result.unwrap()) if projects_result.success else ()
-            )
+            selected_projects = tuple(u.Infra.projects(self.repository_root).unwrap())
         return [
             self._scaffold_project(project, dry_run=dry_run)
             for project in selected_projects
@@ -243,8 +240,8 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
                 project=request.target_dir,
                 path=filepath,
                 before=before.value,
-                desired_content=content.encode(c.Cli.ENCODING_DEFAULT),
-                desired_mode=0o644,
+                desired_content=content.encode(c.DEFAULT_ENCODING),
+                desired_mode=config.Infra.codegen.modes.file_default,
                 owner="codegen",
             )
             written = FlextInfraMisePublication.publish_file_plan(
@@ -254,6 +251,9 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
             if written.failure:
                 message = f"writing scaffold {filepath}: {written.error}"
                 raise OSError(message)
+            if not written.value:
+                files_skipped.append(str(filepath))
+                continue
             files_created.append(str(filepath))
         return files_created, files_skipped
 

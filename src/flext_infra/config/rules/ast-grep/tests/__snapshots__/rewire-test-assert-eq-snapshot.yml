@@ -1,0 +1,44 @@
+id: rewire-test-assert-eq
+snapshots:
+  ? |
+    from flext_tests import tm
+    assert payload.name == expected
+  : fixed: |
+      from flext_tests import tm
+      tm.that(payload.name == expected, truth=True)
+    labels:
+    - source: assert payload.name == expected
+      style: primary
+      start: 27
+      end: 58
+    - source: from flext_tests import tm
+      style: secondary
+      start: 0
+      end: 26
+    - source: |
+        from flext_tests import tm
+        assert payload.name == expected
+      style: secondary
+      start: 0
+      end: 59
+  ? |
+    from tests import tm
+    assert result.count == 3
+  : fixed: |
+      from tests import tm
+      tm.that(result.count == 3, truth=True)
+    labels:
+    - source: assert result.count == 3
+      style: primary
+      start: 21
+      end: 45
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert result.count == 3
+      style: secondary
+      start: 0
+      end: 46

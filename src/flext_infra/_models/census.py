@@ -7,11 +7,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSet
+from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import m
+
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models.base import FlextInfraModelsBase
+from flext_infra._models.rope import FlextInfraModelsRope
+from flext_infra._models.transformers import FlextInfraModelsTransformers
 
 
 class FlextInfraModelsCensus:
@@ -22,11 +27,9 @@ class FlextInfraModelsCensus:
     class ReferenceSite(
         FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
         FlextInfraModelsMixins.RequiredNonNegativeLineMixin,
-        m.ArbitraryTypesModel,
+        FlextInfraModelsBase.FrozenArbitrary,
     ):
         """Single reference site supporting a census classification."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         surface: Annotated[
             str,
@@ -42,11 +45,9 @@ class FlextInfraModelsCensus:
         FlextInfraModelsMixins.RequiredNonNegativeLineMixin,
         FlextInfraModelsMixins.ProjectNameMixin,
         FlextInfraModelsMixins.NestedClassPathMixin,
-        m.ArbitraryTypesModel,
+        FlextInfraModelsBase.FrozenArbitrary,
     ):
         """Single discovered Python object with tier and classification metadata."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Object identifier")]
         kind: Annotated[
@@ -113,16 +114,36 @@ class FlextInfraModelsCensus:
             str,
             m.Field(description="Normalized Rope-derived semantic fingerprint"),
         ] = ""
+        payload_fingerprint: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "Diagnostic native Pydantic declaration fingerprint, retaining "
+                    "bases, fields, literal defaults, configuration, generics and "
+                    "validation/serialization code; never an equivalence proof"
+                ),
+            ),
+        ] = ""
+
+    class RemovalPreviewOptions(FlextInfraModelsBase.FrozenArbitrary):
+        """Gate selection and source cache shared by one removal preview batch."""
+
+        gates: Annotated[
+            t.StrSequence,
+            m.Field(description="Configured dry-run gate names the preview runs"),
+        ]
+        source_cache: Annotated[
+            t.MutableMappingKV[Path, str] | None,
+            m.Field(description="Live source cache reused across candidates"),
+        ] = None
 
     class RemovalCandidate(
         FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
         FlextInfraModelsMixins.RequiredNonNegativeLineMixin,
         FlextInfraModelsMixins.ProjectNameMixin,
-        m.ArbitraryTypesModel,
+        FlextInfraModelsBase.FrozenArbitrary,
     ):
         """Explicit aggressive-removal candidate derived from census results."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         object_name: Annotated[
             t.NonEmptyStr,
@@ -151,10 +172,10 @@ class FlextInfraModelsCensus:
             description="Script references supporting this candidate",
         )
 
-    class Violation(FlextInfraModelsMixins.ProjectNameMixin, m.ArbitraryTypesModel):
+    class Violation(
+        FlextInfraModelsMixins.ProjectNameMixin, FlextInfraModelsBase.FrozenArbitrary
+    ):
         """One census analysis finding over the object inventory."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         object_name: Annotated[
             t.NonEmptyStr,
@@ -178,10 +199,8 @@ class FlextInfraModelsCensus:
             m.Field(description="Human-readable violation description"),
         ] = ""
 
-    class ScanConfig(m.ArbitraryTypesModel):
+    class ScanConfig(FlextInfraModelsBase.FrozenArbitrary):
         """Resolved per-collect scan configuration shared across modules."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         kind_names: Annotated[
             t.StrSequence | None,
@@ -230,10 +249,67 @@ class FlextInfraModelsCensus:
             m.Field(description="Projects whose modules produced a census outcome"),
         ]
 
-    class DuplicateGroup(m.ArbitraryTypesModel):
-        """Cross-project duplicate object cluster."""
+    class DuplicateDefinition(FlextInfraModelsBase.FrozenArbitrary):
+        """One verified duplicate definition and its Rope-owned source region."""
+
+        item: Annotated[
+            FlextInfraModelsCensus.Object,
+            m.Field(description="Canonical census object"),
+        ]
+        path: Annotated[Path, m.Field(description="Definition source path")]
+        source: Annotated[str, m.Field(description="Captured module source")]
+        statement: Annotated[
+            FlextInfraModelsRope.LogicalStatement | None,
+            m.Field(description="Original Rope definition region"),
+        ]
+        body: Annotated[str, m.Field(description="Definition source span")]
+        consumers: Annotated[int, m.Field(description="Proven consumer count")]
+        layer: Annotated[int, m.Field(description="Discovered project layer")]
+
+    class DuplicateCopyCure(FlextInfraModelsBase.FrozenArbitrary):
+        """One duplicate removal and its proven consumer rebindings."""
+
+        definition: Annotated[
+            FlextInfraModelsCensus.DuplicateDefinition,
+            m.Field(description="Verified duplicate definition"),
+        ]
+        consumer_files: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Consumers requiring import rebindings"),
+        ]
+        in_module_uses: Annotated[
+            int,
+            m.Field(description="References within the definition module"),
+        ]
+
+    class DuplicateGroupCure(FlextInfraModelsBase.FrozenArbitrary):
+        """One elected owner and the complete duplicate publication plan."""
+
+        owner: Annotated[
+            FlextInfraModelsCensus.DuplicateCopyCure,
+            m.Field(description="Elected definition and its bindings"),
+        ]
+        copies: Annotated[
+            t.VariadicTuple[FlextInfraModelsCensus.DuplicateCopyCure],
+            m.Field(description="Copies with proven removal contracts"),
+        ]
+        edits: Annotated[
+            t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit],
+            m.Field(description="Complete proposed source edits"),
+        ]
+
+    class DuplicateDeletion(m.ContractModel):
+        """One duplicate definition scheduled for removal."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        path: Annotated[Path, m.Field(description="Copy source path")]
+        name: Annotated[str, m.Field(description="Duplicate object name")]
+        line: Annotated[int, m.Field(description="Copy definition line")]
+        project: Annotated[str, m.Field(description="Discovered project identity")]
+
+    class DuplicateGroup(FlextInfraModelsBase.FrozenArbitrary):
+        """Cross-project duplicate object cluster."""
 
         name: Annotated[
             t.NonEmptyStr,
@@ -251,11 +327,110 @@ class FlextInfraModelsCensus:
             bool,
             m.Field(description="Whether all definitions have identical values"),
         ] = False
+        semantic_candidate: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Diagnostic Pydantic declarations sharing native structure "
+                    "across names or holders; automatic cure requires independent "
+                    "identity and complete consumer proof"
+                ),
+            ),
+        ] = False
 
-    class ProjectReport(FlextInfraModelsMixins.ProjectNameMixin, m.ArbitraryTypesModel):
-        """Per-project census summary."""
+    class DuplicateCureEdit(m.ContractModel):
+        """One proposed or applied source rewrite of a duplicate cure."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        file_path: Annotated[Path, m.Field(description="File the cure edit touches")]
+        line: Annotated[
+            t.PositiveInt,
+            m.Field(description="One-based definition or import line of the edit"),
+        ]
+        action: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Cure action: keep-owner, delete-copy, rebind-import or bind-owner"
+                ),
+            ),
+        ]
+        detail: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Human-readable cure step for review"),
+        ]
+
+    class DuplicateCurePlan(m.ContractModel):
+        """Manual assisted-cure plan for one duplicate the engine never auto-writes.
+
+        Structural clones and identity-proven groups outside the trivial
+        contract are reported, never rewritten: the plan names the elected
+        owner and every proposed edit so the cure stays reviewable.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Duplicated object name")]
+        kind: Annotated[str, m.Field(description="Duplicated object kind")]
+        origin: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Plan origin: census group or jscpd clone"),
+        ]
+        reason: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Why the engine did not auto-unify this duplicate"),
+        ]
+        owner_file_path: Annotated[
+            Path,
+            m.Field(description="Elected owner definition file"),
+        ]
+        owner_line: Annotated[
+            t.PositiveInt,
+            m.Field(description="Elected owner definition line"),
+        ]
+        owner_project: Annotated[
+            str,
+            m.Field(description="Project of the elected owner"),
+        ] = ""
+        edits: t.VariadicTuple[FlextInfraModelsCensus.DuplicateCureEdit] = m.Field(
+            default_factory=tuple,
+            description="Proposed manual edits, owner first",
+        )
+
+    class DuplicateCureOutcome(m.ContractModel):
+        """Planned and applied result of one duplicate-cure run.
+
+        ``edits`` stays empty unless ``apply`` published through the journaled
+        transaction; ``plans`` always carries every manual assisted-cure plan.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        edits: t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit] = (
+            m.Field(default_factory=tuple, description="Applied source rewrites")
+        )
+        plans: t.VariadicTuple[FlextInfraModelsCensus.DuplicateCurePlan] = m.Field(
+            default_factory=tuple,
+            description="Manual assisted-cure plans for structural duplicates",
+        )
+        files_changed: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Files the applied cure rewrote"),
+        ] = 0
+        copies_removed: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Duplicate definitions the applied cure deleted"),
+        ] = 0
+        bindings_rewired: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Consumer imports the applied cure rebound"),
+        ] = 0
+
+    class ProjectReport(
+        FlextInfraModelsMixins.ProjectNameMixin, FlextInfraModelsBase.FrozenArbitrary
+    ):
+        """Per-project census summary."""
 
         objects: t.VariadicTuple[FlextInfraModelsCensus.Object] = m.Field(
             default_factory=tuple,
@@ -295,6 +470,32 @@ class FlextInfraModelsCensus:
     class WorkspaceReport(m.ArbitraryTypesModel):
         """Workspace-wide census summary."""
 
+        constant_consumer_files: Annotated[
+            t.NonNegativeInt,
+            m.Field(
+                description=("Files with identity-proven constant consumer rewrites"),
+            ),
+        ] = 0
+        constant_consumer_bindings: Annotated[
+            t.NonNegativeInt,
+            m.Field(
+                description=(
+                    "Imported bindings rewired to canonical constants facades"
+                ),
+            ),
+        ] = 0
+        duplicate_cure_files: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Files rewritten by the applied duplicate cure"),
+        ] = 0
+        duplicate_cure_copies: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Duplicate copies the applied duplicate cure deleted"),
+        ] = 0
+        duplicate_cure_bindings: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Consumer imports the applied duplicate cure rebound"),
+        ] = 0
         projects: t.VariadicTuple[FlextInfraModelsCensus.ProjectReport] = m.Field(
             default_factory=tuple,
             description="Per-project reports",
@@ -310,6 +511,12 @@ class FlextInfraModelsCensus:
         duplicates: t.VariadicTuple[FlextInfraModelsCensus.DuplicateGroup] = m.Field(
             default_factory=tuple,
             description="Cross-project duplicate groups",
+        )
+        duplicate_cure_plans: t.VariadicTuple[
+            FlextInfraModelsCensus.DuplicateCurePlan
+        ] = m.Field(
+            default_factory=tuple,
+            description="Manual assisted-cure plans for structural duplicates",
         )
         unused_count: Annotated[
             t.NonNegativeInt,

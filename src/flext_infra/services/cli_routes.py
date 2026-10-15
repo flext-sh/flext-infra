@@ -8,12 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraCodegenRoutes,
-    FlextInfraValidationRoutes,
-    FlextInfraWorkspaceRoutes,
-    c,
-)
+from flext_infra import c, services
 
 if TYPE_CHECKING:
     from flext_infra import m, t
@@ -38,19 +33,19 @@ class FlextInfraCliRouteService:
             c.Infra.CLI_GROUP_CODEGEN,
             c.Infra.CLI_GROUP_DEPS,
         }:
-            return FlextInfraCodegenRoutes.codegen_routes[group]
+            return services.FlextInfraCodegenRoutes.codegen_routes[group]
         if group in {
             c.Infra.CLI_GROUP_DOCS,
             c.Infra.CLI_GROUP_MAINTENANCE,
             c.Infra.CLI_GROUP_VALIDATE,
         }:
-            return FlextInfraValidationRoutes.validation_routes[group]
+            return services.FlextInfraValidationRoutes.validation_routes[group]
         if group in {
             c.Infra.CLI_GROUP_REFACTOR,
             c.Infra.CLI_GROUP_RELEASE,
             c.Infra.CLI_GROUP_WORKSPACE,
         }:
-            return FlextInfraWorkspaceRoutes.workspace_routes[group]
+            return services.FlextInfraWorkspaceRoutes.workspace_routes[group]
         msg = f"CLI group has no route owner: {group}"
         raise ValueError(msg)
 
