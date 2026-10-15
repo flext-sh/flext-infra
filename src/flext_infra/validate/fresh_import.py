@@ -23,7 +23,6 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):

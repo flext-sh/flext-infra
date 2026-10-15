@@ -490,6 +490,7 @@ class FlextInfraSemanticPublication:
 
         """
         projection_analyses: list[m.Infra.CodegenPhaseAnalysis] = []
+
         def validate_published(
             session: m.Infra.CodegenTransactionSession,
         ) -> p.Result[bool]:

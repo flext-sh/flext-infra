@@ -72,10 +72,10 @@ class FlextInfraWorkspaceGeneratedFunction:
         """
         engine = cls(witness)
         namespace = engine._module(supplier)
-        if (
-            type(value) is not FunctionType
-            or vars(namespace).get(attribute) is not value
-        ):
+        if type(value) is not FunctionType:
+            msg = "generated function is not its registered source export"
+            raise TypeError(msg)
+        if vars(namespace).get(attribute) is not value:
             msg = "generated function is not its registered source export"
             raise ValueError(msg)
         matches = engine._physical_invocations(
@@ -215,7 +215,10 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If the declaration or native constructor witness differs.
 
         """
-        if type(attribute) is not str or attribute != "__new__":
+        if type(attribute) is not str:
+            msg = "native tuple source proof supports only its generated constructor"
+            raise TypeError(msg)
+        if attribute != "__new__":
             msg = "native tuple source proof supports only its generated constructor"
             raise ValueError(msg)
         engine = cls(witness)
@@ -1527,175 +1530,221 @@ class FlextInfraWorkspaceGeneratedFunction:
         namespace: t.MappingKV[str, p.AttributeProbe],
         tree: ast.Module,
     ) -> p.AttributeProbe:
-        if isinstance(node, ast.Call) and not node.keywords:
-            if (
-                isinstance(node.func, ast.Name)
-                and node.func.id == "isinstance"
-                and node.func.id not in local
-                and len(node.args) == 2
+        if not isinstance(node, ast.Call) or node.keywords:
+            msg = f"closed compiler expression is unsupported: {type(node).__name__}"
+            raise ValueError(msg)
+        match node.func, node.args:
+            case ast.Name(id="isinstance"), [first, second] if (
+                "isinstance" not in local
             ):
-                self._builtin("isinstance", namespace)
-                value, expected = (
-                    self._expression(item, local, namespace, tree) for item in node.args
-                )
-                if expected is self._builtin("str", namespace) and (
-                    type(value) is str or type(value) is tuple or type(value) is list
-                ):
-                    return type(value) is str
-                msg = "closed compiler instance predicate has authored operands"
-                raise ValueError(msg)
-            if (
-                isinstance(node.func, ast.Name)
-                and node.func.id in {"str", "list", "tuple"}
-                and node.func.id not in local
-                and len(node.args) == 1
+                return self._instance_call((first, second), local, namespace, tree)
+            case ast.Name(id=operation), [argument] if (
+                operation in {"str", "list", "tuple"} and operation not in local
             ):
-                self._builtin(node.func.id, namespace)
-                argument = node.args[0]
-                if (
-                    isinstance(argument, ast.Call)
-                    and isinstance(argument.func, ast.Name)
-                    and argument.func.id == "map"
-                    and node.func.id in {"list", "tuple"}
-                ):
-                    values = self._mapped_strings(argument, local, namespace, tree)
-                    return list(values) if node.func.id == "list" else values
-                value = self._expression(argument, local, namespace, tree)
-                if node.func.id == "str" and type(value) is str:
-                    return value
-                if type(value) is str or type(value) is tuple or type(value) is list:
-                    if node.func.id == "list":
-                        return list(value)
-                    if node.func.id == "tuple":
-                        return tuple(value)
-                msg = "closed compiler construction has authored data operands"
-                raise ValueError(msg)
-            if isinstance(node.func, ast.Name) and node.func.id in {
+                return self._conversion(operation, argument, local, namespace, tree)
+            case ast.Name(id=operation), arguments if operation in {
                 "hasattr",
                 "getattr",
             }:
-                if node.func.id in local:
-                    msg = "closed compiler shadows its native lookup"
-                    raise ValueError(msg)
-                self._builtin(node.func.id, namespace)
-                if len(node.args) != 2:
-                    msg = "closed compiler member lookup has unsupported arity"
-                    raise ValueError(msg)
-                present, value = self._member(
-                    *(
-                        self._expression(item, local, namespace, tree)
-                        for item in node.args
-                    )
-                )
-                if node.func.id == "hasattr":
-                    return present
-                if present:
-                    return value
-                msg = "closed compiler requires an absent module member"
-                raise ValueError(msg)
-            if (
-                isinstance(node.func, ast.Name)
-                and node.func.id in {"zip", "enumerate", "len"}
-                and node.func.id not in local
+                return self._member_call(operation, arguments, local, namespace, tree)
+            case ast.Name(id=operation), arguments if (
+                operation in {"zip", "enumerate", "len"} and operation not in local
             ):
-                self._builtin(node.func.id, namespace)
-                arguments = tuple(
-                    self._expression(item, local, namespace, tree) for item in node.args
+                return self._iteration_call(
+                    operation, arguments, local, namespace, tree
                 )
-                sequences: t.MutableSequenceOf[t.SequenceOf[p.AttributeProbe]] = []
-                for argument in arguments:
-                    if not (
-                        type(argument) is tuple
-                        or type(argument) is list
-                        or type(argument) is str
-                    ):
-                        msg = "closed compiler iteration has authored operands"
-                        raise ValueError(msg)
-                    sequences.append(argument)
-                if node.func.id == "zip":
-                    return tuple(zip(*sequences, strict=False))
-                if len(sequences) != 1:
-                    msg = "closed compiler iteration has unsupported arity"
-                    raise ValueError(msg)
-                if node.func.id == "enumerate":
-                    return tuple(enumerate(sequences[0]))
-                return len(sequences[0])
-            if isinstance(node.func, ast.Attribute):
-                receiver = self._expression(node.func.value, local, namespace, tree)
-                arguments = tuple(
-                    self._expression(item, local, namespace, tree) for item in node.args
-                )
-                if type(receiver) is str:
-                    if node.func.attr == "replace" and len(arguments) == 2:
-                        old, new = arguments
-                        if type(old) is str and type(new) is str:
-                            return str.replace(receiver, old, new)
-                    if node.func.attr == "split" and not arguments:
-                        return str.split(receiver)
-                    if (
-                        node.func.attr == "startswith"
-                        and len(arguments) == 1
-                        and type(arguments[0]) is str
-                    ):
-                        return str.startswith(receiver, arguments[0])
-                    if (
-                        node.func.attr == "join"
-                        and len(arguments) == 1
-                        and (type(arguments[0]) is tuple or type(arguments[0]) is list)
-                        and all(type(item) is str for item in arguments[0])
-                    ):
-                        return str.join(receiver, arguments[0])
-                if id(receiver) in self._patterns:
-                    if node.func.attr == "sub" and len(arguments) == 2:
-                        replacement, text = arguments
-                        pattern = self._patterns[id(receiver)]
-                        if (
-                            type(replacement) is str
-                            and type(text) is str
-                            and pattern == "^[ \t]+$"
-                            and not replacement
-                        ):
-                            return "\n".join(
-                                ""
-                                if line
-                                and all(character in " \t" for character in line)
-                                else line
-                                for line in text.split("\n")
-                            )
-                    if (
-                        node.func.attr == "findall"
-                        and len(arguments) == 1
-                        and type(arguments[0]) is str
-                    ):
-                        pattern = self._patterns[id(receiver)]
-                        if pattern == "(^[ \t]*)(?:[^ \t\n])":
-                            return [
-                                line[: len(line) - len(line.lstrip(" \t"))]
-                                for line in arguments[0].split("\n")
-                                if line
-                                and any(character not in " \t" for character in line)
-                            ]
-                    msg = (
-                        "closed compiler regex operation is outside its "
-                        "physical data grammar"
-                    )
-                    raise ValueError(msg)
-                if type(receiver) is ModuleType and node.func.attr == "sub":
-                    return self._prefix_sub(receiver, arguments)
-                if receiver is sys and node.func.attr == "intern":
-                    self._intern()
-                    if len(arguments) == 1 and type(arguments[0]) is str:
-                        return arguments[0]
-                    msg = "closed compiler interning has authored data operands"
-                    raise ValueError(msg)
-                msg = "closed compiler method is outside native string/regex data"
-                raise ValueError(msg)
-            function = self._expression(node.func, local, namespace, tree)
-            if type(function) is FunctionType and len(node.args) == 1:
-                text = self._expression(node.args[0], local, namespace, tree)
-                if type(text) is str:
-                    return self._dedent(function, text)
+            case ast.Attribute() as function, arguments:
+                return self._method_call(function, arguments, local, namespace, tree)
+        function = self._expression(node.func, local, namespace, tree)
+        if type(function) is FunctionType and len(node.args) == 1:
+            text = self._expression(node.args[0], local, namespace, tree)
+            if type(text) is str:
+                return self._dedent(function, text)
         msg = f"closed compiler expression is unsupported: {type(node).__name__}"
+        raise ValueError(msg)
+
+    def _instance_call(
+        self,
+        arguments: t.Pair[ast.expr, ast.expr],
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> bool:
+        self._builtin("isinstance", namespace)
+        value, expected = (
+            self._expression(item, local, namespace, tree) for item in arguments
+        )
+        if expected is self._builtin("str", namespace) and (
+            type(value) is str or type(value) is tuple or type(value) is list
+        ):
+            return type(value) is str
+        msg = "closed compiler instance predicate has authored operands"
+        raise ValueError(msg)
+
+    def _conversion(
+        self,
+        operation: str,
+        argument: ast.expr,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        self._builtin(operation, namespace)
+        if (
+            isinstance(argument, ast.Call)
+            and isinstance(argument.func, ast.Name)
+            and argument.func.id == "map"
+            and operation in {"list", "tuple"}
+        ):
+            values = self._mapped_strings(argument, local, namespace, tree)
+            return list(values) if operation == "list" else values
+        value = self._expression(argument, local, namespace, tree)
+        if operation == "str" and type(value) is str:
+            return value
+        if type(value) is str or type(value) is tuple or type(value) is list:
+            if operation == "list":
+                return list(value)
+            if operation == "tuple":
+                return tuple(value)
+        msg = "closed compiler construction has authored data operands"
+        raise ValueError(msg)
+
+    def _member_call(
+        self,
+        operation: str,
+        arguments: t.SequenceOf[ast.expr],
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        if operation in local:
+            msg = "closed compiler shadows its native lookup"
+            raise ValueError(msg)
+        self._builtin(operation, namespace)
+        match arguments:
+            case [receiver, member]:
+                present, value = self._member(
+                    self._expression(receiver, local, namespace, tree),
+                    self._expression(member, local, namespace, tree),
+                )
+            case _:
+                msg = "closed compiler member lookup has unsupported arity"
+                raise ValueError(msg)
+        if operation == "hasattr":
+            return present
+        if present:
+            return value
+        msg = "closed compiler requires an absent module member"
+        raise ValueError(msg)
+
+    def _iteration_call(
+        self,
+        operation: str,
+        arguments: t.SequenceOf[ast.expr],
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        self._builtin(operation, namespace)
+        values = tuple(
+            self._expression(item, local, namespace, tree) for item in arguments
+        )
+        sequences: t.MutableSequenceOf[t.SequenceOf[p.AttributeProbe]] = []
+        for argument in values:
+            if not (
+                type(argument) is tuple
+                or type(argument) is list
+                or type(argument) is str
+            ):
+                msg = "closed compiler iteration has authored operands"
+                raise ValueError(msg)
+            sequences.append(argument)
+        if operation == "zip":
+            return tuple(zip(*sequences, strict=False))
+        if len(sequences) != 1:
+            msg = "closed compiler iteration has unsupported arity"
+            raise ValueError(msg)
+        if operation == "enumerate":
+            return tuple(enumerate(sequences[0]))
+        return len(sequences[0])
+
+    def _method_call(
+        self,
+        function: ast.Attribute,
+        arguments: t.SequenceOf[ast.expr],
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        receiver = self._expression(function.value, local, namespace, tree)
+        values = tuple(
+            self._expression(item, local, namespace, tree) for item in arguments
+        )
+        if type(receiver) is str:
+            return self._string_method(function.attr, receiver, values)
+        if id(receiver) in self._patterns:
+            return self._pattern_method(
+                function.attr, self._patterns[id(receiver)], values
+            )
+        if type(receiver) is ModuleType and function.attr == "sub":
+            return self._prefix_sub(receiver, values)
+        if receiver is sys and function.attr == "intern":
+            self._intern()
+            if len(values) == 1 and type(values[0]) is str:
+                return values[0]
+            msg = "closed compiler interning has authored data operands"
+            raise ValueError(msg)
+        msg = "closed compiler method is outside native string/regex data"
+        raise ValueError(msg)
+
+    @staticmethod
+    def _string_method(
+        operation: str,
+        receiver: str,
+        arguments: t.VariadicTuple[p.AttributeProbe],
+    ) -> p.AttributeProbe:
+        match operation, arguments:
+            case "replace", (old, new) if type(old) is str and type(new) is str:
+                return str.replace(receiver, old, new)
+            case "split", ():
+                return str.split(receiver)
+            case "startswith", (prefix,) if type(prefix) is str:
+                return str.startswith(receiver, prefix)
+            case "join", (parts,) if (
+                type(parts) is tuple or type(parts) is list
+            ) and all(type(item) is str for item in parts):
+                return str.join(receiver, parts)
+        msg = "closed compiler method is outside native string/regex data"
+        raise ValueError(msg)
+
+    @staticmethod
+    def _pattern_method(
+        operation: str,
+        pattern: str,
+        arguments: t.VariadicTuple[p.AttributeProbe],
+    ) -> p.AttributeProbe:
+        match operation, arguments:
+            case "sub", (replacement, text) if (
+                type(replacement) is str
+                and type(text) is str
+                and pattern == "^[ \t]+$"
+                and not replacement
+            ):
+                return "\n".join(
+                    ""
+                    if line and all(character in " \t" for character in line)
+                    else line
+                    for line in text.split("\n")
+                )
+            case "findall", (text,) if (
+                type(text) is str and pattern == "(^[ \t]*)(?:[^ \t\n])"
+            ):
+                return [
+                    line[: len(line) - len(line.lstrip(" \t"))]
+                    for line in text.split("\n")
+                    if line and any(character not in " \t" for character in line)
+                ]
+        msg = "closed compiler regex operation is outside its physical data grammar"
         raise ValueError(msg)
 
     def _statements(
