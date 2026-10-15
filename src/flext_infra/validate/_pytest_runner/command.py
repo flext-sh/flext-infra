@@ -358,7 +358,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     else ()
                 ),
                 "--testmon",
-                *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
+                *(
+                    ("--testmon-noselect",)
+                    if execution_mode == c.Infra.PytestExecutionMode.FULL
+                    else ("--testmon-forceselect",)
+                ),
                 "--testmon-env",
                 f"'{self.testmon_environment(execution_mode)}'",
                 *self._NO_COVERAGE,

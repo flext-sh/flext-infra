@@ -2486,7 +2486,7 @@ _builtin_fmt_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "format,markdown-format" --apply
 
 _builtin_fix_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code" --apply
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code,deps" --apply
 
 # SonarCloud server-side issue exclusions (SSOT: codegen.sonarcloud). The verb
 # writes an external service with SONAR_TOKEN from the environment; it belongs

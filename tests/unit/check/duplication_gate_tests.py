@@ -111,8 +111,14 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
                 "  codegen: none\n"
                 "  package: true\n"
                 "  editable: true\n"
-                "  read_only: false\n"
-                "  duplication_trees: [charts]\n",
+                "  read_only: false\n",
+                encoding="utf-8",
+            )
+            (root / "config" / "codegen.yaml").write_text(
+                "Infra:\n"
+                "  codegen:\n"
+                "    repository:\n"
+                "      duplication_trees: [charts]\n",
                 encoding="utf-8",
             )
         return root

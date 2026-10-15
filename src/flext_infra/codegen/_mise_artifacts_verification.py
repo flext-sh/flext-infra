@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, codegen, m, r, t, u
 from flext_infra.codegen._mise_artifacts_comparison import (
     FlextInfraMiseArtifactsComparison,
 )
@@ -24,7 +24,6 @@ from flext_infra.codegen._mise_artifacts_verification_manifest import (
 from flext_infra.codegen._mise_artifacts_verification_topology import (
     FlextInfraMiseArtifactsVerificationTopology,
 )
-from flext_infra import codegen
 
 if TYPE_CHECKING:
     from flext_infra import p

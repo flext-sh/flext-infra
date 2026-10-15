@@ -154,6 +154,7 @@ class FlextInfraConfigVocabulary:
         "lint",
         "markdown",
         "markdown-code",
+        "deps",
     )
     """Independent repair policy; formatting remains owned by Make fmt."""
 

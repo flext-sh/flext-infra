@@ -27,23 +27,16 @@ class TestsFlextInfraTypeGates:
     """The selected project's actual findings determine acceptance."""
 
     @staticmethod
-    def test_omitted_ruff_policy_uses_concrete_environment_defaults() -> None:
-        """The Make default factory produces a usable typed cache policy."""
+    def test_omitted_ruff_policy_is_rejected() -> None:
+        """A governed Make policy requires an explicit typed Ruff cache."""
         configured = config.Infra.codegen.make
-        restored = m.Infra.MakeSpec.model_validate(
-            configured.model_dump(
-                exclude={"ruff_cache"},
-                exclude_computed_fields=True,
-            ),
-        )
-        expected = m.Infra.RuffCacheSpec(
-            external_storage_directory=restored.ruff_cache.external_storage_directory,
-        )
-        tm.that(restored.ruff_cache, eq=expected)
-        tm.that(
-            u.Infra.external_cache_directory(restored.ruff_cache),
-            eq=u.Infra.external_cache_directory(expected),
-        )
+        with pytest.raises(ValueError, match="ruff_cache"):
+            m.Infra.MakeSpec.model_validate(
+                configured.model_dump(
+                    exclude={"ruff_cache"},
+                    exclude_computed_fields=True,
+                ),
+            )
 
     @staticmethod
     @pytest.mark.parametrize(
