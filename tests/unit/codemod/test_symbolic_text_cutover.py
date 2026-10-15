@@ -21,7 +21,7 @@ from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
 from tests import tm, u
 
 if typing.TYPE_CHECKING:
-    from tests import p
+    from tests import p, t
 
 
 class TestsFlextInfraSymbolicTextCutover:

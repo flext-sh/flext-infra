@@ -78,21 +78,11 @@ class FlextInfraWorkspaceGeneratedFunction:
         ):
             msg = "generated function is not its registered source export"
             raise ValueError(msg)
-        matches = []
-        for match in witness.finder.get_matches(
+        matches = engine._physical_invocations(
             "${export} = ${factory}(${first}, ${second})",
-            {},
-        ):
-            first, _last = match.get_region()
-            scope = u.Infra.scope_at(witness.module, first)
-            if scope.get_kind() != "Module":
-                continue
-            captured = {}
-            for name in ("export", "factory", "first", "second"):
-                start, end = u.Infra.semantic_capture_region(match, name)
-                captured[name] = witness.module.source_code[start:end]
-            if captured["export"] == attribute:
-                matches.append(captured)
+            ("export", "factory", "first", "second"),
+            (attribute,),
+        )
         if len(matches) != 1:
             msg = "generated function has no unique physical literal factory call"
             raise ValueError(msg)
@@ -111,33 +101,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         if Path(factory.__code__.co_filename) != witness.source:
             msg = "generated function factory is outside its physical declaration"
             raise ValueError(msg)
-        arguments = (
-            *function.args.posonlyargs,
-            *function.args.args,
-        )
-        if (
-            len(arguments) != 2
-            or function.args.kwonlyargs
-            or function.args.vararg is not None
-            or function.args.kwarg is not None
-            or function.args.defaults
-            or function.args.kw_defaults
-        ):
-            msg = "generated function compiler requires two closed literal parameters"
-            raise ValueError(msg)
-        literals = tuple(
-            ast.parse(invocation[name], mode="eval").body
-            for name in ("first", "second")
-        )
-        local: t.DictKV[str, p.AttributeProbe] = {}
-        for argument, literal in zip(arguments, literals, strict=True):
-            if not isinstance(literal, ast.Constant) or type(literal.value) is not str:
-                msg = (
-                    "generated function compiler arguments are not exact "
-                    "string literals"
-                )
-                raise ValueError(msg)
-            local[argument.arg] = literal.value
+        local = engine._compiler_arguments(function, invocation)
         returned = engine._statements(function.body, local, globals_, tree)
         if (
             type(returned) is not CodeType
@@ -162,6 +126,78 @@ class FlextInfraWorkspaceGeneratedFunction:
             proof.model_copy(update={"inputs": tuple(engine._inputs.values())}),
         )
 
+    def _physical_invocations(
+        self,
+        pattern: str,
+        names: t.StrSequence,
+        exports: t.StrSequence,
+    ) -> t.VariadicTuple[t.MappingKV[str, str]]:
+        """Read exact module-level factory operands through the retained Rope witness.
+
+        Returns:
+            Captured physical operands for the requested registered exports.
+
+        """
+        captured: list[t.MappingKV[str, str]] = []
+        for match in self._witness.finder.get_matches(pattern, {}):
+            first, _last = match.get_region()
+            scope = u.Infra.scope_at(self._witness.module, first)
+            if scope.get_kind() != "Module":
+                continue
+            operands: t.DictKV[str, str] = {}
+            for name in names:
+                start, end = u.Infra.semantic_capture_region(match, name)
+                operands[name] = self._witness.module.source_code[start:end]
+            if operands["export"] in exports:
+                captured.append(operands)
+        return tuple(captured)
+
+    @staticmethod
+    def _compiler_arguments(
+        function: ast.FunctionDef,
+        invocation: t.MappingKV[str, str],
+    ) -> t.DictKV[str, p.AttributeProbe]:
+        """Bind the factory's two physical string literals without evaluating them.
+
+        Returns:
+            The literal locals of the closed compiler.
+
+        Raises:
+            ValueError: If parameters or invocation operands are unsupported.
+
+        """
+        match (*function.args.posonlyargs, *function.args.args):
+            case (first, second):
+                arguments = (first, second)
+            case _:
+                msg = (
+                    "generated function compiler requires two closed literal parameters"
+                )
+                raise ValueError(msg)
+        if (
+            function.args.kwonlyargs
+            or function.args.vararg is not None
+            or function.args.kwarg is not None
+            or function.args.defaults
+            or function.args.kw_defaults
+        ):
+            msg = "generated function compiler requires two closed literal parameters"
+            raise ValueError(msg)
+        literals = tuple(
+            ast.parse(invocation[name], mode="eval").body
+            for name in ("first", "second")
+        )
+        local: t.DictKV[str, p.AttributeProbe] = {}
+        for argument, literal in zip(arguments, literals, strict=True):
+            if not isinstance(literal, ast.Constant) or type(literal.value) is not str:
+                msg = (
+                    "generated function compiler arguments are not exact "
+                    "string literals"
+                )
+                raise ValueError(msg)
+            local[argument.arg] = literal.value
+        return local
+
     @classmethod
     def compile_named_tuple(
         cls,
@@ -175,6 +211,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             Source-derived constructor code, metadata and authenticated inputs.
 
         Raises:
+            TypeError: If a closed constructor operand has an unsupported native type.
             ValueError: If the declaration or native constructor witness differs.
 
         """
@@ -251,7 +288,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         definition, tree, globals_ = engine._function(factory)
         engine._builtin("eval", globals_)
         emissions = [
-            node
+            (node, node.value)
             for node in definition.body
             if isinstance(node, ast.Assign)
             and len(node.targets) == 1
@@ -267,11 +304,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         if len(emissions) != 1 or len(definition.args.args) < 2:
             msg = "native tuple compiler has no unique physical lambda emission"
             raise ValueError(msg)
-        emission = emissions[0]
-        emission_call = emission.value
-        if not isinstance(emission_call, ast.Call):
-            msg = "native tuple compiler has no unique physical lambda emission"
-            raise ValueError(msg)
+        emission, emission_call = emissions[0]
         emission_arguments = tuple(
             argument
             for argument in emission_call.args
@@ -438,20 +471,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             for name, value in namespace.items()
             if type(name) is str and value is owner
         }
-        matches = []
-        for match in witness.finder.get_matches(
+        matches = self._physical_invocations(
             "${export} = ${invocation}",
-            {},
-        ):
-            start, _end = match.get_region()
-            if u.Infra.scope_at(witness.module, start).get_kind() != "Module":
-                continue
-            captured = {}
-            for name in ("export", "invocation"):
-                first, last = u.Infra.semantic_capture_region(match, name)
-                captured[name] = witness.module.source_code[first:last]
-            if captured["export"] in aliases:
-                matches.append(captured)
+            ("export", "invocation"),
+            tuple(aliases),
+        )
         if not matches:
             return None
         if len(matches) != 1:
@@ -911,12 +935,19 @@ class FlextInfraWorkspaceGeneratedFunction:
         tree: ast.Module,
     ) -> p.AttributeProbe:
         if name not in namespace:
-            if name in {"hasattr", "getattr", "exec", "isinstance"}:
+            if name in {
+                "hasattr",
+                "getattr",
+                "exec",
+                "isinstance",
+                "str",
+                "list",
+                "tuple",
+                "map",
+            }:
                 return self._builtin(name, namespace)
             if name == "bool" and vars(builtins).get(name) is bool:
                 return bool
-            if name in {"str", "list", "tuple", "map"}:
-                return self._builtin(name, namespace)
             msg = f"closed compiler global is not declared: {name}"
             raise ValueError(msg)
         value = namespace[name]
@@ -928,28 +959,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             if (alias.asname or alias.name.split(".")[0]) == name
         ]
         if len(bindings) != 1:
-            assignments = [
-                statement.value
-                for statement in tree.body
-                if isinstance(statement, ast.Assign)
-                and len(statement.targets) == 1
-                and isinstance(statement.targets[0], ast.Name)
-                and statement.targets[0].id == name
-            ]
-            if len(assignments) == 1 and isinstance(assignments[0], ast.Call):
-                if type(value) is object:
-                    return self._default(ast.Name(id=name), namespace, tree)
-                native = type(value)
-                storage = vars(type)["__dict__"].__get__(native, type(native))
-                operation = storage.get("findall")
-                if (
-                    type(operation) is MethodDescriptorType
-                    and operation.__objclass__ is native
-                ):
-                    self._regex(name, value, namespace, tree)
-                    return value
-            msg = f"closed compiler global has no unique source import: {name}"
-            raise ValueError(msg)
+            return self._constructed_global(name, value, namespace, tree)
         statement, alias = bindings[0]
         if isinstance(statement, ast.Import):
             expected = self._module(
@@ -971,6 +981,45 @@ class FlextInfraWorkspaceGeneratedFunction:
             else:
                 self._source(value)
         return value
+
+    def _constructed_global(
+        self,
+        name: str,
+        value: p.AttributeProbe,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        """Authenticate a constructed global through its physical declaration.
+
+        Returns:
+            The native sentinel or regex value whose source construction is proved.
+
+        Raises:
+            ValueError: If no unique closed construction owns this binding.
+
+        """
+        assignments = [
+            statement.value
+            for statement in tree.body
+            if isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == name
+        ]
+        if len(assignments) == 1 and isinstance(assignments[0], ast.Call):
+            if type(value) is object:
+                return self._default(ast.Name(id=name), namespace, tree)
+            native = type(value)
+            storage = vars(type)["__dict__"].__get__(native, type(native))
+            operation = storage.get("findall")
+            if (
+                type(operation) is MethodDescriptorType
+                and operation.__objclass__ is native
+            ):
+                self._regex(name, value, namespace, tree)
+                return value
+        msg = f"closed compiler global has no unique source import: {name}"
+        raise ValueError(msg)
 
     def _intern(self) -> BuiltinFunctionType:
         """Authenticate the selected native string intrinsic and its interpreter.
@@ -1053,9 +1102,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         """
         return any(
             owner is int
-            for owner in vars(type)["__mro__"].__get__(
-                type(value), type(type(value))
-            )
+            for owner in vars(type)["__mro__"].__get__(type(value), type(type(value)))
         )
 
     @staticmethod
@@ -1096,6 +1143,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         """Prove a literal hook ends at native AttributeError without running it.
 
         Raises:
+            TypeError: If a literal message operand has authored value semantics.
             ValueError: If the selected hook path has unproved execution semantics.
 
         """
@@ -1227,7 +1275,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                             "closed compiler hook exception message "
                             "has an authored operand"
                         )
-                        raise ValueError(msg)
+                        raise TypeError(msg)
                 return
             msg = (
                 "closed compiler selected module-hook statement is unsupported: "
@@ -1257,118 +1305,228 @@ class FlextInfraWorkspaceGeneratedFunction:
                 if node.id in local
                 else self._global(node.id, namespace, tree)
             )
+        if isinstance(node, ast.Attribute):
+            return self._attribute_expression(node, local, namespace, tree)
+        if isinstance(node, ast.Dict):
+            return self._dictionary_expression(node, local, namespace, tree)
+        if isinstance(node, ast.Tuple):
+            return tuple(
+                self._expression(item, local, namespace, tree) for item in node.elts
+            )
+        return self._computed_expression(node, local, namespace, tree)
+
+    def _attribute_expression(
+        self,
+        node: ast.Attribute,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        """Resolve only the declared tuple constructor or native interning operation.
+
+        Returns:
+            The authenticated native operation.
+
+        Raises:
+            ValueError: If the attribute is outside the closed compiler grammar.
+
+        """
         if (
-            isinstance(node, ast.Attribute)
-            and isinstance(node.value, ast.Name)
+            isinstance(node.value, ast.Name)
             and node.value.id == "tuple"
             and node.attr == "__new__"
             and self._global("tuple", namespace, tree) is tuple
         ):
             return vars(tuple)["__new__"]
-        if isinstance(node, ast.Attribute) and node.attr == "intern":
+        if node.attr == "intern":
             receiver = self._expression(node.value, local, namespace, tree)
             if receiver is sys:
                 return self._intern()
-        if isinstance(node, ast.Dict):
-            result = {}
-            for key, value in zip(node.keys, node.values, strict=True):
-                if key is None:
-                    msg = "closed compiler dictionary unpacking is unsupported"
-                    raise ValueError(msg)
-                scalar = self._expression(key, local, namespace, tree)
-                if type(scalar) is not str:
-                    msg = "closed compiler dictionary keys must be exact strings"
-                    raise ValueError(msg)
-                result[scalar] = self._expression(value, local, namespace, tree)
-            self._dictionaries.add(id(result))
-            return result
-        if isinstance(node, ast.Tuple):
-            return tuple(
-                self._expression(item, local, namespace, tree) for item in node.elts
-            )
+        msg = f"closed compiler expression is unsupported: {type(node).__name__}"
+        raise ValueError(msg)
+
+    def _dictionary_expression(
+        self,
+        node: ast.Dict,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> t.DictKV[str, p.AttributeProbe]:
+        """Build admitted native dictionary storage from literal string keys.
+
+        Returns:
+            The fresh dictionary retained by this interpretation.
+
+        Raises:
+            ValueError: If unpacking or authored keys would execute.
+
+        """
+        result: t.DictKV[str, p.AttributeProbe] = {}
+        for key, value in zip(node.keys, node.values, strict=True):
+            if key is None:
+                msg = "closed compiler dictionary unpacking is unsupported"
+                raise ValueError(msg)
+            scalar = self._expression(key, local, namespace, tree)
+            if type(scalar) is not str:
+                msg = "closed compiler dictionary keys must be exact strings"
+                raise ValueError(msg)
+            result[scalar] = self._expression(value, local, namespace, tree)
+        self._dictionaries.add(id(result))
+        return result
+
+    def _computed_expression(
+        self,
+        node: ast.expr,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
             return not self._boolean(
                 self._expression(node.operand, local, namespace, tree)
             )
         if isinstance(node, ast.BoolOp):
-            value = self._expression(node.values[0], local, namespace, tree)
-            for item in node.values[1:]:
-                if isinstance(node.op, ast.And) and not self._boolean(value):
-                    return value
-                if isinstance(node.op, ast.Or) and self._boolean(value):
-                    return value
-                value = self._expression(item, local, namespace, tree)
-            return value
+            return self._boolean_expression(node, local, namespace, tree)
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-            left = self._expression(node.left, local, namespace, tree)
-            right = self._expression(node.right, local, namespace, tree)
-            if type(left) is str and type(right) is str:
-                return left + right
-            if type(left) is int and type(right) is int:
-                return left + right
+            return self._addition_expression(node, local, namespace, tree)
         if isinstance(node, ast.Compare) and len(node.ops) == 1:
-            left = self._expression(node.left, local, namespace, tree)
-            right = self._expression(node.comparators[0], local, namespace, tree)
-            if isinstance(node.ops[0], ast.Is):
-                return left is right
-            if isinstance(node.ops[0], ast.IsNot):
-                return left is not right
-            if type(left) is type(right) and (
-                type(left) is str or type(left) is int or type(left) is bool
-            ):
-                if isinstance(node.ops[0], ast.Eq):
-                    return left == right
-                if isinstance(node.ops[0], ast.NotEq):
-                    return left != right
+            return self._comparison_expression(node, local, namespace, tree)
+        return self._data_expression(node, local, namespace, tree)
+
+    def _boolean_expression(
+        self,
+        node: ast.BoolOp,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        value = self._expression(node.values[0], local, namespace, tree)
+        for item in node.values[1:]:
+            if isinstance(node.op, ast.And) and not self._boolean(value):
+                return value
+            if isinstance(node.op, ast.Or) and self._boolean(value):
+                return value
+            value = self._expression(item, local, namespace, tree)
+        return value
+
+    def _addition_expression(
+        self,
+        node: ast.BinOp,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        left = self._expression(node.left, local, namespace, tree)
+        right = self._expression(node.right, local, namespace, tree)
+        if type(left) is str and type(right) is str:
+            return left + right
+        if type(left) is int and type(right) is int:
+            return left + right
+        msg = f"closed compiler expression is unsupported: {type(node).__name__}"
+        raise ValueError(msg)
+
+    def _comparison_expression(
+        self,
+        node: ast.Compare,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        left = self._expression(node.left, local, namespace, tree)
+        right = self._expression(node.comparators[0], local, namespace, tree)
+        if isinstance(node.ops[0], ast.Is):
+            return left is right
+        if isinstance(node.ops[0], ast.IsNot):
+            return left is not right
+        if type(left) is type(right) and (
+            type(left) is str or type(left) is int or type(left) is bool
+        ):
+            if isinstance(node.ops[0], ast.Eq):
+                return left == right
+            if isinstance(node.ops[0], ast.NotEq):
+                return left != right
+        msg = f"closed compiler expression is unsupported: {type(node).__name__}"
+        raise ValueError(msg)
+
+    def _data_expression(
+        self,
+        node: ast.expr,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
         if isinstance(node, ast.JoinedStr):
-            parts = []
-            for part in node.values:
-                if isinstance(part, ast.Constant) and type(part.value) is str:
-                    parts.append(part.value)
-                elif (
-                    isinstance(part, ast.FormattedValue)
-                    and part.conversion == -1
-                    and part.format_spec is None
-                ):
-                    value = self._expression(part.value, local, namespace, tree)
-                    if type(value) is not str:
-                        msg = "closed compiler interpolation is not exact string data"
-                        raise ValueError(msg)
-                    parts.append(value)
-                else:
-                    msg = "closed compiler interpolation has executable formatting"
-                    raise ValueError(msg)
-            return "".join(parts)
+            return self._interpolation(node, local, namespace, tree)
         if isinstance(node, ast.Subscript):
-            mapping = self._expression(node.value, local, namespace, tree)
-            if isinstance(node.slice, ast.Slice):
-                raw_bounds = tuple(
-                    None
-                    if item is None
-                    else self._expression(item, local, namespace, tree)
-                    for item in (node.slice.lower, node.slice.upper, node.slice.step)
-                )
-                bounds: t.MutableSequenceOf[int | None] = []
-                for bound in raw_bounds:
-                    if bound is not None and type(bound) is not int:
-                        msg = "closed compiler slice has authored operands"
-                        raise ValueError(msg)
-                    bounds.append(bound)
-                if (
-                    type(mapping) is str
-                    or type(mapping) is tuple
-                    or type(mapping) is list
-                ):
-                    return mapping[slice(*bounds)]
-                msg = "closed compiler slice has authored operands"
-                raise ValueError(msg)
-            key = self._expression(node.slice, local, namespace, tree)
-            if type(mapping) is dict and type(key) is str:
-                return mapping[key]
-            if type(key) is int and (
-                type(mapping) is str or type(mapping) is tuple or type(mapping) is list
+            return self._subscript(node, local, namespace, tree)
+        return self._call_expression(node, local, namespace, tree)
+
+    def _interpolation(
+        self,
+        node: ast.JoinedStr,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> str:
+        parts = []
+        for part in node.values:
+            if isinstance(part, ast.Constant) and type(part.value) is str:
+                parts.append(part.value)
+            elif (
+                isinstance(part, ast.FormattedValue)
+                and part.conversion == -1
+                and part.format_spec is None
             ):
-                return mapping[key]
+                value = self._expression(part.value, local, namespace, tree)
+                if type(value) is not str:
+                    msg = "closed compiler interpolation is not exact string data"
+                    raise ValueError(msg)
+                parts.append(value)
+            else:
+                msg = "closed compiler interpolation has executable formatting"
+                raise ValueError(msg)
+        return "".join(parts)
+
+    def _subscript(
+        self,
+        node: ast.Subscript,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        mapping = self._expression(node.value, local, namespace, tree)
+        if isinstance(node.slice, ast.Slice):
+            raw_bounds = tuple(
+                None if item is None else self._expression(item, local, namespace, tree)
+                for item in (node.slice.lower, node.slice.upper, node.slice.step)
+            )
+            bounds: t.MutableSequenceOf[int | None] = []
+            for bound in raw_bounds:
+                if bound is not None and type(bound) is not int:
+                    msg = "closed compiler slice has authored operands"
+                    raise ValueError(msg)
+                bounds.append(bound)
+            if type(mapping) is str or type(mapping) is tuple or type(mapping) is list:
+                return mapping[slice(*bounds)]
+            msg = "closed compiler slice has authored operands"
+            raise ValueError(msg)
+        key = self._expression(node.slice, local, namespace, tree)
+        if type(mapping) is dict and type(key) is str:
+            return mapping[key]
+        if type(key) is int and (
+            type(mapping) is str or type(mapping) is tuple or type(mapping) is list
+        ):
+            return mapping[key]
+        msg = f"closed compiler expression is unsupported: {type(node).__name__}"
+        raise ValueError(msg)
+
+    def _call_expression(
+        self,
+        node: ast.expr,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
         if isinstance(node, ast.Call) and not node.keywords:
             if (
                 isinstance(node.func, ast.Name)
@@ -1547,77 +1705,18 @@ class FlextInfraWorkspaceGeneratedFunction:
         namespace: t.MappingKV[str, p.AttributeProbe],
         tree: ast.Module,
     ) -> p.AttributeProbe | None:
+        """Follow closed control flow and delegate only admitted local effects.
+
+        Returns:
+            The selected return or break value, or None on fallthrough.
+
+        """
         for statement in statements:
-            if (
-                isinstance(statement, ast.Expr)
-                and isinstance(statement.value, ast.Constant)
-                and type(statement.value.value) is str
-            ):
-                continue
-            if isinstance(statement, ast.Assign | ast.AnnAssign):
-                if statement.value is None:
-                    msg = "closed compiler assignment has no value"
-                    raise ValueError(msg)
-                value = self._expression(statement.value, local, namespace, tree)
-                targets = (
-                    statement.targets
-                    if isinstance(statement, ast.Assign)
-                    else (statement.target,)
-                )
-                for target in targets:
-                    if isinstance(target, ast.Name):
-                        local[target.id] = value
-                    elif isinstance(target, ast.Subscript):
-                        mapping = self._expression(target.value, local, namespace, tree)
-                        key = self._expression(target.slice, local, namespace, tree)
-                        if (
-                            type(mapping) is not dict
-                            or id(mapping) not in self._dictionaries
-                            or type(key) is not str
-                        ):
-                            msg = (
-                                "closed compiler assignment has foreign native storage"
-                            )
-                            raise ValueError(msg)
-                        mapping[key] = value
-                    else:
-                        msg = "closed compiler assignment target is unsupported"
-                        raise ValueError(msg)
-                continue
-            if (
-                isinstance(statement, ast.AugAssign)
-                and isinstance(statement.target, ast.Name)
-                and isinstance(statement.op, ast.Add)
-            ):
-                current = local[statement.target.id]
-                added = self._expression(statement.value, local, namespace, tree)
-                if type(current) is not str or type(added) is not str:
-                    msg = "closed compiler augmentation has authored operands"
-                    raise ValueError(msg)
-                local[statement.target.id] = current + added
-                continue
             if isinstance(statement, ast.For) and not statement.orelse:
-                items = self._expression(statement.iter, local, namespace, tree)
-                if (
-                    type(items) is not tuple
-                    and type(items) is not list
-                    and type(items) is not str
-                ):
-                    msg = "closed compiler loop has an authored iterator"
-                    raise ValueError(msg)
-                for item in items:
-                    self._assign(statement.target, item, local)
-                    returned = self._statements(statement.body, local, namespace, tree)
-                    if type(returned) is ast.Break:
-                        break
-                    if returned is not None:
-                        return returned
-                continue
-            if isinstance(statement, ast.Pass):
-                continue
-            if isinstance(statement, ast.Break):
+                returned = self._loop(statement, local, namespace, tree)
+            elif isinstance(statement, ast.Break):
                 return statement
-            if isinstance(statement, ast.If):
+            elif isinstance(statement, ast.If):
                 condition = self._boolean(
                     self._expression(statement.test, local, namespace, tree)
                 )
@@ -1627,46 +1726,172 @@ class FlextInfraWorkspaceGeneratedFunction:
                     namespace,
                     tree,
                 )
-                if returned is not None:
-                    return returned
-                continue
-            if isinstance(statement, ast.Expr) and isinstance(
-                statement.value, ast.Call
-            ):
-                call = statement.value
-                if (
-                    not isinstance(call.func, ast.Name)
-                    or call.func.id != "exec"
-                    or call.keywords
-                    or len(call.args) != 3
-                ):
-                    msg = "closed compiler effect is not a native compilation"
-                    raise ValueError(msg)
-                self._builtin("exec", namespace)
-                text, globals_, locals_ = (
-                    self._expression(item, local, namespace, tree) for item in call.args
-                )
-                if (
-                    type(text) is not str
-                    or type(globals_) is not dict
-                    or type(locals_) is not dict
-                    or id(globals_) not in self._dictionaries
-                    or id(locals_) not in self._dictionaries
-                    or globals_ is locals_
-                ):
-                    msg = "closed compiler requires fresh exact native dictionaries"
-                    raise ValueError(msg)
-                proof = self._emission(text, globals_)
-                self._emitted[id(proof.code)] = proof
-                locals_[proof.code.co_qualname] = proof.code
-                continue
-            if isinstance(statement, ast.Return) and statement.value is not None:
+            elif isinstance(statement, ast.Return) and statement.value is not None:
                 return self._expression(statement.value, local, namespace, tree)
-            msg = (
-                f"closed compiler statement is unsupported: {type(statement).__name__}"
-            )
-            raise ValueError(msg)
+            else:
+                self._statement_effect(statement, local, namespace, tree)
+                continue
+            if returned is not None:
+                return returned
         return None
+
+    def _statement_effect(
+        self,
+        statement: ast.stmt,
+        local: t.MutableMappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> None:
+        """Apply a local write, literal docstring or closed compilation.
+
+        Raises:
+            ValueError: If the effect or its operands are unsupported.
+
+        """
+        if (
+            isinstance(statement, ast.Expr)
+            and isinstance(statement.value, ast.Constant)
+            and type(statement.value.value) is str
+        ):
+            return
+        if isinstance(statement, ast.Assign | ast.AnnAssign):
+            self._assignment(statement, local, namespace, tree)
+            return
+        if (
+            isinstance(statement, ast.AugAssign)
+            and isinstance(statement.target, ast.Name)
+            and isinstance(statement.op, ast.Add)
+        ):
+            current = local[statement.target.id]
+            added = self._expression(statement.value, local, namespace, tree)
+            if type(current) is not str or type(added) is not str:
+                msg = "closed compiler augmentation has authored operands"
+                raise ValueError(msg)
+            local[statement.target.id] = current + added
+            return
+        if isinstance(statement, ast.Pass):
+            return
+        if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Call):
+            self._compilation(statement.value, local, namespace, tree)
+            return
+        msg = f"closed compiler statement is unsupported: {type(statement).__name__}"
+        raise ValueError(msg)
+
+    def _assignment(
+        self,
+        statement: ast.Assign | ast.AnnAssign,
+        local: t.MutableMappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> None:
+        """Write a closed expression only to admitted local or dictionary storage.
+
+        Raises:
+            TypeError: If a dictionary target or key has an unsupported type.
+            ValueError: If the target is not admitted local or dictionary storage.
+
+        """
+        if statement.value is None:
+            msg = "closed compiler assignment has no value"
+            raise ValueError(msg)
+        value = self._expression(statement.value, local, namespace, tree)
+        targets = (
+            statement.targets
+            if isinstance(statement, ast.Assign)
+            else (statement.target,)
+        )
+        for target in targets:
+            if isinstance(target, ast.Name):
+                local[target.id] = value
+            elif isinstance(target, ast.Subscript):
+                mapping = self._expression(target.value, local, namespace, tree)
+                key = self._expression(target.slice, local, namespace, tree)
+                if type(mapping) is not dict or type(key) is not str:
+                    msg = "closed compiler assignment has foreign native storage"
+                    raise TypeError(msg)
+                if id(mapping) not in self._dictionaries:
+                    msg = "closed compiler assignment has foreign native storage"
+                    raise ValueError(msg)
+                mapping[key] = value
+            else:
+                msg = "closed compiler assignment target is unsupported"
+                raise ValueError(msg)
+
+    def _loop(
+        self,
+        statement: ast.For,
+        local: t.MutableMappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe | None:
+        """Evaluate one native data loop, consuming only its own break.
+
+        Returns:
+            The selected return value, or None when the loop finishes or breaks.
+
+        Raises:
+            ValueError: If the iterable has authored iteration semantics.
+
+        """
+        items = self._expression(statement.iter, local, namespace, tree)
+        if (
+            type(items) is not tuple
+            and type(items) is not list
+            and type(items) is not str
+        ):
+            msg = "closed compiler loop has an authored iterator"
+            raise ValueError(msg)
+        for item in items:
+            self._assign(statement.target, item, local)
+            returned = self._statements(statement.body, local, namespace, tree)
+            if type(returned) is ast.Break:
+                break
+            if returned is not None:
+                return returned
+        return None
+
+    def _compilation(
+        self,
+        call: ast.Call,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> None:
+        """Compile admitted source without executing its emitted function.
+
+        Raises:
+            ValueError: If source or storage is not an admitted native compilation.
+
+        """
+        if (
+            not isinstance(call.func, ast.Name)
+            or call.func.id != "exec"
+            or call.keywords
+            or len(call.args) != 3
+        ):
+            msg = "closed compiler effect is not a native compilation"
+            raise ValueError(msg)
+        self._builtin("exec", namespace)
+        text, globals_, locals_ = (
+            self._expression(item, local, namespace, tree) for item in call.args
+        )
+        if (
+            type(text) is not str
+            or type(globals_) is not dict
+            or type(locals_) is not dict
+        ):
+            msg = "closed compiler requires fresh exact native dictionaries"
+            raise ValueError(msg)
+        if (
+            id(globals_) not in self._dictionaries
+            or id(locals_) not in self._dictionaries
+            or globals_ is locals_
+        ):
+            msg = "closed compiler requires fresh exact native dictionaries"
+            raise ValueError(msg)
+        proof = self._emission(text, globals_)
+        self._emitted[id(proof.code)] = proof
+        locals_[proof.code.co_qualname] = proof.code
 
     def _assign(
         self,
@@ -1910,6 +2135,13 @@ class FlextInfraWorkspaceGeneratedFunction:
         namespace: t.MappingKV[str, p.AttributeProbe],
         tree: ast.Module,
     ) -> None:
+        """Authenticate regex identity and literal state without running its factory.
+
+        Raises:
+            TypeError: If observed regex data or flags have unsupported native types.
+            ValueError: If its source, descriptors or state do not match.
+
+        """
         assignments = [
             statement.value
             for statement in tree.body
@@ -1965,12 +2197,12 @@ class FlextInfraWorkspaceGeneratedFunction:
         unicode = vars(supplier).get("UNICODE")
         if not self._native_integer(flag) or not self._native_integer(unicode):
             msg = "dedent regex flags are not native integers"
-            raise ValueError(msg)
-        if (
-            type(observed["pattern"]) is not str
-            or type(observed["flags"]) is not int
-            or observed["pattern"] != pattern_literal.value
-            or observed["flags"] != (int.__index__(flag) | int.__index__(unicode))
+            raise TypeError(msg)
+        if type(observed["pattern"]) is not str or type(observed["flags"]) is not int:
+            msg = "dedent regex state differs from its physical constructor"
+            raise TypeError(msg)
+        if observed["pattern"] != pattern_literal.value or observed["flags"] != (
+            int.__index__(flag) | int.__index__(unicode)
         ):
             msg = "dedent regex state differs from its physical constructor"
             raise ValueError(msg)

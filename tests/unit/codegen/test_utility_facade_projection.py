@@ -119,9 +119,9 @@ class TestsFlextInfraUtilityFacadeProjection:
                 f"consumer stdout:\n{consumer.stdout}\n"
                 f"publisher stdout:\n{result.stdout}\n"
                 "published __init__.py:\n"
-                f"{(package / c.Infra.INIT_PY).read_text(
-                    encoding=c.DEFAULT_ENCODING
-                )}\n"
+                f"{
+                    (package / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)
+                }\n"
                 "published utilities.py:\n"
                 f"{facade.read_text(encoding=c.DEFAULT_ENCODING)}"
             ),

@@ -15,7 +15,7 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceLockCompleteness,
 )
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraWorkspaceLockCompleteness:

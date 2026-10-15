@@ -29,7 +29,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
 
     @staticmethod
     def _module_move_workspace(tmp_path: Path) -> t.Quad[Path, Path, Path, Path]:
-        """Declare a real published owner and a consumer of its behavior."""
+        """Declare a real published owner and a consumer of its behavior.
+
+        Returns:
+            The repository, package, original source and declared destination.
+
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         implementation = package / "_pieces"
         implementation.mkdir()
@@ -65,7 +70,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     def _module_move_inputs(
         project: p.Infra.RopeProject,
     ) -> t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]]:
-        """Capture the actual public planner inputs once through atomic reads."""
+        """Capture the actual public planner inputs once through atomic reads.
+
+        Returns:
+            Captured source text and the original physical file states.
+
+        """
         states = tuple(
             tm.ok(
                 u.Cli.atomic_read_binary_file_state(
@@ -298,18 +308,16 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             source.read_text(encoding=c.DEFAULT_ENCODING) + extra,
             encoding=c.DEFAULT_ENCODING,
         )
-        with (
-            FlextInfraRopeWorkspace.open_workspace(root) as workspace,
-            pytest.raises(ValueError, match=message),
-        ):
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                target.parent,
-                sources=sources,
-                source_states=states,
-            )
+            with pytest.raises(ValueError, match=message):
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    target.parent,
+                    sources=sources,
+                    source_states=states,
+                )
         tm.that(target.parent.exists(), eq=False)
 
     @staticmethod

@@ -1318,6 +1318,74 @@ class TestsFlextInfraUvNativeResolution:
         is a broken candidate. The real Git backedge must not be removed from
         the provider to make a local root resolve.
         """
+        root, root_name, provider_name = (
+            TestsFlextInfraUvNativeResolution._write_self_identity_graph(
+                tmp_path, identity
+            )
+        )
+        resolution_root = root
+        if identity == "virtual-root":
+            resolution_root = tmp_path / "resolution"
+            resolution_root.mkdir()
+            view = tm.ok(
+                u.Infra.pyproject_native_resolution_view(
+                    m.Infra.UvResolutionProject(
+                        repository=u.Tests.repository_ref(root_name),
+                        directory=root,
+                        document=u.Tests.toml_doc(
+                            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+                        ),
+                    ),
+                    members=(),
+                    directory=resolution_root,
+                    policy=config.Infra.codegen.make.uv_resolution,
+                ),
+            )
+            tm.ok(
+                u.Cli.toml_write_document(
+                    resolution_root / c.PYPROJECT_FILENAME,
+                    view,
+                ),
+            )
+        declared = (root / c.PYPROJECT_FILENAME).read_bytes()
+        process = tm.ok(u.Tests.resolve_native_identity_fixture(resolution_root))
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=expected_error is None,
+            msg=process.stdout + process.stderr,
+        )
+        tm.that((root / c.PYPROJECT_FILENAME).read_bytes(), eq=declared)
+        if expected_error is not None:
+            tm.that(
+                process.stdout + process.stderr,
+                has=expected_error,
+            )
+            tm.that((root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+            return
+        locked = u.Tests.toml_tables_at(
+            (resolution_root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
+            "package",
+        )
+        packages = set(u.Tests.toml_strings([package["name"] for package in locked]))
+        tm.that(packages, has="identity-runtime")
+        tm.that(packages, has="identity-extra")
+        tm.that(packages, lacks="identity-inactive")
+        for dependency in (provider_name, "identity-dev", "identity-examples"):
+            tm.that(dependency in packages, eq=preserves_groups)
+        tm.that(sum(package["name"] == root_name for package in locked), eq=1)
+        candidate = next(package for package in locked if package["name"] == root_name)
+        tm.that(u.Tests.toml_mapping(candidate["source"]), lacks="git")
+
+    @staticmethod
+    def _write_self_identity_graph(
+        tmp_path: Path, identity: str
+    ) -> t.Triple[Path, str, str]:
+        """Materialize the same local Git graph and declared dependency groups.
+
+        Returns:
+            The real root and both distribution identities used by consumers.
+
+        """
         root = tmp_path / "root"
         remote = tmp_path / "root-origin"
         provider = tmp_path / "provider"
@@ -1407,55 +1475,4 @@ class TestsFlextInfraUvNativeResolution:
                 f"{policy}"
             ),
         )
-        resolution_root = root
-        if identity == "virtual-root":
-            resolution_root = tmp_path / "resolution"
-            resolution_root.mkdir()
-            view = tm.ok(
-                u.Infra.pyproject_native_resolution_view(
-                    m.Infra.UvResolutionProject(
-                        repository=u.Tests.repository_ref(root_name),
-                        directory=root,
-                        document=u.Tests.toml_doc(
-                            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-                        ),
-                    ),
-                    members=(),
-                    directory=resolution_root,
-                    policy=config.Infra.codegen.make.uv_resolution,
-                ),
-            )
-            tm.ok(
-                u.Cli.toml_write_document(
-                    resolution_root / c.PYPROJECT_FILENAME,
-                    view,
-                ),
-            )
-        declared = (root / c.PYPROJECT_FILENAME).read_bytes()
-        process = tm.ok(u.Tests.resolve_native_identity_fixture(resolution_root))
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=expected_error is None,
-            msg=process.stdout + process.stderr,
-        )
-        tm.that((root / c.PYPROJECT_FILENAME).read_bytes(), eq=declared)
-        if expected_error is not None:
-            tm.that(
-                process.stdout + process.stderr,
-                has=expected_error,
-            )
-            tm.that((root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
-            return
-        locked = u.Tests.toml_tables_at(
-            (resolution_root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
-            "package",
-        )
-        packages = set(u.Tests.toml_strings([package["name"] for package in locked]))
-        tm.that(packages, has="identity-runtime")
-        tm.that(packages, has="identity-extra")
-        tm.that(packages, lacks="identity-inactive")
-        for dependency in (provider_name, "identity-dev", "identity-examples"):
-            tm.that(dependency in packages, eq=preserves_groups)
-        tm.that(sum(package["name"] == root_name for package in locked), eq=1)
-        candidate = next(package for package in locked if package["name"] == root_name)
-        tm.that(u.Tests.toml_mapping(candidate["source"]), lacks="git")
+        return root, root_name, provider_name

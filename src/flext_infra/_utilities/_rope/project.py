@@ -73,6 +73,26 @@ class FlextInfraRopeProject(Project):
         """
         return super().get_pymodule(resource, force_errors=force_errors)
 
+    @override
+    def find_module(
+        self,
+        modname: str,
+        folder: p.Infra.RopeRoot | Folder | None = None,
+    ) -> File | Folder | None:
+        """Resolve through the SDK with an authenticated native folder.
+
+        Returns:
+            The native module resource, or no matching module.
+
+        Raises:
+            TypeError: The supplied folder is not a native Rope folder.
+
+        """
+        if folder is not None and not isinstance(folder, Folder):
+            message = "Rope module lookup requires a native folder"
+            raise TypeError(message)
+        return super().find_module(modname, folder)
+
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
 
