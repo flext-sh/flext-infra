@@ -13,7 +13,10 @@ import pytest
 from jinja2 import Template
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsVerification,
+)
 from tests import c, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -52,7 +55,13 @@ class TestsFlextInfraCodegenConfigLifecycle:
         destinations = tuple(file.path for file in result.plan.files)
         no_op = tm.ok(infra.codegen_conform(request))
         tm.that(no_op.written_files, eq=())
-        paths = (*destinations, root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH)
+        paths = (
+            *destinations,
+            root
+            / FlextInfraMiseArtifactsVerification.publication_receipt(
+                c.Infra.CodegenConformSurface.ENVRC,
+            ),
+        )
         before = tuple(
             tm.ok(FlextInfraMiseArtifactsFiles.read_state(path, required=True))
             for path in paths
@@ -158,7 +167,9 @@ print("generated config: frozen YAML, subclass identity, independent settings")
         )
         tm.ok(infra.codegen_conform(request))
         tm.that(tm.ok(infra.codegen_conform(request)).written_files, eq=())
-        report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        report = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.LAZY_INIT,
+        )
         before = tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=True))
         checked = tm.ok(
             infra.codegen_conform(

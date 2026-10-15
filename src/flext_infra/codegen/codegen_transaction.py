@@ -727,16 +727,15 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 else admitted.value.source_scope,
             }
         )
-        if (
-            analysis.files
-            and not policy.directories
-            and policy.staged_validator is None
+        effect_free = (
+            bool(analysis.files)
             and not analysis.issues
             and analysis.exception is None
             and not any(
                 u.Infra.codegen_file_requires_effect(file) for file in analysis.files
             )
-        ):
+        )
+        if effect_free and not policy.directories and policy.staged_validator is None:
             return self._publish_unchanged_file_phase(
                 scope_root,
                 roots,
@@ -759,9 +758,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             bound = self.bind_publication_proof(
                 started,
                 analysis.files,
-                source_topology=admission.source_topology,
-                scope_roots=admission.scope_roots,
-                source_scope=admission.source_scope,
+                topology=admission,
                 phase=analysis.phase,
                 batch_admission=admission,
             )
