@@ -30,7 +30,12 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         scope: p.Infra.RopeScope,
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
     ) -> str:
-        """Rewrite bound type references once, preserving metadata and literal data."""
+        """Rewrite bound type references once, preserving metadata and literal data.
+
+        Returns:
+            The resulting ``str``.
+
+        """
         protected = cls.expression_payload_ranges(source, project, scope)
         edits: list[t.Triple[int, int, str]] = []
         for begin, end in cls.reference_regions(source):

@@ -27,12 +27,11 @@ class FlextInfraModelsRefactorGrep:
                 t.Infra.RopeResource | None,
             ],
             m.Field(
-                default_factory=dict,
                 description=(
                     "Elected native module resources keyed by invocation identity"
                 ),
             ),
-        ]
+        ] = m.Field(default_factory=dict)
         source_folders: Annotated[
             tuple[p.Infra.RopeRoot, ...],
             m.Field(description="Project-owned roots in the native search order"),

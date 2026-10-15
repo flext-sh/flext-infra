@@ -104,6 +104,7 @@ class FlextInfra(
             # The campaign only plans through conform; it publishes through its
             # own transaction and never runs the complete surface.
             planner=planner,
+            producer=producer.value,
             transaction=FlextInfraCodegenTransaction(
                 FlextInfraCodegenMiseArtifacts(repository_root=source_root),
                 producer=producer.value,

@@ -260,7 +260,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         ) -> p.Result[bool]:
-            """Advance only through verified effects of the captured producer."""
+            """Continue the original producer through its verified effects."""
             ...
 
         def surface_contract(

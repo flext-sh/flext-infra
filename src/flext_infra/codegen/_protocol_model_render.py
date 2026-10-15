@@ -11,9 +11,6 @@ from pathlib import Path
 from textwrap import dedent, indent
 
 from flext_infra import c, config, p, t, u
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
 from flext_infra.codegen import FlextInfraCodegenProtocolModelAnnotations
 
 
@@ -31,7 +28,16 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         protocol_directory: Path,
         aliases: t.MappingKV[str, t.StrSequence],
     ) -> t.MappingKV[Path, str]:
-        """Render source-bound declarations and their composing owner modules."""
+        """Render source-bound declarations and their composing owner modules.
+
+        Returns:
+            The resulting ``t.MappingKV[Path, str]``.
+
+        Raises:
+            ValueError: If model declaration has no native scope; or if protocol
+                declaration exceeds configured LOC cap.
+
+        """
         renderer = cls(project, workspace, facades, declarations)
         grouped: dict[str, list[tuple[str, str]]] = defaultdict(list)
         for name, model in sorted(models.items()):
@@ -102,7 +108,16 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         model: p.ModelType,
         scope: p.Infra.RopeScope,
     ) -> str:
-        """Preserve field mutability and the model's authored method signatures."""
+        """Preserve field mutability and the model's authored method signatures.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            TypeError: If field; or if public method.
+            ValueError: If model declaration has no source module.
+
+        """
         lines = [
             "@runtime_checkable",
             f"class {name}(Protocol):",
@@ -126,8 +141,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             msg = f"model declaration has no source module: {name}"
             raise ValueError(msg)
         statements = u.Infra.logical_statements(module.source_code)
-        regions = FlextInfraUtilitiesSemanticFamilyTypeReferences
-        annotation_regions = regions.annotation_regions(module.source_code, module)
+        annotation_regions = u.Infra.annotation_regions(module.source_code, module)
         for method in scope.get_scopes():
             method_name = method.pyobject.get_name()
             if (
@@ -201,7 +215,12 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         project: p.Infra.ProjectSpec,
         imports: t.MappingKV[str, str],
     ) -> str:
-        """Import the package object without eagerly reading its composing facade."""
+        """Import the package object without eagerly reading its composing facade.
+
+        Returns:
+            The resulting ``str``.
+
+        """
         return (
             "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
             "from __future__ import annotations\n\n"

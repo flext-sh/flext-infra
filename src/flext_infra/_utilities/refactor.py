@@ -19,13 +19,12 @@ from typing import Protocol
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
 
 
-class _RuleDeltaOptions(FlextInfraModelsBase.FrozenArbitrary):
+class _RuleDeltaOptions(m.Infra.FrozenArbitrary):
     """Optional scope and authentication inputs for one rule delta comparison."""
 
     inventory: t.VariadicTuple[t.Pair[str, str]] = m.Field(

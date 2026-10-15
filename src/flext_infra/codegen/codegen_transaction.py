@@ -50,6 +50,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
 
+
         """
         if self._source_authority is not None and updates:
             return r[T].fail(
@@ -812,6 +813,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             No written paths after the complete admitted observation is proven.
+
 
         """
         result_type = r[t.VariadicTuple[Path]]

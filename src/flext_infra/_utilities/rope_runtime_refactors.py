@@ -63,7 +63,12 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
     @staticmethod
     def compiled_constant(source: str) -> p.Result[p.AttributeProbe]:
-        """Read a primitive compiler constant without executing authored source."""
+        """Read a primitive compiler constant without executing authored source.
+
+        Returns:
+            The resulting ``p.Result[p.AttributeProbe]``.
+
+        """
         code = compile(source, "<native constant>", "eval", dont_inherit=True)
         if code.co_names or code.co_freevars or len(code.co_consts) != 1:
             return r[p.AttributeProbe].fail("expression has no sole native constant")
@@ -84,7 +89,12 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
     @classmethod
     def literal_string(cls, source: str) -> str | None:
-        """Decode native string escapes without evaluating source callbacks."""
+        """Decode native string escapes without evaluating source callbacks.
+
+        Returns:
+            The resulting ``str | None``.
+
+        """
         observed = cls.compiled_constant(source)
         if observed.failure:
             return None
@@ -96,7 +106,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         cls,
         source: str,
     ) -> t.VariadicTuple[t.Triple[int, int, t.MappingKV[str, str | None]]]:
-        """Read complete literal and comment ranges from Rope's native lexer."""
+        """Read complete literal and comment ranges from Rope's native lexer.
+
+        Returns:
+            The resulting ``t.VariadicTuple[t.Triple[int, int, t.MappingKV[str, str |
+                None]]]``.
+
+        """
         adapter: t.ValueAdapter[
             t.SequenceOf[t.Triple[int, int, t.MappingKV[str, str | None]]]
         ] = u.type_adapter(

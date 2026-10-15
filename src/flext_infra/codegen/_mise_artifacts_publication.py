@@ -525,6 +525,7 @@ class FlextInfraMisePublication:
             The retirement failure issue with its causal exception, or
             ``(None, None)`` when no entry is captured or retirement holds.
 
+
         """
         if publication.index_before is None:
             return None, None

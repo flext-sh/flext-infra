@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import itertools
+import itertools
 import marshal
 import sys
 from base64 import b64encode
@@ -790,6 +791,7 @@ class FlextInfraWorkspaceNativeReference:
         return any(
             type(cls._class_namespace(owner).get("__call__")) is FunctionType
             for owner in vars(type)["__mro__"].__get__(type(value), type(type(value)))
+            for owner in vars(type)["__mro__"].__get__(type(value), type(type(value)))
         )
 
     @staticmethod
@@ -1112,7 +1114,10 @@ class FlextInfraWorkspaceNativeReference:
             binding=binding,
             paths=paths,
         )
-        if any(native is kind for kind in (list, set, dict)) and not construction:
+        if (
+            any(native is kind for kind in (list, set, dict, deque))
+            and not construction
+        ):
             return ["mutable", native.__name__]
         if cls._is_operand_sequence(value):
             items = list(map(observe, value))
@@ -1712,6 +1717,7 @@ class FlextInfraWorkspaceNativeReference:
             fields = frozenset(
                 instruction.argval
                 for previous, instruction in itertools.pairwise(instructions)
+                for previous, instruction in itertools.pairwise(instructions)
                 if instruction.opname == "STORE_ATTR"
                 and isinstance(instruction.argval, str)
                 and instruction.argval in declarations
@@ -2205,6 +2211,12 @@ class FlextInfraWorkspaceNativeReference:
                                 observe_value(value, construction=True),
                             ),
                         ),
+                        operands=(
+                            (
+                                "alias",
+                                observe_value(value, construction=True),
+                            ),
+                        ),
                     ),
                 )
                 pending.extend(
@@ -2302,6 +2314,7 @@ class FlextInfraWorkspaceNativeReference:
                 if cls._native_callable_instance(
                     value
                 ) or cls._python_callable_instance(value):
+                ) or cls._python_callable_instance(value):
                     native = type(value)
                     evidence.append(
                         m.Infra.NativeBindingEvidence(
@@ -2313,6 +2326,12 @@ class FlextInfraWorkspaceNativeReference:
                             name=vars(type)["__name__"].__get__(native, type(native)),
                             qualname=vars(type)["__qualname__"].__get__(
                                 native, type(native)
+                            ),
+                            operands=(
+                                (
+                                    "storage",
+                                    observe_value(value, construction=True),
+                                ),
                             ),
                             operands=(
                                 (
@@ -2982,13 +3001,15 @@ class FlextInfraWorkspaceNativeReference:
         output_paths = {item.path for item in outputs}
         if outputs:
             for expected in outputs:
-                state = FlextInfraMiseArtifactsFiles.read_state(
+                state = codegen.FlextInfraMiseArtifactsFiles.read_state(
                     expected.path, required=expected.sha256 is not None
                 )
                 if state.failure:
                     return r[bool].from_failure(state)
-                recorded = FlextInfraMiseArtifactsJournalRelocation.source_record(
-                    expected.phase, state.value, previous=expected
+                recorded = (
+                    codegen.FlextInfraMiseArtifactsJournalRelocation.source_record(
+                        expected.phase, state.value, previous=expected
+                    )
                 )
                 if recorded.failure:
                     return r[bool].from_failure(recorded)
@@ -3007,7 +3028,7 @@ class FlextInfraWorkspaceNativeReference:
             if current.value != receipt:
                 return r[bool].fail(f"native source authority changed: {receipt.path}")
 
-        return FlextInfraCodegenPreconditions.source_trees_current(
+        return codegen.FlextInfraCodegenPreconditions.source_trees_current(
             authority.generator_trees,
             tuple(outputs),
             modules=authority.generator_modules,

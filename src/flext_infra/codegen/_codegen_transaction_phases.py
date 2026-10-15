@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Protocol
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenStaging,
@@ -132,7 +131,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         @property
         def batch_admission(self) -> m.Infra.CodegenPhaseOutcome | None: ...
 
-    class _PendingPhase(FlextInfraModelsBase.FrozenArbitrary):
+    class _PendingPhase(m.Infra.FrozenArbitrary):
         """Dependent-phase append request bound by the phase entry point."""
 
         phase: str = m.Field(
@@ -1038,9 +1037,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    r[bool].fail(
-                        persisted.error or f"cannot persist {phase} journal phase",
-                    ),
+                    r[bool].from_failure(persisted),
                 ),
             )
         return result_type.ok((manifested.value, persisted.value))
@@ -1270,9 +1267,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    r[bool].fail(
-                        persisted.error or f"cannot persist {phase} directories",
-                    ),
+                    r[bool].from_failure(persisted),
                 ),
             )
         return self._materialize_directories(layout, extended.value, persisted.value)

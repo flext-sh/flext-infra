@@ -381,6 +381,13 @@ class FlextInfraUtilitiesRopeInventory:
         diagnostic. Only the declaration identifier and proven external alias
         spellings are normalized. The implicit class/schema identity is
         deliberately not treated as permission to merge declarations.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If native payload declaration has no class identifier.
+
         """
         payloads = FlextInfraUtilitiesDeclarationPayload
         binding = payloads.payload_declaration(

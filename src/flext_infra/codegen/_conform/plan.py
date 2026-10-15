@@ -29,10 +29,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         self,
         receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[bool]:
-        """Advance producer capture only through this producer's live effect proof.
+        """Continue the original producer through this producer's live effect proof.
 
         Returns:
-            Whether the recaptured producer still owns the published receipts.
+            Whether the original producer still owns the published receipts.
 
         """
         if self.producer is None or not receipts:
@@ -49,7 +49,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         verified = self._verified_receipt_states(receipts)
         if verified.failure:
             return verified
-        return self._advanced_producer_capture(receipts)
+        return self._continued_producer(producer, receipts)
 
     @staticmethod
     def _expected_producer_sources(
@@ -132,34 +132,31 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 return verified
         return r[bool].ok(value=True)
 
-    def _advanced_producer_capture(
-        self,
+    @staticmethod
+    def _continued_producer(
+        producer: m.Infra.CodegenPhaseAnalysis,
         receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[bool]:
-        """Recapture the producer and prove it still owns its live effects.
+        """Prove the original producer against its authenticated output preimages.
 
         Args:
+            producer: The producer epoch captured before its effects.
             receipts: Publication receipts of this producer's live effects.
 
         Returns:
-            Whether the recaptured producer is current, or the first capture,
-            verification or currency failure.
+            Whether the original producer is current, or the first output or
+            currency failure.
 
         """
-        captured = FlextInfraCodegenPreconditions.capture_producer(
-            self.repository_root,
-            entrypoint=self.plan,
+        outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            receipts,
         )
-        if captured.failure:
-            return r[bool].from_failure(captured)
-        reverified = self._verified_receipt_states(receipts)
-        if reverified.failure:
-            return reverified
-        current = FlextInfraCodegenPreconditions.producer_current(captured.value)
-        if current.failure:
-            return current
-        self.producer = captured.value
-        return r[bool].ok(value=True)
+        if outputs.failure:
+            return r[bool].from_failure(outputs)
+        return FlextInfraCodegenPreconditions.producer_current(
+            producer,
+            outputs=outputs.value,
+        )
 
     def plan(
         self,

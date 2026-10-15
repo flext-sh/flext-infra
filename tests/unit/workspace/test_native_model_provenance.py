@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 from flext_core import m
+from flext_core import m
 from pydantic import RootModel
 from ruamel.yaml.compat import check_namespace_char
 from typing_inspection.introspection import AnnotationSource, inspect_annotation

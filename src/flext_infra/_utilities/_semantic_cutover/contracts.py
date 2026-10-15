@@ -56,6 +56,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             ValueError: If two rules share an identity or a rule names an
                 undeclared facade family.
 
+
         """
         rules = m.Infra.RopeContractRules.model_validate(
             u.Cli.yaml_safe_load(
@@ -225,6 +226,9 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
 
         Returns:
             Whether the native occurrence belongs to this rule's model domain.
+
+        Raises:
+            ValueError: If a family-constrained occurrence has no source resource.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules

@@ -9,7 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenPreconditions
+from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
+    FlextInfraMiseArtifactsVerification,
+)
 
 
 class FlextInfraCandidateBootstrapService:
@@ -19,10 +22,12 @@ class FlextInfraCandidateBootstrapService:
         self,
         planner: p.Infra.CandidateBootstrapPlanner,
         transaction: p.Infra.CandidateBootstrapTransaction,
+        producer: m.Infra.CodegenPhaseAnalysis,
     ) -> None:
         """Wire the declared-target planner to its atomic publisher."""
         self._planner = planner
         self._transaction = transaction
+        self._producer = producer
 
     def execute(
         self,
@@ -47,6 +52,9 @@ class FlextInfraCandidateBootstrapService:
             return self._verify(roots.value, targets, declaration_states)
 
         def publish(scope_root: Path) -> p.Result[bool]:
+            producer = FlextInfraCodegenPreconditions.producer_current(self._producer)
+            if producer.failure:
+                return r[bool].from_failure(producer)
             planned = self._plan(roots.value, targets, declaration_states)
             if planned.failure:
                 return r[bool].from_failure(planned)
@@ -83,11 +91,7 @@ class FlextInfraCandidateBootstrapService:
                 roots.value,
                 targets,
                 declaration_states,
-                publications=tuple(
-                    publication
-                    for receipt in receipts
-                    for publication in receipt.published_files
-                ),
+                receipts=tuple(receipts),
             )
 
         return self._transaction.run_files_locked(roots.value, publish)
@@ -311,7 +315,7 @@ class FlextInfraCandidateBootstrapService:
         targets: m.Infra.CandidateBootstrapTargets,
         declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
         *,
-        publications: t.VariadicTuple[m.Infra.CodegenStagedFile] = (),
+        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome] = (),
     ) -> p.Result[bool]:
         """Require unchanged declarations and a complete post-publication fixed point.
 
@@ -319,7 +323,22 @@ class FlextInfraCandidateBootstrapService:
             The resulting ``p.Result[bool]``.
 
         """
-        published = {item.before.path: item for item in publications}
+        outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            receipts,
+        )
+        if outputs.failure:
+            return r[bool].from_failure(outputs)
+        producer = FlextInfraCodegenPreconditions.producer_current(
+            self._producer,
+            outputs=outputs.value,
+        )
+        if producer.failure:
+            return r[bool].from_failure(producer)
+        published = {
+            item.before.path: item
+            for receipt in receipts
+            for item in receipt.published_files
+        }
         expected_states: list[m.Cli.AtomicFileState] = []
         for state in declaration_states:
             publication = published.get(state.path)

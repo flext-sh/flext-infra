@@ -10,15 +10,14 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsVerification
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from flext_infra import p
 
 type _DocsScopeArtifacts = t.Pair[
     m.Infra.DocScope,
@@ -266,18 +265,13 @@ class FlextInfraDocGeneratorBundleMixin:
             return result_type.fail(
                 "docs scope inventory changed before batch admission",
             )
-        states = tuple(
-            sorted(
-                {
-                    item.path: item
-                    for item in (
-                        *sources.value,
-                        declaration,
-                    )
-                }.values(),
-                key=lambda item: item.path,
-            )
-        )
+        complete = FlextInfraCodegenPreconditions.unique_states((
+            *sources.value,
+            declaration,
+        ))
+        if complete.failure:
+            return result_type.from_failure(complete)
+        states = tuple(sorted(complete.value, key=lambda item: item.path))
         directories = u.Infra.docs_source_directories(
             source_roots,
             source_scope=source_scope,
@@ -801,12 +795,18 @@ class FlextInfraDocGeneratorBundleMixin:
             if page.failure:
                 return result_type.from_failure(page)
             if page.value.rstrip("/").removesuffix(".git") == c.Infra.GITHUB_REPO_URL:
-                return u.Infra.resolve_integration_branch(
+                branch = u.Infra.resolve_integration_branch(
                     repository_root,
                     policy_branch=inputs.spec.branch_policy.integration_branch,
                     inputs=inputs,
                 )
-        return cls._family_governance_ref(repository_root, inputs)
+                if branch.failure:
+                    return result_type.from_failure(branch)
+                return result_type.ok(branch.value)
+        family = cls._family_governance_ref(repository_root, inputs)
+        if family.failure:
+            return result_type.from_failure(family)
+        return result_type.ok(family.value)
 
     @classmethod
     def _family_governance_ref(

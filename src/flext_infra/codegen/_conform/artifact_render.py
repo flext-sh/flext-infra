@@ -10,10 +10,13 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.__version__ import __version__
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
@@ -339,7 +342,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         if not members:
             return result_type.ok(((), ()))
-        from flext_infra.workspace import FlextInfraWorkspaceDetector
 
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
         if context.failure:

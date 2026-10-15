@@ -840,9 +840,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    r[bool].fail(
-                        created.error or f"cannot create directory {intent.path}"
-                    ),
+                    r[bool].from_failure(created),
                 ),
             )
         directories = tuple(
@@ -857,9 +855,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                r[bool].fail(
-                    recorded.error or f"cannot record directory {intent.path}"
-                ),
+                r[bool].from_failure(recorded),
                 journal_write=False,
             )
             return result_type.from_failure(failed)
@@ -872,9 +868,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                r[bool].fail(
-                    persisted.error or f"cannot persist directory {intent.path}"
-                ),
+                r[bool].from_failure(persisted),
                 journal_write=True,
             )
             return result_type.from_failure(failed)

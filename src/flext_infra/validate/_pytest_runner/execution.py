@@ -847,8 +847,8 @@ class FlextInfraPytestRunnerExecution(
         ).unwrap()
         selection = selection_plan.node_ids
         # A declared file whose inventory was collected still runs: testmon may
-        # select nothing for a file that has in-scope tests, and noselect
-        # executes that file. An empty scope is owns_no_tests and is not this
+        # select nothing for a file that has in-scope tests, and the declared
+        # file selection executes it. An empty scope is owns_no_tests and is not this
         # guard. A suite with no proved inventory stays a failure.
         if (
             not selection
@@ -869,7 +869,7 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
-        # A declared file always executes under noselect, so an empty testmon
+        # A declared file always executes under forceselect, so an empty testmon
         # selection over a restored cache is never a cache hit for it.
         cache_hit = (
             self.target_file is None

@@ -15,6 +15,62 @@ from flext_infra import FlextInfraConfig, c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesDocsScope
 
 
+class _DocsTopologyOptions(m.Infra.FrozenArbitrary):
+    """One docs batch's source membership and directory ancestry inputs."""
+
+    repository_root: Path = m.Field(
+        description="Repository receiving the documentation render.",
+    )
+    source_states: t.SequenceOf[m.Cli.AtomicFileState] = m.Field(
+        description="Authenticated source states of the current batch.",
+    )
+    extra_roots: t.SequenceOf[Path] = m.Field(
+        default=(),
+        description="Additional read-only roots joined onto default discovery.",
+    )
+    source_roots: t.SequenceOf[Path] = m.Field(
+        default=(),
+        description="Explicit source roots replacing default discovery.",
+    )
+    source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+        default=(),
+        description="Planned source directory chains to authenticate.",
+    )
+    created_directories: t.SequenceOf[m.Cli.AtomicDirectoryState] = m.Field(
+        default=(),
+        description="Directories created during atomic scaffolding.",
+    )
+    source_scope: Path | None = m.Field(
+        default=None,
+        description="Scope root bounding discovery inside the repository.",
+    )
+
+
+class _DocsTopologySpec(Protocol):
+    """Read-only structural contract for docs topology verification inputs."""
+
+    @property
+    def repository_root(self) -> Path: ...
+
+    @property
+    def source_states(self) -> t.SequenceOf[m.Cli.AtomicFileState]: ...
+
+    @property
+    def extra_roots(self) -> t.SequenceOf[Path]: ...
+
+    @property
+    def source_roots(self) -> t.SequenceOf[Path]: ...
+
+    @property
+    def source_directories(self) -> t.SequenceOf[m.Cli.AtomicDirectoryChainPlan]: ...
+
+    @property
+    def created_directories(self) -> t.SequenceOf[m.Cli.AtomicDirectoryState]: ...
+
+    @property
+    def source_scope(self) -> Path | None: ...
+
+
 class FlextInfraUtilitiesDocsGenerateSourcesMixin:
     """Freeze every physical source consumed by one documentation render."""
 

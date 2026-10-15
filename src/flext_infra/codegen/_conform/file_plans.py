@@ -12,9 +12,6 @@ from pathlib import Path
 from flext_core import FlextStrictYamlConfigSource
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
-from flext_infra._utilities.workspace_inventory import (
-    FlextInfraUtilitiesWorkspaceInventory,
-)
 from flext_infra.codegen._conform import FlextInfraCodegenConformBeadsRoutes
 
 
@@ -383,11 +380,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         retirement_obstacles: list[str] = []
         first_exception: BaseException | None = None
         if legacy.external_consumers:
-            discovered = (
-                FlextInfraUtilitiesWorkspaceInventory.discover_external_consumers(
-                    root,
-                    inputs,
-                )
+            discovered = u.Infra.discover_external_consumers(
+                root,
+                inputs,
             )
             if discovered.failure:
                 retirement_obstacles.append(str(discovered.error))

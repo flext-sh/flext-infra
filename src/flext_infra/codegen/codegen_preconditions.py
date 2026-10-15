@@ -13,14 +13,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen._mise_artifacts_comparison import (
+from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
+    FlextInfraMiseArtifactsFiles,
 )
-from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
-from flext_infra.workspace import FlextInfraWorkspaceDetector
-from flext_infra.workspace.environment_provenance import (
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
 )
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
+from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
@@ -44,6 +46,7 @@ class FlextInfraCodegenPreconditions:
         Raises:
             TypeError: If an elected producer dependency resource is not a
                 file.
+
 
         """
         result_type = r[t.VariadicTuple[t.Pair[str, Path]]]
@@ -254,9 +257,6 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.NativeImportObservation]
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
 
         observed = FlextInfraWorkspaceNativeReference.capture(names)
         if observed.failure:
@@ -408,9 +408,6 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
 
         receipts: list[m.Cli.AtomicFileReceipt] = []
         for state in states.values():
@@ -578,15 +575,10 @@ class FlextInfraCodegenPreconditions:
             The authenticated producer phase analysis snapshot.
 
         """
-        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
         if context.failure:
             return result_type.from_failure(context)
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
 
         selection = FlextInfraWorkspaceNativeReference.producer_selections(
             entrypoint,
@@ -604,7 +596,7 @@ class FlextInfraCodegenPreconditions:
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        reference = FlextInfraValidateFreshImport.capture_native_reference(
+        reference = FlextInfraWorkspaceNativeReference.authenticate(
             m.Infra.NativeImportRequest(
                 repository_root=context.value.runtime_root,
                 runtime_root=context.value.runtime_root,
@@ -822,9 +814,6 @@ class FlextInfraCodegenPreconditions:
             or modules != reference.source_authority.generator_modules
         ):
             return r[bool].fail("producer native epoch belongs to another election")
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
 
         current = FlextInfraWorkspaceNativeReference.authority_current(
             reference.source_authority, outputs=outputs

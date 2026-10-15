@@ -32,14 +32,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class _DeclaredProofOptions(FlextInfraModelsBase.FrozenArbitrary):
+class _DeclaredProofOptions(m.Infra.FrozenArbitrary):
     """Frozen read-only inputs proving one declared tool against Mise.
 
     The frozen model is itself the structural read-only contract every proof
