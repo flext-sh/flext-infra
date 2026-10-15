@@ -11,7 +11,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from yaml.parser import ParserError
 
 from flext_infra import config, infra
 from flext_infra.codegen import (
@@ -588,7 +587,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         original = second_declaration.read_text(encoding="utf-8")
         second_declaration.write_text("invalid: [\n", encoding="utf-8")
 
-        with pytest.raises(ParserError):
+        with pytest.raises(u.Yaml.YAMLError):
             infra.bootstrap_candidate(
                 m.Infra.CandidateBootstrapCommand(repository_root=source),
             )
@@ -759,11 +758,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = TestsFlextInfraConformSupport.project_tree(candidate)
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
-        destinations = FlextInfraCodegenConform.surface_contract(
-            c.Infra.CodegenConformSurface.PYPROJECT,
-            codegen=inputs.spec,
-        ).destinations
-        assert destinations is not None
+        destinations = tm.not_none(
+            FlextInfraCodegenConform.surface_contract(
+                c.Infra.CodegenConformSurface.PYPROJECT,
+                codegen=inputs.spec,
+            ).destinations,
+        )
 
         tm.ok(infra.bootstrap_candidate(command))
         first = tm.ok(u.Cli.atomic_read_binary_file_state(projection, required=True))
@@ -837,11 +837,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         for relative in resolution:
             (candidate / relative).unlink(missing_ok=True)
         before = TestsFlextInfraConformSupport.project_tree(candidate)
-        destinations = FlextInfraCodegenConform.surface_contract(
-            c.Infra.CodegenConformSurface.DEPENDENCIES,
-            codegen=inputs.spec,
-        ).destinations
-        assert destinations is not None
+        destinations = tm.not_none(
+            FlextInfraCodegenConform.surface_contract(
+                c.Infra.CodegenConformSurface.DEPENDENCIES,
+                codegen=inputs.spec,
+            ).destinations,
+        )
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
 
         tm.ok(infra.bootstrap_candidate(command))
