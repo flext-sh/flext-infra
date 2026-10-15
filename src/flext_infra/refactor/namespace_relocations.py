@@ -171,12 +171,9 @@ class FlextInfraNamespaceRelocationCascade:
     ) -> t.MappingKV[Path, t.MappingKV[t.StrPair, set[str]]]:
         """Map each file's import moves: ``(source module, target module)`` to aliases.
 
-        An own-package symbol always rebinds to the own package's root. A
-        package-root finding whose source module lies under a foreign
-        top-level package is not this project's finding: it stays residue
-        and keeps the verb loud instead of binding the alias into the
-        foreign package — the defect that rewrote own-package
-        ``from flext_infra import u`` bindings to ``from flext_cli import u``.
+        Own-package findings rebind to the project's root. Package-root
+        findings rebind to the captured source's declaring package, preserving
+        foreign public exports instead of substituting the project's alias.
 
         Returns:
             The resulting mapping of file paths to import moves.
@@ -196,12 +193,12 @@ class FlextInfraNamespaceRelocationCascade:
                 finding,
                 c.Infra.CODEMOD_RULE_MODULE_METAVARIABLE,
             )
-            if (
-                relocation is c.Infra.CodemodRelocation.PACKAGE_ROOT_IMPORT
-                and module.split(".", maxsplit=1)[0] != own_package
-            ):
-                continue
-            targets[project_root / finding.file][module, own_package].add(
+            target_package = (
+                module.split(".", maxsplit=1)[0]
+                if relocation is c.Infra.CodemodRelocation.PACKAGE_ROOT_IMPORT
+                else own_package
+            )
+            targets[project_root / finding.file][module, target_package].add(
                 cls._captured(finding, c.Infra.CODEMOD_RULE_NAME_METAVARIABLE),
             )
         return targets
@@ -248,8 +245,7 @@ class FlextInfraNamespaceRelocationCascade:
                     | c.Infra.CodemodRelocation.OWN_PACKAGE_IMPORT
                 ):
                     # Grouped by the public import_relocation_targets owner,
-                    # which binds own-package symbols to the own package and
-                    # leaves foreign-package findings as residue.
+                    # which preserves each relocation's declaring package.
                     pass
                 case c.Infra.CodemodRelocation.FACADE_CLASS:
                     classes.append((

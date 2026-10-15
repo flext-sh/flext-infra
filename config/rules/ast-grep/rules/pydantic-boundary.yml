@@ -205,3 +205,123 @@ fix: "$NAME: $TYPE = m.Field(default_factory=lambda: MappingProxyType($ARG))"
 message: >-
   A pydantic field default must be deep-copyable. Build a MappingProxyType
   default through `m.Field(default_factory=lambda: MappingProxyType(...))`.
+---
+# The annotation supplies the element type; defer the constructor so nested
+# model references are not evaluated before their declaring class exists.
+id: pydantic-typed-list-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: $SEQUENCE[$ELEMENT] = m.Field(default_factory=list, $$$REST)"
+constraints:
+  SEQUENCE:
+    regex: "^(list|MutableSequence|t\\.MutableSequenceOf)$"
+fix: "$NAME: $SEQUENCE[$ELEMENT] = m.Field(default_factory=lambda: list[$ELEMENT](), $$$REST)"
+message: >-
+  Parameterize the fresh list factory from its declared element type.
+---
+id: pydantic-typed-annotated-list-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: Annotated[$SEQUENCE[$ELEMENT], $$$METADATA] = m.Field(default_factory=list, $$$REST)"
+  not:
+    pattern: "$NAME: Annotated[$SEQUENCE[$ELEMENT], m.Field(default_factory=$FACTORY, $$$DUPLICATE_METADATA)] = m.Field(default_factory=$FACTORY, $$$REST)"
+constraints:
+  SEQUENCE:
+    regex: "^(list|MutableSequence|t\\.MutableSequenceOf)$"
+fix: "$NAME: Annotated[$SEQUENCE[$ELEMENT], $$$METADATA] = m.Field(default_factory=lambda: list[$ELEMENT](), $$$REST)"
+message: >-
+  Parameterize the fresh list factory without changing Annotated metadata.
+---
+id: pydantic-typed-set-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: $SET[$ELEMENT] = m.Field(default_factory=set, $$$REST)"
+constraints:
+  SET:
+    regex: "^(set|MutableSet)$"
+fix: "$NAME: $SET[$ELEMENT] = m.Field(default_factory=lambda: set[$ELEMENT](), $$$REST)"
+message: >-
+  Parameterize the fresh set factory from its declared element type.
+---
+id: pydantic-typed-annotated-set-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: Annotated[$SET[$ELEMENT], $$$METADATA] = m.Field(default_factory=set, $$$REST)"
+  not:
+    pattern: "$NAME: Annotated[$SET[$ELEMENT], m.Field(default_factory=$FACTORY, $$$DUPLICATE_METADATA)] = m.Field(default_factory=$FACTORY, $$$REST)"
+constraints:
+  SET:
+    regex: "^(set|MutableSet)$"
+fix: "$NAME: Annotated[$SET[$ELEMENT], $$$METADATA] = m.Field(default_factory=lambda: set[$ELEMENT](), $$$REST)"
+message: >-
+  Parameterize the fresh set factory without changing Annotated metadata.
+---
+id: pydantic-typed-dict-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: $MAPPING[$KEY, $VALUE] = m.Field(default_factory=dict, $$$REST)"
+constraints:
+  MAPPING:
+    regex: "^(dict|MutableMapping|t\\.MutableMappingKV)$"
+fix: "$NAME: $MAPPING[$KEY, $VALUE] = m.Field(default_factory=lambda: dict[$KEY, $VALUE](), $$$REST)"
+message: >-
+  Parameterize the fresh dict factory from its declared key and value types.
+---
+id: pydantic-typed-annotated-dict-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: Annotated[$MAPPING[$KEY, $VALUE], $$$METADATA] = m.Field(default_factory=dict, $$$REST)"
+  not:
+    pattern: "$NAME: Annotated[$MAPPING[$KEY, $VALUE], m.Field(default_factory=$FACTORY, $$$DUPLICATE_METADATA)] = m.Field(default_factory=$FACTORY, $$$REST)"
+constraints:
+  MAPPING:
+    regex: "^(dict|MutableMapping|t\\.MutableMappingKV)$"
+fix: "$NAME: Annotated[$MAPPING[$KEY, $VALUE], $$$METADATA] = m.Field(default_factory=lambda: dict[$KEY, $VALUE](), $$$REST)"
+message: >-
+  Parameterize the fresh dict factory without changing Annotated metadata.
+---
+# A duplicated constructor default is removed only when both factories agree.
+# Keep constraints and descriptions in their original positions.
+id: pydantic-single-owner-annotated-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: Annotated[$TYPE, m.Field(default_factory=$FACTORY, $$$METADATA)] = m.Field(default_factory=$FACTORY, $$$REST)"
+fix: "$NAME: Annotated[$TYPE, m.Field($$$METADATA)] = m.Field(default_factory=$FACTORY, $$$REST)"
+message: >-
+  Keep the identical default factory only in the statically visible assignment.
+---
+id: pydantic-typed-annotated-defaultdict-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: Annotated[defaultdict[$KEY, $VALUE], $$$METADATA] = m.Field(default_factory=lambda: defaultdict($FACTORY), $$$REST)"
+fix: "$NAME: Annotated[defaultdict[$KEY, $VALUE], $$$METADATA] = m.Field(default_factory=lambda: defaultdict[$KEY, $VALUE]($FACTORY), $$$REST)"
+message: >-
+  Parameterize the fresh defaultdict while preserving its missing-key factory.
+---
+id: pydantic-typed-tuple-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: t.VariadicTuple[$ELEMENT] = m.Field(default_factory=tuple, $$$REST)"
+fix: "$NAME: t.VariadicTuple[$ELEMENT] = m.Field(default_factory=lambda: tuple[$ELEMENT, ...](), $$$REST)"
+message: >-
+  Parameterize the empty variadic tuple factory from its declared element type.
+---
+id: pydantic-typed-annotated-tuple-factory
+language: python
+severity: error
+rule:
+  pattern: "$NAME: Annotated[t.VariadicTuple[$ELEMENT], $$$METADATA] = m.Field(default_factory=tuple, $$$REST)"
+  not:
+    pattern: "$NAME: Annotated[t.VariadicTuple[$ELEMENT], m.Field(default_factory=$FACTORY, $$$DUPLICATE_METADATA)] = m.Field(default_factory=$FACTORY, $$$REST)"
+fix: "$NAME: Annotated[t.VariadicTuple[$ELEMENT], $$$METADATA] = m.Field(default_factory=lambda: tuple[$ELEMENT, ...](), $$$REST)"
+message: >-
+  Parameterize the empty variadic tuple factory without changing Annotated metadata.

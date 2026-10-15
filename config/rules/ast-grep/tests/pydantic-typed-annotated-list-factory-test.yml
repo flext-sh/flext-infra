@@ -1,0 +1,7 @@
+id: pydantic-typed-annotated-list-factory
+valid:
+  - 'items: Annotated[t.MutableSequenceOf[str], m.Field(description="items")] = m.Field(default_factory=lambda: list[str]())'
+  - 'items: Annotated[t.MutableSequenceOf[str], m.Field(default_factory=list, description="items")] = m.Field(default_factory=list)'
+invalid:
+  - 'items: Annotated[t.MutableSequenceOf[Outer.Item], m.Field(min_length=1, description="items")] = m.Field(default_factory=list, validate_default=False)'
+  - 'items: Annotated[MutableSequence[str], m.BeforeValidator(normalize), m.Field(description="items")] = m.Field(default_factory=list)'

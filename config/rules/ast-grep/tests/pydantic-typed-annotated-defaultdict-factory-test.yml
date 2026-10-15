@@ -1,0 +1,6 @@
+id: pydantic-typed-annotated-defaultdict-factory
+valid:
+  - 'counts: Annotated[defaultdict[str, int], m.Field(description="counts")] = m.Field(default_factory=lambda: defaultdict[str, int](int))'
+  - 'counts: Annotated[dict[str, int], m.Field(description="counts")] = m.Field(default_factory=lambda: defaultdict(int))'
+invalid:
+  - 'counts: Annotated[defaultdict[str, int], m.Field(description="counts")] = m.Field(default_factory=lambda: defaultdict(int))'

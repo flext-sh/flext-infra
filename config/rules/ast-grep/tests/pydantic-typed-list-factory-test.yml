@@ -1,0 +1,9 @@
+id: pydantic-typed-list-factory
+valid:
+  - 'items: t.MutableSequenceOf[str] = m.Field(default_factory=lambda: list[str]())'
+  - 'items: t.MutableSequenceOf[str] = m.Field(default_factory=set)'
+  - 'items: t.StrSequence = m.Field(default_factory=list)'
+  - 'items: Unrelated[str] = m.Field(default_factory=list)'
+invalid:
+  - 'items: t.MutableSequenceOf[Outer.Item] = m.Field(default_factory=list, description="observations")'
+  - 'items: MutableSequence[str] = m.Field(default_factory=list)'

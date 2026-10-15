@@ -1,0 +1,7 @@
+id: pydantic-typed-set-factory
+valid:
+  - 'items: MutableSet[str] = m.Field(default_factory=lambda: set[str]())'
+  - 'items: MutableSet[str] = m.Field(default_factory=list)'
+  - 'items: Unrelated[str] = m.Field(default_factory=set)'
+invalid:
+  - 'items: MutableSet[str] = m.Field(default_factory=set, description="roots")'

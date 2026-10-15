@@ -1,0 +1,8 @@
+id: pydantic-typed-dict-factory
+valid:
+  - 'gates: MutableMapping[str, Outer.Gate] = m.Field(default_factory=lambda: dict[str, Outer.Gate]())'
+  - 'payload: t.MutableJsonMapping = m.Field(default_factory=dict)'
+  - 'values: Unrelated[str, int] = m.Field(default_factory=dict)'
+invalid:
+  - 'gates: MutableMapping[str, Outer.Gate] = m.Field(default_factory=dict, description="gates")'
+  - 'phases: t.MutableMappingKV[str, t.MutableStrMapping] = m.Field(default_factory=dict)'

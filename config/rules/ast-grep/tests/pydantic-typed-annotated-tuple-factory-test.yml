@@ -1,0 +1,5 @@
+id: pydantic-typed-annotated-tuple-factory
+valid:
+  - 'items: Annotated[t.VariadicTuple[str], m.Field(default_factory=tuple)] = m.Field(default_factory=tuple)'
+invalid:
+  - 'items: Annotated[t.VariadicTuple[str], m.Field(description="items")] = m.Field(default_factory=tuple)'

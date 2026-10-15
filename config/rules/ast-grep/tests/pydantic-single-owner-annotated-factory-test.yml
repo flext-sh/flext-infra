@@ -1,0 +1,7 @@
+id: pydantic-single-owner-annotated-factory
+valid:
+  - 'items: Annotated[t.MutableSequenceOf[str], m.Field(default_factory=list)] = m.Field(default_factory=set)'
+  - 'items: Annotated[t.MutableSequenceOf[str], m.Field(description="items")] = m.Field(default_factory=list)'
+invalid:
+  - 'items: Annotated[t.MutableSequenceOf[Outer.Item], m.Field(default_factory=list, description="items")] = m.Field(default_factory=list, description="items")'
+  - 'roots: Annotated[MutableSet[str], m.Field(default_factory=set, min_length=1)] = m.Field(default_factory=set)'

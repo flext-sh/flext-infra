@@ -1,0 +1,5 @@
+id: pydantic-typed-annotated-dict-factory
+valid:
+  - 'values: Annotated[MutableMapping[str, int], m.Field(default_factory=dict, description="values")] = m.Field(default_factory=dict)'
+invalid:
+  - 'updates: Annotated[MutableMapping[Path, str], m.Field(description="pending sources")] = m.Field(default_factory=dict)'

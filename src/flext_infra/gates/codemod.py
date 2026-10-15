@@ -127,7 +127,10 @@ class FlextInfraCodemodGate(FlextInfraGate):
         raw_output: list[str] = []
         for ruleset in planned.value.rulesets:
             scan = self._run(
-                self._scan_command(ruleset, targets),
+                self._scan_command(
+                    ruleset,
+                    tuple(str(project_dir.resolve() / target) for target in targets),
+                ),
                 project_dir,
                 timeout=self._check_timeout(project_dir, ctx),
             )
@@ -257,12 +260,15 @@ class FlextInfraCodemodGate(FlextInfraGate):
         )
         return report, expected_stderr
 
-    @staticmethod
     def _scan_command(
+        self,
         ruleset: m.Infra.CodemodRuleset,
         targets: t.StrSequence,
     ) -> t.StrSequence:
         """Canonical ast-grep invocation for one composed provider ruleset.
+
+        Native Mise selects the provisioned tool from the repository's lock,
+        independently of the scanned project's cwd or ambient scanner shims.
 
         Returns:
             The resulting ``t.StrSequence``.
@@ -279,6 +285,11 @@ class FlextInfraCodemodGate(FlextInfraGate):
             })
         )
         cmd: list[str] = [
+            c.Infra.MISE,
+            "-C",
+            str(self._repository_root),
+            "exec",
+            "--",
             c.Infra.SG,
             c.Infra.SCAN,
             "--config",

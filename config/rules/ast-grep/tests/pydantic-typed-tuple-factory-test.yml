@@ -1,0 +1,6 @@
+id: pydantic-typed-tuple-factory
+valid:
+  - 'items: t.VariadicTuple[Outer.Item] = m.Field(default_factory=lambda: tuple[Outer.Item, ...]())'
+  - 'items: t.StrTuple = m.Field(default_factory=tuple)'
+invalid:
+  - 'items: t.VariadicTuple[Outer.Item] = m.Field(default_factory=tuple, description="items")'

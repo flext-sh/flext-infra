@@ -1,0 +1,6 @@
+id: pydantic-typed-annotated-set-factory
+valid:
+  - 'items: Annotated[MutableSet[str], m.Field(default_factory=set, description="items")] = m.Field(default_factory=set)'
+  - 'items: Annotated[MutableSet[str], m.Field(description="items")] = m.Field(default_factory=lambda: set[str]())'
+invalid:
+  - 'items: Annotated[MutableSet[str], m.Field(description="roots")] = m.Field(default_factory=set, validate_default=False)'
