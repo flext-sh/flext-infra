@@ -41,6 +41,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         Returns:
             The observed file state when the leaf exists, the missing-parent
             chain plan when it does not, or the propagated read failure.
+
         """
         result_type = r[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]
         observed = u.Cli.atomic_read_binary_file_state(path, required=False)
@@ -63,6 +64,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
         Returns:
             Whether a nonempty existing initializer belongs to its author.
+
         """
         return (
             content is not None
@@ -215,6 +217,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
         Returns:
             Whether bytes, mode or declared tracking require publication.
+
         """
         if plan.index_before is not None:
             return True

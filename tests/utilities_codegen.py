@@ -366,6 +366,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         *,
         python_paths: t.StrSequence,
         cwd: Path | None = None,
+        arguments: t.StrSequence = (),
     ) -> t.StrSequence:
         """Run ``probe`` in a fresh interpreter importing generated packages.
 
@@ -380,7 +381,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
         result = tm.ok(
             u.Cli.run(
-                [sys.executable, "-c", probe],
+                [sys.executable, "-c", probe, *arguments],
                 options=m.Cli.ProcessOptions(env=probe_env),
                 cwd=cwd,
             ),

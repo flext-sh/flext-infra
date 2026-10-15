@@ -205,6 +205,7 @@ class FlextInfraUtilitiesDocsBuild:
 
         Raises:
             TypeError: If the dependency lacks its declared operation.
+
         """
         if isinstance(module, p.Infra.MkDocsConfigModule):
             return module
@@ -220,6 +221,7 @@ class FlextInfraUtilitiesDocsBuild:
 
         Raises:
             TypeError: If the dependency lacks its declared operation.
+
         """
         if isinstance(module, p.Infra.MkDocsServeModule):
             return module

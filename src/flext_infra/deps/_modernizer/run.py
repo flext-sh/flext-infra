@@ -11,11 +11,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
+from flext_infra.deps._modernizer.document import RenderPolicy
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
 
     from flext_infra import p
+    from flext_infra.deps._modernizer.document import RenderPolicySpec
 
 
 class FlextInfraPyprojectModernizerRun:
@@ -63,10 +65,7 @@ class FlextInfraPyprojectModernizerRun:
             state: m.Infra.PyprojectDocumentState,
             changes: t.StrSequence,
             *,
-            dry_run: bool,
-            skip_comments: bool,
-            format_source: bool = True,
-            preserve_layout: bool = False,
+            policy: RenderPolicySpec,
         ) -> p.Result[t.StrSequence]: ...
 
     def _selected_project_paths(self) -> p.Result[t.SequenceOf[Path]]:
@@ -148,7 +147,7 @@ class FlextInfraPyprojectModernizerRun:
         if migration.failure:
             u.Cli.error(migration.error or "git source migration failed")
             return 2
-        source_migration = migration.value
+        source_migration = migration.value[0] if migration.value else None
         # Modernization writes only the requested repository root and its
         # declared subprojects, never siblings.
         include_root = not self.project_names or "." in self.project_names
@@ -189,21 +188,21 @@ class FlextInfraPyprojectModernizerRun:
 
     def _resolved_source_migration(
         self,
-    ) -> p.Result[m.Infra.GitSourceReferenceMigration | None]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]:
         """Resolve the requested Git reference migration options.
 
         Returns:
-            The resolved migration, ``None`` when none is requested, or the
-            first option validation failure.
+            Zero or one resolved migration, or the first option validation failure.
+
         """
-        result_type = r[m.Infra.GitSourceReferenceMigration | None]
+        result_type = r[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]
         source_options = (
             self.git_source_url_prefix,
             self.git_source_ref_from,
             self.git_source_ref_to,
         )
         if not any(value is not None for value in source_options):
-            return result_type.ok(value=None)
+            return result_type.ok(())
         prefix, old_ref, new_ref = source_options
         if prefix is None or old_ref is None or new_ref is None:
             return result_type.fail(
@@ -220,10 +219,12 @@ class FlextInfraPyprojectModernizerRun:
                 "separate operations",
             )
         return result_type.ok(
-            m.Infra.GitSourceReferenceMigration(
-                url_prefix=prefix,
-                source_ref=old_ref,
-                target_ref=new_ref,
+            (
+                m.Infra.GitSourceReferenceMigration(
+                    url_prefix=prefix,
+                    source_ref=old_ref,
+                    target_ref=new_ref,
+                ),
             ),
         )
 
@@ -251,6 +252,7 @@ class FlextInfraPyprojectModernizerRun:
 
         Returns:
             The resulting process exit code.
+
         """
         if scanned.failure:
             u.Cli.error(scanned.error or "document scan failed")
@@ -410,6 +412,9 @@ class FlextInfraPyprojectModernizerRun:
             The resulting ``int``.
 
         Raises:
+            TypeError: If ``not isinstance(entries, list)``; or if
+                ``isinstance(requirement, Mapping)``; or if ``not
+                isinstance(requirement, str)``.
             ValueError: If the project table is absent or the dependency owner
                 changed between the read and the write.
 
@@ -479,6 +484,7 @@ class FlextInfraPyprojectModernizerRun:
 
         Raises:
             TypeError: If a declared requirement group entry is not a string.
+
         """
         changes: list[str] = []
         for section, groups in sections:
@@ -487,12 +493,10 @@ class FlextInfraPyprojectModernizerRun:
                     msg = f"{section}.{name} must be a requirement array"
                     raise TypeError(msg)
                 for index, requirement in enumerate(entries):
-                    if isinstance(requirement, Mapping):
-                        if section == c.Infra.DEPENDENCY_GROUPS:
-                            continue
-                        msg = f"{section}.{name} requires requirement strings"
-                        raise TypeError(msg)
-                    if not isinstance(requirement, str):
+                    mapping = isinstance(requirement, Mapping)
+                    if mapping and section == c.Infra.DEPENDENCY_GROUPS:
+                        continue
+                    if mapping or not isinstance(requirement, str):
                         msg = f"{section}.{name} requires requirement strings"
                         raise TypeError(msg)
                     rewritten = u.Infra.rewrite_requirement_constraint(
@@ -526,6 +530,7 @@ class FlextInfraPyprojectModernizerRun:
         Raises:
             ValueError: If the dependency owner changed between the read and
                 the write.
+
         """
         if before.content != root_state.original_rendered.encode(c.DEFAULT_ENCODING):
             msg = f"dependency owner changed during read: {root_state.pyproject_path}"
@@ -533,10 +538,12 @@ class FlextInfraPyprojectModernizerRun:
         rendered = self._render_document_state(
             root_state,
             tuple(changes),
-            dry_run=True,
-            skip_comments=True,
-            format_source=False,
-            preserve_layout=True,
+            policy=RenderPolicy(
+                dry_run=True,
+                skip_comments=True,
+                format_source=False,
+                preserve_layout=True,
+            ),
         )
         if rendered.failure:
             rendered.unwrap()

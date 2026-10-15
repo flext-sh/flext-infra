@@ -26,6 +26,7 @@ class FlextInfraUtilitiesWorkspaceInventory:
 
         Returns:
             Governing guests, or the first transport or inventory failure.
+
         """
         result = r[t.VariadicTuple[m.Infra.ExternalConsumerSpec]]
         command = inputs.spec.repository.workspace_inventory_command
@@ -57,6 +58,7 @@ class FlextInfraUtilitiesWorkspaceInventory:
 
         Returns:
             Ordered guest contracts, or the first rejected entry.
+
         """
         result = r[t.VariadicTuple[m.Infra.ExternalConsumerSpec]]
         inventory = m.Infra.HostWorkspaceInventory.model_validate_json(payload)

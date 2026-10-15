@@ -43,10 +43,10 @@ class FlextInfraCandidateBootstrapService:
         if roots.failure:
             return r[bool].from_failure(roots)
         if command.dry_run or command.check_only or not command.apply_changes:
-            return self._verify(roots, targets, declaration_states)
+            return self._verify(roots.value, targets, declaration_states)
 
         def publish(scope_root: Path) -> p.Result[bool]:
-            planned = self._plan(roots, targets, declaration_states)
+            planned = self._plan(roots.value, targets, declaration_states)
             if planned.failure:
                 return r[bool].from_failure(planned)
             analysis = planned.value
@@ -56,11 +56,11 @@ class FlextInfraCandidateBootstrapService:
                 if u.Infra.codegen_file_requires_effect(plan)
             )
             if not changed:
-                return self._verify(roots, targets, declaration_states)
+                return self._verify(roots.value, targets, declaration_states)
             receipts: list[m.Infra.CodegenPhaseOutcome] = []
             committed = self._transaction.publish_file_phase_locked(
                 scope_root,
-                roots,
+                roots.value,
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(
                     directories=tuple(
@@ -79,7 +79,7 @@ class FlextInfraCandidateBootstrapService:
             if continued.failure:
                 return r[bool].from_failure(continued)
             return self._verify(
-                roots,
+                roots.value,
                 targets,
                 declaration_states,
                 publications=tuple(
@@ -105,6 +105,7 @@ class FlextInfraCandidateBootstrapService:
         Returns:
             The elected worktree root keyed by candidate identity, or the
             first resolution failure.
+
         """
         roots: t.MutableMappingKV[str, Path] = {}
         for index, target in enumerate(targets):
@@ -164,6 +165,7 @@ class FlextInfraCandidateBootstrapService:
 
         Returns:
             The planned files of the target, or the first bootstrap failure.
+
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         captured = self._captured_target_states(root, inputs)
@@ -197,6 +199,7 @@ class FlextInfraCandidateBootstrapService:
         Returns:
             The target's captured codegen inputs, or the first admission
             failure.
+
         """
         captured = u.Infra.load_codegen_inputs(root)
         if captured.failure:
@@ -230,6 +233,7 @@ class FlextInfraCandidateBootstrapService:
         Returns:
             The target's surface contract with its planned files, or the
             first contract violation.
+
         """
         result_type = r[
             t.Pair[
@@ -250,7 +254,7 @@ class FlextInfraCandidateBootstrapService:
         )
         planned = self._planner.plan(request)
         if planned.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
+            return result_type.from_failure(planned)
         if planned.value.exception is not None:
             raise planned.value.exception
         if planned.value.issues:

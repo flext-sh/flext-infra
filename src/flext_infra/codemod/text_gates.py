@@ -106,6 +106,7 @@ class FlextInfraModTextGateEngine:
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.ModTextRule]]``.
+
         """
         if identity.content is None:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
@@ -491,6 +492,7 @@ class FlextInfraModTextGateEngine:
         Returns:
             Central issues for unsupported explicit input declarations. A scope
             glob without a suffix still selects the canonical Python inventory.
+
         """
         return tuple(
             cls._source_issue(
@@ -901,6 +903,7 @@ class FlextInfraModTextGateEngine:
 
         Returns:
             Dependency paths with conflicting authenticated identities.
+
         """
         return {
             state.path
@@ -920,6 +923,7 @@ class FlextInfraModTextGateEngine:
 
         Returns:
             Plans with consistent dependency identities.
+
         """
         allowed: list[m.Infra.CodegenFilePlan] = []
         for plan in plans:

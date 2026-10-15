@@ -40,6 +40,7 @@ class TestsFlextInfraFileParticipantRecovery:
 
         Returns:
             The validator verdict for the staged session.
+
         """
         if failure_kind == "target":
             targets[1].write_bytes(b"concurrent\n")
@@ -57,6 +58,7 @@ class TestsFlextInfraFileParticipantRecovery:
 
         Args:
             root: Repository root owning the publication report path.
+
         """
         report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         report.unlink()
@@ -66,7 +68,7 @@ class TestsFlextInfraFileParticipantRecovery:
     def _corrupted_journal_state(
         journal: Path,
         journal_change: str,
-    ) -> p.Result[m.Cli.AtomicFileState] | None:
+    ) -> m.Cli.AtomicFileState | None:
         """Corrupt the journaled authority per the parametrized change kind.
 
         Args:
@@ -76,6 +78,7 @@ class TestsFlextInfraFileParticipantRecovery:
         Returns:
             The observed journal state after the corruption, or ``None`` when
             the journal path became a directory.
+
         """
         saved = journal.with_suffix(".preserved")
         if journal_change != "unchanged":
@@ -98,6 +101,7 @@ class TestsFlextInfraFileParticipantRecovery:
 
         Returns:
             The consumer verdict, leaving real settlement faults for the transaction.
+
         """
         if failure_kind == "cleanup":
             participant = session.plan.layout.file_participants[0]
@@ -217,6 +221,7 @@ class TestsFlextInfraFileParticipantRecovery:
             targets: The governed publication target paths.
             failure_kind: The parametrized failure injection kind.
             deleted: Whether the publication planned deletions.
+
         """
         expected = (
             ()
@@ -790,6 +795,7 @@ class TestsFlextInfraFileParticipantRecovery:
                 tm.that(journal.is_dir(), eq=True)
                 tm.that(target.read_bytes(), eq=before.content)
             else:
+                assert foreign is not None
                 tm.that(
                     tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False)),
                     eq=foreign,

@@ -14,8 +14,8 @@ from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
-
 from flext_core import FlextStrictYamlConfigSource
+
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import FlextInfraUtilitiesGit
@@ -35,6 +35,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The effective codegen declaration and exact consulted file snapshots.
+
         """
         result_type = r[m.Infra.CodegenInputs]
         document = cls.load_config_document_inputs(
@@ -72,6 +73,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             Strict repository policy with current consulted source snapshots.
+
         """
         result_type = r[m.Infra.RepositoryDeclarationInputs]
         document = cls.load_config_document_inputs(
@@ -114,6 +116,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The typed document and ordered snapshots, with no ambient source lookup.
+
         """
         result_type = r[m.Infra.ConfigDocumentInputs]
         elected = r[tuple[Path, ...]].create_from_callable(
@@ -197,6 +200,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The validated campaign declaration; generic defaults own an empty set.
+
         """
         document = cls.load_config_document_inputs(
             repository_root,
@@ -225,6 +229,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             A validated preview retaining the original input identities.
+
         """
         result_type = r[m.Infra.CodegenInputs]
         layers = FlextInfraConfig.config_layer_paths_for_repository(
@@ -266,6 +271,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             A mapping, including the source's defined empty-document representation.
+
         """
         return r[t.JsonMapping].create_from_callable(
             partial(
@@ -280,6 +286,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             Validated configuration values from immutable source bytes.
+
         """
         return deepcopy(
             FlextInfraUtilitiesProjectManagedArtifacts._parsed_config_content(content),
@@ -295,6 +302,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The validated document owned by this content memo.
+
         """
         parsed = FlextStrictYamlConfigSource.unique_key_load(
             content.decode(c.DEFAULT_ENCODING),
@@ -311,6 +319,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The validated full repository codegen policy.
+
         """
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         return m.Infra.CodegenConfigSpec.model_validate(codegen)

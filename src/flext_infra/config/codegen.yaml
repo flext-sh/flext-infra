@@ -680,7 +680,7 @@ Infra:
         description: Run incremental tests through the persistent testmon cache.
       - name: test-full
         arguments: [ FILE ]
-        description: Run every test once, including slow, external and CI-excluded markers, locally only, without testmon and without any time limit.
+        description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
       - name: test-file
         arguments: [ FILE ]
         description: Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
@@ -883,8 +883,8 @@ Infra:
         python.analysis.includeVenvInWorkspaceSymbols: false
         # Attached projects share one physical workspace environment. Avoid
         # virtual workspaces isolating sources from the native Pyright context.
-        python.analysis.useNearestConfiguration: false
-        python.analysis.usePerProjectEnvironments: false
+        python.analysis.useNearestConfiguration: true
+        python.analysis.usePerProjectEnvironments: true
         python.analysis.userFileIndexingLimit: 2000
         python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
         python.languageServer: Pylance

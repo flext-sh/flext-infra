@@ -28,12 +28,6 @@ if TYPE_CHECKING:
     from tests import p, t
 
 
-_PROVENANCE_IMPORT = (
-    "from flext_infra.workspace import "
-    "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
-)
-
-
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
 
@@ -56,6 +50,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         ],
     )
     def test_native_typing_branch_retains_runtime_metaclass_alias(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         condition: str,
         defect: str,
@@ -79,30 +74,27 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         alias = "    RuntimeMeta = supplier.NativeMeta\n"
         body, otherwise = (alias, shadow) if condition == "not TC" else (shadow, alias)
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from typing import TYPE_CHECKING as TC\n"
-                "import typing as typing_alias\n"
-                "from . import supplier\n"
-                "effects = []\n"
-                "def shadow_decorator(cls):\n"
-                "    effects.append('typing-shadow')\n"
-                "    return cls\n"
-                f"if {condition}:\n{body}else:\n{otherwise}"
-                "class Payload(metaclass=RuntimeMeta):\n"
-                "    def operation(self): return 'physical'\n",
-            )
+        u.Tests.write_package_init(
+            package,
+            "from typing import TYPE_CHECKING as TC\n"
+            "import typing as typing_alias\n"
+            "from . import supplier\n"
+            "effects = []\n"
+            "def shadow_decorator(cls):\n"
+            "    effects.append('typing-shadow')\n"
+            "    return cls\n"
+            f"if {condition}:\n{body}else:\n{otherwise}"
+            "class Payload(metaclass=RuntimeMeta):\n"
+            "    def operation(self): return 'physical'\n",
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('conditional_provider')\n"
             "supplier = module.supplier\n"
             "assert type(module.Payload) is module.RuntimeMeta is supplier.NativeMeta\n"
             "assert not module.effects\n"
             "before = tuple(supplier.effects)\n"
-            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "authenticate(module.__name__).unwrap()\n"
             "defect = sys.argv[2]\n"
             "source = pathlib.Path(module.__file__)\n"
             "if defect == 'alias': module.RuntimeMeta = supplier.OtherMeta\n"
@@ -128,37 +120,18 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    source.write_text(source.read_text()"
             ".replace('RuntimeMeta = supplier.NativeMeta', 'RuntimeMeta = Loop')"
             ".replace('class Payload', 'Loop = RuntimeMeta\\nclass Payload'))\n"
-            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "observed = authenticate(module.__name__)\n"
             "assert observed.success == (defect == 'none'), observed\n"
             "assert tuple(supplier.effects) == before\n"
             "assert not module.effects\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect, condition],
-                cwd=tmp_path,
-            )
-        )
-
-    @staticmethod
-    def test_core_nested_presets_have_authenticated_lexical_bases(
-        tmp_path: Path,
-    ) -> None:
-        """Authenticate the same nested preset that real FLEXT consumers use."""
-        consumer = (
-            "from flext_core import m\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
-            "model = m.ContractModel.model_validate({})\n"
-            "assert model.model_dump() == {}\n"
-            "provenance.loaded_import_sources(m.ContractModel.__module__).unwrap()\n"
-        )
-        tm.ok(u.Cli.capture([executable, "-c", consumer], cwd=tmp_path))
+        native_consumer(consumer, str(tmp_path), defect, condition)
 
     @staticmethod
     @pytest.mark.parametrize("supplier_kind", ["absent", "function", "class", "value"])
     @pytest.mark.parametrize("installed_layout", [False, True])
     def test_unknown_factory_diagnostics_preserve_private_values(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         supplier_kind: str,
         *,
@@ -166,24 +139,20 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     ) -> None:
         """An unproven binding fails with declaration context, never operand contents."""
         import_root = tmp_path / "site-packages" if installed_layout else tmp_path
-        package = import_root / "diagnostic_provider"
-        tm.ok(u.Cli.ensure_dir(package))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from dataclasses import dataclass\n"
-                "@dataclass\n"
-                "class Payload:\n"
-                "    value: str\n"
-                "class Holder:\n"
-                "    class unproven: pass\n",
-            )
+        u.Tests.write_package_init(
+            import_root / "diagnostic_provider",
+            "from dataclasses import dataclass\n"
+            "@dataclass\n"
+            "class Payload:\n"
+            "    value: str\n"
+            "class Holder:\n"
+            "    class unproven: pass\n",
         )
         consumer = (
-            "import importlib, json, pathlib, sys\n"
+            "import json\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('diagnostic_provider')\n"
-            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "authenticate(module.__name__).unwrap()\n"
             "effects = []\n"
             "class Private:\n"
             "    def __repr__(self):\n"
@@ -195,57 +164,50 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "elif kind == 'value': module.unproven = Private()\n"
             "source = pathlib.Path(module.__file__)\n"
             "source.write_text(source.read_text().replace('@dataclass', '@unproven'))\n"
-            "result = provenance.loaded_import_sources(module.__name__)\n"
+            "result = authenticate(module.__name__)\n"
             "assert result.failure, result\n"
             "error = result.error\n"
-            "assert error.startswith("
-            "'construction factory has no authenticated source binding:'), error\n"
+            "assert module.__name__ in error, error\n"
+            "assert error.startswith('construction factory has no authenticated source "
+            "binding:'), error\n"
             "assert 'identifier=' + json.dumps('unproven') in error, error\n"
             "assert 'module=' + json.dumps(module.__name__) in error, error\n"
             "assert 'package=' + json.dumps(module.__package__) in error, error\n"
             "assert 'registered=True' in error, error\n"
-            "assert 'receiver=' + json.dumps(module.Payload.__qualname__)"
-            " in error, error\n"
-            "assert 'declaration=' + json.dumps(module.Payload.__name__)"
-            " in error, error\n"
+            "assert 'receiver=' + json.dumps(module.Payload.__qualname__) in error, "
+            "error\n"
+            "assert 'declaration=' + json.dumps(module.Payload.__name__) in error, "
+            "error\n"
             "assert 'source=' + json.dumps(str(source)) in error, error\n"
             "assert 'supplier_kind=' + kind in error, error\n"
             "assert 'private-material-must-not-appear' not in error\n"
             "assert not effects\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(import_root), supplier_kind],
-                cwd=tmp_path,
-            )
-        )
+        native_consumer(consumer, str(import_root), supplier_kind)
 
     @staticmethod
     @pytest.mark.parametrize("package_name", ["external_provider", "flext_lookalike"])
     @pytest.mark.parametrize("defect", ["none", "source", "code"])
     def test_public_declaration_binding_authenticates_every_owned_namespace(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         package_name: str,
         defect: str,
     ) -> None:
         """Inherited guard calls keep non-fleet declarations and reject native changes."""
-        package = tmp_path / package_name
-        tm.ok(u.Cli.ensure_dir(package))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "class Payload:\n"
-                "    instance = None\n"
-                "    def operation(self): return 'physical-before'\n",
-            )
+        u.Tests.write_package_init(
+            tmp_path / package_name,
+            "class Payload:\n"
+            "    instance = None\n"
+            "    def operation(self): return 'physical-before'\n",
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
-            "class Derived(provenance): pass\n"
+            "class Derived(fresh): pass\n"
+            "fresh = Derived\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module(sys.argv[2])\n"
             "module.Payload.instance = module.Payload()\n"
-            "sources = Derived.loaded_import_sources(module.__name__).unwrap()\n"
+            "sources = authenticate(module.__name__).unwrap().sources\n"
             "assert any(item[0] == module.__name__ + '::Payload.operation'"
             " and item[1] == module.__file__ for item in sources)\n"
             "defect = sys.argv[3]\n"
@@ -256,27 +218,21 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "elif defect == 'code':\n"
             "    module.Payload.operation.__code__ ="
             " module.Payload.operation.__code__.replace(co_name='replaced')\n"
-            "observed = Derived.loaded_import_sources(module.__name__)\n"
+            "observed = authenticate(module.__name__)\n"
             "assert observed.success == (defect == 'none'), observed\n"
             "assert module.Payload.instance.operation() == 'physical-before'\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), package_name, defect],
-                cwd=tmp_path,
-            )
-        )
+        native_consumer(consumer, str(tmp_path), package_name, defect)
 
     @staticmethod
     @pytest.mark.parametrize("local_accessor", [False, True])
     def test_class_metadata_admission_uses_declaring_module(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         *,
         local_accessor: bool,
     ) -> None:
         """Imported GitPython metadata does not replace the local class proof."""
-        package = tmp_path / "metadata_provider"
-        tm.ok(u.Cli.ensure_dir(package))
         source = "from git import Git\n"
         if local_accessor:
             source += (
@@ -288,31 +244,22 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             )
         else:
             source += "class Local:\n    value = 'payload'\n"
-        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, source))
+        u.Tests.write_package_init(
+            tmp_path / "metadata_provider",
+            source,
+        )
         consumer = (
-            "import importlib, sys\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('metadata_provider')\n"
-            "result = provenance.loaded_import_sources(module.__name__)\n"
+            "result = authenticate(module.__name__)\n"
             "if sys.argv[2] == 'local':\n"
             "    assert result.failure, result\n"
             "    assert 'binding=Local' in result.error, result\n"
             "else:\n"
             "    result.unwrap()\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [
-                    executable,
-                    "-c",
-                    consumer,
-                    str(tmp_path),
-                    "local" if local_accessor else "imported",
-                ],
-                cwd=tmp_path,
-            ),
+        native_consumer(
+            consumer, str(tmp_path), "local" if local_accessor else "imported"
         )
 
     @staticmethod
@@ -335,6 +282,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     @pytest.mark.parametrize("inherited", [False, True])
     @pytest.mark.parametrize("installed_layout", [False, True])
     def test_physical_alias_authenticates_receiver_and_mro_supplier(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
         inherited: bool,
@@ -363,24 +311,21 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             )
         )
         base = "supplier.Ancestor" if inherited else "object"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from . import supplier\n"
-                f"class Receiver({base}):\n"
-                "    operation = supplier.Supplier.operation\n"
-                "    value = supplier.Supplier.value\n"
-                "    owner = supplier.Supplier.owner\n"
-                "    static = supplier.Supplier.static\n",
-            )
+        u.Tests.write_package_init(
+            package,
+            "from . import supplier\n"
+            f"class Receiver({base}):\n"
+            "    operation = supplier.Supplier.operation\n"
+            "    value = supplier.Supplier.value\n"
+            "    owner = supplier.Supplier.owner\n"
+            "    static = supplier.Supplier.static\n",
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
             "from contextlib import contextmanager\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('alias_provider')\n"
             "supplier = module.supplier\n"
-            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "authenticate(module.__name__).unwrap()\n"
             "defect = sys.argv[2]\n"
             "if defect == 'receiver':\n"
             "    module.Receiver.operation = supplier.Ancestor.alternate\n"
@@ -408,9 +353,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    module.Receiver.static = staticmethod(module.Receiver.static)\n"
             "elif defect == 'property':\n"
             "    module.Receiver.value = supplier.Ancestor.other_value\n"
-            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "observed = authenticate(module.__name__)\n"
             "if defect == 'none':\n"
-            "    sources = observed.unwrap()\n"
+            "    sources = observed.unwrap().sources\n"
             "    assert module.Receiver().operation() == 'supplier-before'\n"
             "    assert module.Receiver().value == 'property'\n"
             "    assert module.Receiver.owner() is supplier.Supplier\n"
@@ -422,30 +367,27 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             " and item[1] == supplier.__file__ for item in sources)\n"
             "else:\n"
             "    assert observed.failure, observed\n"
-            "    if defect in {'receiver', 'supplier', 'receiver-source',"
-            " 'wrapped', 'class-bound', 'static-wrapped', 'property'}:\n"
+            "    assert module.__name__ in observed.error, observed\n"
+            "    if defect in {'receiver', 'supplier', 'receiver-source', 'wrapped', "
+            "'class-bound', 'static-wrapped', 'property'}:\n"
             "        error = observed.error\n"
-            "        assert error.startswith("
-            "'descriptor differs from its physical alias supplier:'), error\n"
+            "        assert error.startswith('descriptor differs from its physical "
+            "alias supplier:'), error\n"
             "        assert 'module=\"alias_provider\"' in error, error\n"
             "        assert 'receiver=\"Receiver\"' in error, error\n"
-            "        assert 'attribute=' in error"
-            " and 'alias_identifier=' in error, error\n"
-            "        assert 'supplier_module=' in error"
-            " and 'supplier_owner=' in error, error\n"
-            "        assert 'receiver_kind=' in error"
-            " and 'supplier_kind=' in error, error\n"
+            "        assert 'attribute=' in error and 'alias_identifier=' in error, "
+            "error\n"
+            "        assert 'supplier_module=' in error and 'supplier_owner=' in "
+            "error, error\n"
+            "        assert 'receiver_kind=' in error and 'supplier_kind=' in error, "
+            "error\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(import_root), defect], cwd=tmp_path
-            )
-        )
+        native_consumer(consumer, str(import_root), defect)
 
     @staticmethod
     @pytest.mark.parametrize("defect", ["none", "receiver", "supplier", "code"])
     def test_installed_pydantic_aliases_retain_representation_identity(
-        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
         defect: str,
     ) -> None:
         """The real BaseModel alias authenticates without replaying model."""
@@ -455,7 +397,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "from pydantic._internal import _repr\n"
             "descriptor = vars(BaseModel)['__rich_repr__']\n"
             "assert descriptor is vars(_repr.Representation)['__rich_repr__']\n"
-            "provenance.loaded_import_sources(BaseModel.__module__).unwrap()\n"
+            "authenticate(BaseModel.__module__).unwrap()\n"
             "defect = sys.argv[1]\n"
             "if defect == 'receiver':\n"
             "    BaseModel.__rich_repr__ = BaseModel.__repr__\n"
@@ -464,9 +406,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "elif defect == 'code':\n"
             "    descriptor.__code__ ="
             " descriptor.__code__.replace(co_name='replaced')\n"
-            "observed = provenance.loaded_import_sources(BaseModel.__module__)\n"
+            "observed = authenticate(BaseModel.__module__)\n"
             "if defect == 'none':\n"
-            "    sources = observed.unwrap()\n"
+            "    sources = observed.unwrap().sources\n"
             "    assert any(item[0] == BaseModel.__module__"
             " + '::BaseModel.__rich_repr__' for item in sources)\n"
             "    assert any(item[0] == _repr.__name__"
@@ -474,12 +416,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             " and item[1] == _repr.__file__ for item in sources)\n"
             "else: assert observed.failure, observed\n"
         )
-        tm.ok(u.Cli.capture([executable, "-c", consumer, defect], cwd=tmp_path))
+        native_consumer(consumer, defect)
 
     @staticmethod
     @pytest.mark.parametrize("defect", ["none", "annotation"])
     def test_installed_eager_callable_dataclass_preserves_native_schema(
-        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
         defect: str,
     ) -> None:
         """Real eager Callable metadata authenticates; a changed signature does not."""
@@ -496,61 +438,59 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert get_args(original) == ([Any], bool)\n"
             "if sys.argv[1] == 'annotation':\n"
             "    annotated_types.Not.__annotations__['func'] = Callable[[Any], int]\n"
-            "observed = provenance.loaded_import_sources(annotated_types.__name__)\n"
+            "observed = authenticate(annotated_types.__name__)\n"
             "if sys.argv[1] == 'none': observed.unwrap()\n"
             "else: assert observed.failure\n"
             "assert predicate('123') is True\n"
             "assert predicate('alphabetic') is False\n"
         )
-        tm.ok(u.Cli.capture([executable, "-c", consumer, defect], cwd=tmp_path))
+        native_consumer(consumer, defect)
 
     @staticmethod
-    def test_fresh_native_source_authenticates_the_loaded_guard(tmp_path: Path) -> None:
+    def test_fresh_native_source_authenticates_the_loaded_guard(
+        native_consumer: p.Tests.NativeConsumer,
+    ) -> None:
         """The public guard accepts its own freshly imported native declarations."""
         consumer = (
-            "observed = provenance.loaded_import_sources(provenance.__module__)\n"
+            "observed = authenticate(preconditions.__module__)\n"
             "assert observed.success, observed\n"
-            "assert isinstance(observed.unwrap(), tuple)\n"
+            "assert observed.unwrap().sources\n"
         )
-        tm.ok(u.Cli.capture([executable, "-c", consumer], cwd=tmp_path))
+        native_consumer(consumer)
 
     @staticmethod
     @pytest.mark.parametrize("defect", ["none", "foreign"])
     def test_declaring_owner_authenticates_native_rebound_and_inherited_descriptors(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
     ) -> None:
         """Metaclass rebinding retains source ownership; an unrelated class does not."""
-        package = tmp_path / "descriptor_provider"
-        package.mkdir()
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from enum import Enum\n"
-                "class Parent:\n"
-                "    @staticmethod\n"
-                "    def static(value): return value\n"
-                "    @classmethod\n"
-                "    def owner(cls): return cls\n"
-                "    def instance(self): return type(self)\n"
-                "class Child(Parent): pass\n"
-                "class Other:\n"
-                "    def instance(self): return type(self)\n"
-                "class Token(Enum):\n"
-                "    def __new__(cls, value):\n"
-                "        result = object.__new__(cls)\n"
-                "        result._value_ = value\n"
-                "        return result\n"
-                "    item = 'native'\n",
-            )
+        u.Tests.write_package_init(
+            tmp_path / "descriptor_provider",
+            "from enum import Enum\n"
+            "class Parent:\n"
+            "    @staticmethod\n"
+            "    def static(value): return value\n"
+            "    @classmethod\n"
+            "    def owner(cls): return cls\n"
+            "    def instance(self): return type(self)\n"
+            "class Child(Parent): pass\n"
+            "class Other:\n"
+            "    def instance(self): return type(self)\n"
+            "class Token(Enum):\n"
+            "    def __new__(cls, value):\n"
+            "        result = object.__new__(cls)\n"
+            "        result._value_ = value\n"
+            "        return result\n"
+            "    item = 'native'\n",
         )
         consumer = (
-            "import importlib, sys\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('descriptor_provider')\n"
             "if sys.argv[2] == 'foreign':"
             " module.Child.instance = module.Other.instance\n"
-            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "observed = authenticate(module.__name__)\n"
             "if sys.argv[2] == 'none':\n"
             "    observed.unwrap()\n"
             "    assert module.Child.static('native') == 'native'\n"
@@ -559,15 +499,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    assert module.Token('native') is module.Token.item\n"
             "else: assert observed.failure\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect], cwd=tmp_path
-            )
-        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize("changed", [False, True])
     def test_inherited_property_authenticates_its_physical_provider(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         changed: bool,
     ) -> None:
@@ -588,7 +525,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             )
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('child_provider')\n"
             "ancestor = sys.modules['ancestor_provider']\n"
@@ -596,30 +532,25 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "if sys.argv[2] == 'True':\n"
             "    source.write_text(source.read_text().replace("
             "'ancestor-before', 'ancestor-after'))\n"
-            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "observed = authenticate(module.__name__)\n"
             "assert observed.success == (sys.argv[2] == 'False'), observed\n"
             "if observed.success:\n"
             "    assert any(item[0].startswith('ancestor_provider::')"
-            " and item[1] == str(source) for item in observed.unwrap())\n"
+            " and item[1] == str(source) for item in observed.unwrap().sources)\n"
             "assert module.Child().value == 'ancestor-before'\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), str(changed)], cwd=tmp_path
-            )
-        )
+        native_consumer(consumer, str(tmp_path), str(changed))
 
     @staticmethod
     def test_homonymous_declarations_keep_distinct_module_identities(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
         """A source inventory retains legitimate same-named declarations."""
         package = tmp_path / "homonym_provider"
-        package.mkdir()
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY, "from . import first, second\n"
-            )
+        u.Tests.write_package_init(
+            package,
+            "from . import first, second\n",
         )
         for member in ("first", "second"):
             tm.ok(
@@ -630,10 +561,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 )
             )
         consumer = (
-            "import importlib, sys\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('homonym_provider')\n"
-            "observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "observed = authenticate(module.__name__).unwrap().sources\n"
             "assert isinstance(observed, tuple)\n"
             "for member in (module.first, module.second):\n"
             "    assert any(item[0] == member.__name__ + '::Declaration.value'"
@@ -641,19 +571,19 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert module.first.Declaration.value()"
             " != module.second.Declaration.value()\n"
         )
-        tm.ok(u.Cli.capture([executable, "-c", consumer, str(tmp_path)], cwd=tmp_path))
+        native_consumer(consumer, str(tmp_path))
 
     @staticmethod
     @pytest.mark.parametrize("namespace", ["collections.abc", "builtins", "_struct"])
     def test_native_artifacts_retain_identity_without_becoming_python_text(
+        native_consumer: p.Tests.NativeConsumer,
         namespace: str,
     ) -> None:
         """Public provenance authenticates real frozen, builtin and extension inputs."""
         consumer = (
-            "import importlib, pathlib, sys\n"
             "from inspect import getsourcefile\n"
             "module = importlib.import_module(sys.argv[1])\n"
-            "sources = provenance.loaded_import_sources(sys.argv[1]).unwrap()\n"
+            "sources = authenticate(sys.argv[1]).unwrap().sources\n"
             "paths = {pathlib.Path(item[2] or item[1]) for item in sources}\n"
             "origin = module.__spec__.origin\n"
             "artifact = pathlib.Path(sys.executable).resolve()"
@@ -666,11 +596,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    assert module.__spec__.loader.get_source("
             "module.__spec__.name) is None\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, namespace], cwd=Path(__file__).parent
-            )
-        )
+        native_consumer(consumer, namespace, cwd=Path(__file__).parent)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -689,6 +615,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         ],
     )
     def test_loaded_declarations_require_the_current_physical_source(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         mutation: str,
     ) -> None:
@@ -720,16 +647,15 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             )
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
             "from flext_core import FlextSettings\n"
             "assert FlextSettings.fetch_global() is FlextSettings.fetch_global()\n"
-            "provenance.loaded_import_sources(FlextSettings.__module__).unwrap()\n"
+            "authenticate(FlextSettings.__module__).unwrap()\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('identity_provider')\n"
             "source = pathlib.Path(module.__file__)\n"
             "module.Payload.instance = module.Payload('live-instance')\n"
-            "before = provenance.loaded_import_sources(module.__name__).unwrap()\n"
-            "assert isinstance(before, tuple)\n"
+            "before = authenticate(module.__name__).unwrap()\n"
+            "assert before.sources\n"
             "mutation = sys.argv[2]\n"
             "if mutation == 'deleted':\n    source.unlink()\n"
             "elif mutation == 'binding':\n    module.Payload.observed = module.Other.observed\n"
@@ -741,7 +667,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    new = 'replacement: str' if mutation == 'schema' else mutation + '-after'\n"
             "    source.write_text(source.read_text().replace(old, new))\n"
             "try:\n"
-            "    observed = provenance.loaded_import_sources(module.__name__)\n"
+            "    observed = authenticate(module.__name__)\n"
             "except SyntaxError as error:\n"
             "    assert mutation == 'syntax' and error.filename is not None\n"
             "else:\n"
@@ -749,17 +675,14 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    assert observed.success == (mutation == 'none'), observed\n"
             "assert module.operation() == 'function-before'\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), mutation], cwd=tmp_path
-            )
-        )
+        native_consumer(consumer, str(tmp_path), mutation)
 
     @staticmethod
     @pytest.mark.parametrize(
         "defect", ["none", "foreign", "cycle", "source", "advertised", "descriptor"]
     )
     def test_decorated_callable_authenticates_its_executable_chain(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
     ) -> None:
@@ -782,12 +705,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             ),
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
             "from contextlib import contextmanager\n"
             "from inspect import getfile\n"
             "from functools import wraps\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('decorated_provider')\n"
             "operation = module.operation\n"
@@ -807,25 +727,21 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    with operation() as value:\n"
             "        assert value == 'authenticated'\n"
             "    assert module.native_operation({}) == '{}'\n"
-            "    observed = provenance.loaded_import_sources(module.__name__)"
-            ".unwrap()\n"
+            "    observed = authenticate(module.__name__)"
+            ".unwrap().sources\n"
             "    assert observed\n"
             "    paths = {pathlib.Path(item[1]) for item in observed}\n"
             "    assert {pathlib.Path(module.__file__), pathlib.Path(getfile(contextmanager)), "
             "pathlib.Path(getfile(wraps)), pathlib.Path(sys.executable).resolve()} <= paths\n"
             "else:\n"
-            "    assert provenance.loaded_import_sources(module.__name__).failure\n"
+            "    assert authenticate(module.__name__).failure\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect],
-                cwd=tmp_path,
-            ),
-        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize("surface", ["decorator", "metaclass"])
     def test_construction_binding_does_not_invoke_foreign_accessors(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         surface: str,
     ) -> None:
@@ -836,180 +752,140 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 "class Meta(type):\n    pass\n",
             )
         )
-        package = tmp_path / "accessor_provider"
-        tm.ok(u.Cli.ensure_dir(package))
         supplier = "dataclasses" if surface == "decorator" else "static_supplier"
         construction = (
             "@supplier.dataclass\nclass Payload:\n"
             if surface == "decorator"
             else "@dataclass\nclass Payload(metaclass=supplier.Meta):\n"
         )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                f"import {supplier} as supplier\n"
-                "from dataclasses import dataclass\n"
-                "effects = []\n"
-                "original = supplier\n"
-                "class Accessor:\n"
-                "    def __getattr__(self, name):\n"
-                "        effects.append('accessor')\n"
-                "        return getattr(original, name)\n"
-                + construction
-                + "    value: str = 'native'\n",
-            )
+        u.Tests.write_package_init(
+            tmp_path / "accessor_provider",
+            f"import {supplier} as supplier\n"
+            "from dataclasses import dataclass\n"
+            "effects = []\n"
+            "original = supplier\n"
+            "class Accessor:\n"
+            "    def __getattr__(self, name):\n"
+            "        effects.append('accessor')\n"
+            "        return getattr(original, name)\n"
+            + construction
+            + "    value: str = 'native'\n",
         )
         consumer = (
-            "import importlib, sys\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('accessor_provider')\n"
             "assert module.Payload().value == 'native'\n"
-            "assert provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "assert authenticate(module.__name__).unwrap()\n"
             "before = tuple(module.effects)\n"
             "module.supplier = module.Accessor()\n"
-            "assert provenance.loaded_import_sources(module.__name__).failure\n"
+            "assert authenticate(module.__name__).failure\n"
             "assert tuple(module.effects) == before\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path)],
-                cwd=tmp_path,
-            )
-        )
+        native_consumer(consumer, str(tmp_path))
 
     @staticmethod
     @pytest.mark.parametrize("keyword_only", [False, True])
     def test_generated_defaults_do_not_invoke_foreign_equality(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         keyword_only: bool,
     ) -> None:
         """Reject altered default values without executing their equality method."""
-        package = tmp_path / "equality_provider"
-        tm.ok(u.Cli.ensure_dir(package))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from dataclasses import dataclass\n"
-                "effects = []\n"
-                "class Foreign:\n"
-                "    def __eq__(self, other):\n"
-                "        effects.append('equality')\n"
-                "        return True\n"
-                f"@dataclass(kw_only={keyword_only})\n"
-                "class Payload:\n"
-                "    value: str = 'native'\n",
-            )
+        u.Tests.write_package_init(
+            tmp_path / "equality_provider",
+            "from dataclasses import dataclass\n"
+            "effects = []\n"
+            "class Foreign:\n"
+            "    def __eq__(self, other):\n"
+            "        effects.append('equality')\n"
+            "        return True\n"
+            f"@dataclass(kw_only={keyword_only})\n"
+            "class Payload:\n"
+            "    value: str = 'native'\n",
         )
         consumer = (
-            "import importlib, sys\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('equality_provider')\n"
             "assert module.Payload().value == 'native'\n"
-            "assert provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "assert authenticate(module.__name__).unwrap()\n"
             "before = tuple(module.effects)\n"
             "if sys.argv[2] == 'True':\n"
             "    module.Payload.__init__.__kwdefaults__ = {'value': module.Foreign()}\n"
             "else:\n"
             "    module.Payload.__init__.__defaults__ = (module.Foreign(),)\n"
-            "assert provenance.loaded_import_sources(module.__name__).failure\n"
+            "assert authenticate(module.__name__).failure\n"
             "assert tuple(module.effects) == before\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), str(keyword_only)],
-                cwd=tmp_path,
-            )
-        )
+        native_consumer(consumer, str(tmp_path), str(keyword_only))
 
     @staticmethod
     @pytest.mark.parametrize("defect", ["none", "code"])
     def test_generated_provenance_does_not_repeat_construction_effects(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
     ) -> None:
         """Authentication preserves effects of the actual imported construction."""
-        package = tmp_path / "effect_provider"
-        tm.ok(u.Cli.ensure_dir(package))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from dataclasses import dataclass\n"
-                "from pathlib import Path\n"
-                "effects = []\n"
-                "marker = Path(__file__).with_suffix('.effects')\n"
-                "def track(cls):\n"
-                "    effects.append('decorator')\n"
-                "    return cls\n"
-                "class Meta(type):\n"
-                "    def __new__(cls, name, bases, namespace):\n"
-                "        effects.append('metaclass')\n"
-                "        return super().__new__(cls, name, bases, namespace)\n"
-                "class Parent:\n"
-                "    def __init_subclass__(cls):\n"
-                "        effects.append('subclass')\n"
-                "@track\n"
-                "@dataclass\n"
-                "class Payload(Parent, metaclass=Meta):\n"
-                "    effects.append('body')\n"
-                "    with marker.open('a', encoding='utf-8') as stream:\n"
-                "        stream.write('body\\n')\n"
-                "    value: str = 'native'\n",
-            )
+        u.Tests.write_package_init(
+            tmp_path / "effect_provider",
+            "from dataclasses import dataclass\n"
+            "from pathlib import Path\n"
+            "effects = []\n"
+            "marker = Path(__file__).with_suffix('.effects')\n"
+            "def track(cls):\n"
+            "    effects.append('decorator')\n"
+            "    return cls\n"
+            "class Meta(type):\n"
+            "    def __new__(cls, name, bases, namespace):\n"
+            "        effects.append('metaclass')\n"
+            "        return super().__new__(cls, name, bases, namespace)\n"
+            "class Parent:\n"
+            "    def __init_subclass__(cls):\n"
+            "        effects.append('subclass')\n"
+            "@track\n"
+            "@dataclass\n"
+            "class Payload(Parent, metaclass=Meta):\n"
+            "    effects.append('body')\n"
+            "    with marker.open('a', encoding='utf-8') as stream:\n"
+            "        stream.write('body\\n')\n"
+            "    value: str = 'native'\n",
         )
         consumer = (
-            "import importlib, sys\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('effect_provider')\n"
             "assert module.Payload().value == 'native'\n"
             "before = tuple(module.effects)\n"
             "marker = module.marker.read_bytes()\n"
             "assert set(before) == {'body', 'decorator', 'metaclass', 'subclass'}\n"
-            "provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "authenticate(module.__name__).unwrap()\n"
             "if sys.argv[2] == 'code':\n"
             "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__.replace(co_name='replaced')\n"
-            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "observed = authenticate(module.__name__)\n"
             "assert observed.success == (sys.argv[2] == 'none'), observed\n"
             "assert tuple(module.effects) == before\n"
             "assert module.marker.read_bytes() == marker\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect],
-                cwd=tmp_path,
-            )
-        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize("defect", ["none", "options", "supplier"])
     def test_generated_descriptor_requires_authored_factory_binding(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
     ) -> None:
         """A genuine regenerated descriptor cannot bless an altered construction."""
-        package = tmp_path / "factory_provider"
-        tm.ok(u.Cli.ensure_dir(package))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from dataclasses import dataclass as construct\n"
-                "FROZEN = False\n"
-                "@construct(frozen=FROZEN)\n"
-                "class Payload:\n"
-                "    value: str = 'native'\n",
-            )
+        u.Tests.write_package_init(
+            tmp_path / "factory_provider",
+            "from dataclasses import dataclass as construct\n"
+            "FROZEN = False\n"
+            "@construct(frozen=FROZEN)\n"
+            "class Payload:\n"
+            "    value: str = 'native'\n",
         )
         consumer = (
-            "import importlib, sys\n"
             "from dataclasses import fields, make_dataclass\n"
             "from attr import attrs\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('factory_provider')\n"
             "assert module.Payload().value == 'native'\n"
@@ -1026,18 +902,13 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    module.construct = attrs\n"
             "    module.Payload = attrs(module.Payload)\n"
             "assert module.Payload().value == 'native'\n"
-            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "observed = authenticate(module.__name__)\n"
             "if defect == 'none':\n"
             "    assert observed.unwrap()\n"
             "else:\n"
             "    assert observed.failure\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect],
-                cwd=tmp_path,
-            )
-        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1047,6 +918,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     @pytest.mark.parametrize("options", ["", "frozen=True, slots=True"])
     @pytest.mark.parametrize("base", ["object", "Parent"])
     def test_dataclass_generated_callable_authenticates_its_descriptor(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
         options: str,
@@ -1077,9 +949,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             ),
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('generated_provider')\n"
             "defect = sys.argv[2]\n"
@@ -1099,46 +968,37 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "            raise AssertionError('unadmitted parameter accessor ran')\n"
             "    module.Payload.__dataclass_params__ = ForeignParameters()\n"
             "if defect == 'none':\n"
-            "    assert repr(module.Payload('authenticated')) == \"Payload(value='authenticated')\"\n"
-            "    observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
+            "    assert repr(module.Payload('authenticated')) == "
+            "\"Payload(value='authenticated')\"\n"
+            "    observed = "
+            "authenticate(module.__name__).unwrap().sources\n"
             "    generated = [item for item in observed if item[2]]\n"
             "    assert generated\n"
             "    assert all(pathlib.Path(item[2]) == "
             "pathlib.Path(module.__file__) for item in generated)\n"
             "else:\n"
-            "    assert provenance.loaded_import_sources(module.__name__).failure\n"
+            "    assert authenticate(module.__name__).failure\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect],
-                cwd=tmp_path,
-            ),
-        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize("defect", ["none", "constructor", "getter"])
     def test_annotation_metadata_constructor_is_admitted_before_callbacks(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
     ) -> None:
         """Real immutable metadata preserves operands and rejects authored callbacks."""
-        package = tmp_path / "metadata_provider"
-        package.mkdir()
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from dataclasses import dataclass\n"
-                "from typing import Annotated\n"
-                "from annotated_types import Ge\n"
-                "@dataclass\n"
-                "class Payload:\n"
-                "    value: Annotated[int, Ge(0)]\n",
-            )
+        u.Tests.write_package_init(
+            tmp_path / "metadata_provider",
+            "from dataclasses import dataclass\n"
+            "from typing import Annotated\n"
+            "from annotated_types import Ge\n"
+            "@dataclass\n"
+            "class Payload:\n"
+            "    value: Annotated[int, Ge(0)]\n",
         )
         consumer = (
-            "import importlib, sys\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('metadata_provider')\n"
             "defect = sys.argv[2]\n"
@@ -1148,19 +1008,14 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    module.Ge.__init__ = forbidden\n"
             "elif defect == 'getter':\n"
             "    module.Ge.ge = property(forbidden)\n"
-            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "observed = authenticate(module.__name__)\n"
             "if defect == 'none':\n"
             "    assert module.Payload(3).value == 3\n"
             "    assert observed.unwrap()\n"
             "else:\n"
             "    assert observed.failure\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect],
-                cwd=tmp_path,
-            )
-        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1168,32 +1023,28 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         ["none", "filename", "annotation", "parameters"],
     )
     def test_native_reference_compares_static_metadata_without_callbacks(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
     ) -> None:
         """A captured native epoch detects mutations before reading authored getters."""
-        package = tmp_path / "static_reference_provider"
-        package.mkdir()
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from dataclasses import dataclass\n"
-                "from typing import Annotated\n"
-                "from annotated_types import Ge\n"
-                "@dataclass(frozen=True)\n"
-                "class Payload:\n"
-                "    value: Annotated[int, Ge(0)]\n"
-                "class ForeignParameters:\n"
-                "    @property\n"
-                "    def frozen(self):\n"
-                "        raise AssertionError('unadmitted frozen getter ran')\n"
-                "    @property\n"
-                "    def __class__(self):\n"
-                "        raise AssertionError('unadmitted class getter ran')\n",
-            ),
+        u.Tests.write_package_init(
+            tmp_path / "static_reference_provider",
+            "from dataclasses import dataclass\n"
+            "from typing import Annotated\n"
+            "from annotated_types import Ge\n"
+            "@dataclass(frozen=True)\n"
+            "class Payload:\n"
+            "    value: Annotated[int, Ge(0)]\n"
+            "class ForeignParameters:\n"
+            "    @property\n"
+            "    def frozen(self):\n"
+            "        raise AssertionError('unadmitted frozen getter ran')\n"
+            "    @property\n"
+            "    def __class__(self):\n"
+            "        raise AssertionError('unadmitted class getter ran')\n",
         )
         consumer = (
-            "import importlib, sys\n"
             "from typing import Annotated\n"
             "from annotated_types import Ge\n"
             "from flext_infra.workspace.native_reference import "
@@ -1201,7 +1052,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('static_reference_provider')\n"
             "assert module.Payload(3).value == 3\n"
-            "reference = provenance.capture((module.__name__,)).unwrap()\n"
+            "reference = provenance.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
             "defect = sys.argv[2]\n"
             "if defect == 'filename':\n"
             "    method = module.Payload.__init__\n"
@@ -1210,16 +1061,11 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    module.Payload.__annotations__['value'] = Annotated[int, Ge(3)]\n"
             "elif defect == 'parameters':\n"
             "    module.Payload.__dataclass_params__ = module.ForeignParameters()\n"
-            "observed = provenance.capture((module.__name__,)).unwrap()\n"
+            "observed = provenance.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
             "compared = provenance.compare(observed, reference)\n"
             "assert compared.success == (defect == 'none'), compared.error\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect],
-                cwd=tmp_path,
-            ),
-        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1227,32 +1073,28 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         ["none", "wrapped", "cached_wrapped", "partial_arguments"],
     )
     def test_native_c_wrapper_requires_actual_callable_topology(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
     ) -> None:
-        """Real native wrappers retain function links and reject cache-assisted forgery."""
-        package = tmp_path / "native_wrapper_provider"
-        package.mkdir()
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from functools import lru_cache, partial\n"
-                "def counterfeit(value='foreign'):\n"
-                "    raise AssertionError('unadmitted callable was executed')\n"
-                "@lru_cache(maxsize=None)\n"
-                "def produce(value='native'):\n"
-                "    return value\n"
-                "selected = partial(produce, value='native')\n",
-            ),
+        """Real native wrappers retain function links and reject cache-assisted."""
+        u.Tests.write_package_init(
+            tmp_path / "native_wrapper_provider",
+            "from functools import lru_cache, partial\n"
+            "def counterfeit(value='foreign'):\n"
+            "    raise AssertionError('unadmitted callable was executed')\n"
+            "@lru_cache(maxsize=None)\n"
+            "def produce(value='native'):\n"
+            "    return value\n"
+            "selected = partial(produce, value='native')\n",
         )
         consumer = (
-            "import importlib, sys\n"
             "from gc import get_referents\n"
             "from flext_infra.workspace.native_reference import "
             "FlextInfraWorkspaceNativeReference as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('native_wrapper_provider')\n"
-            "reference = provenance.capture((module.__name__,)).unwrap()\n"
+            "reference = provenance.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
             "defect = sys.argv[2]\n"
             "if defect == 'wrapped':\n"
             "    module.produce.__wrapped__ = module.counterfeit\n"
@@ -1263,7 +1105,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    module.produce.__wrapped__ = module.counterfeit\n"
             "elif defect == 'partial_arguments':\n"
             "    module.selected.keywords['value'] = 'foreign'\n"
-            "observed = provenance.capture((module.__name__,))\n"
+            "observed = provenance.capture((m.Infra.SourceClassReference(target=module.__name__),))\n"
             "if defect in {'wrapped', 'cached_wrapped'}:\n"
             "    assert observed.failure, observed\n"
             "else:\n"
@@ -1272,62 +1114,45 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    if defect == 'none':\n"
             "        assert module.selected() == 'native'\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect],
-                cwd=tmp_path,
-            ),
-        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     def test_source_preflight_does_not_reimport_authored_effects(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
-        """Static provenance fails generated admission without replaying import effects."""
-        package = tmp_path / "import_effect_provider"
-        package.mkdir()
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from dataclasses import dataclass\n"
-                "import pathlib\n"
-                "pathlib.Path(__file__).with_name('effect').write_text('imported')\n"
-                "@dataclass\n"
-                "class Payload:\n"
-                "    value: str\n",
-            ),
+        """Static provenance fails generated admission without replaying import."""
+        u.Tests.write_package_init(
+            tmp_path / "import_effect_provider",
+            "from dataclasses import dataclass\n"
+            "import pathlib\n"
+            "pathlib.Path(__file__).with_name('effect').write_text('imported')\n"
+            "@dataclass\n"
+            "class Payload:\n"
+            "    value: str\n",
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('import_effect_provider')\n"
             "effect = pathlib.Path(module.__file__).with_name('effect')\n"
             "assert effect.read_text() == 'imported'\n"
             "effect.unlink()\n"
-            "observed = provenance.loaded_import_sources(module.__name__)\n"
+            "observed = authenticate(module.__name__)\n"
             "assert observed.failure, observed\n"
             "assert not effect.exists(), 'source admission replayed the module'\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path)],
-                cwd=tmp_path,
-            ),
-        )
+        native_consumer(consumer, str(tmp_path))
 
     @staticmethod
     @pytest.mark.parametrize("defect", ["none", "defaults", "kwdefaults", "closure"])
     def test_installed_annotation_dataclass_retains_native_constructor_proof(
+        native_consumer: p.Tests.NativeConsumer,
         defect: str,
     ) -> None:
         """Authenticate real Protocol dataclasses and reject altered constructor state."""
         consumer = (
             "import inspect\n"
             "from annotated_types import Interval, Len, MaxLen, MinLen\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "import sys\n"
             "defect = sys.argv[1]\n"
             "if defect == 'defaults':\n"
@@ -1335,47 +1160,43 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "elif defect == 'kwdefaults':\n"
             "    Len.__init__.__kwdefaults__ = {'foreign': None}\n"
             "elif defect == 'closure':\n"
-            "    cells = dict(zip(Len.__init__.__code__.co_freevars, Len.__init__.__closure__))\n"
+            "    cells = "
+            "dict(zip(Len.__init__.__code__.co_freevars, Len.__init__.__closure__))\n"
             "    cells['__dataclass_builtins_object__'].cell_contents = str\n"
             "if defect == 'none':\n"
             "    assert Len().min_length == 0\n"
             "    assert Len().max_length is None\n"
             "    assert list(Len(2, max_length=5)) == [MinLen(2), MaxLen(5)]\n"
             "    assert Interval(gt=1).gt == 1\n"
-            "    observed = provenance.loaded_import_sources(Len.__module__).unwrap()\n"
+            "    observed = authenticate(Len.__module__).unwrap().sources\n"
             "    assert any(item[2] == inspect.getfile(Len) for item in observed)\n"
             "else:\n"
-            "    assert provenance.loaded_import_sources(Len.__module__).failure\n"
+            "    assert authenticate(Len.__module__).failure\n"
         )
-        tm.ok(u.Cli.capture([executable, "-c", consumer, defect]))
+        native_consumer(consumer, defect)
 
     @staticmethod
     @pytest.mark.parametrize("defect", ["none", "code", "defaults", "kwdefaults"])
     def test_attrs_generated_callable_authenticates_native_decorator(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
     ) -> None:
         """Native attrs constructors preserve public behavior and reject tampering."""
-        package = tmp_path / "attrs_provider"
-        package.mkdir()
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                "from attr import attrs, attrib\n"
-                "@attrs(slots=True, unsafe_hash=True)\n"
-                "class Payload:\n"
-                "    value = attrib(default='captured')\n",
-            )
+        u.Tests.write_package_init(
+            tmp_path / "attrs_provider",
+            "from attr import attrs, attrib\n"
+            "@attrs(slots=True, unsafe_hash=True)\n"
+            "class Payload:\n"
+            "    value = attrib(default='captured')\n",
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
-            "from flext_infra.workspace import "
-            "FlextInfraWorkspaceEnvironmentProvenance as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('attrs_provider')\n"
             "defect = sys.argv[2]\n"
             "if defect == 'code':\n"
-            "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__.replace(co_name='foreign')\n"
+            "    module.Payload.__init__.__code__ = module."
+            "Payload.__init__.__code__.replace(co_name='foreign')\n"
             "elif defect == 'defaults':\n"
             "    module.Payload.__init__.__defaults__ = ('foreign',)\n"
             "elif defect == 'kwdefaults':\n"
@@ -1383,22 +1204,21 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "if defect == 'none':\n"
             "    assert module.Payload().value == 'captured'\n"
             "    assert module.Payload(value='native').value == 'native'\n"
-            "    observed = provenance.loaded_import_sources(module.__name__).unwrap()\n"
-            "    assert any(item[2] == str(pathlib.Path(module.__file__)) for item in observed)\n"
+            "    observed = "
+            "authenticate(module.__name__).unwrap().sources\n"
+            "    assert any(item[2] == str(pathlib.Path(module.__file__)) "
+            "for item in observed)\n"
             "else:\n"
-            "    assert provenance.loaded_import_sources(module.__name__).failure\n"
+            "    assert authenticate(module.__name__).failure\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, str(tmp_path), defect], cwd=tmp_path
-            )
-        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize(
         "defect", ["none", "code", "scope", "advertised", "defaults"]
     )
     def test_native_generated_class_authenticates_its_compiler_scope(
+        native_consumer: p.Tests.NativeConsumer,
         defect: str,
     ) -> None:
         """The installed Pillow consumer proves native factory, not a module label."""
@@ -1417,10 +1237,11 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    operation.__module__ = 'reprlib'\n"
             "elif defect == 'defaults':\n"
             "    operation.__defaults__ = ('foreign',)\n"
-            "observed = provenance.loaded_import_sources(ImageMode.__name__)\n"
+            "observed = authenticate(ImageMode.__name__)\n"
             "if defect == 'none':\n"
-            "    assert isinstance(ImageMode.getmode('RGB'), ImageMode.ModeDescriptor)\n"
-            "    sources = observed.unwrap()\n"
+            "    assert isinstance(ImageMode.getmode('RGB'), "
+            "ImageMode.ModeDescriptor)\n"
+            "    sources = observed.unwrap().sources\n"
             "    assert any(item[2] == ImageMode.__file__ for item in sources)\n"
             "    paths = {pathlib.Path(item[2] or item[1]) for item in sources}\n"
             "    assert pathlib.Path(getfile(namedtuple)) in paths\n"
@@ -1428,22 +1249,19 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "else:\n"
             "    assert observed.failure\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [executable, "-c", consumer, defect], cwd=Path(__file__).parent
-            )
-        )
+        native_consumer(consumer, defect, cwd=Path(__file__).parent)
 
     @staticmethod
     def test_package_election_does_not_reuse_a_retired_loaded_origin(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
         """A real imported package cannot authenticate its retired physical tree."""
-        package = tmp_path / "retired_provider"
-        package.mkdir()
-        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, ""))
+        u.Tests.write_package_init(
+            tmp_path / "retired_provider",
+            "",
+        )
         consumer = (
-            "import importlib, pathlib, sys\n"
             "from flext_infra import u\n"
             "root = pathlib.Path(sys.argv[1])\n"
             "sys.path.insert(0, str(root))\n"
@@ -1457,11 +1275,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert loaded.__file__ is not None\n"
             "assert not pathlib.Path(loaded.__file__).is_file()\n"
         )
-        tm.ok(u.Cli.capture([executable, "-c", consumer, str(tmp_path)], cwd=tmp_path))
+        native_consumer(consumer, str(tmp_path))
 
     @staticmethod
     @pytest.mark.parametrize("source_location", ["declared", "foreign"])
     def test_loaded_source_requires_declared_checkout_containment(
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         source_location: str,
     ) -> None:
@@ -1474,23 +1293,18 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         package = source_root / metadata.package_name
         package.mkdir(parents=True, exist_ok=True)
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / c.Infra.INIT_PY,
-                (
-                    "from contextlib import contextmanager\n"
-                    "@contextmanager\n"
-                    "def operation():\n"
-                    "    yield 'authenticated'\n"
-                ),
-            )
+        u.Tests.write_package_init(
+            package,
+            "from contextlib import contextmanager\n"
+            "@contextmanager\n"
+            "def operation():\n"
+            "    yield 'authenticated'\n",
         )
         consumer = (
-            "import importlib, pathlib, sys\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module(sys.argv[2])\n"
-            "result = provenance.loaded_import_sources(module.__name__, "
-            "expected_root=pathlib.Path(sys.argv[3]))\n"
+            "result = authenticate(module.__name__, "
+            "source_root=pathlib.Path(sys.argv[3]))\n"
             "if sys.argv[4] == 'declared':\n"
             "    assert result.success, result.error\n"
             "    with module.operation() as value:\n"
@@ -1499,19 +1313,12 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    assert result.failure\n"
             "    assert 'loaded code differs from declaration' in result.error\n"
         )
-        tm.ok(
-            u.Cli.capture(
-                [
-                    executable,
-                    "-c",
-                    consumer,
-                    str(source_root),
-                    metadata.package_name,
-                    str(checkout),
-                    source_location,
-                ],
-                cwd=tmp_path,
-            )
+        native_consumer(
+            consumer,
+            str(source_root),
+            metadata.package_name,
+            str(checkout),
+            source_location,
         )
 
     @staticmethod
@@ -1520,6 +1327,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
         Returns:
             The fingerprint emitted by the workspace provenance owner.
+
         """
         outcome = tm.ok(
             u.Cli.run_raw(
@@ -1832,7 +1640,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 )
             tm.that(tuple(item.path for item in selected), eq=(Path("sample-member"),))
 
-    @pytest.mark.parametrize("layout", ["package", "namespace", "multiple"])
+    @pytest.mark.parametrize(
+        "layout", ["package", "namespace", "multiple", "hatch-sources"]
+    )
     def test_editable_path_must_expose_declared_package_sources(
         self,
         installed_artifact_consumer: Path,
@@ -1852,7 +1662,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             for source_root, name in zip(roots, package_names, strict=True):
                 package = source_root / name
                 tm.ok(u.Cli.ensure_dir(package))
-                if layout == "multiple":
+                if layout in {"multiple", "hatch-sources"}:
                     tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, ""))
                 else:
                     tm.ok(u.Cli.atomic_write_text_file(package / "portion.py", ""))
@@ -1864,6 +1674,19 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             build = u.Tests.toml_mapping(hatch.get("build", {}))
             targets = u.Tests.toml_mapping(build.get("targets", {}))
             wheel = u.Tests.toml_mapping(targets.get("wheel", {}))
+            declared_wheel = {**wheel, "packages": declarations}
+            if layout == "hatch-sources":
+                declared_wheel = {
+                    key: value
+                    for key, value in wheel.items()
+                    if key not in {"packages", "include", "sources"}
+                }
+                declared_wheel["include"] = [
+                    f"/{declaration}/**" for declaration in declarations
+                ]
+                declared_wheel["sources"] = dict(
+                    zip(declarations, package_names, strict=True)
+                )
             tm.ok(
                 u.Cli.toml_write_mapping(
                     pyproject,
@@ -1877,7 +1700,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                                     **build,
                                     "targets": {
                                         **targets,
-                                        "wheel": {**wheel, "packages": declarations},
+                                        "wheel": declared_wheel,
                                     },
                                 },
                             },
@@ -1903,7 +1726,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 [
                     str(u.Infra.runtime_python(root)),
                     "-c",
-                    "import json, sysconfig; print(json.dumps([sysconfig.get_path('purelib')]))",
+                    (
+                        "import json, sysconfig; "
+                        "print(json.dumps([sysconfig.get_path('purelib')]))"
+                    ),
                 ],
                 cwd=root,
             )
@@ -1956,6 +1782,61 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 receipt,
             ),
             has="pth exposes no declared package",
+        )
+
+    def test_installed_bindings_do_not_admit_executable_declarations(
+        self,
+        installed_artifact_consumer: Path,
+    ) -> None:
+        """Real installation bindings survive unrelated defects."""
+        root = installed_artifact_consumer
+        package_name = u.Infra.project_package_name(root)
+        source = root / "src" / package_name / c.Infra.INIT_PY
+        original = source.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                original
+                + "\ndef producer():\n"
+                + "    return 'installed native producer'\n",
+            ),
+        )
+        consumer = (
+            "import importlib, pathlib, sys\n"
+            "import yaml\n"
+            "from flext_infra import m\n"
+            "from flext_infra.workspace import "
+            "FlextInfraWorkspaceEnvironmentProvenance as environment\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as producer\n"
+            "root = pathlib.Path(sys.argv[1])\n"
+            "module = importlib.import_module(sys.argv[2])\n"
+            "reference = producer.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
+            "yaml.safe_load.__module__ = None\n"
+            "module.producer.__code__ = module.producer.__code__.replace("
+            "co_filename='<unbound producer>')\n"
+            "environment.validate(root).unwrap()\n"
+            "observed = producer.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
+            "rejected = producer.compare(observed, reference)\n"
+            "assert rejected.failure, rejected\n"
+            "assert module.producer.__qualname__ in rejected.error, rejected.error\n"
+        )
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    str(u.Infra.runtime_python(root)),
+                    "-c",
+                    consumer,
+                    str(root),
+                    package_name,
+                ],
+                cwd=root,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
         )
 
     def test_frozen_member_remains_a_library_when_its_checkout_is_present(

@@ -35,6 +35,7 @@ class FlextInfraUtilitiesPyproject:
         Returns:
             The absolute executable inside the tool's install root, never a
             PATH shim.
+
         """
         tool = next(
             (
@@ -79,6 +80,7 @@ class FlextInfraUtilitiesPyproject:
 
         Returns:
             The installed self-managed executable, never a tool shim.
+
         """
         selected = shutil.which(c.Infra.MISE)
         if selected is None:
@@ -105,6 +107,7 @@ class FlextInfraUtilitiesPyproject:
         Returns:
             The installed self-managed executable, or the physical reader when
             the committed manifest declares no self-managed release.
+
         """
         if not declared:
             return r[Path].ok(reader.resolve(strict=True))
@@ -146,6 +149,7 @@ class FlextInfraUtilitiesPyproject:
 
         Returns:
             One declared release, or an empty tuple when the tree declares none.
+
         """
         lock_path = FlextInfraUtilitiesPyproject._mise_lock_path(owner_root)
         manifest = (
@@ -166,6 +170,7 @@ class FlextInfraUtilitiesPyproject:
 
         Returns:
             One scalar or table version request, or an empty declaration tuple.
+
         """
         manifest = next(
             (
@@ -207,6 +212,7 @@ class FlextInfraUtilitiesPyproject:
 
         Returns:
             The physical executable matching the committed self pin.
+
         """
         binary = binary.resolve(strict=True)
         identity = u.Cli.run_raw(
@@ -300,45 +306,73 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     def read_project_metadata_result(project_root: Path) -> p.Result[p.ProjectMetadata]:
-        """Read one project's metadata through the canonical owner chain.
-
-        flext-core retired its Result-returning compatibility wrapper; this is
-        the consuming project's typed ingress, keeping every metadata reader on
-        one failure contract instead of three ad-hoc try/except blocks. The
-        declared contract is the canonical structural protocol (the producer
-        builds the exact model behind it), matching every ``p.ProjectMetadata``
-        consumer.
-
-        The document is the live text with managed merge conflicts resolved
-        (``live_pyproject_text``); the file is never written here.
+        """Read retained metadata from the canonical single-document ingress.
 
         Returns:
-            The resulting ``p.Result[p.ProjectMetadata]``.
+            The original structural metadata or its causal ingress failure.
 
         """
+        state = FlextInfraUtilitiesPyproject.read_project_metadata_state(project_root)
+        if state.failure:
+            return r[p.ProjectMetadata].from_failure(state)
+        return r[p.ProjectMetadata].ok(state.value.metadata)
+
+    @staticmethod
+    def read_project_metadata_state(
+        project_root: Path,
+    ) -> p.Result[m.Infra.ProjectMetadataState]:
+        """Parse metadata and packaging declarations without importing source exports.
+
+        Returns:
+            Retained typed metadata and packaging facts from one live TOML read.
+
+        """
+        result_type = r[m.Infra.ProjectMetadataState]
         live = FlextInfraUtilitiesPyproject.live_pyproject_text(
             project_root / c.PYPROJECT_FILENAME,
         )
         if live.failure:
-            return r[p.ProjectMetadata].from_failure(live)
+            return result_type.from_failure(live)
         # The facade returns None for unparseable text rather than raising, so
         # the invalid case is named here instead of reaching model_validate as
         # a None that fails with a shape error about the wrong subject.
         payload = u.Cli.toml_mapping_from_text(live.value)
         if payload is None:
-            return r[p.ProjectMetadata].fail(
+            return result_type.fail(
                 f"cannot read project metadata from {project_root}: "
                 f"{c.PYPROJECT_FILENAME} is not valid TOML",
             )
         try:
             document = u.PyprojectDocument.model_validate(payload)
+            packaging = m.Infra.ProjectPackagingDeclaration.model_validate(payload)
             metadata = u.build_project_metadata(project_root, document)
         except (OSError, ValueError) as exc:
-            return r[p.ProjectMetadata].fail(
+            return result_type.fail(
                 f"cannot read project metadata from {project_root}: {exc}",
                 exception=exc,
             )
-        return r[p.ProjectMetadata].ok(metadata)
+        return result_type.ok(
+            m.Infra.ProjectMetadataState(metadata=metadata, packaging=packaging),
+        )
+
+    @staticmethod
+    def project_package_participation(
+        declaration: m.Infra.ProjectPackagingDeclaration,
+    ) -> bool:
+        """Apply native project defaults without consulting directories or exports.
+
+        Args:
+            declaration: Packaging declaration read from the project payload.
+
+        Returns:
+            Whether the project participates in packaging under native defaults.
+
+        """
+        return (
+            declaration.build_backend is not None
+            if declaration.uv_package is None
+            else declaration.uv_package
+        )
 
     @staticmethod
     def validate_infra_payload(payload: p.AttributeProbe) -> t.JsonMapping:

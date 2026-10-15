@@ -37,6 +37,25 @@ configuration validation. Python matches and replacements use native Rope
 The phase shares the existing semantic fixed point and publication transaction;
 it has no independent repair loop or CST, AST or regular-expression parser.
 
+Constant consumers reuse declarations already exposed by the package's public
+`c` facade. Complete function returns can use a uniquely assigned string or
+nonnegative decimal integer constant with the same native scalar type. Enum
+members are excluded from that rewrite because returning an enum changes the
+observable type. String spelling is taken from Rope's native literal regions,
+including raw, Unicode, escaped and triple-quoted forms; formatted strings do
+not establish a static value.
+
+Singleton `Literal` field annotations can reuse an existing public `StrEnum`
+member with the same value. This rewrite preserves defaults, aliases,
+discriminator metadata and the field's accepted JSON values. Function
+annotations and multi-value `Literal` declarations are outside this operation.
+Singleton static builtin `frozenset` declarations can replace the right-hand
+collection of an `in` or `not in` predicate. Construction and return expressions
+retain their original object identity. Shadowed constructors, mutable values,
+reassigned declarations, conflicting constant owners and competing `c` bindings
+cannot authorize a rewrite. These operations do not create new constants or
+enum declarations.
+
 Pydantic field rewrites require ancestry established from the native Rope
 object graph. Same-spelled factories and declarations outside those model
 scopes retain their behavior. Empty factories migrate only when the declared
@@ -44,6 +63,25 @@ concrete collection and the existing factory share their native identity.
 Destination imports use Rope's import manager and reject competing lexical
 bindings before publication. Configured defaults and factories remain policy
 data; projects do not carry copied detectors or symbol mapping tables.
+
+Native restructuring carries imports once: a sequence introduces declarations;
+a binding-keyed mapping also reuses existing compatible facade imports. The same
+operation contract serves configured rules, symbol migrations and path cutovers.
+Runtime equivalence, read-only planning and a second-pass no-op share one
+`u.Tests` proof consumed through the real Rope fixture; scenario data retains
+distinct validation, factory and binding failures.
+
+A wildcard argument may declare several native identity constraints. The
+shared Rope wildcard delegates each alternative to the SDK's exact identity
+matcher during the same resource pass. Canonical `Field` publications are
+declared once and reused by the field rules; an unrelated same-spelled callable
+does not become a Pydantic factory.
+
+When a replacement repeats or reorders annotation evaluation, the rule declares that
+effect. The existing Rope word finder supplies call coordinates for the matched
+region; authored calls prevent automatic duplication or reordering of their effects.
+This proof is separate from collection mutability and destination import
+availability.
 
 Moving a sole `Field` metadata item out of `Annotated` retains the callable,
 field position and arguments. A factory that receives previously validated field

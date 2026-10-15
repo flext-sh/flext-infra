@@ -99,8 +99,8 @@ class FlextInfraNamespaceValidator(s[bool]):
             TypeError: If ast-grep finding without a message.
 
         """
-        message = entry.payload.get("message")
-        if not isinstance(message, str):
+        message = entry.message
+        if message is None:
             msg = f"ast-grep finding without a message: {entry.rule_id}"
             raise TypeError(msg)
         return " ".join(message.split())

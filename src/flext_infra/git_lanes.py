@@ -317,6 +317,7 @@ class FlextInfraGitLanes:
         Raises:
             ValueError: If lane governance file must be declared by the selected host or
                 target.
+
         """
         source = (
             request.governance_file
@@ -593,7 +594,7 @@ class FlextInfraGitLanes:
         repository = captured.value.spec.repository
         declared = (
             repository.integration.branch
-            if repository is not None and repository.integration is not None
+            if repository.integration is not None
             else request.declared
         )
         targets = u.Infra.repository_operation_targets(

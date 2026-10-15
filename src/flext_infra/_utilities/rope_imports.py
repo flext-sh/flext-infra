@@ -25,10 +25,108 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSource,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesRopeImports:
     """Rope-backed import organization and rename helpers."""
+
+    @classmethod
+    def source_import_statements(
+        cls,
+        project: p.Infra.RopeProject,
+        source: str,
+    ) -> t.VariadicTuple[p.Infra.RopeImportStatement]:
+        """Collect imports in every lexical scope through native Rope owners.
+
+        Native token occurrences exclude strings and comments. Native logical
+        regions bound each fragment, and Rope's import tables parse the actual
+        declaration, including inline suites and multiple imports on one line.
+
+        Args:
+            project: The Rope project instance.
+            source: The source code to analyze.
+
+        Returns:
+            A tuple of Rope import statements found in the source.
+
+        """
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project,
+            source,
+        )
+        imports = tuple(
+            occurrence.offset
+            for occurrence in (
+                FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+                    project, "import"
+                ).find_occurrences(pymodule=module)
+            )
+        )
+        if not imports:
+            return ()
+        froms = tuple(
+            occurrence.offset
+            for occurrence in (
+                FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+                    project, "from"
+                ).find_occurrences(pymodule=module)
+            )
+        )
+        statements: list[p.Infra.RopeImportStatement] = []
+        position = 0
+        from_position = 0
+        preceding: int | None = None
+        for region in FlextInfraUtilitiesRopeStructure.logical_statements(source):
+            while position < len(imports) and imports[position] < region.start_offset:
+                position += 1
+            if position == len(imports):
+                break
+            offset = imports[position]
+            if offset >= region.end_offset:
+                continue
+            start = offset
+            while from_position < len(froms) and froms[from_position] < offset:
+                preceding = froms[from_position]
+                from_position += 1
+            if preceding is not None and preceding >= region.start_offset:
+                # Only a dotted import module may stand between `from` and
+                # `import`; `yield from` and exception chaining are not imports.
+                target = "".join(
+                    source[preceding + len("from") : offset]
+                    .replace("\\\n", "")
+                    .split(),
+                )
+                if target and all(
+                    not component or component.isidentifier()
+                    for component in target.split(".")
+                ):
+                    start = preceding
+            fragment = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project,
+                source[start : region.end_offset],
+            )
+            table = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
+                project,
+                fragment,
+            )
+            line_offset = module.lines.get_line_number(start) - 1
+            for statement in cls.import_statements(table):
+                # Every table owns its fragment records. Preserve the native
+                # import-info object and project the record's coordinates back
+                # to the complete immutable source before returning it.
+                statement.start_line += line_offset
+                statement.end_line += line_offset
+                statements.append(statement)
+            while position < len(imports) and imports[position] < region.end_offset:
+                position += 1
+        return tuple(statements)
 
     @staticmethod
     def import_statements(
@@ -684,6 +782,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             The declared project package or no owned relocation target.
+
         """
         own = FlextInfraUtilitiesPyproject.project_package_name(project_root)
         return own if source_module.split(".", maxsplit=1)[0] == own else None
@@ -704,6 +803,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             A typed source edit, no-op, or an explicit resource/ownership failure.
+
         """
         entry = rope_workspace.module(file_path)
         root = entry.project_root if entry is not None else None
@@ -758,6 +858,7 @@ class FlextInfraUtilitiesRopeImports:
         Raises:
             RuntimeError: If an import identity is unresolved, unsupported, or
                 conflicts with a target binding in the same lexical scope.
+
         """
         aliases_to_move = frozenset(aliases)
         if not aliases_to_move:
@@ -837,6 +938,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             The character offset in the original source snapshot.
+
         """
         return sum(map(len, lines[: line - 1])) + len(
             lines[line - 1].encode("utf-8")[:column].decode("utf-8"),
@@ -858,6 +960,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             RuntimeError: If an attribute consumes a selected source export.
+
         """
         selected_names = (
             tuple(
@@ -880,39 +983,38 @@ class FlextInfraUtilitiesRopeImports:
             rope_project,
             pymodule,
         )
-        for node in ast.walk(ast.parse("".join(lines))):
-            if not isinstance(node, ast.Attribute) or any(
-                start
-                <= cls._ast_character_offset(lines, node.lineno, node.col_offset)
-                < end
-                for start, end in protected
+        source = "".join(lines)
+        for (
+            begin,
+            end,
+        ) in FlextInfraUtilitiesSemanticFamilyTypeReferences.reference_regions(source):
+            expression = source[begin:end]
+            if "." not in expression or any(
+                start <= begin < end <= stop for start, stop in protected
             ):
                 continue
-            binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                FlextInfraUtilitiesRopeRuntime.scope_at(
-                    pymodule,
-                    cls._ast_character_offset(lines, node.lineno, node.col_offset),
-                ),
-                node,
+            binding = FlextInfraUtilitiesRopeRuntime.expression_name(
+                FlextInfraUtilitiesRopeRuntime.scope_at(pymodule, begin),
+                expression,
             )
             if any(
                 FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
                 for expected in selected_names
             ):
-                msg = f"unsupported Rope module consumer: {resource.path}:{node.lineno}"
+                msg = f"unsupported Rope module consumer: {resource.path}:{pymodule.lines.get_line_number(begin)}"
                 raise RuntimeError(msg)
         for (
-            node,
+            expression,
             scope,
             line,
-        ) in FlextInfraUtilitiesSemanticFamilyTypeReferences.scoped_quoted_type_nodes(
+        ) in FlextInfraUtilitiesSemanticFamilyTypeReferences.scoped_quoted_type_references(
             "".join(lines),
             rope_project,
             pymodule,
         ):
-            if not isinstance(node, ast.Attribute):
+            if "." not in expression:
                 continue
-            binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, node)
+            binding = FlextInfraUtilitiesRopeRuntime.expression_name(scope, expression)
             if any(
                 FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
                 for expected in selected_names
@@ -934,6 +1036,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             Resolved imports and their innermost lexical scopes.
+
         """
         imports: list[t.Triple[ast.ImportFrom, str, ast.AST]] = []
         scopes = [
@@ -985,6 +1088,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Returns:
             The absolute module name, or None for an unresolved relative import.
+
         """
         if not statement.level:
             return statement.module or ""
@@ -1021,6 +1125,7 @@ class FlextInfraUtilitiesRopeImports:
         Raises:
             TypeError: If the imported module has no valid module AST.
             RuntimeError: If the star import exposes a selected source export.
+
         """
         imported_resource = (
             rope_project.find_relative_module(
@@ -1110,6 +1215,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             RuntimeError: If source bindings repeat or conflict.
+
         """
         moved = [name for name in statement.names if name.name in aliases]
         if not moved:
@@ -1156,6 +1262,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             RuntimeError: If a mixed import occurs in an inline suite.
+
         """
         start = cls._ast_character_offset(lines, statement.lineno, statement.col_offset)
         end = cls._ast_character_offset(
@@ -1203,6 +1310,7 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             TypeError: If CST returns an invalid import representation.
+
         """
         line = parsed.body[0]
         if not isinstance(line, cst.SimpleStatementLine):

@@ -22,6 +22,7 @@ from uuid import uuid4
 from flext_cli import cli
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra._utilities.refactor import _RuleDeltaOptions
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
 
@@ -179,6 +180,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
+
         """
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
@@ -222,7 +224,9 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             catalog_after = u.Infra.codemod_rule_plan(root)
             cls._require_whole_catalog_correspondence(catalog_before, catalog_after)
             deltas = u.Infra.rule_deltas(
-                before, after.value, publication_chain=tuple(published_plans)
+                before,
+                after,
+                options=_RuleDeltaOptions(publication_chain=tuple(published_plans)),
             )
         except ValueError as exc:
             sys.stderr.write(
@@ -233,7 +237,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             return outcome if outcome.failure else r[t.Cli.ResultValue].fail(str(exc))
         cli.display_text(
             f"ast: whole-catalog before={before.findings} "
-            f"after={after.value.findings}; "
+            f"after={after.findings}; "
             "text phases=0 semantic callbacks=0; corpus=full",
         )
         for delta in deltas:
@@ -271,6 +275,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         Returns:
             The published after evidence with its whole-catalog report, or the
             observation or publication failure.
+
         """
         result_type = r[t.Pair[m.Infra.ModScanEvidenceReceipt, m.Infra.ModScanReport]]
         after = FlextInfraModGateEngine.scan(root, fix=False)
@@ -309,6 +314,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         Raises:
             ValueError: If the whole-catalog observation failed or the rule
                 plan changed during the selected apply.
+
         """
         if catalog_after.failure:
             msg = f"ast: whole-catalog observation failed: {catalog_after.error}"

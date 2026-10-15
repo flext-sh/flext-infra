@@ -51,6 +51,7 @@ class FlextInfraModelsDepsToml:
 
                 Returns:
                     The same declarations with array containers converted to tuples.
+
                 """
                 if isinstance(value, list):
                     return tuple(value)

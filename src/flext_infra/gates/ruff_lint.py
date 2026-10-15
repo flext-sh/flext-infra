@@ -38,6 +38,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
         Returns:
             The resulting ``t.StrMapping``.
+
         """
         return {
             **(super()._check_env(project_dir, ctx) or {}),
@@ -250,6 +251,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
         Raises:
             FileNotFoundError: If ``before.content is None``.
+
         """
         if before.content is None:
             raise FileNotFoundError(before.path)

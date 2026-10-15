@@ -11,6 +11,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_core import u as core_u
+
 from flext_infra import c, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProtectedEdit,
@@ -43,6 +44,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             ValueError: If a consumer path is outside the project.
+
         """
         for path in py_files:
             if not path.resolve().is_relative_to(project_root.resolve()):
@@ -355,6 +357,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             ValueError: If typing alias move requires an independent statement span.
+
         """
         module = ast.parse("\n".join(lines))
         moved_lines: list[str] = []
@@ -533,6 +536,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             RuntimeError: If the protected writer rejects the candidate.
+
         """
         candidate_writes = {
             path: FlextInfraUtilitiesProtectedEditLinting.normalize_source(
@@ -637,6 +641,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             RuntimeError: If the destination imports conflict.
+
         """
         source = source_file.read_text(encoding=c.DEFAULT_ENCODING)
         moved_lines, kept_lines, _first_moved_line = cls._split_alias_lines(
@@ -710,6 +715,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             RuntimeError: If module identities or destination bindings conflict.
+
         """
         source_resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
             rope_project,
@@ -768,6 +774,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             RuntimeError: If the destination imports its moved declarations.
+
         """
         target_file = next(path for path in writes if path != source_file)
         with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:

@@ -198,6 +198,24 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class ProjectSpec(Protocol):
+        """Elected project identity consumed directly by source projections."""
+
+        @property
+        def repository_root_rel(self) -> str:
+            """Declared relative path from the project to its workspace root."""
+            ...
+
+        @property
+        def package_name(self) -> str: ...
+
+        @property
+        def class_stem(self) -> str: ...
+
+        @property
+        def namespace(self) -> str: ...
+
+    @runtime_checkable
     class MiseArtifactsOwner(Protocol):
         """Owner contract consumed by the atomic generation transaction."""
 
@@ -223,12 +241,14 @@ class FlextInfraProtocolsBase(Protocol):
             root: Path,
             *,
             initial_workspace: m.Infra.WorkspaceSpec | None,
+            producer: m.Infra.CodegenPhaseAnalysis,
         ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
             """Read the request's physical topology without acquiring a lease.
 
             ``initial_workspace`` is the declared topology of a scaffold whose
             own workspace configuration is not rendered yet; ``None`` reads
             the repository's committed declaration.
+            ``producer`` carries the executor's already authenticated epoch.
             """
             ...
 
@@ -265,8 +285,12 @@ class FlextInfraProtocolsBase(Protocol):
 
         def prepare_batches(
             self,
+            *,
+            producer: m.Infra.CodegenPhaseAnalysis | None = None,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
         ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-            """Capture the next scope after the preceding batch settles."""
+            """Pin the producer eagerly, then capture each settled scope."""
             ...
 
         def publish_batch(
@@ -279,8 +303,12 @@ class FlextInfraProtocolsBase(Protocol):
             """Admit, publish and settle one captured scope batch."""
             ...
 
-        def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
-            """Freeze the configured render and its authenticated inputs."""
+        def prepare_bundle(
+            self,
+            *,
+            producer: m.Infra.CodegenPhaseAnalysis | None = None,
+        ) -> p.Result[m.Infra.DocsGenerationBundle]:
+            """Freeze one configured inventory with its original producer epoch."""
             ...
 
         def required_directories(
@@ -487,15 +515,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class ProjectSpec(Protocol):
-        """Scaffold-only project metadata consumed by initial generation."""
-
-        @property
-        def repository_root_rel(self) -> str:
-            """Declared relative path from the project to its workspace root."""
-            ...
-
-    @runtime_checkable
     class BeadsProjectSpec(Protocol):
         """Repository-local Beads identity contract."""
 
@@ -554,12 +573,12 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceEnvironmentRequest(Protocol):
-        """Read-only workspace environment validation request."""
+    class WorkspaceRequest(Protocol):
+        """One explicit repository target for read-only workspace operations."""
 
         @property
         def repository_root(self) -> Path:
-            """Workspace whose active interpreter provenance must be validated."""
+            """Repository whose owned environment or lock must be validated."""
             ...
 
     @runtime_checkable

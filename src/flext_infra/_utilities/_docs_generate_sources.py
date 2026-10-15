@@ -378,23 +378,24 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
 
     @staticmethod
     def docs_verify_source_topology(
-        repository_root: Path,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
+        bundle: m.Infra.DocsGenerationBundle,
         *,
         extra_roots: t.SequenceOf[Path] = (),
-        source_roots: t.SequenceOf[Path] = (),
-        source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = (),
         created_directories: t.SequenceOf[m.Cli.AtomicDirectoryState] = (),
-        source_scope: Path | None = None,
     ) -> p.Result[bool]:
         """Admit only the current batch's source membership and directory ancestry.
+
+        Args:
+            bundle: Captured batch's source membership and directory ancestry.
+            extra_roots: Additional read-only roots for default discovery.
+            created_directories: Authenticated directories created by scaffolding.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
         created = {item.path: item for item in created_directories}
-        for expected in source_directories:
+        for expected in bundle.source_directories:
             observed = cli_u.Cli.atomic_plan_directory_chain(expected.target)
             if observed.failure:
                 return r[bool].from_failure(observed)
@@ -421,19 +422,19 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                     )
         discovered = (
             FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths_for_roots(
-                source_roots,
-                source_scope=source_scope,
+                bundle.source_roots,
+                source_scope=bundle.source_scope,
             )
-            if source_roots
+            if bundle.source_roots
             else FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(
-                repository_root,
+                bundle.repository_root,
                 extra_roots,
             )
         )
         if discovered.failure:
             return r[bool].from_failure(discovered)
         expected_paths = tuple(
-            state.path for state in source_states if state.content is not None
+            state.path for state in bundle.source_states if state.content is not None
         )
         if discovered.value != expected_paths:
             added = sorted(set(discovered.value).difference(expected_paths))

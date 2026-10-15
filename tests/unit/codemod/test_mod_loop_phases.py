@@ -51,6 +51,7 @@ def _phase_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path]:
 
     Returns:
         The resulting ``tuple[Path, Path, Path, Path, Path]``.
+
     """
     workspace, project, pkg = u.Tests.namespace_workspace(
         tmp_path,
@@ -112,6 +113,7 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
 
     Returns:
         The real public candidate verdict without substituting its validators.
+
     """
     if not callback:
         return infra.accessor_migrate(

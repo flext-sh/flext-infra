@@ -340,6 +340,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
             Returns:
                 The resulting ``t.StrSequence``.
+
             """
             return tuple(
                 sorted({
@@ -357,6 +358,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
             Returns:
                 The resulting ``t.Infra.PerFileIgnores``.
+
             """
             return {
                 pattern: tuple(

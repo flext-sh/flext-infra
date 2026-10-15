@@ -82,6 +82,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
 
         Returns:
             The raw resolver command outcome.
+
         """
         return u.Cli.run_raw(
             [

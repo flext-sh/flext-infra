@@ -111,9 +111,9 @@ class FlextInfraConstantsRope:
     "Native Pydantic declaration decorators, resolved by Rope identity."
 
     PAYLOAD_DESCRIPTOR_DECORATORS: ClassVar[t.VariadicTuple[str]] = (
-        "builtins.classmethod",
-        "builtins.staticmethod",
-        "builtins.property",
+        "__builtins__.classmethod",
+        "__builtins__.staticmethod",
+        "__builtins__.property",
     )
     "Native descriptors permitted around a Pydantic declaration decorator."
 

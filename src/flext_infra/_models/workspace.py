@@ -12,15 +12,12 @@ from typing import Annotated, ClassVar
 from flext_cli import m, u
 from typing_extensions import TypeForm
 
-from flext_infra import c, p, t
-from flext_infra._models import (
-    FlextInfraModelsCheck,
-    FlextInfraModelsMixins,
-    FlextInfraModelsRope,
-)
+from flext_infra import c, t
+from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsMixins
 from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
+from flext_infra._models.rope import FlextInfraModelsRope
 
 
 class FlextInfraModelsWorkspace:
@@ -30,29 +27,6 @@ class FlextInfraModelsWorkspace:
     - ``ArbitraryTypesModel`` for mutable discovery payloads.
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
-
-    class NativeSourceWitness(m.ArbitraryTypesModel):
-        """One captured native scope graph and independent compiler evidence."""
-
-        source: Path = m.Field(description="Cold-elected physical Python source")
-        state: m.Cli.AtomicFileState = m.Field(
-            description="Bytes authenticated before and after observation",
-        )
-        module: p.Infra.RopeSourceModule = m.Field(
-            description="Native Rope module sharing the invocation's source graph",
-        )
-        code: p.Infra.NativeCodeIdentity = m.Field(
-            description="CPython compiler result, never executed",
-        )
-        scopes: t.MappingKV[str, p.Infra.RopeScope] = m.Field(
-            description="Native declaration scopes indexed by qualified identity",
-        )
-        statements: t.SequenceOf[FlextInfraModelsRope.LogicalStatement] = m.Field(
-            description="One native Rope logical-region pass over captured bytes",
-        )
-        finder: p.Infra.RopeSimilarFinder = m.Field(
-            description="Native semantic matcher shared across declarations",
-        )
 
     class CodegenSourceAuthority(m.Value):
         """Cold reference authority has no project publication capability."""
@@ -68,11 +42,26 @@ class FlextInfraModelsWorkspace:
         generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
             description="Cold-elected physical producer namespaces"
         )
+        selections: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = (
+            m.Field(
+                min_length=1,
+                description="Portable entrypoint, receiver and explicitly "
+                "wired port roots",
+            )
+        )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None,
+                description="Shared native epoch; cold authority carries none",
+            )
+        )
 
     class NativeBindingEvidence(m.Value):
         """Static binding and strict native executable transport."""
 
-        binding: str = m.Field(description="Module and lexical binding path")
+        binding: str = m.Field(
+            description="Root anchors, identity nodes and labeled native edges"
+        )
         kind: str = m.Field(description="Observed native descriptor category")
         supplier: str = m.Field(description="Actual defining module")
         name: str = m.Field(description="Advertised native name")
@@ -87,7 +76,8 @@ class FlextInfraModelsWorkspace:
         )
         operational: t.VariadicTuple[t.Pair[str, str]] = m.Field(
             default=(),
-            description="Observable native cache state kept separate from executable links",
+            description="Observable native cache state kept separate from "
+            "executable links",
         )
 
     class NativeImportObservation(m.Value):
@@ -95,7 +85,10 @@ class FlextInfraModelsWorkspace:
 
         runtime: Path = m.Field(description="Exact observed native interpreter")
         runtime_prefix: Path = m.Field(description="Physical interpreter environment")
-        modules: t.StrTuple = m.Field(description="Ordered elected loaded modules")
+        modules: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = m.Field(
+            min_length=1,
+            description="Selected modules and native lexical binding paths",
+        )
         sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
             description="Physical supplier and generated declaration origins",
         )
@@ -110,37 +103,36 @@ class FlextInfraModelsWorkspace:
             description="Cold authority pinned by the capture call",
         )
 
-    class NativeImportRequest(m.ArbitraryTypesModel):
+    class NativeImportRequest(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Loaded producer identities and pinned inputs for source authentication."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-        modules: t.StrTuple = m.Field(
-            description="Loaded modules elected for this epoch"
+        repository_root: Path = m.Field(
+            description="Declared workspace whose unchanged source view is consumed",
+        )
+        runtime_root: Path = m.Field(
+            description="Declared resolution owner of the elected physical runtime",
+        )
+        modules: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = m.Field(
+            min_length=1,
+            description="Source-owned module/binding selections for this epoch",
+        )
+        import_roots: t.VariadicTuple[Path] = m.Field(
+            description="Physical import roots carrying the elected producer sources",
         )
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority for reference consumption, not publication",
         )
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
-            description="Pinned payloads used exclusively by the source-view writer",
+            description="Pinned source inputs checked before and after authentication",
             exclude=True,
         )
-        import_roots: t.VariadicTuple[Path] = m.Field(
-            description="Physical import roots of all nominated and elected modules"
-        )
 
-    class WorkspaceEnvironmentRequest(m.ContractModel):
-        """Read-only request for validating the active workspace environment."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-        repository_root: Annotated[Path, m.Field(description="Repository root path")]
-
-    class WorkspaceLockRequest(m.ContractModel):
-        """Read-only request for validating the committed uv.lock completeness."""
+    class WorkspaceRequest(
+        FlextInfraModelsMixins.RepositoryRootPathMixin, m.ContractModel
+    ):
+        """One explicit repository target for read-only workspace operations."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-        repository_root: Annotated[Path, m.Field(description="Repository root path")]
 
     class LifecycleFileObservation(m.ContractModel):
         """Bounded physical file evidence without retaining source contents."""
@@ -257,8 +249,6 @@ class FlextInfraModelsWorkspace:
     class WorkspaceRuntimeContext(m.ContractModel):
         """Physical runtime ownership and its selected native resolution input."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
         project_root: Annotated[
             Path, m.Field(description="Submitted Git worktree root")
         ]
@@ -276,13 +266,15 @@ class FlextInfraModelsWorkspace:
         standalone: Annotated[
             bool,
             m.Field(
-                description="Installed native resolution view; independent of later CI flags"
+                description="Installed native resolution view; independent of "
+                "later CI flags"
             ),
         ]
         installation_inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(
-                description="Native lock and physical environment states captured after installation"
+                description="Native lock and physical environment states "
+                "captured after installation"
             ),
         ] = ()
         native_install_exit_code: Annotated[
@@ -297,62 +289,45 @@ class FlextInfraModelsWorkspace:
     class WorkspaceOperationReceipt(m.ContractModel):
         """Original in-process repository operation, with its observed effects."""
 
+        native_tool_qualifications: Annotated[
+            t.VariadicTuple[m.Cli.ProcessNativeToolEvidence],
+            m.Field(description="Shared native qualification evidence."),
+        ] = ()
         runtime_context: Annotated[
             FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
-            m.Field(
-                description="Authenticated installed association retained across later bootstrap failure"
-            ),
+            m.Field(description="Authenticated installed runtime association."),
         ] = None
-        root: Annotated[Path, m.Field(description="Repository actually attempted")]
-        executed: Annotated[bool, m.Field(description="Original operation was invoked")]
+        root: Annotated[Path, m.Field(description="Repository actually attempted.")]
+        executed: Annotated[
+            bool, m.Field(description="Original operation was invoked.")
+        ]
         outcome: Annotated[
             c.Infra.ToolOutcome | None,
-            m.Field(
-                description=(
-                    "Native operation outcome; independent of report transport"
-                ),
-            ),
+            m.Field(description="Native outcome, independent of report transport."),
         ]
         native_exit_code: Annotated[
             int | None,
-            m.Field(
-                description="Observed shell exit status; absent for in-process "
-                "operations"
-            ),
+            m.Field(ge=0, le=255, description="Observed original shell exit status."),
         ] = None
         stage: Annotated[
             t.NonEmptyStr | None,
-            m.Field(
-                description="Original bootstrap stage reached before shell completion"
-            ),
+            m.Field(description="Original bootstrap stage reached."),
         ] = None
         completed: Annotated[
             bool | None,
-            m.Field(
-                description="Whether the original bootstrap reached its final stage"
-            ),
+            m.Field(description="Whether bootstrap reached its final stage."),
         ] = None
         applicability: Annotated[
             str,
-            m.Field(
-                description=(
-                    "Explicit reason when declaration policy prevents execution"
-                ),
-            ),
+            m.Field(description="Declared reason preventing execution."),
         ] = ""
         files: Annotated[
             t.VariadicTuple[Path],
-            m.Field(
-                description=(
-                    "Validated or changed paths returned by the original owner"
-                ),
-            ),
+            m.Field(description="Paths returned by the original operation owner."),
         ] = ()
         issues: Annotated[
             t.VariadicTuple[FlextInfraModelsCheck.Issue],
-            m.Field(
-                description=("Native failures attributed to their actual repository"),
-            ),
+            m.Field(description="Native findings at their actual repository."),
         ] = ()
 
     class WorkspaceOperationTarget(m.ContractModel):
@@ -378,15 +353,23 @@ class FlextInfraModelsWorkspace:
     class WorkspaceOperationReport(m.ContractModel):
         """Declared repository scope and original serial operation receipts."""
 
-        root: Annotated[Path, m.Field(description="Invoking repository root")]
+        root: Annotated[Path, m.Field(description="Invoking repository root.")]
         operation: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Public operation name"),
+            m.Field(description="Public operation name."),
         ]
         scope: Annotated[
             t.VariadicTuple[Path],
-            m.Field(description="Roots discovered once before the batch"),
+            m.Field(description="Roots discovered before the batch."),
         ]
+        receipts: Annotated[
+            t.VariadicTuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt],
+            m.Field(description="Original receipts in discovered order."),
+        ]
+        candidate_read_exit_code: Annotated[
+            int | None,
+            m.Field(description="Original Git metadata read status."),
+        ] = None
         candidate_sha: Annotated[
             str | None,
             m.Field(
@@ -395,19 +378,6 @@ class FlextInfraModelsWorkspace:
                 "read",
             ),
         ] = None
-        candidate_read_exit_code: Annotated[
-            int | None,
-            m.Field(
-                description=(
-                    "Observed Git metadata read status; separate from operation "
-                    "completion"
-                ),
-            ),
-        ] = None
-        receipts: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt],
-            m.Field(description="Original outcomes in discovered order"),
-        ]
 
     class SubprojectLoadContext(m.ContractModel):
         """Workspace governance scope shared by every declared subproject entry."""
@@ -464,8 +434,6 @@ class FlextInfraModelsWorkspace:
 
     class WorkspaceProjectContext(m.ContractModel):
         """Canonical context derived from one runtime working directory."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         cwd: Annotated[Path, m.Field(description="Resolved submitted directory")]
         identity: Annotated[
@@ -688,8 +656,6 @@ class FlextInfraModelsWorkspace:
 
     class FleetPullRequest(m.ContractModel):
         """One open pull request observed in a member repository."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         number: Annotated[
             int,

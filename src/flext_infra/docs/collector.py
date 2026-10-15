@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
@@ -20,6 +20,33 @@ if TYPE_CHECKING:
 
 class FlextInfraDocCollector:
     """Publish only fully supported source associations under explicit leases."""
+
+    class ScopePublication(m.ArbitraryTypesModel):
+        """Validated immutable inputs publishing one plan-collection scope."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        scope_root: Annotated[Path, m.Field(description="Physical scope root")]
+        configuration_path: Annotated[
+            Path,
+            m.Field(description="Authenticated collection configuration path"),
+        ]
+        snapshot: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Authenticated configuration byte state"),
+        ]
+        configuration: Annotated[
+            m.Infra.PlanCollectionConfig,
+            m.Field(description="Parsed collection configuration"),
+        ]
+        roots: Annotated[
+            t.MappingKV[str, Path],
+            m.Field(description="Named scope roots visible to the transaction"),
+        ]
+        transaction: Annotated[
+            FlextInfraCodegenTransaction,
+            m.Field(description="Owning generation transaction"),
+        ]
 
     @classmethod
     def collect(cls, request: m.Infra.DocsCollectRequest) -> p.Result[bool]:
@@ -36,83 +63,154 @@ class FlextInfraDocCollector:
         roots = {"@canonical": request.repository_root}
         if configuration.projection_root is not None:
             roots["@projection"] = configuration.projection_root.expanduser()
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=request.repository_root),
+        publication = cls.ScopePublication(
+            scope_root=request.repository_root,
+            configuration_path=configuration_path,
+            snapshot=snapshot,
+            configuration=configuration,
+            roots=roots,
+            transaction=FlextInfraCodegenTransaction(
+                FlextInfraCodegenMiseArtifacts(
+                    repository_root=request.repository_root,
+                ),
+            ),
+        )
+        return publication.transaction.run_files_locked(
+            roots,
+            lambda scope_root: cls._publish_scope(
+                publication.model_copy(update={"scope_root": scope_root}),
+            ),
         )
 
-        def publish(scope_root: Path) -> p.Result[bool]:
-            unchanged = cls._require_unchanged(
-                configuration_path,
-                snapshot,
-                "plan collection configuration changed before collection",
+    @classmethod
+    def _publish_scope(
+        cls,
+        publication: FlextInfraDocCollector.ScopePublication,
+    ) -> p.Result[bool]:
+        """Collect, publish, and re-verify one scope under the transaction lease.
+
+        Args:
+            publication: Immutable publication inputs for the elected scope.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        unchanged = cls._require_unchanged(
+            publication.configuration_path,
+            publication.snapshot,
+            "plan collection configuration changed before collection",
+        )
+        if unchanged.failure:
+            return r[bool].from_failure(unchanged)
+        bundle = u.Infra.docs_collect_plan_files(
+            publication.scope_root,
+            publication.configuration,
+        )
+        incomplete = tuple(
+            item for item in bundle.coverage if item.adapter == "private-inventory"
+        )
+        if incomplete:
+            pending = ", ".join(
+                f"{item.source_id}:{item.status}:{item.files}" for item in incomplete
             )
-            if unchanged.failure:
-                return r[bool].from_failure(unchanged)
-            bundle = u.Infra.docs_collect_plan_files(scope_root, configuration)
-            incomplete = tuple(
-                item for item in bundle.coverage if item.adapter == "private-inventory"
+            return r[bool].fail(
+                f"plan source extraction is incomplete; private "
+                f"inventories are not extracted plans: {pending}",
             )
-            if incomplete:
-                pending = ", ".join(
-                    f"{item.source_id}:{item.status}:{item.files}"
-                    for item in incomplete
-                )
-                return r[bool].fail(
-                    f"plan source extraction is incomplete; private "
-                    f"inventories are not extracted plans: {pending}",
-                )
-            u.Infra.verify_plan_collection_sources(scope_root, configuration, bundle)
-            inputs = FlextInfraCodegenPreconditions.unique_states(
-                (snapshot, *bundle.source_states),
+        u.Infra.verify_plan_collection_sources(
+            publication.scope_root,
+            publication.configuration,
+            bundle,
+        )
+        analysis = cls._staged_phase_analysis(publication.snapshot, bundle)
+        if analysis.failure:
+            return r[bool].from_failure(analysis)
+        published = publication.transaction.publish_file_phase_locked(
+            publication.scope_root,
+            publication.roots,
+            analysis.value,
+            m.Infra.CodegenPhasePublicationPolicy(
+                directories=tuple(
+                    path
+                    for path in bundle.required_directories
+                    if path not in publication.roots.values()
+                ),
+            ),
+        )
+        if published.failure:
+            return r[bool].from_failure(published)
+        return cls._verified_publication(publication, bundle)
+
+    @staticmethod
+    def _staged_phase_analysis(
+        snapshot: m.Cli.AtomicFileState,
+        bundle: m.Infra.PlanCollectionBundle,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Stage the collected plans with snapshot-unique source states.
+
+        Args:
+            snapshot: Authenticated configuration byte state anchoring inputs.
+            bundle: Collected plan bundle with files and source states.
+
+        Returns:
+            The staged phase analysis, or the first unique-state failure.
+
+        """
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
+        inputs = FlextInfraCodegenPreconditions.unique_states(
+            (snapshot, *bundle.source_states),
+        )
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        files: list[m.Infra.CodegenFilePlan] = []
+        for plan in bundle.files:
+            sources = FlextInfraCodegenPreconditions.unique_states(
+                (snapshot, *plan.source_states),
             )
-            if inputs.failure:
-                return r[bool].from_failure(inputs)
-            files: list[m.Infra.CodegenFilePlan] = []
-            for plan in bundle.files:
-                sources = FlextInfraCodegenPreconditions.unique_states(
-                    (snapshot, *plan.source_states),
-                )
-                if sources.failure:
-                    return r[bool].from_failure(sources)
-                files.append(plan.model_copy(update={"source_states": sources.value}))
-            analysis = m.Infra.CodegenPhaseAnalysis(
+            if sources.failure:
+                return result_type.from_failure(sources)
+            files.append(plan.model_copy(update={"source_states": sources.value}))
+        return result_type.ok(
+            m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.DOCS,
                 files=tuple(files),
                 inputs=inputs.value,
-            )
+            ),
+        )
 
-            published = transaction.publish_file_phase_locked(
-                scope_root,
-                roots,
-                analysis,
-                m.Infra.CodegenPhasePublicationPolicy(
-                    directories=tuple(
-                        path
-                        for path in bundle.required_directories
-                        if path not in roots.values()
-                    ),
-                ),
-            )
-            if published.failure:
-                return r[bool].from_failure(published)
-            unchanged = cls._require_unchanged(
-                configuration_path,
-                snapshot,
-                "plan collection configuration changed during publication",
-            )
-            if unchanged.failure:
-                return unchanged
-            u.Infra.verify_plan_collection_publication(
-                scope_root,
-                configuration,
-                bundle,
-            )
-            pruned = cls._prune_bundle_directories(bundle)
-            if pruned.failure:
-                return r[bool].from_failure(pruned)
-            return r[bool].ok(value=True)
+    @classmethod
+    def _verified_publication(
+        cls,
+        publication: FlextInfraDocCollector.ScopePublication,
+        bundle: m.Infra.PlanCollectionBundle,
+    ) -> p.Result[bool]:
+        """Re-verify the configuration, publication, and prunable directories.
 
-        return transaction.run_files_locked(roots, publish)
+        Args:
+            publication: Immutable publication inputs for the elected scope.
+            bundle: The published plan bundle.
+
+        Returns:
+            Whether the scope published and re-verified completely.
+
+        """
+        unchanged = cls._require_unchanged(
+            publication.configuration_path,
+            publication.snapshot,
+            "plan collection configuration changed during publication",
+        )
+        if unchanged.failure:
+            return unchanged
+        u.Infra.verify_plan_collection_publication(
+            publication.scope_root,
+            publication.configuration,
+            bundle,
+        )
+        pruned = cls._prune_bundle_directories(bundle)
+        if pruned.failure:
+            return r[bool].from_failure(pruned)
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _authenticated_configuration(

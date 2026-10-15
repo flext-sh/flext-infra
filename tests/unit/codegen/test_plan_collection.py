@@ -79,7 +79,7 @@ class TestsFlextInfraPlanCollection:
         configuration_path = root / "collection.yaml"
         self._write(
             configuration_path,
-            tm.ok(u.Cli.yaml_dump_str(configuration.model_dump(mode="json"))),
+            u.Cli.yaml_dump_str(configuration.model_dump(mode="json")),
         )
         self._write(root / "input" / "plan.md", "# Collected plan\n\nOwned input.\n")
         configuration_state = tm.ok(

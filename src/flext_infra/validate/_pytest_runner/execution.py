@@ -65,6 +65,7 @@ class FlextInfraPytestRunnerExecution(
 
         Raises:
             ValueError: If test target has no declared project owner.
+
         """
         testmon_keys = (
             config.Infra.codegen.make.testmon_cache.database_environment_variable,
@@ -595,6 +596,7 @@ class FlextInfraPytestRunnerExecution(
 
         Raises:
             ValueError: If the original suite checkpoint has no native test selection.
+
         """
         start = m.Infra.GateCaptureStart.model_validate_json(
             u.Cli.files_read_binary(

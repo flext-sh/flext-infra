@@ -324,6 +324,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
         Returns:
             The installation result or the original environment failure.
+
         """
         created = cls.create_python_environment(root)
         if created.failure:

@@ -33,7 +33,7 @@ class TestsFlextInfraCodemodDuplicateApply:
         self,
         tmp_path: Path,
     ) -> None:
-        """Census cure contracts retain Rope source regions during transport."""
+        """Census cure contracts consume the same typed source objects directly."""
         path = tmp_path / "definition.py"
         path.write_text(_CORE_CONSTANT, encoding=c.DEFAULT_ENCODING)
         statement = u.Infra.logical_statements(_CORE_CONSTANT)[0]
@@ -63,11 +63,10 @@ class TestsFlextInfraCodemodDuplicateApply:
             copies=(),
             edits=(),
         )
-        transported = m.Infra.DuplicateGroupCure.model_validate(
-            planned.model_dump(),
-        )
-        assert transported.owner.definition.statement == statement
-        assert transported.owner.definition.source == path.read_text(
+        assert planned.owner is copy
+        assert planned.owner.definition is definition
+        assert planned.owner.definition.statement is statement
+        assert planned.owner.definition.source == path.read_text(
             encoding=c.DEFAULT_ENCODING,
         )
         deletion = m.Infra.DuplicateDeletion(
@@ -76,12 +75,8 @@ class TestsFlextInfraCodemodDuplicateApply:
             line=item.line,
             project=item.project,
         )
-        assert (
-            m.Infra.DuplicateDeletion.model_validate_json(
-                deletion.model_dump_json(),
-            )
-            == deletion
-        )
+        assert deletion.path == definition.path
+        assert deletion.name == definition.item.name
 
     @staticmethod
     def _module(summary: str) -> str:
@@ -341,6 +336,33 @@ class TestsFlextInfraCodemodDuplicateApply:
         first, second = package / "left.py", package / "right.py"
         for path in (first, second):
             path.write_text(self._module("Binding trap") + source, encoding="utf-8")
+        before = first.read_bytes(), second.read_bytes()
+        with infra.rope_workspace(root) as workspace:
+            group = self._group(
+                self._objects(workspace, (first, second), "LIMIT"),
+                value_identical=True,
+            )
+            outcome = tm.ok(
+                FlextInfraCodemodDuplicateApply.census_duplicates(
+                    root, workspace, (group,), apply=True
+                )
+            )
+        tm.that(outcome.edits, empty=True)
+        tm.that(outcome.plans, length=1)
+        tm.that((first.read_bytes(), second.read_bytes()), eq=before)
+
+    def test_rebound_module_definition_never_deletes_another_occurrence(
+        self,
+        duplicate_project: Path,
+    ) -> None:
+        """A module with two same-name assignments has no single cure owner."""
+        root, package = self._workspace(duplicate_project)
+        first, second = package / "left.py", package / "right.py"
+        for path in (first, second):
+            path.write_text(
+                self._module("Rebound declaration") + "LIMIT = 42\nLIMIT = 99\n",
+                encoding="utf-8",
+            )
         before = first.read_bytes(), second.read_bytes()
         with infra.rope_workspace(root) as workspace:
             group = self._group(
