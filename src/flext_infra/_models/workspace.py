@@ -55,6 +55,31 @@ class FlextInfraModelsWorkspace:
             description="Native semantic matcher shared across declarations",
         )
 
+    class NativeGeneratedFunctionProof(m.ArbitraryTypesModel):
+        """Source-derived generated code and every consulted physical input."""
+
+        code: p.Infra.NativeCodeIdentity = m.Field(
+            description="Expected compiler code extracted without executing it",
+        )
+        globals: t.MappingKV[str, p.AttributeProbe] = m.Field(
+            description="Source-derived global bindings of the emitted function",
+        )
+        annotations: t.MappingKV[str, p.AttributeProbe] = m.Field(
+            description="Source-derived annotation storage, never evaluated output",
+        )
+        defaults: p.AttributeProbe | None = m.Field(
+            description="Source-derived positional defaults or their absence",
+        )
+        keyword_defaults: t.MappingKV[str, p.AttributeProbe] | None = m.Field(
+            description="Source-derived keyword defaults or their absence",
+        )
+        closure: t.VariadicTuple[p.AttributeProbe] = m.Field(
+            description="Source-derived closure values in native cell order",
+        )
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            description="Physical sources revalidated after closed interpretation",
+        )
+
     class CodegenSourceAuthority(m.Value):
         """Cold reference authority has no project publication capability."""
 

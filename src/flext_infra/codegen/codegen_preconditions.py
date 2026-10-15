@@ -17,7 +17,6 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
     FlextInfraMiseArtifactsFiles,
 )
-from flext_infra.validate import FlextInfraValidateFreshImport
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
