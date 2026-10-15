@@ -12,12 +12,10 @@ from flext_cli import cli
 
 from flext_infra import c, m, r, u
 from flext_infra._utilities.refactor import _RuleDeltaOptions
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.refactor import (
     FlextInfraImportNormalization,
     FlextInfraNamespaceEnforcerProjectMixin,
-)
-from flext_infra.refactor.namespace_relocations import (
     FlextInfraNamespaceRelocationCascade,
 )
 

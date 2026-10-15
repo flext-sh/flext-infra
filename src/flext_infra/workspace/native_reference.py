@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import itertools
-import itertools
 import marshal
 import sys
 from base64 import b64encode
@@ -41,15 +40,8 @@ from types import (
 )
 from typing import ClassVar, Literal, TypeGuard, overload
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraMiseArtifactsFiles,
-    FlextInfraMiseArtifactsJournalRelocation,
-)
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.workspace.environment_provenance import (
-    FlextInfraWorkspaceEnvironmentProvenance,
-)
+from flext_infra import c, codegen, m, p, r, t, u
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 
 
 class FlextInfraWorkspaceNativeReference:
@@ -790,7 +782,6 @@ class FlextInfraWorkspaceNativeReference:
         """
         return any(
             type(cls._class_namespace(owner).get("__call__")) is FunctionType
-            for owner in vars(type)["__mro__"].__get__(type(value), type(type(value)))
             for owner in vars(type)["__mro__"].__get__(type(value), type(type(value)))
         )
 
@@ -1717,7 +1708,6 @@ class FlextInfraWorkspaceNativeReference:
             fields = frozenset(
                 instruction.argval
                 for previous, instruction in itertools.pairwise(instructions)
-                for previous, instruction in itertools.pairwise(instructions)
                 if instruction.opname == "STORE_ATTR"
                 and isinstance(instruction.argval, str)
                 and instruction.argval in declarations
@@ -2211,12 +2201,6 @@ class FlextInfraWorkspaceNativeReference:
                                 observe_value(value, construction=True),
                             ),
                         ),
-                        operands=(
-                            (
-                                "alias",
-                                observe_value(value, construction=True),
-                            ),
-                        ),
                     ),
                 )
                 pending.extend(
@@ -2314,7 +2298,6 @@ class FlextInfraWorkspaceNativeReference:
                 if cls._native_callable_instance(
                     value
                 ) or cls._python_callable_instance(value):
-                ) or cls._python_callable_instance(value):
                     native = type(value)
                     evidence.append(
                         m.Infra.NativeBindingEvidence(
@@ -2326,12 +2309,6 @@ class FlextInfraWorkspaceNativeReference:
                             name=vars(type)["__name__"].__get__(native, type(native)),
                             qualname=vars(type)["__qualname__"].__get__(
                                 native, type(native)
-                            ),
-                            operands=(
-                                (
-                                    "storage",
-                                    observe_value(value, construction=True),
-                                ),
                             ),
                             operands=(
                                 (

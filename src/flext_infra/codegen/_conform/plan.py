@@ -12,14 +12,14 @@ from pathlib import Path
 from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
-from flext_infra.codegen._mise_artifacts_journal import FlextInfraMiseArtifactsJournal
-from flext_infra.codegen._mise_artifacts_verification import (
+from flext_infra.codegen import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPreconditions,
+    FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
@@ -29,10 +29,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         self,
         receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[bool]:
-        """Continue the original producer through this producer's live effect proof.
+        """Advance producer capture only through this producer's live effect proof.
 
         Returns:
-            Whether the original producer still owns the published receipts.
+            Whether the recaptured producer still owns the published receipts.
 
         """
         if self.producer is None or not receipts:
@@ -49,7 +49,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         verified = self._verified_receipt_states(receipts)
         if verified.failure:
             return verified
-        return self._continued_producer(producer, receipts)
+        return self._advanced_producer_capture(receipts)
 
     @staticmethod
     def _expected_producer_sources(
@@ -132,31 +132,34 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 return verified
         return r[bool].ok(value=True)
 
-    @staticmethod
-    def _continued_producer(
-        producer: m.Infra.CodegenPhaseAnalysis,
+    def _advanced_producer_capture(
+        self,
         receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[bool]:
-        """Prove the original producer against its authenticated output preimages.
+        """Recapture the producer and prove it still owns its live effects.
 
         Args:
-            producer: The producer epoch captured before its effects.
             receipts: Publication receipts of this producer's live effects.
 
         Returns:
-            Whether the original producer is current, or the first output or
-            currency failure.
+            Whether the recaptured producer is current, or the first capture,
+            verification or currency failure.
 
         """
-        outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
-            receipts,
+        captured = FlextInfraCodegenPreconditions.capture_producer(
+            self.repository_root,
+            entrypoint=self.plan,
         )
-        if outputs.failure:
-            return r[bool].from_failure(outputs)
-        return FlextInfraCodegenPreconditions.producer_current(
-            producer,
-            outputs=outputs.value,
-        )
+        if captured.failure:
+            return r[bool].from_failure(captured)
+        reverified = self._verified_receipt_states(receipts)
+        if reverified.failure:
+            return reverified
+        current = FlextInfraCodegenPreconditions.producer_current(captured.value)
+        if current.failure:
+            return current
+        self.producer = captured.value
+        return r[bool].ok(value=True)
 
     def plan(
         self,
@@ -174,14 +177,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenPlan].from_failure(inputs)
-        if request.what in {
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-            c.Infra.CodegenConformSurface.FACADES,
-        }:
-            planned = self._plan_single_surface(request, inputs=inputs.value)
-            if planned.failure:
-                return r[m.Infra.CodegenPlan].from_failure(planned)
-            return r[m.Infra.CodegenPlan].ok(planned.value[0])
         return self.plan_repositories(request, inputs.value)
 
     def _required_producer(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
@@ -233,12 +228,20 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         request: m.Infra.CodegenConformRequest,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[m.Infra.CodegenPlan]:
-        """Build the governed plans for the selected repository topology.
+        """Dispatch the declared surface using its captured repository inputs.
 
         Returns:
             The complete repository plan or its first planning failure.
 
         """
+        if request.what in {
+            c.Infra.CodegenConformSurface.LAZY_INIT,
+            c.Infra.CodegenConformSurface.FACADES,
+        }:
+            planned = self._plan_single_surface(request, inputs=inputs)
+            if planned.failure:
+                return r[m.Infra.CodegenPlan].from_failure(planned)
+            return r[m.Infra.CodegenPlan].ok(planned.value[0])
         config_spec = inputs.spec
         root = request.root.expanduser().resolve()
         targets = self._planning_workspace(request, root, inputs=inputs)

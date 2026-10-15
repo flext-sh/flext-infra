@@ -9,9 +9,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, r, s, t, u
-from flext_infra._conform_wiring import FlextInfraConformWiring
-from flext_infra._preview_wiring import FlextInfraPreviewWiring
+from flext_infra import (
+    FlextInfraConformWiring,
+    FlextInfraPreviewWiring,
+    c,
+    m,
+    r,
+    s,
+    t,
+    u,
+)
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,

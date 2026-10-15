@@ -574,6 +574,8 @@ class FlextInfraCodegenPreconditions:
             The authenticated producer phase analysis snapshot.
 
         """
+        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
         if context.failure:
@@ -595,7 +597,7 @@ class FlextInfraCodegenPreconditions:
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        reference = FlextInfraWorkspaceNativeReference.authenticate(
+        reference = FlextInfraValidateFreshImport.capture_native_reference(
             m.Infra.NativeImportRequest(
                 repository_root=context.value.runtime_root,
                 runtime_root=context.value.runtime_root,
