@@ -115,7 +115,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesInventory,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
-    FlextInfraUtilitiesRopeSourceBindingCollector,
     FlextInfraUtilitiesRopeStructure,
     FlextInfraUtilitiesSemanticCutover,
     FlextInfraUtilitiesTransformerHeader,
@@ -127,8 +126,9 @@ from flext_infra._utilities import (
     FlextInfraWorktreeLifecycle,
     FlextInfraWorktreeProvisioning,
 )
-from flext_infra._utilities.remote import FlextInfraUtilitiesGitRemote
-from flext_infra._utilities.worktree_io import FlextInfraUtilitiesGitWorktreeIO
+from flext_infra._utilities._rope_source_bases_inventory_collector import (
+    FlextInfraUtilitiesRopeSourceBindingCollector,
+)
 
 
 class FlextInfraUtilities(FlextCliUtilities):
