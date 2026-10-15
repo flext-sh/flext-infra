@@ -13,7 +13,7 @@ from flext_cli import FlextCliModels
 
 from flext_infra._models import (
     FlextInfraCodegen,
-    )
+)
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._models.census import FlextInfraModelsCensus
