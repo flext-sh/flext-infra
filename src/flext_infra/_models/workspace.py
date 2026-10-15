@@ -243,6 +243,16 @@ class FlextInfraModelsWorkspace:
         mode: Annotated[int | None, m.Field(description="Observed permission mode")]
         size: Annotated[int, m.Field(ge=0, description="Observed byte count")]
 
+    class LifecycleFileObservation(m.ContractModel):
+        """Bounded physical file evidence without retaining source contents."""
+
+        path: Annotated[Path, m.Field(description="Observed physical leaf")]
+        sha256: Annotated[
+            str | None, m.Field(description="Byte digest; absent for an absent leaf")
+        ]
+        mode: Annotated[int | None, m.Field(description="Observed permission mode")]
+        size: Annotated[int, m.Field(ge=0, description="Observed byte count")]
+
     class LifecycleReceipt(m.ContractModel):
         """One public Make invocation; an absent outcome is never a green receipt."""
 

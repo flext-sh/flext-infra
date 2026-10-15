@@ -730,10 +730,6 @@ upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle
 upg: TOOL_BOOTSTRAP_RESOLVE := 1
 upg: _bootstrap_setup_tools
 else
-upg: _builtin_require_workspace
-	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg
-endif
-else
 {% for verb in profile.verbs %}
 {{ verb.name }}:
 	{{ verb_help_line(verb) }}
@@ -874,7 +870,6 @@ _builtin-upg-sources: _builtin_require_environment
 		--git-source-ref-from "$(SOURCE_REF_FROM)" --git-source-ref-to "$(SOURCE_REF_TO)"
 {% endfor %}
 _upg_lifecycle: _builtin_setup_submodules
-	@$(SELF_MAKE) _builtin_require_upg_lock_owner
 	@set -eu; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \

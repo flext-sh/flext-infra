@@ -387,5 +387,105 @@ class FlextInfraWorkspaceLifecycle:
             relative_path=c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH,
         )
 
+    @staticmethod
+    def _observed(
+        root: Path,
+    ) -> p.Result[t.VariadicTuple[m.Infra.LifecycleFileObservation]]:
+        """Read the config-declared bounded file observations.
+
+        Returns:
+            Physical file states, including absent leaves.
+
+        """
+        states: list[m.Infra.LifecycleFileObservation] = []
+        for relative in config.Infra.codegen.make.lifecycle_observed_files:
+            observed = u.Cli.atomic_read_binary_file_state(root / relative, required=False)
+            if observed.failure:
+                return r[t.VariadicTuple[m.Infra.LifecycleFileObservation]].from_failure(
+                    observed,
+                )
+            content = observed.value.content
+            states.append(
+                m.Infra.LifecycleFileObservation(
+                    path=observed.value.path,
+                    sha256=None if content is None else u.Cli.sha256_bytes(content),
+                    mode=observed.value.mode,
+                    size=0 if content is None else len(content),
+                ),
+            )
+        return r[t.VariadicTuple[m.Infra.LifecycleFileObservation]].ok(tuple(states))
+
+    @classmethod
+    def _run(
+        cls,
+        receipt: m.Infra.LifecycleReceipt,
+    ) -> t.Pair[m.Infra.LifecycleReceipt, p.Result[p.Cli.ProcessOutcome]]:
+        """Reap the original command and observe only declared evidence files.
+
+        Returns:
+            The receipt with native outcome, elapsed time and bounded effects.
+
+        """
+        before = cls._observed(receipt.repository_root or receipt.cwd)
+        if before.failure:
+            return (
+                receipt.model_copy(update={"error": before.error}),
+                r[p.Cli.ProcessOutcome].from_failure(before),
+            )
+        u.Cli.info(f"[validate-lifecycle] {receipt.cwd}: {' '.join(receipt.command)}")
+        started = monotonic()
+        run = u.Cli.run_to_file(
+            receipt.command,
+            receipt.output_file,
+            cwd=receipt.cwd,
+            options=m.Cli.ProcessOptions(
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+                live=True,
+            ),
+        )
+        elapsed = monotonic() - started
+        outcome = (
+            None
+            if run.failure
+            else m.Cli.ProcessOutcome.model_validate(run.value, from_attributes=True)
+        )
+        after = cls._observed(receipt.repository_root or receipt.cwd)
+        error = run.error if run.failure else None
+        if run.success and not u.Cli.process_succeeded(run.value):
+            error = (
+                f"failed ({run.value.raw_return_code}): {' '.join(receipt.command)} "
+                f"in {receipt.cwd}; timed_out={run.value.timed_out}, "
+                f"forwarded_signal={run.value.forwarded_signal}; "
+                f"output={receipt.output_file}"
+            )
+        if error is None and after.failure:
+            error = after.error
+            run = r[p.Cli.ProcessOutcome].from_failure(after)
+        observed_receipt = receipt.model_copy(
+            update={
+                "applicable": True,
+                "before_files": before.value,
+                "after_files": () if after.failure else after.value,
+                "elapsed_seconds": elapsed,
+                "outcome": outcome,
+                "error": error,
+            },
+        )
+        return observed_receipt, run
+
+    @staticmethod
+    def _publish(report: m.Infra.LifecycleReport) -> p.Result[Path]:
+        """Persist reached and unreached command accounting.
+
+        Returns:
+            The report's published evidence path.
+
+        """
+        return u.Infra.publish_refactor_report_evidence(
+            report.workspace_root,
+            report,
+            relative_path=c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH,
+        )
+
 
 __all__: list[str] = ["FlextInfraWorkspaceLifecycle"]
