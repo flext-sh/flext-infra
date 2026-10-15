@@ -226,12 +226,25 @@ class FlextInfraPyprojectModernizerDocument:
             The resulting ``p.Result[t.StrSequence]``.
 
         """
+        manifests = u.Infra.load_workspace_manifest(state.pyproject_path.parent)
+        if manifests.failure:
+            return r[t.StrSequence].from_failure(manifests)
+        project = manifests.value[0].project if manifests.value else None
+        topology = (
+            m.Infra.PyprojectDeclaredTopology.model_validate(
+                project.model_dump(
+                    include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
+                ),
+            )
+            if project is not None
+            else m.Infra.PyprojectDeclaredTopology()
+        )
         return self._render_document_state(
             state,
             self._apply_document_phases(
                 state,
                 canonical_dev=canonical_dev,
-                topology=m.Infra.PyprojectDeclaredTopology(),
+                topology=topology,
             ),
             dry_run=dry_run,
             skip_comments=skip_comments,

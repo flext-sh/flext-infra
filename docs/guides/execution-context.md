@@ -226,6 +226,13 @@ A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
 
+Dependency modernization and conformance both consume the project's typed
+`config/workspace.yaml` declaration for distribution roots and packaged data.
+Modernization must retain those declarations when rebuilding Hatch targets;
+an empty topology cannot replace a declared one. Wheel and source-distribution
+templates use the same bounded `only-include` selection as modernization, with
+the declared wheel source mappings and explicit file inclusions.
+
 ## SonarCloud exclusions
 
 The committed-lock contract also removes the former SonarCloud exclusion for a missing
