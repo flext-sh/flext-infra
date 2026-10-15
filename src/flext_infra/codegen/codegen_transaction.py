@@ -913,6 +913,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     @staticmethod
     def validate_phase_analysis_locked(
         analysis: m.Infra.CodegenPhaseAnalysis,
+        *,
+        session: m.Infra.CodegenTransactionSession | None = None,
     ) -> p.Result[bool]:
         """Validate a published phase from its immutable planning receipt.
 
@@ -920,7 +922,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             The resulting ``p.Result[bool]``.
 
         """
-        return FlextInfraMiseArtifactsVerification.phase_analysis_live(analysis)
+        return FlextInfraMiseArtifactsVerification.phase_analysis_live(
+            analysis, session=session
+        )
 
     def run_locked[T](
         self,

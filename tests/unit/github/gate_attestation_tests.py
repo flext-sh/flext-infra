@@ -203,6 +203,7 @@ class TestsFlextInfraGithubGateAttestation:
             assert report.digest == f"sha256:{digest}"
 
     @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])
+    @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])
     def test_signing_identity_reads_only_native_public_references(
         self,
         tmp_path: Path,
@@ -211,6 +212,13 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Public identity queries preserve provenance without exporting key bytes."""
         allowed = signed_repository_factory(tmp_path)
+        key_path = tmp_path / "signing_key"
+        if literal_prefix is not None:
+            public = key_path.with_suffix(".pub").read_text(encoding="utf-8").strip()
+            u.Tests.git_bootstrap(
+                tmp_path,
+                ("config", "user.signingkey", literal_prefix + public),
+            )
         metadata = tm.ok(u.Infra.read_project_metadata_result(tmp_path))
         tm.that(metadata.project.version, eq=config.Infra.initial_project_version)
         tm.that(

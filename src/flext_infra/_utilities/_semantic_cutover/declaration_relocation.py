@@ -82,7 +82,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         findings: list[m.Infra.DeclarationRelocationFinding] = []
         unresolved: set[t.Triple[Path, str, str]] = set()
         try:
-            working = cls._settings_import_rewrites(project, working)
+            working, import_findings = cls._declaration_import_rewrites(
+                project, working
+            )
+            findings.extend(import_findings)
             if working != sources:
                 project.close()
                 project = runtime.snapshot_project(workspace.rope_project, working)
@@ -204,35 +207,37 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         return None
 
     @classmethod
-    def _settings_import_rewrites(
+    def _declaration_import_rewrites(
         cls,
         project: p.Infra.RopeProject,
         sources: t.MappingKV[Path, str],
-    ) -> t.MutableMappingKV[Path, str]:
-        """Rebind config imports only to their existing, permitted declaration.
+    ) -> t.Pair[
+        t.MutableMappingKV[Path, str],
+        t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
+    ]:
+        """Rebind declarations only to identity-proven external public exports.
 
-        A declaration in another family is not repaired by importing its leaf.
-        Such findings require relocation and remain visible to the boundary gate.
+        An own-namespace provider has to relocate; importing its defining leaf
+        does not repair the dependency. Unresolved identities remain typed red
+        findings while the other safe semantic edits can proceed.
 
         Returns:
-            The proposed sources with config imports rebound to their
-            existing, permitted declaration.
+            Proposed sources and every dependency lacking a permitted owner.
 
         """
         layers = FlextInfraUtilitiesImportLaw
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
         proposed = dict(sources)
+        findings: list[m.Infra.DeclarationRelocationFinding] = []
         for path, source in sources.items():
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
             located = layers.import_namespace(root, path)
             if located is None:
                 continue
-            namespace, _module = located
-            if not cls._is_import_law_singleton(
-                path, namespace, c.Infra.IMPORT_LAW_ROOT_SINGLETONS
-            ):
+            namespace, module = located
+            if layers.import_module_role(module) != "layer0":
                 continue
             exports = cls._collect_settings_exports(
                 (
@@ -244,6 +249,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     root,
                     sources,
                 ),
+                findings,
             )
             if exports:
                 proposed[path] = cls._relocate_settings_exports(
@@ -252,18 +258,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     source,
                     exports,
                 )
-        return proposed
-
-    @staticmethod
-    def _is_import_law_singleton(
-        path: Path,
-        namespace: Path,
-        singletons: frozenset[str],
-    ) -> bool:
-        return any(
-            part.removesuffix(".py").lstrip("_").startswith(tuple(singletons))
-            for part in path.relative_to(namespace).parts
-        )
+        return proposed, tuple(findings)
 
     @classmethod
     def _collect_settings_exports(
@@ -277,6 +272,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             Path,
             t.MappingKV[Path, str],
         ],
+        findings: list[m.Infra.DeclarationRelocationFinding],
     ) -> t.MutableMappingKV[str, t.Pair[str, str]]:
         project, path, _source, namespace, runtime, root, sources = context
         exports: t.MutableMappingKV[str, t.Pair[str, str]] = {}
@@ -305,6 +301,18 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 resolved = cls._resolve_settings_export(alias_context)
                 if resolved is not None:
                     exports[resolved[0]] = resolved[1]
+                else:
+                    findings.append(
+                        m.Infra.DeclarationRelocationFinding(
+                            file_path=path,
+                            declaration=f"{module_name}.{name}",
+                            expected_owner="external public declaration",
+                            reason=(
+                                "own-namespace dependency has no "
+                                "identity-proven external export"
+                            ),
+                        )
+                    )
         return exports
 
     @staticmethod
@@ -334,15 +342,17 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         if resource is None:
             return None
         target = Path(resource.real_path).resolve()
-        if (
-            target not in sources
-            or not target.is_relative_to(namespace)
-            or not FlextInfraUtilitiesImportLaw.import_direct_module(namespace, target)
-        ):
+        if target.is_relative_to(namespace):
             return None
         destination = project.get_pymodule(resource)
-        declared = destination.get_attributes().get(name)
-        destination_name = destination.get_name()
+        destination_name = destination.get_name().split(".")[0]
+        declared = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_binding(
+            project,
+            destination_name,
+            name,
+            root,
+            sources,
+        )
         if (
             declared is None
             or not runtime.same_name(binding, declared)

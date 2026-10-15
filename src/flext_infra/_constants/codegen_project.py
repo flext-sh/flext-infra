@@ -168,13 +168,11 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     DOCS_SOURCE_STATE_RACE_MARKER: ClassVar[str] = (
         "docs source state changed during planning"
     )
-    """Emitted by ``docs_verify_sources`` when one snapshotted docs source
-    changes content or physical identity inside the planning window."""
+    """Emitted when a captured docs source changes content or physical identity."""
     DOCS_SOURCE_TOPOLOGY_RACE_MARKER: ClassVar[str] = (
         "docs source topology changed during planning"
     )
-    """Emitted by ``docs_verify_sources`` when the discovered docs source set
-    gains or loses a file inside the planning window."""
+    """Emitted when the captured docs source membership changes."""
     CONFIG_SNAPSHOT_ROOT_RACE_MARKER: ClassVar[str] = (
         "project root changed during config snapshot"
     )
@@ -243,7 +241,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     "Scaffold template for canonical test c/t/p/m/u facades."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
     INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"
-    CODEGEN_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.yaml"
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"
     CODEGEN_GEN_SUFFIX: ClassVar[str] = ".gen.yaml"
     "File suffix for generation requirements contract files managed by conform."

@@ -83,7 +83,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 "pyrefly",
             )
             tm.that(
-                pyrefly["search-path"],
+                tuple(pyrefly["search-path"]),
                 eq=TestsFlextInfraExtendedConfigFixer._extra_paths_manager(
                     tmp_path,
                 ).pyrefly_search_paths(project_dir=tmp_path, is_root=True),

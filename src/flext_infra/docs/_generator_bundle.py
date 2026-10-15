@@ -337,12 +337,6 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Publication admits sources and topology once per owning scope batch.
 
-        Args:
-            request: Canonical documentation generation request.
-            entrypoint: Public generation operation whose producer is authenticated.
-            collaborators: Actual public operations participating in the invocation.
-            producer: Original authenticated producer retained by the invocation.
-
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 

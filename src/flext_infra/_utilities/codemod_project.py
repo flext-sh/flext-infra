@@ -22,16 +22,17 @@ from functools import cache, lru_cache
 from importlib.metadata import packages_distributions
 from importlib.util import find_spec
 from pathlib import Path
+from time import monotonic
 from types import MappingProxyType
 
-from flext_cli import u
+from flext_cli import settings, u
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraFlextUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
@@ -59,9 +60,23 @@ _COMPOSE_MODULE_SEGMENT_COUNT = 2
 
 
 class FlextInfraUtilitiesCodemodProject(
-    FlextInfraFlextUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+    FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
 ):
     """Evaluate rule context over project facts: packages, layers, graphs."""
+
+    @staticmethod
+    def _codemod_progress(message: str, due: float = 0) -> float:
+        """Report active source work at the configured heartbeat interval.
+
+        Returns:
+            The next monotonic deadline for an interval progress row.
+
+        """
+        now = monotonic()
+        if now < due:
+            return due
+        u.Cli.info(f"mod: {message}")
+        return now + settings.cli_process_heartbeat_seconds
 
     @classmethod
     def project_import_graph(
@@ -100,7 +115,13 @@ class FlextInfraUtilitiesCodemodProject(
         raw: MutableMapping[str, set[str]] = {}
         modules: MutableMapping[Path, str] = {}
         aliases: MutableMapping[str, str] = {}
+        cls._codemod_progress("import graph start")
+        due = 0.0
         for resource in FlextInfraUtilitiesRopeCore.python_resources(project):
+            due = cls._codemod_progress(
+                f"import graph modules={len(modules)} file={resource.path}",
+                due,
+            )
             pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             name = pymodule.get_name()
             if not name:
@@ -132,6 +153,7 @@ class FlextInfraUtilitiesCodemodProject(
                 for export, provider in provider_aliases.items()
             })
         known = frozenset(raw)
+        cls._codemod_progress(f"import graph finish modules={len(modules)}")
         graph = {
             name: frozenset(
                 target
@@ -818,6 +840,9 @@ class FlextInfraUtilitiesCodemodProject(
             return None
         state = states.get(path)
         if state is None:
+            u.Cli.info(
+                f"mod: binding capture sources={len(states)} path={path}",
+            )
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             states[path] = state
         if state.content is None:
@@ -1297,15 +1322,40 @@ class FlextInfraUtilitiesCodemodProject(
         project = FlextInfraUtilitiesCodemodRules.codemod_project_requirements(
             root,
         ).unwrap()
+        if not project[1]:
+            return frozenset()
+        cls._codemod_progress(
+            f"runtime distributions start requirements={len(project[1])} root={root}",
+        )
+        distributions = FlextInfraUtilitiesCodemodRules.codemod_distributions()
+        cls._codemod_progress(
+            f"runtime distributions finish distributions={len(distributions)}",
+        )
+        cls._codemod_progress("runtime dependency closure start")
         closure = FlextInfraUtilitiesCodemodRules.codemod_runtime_closure(
             project[1],
-            FlextInfraUtilitiesCodemodRules.codemod_distributions(),
+            distributions,
         )
-        return frozenset(
-            module
-            for module, providers in cls._installed_import_packages().items()
-            if providers & closure
+        cls._codemod_progress(
+            f"runtime dependency closure finish distributions={len(closure)}",
         )
+        cls._codemod_progress("runtime import package metadata start")
+        packages = cls._installed_import_packages()
+        cls._codemod_progress(
+            f"runtime import package metadata finish packages={len(packages)}",
+        )
+        selected: set[str] = set()
+        due = 0.0
+        for index, (module, providers) in enumerate(packages.items(), start=1):
+            due = cls._codemod_progress(
+                f"runtime imports package={index}/{len(packages)} "
+                f"module={module} selected={len(selected)}",
+                due,
+            )
+            if providers & closure:
+                selected.add(module)
+        cls._codemod_progress(f"runtime imports finish modules={len(selected)}")
+        return frozenset(selected)
 
     @staticmethod
     @cache
