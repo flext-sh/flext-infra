@@ -16,9 +16,19 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
-from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
+from flext_infra import (
+    FlextInfraServiceBase,
+    c,
+    codegen,
+    config,
+    m,
+    p,
+    r,
+    settings,
+    t,
+    u,
+)
 from flext_infra.codegen import (
-    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
