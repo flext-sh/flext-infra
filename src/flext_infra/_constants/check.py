@@ -91,6 +91,9 @@ class FlextInfraConstantsCheck:
         COPYRIGHT_NOTICE = "copyright-notice"
         STATIC_METHOD = "static-method"
 
+    SERVICE_BASE_ROOTS: ClassVar[frozenset[str]] = frozenset({"FlextService", "s"})
+    "Root names whose base declares a FLEXT service subclass (the family letter ``s`` aliases ``FlextService``, ADR-019). A service operation must stay a plain public instance function - core discovery excludes staticmethods, classmethods and properties - so the static-method recipe leaves such findings to their owner."
+
     AST_GREP_DOCS_URL: ClassVar[str] = "https://ast-grep.github.io/"
     "Canonical ast-grep documentation URL for gate metadata."
     # Quality gate identifiers shared with the tool-name vocabulary.

@@ -390,6 +390,51 @@ class FlextInfraUtilitiesLintRecipes:
             if (owner.name, method.name) in overridden
         )
 
+    @classmethod
+    def service_operation_findings(
+        cls,
+        source: str,
+        issues: t.SequenceOf[m.Infra.Issue],
+        *,
+        path: Path,
+        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+    ) -> t.VariadicTuple[m.Infra.Issue]:
+        """Return the static-method findings on methods of a service subclass.
+
+        A service operation must stay a plain public instance function
+        (ADR-019): core discovery excludes staticmethods, classmethods and
+        properties, so converting such a method silently removes the
+        operation and every derived route raises ``no operation``. The
+        static-method recipe leaves these findings to their owner.
+
+        Returns:
+            The findings the static-method recipe leaves to their owner.
+
+        """
+        tree = ast.parse(source)
+        return tuple(
+            issue
+            for issue in issues
+            if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD
+            for owner, _method in (cls._receiver_method_at(tree, issue, path),)
+            if cls._declares_service_base(owner)
+        )
+
+    @staticmethod
+    def _declares_service_base(owner: ast.ClassDef) -> bool:
+        """Return whether the class declares a FLEXT service base.
+
+        Bases are matched by their declared root name, so ``s[Status]``,
+        ``FlextService[Status]`` and ``service.FlextService[Status]`` all
+        declare; an ambiguous name only keeps more methods with their owner.
+
+        """
+        for base in owner.bases:
+            root = ast.unparse(base).split("[", maxsplit=1)[0]
+            if root.rsplit(".", maxsplit=1)[-1].strip() in c.Infra.SERVICE_BASE_ROOTS:
+                return True
+        return False
+
     @staticmethod
     def _receiver_method_at(
         tree: ast.Module,
