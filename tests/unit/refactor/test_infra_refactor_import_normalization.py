@@ -60,7 +60,8 @@ class TestsFlextInfraRefactorImportNormalization:
                     sys.executable,
                     "-c",
                     (
-                        "from demo_pkg import u\nassert u.ADAPTER.validate_python('x') == "
+                        "from demo_pkg import u\nassert u.ADAPTER.validate_python('x') "
+                        "== "
                         "'x'"
                     ),
                 ),
@@ -105,7 +106,8 @@ class TestsFlextInfraRefactorImportNormalization:
                     "-c",
                     (
                         f"from demo_pkg.{directory}.provider_boundary import ADAPTER; "
-                        "assert ADAPTER.validate_python('native-value') == 'native-value'"
+                        "assert ADAPTER.validate_python('native-value') == "
+                        "'native-value'"
                     ),
                 ),
                 cwd=project,

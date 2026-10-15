@@ -452,13 +452,12 @@ class FlextInfraGate:
         self,
         project_dir: Path,
         *,
-        verdict: bool,
         outcome: c.Infra.ToolOutcome,
         issues: t.SequenceOf[m.Infra.Issue],
         raw_output: str,
         started: float,
     ) -> m.Infra.GateExecution:
-        """Assemble a gate execution whose verdict the caller already decided.
+        """Assemble acceptance from the native outcome and complete findings.
 
         Native outcome and acceptance are separate: residual findings block
         acceptance without being relabeled as machinery failures.
@@ -470,7 +469,7 @@ class FlextInfraGate:
         return m.Infra.GateExecution(
             result=self._gate_result(
                 project_dir,
-                passed=verdict,
+                passed=outcome is c.Infra.ToolOutcome.CLEAN and not issues,
                 errors=[issue.formatted for issue in issues],
                 started=started,
             ),
@@ -808,7 +807,6 @@ class FlextInfraGate:
             )
         return self._build_gate_execution(
             project_dir,
-            verdict=outcome is c.Infra.ToolOutcome.CLEAN and not issues,
             outcome=outcome,
             issues=issues,
             raw_output=self._raw_output(result),

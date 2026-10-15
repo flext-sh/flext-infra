@@ -92,8 +92,7 @@ class TestsFlextInfraGateAcceptance:
             gate_id
             for gate_id in c.Infra.TYPE_CHECKER_GATES
             for gate_type in (FlextInfraGateRegistry().get(gate_id),)
-            if gate_type is not None
-            and gate_type.requires_python_targets
+            if gate_type is not None and gate_type.requires_python_targets
         ),
     )
     def test_project_without_an_executed_gate_is_not_accepted(
