@@ -155,7 +155,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             signature = module.source_code[
                 statement.start_offset : statement.end_offset
             ]
-            _first, last = regions.expression_segments(
+            _first, last = u.Infra.expression_segments(
                 signature, 0, len(signature), ":"
             )[0]
             signature = signature[:last]
