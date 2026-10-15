@@ -332,6 +332,36 @@ class TestsFlextInfraCodegenMakeUpgrade:
         checkout = (
             parent / c.Tests.MAKE_TEMPLATE_CI_CHECKOUT / profile.value / root.name
         )
+        upgrade_source, setup_source = self._assert_cold_setup_receipts(parent)
+        infra_url = u.Tests.repository_ref(
+            config.Infra.codegen.infra_repository.distribution,
+        ).url
+        source = next(
+            item
+            for item in u.Tests.locked_git_sources(Path(__file__).resolve().parents[3])
+            if item[0] == infra_url
+        )
+        self._assert_candidate_receipt_prefixes(
+            parent,
+            ((upgrade_source, root), (setup_source, checkout)),
+            source,
+        )
+        self._assert_lock_floor_preserved(root, checkout, source)
+        tm.that(
+            (checkout / c.Infra.MISE_LOCK_FILENAME).read_bytes(),
+            eq=(root / c.Infra.MISE_LOCK_FILENAME).read_bytes(),
+        )
+        foreign = parent / c.Tests.MAKE_TEMPLATE_HOSTILE_VENV
+        tm.that((foreign / "sentinel").read_text(), eq="untouched\n")
+        tm.that(tuple((foreign / "bin").iterdir()), eq=())
+
+    def _assert_cold_setup_receipts(self, parent: Path) -> t.Pair[Path, Path]:
+        """Require every cold-setup receipt to succeed and the hook to run.
+
+        Returns:
+            The upgrade and setup candidate-source receipt names.
+
+        """
         upgrade_receipt = Path(c.Tests.MAKE_TEMPLATE_UPG_RECEIPT)
         setup_receipt = Path(c.Tests.MAKE_TEMPLATE_CI_RECEIPT)
         upgrade_source = upgrade_receipt.with_stem(f"{upgrade_receipt.stem}-source")
@@ -350,21 +380,30 @@ class TestsFlextInfraCodegenMakeUpgrade:
             )
         upgrade = u.Tests.command_receipt(parent / c.Tests.MAKE_TEMPLATE_UPG_RECEIPT)
         tm.that(upgrade.stdout, has="upg-hook-ran")
-        infra_url = u.Tests.repository_ref(
-            config.Infra.codegen.infra_repository.distribution,
-        ).url
-        source = next(
-            item
-            for item in u.Tests.locked_git_sources(Path(__file__).resolve().parents[3])
-            if item[0] == infra_url
-        )
-        for name, project in ((upgrade_source, root), (setup_source, checkout)):
+        return (upgrade_source, setup_source)
+
+    def _assert_candidate_receipt_prefixes(
+        self,
+        parent: Path,
+        observed: t.SequenceOf[t.Pair[Path, Path]],
+        source: t.Triple[str, str, str],
+    ) -> None:
+        """Require each receipt to record the locked source and its environment."""
+        for name, project in observed:
             observation = u.Tests.command_receipt(parent / name)
             tm.that(observation.stdout, has=f"candidate-source={source[0]}#{source[2]}")
             environment = u.Infra.runtime_environment_dir(project)
             tm.that(environment.is_symlink(), eq=False)
             tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
             tm.that(observation.stdout, has=f"candidate-prefix={environment.resolve()}")
+
+    def _assert_lock_floor_preserved(
+        self,
+        root: Path,
+        checkout: Path,
+        source: t.Triple[str, str, str],
+    ) -> None:
+        """Require the checkout's locks to match the resolved root exactly."""
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
         for manifest in inputs.spec.uv_resolution_pyprojects:
             lock = manifest.with_name(c.Infra.UV_LOCK_FILENAME)
@@ -389,13 +428,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 (checkout / manifest).read_bytes(),
                 eq=(root / manifest).read_bytes(),
             )
-        tm.that(
-            (checkout / c.Infra.MISE_LOCK_FILENAME).read_bytes(),
-            eq=(root / c.Infra.MISE_LOCK_FILENAME).read_bytes(),
-        )
-        foreign = parent / c.Tests.MAKE_TEMPLATE_HOSTILE_VENV
-        tm.that((foreign / "sentinel").read_text(), eq="untouched\n")
-        tm.that(tuple((foreign / "bin").iterdir()), eq=())
 
     def test_generated_dependency_upgrade_projects_lock_floors(
         self,
@@ -451,7 +483,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         projected = after(bumped, "$(call RUN_PUBLIC_PRODUCE,gen)")
         relocked = after(projected, "_upg_reconcile_locks")
         installed = after(relocked, "_builtin_setup_environment")
-        activated = after(installed, "$(call RUN_PUBLIC_ACTIVATE,gen)")
+        regenerated = after(installed, "$(SELF_MAKE) gen")
 
         tm.that(steps[upgraded], has="--upgrade")
         tm.that(steps[relocked], lacks="--upgrade")
@@ -459,7 +491,14 @@ class TestsFlextInfraCodegenMakeUpgrade:
             upgraded < bumped < projected < relocked < installed,
             eq=True,
         )
-        tm.that(installed < activated, eq=True)
+        tm.that(installed < regenerated, eq=True)
+        # Setup leaves a runtime-bindings receipt behind; a standalone gen
+        # activation would read it and never cover the gen request. Activation
+        # belongs only to the full gen verb, after it republishes its receipt.
+        tm.that(
+            [step for step in steps if "$(call RUN_PUBLIC_ACTIVATE,gen)" in step],
+            empty=True,
+        )
 
     @pytest.mark.parametrize(
         "generated_make_template",
@@ -513,7 +552,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 "install --locked --yes",
                 "deps modernize",
                 "$(call RUN_PUBLIC_PRODUCE,gen)",
-                "$(call RUN_PUBLIC_ACTIVATE,gen)",
                 "$(SELF_MAKE) gen",
                 "deps verify-locks",
             )

@@ -23,6 +23,9 @@ if TYPE_CHECKING:
 class FlextInfraConstantsWorkspace:
     """Workspace infrastructure constants."""
 
+    # CPython Include/object.h: Py_TPFLAGS_IMMUTABLETYPE.
+    CPYTHON_IMMUTABLE_TYPE_FLAG: ClassVar[int] = 1 << 8
+
     @unique
     class BeadIssueStatus(StrEnum):
         """Beads issue status values."""
@@ -202,6 +205,11 @@ print(json.dumps({
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
         / "codegen-publication.json"
     )
+    "Latest generation receipt: only a complete `all` operation occupies it."
+    CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-publication"
+    )
+    "Per-transaction archive holding every publication receipt."
     CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-lazy-plan.json"
     )

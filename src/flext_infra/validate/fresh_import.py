@@ -14,16 +14,16 @@ from __future__ import annotations
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 
@@ -46,7 +46,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         default_factory=lambda: type(settings).fetch_global().Infra.runtime_root
     )
 
-    _PRELUDE: ClassVar[str] = (
+    PRELUDE: ClassVar[str] = (
         "import importlib, sys\n"
         "from importlib.metadata import EntryPoint\n"
         "from pathlib import Path\n"
@@ -64,19 +64,17 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     )
     # Synthetic concat keeps the placeholder out of one plain literal: the
     # marker is template text substituted at render time, never an f-string.
-    _ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
+    ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
     # The origin gate runs inside the same probe namespace as the export
     # resolution, so its loop names must never rebind the probed ``module``.
-    _ORIGIN_CODE: ClassVar[str] = (
-        "for loaded_name, loaded_module in tuple(sys.modules.items()):\n"
+    ORIGIN_CODE: ClassVar[str] = (
+        "from flext_infra.workspace.environment_provenance import "
+        "FlextInfraWorkspaceEnvironmentProvenance as native_origins\n"
+        "for loaded_name in tuple(sys.modules):\n"
         "    for package, directory in {origins!r}:\n"
         "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
-        "            origin = getattr(loaded_module, '__file__', None)\n"
-        "            if (\n"
-        "                origin is None\n"
-        "                or not Path(origin).resolve()\n"
-        "                .is_relative_to(Path(directory))\n"
-        "            ):\n"
+        "            origin = native_origins.module_source(loaded_name).unwrap()\n"
+        "            if not origin.resolve().is_relative_to(Path(directory)):\n"
         "                raise ImportError(\n"
         "                    f'{loaded_name}: origin {origin!r} '\n"
         "                    f'is outside {directory}'\n"
@@ -88,28 +86,83 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         cls,
         request: m.Infra.NativeImportRequest,
     ) -> p.Result[m.Infra.NativeImportReference]:
-        """Authenticate one complete epoch against a cold native consumer."""
+        """Authenticate one loaded epoch against a sealed, actual native import.
+
+        Returns:
+            Result carrying the sealed native import reference, or a failure
+            when the loaded epoch does not satisfy the request.
+
+        """
+        result = r[m.Infra.NativeImportReference]
+        inputs = cls._native_inputs_current(request)
+        if inputs.failure:
+            return result.from_failure(inputs)
+        observed = FlextInfraWorkspaceNativeReference.capture(request.modules).flat_map(
+            lambda snapshot: (
+                FlextInfraWorkspaceNativeReference.authored_sources_current(
+                    snapshot, request.source_authority.inputs
+                ).map(lambda _: snapshot)
+            )
+        )
+        if observed.failure:
+            return result.from_failure(observed)
+        consumer = cls(
+            repository_root=request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        output = consumer._native_reference_probe(request)
+        if output.failure:
+            return result.from_failure(output)
+        if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
+            return result.fail(
+                f"cold native source import failed: {output.value.outcome}\n"
+                f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}",
+            )
+        reference = m.Infra.NativeImportObservation.model_validate_json(
+            output.value.stdout
+        )
+        proof = (
+            FlextInfraWorkspaceNativeReference
+            .compare(observed.value, reference)
+            .flat_map(
+                lambda _: FlextInfraWorkspaceNativeReference.authored_sources_current(
+                    reference, request.source_authority.inputs
+                )
+            )
+            .flat_map(lambda _: cls._native_inputs_current(request))
+        )
+        return proof.map(
+            lambda _: m.Infra.NativeImportReference(
+                **reference.model_dump(),
+                source_authority=request.source_authority,
+            )
+        )
+
+    @staticmethod
+    def _native_inputs_current(
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[bool]:
+        """Authenticate physical sources and the exact executing runtime.
+
+        Returns:
+            The unchanged input and runtime proof, or its first failure.
+
+        """
         current = FlextInfraCodegenPreconditions.source_authority_current(
-            request.source_authority,
+            request.source_authority
+        ).flat_map(
+            lambda _: FlextInfraMiseArtifactsVerification.states_current(request.inputs)
         )
         if current.failure:
-            return r[m.Infra.NativeImportReference].from_failure(current)
-        inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
-        if inputs.failure:
-            return r[m.Infra.NativeImportReference].from_failure(inputs)
-        observed = FlextInfraWorkspaceNativeReference.capture(request.modules)
-        if observed.failure:
-            return r[m.Infra.NativeImportReference].from_failure(observed)
-        authored = FlextInfraWorkspaceNativeReference.authored_sources_current(
-            observed.value, request.source_authority.inputs
-        )
-        if authored.failure:
-            return r[m.Infra.NativeImportReference].from_failure(authored)
-        runtime_root = Path(sys.prefix).absolute().parent
+            return current
         environment = u.Infra.runtime_environment_dir(
-            runtime_root, runtime_root=runtime_root
+            request.repository_root,
+            runtime_root=request.runtime_root,
         )
-        runtime = u.Infra.runtime_python(runtime_root, runtime_root=runtime_root)
+        runtime = u.Infra.runtime_python(
+            request.repository_root,
+            runtime_root=request.runtime_root,
+        )
         if (
             environment.is_symlink()
             or environment.absolute() != Path(sys.prefix).absolute()
@@ -117,61 +170,44 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             or runtime.resolve() != request.source_authority.runtime
             or sys.flags.optimize != request.source_authority.optimize
         ):
-            return r[m.Infra.NativeImportReference].fail(
-                "native reference runtime authority differs"
-            )
-        roots = tuple(str(root) for root in request.import_roots)
-        code = (
-            "import importlib, json, sys\n"
-            "payload = json.loads(sys.stdin.read())\n"
-            "sys.path[:0] = payload['roots']\n"
-            "from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native\n"
-            "for name in payload['modules']: importlib.import_module(name)\n"
-            "sys.stdout.write(native.capture(tuple(payload['modules'])).unwrap().model_dump_json())\n"
-        )
-        from json import dumps
+            return r[bool].fail("native reference runtime authority differs")
+        return current
 
-        with TemporaryDirectory() as cache:
-            child = u.Cli.run_raw(
-                [
-                    str(runtime),
-                    *("-O",) * request.source_authority.optimize,
-                    "-B",
-                    "-X",
-                    f"pycache_prefix={cache}",
-                    "-c",
-                    code,
-                ],
-                cwd=runtime_root,
-                options=m.Cli.ProcessOptions(
-                    input_data=dumps({"roots": roots, "modules": request.modules})
-                ),
-            )
-        if child.failure:
-            return r[m.Infra.NativeImportReference].from_failure(child)
-        if not u.Cli.process_succeeded(child.value.outcome):
-            return r[m.Infra.NativeImportReference].fail(
-                "cold native reference import failed: " + child.value.stderr
-            )
-        reference = m.Infra.NativeImportObservation.model_validate_json(
-            child.value.stdout
+    def _native_reference_probe(
+        self,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Consume the authenticated import selections in the isolated interpreter.
+
+        Returns:
+            The real native import output, preserving its original failure.
+
+        """
+        roots = tuple(dict.fromkeys(request.import_roots))
+        imports = tuple(map(str, roots))
+        selections = tuple(item.model_dump_json() for item in request.modules)
+        origins = tuple(
+            (namespace, str(source))
+            for namespace, source in request.source_authority.generator_modules
+            if source.is_dir()
         )
-        compared = FlextInfraWorkspaceNativeReference.compare(observed.value, reference)
-        if compared.failure:
-            return r[m.Infra.NativeImportReference].from_failure(compared)
-        current = FlextInfraCodegenPreconditions.source_authority_current(
-            request.source_authority,
+        code = (
+            self.PRELUDE + f"sys.path[:0] = tuple(root for root in {imports!r} "
+            "if root not in sys.path)\n" + "from flext_infra import m\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as native\n" + "selections = tuple("
+            "m.Infra.SourceClassReference.model_validate_json(item)"
+            f" for item in {selections!r})\n"
+            "for item in selections: importlib.import_module(item.target)\n"
+            + self.ORIGIN_CODE.replace(self.ORIGINS_PLACEHOLDER, repr(origins))
+            + "reference = native.capture(selections).unwrap()\n"
+            "sys.stdout.write(reference.model_dump_json())\n"
         )
-        if current.failure:
-            return r[m.Infra.NativeImportReference].from_failure(current)
-        inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
-        if inputs.failure:
-            return r[m.Infra.NativeImportReference].from_failure(inputs)
-        return r[m.Infra.NativeImportReference].ok(
-            m.Infra.NativeImportReference.model_validate({
-                **reference.model_dump(),
-                "source_authority": request.source_authority,
-            }),
+        return self.execute_probe(
+            m.Infra.FreshImportProbe(subject="native reference", code=code),
+            cwd=request.repository_root,
+            source_roots=roots,
+            isolated=True,
         )
 
     def build_report(
@@ -221,8 +257,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The destination proof or the first journal authority failure.
+
         """
-        authority = FlextInfraCodegenPreconditions.unchanged_journal(
+        authority = FlextInfraMiseArtifactsState.unchanged_journal(
             session, "staged view journal authority changed"
         )
         if authority.failure:
@@ -262,6 +299,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only for the matching destination journal entry.
+
         """
         original_layout = next(
             (
@@ -304,6 +342,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success or the first missing, unreadable or changed source authority.
+
         """
         for source in plan.inputs:
             previous = next(
@@ -334,6 +373,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The unchanged view only after every pre-consumer proof succeeds.
+
         """
         authority = self._stage_journal_authority(view, session)
         if authority.failure:
@@ -366,6 +406,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only after authentication, import and post-consumer barriers.
+
         """
         authenticated = self._authenticate_stage_view(view, session)
         if authenticated.failure:
@@ -373,7 +414,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         view = authenticated.value
         plan = view.plan
         code = (
-            self._PRELUDE
+            self.PRELUDE
             + (
                 "from hashlib import sha256\n"
                 f"if {plan.package!r} in sys.modules "
@@ -445,13 +486,14 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only if the consumer changed none of its authenticated inputs.
+
         """
         after = u.Cli.atomic_inventory_physical_tree(view.root)
         if after.failure:
             return r[bool].from_failure(after)
         if after.value != view.manifest:
             return r[bool].fail("candidate tree identity changed during public import")
-        journal_barrier = FlextInfraCodegenPreconditions.unchanged_journal(
+        journal_barrier = FlextInfraMiseArtifactsState.unchanged_journal(
             session, "staged view journal changed during consumer"
         )
         if journal_barrier.failure:
@@ -464,6 +506,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only when source states and every inventory remain pinned.
+
         """
         states = FlextInfraMiseArtifactsVerification.states_current(plan.inputs)
         if states.failure:
@@ -494,6 +537,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The observed inventory or the first symlink failure.
+
         """
         actual: set[Path] = set()
         for root in roots:
@@ -515,6 +559,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The directory's files outside bytecode caches, or the first symlink.
+
         """
         files: set[Path] = set()
         for path in root.rglob("*"):
@@ -560,8 +605,8 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             (layout.package_name, str(layout.package_dir.resolve()))
             for layout in layouts
         )
-        return FlextInfraValidateFreshImport._ORIGIN_CODE.replace(
-            FlextInfraValidateFreshImport._ORIGINS_PLACEHOLDER,
+        return FlextInfraValidateFreshImport.ORIGIN_CODE.replace(
+            FlextInfraValidateFreshImport.ORIGINS_PLACEHOLDER,
             repr(origins),
         )
 
@@ -619,7 +664,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                     m.Infra.FreshImportProbe(
                         subject=f"{layout.package_name}: {group}/{name}={value}",
                         code=(
-                            self._PRELUDE + f"EntryPoint(name={name!r}, "
+                            self.PRELUDE + f"EntryPoint(name={name!r}, "
                             f"value={value!r}, group={group!r}).load()\n" + origin_code
                         ),
                     ),
@@ -681,7 +726,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         return r[m.Infra.FreshImportProbe].ok(
             m.Infra.FreshImportProbe(
                 subject=layout.package_name,
-                code=self._PRELUDE + body + origin_code,
+                code=self.PRELUDE + body + origin_code,
             ),
         )
 
@@ -705,7 +750,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             probes.append(
                 m.Infra.FreshImportProbe(
                     subject=package,
-                    code=self._PRELUDE
+                    code=self.PRELUDE
                     + self._EXPORT_IMPORT_CODE.format(package=package)
                     + origin_code
                     + self._EXPORT_RESOLVE_CODE.format(exports=()),
@@ -738,7 +783,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         # ``-B``: a validator never writes into the checkout it validates, so
         # the probed sources leave no bytecode cache behind.
         def run_probe(probe: m.Infra.FreshImportProbe) -> p.Result[p.Cli.CommandOutput]:
-            return self._execute_probe(
+            return self.execute_probe(
                 probe,
                 source_roots=tuple(layout.src_dir for layout in layouts),
             )
@@ -771,7 +816,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             m.Infra.ValidationReport(passed=True, violations=(), summary=summary),
         )
 
-    def _execute_probe(
+    def execute_probe(
         self,
         probe: m.Infra.FreshImportProbe,
         *,
@@ -779,7 +824,14 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         source_roots: t.SequenceOf[Path] = (),
         isolated: bool = False,
     ) -> p.Result[p.Cli.CommandOutput]:
-        """Run the selected native consumer in its declared physical runtime."""
+        """Run the selected native consumer in its declared physical runtime.
+
+        Returns:
+            Result carrying the consumer's command output, or a failure when
+            the runtime is not a physical directory or the interpreter is
+            missing.
+
+        """
         interpreter = u.Infra.runtime_python(
             self.repository_root,
             runtime_root=self.runtime_root,
@@ -800,6 +852,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         return u.Cli.run_raw(
             [
                 str(interpreter),
+                *("-O",) * sys.flags.optimize,
                 *(("-I",) if isolated else ()),
                 "-B",
                 "-W",

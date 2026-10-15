@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import r
+
 from flext_infra import config
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import m, t, tm

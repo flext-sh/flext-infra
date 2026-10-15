@@ -142,6 +142,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
             Returns:
                 A distinct public module receiver, or the existing target.
+
             """
             module, receiver, member = target
             if (
@@ -189,6 +190,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         A ``ValueError`` fails on a cyclic or inconsistent facade inheritance
         identity, and a ``TypeError`` propagates from unsupported facade
         inheritance identities through ``_behavior_base_identity``.
+
         """
         resolved = cls._facade_declared_class(modules, module, receiver, frozenset())
         if resolved is None:
@@ -364,6 +366,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         Returns:
             The declared import statements.
+
         """
         tree = ast.parse(source)
         called = {
@@ -395,6 +398,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         Returns:
             The imports that supply declared base names.
+
         """
         tree = ast.parse(source)
         names = {
@@ -714,6 +718,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         Returns:
             Whether both receivers reach the identical utility declaration.
+
         """
         module, receiver, member = target
         expected = cls._behavior_effective_declaration(

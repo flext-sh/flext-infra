@@ -14,7 +14,11 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, config, infra
-from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenMakeBootstrap
+from flext_infra.codegen import (
+    FlextInfraCodegenConform,
+    FlextInfraCodegenMakeBootstrap,
+    FlextInfraMiseArtifactsVerification,
+)
 from flext_infra.services import FlextInfraCodegenRoutes
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -74,7 +78,9 @@ class TestsFlextInfraCodegenConformPublicSurface:
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.MAKEFILE
+        )
         for _ in range(2):
             before = tm.ok(
                 u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
@@ -133,7 +139,9 @@ class TestsFlextInfraCodegenConformPublicSurface:
             target = source.path
             content = tm.not_none(source.content)
         target.write_bytes(content + b"\n# publication drift\n")
-        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.MAKEFILE
+        )
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
         )
@@ -160,7 +168,9 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         tm.that(local_layer.exists(), eq=False)
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.MAKEFILE
+        )
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
         )
@@ -214,7 +224,9 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(bool(imported), eq=True)
         resource = imported[0]
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.MAKEFILE
+        )
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
         )
@@ -536,6 +548,24 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 config=config.Infra.codegen,
             ),
         )
+        TestsFlextInfraCodegenConformPublicSurface._verified_uv_resolution_views(
+            root, workspace, plan
+        )
+
+    @staticmethod
+    def _verified_uv_resolution_views(
+        root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        plan: m.Infra.CodegenPlan,
+    ) -> None:
+        """Verify both native resolution views' sources and member lines.
+
+        Args:
+            root: The governed workspace root.
+            workspace: The loaded workspace specification.
+            plan: The completed conform plan.
+
+        """
         policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
         views = (
             (policy.local_directory, (workspace.repository, *workspace.subprojects)),
@@ -614,7 +644,9 @@ class TestsFlextInfraCodegenConformPublicSurface:
             c.Infra.CodegenConformSurface.MAKEFILE,
         )
         before = TestsFlextInfraConformSupport.project_tree(root)
-        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.MAKEFILE
+        )
         receipt_before = tm.ok(
             u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
         )

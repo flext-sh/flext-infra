@@ -10,9 +10,13 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.__version__ import __version__
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
@@ -27,6 +31,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         Returns:
             Render inputs with the source-derived tooling fields reconciled.
+
         """
         root = render_inputs.target.root
         python_plans = tuple(
@@ -152,22 +157,17 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if overlay.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(overlay)
             rendered = overlay.value
-        if destination == c.PYPROJECT_FILENAME:
-            composed = cls._composed_pyproject_overlay(
-                repository_root,
-                rendered,
-                render_inputs,
-            )
-        elif destination != c.Infra.MISE_TOML_FILENAME:
-            composed = r[m.Infra.CodegenArtifactComposition].ok(
+        composer = {
+            c.PYPROJECT_FILENAME: cls._composed_pyproject_overlay,
+            c.Infra.MISE_TOML_FILENAME: cls._composed_mise_overlay,
+        }.get(destination)
+        composed = (
+            composer(repository_root, rendered, render_inputs)
+            if composer is not None
+            else r[m.Infra.CodegenArtifactComposition].ok(
                 m.Infra.CodegenArtifactComposition(rendered=rendered),
             )
-        else:
-            composed = cls._composed_mise_overlay(
-                repository_root,
-                rendered,
-                render_inputs,
-            )
+        )
         if composed.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
         captured = FlextInfraCodegenPreconditions.unique_states(
@@ -233,7 +233,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         composed_rendered = overlaid.value
         source_states: list[m.Cli.AtomicFileState] = []
         if render_inputs is not None:
-            collected = cls._member_declaration_states(repository_root, render_inputs)
+            collected = cls._member_declaration_states(
+                repository_root, render_inputs.workspace
+            )
             if collected.failure:
                 return result_type.from_failure(collected)
             source_states.extend(collected.value[0])
@@ -287,6 +289,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         Returns:
             The recovered live text, or ``None`` when no live file exists.
+
         """
         live_path = repository_root / c.PYPROJECT_FILENAME
         if not live_path.is_file():
@@ -307,7 +310,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     def _member_declaration_states(
         cls,
         repository_root: Path,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[
         t.Pair[
             t.VariadicTuple[m.Cli.AtomicFileState],
@@ -318,12 +321,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         Args:
             repository_root: The repository root holding the lock file.
-            render_inputs: The render inputs declaring the workspace role.
+            workspace: The workspace declaration electing packaged members.
 
         Returns:
             The collected source states with their member declarations, or
             the first read failure. The pair is empty when the repository
             declares no workspace role or elects no packaged members.
+
         """
         result_type = r[
             t.Pair[
@@ -332,18 +336,18 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             ]
         ]
         members = (
-            tuple(
-                member
-                for member in render_inputs.workspace.subprojects
-                if member.package
-            )
-            if render_inputs.workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            tuple(member for member in workspace.subprojects if member.package)
+            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         if not members:
             return result_type.ok(((), ()))
+
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return result_type.from_failure(context)
         locked = u.Cli.atomic_read_binary_file_state(
-            repository_root / c.Infra.UV_LOCK_FILENAME,
+            context.value.lock_path,
             required=False,
         )
         if locked.failure:
@@ -351,10 +355,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         source_states: list[m.Cli.AtomicFileState] = [locked.value]
         declarations: list[m.Cli.AtomicFileState] = []
         for member in members:
-            declaration = u.Infra.member_project_declaration(
-                repository_root,
-                member,
-                lock_state=locked.value,
+            declaration = (
+                FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+                    repository_root,
+                    member,
+                    lock_state=locked.value,
+                )
             )
             if declaration.failure:
                 return result_type.from_failure(declaration)
@@ -368,6 +374,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         Returns:
             The resulting ``str``.
+
         """
         return f"{c.Infra.RENDERED_BY_MARKER}{__version__}"
 
@@ -534,21 +541,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The resulting ``p.Result[p.Model]``.
 
         """
-        repository_context = self._repo_config_context(render_inputs, destination)
-        if repository_context is not None:
-            return repository_context
-        static_context = self._static_spec_context(render_inputs, destination)
-        if static_context is not None:
-            return static_context
-        beads_context = self._beads_context(render_inputs, destination)
-        if beads_context is not None:
-            return beads_context
-        github_context = self._github_context(render_inputs, destination)
-        if github_context is not None:
-            return github_context
-        makefile_context = self._makefile_group_context(render_inputs, destination)
-        if makefile_context is not None:
-            return makefile_context
+        for resolver in (
+            self._repo_config_context,
+            self._static_spec_context,
+            self._beads_context,
+            self._github_context,
+            self._makefile_group_context,
+        ):
+            context = resolver(render_inputs, destination)
+            if context is not None:
+                return context
         return self._project_or_pass_context(render_inputs, project_context)
 
     def _repo_config_context(

@@ -1,4 +1,4 @@
-"""Rope project, module and import factory boundary methods.
+"""Rope lexical queries and module/import construction.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,186 +9,16 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import c, config, m, p, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeRuntimeBase,
-    FlextInfraUtilitiesRopeRuntimeTypes,
+from flext_infra import c, p, t
+from flext_infra._utilities.rope_runtime_module_queries import (
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
 )
 
 
-class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntimeBase):
-    """Resolve Rope native, lexical and module facts behind protocols."""
-
-    @classmethod
-    def native_class(
-        cls,
-        native: p.Infra.NativeClassMetadata,
-    ) -> t.Infra.RopePyObject:
-        """Wrap an observed native class without requiring a module export.
-
-        Returns:
-            Rope's class object retaining the exact native identity.
-
-        Raises:
-            TypeError: If the input is not a class or Rope changes its identity.
-
-        """
-        if not isinstance(native, type):
-            msg = "Rope native class input is not a class"
-            raise TypeError(msg)
-        wrapped = cls.runtime_callable("rope.base.builtins", "BuiltinClass")(
-            native,
-            {},
-        )
-        if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(wrapped):
-            msg = "Rope native class factory did not return a class"
-            raise TypeError(msg)
-        if (
-            not isinstance(wrapped, p.Infra.RopeBuiltinClass)
-            or wrapped.builtin is not native
-        ):
-            msg = "Rope native class factory did not preserve native identity"
-            raise TypeError(msg)
-        return wrapped
-
-    @classmethod
-    def native_class_primary_base(
-        cls,
-        native: p.Infra.NativeClassMetadata,
-    ) -> t.Infra.RopePyObject:
-        """Resolve the native type descriptor, not an inherited class member.
-
-        Returns:
-            Rope's wrapper retaining the observed primary base identity.
-
-        Raises:
-            TypeError: If the primary base is None rather than a class.
-
-        """
-        base = native.__base__
-        if base is None:
-            msg = "Rope native primary base is not a class"
-            raise TypeError(msg)
-        return cls.native_class(base)
-
-    @classmethod
-    def parse_rope_module(cls, source: str, *, filename: str) -> t.Infra.RopeAstNode:
-        """Parse one source snapshot through Rope's canonical syntax boundary.
-
-        Returns:
-            The resulting ``t.Infra.RopeAstNode``.
-
-        Raises:
-            TypeError: If rope parser returned an invalid module node.
-
-        """
-        parsed = cls.runtime_callable("rope.base.ast", "parse")(
-            source,
-            filename=filename,
-        )
-        if not isinstance(parsed, p.Infra.RopeAstNode):
-            msg = "rope parser returned an invalid module node"
-            raise TypeError(msg)
-        return parsed
-
-    @classmethod
-    def snapshot_project(
-        cls,
-        project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
-        *,
-        captured: m.Infra.CodemodSourceEpoch | None = None,
-    ) -> p.Infra.RopeProject:
-        """Capture a complete identity graph with proposed sources authoritative.
-
-        Unchanged dependencies are captured once before graph construction;
-        subsequent imports and MRO resolution only read that closed inventory.
-        Governed project-root entry modules (e.g. conftest.py) are real project
-        resources outside every source folder; they join the closed inventory
-        from disk so consumer rewrites still resolve inside the snapshot.
-
-        Returns:
-            The resulting ``p.Infra.RopeProject``.
-
-        Raises:
-            TypeError: If Rope project owner does not expose snapshot construction; or
-                if Rope snapshot does not satisfy its project contract.
-            ValueError: If Rope proposed source is outside its input inventory.
-
-        """
-        inventory = (
-            {
-                Path(resource.real_path).resolve(): resource.read()
-                for resource in project.get_python_files()
-            }
-            if captured is None
-            else dict(captured.sources)
-        )
-        contents = (
-            {path: source.encode("utf-8") for path, source in inventory.items()}
-            if captured is None
-            else dict(captured.contents)
-        )
-        root = Path(project.root.real_path).resolve()
-        for path, source in sources.items():
-            resolved = path.resolve()
-            if resolved not in inventory:
-                if captured is not None:
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg)
-                try:
-                    relative = resolved.relative_to(root)
-                except ValueError as error:
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg) from error
-                candidate_resource = project.get_resource(relative.as_posix())
-                if not FlextInfraUtilitiesRopeRuntimeTypes.file_resource(
-                    candidate_resource,
-                ):
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg)
-                resource = candidate_resource
-                if not Path(resource.real_path).is_file():
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg)
-                inventory[resolved] = resource.read()
-            if resolved not in contents or inventory[resolved] != source:
-                contents[resolved] = source.encode("utf-8")
-            inventory[resolved] = source
-        owner = cls.runtime_type(
-            "flext_infra._utilities._rope.project",
-            "FlextInfraRopeProject",
-        )
-        factory = getattr(owner, "from_snapshot", None)
-        if not callable(factory):
-            msg = "Rope project owner does not expose snapshot construction"
-            raise TypeError(msg)
-        snapshot = factory(
-            project.root.real_path,
-            contents,
-            [folder.path for folder in project.get_source_folders()],
-            ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
-        )
-        if not isinstance(snapshot, p.Infra.RopeProject):
-            msg = "Rope snapshot does not satisfy its project contract"
-            raise TypeError(msg)
-        return snapshot
-
-    @classmethod
-    def imported_name_at(
-        cls,
-        pymodule: t.Infra.RopePyModule,
-        offset: int,
-    ) -> p.Infra.RopeImportedName | None:
-        """Resolve a lexical binding; local shadows are not imported names.
-
-        Returns:
-            The resulting ``p.Infra.RopeImportedName | None``.
-
-        """
-        resolver = cls.runtime_callable("rope.base.evaluate", "eval_location")
-        result = resolver(pymodule, offset)
-        return result if isinstance(result, p.Infra.RopeImportedName) else None
+class FlextInfraUtilitiesRopeRuntimeModules(
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
+):
+    """Resolve lexical identities and construct Rope module/import objects."""
 
     @classmethod
     def expression_name(
@@ -198,6 +28,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         Returns:
             The resolved identity, or None when Rope cannot establish one.
+
         """
         lexical = cls.lexical_scope(scope, expression.partition(".")[0])
         if lexical is None:
@@ -216,6 +47,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         Raises:
             TypeError: When a native parent violates the scope contract.
+
         """
         first = True
         current: p.Infra.RopeScope | None = scope
@@ -247,6 +79,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         Raises:
             ValueError: When the identity does not name an attribute.
+
         """
         module, *attributes = expression.split(".")
         if not attributes:
@@ -358,12 +191,6 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             return parent
         return result
 
-
-class FlextInfraUtilitiesRopeRuntimeModules(
-    FlextInfraUtilitiesRopeRuntimeModuleQueries,
-):
-    """Load Rope project/module/import objects behind protocols."""
-
     @classmethod
     def resolve_symbol(
         cls,
@@ -421,11 +248,15 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     def imported_module_path(
         project: p.Infra.RopeProject,
         binding: p.Infra.RopeImportedName,
+        *,
+        resolved: t.MutableMappingKV[p.Infra.RopeImportedModule, Path] | None = None,
     ) -> Path:
         """Resolve import provenance through Rope without evaluating its target.
 
         Generated initializers may still await publication. Their content is
         not required to identify which module an authored import names.
+        A caller may retain resolutions for the same native import objects
+        within its source observation.
 
         Returns:
             The resulting ``Path``.
@@ -435,11 +266,16 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         location.
 
         """
-        return Path(
+        if resolved is not None and binding.imported_module in resolved:
+            return resolved[binding.imported_module]
+        path = Path(
             FlextInfraUtilitiesRopeRuntimeModules.imported_module_resource(
                 project, binding
             ).real_path
         ).resolve()
+        if resolved is not None:
+            resolved[binding.imported_module] = path
+        return path
 
     @staticmethod
     def imported_module_resource(
@@ -453,6 +289,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         Raises:
             ValueError: If the declared import has no resolvable source resource.
+
         """
         imported = binding.imported_module
         resource = imported.resource
@@ -550,6 +387,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         Returns:
             Whether Rope's module import inventory proves runtime availability.
+
         """
         line = module.lines.get_line_number(offset)
         imports = cls.module_imports_for_pymodule(project, module)
@@ -612,13 +450,18 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     @classmethod
     def build_string_module(
         cls,
-        rope_project: t.Infra.RopeProject,
+        rope_project: t.Infra.RopeProject | None,
         source: str,
         *,
         resource: t.Infra.RopeResource | None = None,
     ) -> t.Infra.RopePyModule:
         loader = cls.runtime_callable("rope.base.libutils", "get_string_module")
-        pymodule = loader(rope_project, source, resource=resource, force_errors=True)
+        project = (
+            rope_project
+            if rope_project is not None
+            else cls.runtime_callable("rope.base.project", "get_no_project")()
+        )
+        pymodule = loader(project, source, resource=resource, force_errors=True)
         if not isinstance(pymodule, p.Infra.RopePyModule):
             msg = "rope get_string_module returned non-PyModule"
             raise TypeError(msg)

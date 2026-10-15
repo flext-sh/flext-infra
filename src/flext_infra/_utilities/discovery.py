@@ -219,6 +219,7 @@ class FlextInfraUtilitiesDiscovery(
 
         Raises:
             ValueError: If the declared package has ambiguous physical origins.
+
         """
         locations = search_paths
         components = package_name.split(".")

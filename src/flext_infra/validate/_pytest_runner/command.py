@@ -20,10 +20,10 @@ from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """Build the single supported pytest command family.
 
-    One suite builder owns every flag; the testmon, coverage and full verbs
-    are selections over it (testmon 2.x refuses branch coverage through the
-    cov plugin, so the two never share a process; the full verb loads
-    neither and runs without any time limit).
+    One suite builder owns every flag. Incremental and complete phases share
+    the persistent testmon database. Coverage runs separately because testmon
+    refuses branch coverage through the cov plugin. The full operation runs
+    both testmon phases without a time limit.
     """
 
     _NO_COVERAGE: ClassVar[t.VariadicTuple[str]] = ("--no-cov",)
@@ -37,9 +37,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         The budgeted incremental phase deselects the slow marker and the slow
         phase selects it: each is its own process on its own clock
         (gate-budget law). A declared file runs its slow items. The coverage
-        and the full operations run the whole suite in one process, slow items
-        included. One predicate drives both the marker expression and the stop
-        reserve, so an in-flight slow item always has its slow drain.
+        operation and the complete phase include slow items. One predicate
+        drives both the marker expression and the stop reserve, so an in-flight
+        slow item always has its slow drain.
 
         Returns:
             The resulting ``bool``.
@@ -358,7 +358,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     else ()
                 ),
                 "--testmon",
-                *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
+                *(
+                    ("--testmon-noselect",)
+                    if execution_mode == c.Infra.PytestExecutionMode.FULL
+                    else ("--testmon-forceselect",)
+                ),
                 "--testmon-env",
                 f"'{self.testmon_environment(execution_mode)}'",
                 *self._NO_COVERAGE,

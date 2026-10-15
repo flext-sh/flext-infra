@@ -190,6 +190,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectUvSources,
     )
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
+    from flext_infra._utilities._rope.restructure import FlextInfraRopeRestructure
     from flext_infra._utilities._rope_analysis.base import (
         FlextInfraUtilitiesRopeAnalysisBase,
     )
@@ -435,6 +436,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.rope_runtime_base import (
         FlextInfraUtilitiesRopeRuntimeBase,
     )
+    from flext_infra._utilities.rope_runtime_module_queries import (
+        FlextInfraUtilitiesRopeRuntimeModuleQueries,
+    )
     from flext_infra._utilities.rope_runtime_modules import (
         FlextInfraUtilitiesRopeRuntimeModules,
     )
@@ -474,6 +478,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraFlextUtilitiesCodemodBindingChain",
     "FlextInfraRopeProject",
+    "FlextInfraRopeRestructure",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacades",
@@ -612,6 +617,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
+    "FlextInfraUtilitiesRopeRuntimeModuleQueries",
     "FlextInfraUtilitiesRopeRuntimeModules",
     "FlextInfraUtilitiesRopeRuntimeRefactors",
     "FlextInfraUtilitiesRopeRuntimeTypes",
@@ -672,6 +678,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraFlextUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraRopeProject": "._rope.project",
+        "FlextInfraRopeRestructure": "._rope.restructure",
         "FlextInfraUtilitiesBase": ".base",
         "FlextInfraUtilitiesCodegen": ".codegen",
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
@@ -820,6 +827,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeModulePatch": ".rope_module_patch",
         "FlextInfraUtilitiesRopeRuntime": ".rope_runtime",
         "FlextInfraUtilitiesRopeRuntimeBase": ".rope_runtime_base",
+        "FlextInfraUtilitiesRopeRuntimeModuleQueries": ".rope_runtime_module_queries",
         "FlextInfraUtilitiesRopeRuntimeModules": ".rope_runtime_modules",
         "FlextInfraUtilitiesRopeRuntimeRefactors": ".rope_runtime_refactors",
         "FlextInfraUtilitiesRopeRuntimeTypes": ".rope_runtime_types",

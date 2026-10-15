@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from json import dumps
 from operator import itemgetter
 from pathlib import Path
 
@@ -17,6 +18,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeStructure,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
@@ -356,7 +363,189 @@ class FlextInfraUtilitiesRopeInventory:
                 line=line,
                 child_scope=options.child_scope,
             ),
+            payload_fingerprint=(
+                cls._payload_fingerprint(options, scope_path) if kind == "class" else ""
+            ),
         )
+
+    @classmethod
+    def _payload_fingerprint(
+        cls,
+        options: m.Infra.RopeInventoryRecordInput,
+        qualified_name: str,
+    ) -> str:
+        """Describe native Pydantic candidates without asserting substitutability.
+
+        Literal values, native scope depth, declared bases, generics, fields,
+        config and complete validator/serializer bodies remain part of the
+        diagnostic. Only the declaration identifier and proven external alias
+        spellings are normalized. The implicit class/schema identity is
+        deliberately not treated as permission to merge declarations.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If native payload declaration has no class identifier.
+
+        """
+        payloads = FlextInfraUtilitiesDeclarationPayload
+        binding = payloads.payload_declaration(
+            options.rope_project,
+            Path(options.resource.real_path),
+            qualified_name,
+        )
+        if binding is None or options.child_scope is None:
+            return ""
+        bases = tuple(
+            cls._native_object_identity(base)
+            for base in payloads.direct_bases(binding.get_object())
+        )
+        if any(not base for base in bases):
+            return ""
+        scope = options.child_scope
+        module = options.rope_project.get_pymodule(options.resource)
+        statements = tuple(
+            statement
+            for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
+                options.source
+            )
+            if scope.get_start() <= statement.line <= scope.get_end()
+        )
+        if not statements:
+            return ""
+        header = statements[0]
+        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        references: list[t.Triple[int, int, str]] = []
+        for statement in statements:
+            for begin, end in types.reference_regions(statement.text):
+                start = statement.start_offset + begin
+                stop = statement.start_offset + end
+                lexical = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+                    module,
+                    start,
+                    declaration_line=(
+                        statement.line
+                        if statement.category
+                        in {
+                            c.Infra.StatementCategory.CLASS_DEF,
+                            c.Infra.StatementCategory.FUNC_DEF,
+                        }
+                        else None
+                    ),
+                )
+                value = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                    lexical,
+                    options.source[start:stop],
+                )
+                if value is None:
+                    continue
+                supplier, definition_line = value.get_definition_location()
+                if (
+                    supplier is module
+                    and definition_line is not None
+                    and (scope.get_start() <= definition_line <= scope.get_end())
+                ):
+                    continue
+                identity = cls._native_binding_identity(value)
+                if identity:
+                    references.append((start, stop, f"<native:{identity}>"))
+        definition_offset = header.start_offset + header.indent
+        definition_offset = options.source.find(
+            options.name,
+            definition_offset + len("class"),
+            header.end_offset,
+        )
+        if definition_offset < 0:
+            msg = "native payload declaration has no class identifier"
+            raise ValueError(msg)
+        references.append((
+            definition_offset,
+            definition_offset + len(options.name),
+            "<payload>",
+        ))
+        shapes = tuple(
+            (
+                statement.indent - header.indent,
+                cls._payload_statement_fingerprint(
+                    statement.text,
+                    statement.start_offset,
+                    references,
+                ),
+            )
+            for statement in statements
+        )
+        return dumps((bases, shapes), ensure_ascii=True, separators=(",", ":"))
+
+    @staticmethod
+    def _native_object_identity(value: p.Infra.RopePyObject) -> str:
+        runtime = FlextInfraUtilitiesRopeRuntime
+        if runtime.py_class(value) or runtime.py_function(value):
+            module = value.get_module()
+            scope = value.get_scope()
+            if module is None or scope is None:
+                return ""
+            names = []
+            while scope.parent is not None:
+                names.append(scope.pyobject.get_name())
+                scope = scope.parent
+            return f"{module.get_name()}::{'.'.join(reversed(names))}"
+        if runtime.abstract_class(value) and isinstance(
+            value, p.Infra.RopeBuiltinClass
+        ):
+            return f"{value.builtin.__module__}::{value.builtin.__qualname__}"
+        return ""
+
+    @classmethod
+    def _native_binding_identity(cls, value: p.Infra.RopePyName) -> str:
+        identity = cls._native_object_identity(value.get_object())
+        if identity:
+            return identity
+        supplier, line = value.get_definition_location()
+        if supplier is None or line is None:
+            return ""
+        return f"{supplier.get_name()}::line:{line}"
+
+    @staticmethod
+    def _payload_statement_fingerprint(
+        source: str,
+        offset: int,
+        references: t.SequenceOf[t.Triple[int, int, str]],
+    ) -> str:
+        """Keep literal bytes separate from normalized executable whitespace.
+
+        Args:
+            source: The source code of the statement.
+            offset: The starting character offset of the statement within the source code.
+            references: A sequence of triples containing the start and end offsets and the identity of referenced objects.
+
+        Returns:
+            A string representing the fingerprint of the statement, with literal bytes separated from normalized executable whitespace.
+
+        """
+        edits = []
+        cursor = -1
+        for begin, end, identity in sorted(
+            references, key=lambda item: (item[0], -item[1])
+        ):
+            if offset <= begin < end <= offset + len(source) and begin >= cursor:
+                edits.append((begin - offset, end - offset, identity))
+                cursor = end
+        pieces = []
+        previous = 0
+        literals = FlextInfraUtilitiesRopeRuntime.ignored_regions(source)
+        spans = [
+            (begin, end, dumps(("literal", source[begin:end]), ensure_ascii=True))
+            for begin, end, _metadata in literals
+            if source[begin] != "#"
+        ]
+        for begin, end, replacement in sorted((*edits, *spans)):
+            if begin < previous:
+                continue
+            pieces.extend((" ".join(source[previous:begin].split()), replacement))
+            previous = end
+        pieces.append(" ".join(source[previous:].split()))
+        return " ".join(piece for piece in pieces if piece)
 
     @staticmethod
     def _constant_bindings(
@@ -366,6 +555,7 @@ class FlextInfraUtilitiesRopeInventory:
 
         Returns:
             Definition line and name pairs proven by native Rope matches.
+
         """
         bindings: set[t.Pair[int, str]] = set()
         for pattern in (

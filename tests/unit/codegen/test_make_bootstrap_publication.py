@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
+from flext_infra.codegen import FlextInfraMiseArtifactsVerification
 from flext_infra.workspace import FlextInfraFlextBindingService
 from tests import c, m, p, tm, u
 
@@ -80,7 +81,12 @@ class TestsMakeBootstrapPublication:
     @staticmethod
     def _receipt(root: Path) -> m.Infra.CodegenPhaseOutcome:
         return m.Infra.CodegenPhaseOutcome.model_validate_json(
-            (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_bytes(),
+            (
+                root
+                / FlextInfraMiseArtifactsVerification.publication_receipt(
+                    c.Infra.CodegenConformSurface.MAKEFILE,
+                )
+            ).read_bytes(),
         )
 
     @staticmethod
@@ -94,6 +100,7 @@ class TestsMakeBootstrapPublication:
 
         Returns:
             The completed CLI command outcome.
+
         """
         policy = config.Infra.codegen.make.uv_resolution
         ci = config.Infra.codegen.make.ci
@@ -129,13 +136,16 @@ class TestsMakeBootstrapPublication:
         root, members = self._workspace(tmp_path)
 
         for path in (root, *members):
-            tm.that(self._run(path).outcome.raw_return_code, eq=0)
+            tm.that(u.Cli.process_succeeded(self._run(path).outcome), eq=True)
             receipt = self._receipt(path)
             tm.that(receipt.scope_roots, eq=(path,))
             tm.that(receipt.surface, eq=c.Infra.CodegenConformSurface.MAKEFILE)
             tm.that(receipt.scope, eq=c.Infra.CodegenConformScope.SELF)
             tm.that(receipt.written_files, eq=(path / c.Infra.MAKEFILE_FILENAME,))
-            tm.that(self._run(path, check_only=True).outcome.raw_return_code, eq=0)
+            tm.that(
+                u.Cli.process_succeeded(self._run(path, check_only=True).outcome),
+                eq=True,
+            )
             tm.ok(
                 infra.codegen_conform(
                     u.Tests.conform_request(
@@ -266,8 +276,10 @@ class TestsMakeBootstrapPublication:
     ) -> None:
         """A failed member request cannot overwrite another target's receipt."""
         root, members = self._workspace(tmp_path)
-        tm.that(self._run(root).outcome.raw_return_code, eq=0)
-        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        tm.that(u.Cli.process_succeeded(self._run(root).outcome), eq=True)
+        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.MAKEFILE,
+        )
         root_before = receipt_path.read_bytes()
         foreign = members[-1] / "unowned.mk"
         foreign.write_text("# authored fixture\n", encoding=c.DEFAULT_ENCODING)
@@ -326,7 +338,9 @@ class TestsMakeBootstrapPublication:
         if hosted:
             for member in members:
                 shutil.rmtree(member)
-        tm.that(self._run(root, hosted=hosted).outcome.raw_return_code, eq=0)
+        tm.that(
+            u.Cli.process_succeeded(self._run(root, hosted=hosted).outcome), eq=True
+        )
         tm.that(
             self._receipt(root).scope_roots,
             eq=(root,),

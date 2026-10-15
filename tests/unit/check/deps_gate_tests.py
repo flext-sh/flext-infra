@@ -9,6 +9,8 @@ from __future__ import annotations
 import os
 import sys
 import venv
+from importlib.metadata import distribution
+from json import dumps
 from pathlib import Path
 
 import pytest
@@ -34,6 +36,68 @@ class TestsFlextInfraDepsGate:
         )
         (root / "src" / "fixturepkg.py").write_text(imports, encoding="utf-8")
         return root
+
+    @staticmethod
+    def _dependency_inputs(root: Path) -> m.Infra.RuntimeDependencyInputs:
+        """Capture a real installed supplier and a target-owned native lock input.
+
+        Returns:
+            Runtime dependency inputs binding the elected supplier to the
+            target's own lock, metadata state and executed source.
+
+        """
+        artifact = distribution("requests")
+        files = tm.not_none(artifact.files)
+        metadata_path = next(
+            Path(str(artifact.locate_file(item)))
+            for item in files
+            if item.name == "METADATA"
+        )
+        package = m.Infra.LockedPackage(
+            name=tm.not_none(artifact.metadata["Name"]),
+            version=artifact.version,
+            source=m.Infra.LockedPackageSource(registry="https://pypi.org/simple"),
+        )
+        lock_path = root / c.Infra.UV_LOCK_FILENAME
+        lock_path.write_text(
+            u.Cli.toml_dumps(
+                u.Cli.toml_document_from_mapping({
+                    "version": 1,
+                    "package": [package.model_dump(mode="json", exclude_none=True)],
+                })
+            ),
+            encoding="utf-8",
+        )
+        return m.Infra.RuntimeDependencyInputs(
+            target_root=root,
+            python=Path(sys.executable).absolute(),
+            lock=u.Cli.atomic_read_binary_file_state(lock_path, required=True).unwrap(),
+            providers=(
+                m.Infra.RuntimeDependencyProvider(
+                    modules=tuple(
+                        sorted({
+                            item.parts[0]
+                            for item in files
+                            if len(item.parts) > 1 and item.parts[1] == "__init__.py"
+                        })
+                    ),
+                    package=package,
+                    requirement=f"{package.name}>={package.version}",
+                    inputs=(
+                        u.Cli.atomic_read_binary_file_state(
+                            metadata_path, required=True
+                        ).unwrap(),
+                    ),
+                ),
+            ),
+            development_only=(),
+            inputs=(
+                u.Cli.atomic_read_binary_file_state(
+                    root / "src" / "fixturepkg.py",
+                    required=True,
+                ).unwrap(),
+            ),
+        )
 
     @staticmethod
     def test_undeclared_import_blocks_at_check_time(tmp_path: Path) -> None:
@@ -81,6 +145,205 @@ class TestsFlextInfraDepsGate:
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.CLEAN)
         tm.that(result.issues, eq=())
         tm.that((root / ".reports").exists(), eq=False)
+
+    @staticmethod
+    def test_fix_requires_target_supplier_provenance(tmp_path: Path) -> None:
+        """A native finding cannot authorize an ambient dependency repair."""
+        root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
+        pyproject = root / c.PYPROJECT_FILENAME
+        before = pyproject.read_bytes()
+        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
+
+        result = gate.fix(
+            root,
+            m.Infra.GateContext(
+                repository_root=root,
+                reports_dir=tmp_path / "reports",
+                apply_fixes=True,
+            ),
+        )
+
+        tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
+        tm.that(result.result.passed, eq=False)
+        tm.that(pyproject.read_bytes(), eq=before)
+        assert any(issue.code.startswith(f"{c.Infra.DEPS}-") for issue in result.issues)
+        tm.that(result.raw_output, has="selected interpreter")
+
+    @staticmethod
+    def test_native_capture_rejects_an_existing_report(tmp_path: Path) -> None:
+        """Checking and detection share one fresh native report contract."""
+        root = TestsFlextInfraDepsGate._project(
+            tmp_path,
+            '"pyyaml>=6", "requests>=2"',
+            "import requests\nimport yaml\n",
+        )
+        report_path = tmp_path / "native-deptry.json"
+        scan = u.Infra.capture_deptry_scan(
+            root,
+            Path(sys.executable).parent,
+            config_path=root / c.PYPROJECT_FILENAME,
+            json_output_path=report_path,
+        ).unwrap()
+        before = report_path.read_bytes()
+
+        reused = u.Infra.capture_deptry_scan(
+            root,
+            Path(sys.executable).parent,
+            config_path=root / c.PYPROJECT_FILENAME,
+            json_output_path=report_path,
+        )
+
+        tm.that(u.Cli.process_succeeded(scan.native.outcome), eq=True)
+        tm.that(scan.report.root, eq=())
+        tm.that(scan.source.root.path, eq=root / c.Infra.DEFAULT_SRC_DIR)
+        tm.that(scan.report_sha256, eq=u.Cli.sha256_bytes(before))
+        tm.that(reused.failure, eq=True)
+        tm.that(reused.error, has="already exists")
+        tm.that(report_path.read_bytes(), eq=before)
+
+    @staticmethod
+    @pytest.mark.parametrize("excluded", [False, True])
+    def test_native_capture_requires_executed_sources(
+        tmp_path: Path, *, excluded: bool
+    ) -> None:
+        """An empty tree and native exclusions cannot produce a clean receipt."""
+        root = TestsFlextInfraDepsGate._project(tmp_path, "", "import os\n")
+        if excluded:
+            pyproject = root / c.PYPROJECT_FILENAME
+            pyproject.write_text(
+                pyproject.read_text(encoding="utf-8") + 'exclude = ["src/.*"]\n',
+                encoding="utf-8",
+            )
+        else:
+            (root / "src" / "fixturepkg.py").unlink()
+
+        scan = u.Infra.capture_deptry_scan(
+            root,
+            Path(sys.executable).parent,
+            config_path=root / c.PYPROJECT_FILENAME,
+            json_output_path=tmp_path / "empty-native.json",
+        )
+
+        tm.that(scan.failure, eq=True)
+        tm.that(scan.error, has="native scan coverage")
+        tm.that(scan.error, has="Scanning 0 file")
+
+    @staticmethod
+    def test_development_only_supplier_requires_consumer_rewire(tmp_path: Path) -> None:
+        """Identity stays present while its contract forbids runtime promotion."""
+        root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
+        inputs = TestsFlextInfraDepsGate._dependency_inputs(root)
+        provider = inputs.providers[0]
+        inputs = inputs.model_copy(update={"development_only": (provider.requirement,)})
+        pyproject = root / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8")
+            + f"\n[dependency-groups]\ndev = [{dumps(provider.requirement)}]\n",
+            encoding="utf-8",
+        )
+        before = pyproject.read_bytes()
+        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
+        context = m.Infra.GateContext(
+            repository_root=root,
+            reports_dir=tmp_path / "reports",
+            apply_fixes=True,
+            runtime_dependency_inputs=inputs,
+        )
+
+        repaired = gate.fix(root, context)
+        checked = gate.check(root, context)
+
+        tm.that(repaired.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.that(checked.result.passed, eq=False)
+        assert any(issue.code.endswith("DEP004") for issue in checked.issues)
+        tm.that(pyproject.read_bytes(), eq=before)
+        tm.that(inputs.providers, eq=(provider,))
+
+    @staticmethod
+    def test_fix_preserves_authored_requirement_policy_and_lock(tmp_path: Path) -> None:
+        """Real deptry promotes exact authored extras and markers, then converges."""
+        root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
+        inputs = TestsFlextInfraDepsGate._dependency_inputs(root)
+        supplier = inputs.providers[0]
+        authored = (
+            f"{supplier.package.name}[socks]>={supplier.package.version};"
+            " python_version > '0'"
+        )
+        pyproject = root / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8")
+            + f"\n[dependency-groups]\ndev = [{dumps(authored)}]\n",
+            encoding="utf-8",
+        )
+        before_lock = inputs.lock.path.read_bytes()
+        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
+        context = m.Infra.GateContext(
+            repository_root=root,
+            reports_dir=tmp_path / "reports",
+            apply_fixes=True,
+            runtime_dependency_inputs=inputs,
+        )
+
+        repaired = gate.fix(root, context)
+        after = pyproject.read_bytes()
+        repeated = gate.fix(root, context)
+
+        tm.that(repaired.outcome, eq=c.Infra.ToolOutcome.CLEAN)
+        tm.that(repeated.outcome, eq=c.Infra.ToolOutcome.CLEAN)
+        tm.that(
+            u.Tests.toml_strings_at(after.decode("utf-8"), "project", "dependencies"),
+            eq=(authored,),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(after.decode("utf-8"), "dependency-groups", "dev"),
+            eq=(authored,),
+        )
+        tm.that(pyproject.read_bytes(), eq=after)
+        tm.that(inputs.lock.path.read_bytes(), eq=before_lock)
+        tm.that(repaired.raw_output, has="repair-rescan")
+
+    @staticmethod
+    @pytest.mark.parametrize("change", ["ambiguous", "source", "wrong-lock"])
+    def test_dependency_plan_refuses_unevidenced_repair(
+        tmp_path: Path,
+        change: str,
+    ) -> None:
+        """Missing identity proof and changed inputs cannot publish a requirement."""
+        root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
+        inputs = TestsFlextInfraDepsGate._dependency_inputs(root)
+        scan = u.Infra.capture_deptry_scan(
+            root,
+            Path(sys.executable).parent,
+            config_path=root / c.PYPROJECT_FILENAME,
+            json_output_path=tmp_path / "native.json",
+        ).unwrap()
+        before = scan.settings.path.read_bytes()
+        if change == "ambiguous":
+            inputs = inputs.model_copy(update={"providers": inputs.providers * 2})
+            plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
+            tm.that(plan.unresolved_modules, has="requests")
+            tm.that(plan.dependencies, eq=())
+            tm.that(u.Infra.publish_runtime_dependency_plan(plan).unwrap(), eq=False)
+        elif change == "source":
+            plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
+            (root / "src" / "new_module.py").write_text("import os\n", encoding="utf-8")
+            rejected = u.Infra.publish_runtime_dependency_plan(plan)
+            tm.that(rejected.failure, eq=True)
+            tm.that(rejected.error, has="source changed")
+        else:
+            supplier = inputs.providers[0]
+            invalid = supplier.model_copy(
+                update={
+                    "package": supplier.package.model_copy(update={"version": "0"}),
+                }
+            )
+            rejected = u.Infra.runtime_dependency_plan(
+                scan,
+                inputs.model_copy(update={"providers": (invalid,)}),
+            )
+            tm.that(rejected.failure, eq=True)
+            tm.that(rejected.error, has="selected lock")
+        tm.that(scan.settings.path.read_bytes(), eq=before)
 
     @staticmethod
     @pytest.mark.parametrize("attached_peer", [False, True])

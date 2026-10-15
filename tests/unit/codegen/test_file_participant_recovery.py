@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from typing import TYPE_CHECKING
 
 import pytest
@@ -40,6 +41,7 @@ class TestsFlextInfraFileParticipantRecovery:
 
         Returns:
             The validator verdict for the staged session.
+
         """
         if failure_kind == "target":
             targets[1].write_bytes(b"concurrent\n")
@@ -53,20 +55,21 @@ class TestsFlextInfraFileParticipantRecovery:
 
     @staticmethod
     def _replaced_report_directory(root: Path) -> None:
-        """Replace the publication report file with a same-named directory.
+        """Replace the publication receipt archive with a same-named file.
 
         Args:
-            root: Repository root owning the publication report path.
+            root: Repository root owning the publication receipt archive.
+
         """
-        report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
-        report.unlink()
-        report.mkdir()
+        archive = root / c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH
+        shutil.rmtree(archive)
+        archive.write_bytes(b"")
 
     @staticmethod
     def _corrupted_journal_state(
         journal: Path,
         journal_change: str,
-    ) -> p.Result[m.Cli.AtomicFileState] | None:
+    ) -> m.Cli.AtomicFileState | None:
         """Corrupt the journaled authority per the parametrized change kind.
 
         Args:
@@ -76,6 +79,7 @@ class TestsFlextInfraFileParticipantRecovery:
         Returns:
             The observed journal state after the corruption, or ``None`` when
             the journal path became a directory.
+
         """
         saved = journal.with_suffix(".preserved")
         if journal_change != "unchanged":
@@ -98,6 +102,7 @@ class TestsFlextInfraFileParticipantRecovery:
 
         Returns:
             The consumer verdict, leaving real settlement faults for the transaction.
+
         """
         if failure_kind == "cleanup":
             participant = session.plan.layout.file_participants[0]
@@ -217,6 +222,7 @@ class TestsFlextInfraFileParticipantRecovery:
             targets: The governed publication target paths.
             failure_kind: The parametrized failure injection kind.
             deleted: Whether the publication planned deletions.
+
         """
         expected = (
             ()
@@ -790,6 +796,7 @@ class TestsFlextInfraFileParticipantRecovery:
                 tm.that(journal.is_dir(), eq=True)
                 tm.that(target.read_bytes(), eq=before.content)
             else:
+                assert foreign is not None
                 tm.that(
                     tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False)),
                     eq=foreign,

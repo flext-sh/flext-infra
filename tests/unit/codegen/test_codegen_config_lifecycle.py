@@ -13,7 +13,10 @@ import pytest
 from jinja2 import Template
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsVerification,
+)
 from tests import c, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -52,7 +55,13 @@ class TestsFlextInfraCodegenConfigLifecycle:
         destinations = tuple(file.path for file in result.plan.files)
         no_op = tm.ok(infra.codegen_conform(request))
         tm.that(no_op.written_files, eq=())
-        paths = (*destinations, root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH)
+        paths = (
+            *destinations,
+            root
+            / FlextInfraMiseArtifactsVerification.publication_receipt(
+                c.Infra.CodegenConformSurface.ENVRC,
+            ),
+        )
         before = tuple(
             tm.ok(FlextInfraMiseArtifactsFiles.read_state(path, required=True))
             for path in paths
@@ -158,7 +167,9 @@ print("generated config: frozen YAML, subclass identity, independent settings")
         )
         tm.ok(infra.codegen_conform(request))
         tm.that(tm.ok(infra.codegen_conform(request)).written_files, eq=())
-        report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        report = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.LAZY_INIT,
+        )
         before = tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=True))
         checked = tm.ok(
             infra.codegen_conform(
@@ -183,13 +194,49 @@ import sys
 from pathlib import Path
 
 from flext_infra import c, config, u
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 root = Path(sys.argv[1])
+context = FlextInfraWorkspaceDetector.resolution_context(root).unwrap()
+lock_state = u.Cli.atomic_read_binary_file_state(
+    context.lock_path, required=True,
+).unwrap()
+assert lock_state.mode is not None
+obsolete = root / c.Infra.UV_LOCK_FILENAME
+if obsolete != context.lock_path:
+    obsolete_state = u.Cli.atomic_read_binary_file_state(
+        obsolete, required=False,
+    ).unwrap()
+    u.Cli.atomic_write_binary_file_guarded(
+        obsolete_state,
+        b"obsolete root lock must not be parsed\\n",
+        permission_mode=lock_state.mode,
+    ).unwrap()
 repository = u.Infra.configured_repository_ref(
     codegen=config.Infra.codegen,
     repository_root=root,
 ).unwrap()
-state = u.Infra.member_project_declaration(root, repository).unwrap()
+state = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+    root, repository
+).unwrap()
+explicit = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+    root, repository, lock_state=lock_state,
+).unwrap()
+assert explicit == state
+if obsolete != context.lock_path:
+    foreign_lock = lock_state.model_copy(update={"path": obsolete})
+    refused = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+        root, repository, lock_state=foreign_lock,
+    )
+    assert refused.failure
+    assert "captured elected lock" in refused.error
+assert u.Cli.atomic_read_binary_file_state(
+    context.lock_path, required=True,
+).unwrap() == lock_state
+print("installed declaration elected-lock=" + str(context.lock_path))
 assert state.path.is_relative_to(Path(sys.prefix))
 metadata, requirements = u.Infra.member_declaration_requirements(
     state,
@@ -222,7 +269,9 @@ u.Cli.atomic_write_binary_file_guarded(
     state.content + b"\\n",
     permission_mode=state.mode,
 ).unwrap()
-changed = u.Infra.member_project_declaration(root, repository)
+changed = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+    root, repository
+)
 assert changed.failure
 assert "RECORD" in changed.error
 print("installed Git declaration: complete groups, extras and RECORD authentication")

@@ -101,6 +101,7 @@ class FlextInfraImportNormalization(
 
         Raises:
             ValueError: If ``root_exports is None``.
+
         """
         if file_path.name == c.Infra.INIT_PY:
             return None
@@ -283,6 +284,7 @@ class FlextInfraImportNormalization(
         Raises:
             ValueError: If a layer-zero module imports its own namespace or a
                 family binds its own facade, including TYPE_CHECKING imports.
+
         """
         scope = state.scope
         role = u.Infra.import_module_role(scope.module)

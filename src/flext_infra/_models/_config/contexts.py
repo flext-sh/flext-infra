@@ -297,6 +297,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
             Returns:
                 The resulting ``str``.
+
             """
             return f"{self.dist.upper().replace('-', '_')}_"
 
@@ -336,6 +337,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
             Returns:
                 The resulting ``str``.
+
             """
             return self._config_base.class_name
 
@@ -346,6 +348,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
             Returns:
                 The resulting ``str``.
+
             """
             return self._config_base.module
 

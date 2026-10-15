@@ -36,6 +36,7 @@ def _write_candidate_targets(
 
     Returns:
         Path of the rewritten codegen config file declaring the targets.
+
     """
     inputs = tm.ok(u.Infra.load_codegen_inputs(root))
     declaration = (inputs.spec.repository or m.Infra.RepositoryDeltaSpec()).model_copy(
@@ -70,6 +71,7 @@ def _declared_candidate_campaign(
 
     Returns:
         The source workspace and the candidate it declares.
+
     """
     source, _ = u.Tests.render_make_environment(
         tmp_path / "source",
@@ -170,7 +172,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         state = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
         destination = root / "publication-output.txt"
         before = tm.ok(u.Infra.codegen_target_snapshot(destination))
-        producer = tm.ok(FlextInfraCodegenPreconditions.capture_producer())
+        producer = tm.ok(
+            FlextInfraCodegenPreconditions.capture_producer(
+                Path.cwd(),
+                entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+            )
+        )
         planner = FlextInfraCodegenConform(
             repository_root=root,
             ports=None,
@@ -327,6 +334,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
         Returns:
             Configured roots exercised by the probe package.
+
         """
         policy = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
         roots = policy.runtime_evaluated_roots
