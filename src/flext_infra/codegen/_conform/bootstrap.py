@@ -281,8 +281,12 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.DEPENDENCIES:
+                # The dependency planner projects the root pyproject and every
+                # uv resolution pyproject, so the surface owns the same derived
+                # destination set as PYPROJECT; a second enumeration refused
+                # the resolution inputs a candidate needs before `make upg`.
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.PYPROJECT_FILENAME}),
+                    destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
                     custom=False,
                 )
