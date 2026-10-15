@@ -79,7 +79,9 @@ class TestsFlextInfraDocsGeneratorBundle:
         """Reject changed bytes from the exact bundle instead of rerendering them."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r"""workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 guide = workspace / "flext-a" / c.Infra.DIR_DOCS / "guides/operator.md"
 guide.parent.mkdir(parents=True, exist_ok=True)
 guide.write_text("# Original\n", encoding="utf-8")
@@ -112,7 +114,9 @@ tm.that(
         """Keep template/config inputs while refusing a newly introduced source."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r'''workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r'''workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 generator = case._generator(workspace)
 prepared = tm.ok(generator.prepare_bundle(
     producer=producer_for(generator, generator.prepare_bundle)
@@ -190,7 +194,9 @@ tm.that(changed.error or "", has=str(added))
         """An absent optional input remains part of the admitted source census."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r"""workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
     workspace,
     filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -236,14 +242,17 @@ tm.that(published.error or "", has=str(local_layer))
         tm.fail(published)
         tm.that(published.error or "", has=str(local_layer))
 
+    @staticmethod
     def test_publication_rejects_source_topology_addition_after_bundle(
-        self: p.Tests.NativeConsumer,
+        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
         """Reject a newly consumed source that was absent from the frozen inventory."""
-        self(
+        native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r'''workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r'''workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 generator = case._generator(workspace)
 prepared = generator.prepare_bundle(
     producer=producer_for(generator, generator.prepare_bundle)
@@ -267,7 +276,9 @@ tm.that(published.error or "", has=c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER)
         """Identical bytes under a replacement source directory retain no authority."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r"""workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 generator = FlextInfraDocGenerator(
     repository_root=workspace,
     selected_projects=["flext-a"],
@@ -320,7 +331,7 @@ tm.that(published.error or "", has=str(package))
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
-        """A changed consumed input rejects publication without replacing either file."""
+        """Changed inputs reject publication and preserve both physical files."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
             + r"""root = u.Tests.git_repository(tmp_path)
@@ -425,7 +436,9 @@ tm.that(earlier_readme.read_bytes(), eq=admitted)
         """Never turn a managed lexical target into an unmanaged in-project referent."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r"""workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 project = workspace / "flext-a"
 unmanaged = project / "NOTES.md"
 unmanaged.write_text("keep\n", encoding="utf-8")
@@ -455,7 +468,9 @@ tm.that(unmanaged.read_text(encoding="utf-8"), eq="keep\n")
         """Reject an aliased generated tree before deriving any delete artifact."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r"""workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 project = workspace / "flext-a"
 curated = project / "curated"
 curated.mkdir()
@@ -516,7 +531,9 @@ tm.that(prepared.error or "", has="atomic")
         """Bind every guide and both templates that materially feed the render."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r"""workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 guide = workspace / "flext-a" / c.Infra.DIR_DOCS / "guides/operator.md"
 guide.parent.mkdir(parents=True, exist_ok=True)
 guide.write_text("# Operator\n", encoding="utf-8")
@@ -543,7 +560,9 @@ tm.that(c.Infra.TEMPLATE_MKDOCS_ROOT in source_names, eq=True)
         """Reject stale render inputs at the guarded publication boundary."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r"""workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 guide = workspace / "flext-a" / c.Infra.DIR_DOCS / "guides/operator.md"
 guide.parent.mkdir(parents=True, exist_ok=True)
 guide.write_text("# Original\n", encoding="utf-8")
@@ -615,7 +634,9 @@ tm.that(tuple(batches), empty=True)
         """Render a later valid pyproject version rather than a path-keyed old value."""
         native_consumer(
             _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+            + r"""workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a",)
+)
 generator = case._generator(workspace)
 first = generator.prepare_bundle(
     producer=producer_for(generator, generator.prepare_bundle)

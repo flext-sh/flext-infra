@@ -58,11 +58,18 @@ class FlextInfraSemanticPublication:
         plans: t.SequenceOf[m.Infra.CodegenFilePlan],
         *,
         repository_root: Path,
-        validator: Callable[[], p.Result[bool]] | None = None,
+        validator: Callable[[Path], p.Result[bool]] | None = None,
         projection_roots: t.VariadicTuple[Path] = (),
     ) -> p.Result[t.VariadicTuple[Path]]:
-        """Publish exact create/rewrite/remove effects through the shared journal."""
-        inputs = cls._semantic_input_snapshots(plans)
+        """Publish exact create/rewrite/remove effects through the shared journal.
+
+        Returns:
+            Published paths or the original input or publication failure.
+
+        """
+        inputs = FlextInfraCodegenPreconditions.unique_states(
+            tuple(state for plan in plans for state in plan.source_states),
+        )
         if inputs.failure:
             return r[tuple[Path, ...]].from_failure(inputs)
         analysis = m.Infra.CodegenPhaseAnalysis(
@@ -72,11 +79,11 @@ class FlextInfraSemanticPublication:
         )
         return cls._publish_joint_analysis(
             analysis,
-            cls._semantic_phase_roots(plans, projection_roots),
             repository_root=repository_root,
-            projection_roots=projection_roots,
-            preflight=None,
-            validator=validator,
+            options=_PublicationOptions(
+                projection_roots=projection_roots,
+                validator=validator,
+            ),
         )
 
     @classmethod
@@ -127,7 +134,7 @@ class FlextInfraSemanticPublication:
                 published_files=published_files,
                 dependency_group=dependency_group,
                 projection_roots=projection_roots,
-                preflight=preflight,
+                source_guard=preflight,
             ),
         )
 
@@ -431,7 +438,6 @@ class FlextInfraSemanticPublication:
         session: m.Infra.CodegenTransactionSession,
         repository_root: Path,
         projection_roots: t.VariadicTuple[Path],
-        preflight: Callable[[], p.Result[bool]] | None,
         projection_analyses: list[m.Infra.CodegenPhaseAnalysis],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Plan and append the generated projection phase once per publication.
@@ -484,9 +490,6 @@ class FlextInfraSemanticPublication:
 
         """
         projection_analyses: list[m.Infra.CodegenPhaseAnalysis] = []
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=repository_root),
-        )
 
         def validate_published(
             session: m.Infra.CodegenTransactionSession,
@@ -498,17 +501,14 @@ class FlextInfraSemanticPublication:
                     session=session,
                 ),
             )
-            if checked.failure or not checked.value or validator is None:
+            if checked.failure or not checked.value or options.validator is None:
                 return checked
-            return validator()
+            return options.validator(repository_root)
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
-            if preflight is not None:
-                checked = preflight()
-                if checked.failure:
-                    return r[tuple[Path, ...]].from_failure(checked)
-                if not checked.value:
-                    return r[tuple[Path, ...]].fail("semantic input preflight rejected")
+            guarded = cls._guard_source_inputs(options.source_guard)
+            if guarded.failure:
+                return r[tuple[Path, ...]].from_failure(guarded)
             started = transaction.begin_files_locked(scope_root, roots, analysis.inputs)
             if started.failure:
                 return r[tuple[Path, ...]].from_failure(started)
@@ -553,24 +553,24 @@ class FlextInfraSemanticPublication:
                 )
                 if published.failure:
                     return r[tuple[Path, ...]].from_failure(published)
-                if projection_roots:
-                    planned = FlextInfraCodegenLazyInit(
-                        repository_root=repository_root,
-                        project_scope_roots=projection_roots,
-                    ).plan_files()
-                    if planned.failure:
-                        return r[tuple[Path, ...]].from_failure(planned)
-                    projection_analyses.append(planned.value)
-                    published = transaction.append_phase_locked(
+                if options.projection_roots and options.dependency_group is None:
+                    published = cls._appended_projection_phase(
+                        transaction,
                         published.value,
-                        planned.value.phase,
-                        planned.value.files,
+                        repository_root,
+                        options.projection_roots,
+                        projection_analyses,
                     )
                     if published.failure:
                         return r[tuple[Path, ...]].from_failure(published)
+                checked = validate_published(published.value)
+                if checked.failure:
+                    return r[tuple[Path, ...]].from_failure(checked)
+                if not checked.value:
+                    return r[tuple[Path, ...]].fail("semantic acceptance rejected")
                 return transaction.commit_locked(
                     published.value,
-                    lambda: validate_published(published.value),
+                    published_files=options.published_files,
                 )
 
             return transaction.publish_prepared_locked(started.value, apply)
@@ -596,6 +596,9 @@ class FlextInfraSemanticPublication:
             Published paths after phase receipts and consumer acceptance.
 
         """
+        guarded = cls._guard_source_inputs(options.source_guard)
+        if guarded.failure:
+            return r[tuple[Path, ...]].from_failure(guarded)
         prepared = cls._prepared_transaction(analysis, repository_root, options)
         if prepared.failure:
             return r[tuple[Path, ...]].from_failure(prepared)

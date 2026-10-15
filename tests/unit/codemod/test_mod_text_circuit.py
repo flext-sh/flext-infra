@@ -59,14 +59,14 @@ class TestsFlextInfraModTextGateEngine:
         issues = u.type_adapter(TypeForm(tuple[m.Infra.Issue, ...])).validate_json(
             tm.ok(
                 u.Cli.json_dumps(
-                    tuple(
+                    [
                         {
                             key: value
                             for key, value in issue.items()
                             if key not in m.Infra.Issue.model_computed_fields
                         }
                         for issue in wire
-                    ),
+                    ],
                 ),
             ),
         )
@@ -877,8 +877,10 @@ class TestsFlextInfraModTextGateEngine:
                 scope,
                 roots,
                 analysis,
-                m.Infra.CodegenPhasePublicationPolicy(directories=()),
-                staged_validator=reject_candidate,
+                m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(),
+                    staged_validator=reject_candidate,
+                ),
             )
 
         if raise_failure:

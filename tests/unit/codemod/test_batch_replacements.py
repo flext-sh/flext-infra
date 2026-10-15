@@ -472,7 +472,10 @@ class TestsFlextInfraBatchReplacements:
         rejected = self._report(bad, bad_before).entries[0]
         result = FlextInfraModReplacements.publish(
             root,
-            FlextInfraModGateEngine.recounted((accepted, rejected)),
+            m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+                entries=(accepted, rejected),
+                files=frozenset({good, bad}),
+            ),
         )
         tm.fail(result)
         tm.that(result.error, has="F821")

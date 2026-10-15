@@ -71,7 +71,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
         tm.that(facts.runtime_modules, empty=True)
         with u.Infra.codemod_binding_project(
             project,
-            m.Infra.CodemodBindingSnapshot(states=()),
+            u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=())),
         ) as (rope_project, sources):
             admitted = u.Infra.codemod_context_admits(
                 m.Infra.CodemodAdmission(
@@ -119,7 +119,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
         facts = u.Infra.codemod_project_facts(project, (rule,))
         with u.Infra.codemod_binding_project(
             project,
-            m.Infra.CodemodBindingSnapshot(states=()),
+            u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=())),
         ) as (rope_project, sources):
             admitted = u.Infra.codemod_context_admits(
                 m.Infra.CodemodAdmission(

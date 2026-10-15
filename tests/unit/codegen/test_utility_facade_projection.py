@@ -119,7 +119,9 @@ class TestsFlextInfraUtilityFacadeProjection:
                 f"consumer stdout:\n{consumer.stdout}\n"
                 f"publisher stdout:\n{result.stdout}\n"
                 "published __init__.py:\n"
-                f"{(package / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)}\n"
+                f"{
+                    (package / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)
+                }\n"
                 "published utilities.py:\n"
                 f"{facade.read_text(encoding=c.DEFAULT_ENCODING)}"
             ),
@@ -209,7 +211,8 @@ class TestsFlextInfraUtilityFacadeProjection:
                 f"from {package.name}.{directory} import ClientOwner\n"
                 f"from {package.name}.services import ServiceRuntime\n"
                 "class Utilities(ParentUtilities):\n"
-                "    class Domain(ClientOwner, ServiceRuntime, ParentUtilities.Domain):\n"
+                "    class Domain("
+                "ClientOwner, ServiceRuntime, ParentUtilities.Domain):\n"
                 "        pass\n"
                 "u = Utilities\n__all__ = ['Utilities', 'u']\n"
             ),
@@ -228,7 +231,8 @@ class TestsFlextInfraUtilityFacadeProjection:
                     (
                         f"from {package.name} import u; "
                         f"from {package.name}.services import ServiceRuntime; "
-                        "assert u.Domain.Target('client-value').read() == 'client-value'; "
+                        "assert u.Domain.Target('client-value').read() "
+                        "== 'client-value'; "
                         "assert u.Domain.upstream_value() == 'upstream-value'; "
                         "assert not hasattr(u.Domain, 'create'); "
                         "print(ServiceRuntime.create('service-value'))"

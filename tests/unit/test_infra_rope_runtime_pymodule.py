@@ -43,9 +43,9 @@ class TestsFlextInfraRopeRuntimePymodule:
             (tmp_path / "uncaptured.py").write_text(
                 "VALUE = 99\n", encoding=c.Infra.ENCODING_DEFAULT
             )
-            resource = project.find_module("captured")
-            tm.not_none(resource)
-            assert resource is not None
+            resource = u.Infra.require_file_resource(
+                tm.not_none(project.find_module("captured")), captured
+            )
             tm.that(resource.read(), eq="VALUE = 42\n")
             tm.that(project.find_module("uncaptured"), none=True)
 

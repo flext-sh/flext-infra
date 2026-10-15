@@ -76,8 +76,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
         return [
             entry
             if isinstance(entry, str)
-            else t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                entry.model_dump(mode="json", by_alias=True),
+            else dict(
+                t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                    entry.model_dump(mode="json", by_alias=True),
+                ),
             )
             for entry in entries
         ]
