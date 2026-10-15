@@ -163,24 +163,13 @@ class FlextInfraPyprojectModernizerTooling:
             if declared_python_dirs
             else u.Cli.json_as_sequence(tools.pyright.get("executionEnvironments"))
         )
-        # One owner for the includes: the live tree intersected with the
-        # declared env dirs, with the scaffold's own roots passed as the
-        # generated roots they are so a plan that is still materializing
-        # tests/ converges on its first write.
-        declared_pyrefly_includes = FlextInfraExtraPathsManager(
-            repository_root=self.repository_root,
-            generated_python_roots=declared_python_dirs,
-        ).pyrefly_project_includes(
-            project_dir=project_dir,
-            is_root=not request.topology.declared_python_dirs_are_complete,
-        )
         # Seed for a project whose analyzer paths were never synced yet. The
         # manager derives from directories that EXIST, so before src/ is
         # written it returns []. Writing that empty list made the next plan
         # re-derive ['src', '.'], so apply never reached its fixed point.
         # Prefer the DECLARED roots, exactly like the ensure-pyrefly phase.
         seed_manager = FlextInfraExtraPathsManager(repository_root=self.root)
-        declared_roots, derived_search_path, derived_mypy_path = self._derived_paths(
+        declared_roots, derived_mypy_path = self._derived_paths(
             project_dir,
             declared_python_dirs,
             seed_manager,
@@ -242,12 +231,8 @@ class FlextInfraPyprojectModernizerTooling:
                         config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
                     )
                 ),
-                "pyrefly_search_path": (
-                    derived_search_path
-                    if declared_roots
-                    else tools.pyrefly_search_path or derived_search_path
-                ),
-                "pyrefly_project_includes": declared_pyrefly_includes,
+                "pyrefly_search_path": tools.pyrefly_search_path,
+                "pyrefly_project_includes": tools.pyrefly_project_includes,
                 "pyrefly_project_excludes": u.Infra.pyrefly_project_excludes(
                     config.Infra.tooling.tools.pyrefly.project_exclude_globs,
                 ),
@@ -391,11 +376,11 @@ class FlextInfraPyprojectModernizerTooling:
         project_dir: Path,
         declared_python_dirs: t.StrSequence,
         seed_manager: FlextInfraExtraPathsManager,
-    ) -> t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]:
+    ) -> t.Pair[t.StrSequence, t.StrSequence]:
         """Derive the declared or discovered analyzer search roots.
 
         Returns:
-            The ``(declared_roots, search_path, mypy_path)`` triple.
+            The ``(declared_roots, mypy_path)`` pair.
 
         """
         path_rules = config.Infra.tooling.tools.pyrefly.path_rules
@@ -435,7 +420,7 @@ class FlextInfraPyprojectModernizerTooling:
             if declared_roots
             else derived_search_path
         )
-        return (declared_roots, derived_search_path, derived_mypy_path)
+        return (declared_roots, derived_mypy_path)
 
     @staticmethod
     def _pyright_environments(

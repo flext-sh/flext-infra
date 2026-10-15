@@ -273,7 +273,7 @@ class TestsFlextInfraModernizerPyrefly:
         )
         topology = m.Infra.PyprojectDeclaredTopology(
             declared_python_dirs=(source_dir,),
-            declared_python_dirs_are_complete=True,
+            declared_python_dirs_are_complete=False,
         )
 
         request = m.Infra.ToolingContextRequest(
@@ -286,6 +286,20 @@ class TestsFlextInfraModernizerPyrefly:
             declared_project_dependencies=(),
             topology=topology,
         )
+        source = u.Cli.toml_dumps(
+            u.Cli.toml_document_from_mapping({
+                c.Infra.PROJECT: {
+                    c.Infra.NAME: request.project_name,
+                    "version": "0.1.0",
+                },
+                c.Infra.TOOL: {
+                    "flext": {
+                        "docs": {"package_name": request.package_name},
+                    },
+                },
+            }),
+        )
+        tm.ok(u.Cli.atomic_write_text_file(request.path, source))
         tooling_runtime = tm.ok(modernizer.resolve_tooling_context(request))
 
         tm.that(
@@ -295,19 +309,7 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(tooling_runtime.pyrefly_project_includes, has=f"{source_dir}/**/*.py*")
         rendered = tm.ok(
             modernizer.conform_source(
-                u.Cli.toml_dumps(
-                    u.Cli.toml_document_from_mapping({
-                        c.Infra.PROJECT: {
-                            c.Infra.NAME: request.project_name,
-                            "version": "0.1.0",
-                        },
-                        c.Infra.TOOL: {
-                            "flext": {
-                                "docs": {"package_name": request.package_name},
-                            },
-                        },
-                    }),
-                ),
+                source,
                 path=request.path,
                 format_source=False,
                 topology=request.topology,
@@ -317,14 +319,28 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(
             list(tooling_runtime.pyrefly_project_includes),
             eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES])),
+            msg=(
+                f"runtime={list(tooling_runtime.pyrefly_project_includes)!r}; "
+                "rendered="
+                f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES]))!r}"
+            ),
         )
         tm.that(
             list(tooling_runtime.pyrefly_search_path),
             eq=list(u.Tests.strings(pyrefly["search-path"])),
+            msg=(
+                f"runtime={list(tooling_runtime.pyrefly_search_path)!r}; "
+                f"rendered={list(u.Tests.strings(pyrefly['search-path']))!r}"
+            ),
         )
         tm.that(
             list(tooling_runtime.pyrefly_project_excludes),
             eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES])),
+            msg=(
+                f"runtime={list(tooling_runtime.pyrefly_project_excludes)!r}; "
+                "rendered="
+                f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES]))!r}"
+            ),
         )
 
     def test_pyright_include_feeds_project_includes(self, tmp_path: Path) -> None:

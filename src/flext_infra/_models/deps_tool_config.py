@@ -815,6 +815,13 @@ class FlextInfraModelsDepsToolConfig(
             t.JsonMapping,
             m.Field(description="Conformed pyrefly table"),
         ]
+        pyrefly_project_includes: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath("pyrefly", "project-includes"),
+                description="Conformed Pyrefly analysis scope",
+            ),
+        ]
         pyrefly_search_path: Annotated[
             t.StrTuple,
             m.Field(
