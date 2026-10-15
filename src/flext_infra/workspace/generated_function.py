@@ -225,6 +225,9 @@ class FlextInfraWorkspaceGeneratedFunction:
         Returns:
             The source-derived code, metadata and every consulted physical input.
 
+        Raises:
+            ValueError: If the class has no native qualified source identity.
+
         """
         engine = cls(witness)
         namespace = vars(type)["__dict__"].__get__(owner, type(owner))
@@ -318,7 +321,6 @@ class FlextInfraWorkspaceGeneratedFunction:
             The source-bound SDK factory and closed boolean options, if elected.
 
         Raises:
-            TypeError: If an SDK option is not an exact native boolean.
             ValueError: If the factory or its source options are ambiguous.
 
         """
@@ -338,7 +340,9 @@ class FlextInfraWorkspaceGeneratedFunction:
         tree = self._trees[self._witness.source]
         elected: t.Pair[FunctionType, t.DictKV[str, bool]] | None = None
         for decorator in declaration.decorator_list:
-            expression = decorator.func if isinstance(decorator, ast.Call) else decorator
+            expression = (
+                decorator.func if isinstance(decorator, ast.Call) else decorator
+            )
             binding = u.Infra.resolve_symbol(scope.parent, expression)
             if binding is None:
                 continue
@@ -352,23 +356,37 @@ class FlextInfraWorkspaceGeneratedFunction:
             if elected is not None:
                 msg = "native dataclass decorator is repeated"
                 raise ValueError(msg)
-            physical, compiler_tree, compiler_namespace = self._function(factory)
-            options: t.DictKV[str, bool] = {}
-            for parameter, default in zip(
-                physical.args.kwonlyargs, physical.args.kw_defaults, strict=True
-            ):
-                if default is None:
-                    msg = "native dataclass compiler has an unbound option"
-                    raise ValueError(msg)
-                value = self._default(default, compiler_namespace, compiler_tree)
-                if type(value) is not bool:
-                    msg = "native dataclass compiler options are not native booleans"
-                    raise TypeError(msg)
-                options[parameter.arg] = value
+            options = self._dataclass_default_options(factory)
             if isinstance(decorator, ast.Call):
                 self._dataclass_options(decorator, namespace, tree, options)
             elected = factory, options
         return elected
+
+    def _dataclass_default_options(self, factory: FunctionType) -> t.DictKV[str, bool]:
+        """Authenticate the SDK's declared boolean option defaults.
+
+        Returns:
+            Native boolean defaults derived from the physical function signature.
+
+        Raises:
+            TypeError: If an option default is not a native boolean.
+            ValueError: If a compiler option has no physical default.
+
+        """
+        physical, tree, namespace = self._function(factory)
+        options: t.DictKV[str, bool] = {}
+        for parameter, default in zip(
+            physical.args.kwonlyargs, physical.args.kw_defaults, strict=True
+        ):
+            if default is None:
+                msg = "native dataclass compiler has an unbound option"
+                raise ValueError(msg)
+            value = self._default(default, namespace, tree)
+            if type(value) is not bool:
+                msg = "native dataclass compiler options are not native booleans"
+                raise TypeError(msg)
+            options[parameter.arg] = value
+        return options
 
     def _decorator_binding(
         self,
@@ -376,19 +394,18 @@ class FlextInfraWorkspaceGeneratedFunction:
         namespace: t.MappingKV[str, p.AttributeProbe],
         tree: ast.Module,
     ) -> FunctionType:
-        if isinstance(expression, ast.Name):
-            value = self._global(expression.id, namespace, tree)
-        elif isinstance(expression, ast.Attribute) and isinstance(
-            expression.value, ast.Name
-        ):
-            provider = self._global(expression.value.id, namespace, tree)
-            if type(provider) is not ModuleType:
-                msg = "native compiler decorator has no exact module binding"
+        match expression:
+            case ast.Name(id=name):
+                value = self._global(name, namespace, tree)
+            case ast.Attribute(value=ast.Name(id=name), attr=attribute):
+                provider = self._global(name, namespace, tree)
+                if type(provider) is not ModuleType:
+                    msg = "native compiler decorator has no exact module binding"
+                    raise TypeError(msg)
+                value = vars(provider).get(attribute)
+            case _:
+                msg = "native compiler decorator has no closed imported binding"
                 raise ValueError(msg)
-            value = vars(provider).get(expression.attr)
-        else:
-            msg = "native compiler decorator has no closed imported binding"
-            raise ValueError(msg)
         if type(value) is not FunctionType:
             msg = "native compiler decorator is not a physical Python function"
             raise TypeError(msg)
@@ -463,8 +480,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         future = [
             node
             for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            and node.module == "__future__"
+            if isinstance(node, ast.ImportFrom) and node.module == "__future__"
         ]
         if not any(
             alias.name == "annotations" for node in future for alias in node.names
@@ -492,9 +508,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             dont_inherit=True,
             optimize=sys.flags.optimize,
         )
-        annotation = next(
-            value for value in compiled.co_consts if type(value) is str
-        )
+        annotation = next(value for value in compiled.co_consts if type(value) is str)
         if type(annotation) is not str:
             msg = "native compiler did not emit an exact annotation string"
             raise TypeError(msg)
@@ -516,7 +530,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         """
         namespace = vars(type)["__dict__"].__get__(owner, type(owner))
         module_name = self._witness.module.get_name()
-        if namespace.get("__module__") != module_name:
+        if not self._same_default(module_name, namespace.get("__module__")):
             msg = "native dataclass owner differs from its physical source module"
             raise ValueError(msg)
         source_globals = vars(self._module(module_name))
@@ -554,13 +568,46 @@ class FlextInfraWorkspaceGeneratedFunction:
         Returns:
             The compiler admission failure until every consumed SDK guard is closed.
 
+        Raises:
+            TypeError: If an observed compiler callable has a foreign native type.
+
         """
+        if type(value) is not FunctionType:
+            msg = "native dataclass emission is not an exact Python function"
+            raise TypeError(msg)
+        self._dataclass_sdk(factory[0])
         self._dataclass_inputs(owner, declaration)
         self._inputs_current("native dataclass compiler input changed")
         return r[m.Infra.NativeGeneratedFunctionProof].fail(
             "native dataclass SDK emission is not admitted: "
             f"{self._tuple_constructor_diagnostic(owner, attribute, self._witness)}"
         )
+
+    def _dataclass_sdk(self, factory: FunctionType) -> None:
+        """Authenticate the selected SDK entry and its physical class processor.
+
+        This proves these callable bindings without executing either one. The
+        processor's consumed helpers and receiver inputs need their own proof
+        before SDK emission is admitted.
+
+        Raises:
+            TypeError: If the processor binding is not an exact Python function.
+            ValueError: If the selected entry or processor has a foreign namespace.
+
+        """
+        _declaration, _tree, namespace = self._function(factory)
+        compiler = self._module("dataclasses")
+        if namespace is not vars(compiler) or namespace.get("dataclass") is not factory:
+            msg = "native dataclass SDK entry has a foreign execution namespace"
+            raise ValueError(msg)
+        processor = namespace.get("_process_class")
+        if type(processor) is not FunctionType:
+            msg = "native dataclass class processor is not a physical Python function"
+            raise TypeError(msg)
+        if processor.__globals__ is not namespace:
+            msg = "native dataclass class processor has foreign globals"
+            raise ValueError(msg)
+        self._function(processor)
 
     @staticmethod
     def _tuple_constructor_diagnostic(
