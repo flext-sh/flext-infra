@@ -14,7 +14,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeTypes,

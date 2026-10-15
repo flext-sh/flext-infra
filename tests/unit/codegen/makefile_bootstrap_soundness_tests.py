@@ -254,8 +254,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             u.Tests.run_isolated_make(arguments, cwd=caller, env=context_env),
         )
         tm.that(
-            observed.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(observed.outcome),
+            eq=True,
             msg=observed.stdout + observed.stderr,
         )
         context = m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
@@ -271,8 +271,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(context.environment_path, eq=environment)
         tm.that(context.resolution_root, eq=resolution)
         tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stdout + process.stderr,
         )
         tm.that(process.stdout, has=f"physical-runtime-root={physical}\n")
@@ -307,8 +307,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             ),
         )
         tm.that(
-            created.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(created.outcome),
+            eq=True,
             msg=created.stdout + created.stderr,
         )
 
@@ -353,8 +353,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             ),
         )
         tm.that(
-            observed.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(observed.outcome),
+            eq=True,
             msg=observed.stdout + observed.stderr,
         )
         return m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
@@ -429,8 +429,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             f"resolution={context.resolution_root} hosted={context.standalone}\n",
         )
         tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stdout + process.stderr,
         )
         tm.that(process.stdout, has=f"elected-root={elected.resolve()}\n")
@@ -496,8 +496,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             ),
         )
         tm.that(
-            provisioned.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(provisioned.outcome),
+            eq=True,
             msg=provisioned.stdout + provisioned.stderr,
         )
         tm.that(environment.is_symlink(), eq=False)
@@ -510,8 +510,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         process = tm.ok(u.Tests.run_isolated_make(["help"], cwd=project))
         tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stdout + process.stderr,
         )
         tm.that(process.stdout, has=f"independent-root={project.resolve()}\n")
@@ -566,8 +566,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         baseline = tm.ok(u.Tests.run_isolated_make(["help"], cwd=project))
         tm.that(
-            baseline.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(baseline.outcome),
+            eq=True,
             msg=baseline.stdout + baseline.stderr,
         )
         tm.that(baseline.stdout, has="nested-help-executed")
@@ -804,8 +804,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
 
         tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stdout + process.stderr,
         )
         native_paths: set[Path] = set()
@@ -878,8 +878,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             tm.that(process.stdout, lacks="physical-invoker=")
         else:
             tm.that(
-                process.outcome.raw_return_code,
-                eq=0,
+                u.Cli.process_succeeded(process.outcome),
+                eq=True,
                 msg=process.stdout + process.stderr,
             )
             tm.that(process.stdout, has=f"physical-invoker={binary}\n")

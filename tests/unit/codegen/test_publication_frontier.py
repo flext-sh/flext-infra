@@ -222,7 +222,7 @@ else:
             eq=str(cause),
         )
         with pytest.raises(m.ValidationError):
-            setattr(receipt, "error", "")
+            receipt.error = ""
         with pytest.raises(m.ValidationError):
             m.Infra.CodegenPhaseOutcome.model_validate({"unowned": True})
 

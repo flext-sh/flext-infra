@@ -212,13 +212,36 @@ tm.that(published.error or "", has=str(local_layer))
             str(tmp_path),
         )
 
-    @staticmethod
+    def test_batch_captures_optional_configuration_absence(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The conform batch keeps the optional layer's absence as a source fact."""
+        workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+        _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
+            workspace,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        generator = self._generator(workspace)
+        prepared = tm.ok(next(generator.prepare_batches()))
+        captured = next(
+            state for state in prepared.source_states if state.path == local_layer
+        )
+        tm.that(captured.content, eq=None)
+        local_layer.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.yaml_dump(local_layer, {"Infra": {"codegen": {}}}))
+
+        published = generator.publish_batch(prepared)
+
+        tm.fail(published)
+        tm.that(published.error or "", has=str(local_layer))
+
     def test_publication_rejects_source_topology_addition_after_bundle(
-        native_consumer: p.Tests.NativeConsumer,
+        self: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
         """Reject a newly consumed source that was absent from the frozen inventory."""
-        native_consumer(
+        self(
             _DOCS_CONSUMER_SOURCE
             + r'''workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 generator = case._generator(workspace)

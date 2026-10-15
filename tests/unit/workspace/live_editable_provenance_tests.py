@@ -111,8 +111,8 @@ class TestsLiveEditableProvenance:
             ),
         )
         tm.that(
-            observation.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(observation.outcome),
+            eq=True,
             msg=observation.stdout + observation.stderr,
         )
         lines = observation.stdout.splitlines()
@@ -132,7 +132,7 @@ class TestsLiveEditableProvenance:
         package = u.Infra.project_package_name(member)
         module = member / "src" / package / "live_probe.py"
         before = self._verify(root)
-        tm.that(before.outcome.raw_return_code, eq=0, msg=before.stderr)
+        tm.that(u.Cli.process_succeeded(before.outcome), eq=True, msg=before.stderr)
         gitlink_before = u.Tests.git_capture(
             root,
             "rev-parse",
@@ -171,8 +171,8 @@ class TestsLiveEditableProvenance:
         )
         after = self._verify(root)
         tm.that(
-            after.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(after.outcome),
+            eq=True,
             msg=after.stdout + after.stderr,
         )
 
@@ -186,7 +186,7 @@ class TestsLiveEditableProvenance:
         root, members = self._workspace(tmp_path)
         member = members[0]
         baseline = self._verify(root)
-        tm.that(baseline.outcome.raw_return_code, eq=0, msg=baseline.stderr)
+        tm.that(u.Cli.process_succeeded(baseline.outcome), eq=True, msg=baseline.stderr)
         if defect == "origin":
             u.Tests.git_run(
                 member,

@@ -93,7 +93,7 @@ class FlextInfraTypesBase:
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
     type NativeCode = _CodeType
-    "Exact interpreter code identity accepted by disassembly and marshal."
+    "Exact interpreter code identity accepted by disassembly and native encoding."
     type NativeBuiltinCallable = _BuiltinFunctionType | _MethodWrapperType
     "The two interpreter callable types with native receiver metadata."
     type NativeDescriptor = (

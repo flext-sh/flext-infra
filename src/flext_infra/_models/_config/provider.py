@@ -80,11 +80,10 @@ class FlextInfraConfigModelsProvider:
         lane_governance_file: Annotated[
             Path | None,
             m.Field(
-                default=None,
                 description="Explicit host coordination SSOT, unavailable when "
                 "undeclared",
             ),
-        ]
+        ] = None
         ci_trigger_branches: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(

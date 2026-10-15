@@ -234,7 +234,11 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"whole-catalog correspondence failure: {exc}; "
                 "accepted writes retained; no rollback performed\n"
             )
-            return outcome if outcome.failure else r[t.Cli.ResultValue].fail(str(exc))
+            return (
+                outcome
+                if outcome.failure
+                else r[t.Cli.ResultValue].fail(str(exc), exception=exc)
+            )
         cli.display_text(
             f"ast: whole-catalog before={before.findings} "
             f"after={after.findings}; "

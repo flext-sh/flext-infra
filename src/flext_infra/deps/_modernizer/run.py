@@ -192,7 +192,8 @@ class FlextInfraPyprojectModernizerRun:
         """Resolve the requested Git reference migration options.
 
         Returns:
-            Zero or one resolved migration, or the first option validation failure.
+            The resolved migration, ``None`` when none is requested, or the
+            first option validation failure.
 
         """
         result_type = r[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]

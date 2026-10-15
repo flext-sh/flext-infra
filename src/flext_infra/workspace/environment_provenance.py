@@ -21,9 +21,6 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra._utilities._pyproject.document import (
-    FlextInfraUtilitiesPyprojectDocument,
-)
 from flext_infra.workspace import (
     FlextInfraFlextBindingService,
     FlextInfraWorkspaceDetector,
@@ -180,7 +177,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 "member producer declaration differs from its RECORD: "
                 f"{repository.distribution}",
             )
-        producer = FlextInfraUtilitiesPyprojectDocument.parsed_pyproject(
+        producer = u.Infra.parsed_pyproject(
             state.content.decode(c.DEFAULT_ENCODING),
         )
         if producer.failure:
@@ -204,7 +201,12 @@ class FlextInfraWorkspaceEnvironmentProvenance:
 
     @staticmethod
     def module_source(module_name: str) -> p.Result[Path]:
-        """Observe native module origin; the isolated import authenticates election."""
+        """Observe native module origin; the isolated import authenticates election.
+
+        Returns:
+            The resulting ``p.Result[Path]``.
+
+        """
         module = modules.get(module_name)
         if module is None:
             return r[Path].fail(
@@ -244,7 +246,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 )
             if len(locations) != 1:
                 return r[Path].fail(
-                    f"producer namespace requires explicit multiple physical origins: {module_name}={tuple(locations)}",
+                    f"producer namespace requires explicit multiple physical origins: "
+                    f"{module_name}={tuple(locations)}",
                 )
             root = Path(locations[0]).absolute()
             physical = u.Cli.atomic_plan_directory_chain(root)
@@ -271,7 +274,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 base
             ) or not origin.resolve().is_relative_to(standard):
                 return r[Path].fail(
-                    f"producer standard library differs from interpreter base: {module_name}"
+                    f"producer standard library differs from interpreter base: "
+                    f"{module_name}"
                 )
         return r[Path].ok(origin)
 
@@ -1150,7 +1154,12 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         payload: m.Infra.DirectUrlReceipt,
         expected_root: Path,
     ) -> p.Result[int]:
-        """Bind one parsed editable receipt to its declared physical source."""
+        """Bind one parsed editable receipt to its declared physical source.
+
+        Returns:
+            The resulting ``p.Result[int]``.
+
+        """
         parsed = urlparse(payload.url)
         if (
             parsed.scheme != "file"

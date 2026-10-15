@@ -818,7 +818,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     retained,
                 )
                 if isinstance(information, p.Infra.RopeFromImport)
-                else cls._normal_import(retained)
+                else cls.normal_import(retained)
             )
             rewrites.append(
                 m.Infra.SourceRewrite(
@@ -1252,7 +1252,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 imported = (
                     runtime.from_import(statement.module_name, statement.level, aliases)
                     if isinstance(statement, p.Infra.RopeFromImport)
-                    else cls._normal_import(aliases)
+                    else cls.normal_import(aliases)
                 )
                 required.append(imported)
         return tuple(required), dependencies
@@ -1267,6 +1267,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             Every native import record of the module, top-level and guarded.
+
+        Raises:
+            ValueError: If native import records differ from their lexical occurrences;
+                or if native import token has no enclosing logical statement.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1334,7 +1338,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         return tuple(selected)
 
     @staticmethod
-    def _normal_import(
+    def normal_import(
         aliases: t.VariadicTuple[t.Pair[str, str | None]],
     ) -> p.Infra.RopeImportInfo:
         information = FlextInfraUtilitiesRopeRuntimeRefactors.runtime_callable(

@@ -10,7 +10,6 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
 from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
@@ -43,7 +42,7 @@ if TYPE_CHECKING:
         def preserve_layout(self) -> bool: ...
 
 
-class RenderPolicy(FlextInfraModelsBase.FrozenArbitrary):
+class RenderPolicy(m.Infra.FrozenArbitrary):
     """Keyword policy for one document render and optional durable write."""
 
     dry_run: bool = m.Field(description="Skip the durable write when set.")

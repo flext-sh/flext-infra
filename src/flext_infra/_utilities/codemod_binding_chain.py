@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import ClassVar, Protocol
 
 from flext_infra import c, m, p, t
-from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesRopeRuntime,
@@ -36,7 +35,7 @@ from flext_infra._utilities._semantic_cutover import (
 )
 
 
-class _ChainDeclarationContext(FlextInfraModelsBase.FrozenArbitrary):
+class _ChainDeclarationContext(m.Infra.FrozenArbitrary):
     """Declaration chase inputs for one assigned binding value."""
 
     project: p.Infra.RopeProject = m.Field(

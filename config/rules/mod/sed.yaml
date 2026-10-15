@@ -451,18 +451,6 @@ rules:
     include: [src/flext_infra/_models/_config/repository.py]
     find: '(?ms)^    class ManagedGitlinkSpec\(FlextInfraConfigModelsContract\.ConfigContract\):\n.*?(?=^    class ScriptDispatchSpec\()'
     replace: ''
-  - id: make-retire-generated-gitlink-membership-variable
-    description: Submodule provisioning observes Git declarations directly in every mode.
-    include: [src/flext_infra/templates/project/base/Makefile.j2]
-    find: '^MANAGED_GITLINKS :=.*\n'
-    replace: ''
-    flags: [MULTILINE]
-  - id: make-document-live-git-provisioning-authority
-    description: Explain traversal projection separately from the Git provisioning authority.
-    include: [src/flext_infra/templates/project/base/Makefile.j2]
-    find: '^# Computed: MANAGED_GITLINKS mirrors the read-only local \.gitmodules topology\.$'
-    replace: '# Computed: traversal projects observed members; provisioning reads local .gitmodules.'
-    flags: [MULTILINE]
   - id: make-retire-obsolete-generated-membership-assertion
     description: Real generated Make provisioning now proves membership discovery through Git.
     include: [tests/unit/codegen/test_gen_respects_invocation_scope.py]

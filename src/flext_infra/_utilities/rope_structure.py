@@ -172,6 +172,9 @@ class FlextInfraUtilitiesRopeStructure:
         Returns:
             The resulting ``c.Infra.StatementCategory``.
 
+        Raises:
+            TypeError: If Rope Worder does not expose native annotation boundaries.
+
         """
         head = FlextInfraUtilitiesRopeStructure._assignment_head(stripped)
         if head is not None:
