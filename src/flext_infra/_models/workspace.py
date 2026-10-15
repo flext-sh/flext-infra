@@ -21,7 +21,6 @@ from flext_infra._models import (
 from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
-from flext_infra._models.rope import FlextInfraModelsRope
 
 
 class FlextInfraModelsWorkspace:
@@ -58,7 +57,7 @@ class FlextInfraModelsWorkspace:
     class NativeGeneratedFunctionProof(m.ArbitraryTypesModel):
         """Source-derived generated code and every consulted physical input."""
 
-        code: p.Infra.NativeCodeIdentity = m.Field(
+        code: t.Infra.NativeCode = m.Field(
             description="Expected compiler code extracted without executing it",
         )
         globals: t.MappingKV[str, p.AttributeProbe] = m.Field(
@@ -176,6 +175,55 @@ class FlextInfraModelsWorkspace:
             default=(),
             description="Observable native cache state kept separate from "
             "executable links",
+        )
+
+    class NativeObservationContext(m.ArbitraryTypesModel):
+        """Mutable native observations owned by one source-capture invocation."""
+
+        paths: t.VariadicTuple[t.Pair[Path, Path]] = m.Field(
+            description="Physical source relocation pairs for this observation",
+        )
+        origins: t.DictKV[str, Path] = m.Field(
+            default_factory=dict,
+            description="Native module source elections observed during this capture",
+        )
+        module_anchors: t.DictKV[str, t.Infra.NativeOperand] = m.Field(
+            default_factory=dict,
+            description="Strong native identities of elected module anchors",
+        )
+        sources: set[t.Triple[str, str, str]] = m.Field(
+            default_factory=set,
+            description="Observed suppliers and physical declaration sources",
+        )
+        evidence: list[FlextInfraModelsWorkspace.NativeBindingEvidence] = m.Field(
+            default_factory=list,
+            description="Ordered native binding and executable observations",
+        )
+        generated_owners: t.DictKV[
+            int, t.Triple[str, str, p.AttributeProbe | None]
+        ] = m.Field(
+            default_factory=dict,
+            description="Strongly retained generated function source receivers",
+        )
+        references: list[t.Pair[str, t.Infra.NativeOperand]] = m.Field(
+            default_factory=list,
+            description="Native operand registrations awaiting graph traversal",
+        )
+        pending: list[t.Quad[str, t.Infra.NativeOperand, str, str]] = m.Field(
+            default_factory=list,
+            description="Ordered native graph work awaiting first-identity admission",
+        )
+        compiled: t.DictKV[Path, t.Infra.NativeClassDeclarations] = m.Field(
+            default_factory=dict,
+            description="Immutable class compiler facts within this observation",
+        )
+        lexical: bool = m.Field(
+            default=False,
+            description="Whether the validated nominations select lexical bindings",
+        )
+        binding_context: str = m.Field(
+            default="",
+            description="Current native edge and identity labels for diagnostics",
         )
 
     class NativeImportObservation(m.Value):

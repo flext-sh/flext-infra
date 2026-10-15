@@ -250,10 +250,22 @@ class FlextInfraImportNormalizationPlacementMixin(
                         continue
                     bound = alias.asname or alias.name.partition(".")[0]
                     existing = pending.setdefault(bound, node)
-                    if existing is not node and not cls._binds_same(
-                        existing,
-                        node,
-                        alias,
+                    # Dotted imports load distinct modules but bind one root
+                    # package without an alias. Keep every module import.
+                    shared_package = (
+                        isinstance(existing, ast.Import)
+                        and isinstance(node, ast.Import)
+                        and alias.asname is None
+                        and any(
+                            other.asname is None
+                            and other.name.partition(".")[0] == bound
+                            for other in existing.names
+                        )
+                    )
+                    if (
+                        existing is not node
+                        and not shared_package
+                        and not cls._binds_same(existing, node, alias)
                     ):
                         msg = (
                             f"{state.scope.file_path}: conflicting inline import "

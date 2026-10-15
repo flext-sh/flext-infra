@@ -114,7 +114,8 @@ class TestsFlextInfraSourceIntrospectionBoundary:
                 (
                     "from pathlib import Path\n"
                     'artifact = Path("generated.txt")\n'
-                    'assert artifact.read_text(encoding="utf-8") == "generated output"\n'
+                    'assert artifact.read_text(encoding="utf-8") '
+                    '== "generated output"\n'
                 ),
                 0,
             ),

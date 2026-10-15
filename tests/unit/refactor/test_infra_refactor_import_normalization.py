@@ -1028,16 +1028,6 @@ class TestsFlextInfraRefactorImportNormalization:
             ),
             eq=None,
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
-        tm.that(outcome.stdout.strip(), eq="validated-value")
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=module,
-                source=module.read_text(encoding="utf-8"),
-            ),
-            eq=None,
-        )
 
     @classmethod
     def test_nested_config_models_are_family_sources_not_layer_zero(

@@ -597,7 +597,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         consumer_root = tmp_path / "scaffold-consumer"
         consumer_root.mkdir()
         consumer = tm.ok(
-            u.Cli.run_checked(
+            u.Cli.run_raw(
                 [
                     sys.executable,
                     "-c",
@@ -615,4 +615,5 @@ class TestsFlextInfraCodegenPackagedDataWheel:
                 cwd=consumer_root,
             ),
         )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True, msg=consumer.stderr)
         tm.that(consumer.stdout.strip(), eq="True")

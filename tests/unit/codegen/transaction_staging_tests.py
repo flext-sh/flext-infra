@@ -911,8 +911,8 @@ class TestsFlextInfraTransactionStaging:
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(
                     directories=(),
+                    staged_validator=staged,
                 ),
-                staged_validator=staged,
             )
 
         outcome = owner.run_files_locked(roots, publish)

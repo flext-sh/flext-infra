@@ -41,37 +41,37 @@ class _ResolutionViewState(m.ArbitraryTypesModel):
     policy: m.Infra.MakeUvResolutionSpec = m.Field(
         description="Declared resolution policy owning member naming.",
     )
-    native_uv: t.MutableJsonMapping = m.Field(
+    native_uv: t.JsonDict = m.Field(
         description="Detached root ``[tool.uv]`` table under projection.",
     )
-    view_project: t.MutableJsonMapping = m.Field(
+    view_project: t.JsonDict = m.Field(
         description="Generated virtual project table, empty when absent.",
     )
-    dependencies: t.MutableJsonList = m.Field(
+    dependencies: t.JsonValueList = m.Field(
         description="Root dependency requests in declaration order.",
     )
-    member_bindings: t.MutableJsonList = m.Field(
+    member_bindings: t.JsonValueList = m.Field(
         description="Member dependency requests in declaration order.",
     )
-    extras: t.MutableJsonMapping = m.Field(
+    extras: t.JsonDict = m.Field(
         description="View optional-dependency groups by target name.",
     )
-    groups: t.MutableJsonMapping = m.Field(
+    groups: t.JsonDict = m.Field(
         description="View dependency groups by target name.",
     )
-    group_metadata: t.MutableJsonMapping = m.Field(
+    group_metadata: t.JsonDict = m.Field(
         description="Renamed group metadata keyed by target name.",
     )
-    sources: t.MutableJsonMapping = m.Field(
+    sources: t.JsonDict = m.Field(
         description="Context-qualified source entries by dependency name.",
     )
-    index_entries: t.MutableJsonMapping = m.Field(
+    index_entries: t.JsonDict = m.Field(
         description="Conflict-checked index declarations by identity.",
     )
-    constraints: t.MutableJsonList = m.Field(
+    constraints: t.JsonValueList = m.Field(
         description="Constraints preserving replaced local sources.",
     )
-    retained_overrides: t.MutableJsonList = m.Field(
+    retained_overrides: t.JsonValueList = m.Field(
         description="Declared overrides with member requests appended.",
     )
     overridden: MutableSet[str] = m.Field(
@@ -330,7 +330,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         declared_groups = cls._resolution_declared_groups(payload, project_uv)
         renamed = cls._resolution_group_targets(state, declared_groups, name, root=root)
         if renamed.failure:
-            return renamed
+            return r[bool].from_failure(renamed)
         project_sources = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             project_uv.get("sources", {}),
         )
@@ -340,12 +340,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
             state, project, optional, name, root=root
         )
         if resolved.failure:
-            return resolved
-        phases: tuple[tuple[str, list[t.Triple[str, t.StrSequence, str]]], ...] = (
+            return r[bool].from_failure(resolved)
+        phases: t.VariadicTuple[
+            t.Pair[str, t.SequenceOf[t.Triple[str, t.StrSequence, str]]]
+        ] = (
             (
                 "extra",
                 [
-                    (target, optional_names, extra)
+                    (target, tuple(optional_names), extra)
                     for extra, (target, optional_names) in resolved.value.items()
                 ],
             ),
@@ -425,11 +427,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         return {
-            FlextInfraUtilitiesDependencies.dep_name(entry)
+            name
             for entry in t.Cli.JSON_LIST_ADAPTER.validate_python(
                 state.native_uv.get("override-dependencies", []),
             )
             if isinstance(entry, str)
+            and (name := FlextInfraUtilitiesDependencies.dep_name(entry)) is not None
         }
 
     @classmethod
@@ -534,7 +537,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             The declared groups mapped to their view-level target names.
 
         """
-        renamed = {
+        renamed: dict[str, str] = {
             canonicalize_name(group): (
                 group if root else f"{name}{state.policy.member_group_separator}{group}"
             )
@@ -620,9 +623,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 selected.append(cls._resolution_requirement(requirement, project))
             state.extras[target] = selected
             optional_names = {
-                FlextInfraUtilitiesDependencies.dep_name(requirement)
+                dependency
                 for requirement in selected
                 if isinstance(requirement, str)
+                and (
+                    dependency := FlextInfraUtilitiesDependencies.dep_name(requirement)
+                )
+                is not None
             }
             resolved[extra] = (target, optional_names)
         return failure.ok(resolved)

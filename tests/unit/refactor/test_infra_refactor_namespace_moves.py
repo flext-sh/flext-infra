@@ -106,7 +106,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             snapshot = u.Infra.snapshot_project(
                 workspace.rope_project,
                 sources,
-                captured=m.Infra.CodemodBindingSnapshot(states=states),
+                captured=u.Infra.codemod_source_epoch(
+                    m.Infra.CodemodBindingSnapshot(states=states)
+                ),
                 declared_files=(declaration,),
             )
             try:
@@ -160,16 +162,16 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         snapshot = FlextInfraRopeProject.from_snapshot(
             str(root),
             {
-                source: source.read_text(encoding=c.DEFAULT_ENCODING),
-                provider: tm.not_none(provider_state.content).decode(
-                    c.DEFAULT_ENCODING,
-                ),
+                source: source.read_bytes(),
+                provider: tm.not_none(provider_state.content),
             },
             source_folders=(package.relative_to(root).as_posix(),),
             python_path_folders=(str(provider_root),),
         )
         try:
-            resource = tm.not_none(snapshot.find_module(provider.stem))
+            resource = u.Infra.require_file_resource(
+                tm.not_none(snapshot.find_module(provider.stem)), provider
+            )
             tm.that(resource.read(), eq=original)
             tm.that(
                 snapshot

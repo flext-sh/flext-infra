@@ -869,7 +869,7 @@ class TestsFlextInfraDeclarationRelocation:
                 )
             )
 
-        def consume() -> p.Result[bool]:
+        def consume(candidate_root: Path) -> p.Result[bool]:
             result = u.Cli.run(
                 (
                     sys.executable,
@@ -884,8 +884,14 @@ class TestsFlextInfraDeclarationRelocation:
                         "{'count': 4}"
                     ),
                 ),
-                cwd=root,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+                cwd=candidate_root,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "PYTHONPATH": str(
+                            candidate_root / package.parent.relative_to(root)
+                        ),
+                    },
+                ),
             )
             if result.failure:
                 return r[bool].from_failure(result)
@@ -900,7 +906,7 @@ class TestsFlextInfraDeclarationRelocation:
         )
         if accepted:
             tm.ok(result)
-            tm.that(tm.ok(consume()), eq=True)
+            tm.that(tm.ok(consume(root)), eq=True)
             with infra.rope_workspace(root) as rope:
                 tm.that(
                     tm.ok(

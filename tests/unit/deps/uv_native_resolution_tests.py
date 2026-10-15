@@ -1210,7 +1210,9 @@ class TestsFlextInfraUvNativeResolution:
             u.Tests.toml_strings(
                 groups[
                     root_name
-                    + config.Infra.codegen.make.uv_resolution.virtual_distribution_suffix
+                    + (
+                        config.Infra.codegen.make.uv_resolution
+                    ).virtual_distribution_suffix
                 ]
             ),
             eq=(member_name + ("[feature]" if declares_extras else ""),),

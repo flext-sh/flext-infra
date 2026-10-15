@@ -33,11 +33,11 @@ class TestsFlextInfraSymbolicTextCutover:
         source: str,
         *,
         expression: str,
-        expected: str | None,
-        runtime_output: str,
+        proof: t.Pair[str | None, str],
         scope_name: str | None = None,
     ) -> None:
         """Compare real execution with the public closed native binding owner."""
+        expected, runtime_output = proof
         consumer = root / "scope_consumer.py"
         consumer.write_text(source, encoding="utf-8")
         output = tm.ok(
@@ -61,13 +61,10 @@ class TestsFlextInfraSymbolicTextCutover:
         snapshot = u.Infra.codemod_binding_snapshot(
             root,
             (state,),
-            source_demands={
-                state.path: u.Infra.codemod_source_import_demands(
-                    tm.not_none(state.content),
-                ),
-            },
         )
-        with u.Infra.codemod_binding_project(root, snapshot) as (project, _sources):
+        with u.Infra.codemod_binding_project(
+            root, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, _sources):
             module = project.get_pymodule(project.get_resource(consumer.name))
             module_scope = tm.not_none(module.get_scope())
             scope = module_scope
@@ -170,8 +167,7 @@ class TestsFlextInfraSymbolicTextCutover:
             mod_workspace,
             source,
             expression="Alias.ERROR" if binding == "function" else "Holder.Alias.ERROR",
-            expected="First.ERROR" if proven else None,
-            runtime_output=runtime_output,
+            proof=("First.ERROR" if proven else None, runtime_output),
             scope_name="observed" if binding == "function" else None,
         )
 
@@ -202,8 +198,7 @@ class TestsFlextInfraSymbolicTextCutover:
             f"class Holder:\n{imported}"
             "print(Holder.Alias.ERROR)\n",
             expression="Holder.Alias.ERROR",
-            expected="provider.ImportedChoice.ERROR",
-            runtime_output="provider",
+            proof=("provider.ImportedChoice.ERROR", "provider"),
         )
 
     @classmethod
@@ -240,8 +235,7 @@ class TestsFlextInfraSymbolicTextCutover:
             + body
             + "except NameError as error:\n    print(type(error).__name__)\n",
             expression="Holder.Alias.ERROR",
-            expected=None,
-            runtime_output=NameError.__name__,
+            proof=(None, NameError.__name__),
             scope_name="observed",
         )
 
@@ -269,8 +263,7 @@ class TestsFlextInfraSymbolicTextCutover:
             "Holder = observed()\n"
             "print(Holder.Alias.ERROR)\n",
             expression="Holder.Alias.ERROR",
-            expected="First.ERROR",
-            runtime_output="global",
+            proof=("First.ERROR", "global"),
             scope_name="observed",
         )
 
@@ -290,8 +283,7 @@ class TestsFlextInfraSymbolicTextCutover:
             "    Alias = Chosen\n"
             "print(Holder.Alias.ERROR)\n",
             expression="Holder.Alias.ERROR",
-            expected=None,
-            runtime_output="global",
+            proof=(None, "global"),
         )
 
     @classmethod
@@ -313,8 +305,7 @@ class TestsFlextInfraSymbolicTextCutover:
             "Holder = outer()\n"
             "print(Holder.Alias.ERROR)\n",
             expression="Holder.Alias.ERROR",
-            expected="First.ERROR",
-            runtime_output="outer",
+            proof=("First.ERROR", "outer"),
             scope_name="observed",
         )
 

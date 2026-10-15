@@ -1681,7 +1681,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             build = u.Tests.toml_mapping(hatch.get("build", {}))
             targets = u.Tests.toml_mapping(build.get("targets", {}))
             wheel = u.Tests.toml_mapping(targets.get("wheel", {}))
-            declared_wheel = {**wheel, "packages": declarations}
+            declared_wheel: t.JsonDict = {**wheel, "packages": declarations}
             if layout == "hatch-sources":
                 declared_wheel = {
                     key: value
