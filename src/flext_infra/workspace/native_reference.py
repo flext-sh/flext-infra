@@ -423,45 +423,11 @@ class FlextInfraWorkspaceNativeReference:
             state=captured.value,
             module=native,
             code=compiled,
-            scopes=cls._source_scopes(root),
             statements=u.Infra.logical_statements(native.source_code),
             finder=u.Infra.semantic_finder(native),
         )
         witnesses[name] = witness
         return r[m.Infra.NativeSourceWitness].ok(witness)
-
-    @staticmethod
-    def _source_scopes(
-        root: p.Infra.RopeScope,
-    ) -> t.MappingKV[str, p.Infra.RopeScope]:
-        """Index the native declaration scopes in their original traversal order.
-
-        Returns:
-            Source-qualified scope identities belonging to the captured module.
-
-        Raises:
-            ValueError: A declaration has no unique source identity.
-
-        """
-        scopes: dict[str, p.Infra.RopeScope] = {"": root}
-        pending = [("", root)]
-        while pending:
-            prefix, scope = pending.pop()
-            for child in scope.get_scopes():
-                if child.get_kind() not in {"Class", "Function"}:
-                    continue
-                name = child.pyobject.get_name()
-                if type(name) is not str or not name:
-                    msg = "Native declaration scope has no source identity"
-                    raise ValueError(msg)
-                separator = ".<locals>." if scope.get_kind() == "Function" else "."
-                qualified = f"{prefix}{separator}{name}" if prefix else name
-                if qualified in scopes:
-                    msg = f"Native source declaration is ambiguous: {qualified}"
-                    raise ValueError(msg)
-                scopes[qualified] = child
-                pending.append((qualified, child))
-        return scopes
 
     @staticmethod
     def _witnesses_current(
@@ -510,8 +476,8 @@ class FlextInfraWorkspaceNativeReference:
                 return result_type.from_failure(captured)
             witness = captured.value
             if receiver is not None:
-                proof = FlextInfraWorkspaceGeneratedFunction.compile_named_tuple(
-                    receiver, attribute, witness
+                proof = cls._compile_generated_receiver(
+                    value, receiver, attribute, witness
                 )
                 break
             module = sys.modules[supplier]
@@ -537,6 +503,32 @@ class FlextInfraWorkspaceNativeReference:
         if proof.failure:
             return result_type.from_failure(proof)
         return result_type.ok((supplier, attribute, proof.value))
+
+    @classmethod
+    def _compile_generated_receiver(
+        cls,
+        value: FunctionType,
+        receiver: p.AttributeProbe,
+        attribute: str,
+        witness: m.Infra.NativeSourceWitness,
+    ) -> p.Result[m.Infra.NativeGeneratedFunctionProof]:
+        """Require the exact observed receiver slot before physical compilation.
+
+        Returns:
+            Its source-derived compiler proof or the first changed native slot.
+
+        """
+        chain = FlextInfraWorkspaceGeneratedFunction.function_chain(
+            cls._class_namespace(receiver).get(attribute)
+        )
+        if not any(candidate is value for candidate in chain):
+            return r[m.Infra.NativeGeneratedFunctionProof].fail(
+                "generated receiver binding differs from its observed function: "
+                f"{witness.source}::{attribute}",
+            )
+        return FlextInfraWorkspaceGeneratedFunction.compile_class_function(
+            value, receiver, attribute, witness
+        )
 
     @classmethod
     def _generated_storage_native(
@@ -575,24 +567,58 @@ class FlextInfraWorkspaceNativeReference:
                 cls._code_evidence(value.__code__),
                 cls._code_evidence(expected.code),
             )
-            or cls._value(value.__defaults__, construction=True)
-            != cls._value(expected.defaults, construction=True)
-            or cls._value(value.__kwdefaults__, construction=True)
-            != cls._value(expected.keyword_defaults, construction=True)
+            or not cls._same_construction(value.__defaults__, expected.defaults)
+            or not cls._same_construction(
+                value.__kwdefaults__, expected.keyword_defaults
+            )
         ):
             return False
         return (
-            cls._value(
+            cls._same_construction(
                 tuple(cell.cell_contents for cell in value.__closure__ or ()),
-                construction=True,
+                expected.closure,
             )
-            == cls._value(expected.closure, construction=True)
-            and cls._value(value.__globals__, construction=True)
-            == cls._value(expected.globals, construction=True)
-            and cls._value(value.__builtins__, construction=True)
-            == cls._value(expected.globals.get("__builtins__"), construction=True)
-            and cls._value(value.__annotations__, construction=True)
-            == cls._value(expected.annotations, construction=True)
+            and cls._same_construction(value.__globals__, expected.globals)
+            and cls._same_construction(
+                value.__builtins__, expected.globals.get("__builtins__")
+            )
+            and cls._same_construction(value.__annotations__, expected.annotations)
+        )
+
+    @classmethod
+    def _same_construction(
+        cls,
+        observed: t.Infra.NativeOperand | None,
+        expected: t.Infra.NativeOperand | None,
+    ) -> bool:
+        """Compare construction inputs, identity first, then native encoding.
+
+        The same object is equal under every deterministic encoding, so it is
+        never re-encoded; exact ``dict`` (string keys) and ``tuple`` containers
+        compare item by item; any other pair compares by native encoding.
+
+        Returns:
+            Whether the observed construction input equals the expected one.
+
+        """
+        if observed is expected:
+            return True
+        if (
+            type(observed) is dict
+            and type(expected) is dict
+            and all(type(key) is str for key in (*observed, *expected))
+        ):
+            return set(observed) == set(expected) and all(
+                cls._same_construction(observed[key], expected[key])
+                for key in expected
+            )
+        if type(observed) is tuple and type(expected) is tuple:
+            return len(observed) == len(expected) and all(
+                cls._same_construction(item, other)
+                for item, other in zip(observed, expected, strict=True)
+            )
+        return cls._value(observed, construction=True) == cls._value(
+            expected, construction=True
         )
 
     @classmethod
@@ -640,17 +666,13 @@ class FlextInfraWorkspaceNativeReference:
     ) -> None:
         """Keep the actual class receiver while traversing native wrappers."""
         for attribute, descriptor in cls._class_namespace(owner).items():
-            value = (
-                descriptor.__func__
-                if cls._is_function_binding(descriptor)
-                else descriptor
-            )
-            if (
-                type(value) is FunctionType
-                and value.__code__.co_filename.startswith("<")
-                and not value.__code__.co_filename.startswith("<frozen ")
+            for function in FlextInfraWorkspaceGeneratedFunction.function_chain(
+                descriptor
             ):
-                owners[id(value)] = (supplier, attribute, owner)
+                if function.__code__.co_filename.startswith(
+                    "<"
+                ) and not function.__code__.co_filename.startswith("<frozen "):
+                    owners[id(function)] = (supplier, attribute, owner)
 
     @classmethod
     def _python_storage_class(cls, native: t.Infra.NativeType) -> bool:
@@ -3866,7 +3888,10 @@ class FlextInfraWorkspaceNativeReference:
         generated_owner = context.generated_owners.get(id(value))
         if generated_owner is None:
             return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].fail(
-                f"generated function has no physical source owner: {context.binding}",
+                "generated function has no physical source owner: "
+                f"{context.binding_context}; "
+                f"code_filename={value.__code__.co_filename[:160]}; "
+                f"code_qualname={value.__code__.co_qualname[:160]}",
             )
         source_supplier, source_attribute, receiver = generated_owner
         if receiver is not None and not cls._is_class(receiver):
@@ -4303,6 +4328,10 @@ class FlextInfraWorkspaceNativeReference:
                         )
                     receiver = None
                     continue
+                if isinstance(receiver, ModuleType):
+                    supplier = found.get("__name__")
+                    if type(supplier) is str:
+                        cls._module_generated_owners(context, supplier, found)
                 receiver = found[instruction.argval]
                 edge += f".{instruction.argval}"
                 if (

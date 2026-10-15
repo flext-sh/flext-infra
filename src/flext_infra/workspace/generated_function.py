@@ -209,6 +209,249 @@ class FlextInfraWorkspaceGeneratedFunction:
         return local
 
     @classmethod
+    def compile_class_function(
+        cls,
+        value: FunctionType,
+        owner: p.AttributeProbe,
+        attribute: str,
+        witness: m.Infra.NativeSourceWitness,
+    ) -> p.Result[m.Infra.NativeGeneratedFunctionProof]:
+        """Prove one generated class function through its authenticated compiler.
+
+        A stdlib ``dataclasses.dataclass`` declaration is recompiled by that
+        authenticated SDK compiler on a fresh exact ``type`` receiver built from
+        the class's native field storage; any other generated class function is
+        a native tuple constructor. Authored class bodies, bases, metaclasses,
+        decorators, constructors and default factories are never invoked.
+
+        Returns:
+            Source-derived code, metadata and every consulted physical input.
+
+        Raises:
+            ValueError: If the class has no unique physical declaration.
+
+        """
+        engine = cls(witness)
+        namespace = vars(type)["__dict__"].__get__(owner, type(owner))
+        qualified = vars(type)["__qualname__"].__get__(owner, type(owner))
+        if type(qualified) is not str:
+            msg = "generated class has no native qualified source identity"
+            raise ValueError(msg)
+        if engine._tuple_invocation(owner, witness) is None:
+            declaration = engine._tuple_declaration(
+                qualified, namespace, attribute, None
+            )
+            if declaration is None:
+                msg = "generated class has no physical declaration"
+                raise ValueError(msg)
+            factory = engine._dataclass_factory(declaration, namespace)
+            if factory is not None:
+                return engine._compile_dataclass(
+                    value, owner, (attribute, qualified), declaration, factory
+                )
+        return cls.compile_named_tuple(owner, attribute, witness)
+
+    @staticmethod
+    def function_chain(
+        value: t.Infra.NativeOperand | None,
+    ) -> t.VariadicTuple[FunctionType]:
+        """Read a slot function and its raw wrapped functions without hooks.
+
+        Returns:
+            The slot function followed by every raw ``__wrapped__`` function.
+
+        Raises:
+            ValueError: If the raw wrapper chain is cyclic.
+
+        """
+        if type(value) is classmethod or type(value) is staticmethod:
+            value = value.__func__
+        functions: list[FunctionType] = []
+        seen: set[int] = set()
+        while type(value) is FunctionType:
+            if id(value) in seen:
+                msg = "generated receiver function wrapper chain is cyclic"
+                raise ValueError(msg)
+            seen.add(id(value))
+            functions.append(value)
+            value = vars(value).get("__wrapped__")
+        return tuple(functions)
+
+    def _dataclass_factory(
+        self,
+        declaration: ast.ClassDef,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> t.Pair[FunctionType, t.MappingKV[str, p.AttributeProbe | None]] | None:
+        """Elect the sole stdlib dataclass decorator and its closed literal options.
+
+        Returns:
+            The authenticated SDK compiler and its keyword options, or None when
+            the declaration carries no stdlib dataclass decorator.
+
+        Raises:
+            ValueError: If the decorator binding or its options are not closed data.
+
+        """
+        supplier = namespace.get("__module__")
+        if type(supplier) is not str:
+            msg = "generated class has no registered supplier module"
+            raise ValueError(msg)
+        module_namespace = vars(self._module(supplier))
+        tree = self._trees[self._witness.source]
+        dataclasses_module = self._module("dataclasses")
+        compiler = vars(dataclasses_module).get("dataclass")
+        elected: list[ast.expr] = []
+        for decorator in declaration.decorator_list:
+            target = decorator.func if isinstance(decorator, ast.Call) else decorator
+            match target:
+                case ast.Name(id=name) if module_namespace.get(name) is compiler:
+                    expected = compiler
+                case ast.Attribute(
+                    value=ast.Name(id=name), attr="dataclass"
+                ) if module_namespace.get(name) is dataclasses_module:
+                    expected = dataclasses_module
+                case _:
+                    continue
+            if self._global(name, module_namespace, tree) is not expected:
+                msg = "dataclass decorator differs from its physical imported owner"
+                raise ValueError(msg)
+            elected.append(decorator)
+        if not elected:
+            return None
+        if len(elected) != 1 or type(compiler) is not FunctionType:
+            msg = "generated class has no unique stdlib dataclass decorator"
+            raise ValueError(msg)
+        options: dict[str, p.AttributeProbe | None] = {}
+        decorator = elected[0]
+        if isinstance(decorator, ast.Call):
+            if decorator.args or any(
+                keyword.arg is None for keyword in decorator.keywords
+            ):
+                msg = "dataclass decorator options are not closed keyword literals"
+                raise ValueError(msg)
+            options = {
+                keyword.arg: self._tuple_literal(keyword.value)
+                for keyword in decorator.keywords
+                if keyword.arg is not None
+            }
+        return compiler, options
+
+    def _compile_dataclass(
+        self,
+        value: FunctionType,
+        owner: p.AttributeProbe,
+        identity: t.Pair[str, str],
+        declaration: ast.ClassDef,
+        factory: t.Pair[FunctionType, t.MappingKV[str, p.AttributeProbe | None]],
+    ) -> p.Result[m.Infra.NativeGeneratedFunctionProof]:
+        """Recompile one dataclass emission on a fresh exact ``type`` receiver.
+
+        Returns:
+            The emitted function's code, metadata and consulted physical inputs.
+
+        Raises:
+            ValueError: If field storage, options or the emitted chain differ.
+
+        """
+        attribute, qualified = identity
+        compiler, options = factory
+        sdk = vars(self._module("dataclasses"))
+        field_factory = sdk.get("field")
+        for function in (compiler, sdk.get("_process_class"), field_factory):
+            self._function(function)
+        if type(field_factory) is not FunctionType:
+            msg = "dataclass field factory is not an exact Python function"
+            raise ValueError(msg)
+        namespace = vars(type)["__dict__"].__get__(owner, type(owner))
+        fields = namespace.get("__dataclass_fields__")
+        params = namespace.get("__dataclass_params__")
+        if (
+            type(fields) is not dict
+            or type(params) is not sdk.get("_DataclassParams")
+            or any(type(item) is not sdk.get("Field") for item in fields.values())
+        ):
+            msg = "dataclass receiver has no native field storage"
+            raise ValueError(msg)
+        declared = {
+            node.target.id
+            for node in declaration.body
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
+        }
+        if not declared <= set(fields):
+            msg = "dataclass field storage differs from its physical declaration"
+            raise ValueError(msg)
+        receiver: dict[str, p.AttributeProbe | None] = {
+            "__module__": namespace.get("__module__"),
+            "__qualname__": qualified,
+            "__doc__": namespace.get("__doc__"),
+        }
+        annotations: dict[str, p.AttributeProbe] = {}
+        for name, item in fields.items():
+            default = item.default
+            if default is not sdk.get("MISSING") and any(
+                "__set_name__"
+                in vars(type)["__dict__"].__get__(ancestor, type(ancestor))
+                for ancestor in vars(type)["__mro__"].__get__(
+                    type(default), type(type(default))
+                )
+            ):
+                msg = f"dataclass default carries an authored __set_name__: {name}"
+                raise ValueError(msg)
+            annotations[name] = item.type
+            receiver[name] = field_factory(
+                default=default,
+                default_factory=item.default_factory,
+                init=item.init,
+                repr=item.repr,
+                hash=item.hash,
+                compare=item.compare,
+                kw_only=item.kw_only,
+            )
+        receiver["__annotations__"] = annotations
+        for ancestor in vars(type)["__mro__"].__get__(owner, type(owner)):
+            hook = vars(type)["__dict__"].__get__(ancestor, type(ancestor)).get(
+                "__post_init__"
+            )
+            if hook is not None:
+                receiver["__post_init__"] = hook
+                break
+        fresh = type(
+            vars(type)["__name__"].__get__(owner, type(owner)), (object,), receiver
+        )
+        emitted_owner = compiler(fresh, **options)
+        emitted_namespace = vars(type)["__dict__"].__get__(
+            emitted_owner, type(emitted_owner)
+        )
+        if repr(emitted_namespace.get("__dataclass_params__")) != repr(params):
+            msg = "dataclass options differ from the physical declaration"
+            raise ValueError(msg)
+        observed = self.function_chain(namespace.get(attribute))
+        emitted = self.function_chain(emitted_namespace.get(attribute))
+        positions = [index for index, item in enumerate(observed) if item is value]
+        if len(positions) != 1 or len(observed) != len(emitted):
+            msg = "dataclass emission differs from the observed receiver slot"
+            raise ValueError(msg)
+        function = emitted[positions[0]]
+        closure = tuple(
+            owner
+            if cell.cell_contents is emitted_owner or cell.cell_contents is fresh
+            else cell.cell_contents
+            for cell in function.__closure__ or ()
+        )
+        self._inputs_current("dataclass compiler source changed")
+        return r[m.Infra.NativeGeneratedFunctionProof].ok(
+            m.Infra.NativeGeneratedFunctionProof(
+                code=function.__code__,
+                globals=function.__globals__,
+                annotations=dict(function.__annotations__),
+                defaults=function.__defaults__,
+                keyword_defaults=function.__kwdefaults__,
+                closure=closure,
+                inputs=tuple(self._inputs.values()),
+            ),
+        )
+
+    @classmethod
     def compile_named_tuple(
         cls,
         owner: p.AttributeProbe,
@@ -461,7 +704,12 @@ class FlextInfraWorkspaceGeneratedFunction:
             or len(set(names)) != len(names)
             or any(name.startswith("_") for name in names)
         ):
-            msg = "native tuple field layout differs from physical constructor data"
+            module = namespace.get("__module__")
+            msg = (
+                "native tuple field layout differs from physical constructor data: "
+                f"module={module if type(module) is str else '<non-string>'}; "
+                f"declared={names[:16]!r}; observed={observed_fields[:16]!r}"
+            )
             raise ValueError(msg)
 
     def _tuple_code_inputs(
@@ -645,12 +893,17 @@ class FlextInfraWorkspaceGeneratedFunction:
             ("export", "invocation"),
             tuple(aliases),
         )
-        if not matches:
-            return None
-        if len(matches) != 1:
+        tree = self._trees[witness.source]
+        if len(matches) > 1:
             msg = "native tuple has competing physical constructor assignments"
             raise ValueError(msg)
-        call = ast.parse(matches[0]["invocation"], mode="eval").body
+        call = (
+            ast.parse(matches[0]["invocation"], mode="eval").body
+            if matches
+            else self._tuple_base_call(owner, namespace, tree)
+        )
+        if call is None:
+            return None
         match call:
             case ast.Call(args=[first, second]) if (
                 not isinstance(first, ast.Starred)
@@ -663,7 +916,6 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = "native tuple constructor has unsupported invocation inputs"
                 raise ValueError(msg)
         collections = self._module("collections")
-        tree = self._trees[witness.source]
         if isinstance(call.func, ast.Name):
             factory = self._global(call.func.id, namespace, tree)
         elif (
@@ -701,6 +953,45 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "native tuple constructor arguments are not closed string data"
             raise ValueError(msg)
         return typename, fields, defaults
+
+    @staticmethod
+    def _tuple_base_call(
+        owner: p.AttributeProbe,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> ast.expr | None:
+        """Elect the module class whose physical base expression built the tuple.
+
+        ``class TokenInfo(collections.namedtuple("TokenInfo", ...))`` binds no
+        alias to the tuple itself: the registered subclass's native base at the
+        same position as the physical base expression is the only owner proof.
+
+        Returns:
+            The unique physical base expression, or None when no class owns it.
+
+        Raises:
+            ValueError: If more than one module class declares the same base.
+
+        """
+        calls: list[ast.expr] = []
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            declared = namespace.get(node.name)
+            if type(declared) is not type:
+                continue
+            bases = vars(type)["__bases__"].__get__(declared, type(declared))
+            if len(bases) != len(node.bases):
+                continue
+            calls.extend(
+                expression
+                for base, expression in zip(bases, node.bases, strict=True)
+                if base is owner
+            )
+        if len(calls) > 1:
+            msg = "native tuple has competing physical base invocations"
+            raise ValueError(msg)
+        return calls[0] if calls else None
 
     @staticmethod
     def _tuple_literal(node: ast.expr) -> p.AttributeProbe | None:
@@ -1045,6 +1336,18 @@ class FlextInfraWorkspaceGeneratedFunction:
                     ]
                     sentinel = namespace[node.id]
                     match definitions:
+                        case [
+                            ast.ClassDef(
+                                decorator_list=[], bases=[], keywords=[], body=[ast.Pass()]
+                            )
+                        ]:
+                            if (
+                                type(owner) is type
+                                and type(sentinel) is owner
+                                and vars(type)["__bases__"].__get__(owner, type(owner))
+                                == (object,)
+                            ):
+                                return sentinel
                         case [
                             ast.ClassDef(
                                 decorator_list=[],
