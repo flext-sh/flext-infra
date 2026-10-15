@@ -815,23 +815,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Parse the staged replacement before publishing semantic prerequisites.
+        """Parse every staged or retained plan through the real TOML consumer.
 
         Returns:
             The unchanged session or the native TOML parser failure.
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        # A converged surface stages nothing: the transaction still consults the
-        # validator for the unchanged phase, and there is nothing to parse.
-        if not publications:
-            return result_type.ok(session)
-        for publication in publications:
-            if publication.replacement is None:
-                return result_type.fail(
-                    "pyproject bootstrap requires a replacement for every publication",
-                )
-            parsed = u.Cli.toml_read_document(publication.replacement.path)
+        paths = cls._bootstrap_validation_paths(session, publications, plans)
+        if paths.failure:
+            return result_type.from_failure(paths)
+        for path in paths.value:
+            parsed = u.Cli.toml_read_document(path)
             if parsed.failure:
                 return result_type.from_failure(parsed)
         current = FlextInfraMiseArtifactsVerification.plans_current(
@@ -853,17 +848,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Reject invalid staged TOML before the journal publishes its replacement.
+        """Validate staged or retained Mise TOML before completing its phase.
 
         Returns:
             The unchanged session or the exact declaration failure.
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        # A converged .mise.toml stages nothing: the unchanged phase still
-        # consults the validator, and upg must continue past it.
-        if not publications:
-            return result_type.ok(session)
         if len(plans) != 1:
             return result_type.fail("mise-config requires one file plan")
         paths = cls._bootstrap_validation_paths(session, publications, plans)

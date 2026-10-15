@@ -137,7 +137,9 @@ class FlextInfraUtilitiesCodegenFacades:
             if path.is_relative_to(pkg_dir / directory)
             and path.name != c.Infra.INIT_PY
             and "t"
-            in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(content)
+            in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(
+                content, filename=str(path)
+            )
             and any(
                 isinstance(binding, ast.Assign)
                 and isinstance(binding.value, ast.Name)
@@ -196,6 +198,7 @@ class FlextInfraUtilitiesCodegenFacades:
             and family
             in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(
                 module.read_text(encoding=c.DEFAULT_ENCODING),
+                filename=str(module),
             )
         )
         if len(owners) > 1:

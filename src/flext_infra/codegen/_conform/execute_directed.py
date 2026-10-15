@@ -304,7 +304,9 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         if selected_file.desired_content is None:
             return result_type.ok((analysis, None))
         source = selected_file.desired_content.decode(c.DEFAULT_ENCODING)
-        if "t" not in u.Infra.facade_letter_names_source(source):
+        if "t" not in u.Infra.facade_letter_names_source(
+            source, filename=str(selected_file.path)
+        ):
             return result_type.ok((analysis, None))
         candidate = FlextInfraStagedPackage.plan(request.root, selected_file)
         if candidate.failure:

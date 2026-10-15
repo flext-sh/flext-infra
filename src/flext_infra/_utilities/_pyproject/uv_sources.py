@@ -1133,7 +1133,11 @@ class FlextInfraUtilitiesPyprojectUvSources(
             else ()
         )
         local_names = (
-            *((workspace.repository.distribution,) if workspace.repository.package else ()),
+            *(
+                (workspace.repository.distribution,)
+                if workspace.repository.package
+                else ()
+            ),
             *(member.distribution for member in members),
         )
         conflicting = set(local_names) & candidate_sources.keys()
