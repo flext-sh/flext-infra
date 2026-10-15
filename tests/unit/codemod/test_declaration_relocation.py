@@ -43,7 +43,7 @@ class TestsFlextInfraDeclarationRelocation:
             owner: "class ConfigPayload:\n    pass\n",
             base: "class ModelsBase:\n    pass\n",
             family / "__init__.py": (
-                "from flext_core import install_lazy_exports\n"
+                "from flext_core.lazy import install_lazy_exports\n"
                 "install_lazy_exports(__name__, globals(), {\n"
                 "    'ConfigPayload': '.config', 'ModelsBase': '.base',\n"
                 "})\n"

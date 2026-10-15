@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_tests import api, d, e, h, r, td, tf, tk, tm, x
@@ -69,7 +69,6 @@ __all__: tuple[str, ...] = (
     "e",
     "fixtures",
     "h",
-    "integration",
     "m",
     "p",
     "r",
@@ -81,7 +80,6 @@ __all__: tuple[str, ...] = (
     "tk",
     "tm",
     "u",
-    "unit",
     "x",
 )
 
