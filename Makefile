@@ -191,7 +191,7 @@ PYTEST_CACHE_HOME = $(if $(strip $(XDG_CACHE_HOME)),$(XDG_CACHE_HOME),$(if $(str
 override FLEXT_PYTEST_TESTMON_DATABASE = $(if $(strip $(PYTEST_CACHE_HOME)),$(PYTEST_CACHE_HOME)/flext/infra/testmon/$(PROJECT_NAME)/.testmondata)
 # Storage law: the pytest scratch root sits under the user home, keyed by the
 # absolute checkout path, never under /tmp and never inside a versioned tree.
-override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $(HOME)),$(HOME)/tmp/.flext-runtime$(PROJECT_ROOT)/scratch)
+override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $(HOME)),$(HOME)/.local/state/.flext-runtime$(PROJECT_ROOT)/scratch)
 # Profiles sit beside the other reports of this checkout (.reports is ignored).
 PROFILE_REPORTS_DIR = $(PROJECT_ROOT)/$(shell dirname -- "$(PYTEST_REPORTS_DIR)")/profiles
 override PYTEST_RUN_TIMEOUT_SECONDS := 1200

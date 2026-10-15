@@ -485,7 +485,7 @@ Infra:
       # fixture repository created there.
       pytest_scratch:
         user_home_environment_variable: HOME
-        home_relative_directory: tmp
+        home_relative_directory: .local/state
         state_directory_name: .flext-runtime
         namespace: scratch
       # Actions-cache policy for the shared testmon database: two-phase

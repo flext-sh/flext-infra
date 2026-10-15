@@ -81,19 +81,19 @@ class FlextInfraPytestRunnerExecution(
                 msg = "test target has no declared project owner"
                 raise ValueError(msg)
             source_root = target_root
-        inherited_path = u.Cli.process_env().get(
-            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
-        )
-        overrides = {
-            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: os.pathsep.join(
+        overrides: dict[str, str] = {}
+        if not self.ci_context:
+            inherited_path = u.Cli.process_env().get(
+                c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
+            )
+            overrides[c.Infra.ORCHESTRATOR_ENV_PYTHONPATH] = os.pathsep.join(
                 path
                 for path in (
                     str(source_root / c.Infra.DEFAULT_SRC_DIR),
                     inherited_path,
                 )
                 if path
-            ),
-        }
+            )
         if not coverage:
             overrides.update(dict.fromkeys(testmon_keys, str(self.testmon_db)))
         if self.profile_enabled or self.collection_command_prefix:
