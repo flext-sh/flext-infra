@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
@@ -22,7 +23,6 @@ from tests import c, m, p, t, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
-    from pathlib import Path
 
 
 class TestsFlextInfraReleasePublicationLane:
@@ -45,6 +45,29 @@ class TestsFlextInfraReleasePublicationLane:
         repo = u.Tests.git_repository(tmp_path)
         base = u.Tests.checkout_integration(repo)
         u.Tests.configure_local_origin(repo, tmp_path / "remote")
+        manifest = tm.ok(u.Infra.load_workspace_manifest(
+            Path(__file__).resolve().parents[3],
+        ))[0]
+        declared = manifest.model_copy(update={
+            "integration": m.Infra.WorkspaceIntegrationSpec(
+                provider=manifest.repository.provider, branch=base,
+            ),
+        })
+        u.Infra.workspace_manifest_path(repo).parent.mkdir(exist_ok=True)
+        tm.ok(u.Cli.yaml_dump(
+            u.Infra.workspace_manifest_path(repo), declared.model_dump(mode="json"),
+        ))
+        u.Tests.commit_git_changes(repo, "declare integration owner")
+        u.Tests.git_run(repo, "push", c.Infra.GIT_ORIGIN, base)
+        snapshot = tm.ok(u.Infra.git_snapshot_worktree_state(
+            m.Infra.GitWorktreeStateRequest(repo_root=repo, paths=(Path("."),)),
+        ))
+        checkpoint = tm.ok(u.Infra.git_checkpoint_worktree_state(
+            snapshot, "refs/checkpoints/prior-owned",
+        ))
+        publication = tm.ok(u.Infra.git_publish_worktree_checkpoint(checkpoint, c.Infra.GIT_ORIGIN))
+        u.Tests.git_run(repo, "merge", "--no-ff", "-m", "integrate owned state", checkpoint.worktree_commit)
+        u.Tests.git_run(repo, "push", c.Infra.GIT_ORIGIN, base)
         body = tmp_path / "body.md"
         body.write_text("# Propagation\n", encoding="utf-8")
         gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
@@ -55,6 +78,7 @@ class TestsFlextInfraReleasePublicationLane:
             base=base,
             subject=self.SUBJECT,
             body_file=body,
+            ownership=m.Infra.GitLaneOwnershipReceipt(checkpoint=checkpoint, publication=publication),
         )
         with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
             yield repo, request, gh_log

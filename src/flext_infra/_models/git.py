@@ -310,6 +310,10 @@ class FlextInfraModelsGit(
             t.NonEmptyStr | None,
             m.Field(description="Previously observed tip; drift refuses admission"),
         ] = None
+        ownership: Annotated[
+            FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None,
+            m.Field(description="Required integrated preservation receipt for creation"),
+        ] = None
 
     class GitRefHeadsRequest(m.ContractModel):
         """List every ref below one namespace.
@@ -503,6 +507,10 @@ class FlextInfraModelsGit(
             m.Field(description="Commit subject and pull-request title"),
         ]
         body_file: Annotated[Path, m.Field(description="Pull-request body file")]
+        ownership: Annotated[
+            FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None,
+            m.Field(description="Live retained and integrated prior owned repository state"),
+        ] = None
 
     class GitCheckoutPathsRequest(m.ContractModel):
         """Repository plus optional paths for checkout/restore operations."""

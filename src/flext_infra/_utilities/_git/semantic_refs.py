@@ -42,11 +42,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
         if tip.failure:
             return tip
         if request.operation == "create":
-            return r[m.Infra.GitOidReport].fail(
-                "new lane refused: authoritative Beads ownership and previous owned "
-                "lane integration are not available in the native admission contract; "
-                "continue the existing candidate, not another lane",
-            )
+            return cls._git_lane_ownership(request, tip.value.oid)
         if request.operation == "retire":
             return r[m.Infra.GitOidReport].fail(
                 "retirement refused: the native removal contract carries no verified "
@@ -54,6 +50,67 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
                 "alone does not authorize removal",
             )
         return tip
+
+    @classmethod
+    def _git_lane_ownership(
+        cls,
+        request: m.Infra.GitLaneVerificationRequest,
+        tip: str,
+    ) -> p.Result[m.Infra.GitOidReport]:
+        """Authenticate retained prior state and its integration before creation.
+
+        Returns:
+            The live tip only when the existing ownership receipt proves closure.
+        """
+        receipt = request.ownership
+        if receipt is None:
+            return r[m.Infra.GitOidReport].fail(
+                "new lane refused: authoritative Beads ownership and previous owned "
+                "lane integration are not available in the native admission contract; "
+                "continue the existing candidate, not another lane",
+            )
+        snapshot = receipt.checkpoint.snapshot
+        if snapshot.repo_root.resolve() != request.repo_root.resolve() or snapshot.paths != (Path("."),):
+            return r[m.Infra.GitOidReport].fail(
+                "lane ownership receipt does not cover this entire repository",
+            )
+        retained = cls.git_verify_worktree_checkpoint_publication(
+            receipt.checkpoint, receipt.publication,
+        )
+        if retained.failure:
+            return r[m.Infra.GitOidReport].from_failure(retained)
+        integrated = cls.git_is_ancestor(m.Infra.GitAncestryRequest(
+            repo_root=request.repo_root, ancestor=receipt.checkpoint.worktree_commit,
+            descendant=tip,
+        ))
+        if integrated.failure:
+            return r[m.Infra.GitOidReport].from_failure(integrated)
+        if not integrated.value.value:
+            return r[m.Infra.GitOidReport].fail(
+                "prior owned checkpoint has not landed on the latest integration tip",
+            )
+        return cls._git_lane_clean_owned_branch(request, snapshot.branch, tip)
+
+    @classmethod
+    def _git_lane_clean_owned_branch(
+        cls,
+        request: m.Infra.GitLaneVerificationRequest,
+        owned_branch: str,
+        tip: str,
+    ) -> p.Result[m.Infra.GitOidReport]:
+        branch = cls.git_current_branch(m.Infra.GitRepoRequest(repo_root=request.repo_root))
+        if branch.failure:
+            return r[m.Infra.GitOidReport].from_failure(branch)
+        if branch.value.text != owned_branch:
+            return r[m.Infra.GitOidReport].fail(
+                "current branch is not the receipt's recorded owned branch",
+            )
+        status = cls.git_status(m.Infra.GitStatusRequest(repo_root=request.repo_root))
+        if status.failure:
+            return r[m.Infra.GitOidReport].from_failure(status)
+        if status.value.dirty:
+            return r[m.Infra.GitOidReport].fail("new lane refuses unpublished current WIP")
+        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
 
     @classmethod
     def _git_lane_no_stash(cls, root: Path) -> p.Result[bool]:
