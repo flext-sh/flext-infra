@@ -657,6 +657,24 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 eq=receipt_before,
             )
 
+    @staticmethod
+    def test_unchanged_pyproject_apply_uses_the_authenticated_noop_path(
+        infra_git_repo: Path,
+    ) -> None:
+        """A second public apply keeps an unchanged declaration and succeeds."""
+        root = infra_git_repo
+        workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.PYPROJECT,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        before = (root / c.PYPROJECT_FILENAME).read_bytes()
+        tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.that((root / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
+
     # Integration-scale: the seed applies the complete surface on a real git
     # repository (plan, publication and its fixed-point re-plan; a pyproject
     # alone is not a fixed point, its [project.scripts] follows src/*/cli.py)

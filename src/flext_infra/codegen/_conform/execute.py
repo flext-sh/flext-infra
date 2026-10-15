@@ -681,7 +681,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     else self._validate_pyproject_stage
                     if surface is c.Infra.CodegenConformSurface.PYPROJECT
                     else None
-                ),
+                )
+                if changed
+                else None,
             ),
             publication_receipts=publication_receipts,
         )
