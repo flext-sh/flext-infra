@@ -1287,6 +1287,24 @@ an earlier read-only snapshot does not become a global generation precondition.
 Planning releases the lease, then reports a newly authorized observation. Recovery
 and publication retain their own exact journal receipts and physical-state guards.
 
+Documentation generation publishes one scope batch before capturing and rendering
+the next scope. A member batch captures its own sources, the shared root guides and
+configuration, and the renderer templates; the aggregate root captures its complete
+workspace inputs. File plans carry those authenticated inputs to the existing guarded
+journal writer. Changed current-batch inputs reject the affected publication without
+discarding accepted earlier batches. Generation does not re-render the full workspace
+at commit or run formatting, linting, or test gates; the corresponding Make verbs own
+those operations.
+
+Read-only Make verbs never invoke conform, generation, repairs, formatting, or
+codemod application. Audit checks installed dependency and environment provenance;
+verify-clean checks the documentation and Git state without rendering replacements.
+Generation retains the setup-owned environment policy: local workspace setup binds
+the declared subprojects as editable, and local generation may publish their managed
+artifacts. CI setup installs its locked noneditable dependencies, and generation in
+that context publishes only the invoked repository. The dependency and editable
+declarations remain owned by the established setup and provenance contracts.
+
 Protected compilation and pytest validation use the same environment boundary as
 lint validation: the child keeps its project's working directory and configured
 plugins while removing the orchestrator's `PYTHONPATH` and forced-color setting.

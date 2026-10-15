@@ -254,7 +254,7 @@ class FlextInfraDocGenerator(
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Derive target parent chains from the exact prepared render bundle.
 
-        Source-state race verification is owned by ``docs_file_plans``.
+        Publication owns source and destination guards for the current batch.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
