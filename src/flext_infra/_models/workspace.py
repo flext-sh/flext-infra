@@ -12,8 +12,12 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m, u
 from typing_extensions import TypeForm
 
-from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsMixins
+from flext_infra import c, p, t
+from flext_infra._models import (
+    FlextInfraModelsCheck,
+    FlextInfraModelsMixins,
+    FlextInfraModelsRope,
+)
 from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
@@ -27,6 +31,29 @@ class FlextInfraModelsWorkspace:
     - ``ArbitraryTypesModel`` for mutable discovery payloads.
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
+
+    class NativeSourceWitness(m.ArbitraryTypesModel):
+        """One captured native scope graph and independent compiler evidence."""
+
+        source: Path = m.Field(description="Cold-elected physical Python source")
+        state: m.Cli.AtomicFileState = m.Field(
+            description="Bytes authenticated before and after observation",
+        )
+        module: p.Infra.RopeSourceModule = m.Field(
+            description="Native Rope module sharing the invocation's source graph",
+        )
+        code: p.Infra.NativeCodeIdentity = m.Field(
+            description="CPython compiler result, never executed",
+        )
+        scopes: t.MappingKV[str, p.Infra.RopeScope] = m.Field(
+            description="Native declaration scopes indexed by qualified identity",
+        )
+        statements: t.SequenceOf[FlextInfraModelsRope.LogicalStatement] = m.Field(
+            description="One native Rope logical-region pass over captured bytes",
+        )
+        finder: p.Infra.RopeSimilarFinder = m.Field(
+            description="Native semantic matcher shared across declarations",
+        )
 
     class CodegenSourceAuthority(m.Value):
         """Cold reference authority has no project publication capability."""
