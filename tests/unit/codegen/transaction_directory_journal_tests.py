@@ -32,6 +32,27 @@ class TestsFlextInfraTransactionDirectoryJournal:
     _TRANSACTION_ID = "a" * 32
 
     @staticmethod
+    def _archived(
+        root: Path,
+        transaction_id: str,
+    ) -> tuple[m.Infra.CodegenPhaseOutcome, ...]:
+        """Read every receipt the transaction archived under its identity.
+
+        Returns:
+            The archived publication receipts of the transaction.
+
+        """
+        archive = (
+            root / c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH / transaction_id
+        )
+        return tuple(
+            m.Infra.CodegenPhaseOutcome.model_validate_json(
+                path.read_text(encoding=c.DEFAULT_ENCODING),
+            )
+            for path in sorted(archive.iterdir())
+        )
+
+    @staticmethod
     @pytest.mark.slow
     def test_initial_invalid_source_dependencies_leave_no_staging_effects(
         tmp_path: Path,
@@ -491,6 +512,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         targets = {"conform": root / "first.md", "lazy-init": root / "second.md"}
         for phase, target in targets.items():
             target.write_bytes(f"{phase} original\n".encode())
+        transactions: list[str] = []
 
         def two_phases(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
             session = tm.ok(owner.begin_files_locked(scope, roots, ()))
@@ -506,15 +528,17 @@ class TestsFlextInfraTransactionDirectoryJournal:
                     owner=phase,
                 )
                 session = tm.ok(owner.append_phase_locked(session, phase, (plan,)))
-                checkpoint = m.Infra.CodegenPhaseOutcome.model_validate_json(
-                    (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_text(
-                        encoding=c.DEFAULT_ENCODING,
-                    ),
+                transactions.append(session.journal.transaction_id)
+                checkpoints = {
+                    (item.completed, item.root, item.phase, item.written_files)
+                    for item in TestsFlextInfraTransactionDirectoryJournal._archived(
+                        root, session.journal.transaction_id
+                    )
+                }
+                tm.that(
+                    (False, root, phase, session.written_files) in checkpoints,
+                    eq=True,
                 )
-                tm.that(checkpoint.completed, eq=False)
-                tm.that(checkpoint.root, eq=root)
-                tm.that(checkpoint.phase, eq=phase)
-                tm.that(checkpoint.written_files, eq=session.written_files)
             tm.that(
                 tuple(entry.original_sha256 for entry in session.journal.entries),
                 eq=tuple(
@@ -525,13 +549,17 @@ class TestsFlextInfraTransactionDirectoryJournal:
             return owner.commit_locked(session)
 
         tm.ok(owner.run_files_locked(roots, two_phases))
-        completed = m.Infra.CodegenPhaseOutcome.model_validate_json(
-            (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_text(
-                encoding=c.DEFAULT_ENCODING,
-            ),
+        completed = {
+            (item.completed, item.written_files)
+            for item in TestsFlextInfraTransactionDirectoryJournal._archived(
+                root, transactions[-1]
+            )
+        }
+        tm.that((True, tuple(targets.values())) in completed, eq=True)
+        tm.that(
+            (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).exists(),
+            eq=False,
         )
-        tm.that(completed.completed, eq=True)
-        tm.that(completed.written_files, eq=tuple(targets.values()))
         for phase, target in targets.items():
             tm.that(target.read_bytes(), eq=f"{phase} generated\n".encode())
 

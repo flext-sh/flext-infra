@@ -49,7 +49,8 @@ class FlextInfraMiseArtifactsVerification(
 
         """
         root = request.root.expanduser().resolve()
-        observed = cls._read_publication(root)
+        surface = c.Infra.CodegenConformSurface(request.what)
+        observed = cls._read_publication(root, surface)
         result = r[m.Infra.CodegenPhaseOutcome]
         if observed.failure:
             return result.from_failure(observed)
@@ -57,10 +58,28 @@ class FlextInfraMiseArtifactsVerification(
         if not cls._publication_covers_request(outcome, request, root):
             return result.fail(
                 "generation publication does not cover this request: "
-                f"{root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH}; "
-                "run make gen",
+                f"{root / cls.publication_receipt(surface)}; run make gen",
             )
         return result.ok(outcome)
+
+    @staticmethod
+    def publication_receipt(surface: c.Infra.CodegenConformSurface) -> Path:
+        """Derive the repository-relative slot of one surface's latest receipt.
+
+        The complete ``all`` surface owns the generation receipt; every
+        partial surface owns its own slot inside the publication archive, so
+        a partial publication never evicts the generation receipt.
+
+        Returns:
+            The slot path relative to the repository root.
+
+        """
+        latest = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        if surface is c.Infra.CodegenConformSurface.ALL:
+            return latest
+        return c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH / (
+            f"{surface.value}{latest.suffix}"
+        )
 
     @classmethod
     def _publication_covers_request(
@@ -102,6 +121,7 @@ class FlextInfraMiseArtifactsVerification(
     def _read_publication(
         cls,
         root: Path,
+        surface: c.Infra.CodegenConformSurface,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate the stored native receipt before testing request coverage.
 
@@ -110,11 +130,11 @@ class FlextInfraMiseArtifactsVerification(
 
         """
         root = root.expanduser().resolve()
-        report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
-        captured = FlextInfraMiseArtifactsFiles.read_state(report, required=False)
+        captured = cls._governing_receipt(root, surface)
         result = r[m.Infra.CodegenPhaseOutcome]
         if captured.failure:
             return result.from_failure(captured)
+        report = captured.value.path
         content = captured.value.content
         if content is None:
             return result.fail(
@@ -135,6 +155,37 @@ class FlextInfraMiseArtifactsVerification(
         if current.failure:
             return result.from_failure(current)
         return cls.states_current((captured.value,)).map(lambda _: outcome)
+
+    @classmethod
+    def _governing_receipt(
+        cls,
+        root: Path,
+        surface: c.Infra.CodegenConformSurface,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Elect the receipt slot that governs one surface's publication.
+
+        A partial surface without its own publication is governed by the
+        generation receipt, which covers every surface; the ``all``
+        publication retires the partial slots it supersedes.
+
+        Returns:
+            The captured state of the governing slot, present or absent.
+
+        """
+        captured = FlextInfraMiseArtifactsFiles.read_state(
+            root / cls.publication_receipt(surface),
+            required=False,
+        )
+        if (
+            captured.failure
+            or captured.value.content is not None
+            or surface is c.Infra.CodegenConformSurface.ALL
+        ):
+            return captured
+        return FlextInfraMiseArtifactsFiles.read_state(
+            root / cls.publication_receipt(c.Infra.CodegenConformSurface.ALL),
+            required=False,
+        )
 
     @classmethod
     def _receipt_incomplete(
@@ -202,7 +253,13 @@ class FlextInfraMiseArtifactsVerification(
             t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         ]
     ]:
-        """Prove actual effect lineage without executing historical producers again."""
+        """Prove actual effect lineage without executing historical producers again.
+
+        Returns:
+            The terminal outputs and their ordered batch receipts, or the
+            first lineage failure.
+
+        """
         result_type = r[
             t.Pair[
                 t.VariadicTuple[m.Infra.CodegenJournalSource],
@@ -230,9 +287,9 @@ class FlextInfraMiseArtifactsVerification(
                 return path in files or any(path.is_relative_to(root) for root in roots)
 
             selection = relevant
-        terminal: dict[Path, m.Infra.CodegenJournalSource] = {}
+        terminal: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource] = {}
         outcomes: list[m.Infra.CodegenPhaseOutcome] = []
-        frontier: dict[Path, m.Infra.CodegenJournalSource] = {}
+        frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource] = {}
         for publication in publications:
             history = cls._publication_frontier(
                 publication, frontier, terminal, outcomes, selection
@@ -457,7 +514,7 @@ class FlextInfraMiseArtifactsVerification(
                 or outcome.attempted_files
             )
         reference = outcome.generator_reference
-        return bool(
+        return (
             not outcome.outputs
             or not outcome.generator_sources
             or reference is None
@@ -617,7 +674,7 @@ class FlextInfraMiseArtifactsVerification(
                 list[m.Infra.CodegenJournalSource]]]``.
 
         """
-        inputs: dict[Path, list[m.Infra.CodegenJournalSource]] = {}
+        inputs: t.MutableMappingKV[Path, list[m.Infra.CodegenJournalSource]] = {}
         for source in outcome.sources:
             if selection is None or selection(source.path):
                 inputs.setdefault(source.path, []).append(source)

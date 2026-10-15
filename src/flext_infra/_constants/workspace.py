@@ -205,6 +205,11 @@ print(json.dumps({
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
         / "codegen-publication.json"
     )
+    "Latest generation receipt: only a complete `all` operation occupies it."
+    CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-publication"
+    )
+    "Per-transaction archive holding every publication receipt."
     CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-lazy-plan.json"
     )
