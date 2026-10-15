@@ -133,12 +133,8 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
                 binding = module.get_attribute(first)
                 if separator:
                     binding = cls._member(binding, tail)
-                if (
-                    binding is None
-                    or base
-                    not in u.Infra.class_ancestry(
-                        binding.get_object()
-                    )
+                if binding is None or base not in u.Infra.class_ancestry(
+                    binding.get_object()
                 ):
                     return r[t.MappingKV[Path, str]].fail(
                         f"referenced protocol p.{name} is not a model declaration"

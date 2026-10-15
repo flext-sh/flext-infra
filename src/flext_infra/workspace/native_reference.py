@@ -214,15 +214,13 @@ class FlextInfraWorkspaceNativeReference:
         roots = tuple(dict.fromkeys(request.import_roots))
         selections = tuple(item.model_dump_json() for item in request.modules)
         code = (
-            consumer.PRELUDE
-            + f"sys.path[:0] = tuple(root for root in "
-              f"{tuple(str(root) for root in roots)!r} if root not in sys.path)\n"
+            consumer.PRELUDE + f"sys.path[:0] = tuple(root for root in "
+            f"{tuple(str(root) for root in roots)!r} if root not in sys.path)\n"
             + "from flext_infra import m\n"
             + "from flext_infra.workspace.native_reference import "
-              "FlextInfraWorkspaceNativeReference as native\n"
-            + f"selections = "
-              f"tuple(m.Infra.SourceClassReference.model_validate_json(item) for item "
-              f"in {selections!r})\n"
+            "FlextInfraWorkspaceNativeReference as native\n" + f"selections = "
+            f"tuple(m.Infra.SourceClassReference.model_validate_json(item) for item "
+            f"in {selections!r})\n"
             + "for item in selections: importlib.import_module(item.target)\n"
             + consumer.ORIGIN_CODE.replace(
                 consumer.ORIGINS_PLACEHOLDER,
@@ -915,7 +913,10 @@ class FlextInfraWorkspaceNativeReference:
             binding=binding,
             paths=paths,
         )
-        if any(native is kind for kind in (list, set, dict, deque)) and not construction:
+        if (
+            any(native is kind for kind in (list, set, dict, deque))
+            and not construction
+        ):
             return ["mutable", native.__name__]
         if native is deque:
             return ["deque", value.maxlen, list(map(observe, value))]
@@ -2320,8 +2321,10 @@ class FlextInfraWorkspaceNativeReference:
                 )
                 if state.failure:
                     return r[bool].from_failure(state)
-                recorded = codegen.FlextInfraMiseArtifactsJournalRelocation.source_record(
-                    expected.phase, state.value, previous=expected
+                recorded = (
+                    codegen.FlextInfraMiseArtifactsJournalRelocation.source_record(
+                        expected.phase, state.value, previous=expected
+                    )
                 )
                 if recorded.failure:
                     return r[bool].from_failure(recorded)

@@ -228,7 +228,7 @@ def test_apply_is_idempotent(member_root: t.DirectoryPath) -> None:
         member_root,
         "tm.ok(service.execute())\n"
         f'generated = root / "src" / {MEMBER!r} / "_protocols"\n'
-        'before = '
+        "before = "
         '{path: path.read_bytes() for path in generated.glob("generated*.py")}\n'
         "tm.ok(service.execute())\n"
         "assert {path: path.read_bytes() "

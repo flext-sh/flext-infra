@@ -39,6 +39,7 @@ class FlextInfraConfigVocabulary:
         INTERNAL_FLEXT = "internal_flext"
         INTERNAL = "internal"
         THIRD_PARTY_FORK = "third_party_fork"
+
     @unique
     class MakeProfile(StrEnum):
         """Generated Make profile proven by the repository checkout topology."""

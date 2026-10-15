@@ -1001,8 +1001,10 @@ class FlextInfraUtilitiesRopeImports:
                 FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
                 for expected in selected_names
             ):
-                msg = (f"unsupported Rope module consumer: "
-                       f"{resource.path}:{pymodule.lines.get_line_number(begin)}")
+                msg = (
+                    f"unsupported Rope module consumer: "
+                    f"{resource.path}:{pymodule.lines.get_line_number(begin)}"
+                )
                 raise RuntimeError(msg)
         for (
             expression,

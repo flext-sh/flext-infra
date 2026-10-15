@@ -44,7 +44,6 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         if producer is None:
             return result_type.ok(value=())
         if isinstance(producer, m.Infra.CodegenSourceAuthority):
-
             pinned = codegen.FlextInfraCodegenPreconditions.authority_inputs(producer)
             if pinned.failure:
                 return result_type.from_failure(pinned)
@@ -93,12 +92,16 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             The resulting ``p.Result[m.Infra.CodegenTransactionJournal]``.
 
         """
-        physical_scope = FlextInfraMiseArtifactsFiles.physical_directory_identity(plan.layout.scope_root)
+        physical_scope = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            plan.layout.scope_root
+        )
         if physical_scope.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(physical_scope)
         projects: list[m.Infra.CodegenJournalProject] = []
         for project in plan.layout.projects:
-            physical_project = FlextInfraMiseArtifactsFiles.physical_directory_identity(project.root)
+            physical_project = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                project.root
+            )
             if physical_project.failure:
                 return r[m.Infra.CodegenTransactionJournal].from_failure(
                     physical_project,
@@ -208,7 +211,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         existing_paths = {entry.path for entry in journal.entries}
         entries: list[m.Infra.CodegenJournalEntry] = []
         for publication in publications:
-            target = FlextInfraMiseArtifactsFiles.transaction_relative(plan.layout, publication.before.path)
+            target = FlextInfraMiseArtifactsFiles.transaction_relative(
+                plan.layout, publication.before.path
+            )
             if target.failure:
                 return result_type.from_failure(target)
             if target.value in existing_paths:
@@ -274,7 +279,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         inventory_for_parent = cache(u.Cli.atomic_inventory_physical_tree)
         finalized: list[m.Infra.CodegenStagingIntent] = []
         for intent in journal.staging_intents:
-            observed = FlextInfraMiseArtifactsFiles.read_state(intent.before.path, required=False)
+            observed = FlextInfraMiseArtifactsFiles.read_state(
+                intent.before.path, required=False
+            )
             if observed.failure:
                 return r[m.Infra.CodegenTransactionJournal].from_failure(observed)
             current = observed.value
@@ -431,7 +438,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         observed = FlextInfraMiseArtifactsState.journal_state(layout)
         if observed.failure:
             return r[m.Cli.AtomicFileState].from_failure(observed)
-        observed_snapshot = FlextInfraMiseArtifactsState.journal_snapshot(observed.value)
+        observed_snapshot = FlextInfraMiseArtifactsState.journal_snapshot(
+            observed.value
+        )
         if observed_snapshot is None:
             return r[m.Cli.AtomicFileState].fail(
                 "published codegen journal parent disappeared",
@@ -553,7 +562,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         project = next(
             (
                 item
-                for item in FlextInfraMiseArtifactsFiles.transaction_participants(plan.layout)
+                for item in FlextInfraMiseArtifactsFiles.transaction_participants(
+                    plan.layout
+                )
                 if item.root == publication.project
             ),
             None,
@@ -562,7 +573,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return result_type.fail(
                 f"generation publication has no transaction participant: {before.path}",
             )
-        selector = FlextInfraMiseArtifactsFiles.transaction_relative(plan.layout, before.path)
+        selector = FlextInfraMiseArtifactsFiles.transaction_relative(
+            plan.layout, before.path
+        )
         if selector.failure:
             return result_type.from_failure(
                 selector,
@@ -595,7 +608,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return r[str].fail(
                 f"generation staged identity is incomplete: {destination}",
             )
-        relative_staging = FlextInfraMiseArtifactsFiles.transaction_relative(layout, replacement.path)
+        relative_staging = FlextInfraMiseArtifactsFiles.transaction_relative(
+            layout, replacement.path
+        )
         if relative_staging.failure:
             return r[str].from_failure(relative_staging)
         return r[str].ok(relative_staging.value)
@@ -616,7 +631,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return r[m.Infra.CodegenJournalEntry].from_failure(located)
         project, selector = located.value
         original_sha = (
-            FlextInfraMiseArtifactsFiles.digest(before.content) if before.content is not None else None
+            FlextInfraMiseArtifactsFiles.digest(before.content)
+            if before.content is not None
+            else None
         )
         replacement = publication.replacement
         desired_exists = replacement is not None

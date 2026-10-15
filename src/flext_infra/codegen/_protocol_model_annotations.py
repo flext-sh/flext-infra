@@ -207,8 +207,10 @@ class FlextInfraCodegenProtocolModelAnnotations:
                 else f"[{', '.join(self.render(parameter, scope) for parameter in parameters)}]"
             )
             self.imports["collections.abc"] = "import collections.abc"
-            return (f"collections.abc.Callable[{arguments_text}, "
-                    f"{self.render(result, scope)}]")
+            return (
+                f"collections.abc.Callable[{arguments_text}, "
+                f"{self.render(result, scope)}]"
+            )
         if origin is not None:
             if origin is tuple and not arguments:
                 return "tuple[()]"
