@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import re
 from importlib import import_module
 from pathlib import Path
@@ -85,18 +86,47 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             ].fail(f"pyproject manifest declares no project name: {manifest}")
         package = name.replace("-", "_")
         container = "".join(part.capitalize() for part in package.split("_"))
+        layout = u.Infra.layout(root)
+        if layout is None:
+            return r[
+                FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
+            ].fail(f"member package layout is unresolved: {root}")
+        owner = u.Infra.facade_module_path(layout.package_dir, "m")
+        if owner is None:
+            return r[
+                FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
+            ].fail(f"member models facade is unresolved: {root}")
+        declarations = tuple(
+            node
+            for node in ast.parse(owner.read_text(encoding="utf-8")).body
+            if isinstance(node, ast.ClassDef)
+        )
+        if len(declarations) != 1:
+            return r[
+                FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
+            ].fail(f"member models facade is ambiguous: {owner}")
+        namespaces = tuple(
+            node.name
+            for node in declarations[0].body
+            if isinstance(node, ast.ClassDef)
+        )
+        if len(namespaces) > 1:
+            return r[
+                FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
+            ].fail(f"member models namespace is ambiguous: {owner}")
+        suffix = f".{namespaces[0]}" if namespaces else ""
         return r[FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget].ok(
             FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget(
                 package_name=package,
                 facade_container=container,
                 package_module_prefix=f"{package}.",
-                protocol_ref_prefix=f"p.{container}",
-                models_facade_name="m",
+                protocol_ref_prefix=f"p{suffix}",
+                models_facade_name=f"m{suffix}",
                 facade_probes=(
-                    ("m", f"{package}.models.{container}Models"),
-                    ("p", f"{package}.protocols.{container}Protocols"),
-                    ("c", f"{package}.constants.{container}Constants"),
-                    ("t", f"{package}.typings.{container}Types"),
+                    ("m", f"{package}.models.{declarations[0].name}{suffix}"),
+                    ("p", f"{package}.protocols.{container}Protocols{suffix}"),
+                    ("c", f"{package}.constants.{container}Constants{suffix}"),
+                    ("t", f"{package}.typings.{container}Types{suffix}"),
                 ),
             ),
         )
@@ -130,6 +160,12 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             return r[t.SequenceOf[type[m.BaseModel]]].fail(
                 f"models facade declares no {target.facade_container}Models container",
             )
+        for namespace in target.models_facade_name.split(".")[1:]:
+            container = getattr(container, namespace, None)
+            if container is None:
+                return r[t.SequenceOf[type[m.BaseModel]]].fail(
+                    f"models facade declares no namespace {namespace}",
+                )
         models: list[type[m.BaseModel]] = []
         for name in wanted:
             candidate = getattr(container, name, None)
@@ -200,13 +236,27 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``set[str]``.
 
         """
-        pattern = re.compile(r"^class ([A-Z]\w*)\b", re.MULTILINE)
         found: set[str] = set()
         protocols = root / "src" / target.package_name / "_protocols"
-        for path in sorted(protocols.glob("*.py")):
+        for path in sorted(protocols.rglob("*.py")):
             if path.name.startswith("generated_models"):
                 continue
-            found.update(pattern.findall(path.read_text(encoding="utf-8")))
+            pending = list(ast.parse(path.read_text(encoding="utf-8")).body)
+            while pending:
+                node = pending.pop()
+                if isinstance(node, ast.ClassDef):
+                    found.add(node.name)
+                    pending.extend(node.body)
+                elif isinstance(node, ast.If):
+                    pending.extend((*node.body, *node.orelse))
+                elif isinstance(node, ast.TypeAlias):
+                    found.add(node.name.id)
+                elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                    found.add(node.target.id)
+                elif isinstance(node, ast.Assign):
+                    found.update(
+                        target.id for target in node.targets if isinstance(target, ast.Name)
+                    )
         return found
 
     @classmethod
