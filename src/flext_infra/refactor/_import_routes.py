@@ -365,6 +365,7 @@ class FlextInfraImportNormalizationRoutesMixin(
 
         Raises:
             ValueError: When independent declarations publish the same name.
+
         """
         directory = u.Infra.import_package_dir(scope.project_root, module)
         if directory is None:
@@ -418,6 +419,7 @@ class FlextInfraImportNormalizationRoutesMixin(
 
         Returns:
             Canonical identities extended by another declaration.
+
         """
         ancestors: set[str] = set()
         for identity in identities:
@@ -487,6 +489,7 @@ class FlextInfraImportNormalizationRoutesMixin(
 
         Raises:
             ValueError: When aliases form a cycle.
+
         """
         bindings = cls._module_bindings(tree)
         seen: set[str] = set()
@@ -518,6 +521,7 @@ class FlextInfraImportNormalizationRoutesMixin(
         Raises:
             ValueError: When a reexport cycles or has no declared binding.
             TypeError: When the binding is not a source declaration.
+
         """
         identity = f"{module}.{name}"
         if identity in seen:

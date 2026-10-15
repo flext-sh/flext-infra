@@ -21,12 +21,13 @@ class FlextInfraWorkspaceLifecycle:
 
     @staticmethod
     def plan_request(
-        request: p.Infra.WorkspaceEnvironmentRequest,
+        request: p.Infra.WorkspaceRequest,
     ) -> p.Result[m.Infra.LifecycleReport]:
         """Declare public commands before execution without provisioning sources.
 
         Returns:
             Ordered root and member commands from the declared lifecycle.
+
         """
         root = request.repository_root.expanduser().resolve()
         inputs = u.Infra.load_codegen_inputs(root)
@@ -105,7 +106,7 @@ class FlextInfraWorkspaceLifecycle:
     @classmethod
     def execute_request(
         cls,
-        request: p.Infra.WorkspaceEnvironmentRequest,
+        request: p.Infra.WorkspaceRequest,
     ) -> p.Result[m.Infra.LifecycleReport]:
         """Run declared public commands serially with first-failure accounting.
 
@@ -174,6 +175,7 @@ class FlextInfraWorkspaceLifecycle:
         Returns:
             The eligible member roots under the workspace root, or the
             editable election failure.
+
         """
         selected = FlextInfraWorkspaceEnvironmentProvenance.editable_members(
             report.workspace_root,
@@ -203,6 +205,7 @@ class FlextInfraWorkspaceLifecycle:
 
         Returns:
             The executed or reclassified receipt with its process outcome.
+
         """
         result_type = r[
             t.Pair[m.Infra.LifecycleReceipt, p.Result[p.Cli.ProcessOutcome] | None]
@@ -227,7 +230,7 @@ class FlextInfraWorkspaceLifecycle:
     def _published_progress(
         cls,
         report: m.Infra.LifecycleReport,
-        cause: p.Result[p.Cli.ProcessOutcome] | p.Result[frozenset[Path]],
+        cause: p.Result[p.Cli.ProcessOutcome] | p.Result[frozenset[Path]] | None,
     ) -> p.Result[m.Infra.LifecycleReport] | None:
         """Publish incremental progress and classify its failure, if any.
 
@@ -238,6 +241,7 @@ class FlextInfraWorkspaceLifecycle:
         Returns:
             ``None`` when progress published cleanly, else the classified
             causal failure to propagate.
+
         """
         published = cls._publish(report)
         if not published.failure:
@@ -264,6 +268,7 @@ class FlextInfraWorkspaceLifecycle:
 
         Returns:
             The causal process failure, or the receipt error failure.
+
         """
         if original is not None and original.failure:
             return r[m.Infra.LifecycleReport].from_failure(original)

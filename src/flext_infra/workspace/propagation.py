@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, s, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspacePropagation(s[bool]):

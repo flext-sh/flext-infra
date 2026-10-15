@@ -6,14 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
+from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
 from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
@@ -21,18 +23,9 @@ from flext_infra._models.workspace import FlextInfraModelsWorkspace
 class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
 
-    class CodegenPhasePublicationPolicy(m.ArbitraryTypesModel):
-        """Caller-owned directories and native admission for one publication."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-        directories: t.VariadicTuple[Path] = m.Field(
-            description="Exact generated directories requested by the caller",
-        )
-
-    class StagePackagePlan(m.ArbitraryTypesModel):
+    class StagePackagePlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Pinned package/dependency inputs and the declared public facade contract."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         package: str = m.Field(description="Selected canonical package namespace")
         module: str = m.Field(description="Selected public facade module")
         classname: str = m.Field(description="Published class preserved by projection")
@@ -53,10 +46,9 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Workspace namespaces requiring sealed origins"
         )
 
-    class StageSourcePlan(m.ArbitraryTypesModel):
+    class StageSourcePlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Pinned project closure and desired bytes for effect-free validation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         workspace: Path = m.Field(description="Canonical source workspace root")
         roots: t.VariadicTuple[Path] = m.Field(
             description="Discovered project roots covering the pinned source closure"
@@ -74,10 +66,9 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Declared workspace namespaces with sealed candidate origins",
         )
 
-    class StagePackageView(m.ArbitraryTypesModel):
+    class StagePackageView(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Journal-owned materialized package view, never another source of truth."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         plan: FlextInfraModelsCodegenTransactionModels.StagePackagePlan = m.Field(
             description="Pinned input and public-feature contract"
         )
@@ -94,10 +85,8 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact desired facade bytes and physical identity"
         )
 
-    class CodegenTransactionJournal(m.ArbitraryTypesModel):
+    class CodegenTransactionJournal(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Persisted recovery contract for one workspace-wide generation."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         version: Annotated[
             Literal[9],
@@ -356,10 +345,8 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact journal observation retained for revalidation",
         )
 
-    class CodegenFileSessionPlan(m.ArbitraryTypesModel):
+    class CodegenFileSessionPlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """File-only transaction topology; contains no Mise artifact snapshot."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainWorkspaceLayout,
@@ -373,10 +360,8 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenTransactionSession(m.ArbitraryTypesModel):
+    class CodegenTransactionSession(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Immutable cursor for one live prepared generation transaction."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         plan: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainWorkspacePlan
@@ -423,3 +408,45 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "codegen session layout and journal transaction ids differ"
                 raise ValueError(msg)
             return self
+
+    class CodegenPhasePublicationPolicy(m.ImmutableValueModel, m.ArbitraryTypesModel):
+        """Caller-owned directories and native admission for one publication."""
+
+        directories: t.VariadicTuple[Path] = m.Field(
+            description="Exact generated directories requested by the caller",
+        )
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(), description="Authenticated source directory ancestry"
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(), description="Source membership roots for this publication"
+        )
+        source_scope: Path | None = m.Field(
+            default=None,
+            description="Selected source scope within the membership roots",
+        )
+        admission: FlextInfraModelsCodegenPipelineModels.CodegenPhaseOutcome | None = (
+            m.Field(
+                default=None,
+                exclude=True,
+                description="Exact prior batch admission when the caller captured it",
+            )
+        )
+        staged_validator: (
+            Callable[
+                [
+                    FlextInfraModelsCodegenTransactionModels.CodegenTransactionSession,
+                    t.VariadicTuple[
+                        FlextInfraModelsCodegenJournalModels.CodegenStagedFile
+                    ],
+                ],
+                p.Result[
+                    FlextInfraModelsCodegenTransactionModels.CodegenTransactionSession
+                ],
+            ]
+            | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Real staged consumer required before publishing this batch",
+        )

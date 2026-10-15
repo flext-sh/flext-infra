@@ -7,12 +7,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 from flext_infra import main
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraModernizerSourceReferences:
@@ -127,6 +129,9 @@ class TestsFlextInfraModernizerSourceReferences:
                 "dependencies"
             ]
         )["poetry-kit"]
+        poetry_source = tm.not_none(poetry_source)
+        tm.that(poetry_source, is_=Mapping)
+        poetry_source = cast("t.JsonMapping", poetry_source)
         tm.that(poetry_source["git"], eq=remote)
         tm.that(poetry_source["rev"], eq=new_ref)
         tm.that(poetry_source["optional"], eq=True)

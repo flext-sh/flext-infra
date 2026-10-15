@@ -30,14 +30,17 @@ class FlextInfraConformWiring:
         root: Path,
         *,
         initial_workspace: m.Infra.WorkspaceSpec | None,
+        producer: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
         """Authorize the actual physical coordination root and declared members.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
+
         """
         return FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
+            producer=producer,
         ).participant_policy(initial_workspace=initial_workspace)
 
     @staticmethod
@@ -48,6 +51,7 @@ class FlextInfraConformWiring:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),

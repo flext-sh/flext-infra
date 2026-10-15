@@ -278,6 +278,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         Returns:
             ``True`` if the mutation is an opaque computed attribute rebind,
             ``False`` otherwise.
+
         """
         if not isinstance(node.value, ast.Call):
             return False
@@ -394,6 +395,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             True when every target writes a module table or non-class root.
+
         """
         return all(
             isinstance(target, ast.Subscript)
@@ -433,6 +435,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             True when the target shape permits an exact class-member update.
+
         """
         value = node.value
         if len(targets) != 1 or not isinstance(value, ast.Name | ast.Call):
@@ -459,6 +462,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             True when the store updated a known definition, otherwise False.
+
         """
         visible = {**spec.lexical, **bindings}
         if not spec.allow_conditional or not cls._completes_class_namespace(
@@ -501,6 +505,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Raises:
             ValueError: If a cyclic class namespace receiver is detected.
+
         """
         current = reference
         visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
@@ -534,6 +539,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             The captured reference, or None for a non-class value.
+
         """
         value = node.value
         if value is None:
@@ -690,6 +696,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             The proven runtime truth value, or None for an unknown guard.
+
         """
         match test:
             case ast.Compare(

@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from functools import partial
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
@@ -41,7 +40,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
         )
 
     @staticmethod
-    def _finding_statement(finding: m.Infra.ModScanFinding) -> ast.stmt | None:
+    def _finding_statement(finding: m.Infra.ModOccurrence) -> ast.stmt | None:
         """Parse the single statement an ast-grep finding reports.
 
         Returns:
@@ -56,28 +55,15 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
         items: t.SequenceOf[t.Pair[Path, str]],
         rewrite: Callable[[Path, str], t.Infra.TransformResult],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan one edit per rewritten module and aggregate every module failure.
-
-        A module that cannot be planned yields a failure naming that module;
-        the remaining modules are still planned so one run reports them all.
+        """Plan one edit per module, preserving the first original exception.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
         """
         edits: list[m.Infra.SemanticMigrationEdit] = []
-        failures: list[str] = []
-        first_failure: p.Result[t.Infra.TransformResult] | None = None
         for path, source in items:
-            planned = r[t.Infra.TransformResult].create_from_callable(
-                partial(rewrite, path, source),
-            )
-            if planned.failure:
-                if first_failure is None:
-                    first_failure = planned
-                failures.append(f"{path}: {planned.error}")
-                continue
-            updated, changes = planned.value
+            updated, changes = rewrite(path, source)
             if updated != source:
                 edits.append(
                     m.Infra.SemanticMigrationEdit(
@@ -87,13 +73,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
                         changes=tuple(changes),
                     ),
                 )
-        result = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
-        if first_failure is not None:
-            return result.fail(
-                "; ".join(failures),
-                exception=first_failure.exception,
-            )
-        return result.ok(tuple(edits))
+        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(edits))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverEdits"]

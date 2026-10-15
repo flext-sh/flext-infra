@@ -274,15 +274,12 @@ class FlextInfraWorkspaceChecker(
                     for project_name in requested
                 ),
             )
-        resolved = u.Infra.resolve_projects(params.repository_root, ())
-        if resolved.failure:
-            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].from_failure(resolved)
-        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
-            tuple(
-                m.Infra.CheckProjectTarget(name=project.name, path=project.path)
-                for project in resolved.value
+        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok((
+            m.Infra.CheckProjectTarget(
+                name=params.repository_root.name,
+                path=params.repository_root,
             ),
-        )
+        ))
 
     def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project.

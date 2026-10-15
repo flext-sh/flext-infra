@@ -94,9 +94,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
 
         """
+        container_names: tuple[str, ...] = tuple(container)
         value = u.Cli.toml_value(
             container,
-            cls.dependency_group_name(tuple(container), name),
+            cls.dependency_group_name(container_names, name),
         )
         return (
             ()
@@ -122,9 +123,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             ),
         )
         authored = tuple(
-            entry
-            for entry in custom
-            if not isinstance(entry, str) or entry in active
+            entry for entry in custom if not isinstance(entry, str) or entry in active
         )
         requirements = {
             Requirement(entry) for entry in authored if isinstance(entry, str)
@@ -674,7 +673,8 @@ class FlextInfraUtilitiesPyprojectRequirements:
             msg = "Canonical development requirements include retired distributions"
             raise ValueError(msg)
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        dev_name = cls.dependency_group_name(tuple(groups), str(c.Infra.DEV))
+        group_names: tuple[str, ...] = tuple(groups)
+        dev_name = cls.dependency_group_name(group_names, str(c.Infra.DEV))
         # SSOT required floors win over existing same-name pins: dedupe_specs
         # keeps the first occurrence, so toolchain floors must lead the merge.
         # Otherwise stale member pins override the declared fleet floor. One
@@ -725,7 +725,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             u.Cli.toml_remove_key_if_present(groups, dev_name)
 
         codegen_name = cls.dependency_group_name(
-            tuple(groups),
+            group_names,
             str(c.Infra.DependencyGroup.CODEGEN),
         )
         codegen = cls.merge_dependency_group_entries(

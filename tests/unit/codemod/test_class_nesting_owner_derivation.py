@@ -10,6 +10,7 @@ import ast
 from typing import TYPE_CHECKING
 
 import flext_core
+
 from flext_infra import infra
 from tests import c, t, tm, u
 

@@ -344,6 +344,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``Mapping[str, bool]``.
+
             """
             return {
                 f"**/{artifact.name}": True
@@ -358,6 +359,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``Mapping[str, bool]``.
+
             """
             return {
                 f"**/{artifact.name}/**": True
@@ -372,6 +374,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``Mapping[str, bool]``.
+
             """
             return dict(self.vscode_files_exclude_map)
 
@@ -382,6 +385,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return tuple(
                 artifact.name
@@ -396,6 +400,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return tuple(
                 artifact.name
@@ -410,6 +415,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return tuple(f"**/{name}/**" for name in self.generated_sources)
 
@@ -438,6 +444,7 @@ class FlextInfraConfigModelsArtifact:
             Returns:
                 The resulting
                     ``t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec]``.
+
             """
             scaffold_sections = self.scaffold.gitignore_sections
             # A declared section may already govern a derived artifact, in
@@ -510,6 +517,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             # A generated source tree is tracked: ignoring it would hide the
             # modules a regeneration adds from ``git add``.
@@ -547,6 +555,7 @@ class FlextInfraConfigModelsArtifact:
                 ValueError: If managed files do not declare exactly one root
                     ``pyproject.toml`` owner, or if a derived resolver artifact
                     collides with an already declared managed file.
+
             """
             roots = tuple(
                 item
@@ -972,11 +981,10 @@ class FlextInfraConfigModelsArtifact:
         selected_inputs: Annotated[
             FlextInfraConfigModelsArtifact.CodegenInputs | None,
             m.Field(
-                default=None,
                 exclude=True,
                 description="Invoking repository's already captured configuration",
             ),
-        ]
+        ] = None
         root: Annotated[Path, m.Field(description="Generation scope root")]
         workspace: Annotated[
             FlextInfraConfigModelsWorkspace.WorkspaceSpec,

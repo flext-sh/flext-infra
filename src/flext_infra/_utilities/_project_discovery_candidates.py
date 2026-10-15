@@ -103,6 +103,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
 
         Returns:
             Every explicitly unmanaged Git submodule path.
+
         """
         if declarations is None:
             declarations = FlextInfraUtilitiesGit.git_submodule_declarations(

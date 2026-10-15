@@ -108,6 +108,9 @@ if TYPE_CHECKING:
     from flext_infra.codegen._mise_artifacts_candidates import (
         FlextInfraMiseArtifactsCandidates,
     )
+    from flext_infra.codegen._mise_artifacts_comparison import (
+        FlextInfraMiseArtifactsComparison,
+    )
     from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
     from flext_infra.codegen._mise_artifacts_journal import (
         FlextInfraMiseArtifactsJournal,
@@ -234,6 +237,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenTransactionPhases",
     "FlextInfraCodegenVersionFile",
     "FlextInfraMiseArtifactsCandidates",
+    "FlextInfraMiseArtifactsComparison",
     "FlextInfraMiseArtifactsFiles",
     "FlextInfraMiseArtifactsJournal",
     "FlextInfraMiseArtifactsJournalRelocation",
@@ -328,6 +332,7 @@ install_lazy_exports(
         "FlextInfraCodegenTransactionPhases": "._codegen_transaction_phases",
         "FlextInfraCodegenVersionFile": ".version_file",
         "FlextInfraMiseArtifactsCandidates": "._mise_artifacts_candidates",
+        "FlextInfraMiseArtifactsComparison": "._mise_artifacts_comparison",
         "FlextInfraMiseArtifactsFiles": "._mise_artifacts_files",
         "FlextInfraMiseArtifactsJournal": "._mise_artifacts_journal",
         "FlextInfraMiseArtifactsJournalRelocation": (

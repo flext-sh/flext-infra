@@ -32,6 +32,7 @@ class FlextInfraUtilitiesProjectDiscoveryShapeMixin:
 
         Returns:
             Whether the candidate is excluded by the current declaration.
+
         """
         resolved = candidate.resolve()
         root = repository_root.resolve()

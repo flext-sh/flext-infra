@@ -36,6 +36,7 @@ class FlextInfraUtilitiesRopeClassMove:
         Raises:
             FileNotFoundError: If either declared owner is absent.
             FileExistsError: If the destination already contains the module.
+
         """
         root = Path(rope_project.root.real_path).resolve()
         source = cls._owned_path(root, root / source_file)

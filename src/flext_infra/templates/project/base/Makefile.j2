@@ -258,9 +258,8 @@ MAKE_PROFILE := {{ make_profile }}
 REPOSITORY_ROOT_REL := {{ repository_root_rel }}
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
-# Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
+# Computed: traversal projects observed members; provisioning reads local .gitmodules.
 WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}
-MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(WORKSPACE_SUBPROJECTS){% endif %}
 UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
 

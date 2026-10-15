@@ -64,10 +64,8 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Apply the complete candidate campaign"),
         ] = True
 
-    class CodegenPhaseAnalysis(m.ArbitraryTypesModel):
+    class CodegenPhaseAnalysis(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Immutable planner receipt reused for publication verification."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
             c.Infra.CodegenStagedFilePhase,
@@ -135,10 +133,8 @@ class FlextInfraModelsCodegenPipelineModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenPhaseOutcome(m.ArbitraryTypesModel):
+    class CodegenPhaseOutcome(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """One fleet worker's phase analysis, or its failure as data."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         analysis: Annotated[
             FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis | None,

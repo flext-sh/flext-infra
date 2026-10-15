@@ -101,6 +101,11 @@ fi
 # === SECTION: virtual environment (managed) ===
 # Source: the physical Git runtime root owns the derived environment.
 if [[ -f "${PROJECT_ROOT}/pyproject.toml" && -d "${VENV_DIR}" ]]; then
+  if [[ "{{ '${' ~ uv_resolution.hosted_variable ~ ':-}' }}" == "{{ uv_resolution.hosted_value }}" ]]; then
+    export UV_PROJECT="${RUNTIME_ROOT}/{{ uv_resolution.standalone_directory }}"
+  else
+    export UV_PROJECT="${RUNTIME_ROOT}/{{ uv_resolution.local_directory }}"
+  fi
   export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
   export VIRTUAL_ENV="${VENV_DIR}"
   if [[ "${OS:-}" == "Windows_NT" ]]; then
@@ -109,6 +114,7 @@ if [[ -f "${PROJECT_ROOT}/pyproject.toml" && -d "${VENV_DIR}" ]]; then
     PATH_add "${VENV_DIR}/bin"
   fi
 else
+  unset UV_PROJECT
   unset UV_PROJECT_ENVIRONMENT
   unset VIRTUAL_ENV
 fi

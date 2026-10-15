@@ -101,6 +101,18 @@ Installed-wheel acceptance must identify and exercise the actual distributed art
 an editable source read or a prior editable pass cannot retroactively prove wheel
 resources, template identity or consumer behavior.
 
+Editable Hatch declarations retain explicit package directories and package remappings
+from `tool.hatch.build.targets.wheel.sources`. Every installed `.pth` entry must expose
+a declared package at its physical source, and every declared package must be covered.
+A distribution containing the application package and an infrastructure namespace does
+not lose either declaration merely because it uses `include` and `sources` instead of
+`packages`.
+
+Infra owns the full workspace operation receipt and report. CLI's native qualification
+receipt and report are non-generic read projections of that original payload; they are
+not base classes for domain fields. Original execution, outcome, stage and completion
+remain observable when CLI reads the shared native-tool evidence.
+
 Upgrade installs the newly resolved lock through its existing frozen provisioning
 owner and verifies its runtime provenance before the next producer. Package election
 resolves the current physical import path independently of loaded-module caches;
@@ -113,7 +125,10 @@ or journal effects. Cold package election and loaded function/class provenance m
 agree. The retained native file states and physical tree manifests include provider
 code, package resources, distribution metadata, editable pointer files, and project
 metadata read during ownership election. Distribution names and namespace names are
-separate identities; ambiguous ownership is a failure.
+separate identities; ambiguous ownership is a failure. Lexical entrypoints retain
+the physical executable sources they consume and the metadata proving their elected
+providers. Explicit module inventories and declared resource trees retain their
+membership checks; unrelated files do not become lexical producer inputs.
 
 The captured cold module election is retained with the same native manifests in
 phase inputs, journal transitions, and publication receipts. Revalidation uses the
@@ -138,12 +153,22 @@ links, property accessors, and MRO suppliers. They do not require operational cl
 variables, initialized settings singletons, or config data to equal class-body literals;
 the actual consumer captures typed config and resource inputs separately.
 
-Producer authentication uses a shared native Rope declaration graph and compiles
-captured physical source without executing it. It does not import a second copy of
-an already loaded producer. Fresh-process imports remain publication-consumer
-checks; they cannot substitute for callback-free source authentication. Source
-receipts are checked again after observation, before an authenticated reference is
-returned.
+Class cache writes require an unchanged classmethod receiver or an exact global class
+receiver whose native method writes the declared field. Receiver rebinding prevents
+that classification. The writer's executable code remains part of the proof, and
+changes to ordinary constants remain violations. Declared staging-path mappings apply
+to wrapper storage and nested code units as well as direct function evidence; a
+filename change outside those mappings remains observable.
+
+Producer authentication compiles pinned physical declarations without executing
+their callbacks, then compares loaded bindings with an isolated native import from
+the elected physical roots. Observation remains passive in the original process;
+the isolated child performs the real import and may produce its actual import
+effects, which are validated separately. This proof creates no source preview or
+publication journal. Source and runtime receipts are checked before observation
+and again before returning the authenticated reference; the cold import's executed
+code must also match those captured source bytes. Candidate publication still owns
+its staged source view, journal, and fresh consumer checks.
 
 Native dataclass and named-tuple methods require a physical field-layout witness, native
 construction metadata and descriptor identity, and correspondence with code emitted
@@ -174,13 +199,22 @@ An unresolved factory binding reports bounded, escaped identifier, module/packag
 registration, receiver/declaration, physical source path, and supplier-kind context.
 Diagnostics never render the operand, its material values, or a source excerpt; they
 preserve the failed admission rather than authorizing an unknown factory.
+Module-level source aliases may follow one unambiguous runtime declaration through
+an imported name or raw provider attribute. A typing-only shadow is excluded only
+when its guard is an authenticated import of native `typing.TYPE_CHECKING` (including
+import aliases, module-qualified access, and native boolean negation). The runtime
+flag must match its freshly read physical declaration. Unknown conditions, competing
+active declarations, alias cycles, or replaced runtime/supplier bindings fail without
+executing either branch, decorators, or class bodies. The selected metaclass retains
+the same physical supplier/source/code authentication as an unconditional import.
 Native compiler inputs preserve the class's actual bases and its own declared
 descriptors. An inherited constructor is not an explicitly declared dataclass
-constructor. Authentication does not replay a class body, decorator, metaclass, or
-construction hook. Function compilation uses authenticated native suppliers and
-data-only attachment targets; alias operands and compiler constructor bindings
-require admission before invocation. Value comparison must not invoke authored
-equality, hashing, or attribute access.
+constructor. Observation and pinned-source compilation do not replay a class body,
+decorator, metaclass, or construction hook in the original process. The isolated
+child retains the effects of its real import. Function compilation uses
+authenticated native suppliers and data-only attachment targets. Alias operands
+and compiler constructor bindings require admission before invocation. Value
+comparison must not invoke authored equality, hashing, or attribute access.
 Compiler field defaults use the existing native operand-admission contract.
 Immutable scalar defaults are valid inputs; a default with a `__set_name__`
 callback remains inadmissible before native class assembly.
@@ -192,18 +226,66 @@ inherited subclass hook again.
 Source bindings retain null literals inside a typed value; a null annotation or
 default never becomes a successful null `FlextResult` payload or a substituted type.
 Native generated methods are compiled in batches whose starting lines depend on
-other generated methods. Their comparison uses the same fixed starting line on
-immutable copies of both code objects, preserving compiler filenames, executable
-code, metadata and closure checks. Authored functions retain exact source positions.
+other generated methods. Their evidence retains actual compiler filenames, source
+positions, executable metadata and closure checks against the same authenticated
+construction inputs. Authored functions retain exact source positions.
 
 Every phase binds that same captured context to its staged consumer inputs. Journal
 transitions preserve it instead of rediscovering loaded origins after publication.
-Native tree authentication precedes source filtering; derived interpreter bytecode is
-not a source input. Added resources or directories, changed bytes, retired roots, and
-changed import election invalidate admission. Only exact journal output or staging
-receipts authorize membership changes. Publication observation authenticates the full
-producer closure before selecting the requested consumer scope. None of this proves
-an earlier process whose source context was not captured.
+Derived interpreter bytecode is not a source input. Changed consumed bytes, retired
+provider roots, changed import election, and membership changes in declared trees
+invalidate admission. Exact journal output or staging receipts authorize candidate
+membership changes. Independent file work outside a lexical producer's consumed
+inputs does not invalidate its proof. Publication still authenticates each
+participant's relevant inputs and effects. None of this proves an earlier process
+whose source context was not captured.
+
+Documentation targets and the executing producer can have different roots.
+Programmatic preparation receives the original authenticated producer explicitly
+when the target does not own the executing environment. Both single-bundle and
+per-scope preparation verify the actual entrypoints and current producer before
+consuming inputs; a target directory never supplies an implicit borrowed runtime.
+
+Native callback identity follows the elected supplier's actual registrations.
+Conditional attribute references record native absence as binding evidence;
+the cold comparison detects later appearance instead of rejecting an untaken
+platform-specific branch. Explicitly selected entrypoints must still exist.
+An extension can export a callback at module level while its qualified name
+describes a class. Observation checks those native namespaces by object identity;
+the qualified name alone does not establish or invalidate registration.
+Bound interpreter methods are checked against the registered receiver type and
+its native descriptor, and their evidence retains the receiver value.
+Instance storage follows effective MRO ownership. The observation distinguishes
+an uninitialized native slot from a slot shadowed by a derived declaration;
+neither state supplies a fabricated field value or executes the derived accessor.
+Optional native reads require the standard attribute reader and no custom missing
+attribute hook.
+Native callable observations retain both interpreter-exposed descriptor and slot
+values and their native argument referents. Neither storage form replaces the
+other, so changed callable arguments remain detectable.
+Native type-family selection uses identity comparisons and remains passive for
+metaclasses with hashing or equality hooks.
+Operand observations share one recursive encoder, parameterized by construction
+mode, and retain structured JSON values until the transport boundary.
+Recursive JSON strings are prohibited: re-encoding their escapes amplifies memory
+with nesting depth. Compiler locations compare as a flat structure containing
+the root and every nested code unit's position in `co_consts`, without JSON
+conversion or repeated root checks. Full operand evidence remains required.
+Code observations carry one Pydantic-validated JSON payload with the filename,
+unit identity, flat locations and complete native compiler witness bytes.
+CPython marshal format 2 encodes the witness without reference or string-interning
+flags; Pydantic owns its base64 transport. Witnesses are compared without code
+deserialization, hashes or inferred locals layouts. This compiler identity is
+stricter than `CodeType.__eq__`: it also retains stack size and locals kinds.
+Exact native constants are elected before relocation and encoding. NaN, mutable
+constants and buffers retain explicit nonportable markers and cannot compare
+equal, even to another rejected observation. Unknown constant types fail before
+authored iteration, hashing or buffer conversion. Physical source receipts and
+fresh compilation remain necessary to authenticate the witness.
+Import dependency discovery uses the shared import maps; class-lineage validation remains
+with the queries that request class information. Namespace packages contribute
+their physical portions to source authority without requiring an executable
+initializer.
 
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
@@ -384,6 +466,25 @@ distribution. Dependency-floor updates rewrite only the selected target's PEP 62
 requirements and dependency groups, retaining markers, extras, direct sources and
 comments. They never write the installed generator's configuration or another
 checkout's declarations.
+Deptry checking and dependency detection consume one capture owner. It records the
+exact settings, native process outcome, fresh report and physical production tree;
+a changed tree, reused report, missing tool or contradictory exit status fails.
+The import extractor's own coverage receipt must report a positive, unambiguous
+executed file count. Empty source trees and exclusions that prevent all execution
+therefore remain failures even when the native findings array is empty.
+Repairs receive the elected interpreter's import suppliers and its native lock
+through typed injection. Missing or ambiguous suppliers remain native findings;
+installed package names never establish applicability. The existing requirement
+strings retain their markers, extras and sources when promoted from development.
+The target's explicit contract also identifies development-only suppliers. Their
+metadata remains in the index and their native findings stay visible; an illegal
+production import requires a consumer rewire instead of a runtime declaration.
+Deptry's generated optional-group setting uses `optional_dependencies_dev_groups`;
+the deprecated key is removed by the declaration phase in the same projection.
+The fixer holds the repository mutation lease, revalidates every metadata, source,
+lock and report input, publishes only `project.dependencies` through the guarded
+TOML owner, then scans again. A residual `FINDINGS` repair receipt describes the
+operation; the subsequent check remains red and provides no green acceptance.
 `make initialize KIND=internal_flext` supplies a declaration value to the native
 `codegen init` owner for that Makefile's target only. The owner plans the target's
 `config/codegen.yaml` through the existing guarded declaration transaction before
@@ -1033,6 +1134,16 @@ rules with actual occurrences. Syntax-only findings need no import closure.
 The check gate and the mod scanner share this input election, deduplicating
 source reads without reducing the rule inventory or its diagnostic evidence.
 
+Facade consumer discovery resolves each native Rope `ImportedModule` once within
+the current source file. Repeated occurrences retain their binding and owner checks;
+the resolution map holds the native import objects, not a separate name registry.
+Rope's line tables convert AST byte columns to character offsets before resolving
+each binding. Each receiver is already a native AST `Name`: the same parsed
+module supplies its lexical scope at that offset, and Rope resolves the existing
+node without tokenizing and parsing its text again. Local shadows and native
+import identity remain checked. The resolution map does not persist across source
+observations or replace source, producer, or publication proof.
+
 AST replacements publish through the authenticated file-plan boundary, then reuse
 the import normalizer on only the rewritten files. Unused imports and formatting
 are normalized before the next mod check; normalization failures remain blocking.
@@ -1050,6 +1161,12 @@ staging after validation. Parser or validator exceptions retain their original c
 and leave live source bytes and modification times unchanged. Native Ruff uses the
 declared external project cache so its cache files never enter the authenticated
 source view.
+
+A nonempty admitted file phase with no required byte, permission, or directory
+effects publishes a fresh observation under the same root lease. It still verifies
+its producer, input and output identities, and rejects pending journals or foreign
+residue. It does not materialize a candidate source view or a publication staging
+tree. Equal desired bytes alone do not authorize this path.
 
 Journal footprint inspection and authorization hold the same root journal lease
 as publication. Authorization observes the current journal under that lease;

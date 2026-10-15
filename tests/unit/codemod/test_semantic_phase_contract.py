@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_cli import u as cli_u
-
 from flext_core import u as core_u
+
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, t, tm, u

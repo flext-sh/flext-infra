@@ -36,10 +36,27 @@ class TestsFlextInfraDepsModernizerConsolidate:
     def test_missing_tables_create_dev_group_and_deptry_policy(self) -> None:
         """An empty payload gains the dev group and the deptry dev-group policy."""
         payload, changes = self._consolidated("")
-        tm.that(changes, has="tool.deptry.pep621_dev_dependency_groups set to ['dev']")
+        tm.that(
+            changes,
+            has=(
+                f"tool.deptry.optional_dependencies_dev_groups set to {[c.Infra.DEV]!r}"
+            ),
+        )
         deptry = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["deptry"])
         tm.that(
-            list(u.Tests.strings(deptry["pep621_dev_dependency_groups"])),
+            list(u.Tests.strings(deptry["optional_dependencies_dev_groups"])),
+            eq=[str(c.Infra.DEV)],
+        )
+
+    def test_deprecated_deptry_policy_is_removed_in_the_same_projection(self) -> None:
+        """The modernizer emits only the native scanner's current option."""
+        payload, _changes = self._consolidated(
+            f'[tool.deptry]\npep621_dev_dependency_groups = ["{c.Infra.DEV}"]\n',
+        )
+        deptry = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["deptry"])
+        tm.that(deptry, lacks="pep621_dev_dependency_groups")
+        tm.that(
+            list(u.Tests.strings(deptry["optional_dependencies_dev_groups"])),
             eq=[str(c.Infra.DEV)],
         )
 

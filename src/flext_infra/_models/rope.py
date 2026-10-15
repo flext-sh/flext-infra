@@ -18,15 +18,36 @@ from flext_infra._models._codegen import (
     FlextInfraModelsCodegenFixModels,
     FlextInfraModelsCodegenLazyInitModels,
 )
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
 
-    class RopeSourceImport(m.ArbitraryTypesModel):
-        """One native import declaration and its original logical source region."""
+    class RopeRestructureRequest(FlextInfraModelsBase.FrozenArbitrary):
+        """One complete native restructuring operation and its admitted inputs."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
+
+        pattern: t.NonEmptyStr = m.Field(description="Native Rope match template")
+        goal: t.NonEmptyStr = m.Field(description="Native Rope replacement template")
+        arguments: t.MappingKV[str, str | t.StrSequence] = m.Field(
+            description="Native wildcard constraints and exact identity alternatives",
+        )
+        resources: t.SequenceOf[p.Infra.RopeResource] = m.Field(
+            description="The complete resource inventory selected for this operation",
+        )
+        imports: t.StrSequence | t.MappingKV[str, str] = m.Field(
+            default=(),
+            description="Native imports, optionally keyed by reusable lexical bindings",
+        )
+        match_filter: t.Infra.RopeMatchFilter | None = m.Field(
+            default=None,
+            description="Domain proof admitting each native source occurrence",
+        )
+
+    class RopeSourceImport(FlextInfraModelsBase.FrozenArbitrary):
+        """One native import declaration and its original logical source region."""
 
         import_info: Annotated[
             p.Infra.RopeFromImport,
@@ -313,10 +334,8 @@ class FlextInfraModelsRope:
             m.Field(description="Rope-owned source slice for the statement"),
         ] = ""
 
-    class FamilyWrapperFlatten(m.ArbitraryTypesModel):
+    class FamilyWrapperFlatten(FlextInfraModelsBase.FrozenArbitrary):
         """Rope identity of one namespace wrapper flattened into its family owner."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project: Annotated[
             t.Infra.RopeProject,
@@ -359,10 +378,8 @@ class FlextInfraModelsRope:
             m.Field(description="Symbol kind: class, function, assignment"),
         ]
 
-    class ConsolidatorScannedFile(m.ArbitraryTypesModel):
+    class ConsolidatorScannedFile(FlextInfraModelsBase.FrozenArbitrary):
         """One scanned module whose assignments match canonical constants."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         resource: Annotated[
             t.Infra.RopeResource,

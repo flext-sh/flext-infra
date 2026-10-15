@@ -27,6 +27,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
 
         Returns:
             The resolved lock path.
+
         """
         return tm.ok(FlextInfraWorkspaceDetector.resolution_context(root)).lock_path
 

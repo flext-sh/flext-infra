@@ -138,6 +138,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
 
         Returns:
             Native ordered CUSTOM entries, or their original parse failure.
+
         """
         groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
         group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
@@ -185,8 +186,9 @@ class FlextInfraUtilitiesPyprojectOverlay:
     ) -> None:
         """Tag generated additions in the existing dev group, not another registry."""
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
+        group_names: tuple[str, ...] = tuple(groups)
         group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
-            tuple(groups),
+            group_names,
             group,
         )
         values = FlextInfraUtilitiesPyprojectRequirements.read_dependency_group(
@@ -223,6 +225,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         rendered_groups = dict(
             u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {},

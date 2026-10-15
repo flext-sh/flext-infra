@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSet
 from copy import deepcopy
 from pathlib import Path
+from typing import ClassVar
 from urllib.parse import unquote, urlsplit
 
 from flext_cli import u
@@ -24,6 +25,64 @@ from flext_infra._utilities._pyproject import (
 from flext_infra._utilities.dependency_requirements import (
     FlextInfraUtilitiesDependencyRequirements,
 )
+
+
+class _ResolutionViewState(m.ArbitraryTypesModel):
+    """Mutable accumulator for one native resolution view projection."""
+
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+
+    directory: Path = m.Field(
+        description="Generated view root resolving member relative paths.",
+    )
+    policy: m.Infra.MakeUvResolutionSpec = m.Field(
+        description="Declared resolution policy owning member naming.",
+    )
+    native_uv: t.MutableJsonMapping = m.Field(
+        description="Detached root ``[tool.uv]`` table under projection.",
+    )
+    view_project: t.MutableJsonMapping = m.Field(
+        description="Generated virtual project table, empty when absent.",
+    )
+    dependencies: t.MutableJsonList = m.Field(
+        description="Root dependency requests in declaration order.",
+    )
+    member_bindings: t.MutableJsonList = m.Field(
+        description="Member dependency requests in declaration order.",
+    )
+    extras: t.MutableJsonMapping = m.Field(
+        description="View optional-dependency groups by target name.",
+    )
+    groups: t.MutableJsonMapping = m.Field(
+        description="View dependency groups by target name.",
+    )
+    group_metadata: t.MutableJsonMapping = m.Field(
+        description="Renamed group metadata keyed by target name.",
+    )
+    sources: t.MutableJsonMapping = m.Field(
+        description="Context-qualified source entries by dependency name.",
+    )
+    index_entries: t.MutableJsonMapping = m.Field(
+        description="Conflict-checked index declarations by identity.",
+    )
+    constraints: t.MutableJsonList = m.Field(
+        description="Constraints preserving replaced local sources.",
+    )
+    retained_overrides: t.MutableJsonList = m.Field(
+        description="Declared overrides with member requests appended.",
+    )
+    overridden: MutableSet[str] = m.Field(
+        description="Canonical member names already natively bound.",
+    )
+    seen_groups: MutableSet[str] = m.Field(
+        description="Normalized group names already claimed.",
+    )
+    seen_extras: MutableSet[str] = m.Field(
+        description="Normalized extra names already claimed.",
+    )
 
 
 class FlextInfraUtilitiesPyprojectUvSources(
@@ -52,29 +111,127 @@ class FlextInfraUtilitiesPyprojectUvSources(
             The resulting ``p.Result[t.Cli.TomlDocument]``.
 
         """
+        validated = cls._validated_resolution_projects(
+            root, members, directory=directory, policy=policy
+        )
+        if validated.failure:
+            return r[t.Cli.TomlDocument].from_failure(validated)
+        projects, virtual_name = validated.value
+        state = cls._resolution_view_state(
+            root, projects, virtual_name, directory=directory, policy=policy
+        )
+        for position, project in enumerate(projects):
+            projected = cls._resolution_project_view(state, project, position)
+            if projected.failure:
+                return r[t.Cli.TomlDocument].from_failure(projected)
+        bound = cls._resolution_bound_groups(state, virtual_name)
+        if bound.failure:
+            return r[t.Cli.TomlDocument].from_failure(bound)
+        native_uv = state.native_uv
+        native_uv["sources"] = state.sources
+        native_uv["override-dependencies"] = state.retained_overrides
+        if state.constraints:
+            native_uv["constraint-dependencies"] = state.constraints
+        if state.group_metadata:
+            native_uv["dependency-groups"] = state.group_metadata
+        if state.index_entries:
+            native_uv["index"] = list(state.index_entries.values())
+        view: t.JsonDict = {
+            c.Infra.DEPENDENCY_GROUPS: state.groups,
+            c.Infra.TOOL: {"uv": native_uv},
+        }
+        if state.view_project:
+            view[c.Infra.PROJECT] = state.view_project
+        return r[t.Cli.TomlDocument].ok(u.Cli.toml_document_from_mapping(view))
+
+    @staticmethod
+    def _resolution_bound_groups(
+        state: _ResolutionViewState,
+        virtual_name: str,
+    ) -> p.Result[bool]:
+        """Bind the virtual project tables and the synthetic member group.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        if state.view_project:
+            state.view_project["dependencies"] = state.dependencies
+            state.view_project["optional-dependencies"] = state.extras
+        binding_requirements = (
+            state.member_bindings
+            if state.view_project
+            else [*state.dependencies, *state.member_bindings]
+        )
+        if binding_requirements:
+            if canonicalize_name(virtual_name) in state.seen_groups:
+                return r[bool].fail(
+                    f"resolution binding group collides with a declaration:"
+                    f" {virtual_name}",
+                )
+            state.groups[virtual_name] = binding_requirements
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _validated_resolution_projects(
+        cls,
+        root: m.Infra.UvResolutionProject,
+        members: t.SequenceOf[m.Infra.UvResolutionProject],
+        *,
+        directory: Path,
+        policy: m.Infra.MakeUvResolutionSpec,
+    ) -> p.Result[t.Pair[list[m.Infra.UvResolutionProject], str]]:
+        """Validate the resolution roster and elect the virtual distribution.
+
+        Returns:
+            The ordered projects and the virtual distribution name.
+
+        """
+        failure = r[t.Pair[list[m.Infra.UvResolutionProject], str]]
         if not directory.is_absolute():
-            return r[t.Cli.TomlDocument].fail(
+            return failure.fail(
                 f"resolution view directory is not absolute: {directory}",
             )
-        projects = (
+        projects = [
             root,
             *sorted(members, key=lambda item: item.repository.distribution),
-        )
+        ]
         names = [
             canonicalize_name(project.repository.distribution) for project in projects
         ]
         if len(names) != len(set(names)):
-            return r[t.Cli.TomlDocument].fail(
+            return failure.fail(
                 "resolution projects have colliding normalized distribution names",
             )
         virtual_name = canonicalize_name(
             root.repository.distribution + policy.virtual_distribution_suffix,
         )
         if virtual_name in names:
-            return r[t.Cli.TomlDocument].fail(
+            return failure.fail(
                 f"resolution distribution collides with a declared project:"
                 f" {virtual_name}",
             )
+        return failure.ok((
+            projects,
+            virtual_name,
+        ))
+
+    @classmethod
+    def _resolution_view_state(
+        cls,
+        root: m.Infra.UvResolutionProject,
+        projects: t.SequenceOf[m.Infra.UvResolutionProject],
+        virtual_name: str,
+        *,
+        directory: Path,
+        policy: m.Infra.MakeUvResolutionSpec,
+    ) -> _ResolutionViewState:
+        """Detach the root metadata and scaffold the projection accumulators.
+
+        Returns:
+            The resolution view state seeded from the root project.
+
+        """
         root_payload = cls._resolution_project_payload(root)
         root_project = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             root_payload.get(c.Infra.PROJECT, {}),
@@ -99,13 +256,6 @@ class FlextInfraUtilitiesPyprojectUvSources(
             if root_project
             else {}
         )
-        dependencies: list[t.JsonValue] = []
-        member_bindings: list[t.JsonValue] = []
-        extras: t.JsonDict = {}
-        groups: t.JsonDict = {}
-        group_metadata: t.JsonDict = {}
-        sources: t.JsonDict = {}
-        index_entries: t.JsonDict = {}
         overrides = t.Cli.JSON_LIST_ADAPTER.validate_python(
             native_uv.get("override-dependencies", []),
         )
@@ -114,304 +264,508 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 native_uv.get("constraint-dependencies", []),
             ),
         )
-        overridden = set(names)
-        retained_overrides = list(overrides)
-        explicit_names = {
+        return _ResolutionViewState(
+            directory=directory,
+            policy=policy,
+            native_uv=native_uv,
+            view_project=view_project,
+            dependencies=[],
+            member_bindings=[],
+            extras={},
+            groups={},
+            group_metadata={},
+            sources={},
+            index_entries={},
+            constraints=constraints,
+            retained_overrides=list(overrides),
+            overridden={
+                canonicalize_name(project.repository.distribution)
+                for project in projects
+            },
+            seen_groups=set(),
+            seen_extras=set(),
+        )
+
+    @classmethod
+    def _resolution_project_view(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+        position: int,
+    ) -> p.Result[bool]:
+        """Collect one project's contributions into the resolution view state.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        payload = cls._resolution_project_payload(project)
+        metadata = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            payload.get(c.Infra.PROJECT, {}),
+        )
+        name = canonicalize_name(project.repository.distribution)
+        metadata_name = metadata.get("name")
+        if (project.repository.package or metadata_name is not None) and (
+            not isinstance(metadata_name, str)
+            or canonicalize_name(metadata_name) != name
+        ):
+            return r[bool].fail(
+                f"resolution project identity differs from its declaration:"
+                f" {project.directory}",
+            )
+        optional = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            metadata.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
+        )
+        root = position == 0
+        cls._resolution_project_constraints(state, project)
+        cls._resolution_project_request(state, project, optional, name, root=root)
+        tool = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            payload.get(c.Infra.TOOL, {}),
+        )
+        project_uv = t.Cli.JSON_MAPPING_ADAPTER.validate_python(tool.get("uv", {}))
+        if root and not project.repository.package:
+            failed = cls._resolution_root_dependencies(state, project, metadata)
+            if failed.failure:
+                return failed
+        declared_groups = cls._resolution_declared_groups(payload, project_uv)
+        renamed = cls._resolution_group_targets(state, declared_groups, name, root=root)
+        if renamed.failure:
+            return renamed
+        project_sources = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            project_uv.get("sources", {}),
+        )
+        if root and not project.repository.package:
+            cls._resolution_root_project_sources(state, project, project_sources)
+        resolved = cls._resolution_extra_requirements(
+            state, project, optional, name, root=root
+        )
+        if resolved.failure:
+            return resolved
+        phases: tuple[tuple[str, list[t.Triple[str, t.StrSequence, str]]], ...] = (
+            (
+                "extra",
+                [
+                    (target, optional_names, extra)
+                    for extra, (target, optional_names) in resolved.value.items()
+                ],
+            ),
+            (
+                "group",
+                []
+                if root and not project.repository.package
+                else [
+                    (
+                        renamed.value[canonicalize_name(group)],
+                        cls._resolution_group_requirement_names(declared_groups, group),
+                        group,
+                    )
+                    for group in declared_groups
+                ],
+            ),
+        )
+        for qualifier, context_list in phases:
+            relocated = cls._resolution_context_sources(
+                state,
+                project,
+                project_sources,
+                context_list,
+                qualifier=qualifier,
+            )
+            if relocated.failure:
+                return relocated
+        cls._resolution_group_entries(state, project, declared_groups, renamed.value)
+        return cls._resolution_project_exports(
+            state, project, project_uv, renamed.value, name
+        )
+
+    @classmethod
+    def _resolution_project_exports(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+        project_uv: t.JsonMapping,
+        renamed: t.MappingKV[str, str],
+        name: str,
+    ) -> p.Result[bool]:
+        """Export renamed group metadata and merged index declarations.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        failed = cls._resolution_group_metadata(state, project_uv, renamed, name)
+        if failed.failure:
+            return failed
+        return cls._resolution_index_entries(state, project, project_uv)
+
+    @classmethod
+    def _resolution_project_constraints(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+    ) -> None:
+        """Extend the state constraints over the project's overridden demands."""
+        state.constraints.extend(
+            FlextInfraUtilitiesDependencies.dependency_constraint(
+                requirement,
+                replace_source=True,
+            )
+            for requirement in cls.document_requirement_lines(project.document).unwrap()
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) in state.overridden
+        )
+
+    @staticmethod
+    def _resolution_explicit_overrides(
+        state: _ResolutionViewState,
+    ) -> set[str]:
+        """Name the distributions explicitly pinned by declared overrides.
+
+        Returns:
+            The canonical dependency names of the declared override entries.
+
+        """
+        return {
             FlextInfraUtilitiesDependencies.dep_name(entry)
-            for entry in overrides
+            for entry in t.Cli.JSON_LIST_ADAPTER.validate_python(
+                state.native_uv.get("override-dependencies", []),
+            )
             if isinstance(entry, str)
         }
-        seen_groups: set[str] = set()
-        seen_extras: set[str] = set()
-        for position, project in enumerate(projects):
-            payload = cls._resolution_project_payload(project)
-            metadata = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                payload.get(c.Infra.PROJECT, {}),
-            )
-            name = canonicalize_name(project.repository.distribution)
-            metadata_name = metadata.get("name")
-            if (project.repository.package or metadata_name is not None) and (
-                not isinstance(metadata_name, str)
-                or canonicalize_name(metadata_name) != name
-            ):
-                return r[t.Cli.TomlDocument].fail(
-                    f"resolution project identity differs from its declaration:"
-                    f" {project.directory}",
+
+    @classmethod
+    def _resolution_project_request(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+        optional: t.JsonMapping,
+        name: str,
+        *,
+        root: bool,
+    ) -> None:
+        """Record one project's dependency request and native path binding."""
+        selected_extras = tuple(sorted(optional))
+        request = name
+        if selected_extras:
+            request += f"[{','.join(selected_extras)}]"
+        if project.repository.package:
+            if root:
+                state.dependencies.append(request)
+            else:
+                state.member_bindings.append(request)
+            if name not in cls._resolution_explicit_overrides(state):
+                state.retained_overrides.append(request)
+            state.sources[name] = {
+                "path": project.directory.relative_to(
+                    state.directory,
+                    walk_up=True,
+                ).as_posix(),
+                "editable": project.repository.editable,
+            }
+
+    @classmethod
+    def _resolution_root_dependencies(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+        metadata: t.JsonMapping,
+    ) -> p.Result[bool]:
+        """Collect the root content-only project's runtime dependencies.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        for requirement in t.Cli.JSON_LIST_ADAPTER.validate_python(
+            metadata.get(c.Infra.DEPENDENCIES, []),
+        ):
+            if not isinstance(requirement, str):
+                return r[bool].fail(
+                    "content-only runtime dependency is not a requirement string",
                 )
-            optional = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                metadata.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
-            )
-            selected_extras = tuple(sorted(optional))
-            constraints.extend(
-                FlextInfraUtilitiesDependencies.dependency_constraint(
-                    requirement,
-                    replace_source=True,
-                )
-                for requirement in cls.document_requirement_lines(
-                    project.document
-                ).unwrap()
-                if FlextInfraUtilitiesDependencies.dep_name(requirement) in overridden
-            )
-            request = name
-            if selected_extras:
-                request += f"[{','.join(selected_extras)}]"
-            if project.repository.package:
-                if position == 0:
-                    dependencies.append(request)
-                else:
-                    member_bindings.append(request)
-                if name not in explicit_names:
-                    retained_overrides.append(request)
-                sources[name] = {
-                    "path": project.directory.relative_to(
-                        directory,
-                        walk_up=True,
-                    ).as_posix(),
-                    "editable": project.repository.editable,
-                }
-            tool = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                payload.get(c.Infra.TOOL, {}),
-            )
-            project_uv = t.Cli.JSON_MAPPING_ADAPTER.validate_python(tool.get("uv", {}))
-            if position == 0 and not project.repository.package:
-                for requirement in t.Cli.JSON_LIST_ADAPTER.validate_python(
-                    metadata.get(c.Infra.DEPENDENCIES, []),
-                ):
-                    if not isinstance(requirement, str):
-                        return r[t.Cli.TomlDocument].fail(
-                            "content-only runtime dependency is not a"
-                            " requirement string",
-                        )
-                    dependencies.append(
-                        cls._resolution_requirement(requirement, project)
-                    )
-            declared_groups = dict(
-                t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                    payload.get(c.Infra.DEPENDENCY_GROUPS, {}),
+            state.dependencies.append(cls._resolution_requirement(requirement, project))
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _resolution_declared_groups(
+        cls,
+        payload: t.JsonDict,
+        project_uv: t.JsonMapping,
+    ) -> t.JsonDict:
+        """Merge legacy dev dependencies and wire the declared groups.
+
+        Returns:
+            The project's declared groups in their view-level wire form.
+
+        """
+        declared_groups = dict(
+            t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                payload.get(c.Infra.DEPENDENCY_GROUPS, {}),
+            ),
+        )
+        legacy_dev = project_uv.get("dev-dependencies")
+        if legacy_dev is not None:
+            development = list(
+                t.Cli.JSON_LIST_ADAPTER.validate_python(
+                    declared_groups.get("dev", []),
                 ),
             )
-            legacy_dev = project_uv.get("dev-dependencies")
-            if legacy_dev is not None:
-                development = list(
-                    t.Cli.JSON_LIST_ADAPTER.validate_python(
-                        declared_groups.get("dev", []),
-                    ),
-                )
-                development.extend(t.Cli.JSON_LIST_ADAPTER.validate_python(legacy_dev))
-                declared_groups["dev"] = development
-            validated_groups = m.Infra.DependencyGroupDeclarations.model_validate(
-                {"dependency-groups": declared_groups},
-            )
-            declared_groups = {
-                group: cls.dependency_group_wire(entries)
-                for group, entries in validated_groups.dependency_groups.items()
-            }
-            renamed = {
-                canonicalize_name(group): (
-                    group
-                    if position == 0
-                    else f"{name}{policy.member_group_separator}{group}"
-                )
-                for group in declared_groups
-            }
-            if len(renamed) != len(declared_groups):
-                return r[t.Cli.TomlDocument].fail(
-                    f"resolution project has colliding normalized group names: {name}",
-                )
-            for target in renamed.values():
-                normalized = canonicalize_name(target)
-                if normalized in seen_groups:
-                    return r[t.Cli.TomlDocument].fail(
-                        f"resolution dependency-group names collide: {target}",
-                    )
-                seen_groups.add(normalized)
-            project_sources = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                project_uv.get("sources", {}),
-            )
-            if position == 0 and not project.repository.package:
-                for dependency, raw_sources in project_sources.items():
-                    normalized_dependency = canonicalize_name(dependency)
-                    if normalized_dependency in overridden:
-                        continue
-                    entries = (
-                        t.Cli.JSON_LIST_ADAPTER.validate_python(raw_sources)
-                        if isinstance(raw_sources, list)
-                        else [raw_sources]
-                    )
-                    sources[normalized_dependency] = [
-                        cls._resolution_source(
-                            t.Cli.JSON_MAPPING_ADAPTER.validate_python(entry),
-                            project,
-                            directory=directory,
-                            group=None,
-                        )
-                        for entry in entries
-                    ]
-            for extra, raw_requirements in optional.items():
-                target = (
-                    extra
-                    if position == 0
-                    else f"{name}{policy.member_group_separator}{extra}"
-                )
-                normalized = canonicalize_name(target)
-                if normalized in seen_extras:
-                    return r[t.Cli.TomlDocument].fail(
-                        f"resolution optional-dependency names collide: {target}",
-                    )
-                seen_extras.add(normalized)
-                selected: list[t.JsonValue] = []
-                for requirement in t.Cli.JSON_LIST_ADAPTER.validate_python(
-                    raw_requirements,
-                ):
-                    if not isinstance(requirement, str):
-                        return r[t.Cli.TomlDocument].fail(
-                            "optional dependency is not a requirement string",
-                        )
-                    selected.append(cls._resolution_requirement(requirement, project))
-                extras[target] = selected
-                optional_names = {
-                    FlextInfraUtilitiesDependencies.dep_name(requirement)
-                    for requirement in selected
-                    if isinstance(requirement, str)
-                }
-                for dependency, raw_sources in project_sources.items():
-                    dependency_name = canonicalize_name(dependency)
-                    if (
-                        dependency_name in overridden
-                        or dependency_name not in optional_names
-                    ):
-                        continue
-                    entries = (
-                        t.Cli.JSON_LIST_ADAPTER.validate_python(raw_sources)
-                        if isinstance(raw_sources, list)
-                        else [raw_sources]
-                    )
-                    for raw_source in entries:
-                        source = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_source)
-                        source_extra = source.get("extra", extra)
-                        if (
-                            "group" in source
-                            or not isinstance(source_extra, str)
-                            or canonicalize_name(source_extra)
-                            != canonicalize_name(extra)
-                        ):
-                            continue
-                        relocated = cls._resolution_source(
-                            source,
-                            project,
-                            directory=directory,
-                            group=None,
-                        )
-                        relocated["extra"] = target
-                        added = cls._resolution_add_source(
-                            sources, dependency, relocated
-                        )
-                        if added.failure:
-                            return r[t.Cli.TomlDocument].from_failure(added)
-            for group, raw_entries in declared_groups.items():
-                target = renamed[canonicalize_name(group)]
-                rewritten: list[t.JsonValue] = []
-                for entry in t.Cli.JSON_LIST_ADAPTER.validate_python(raw_entries):
-                    if isinstance(entry, str):
-                        rewritten.append(cls._resolution_requirement(entry, project))
-                    else:
-                        inclusion = m.Infra.DependencyGroupInclude.model_validate(entry)
-                        included = inclusion.include_group
-                        rewritten.append({
-                            "include-group": renamed[canonicalize_name(included)],
-                        })
-                groups[target] = rewritten
-                if position == 0 and not project.repository.package:
-                    continue
-                group_names = cls._resolution_group_requirement_names(
-                    declared_groups,
-                    group,
-                )
-                for dependency, raw_sources in project_sources.items():
-                    dependency_name = canonicalize_name(dependency)
-                    if (
-                        dependency_name in overridden
-                        or dependency_name not in group_names
-                    ):
-                        continue
-                    entries = (
-                        t.Cli.JSON_LIST_ADAPTER.validate_python(raw_sources)
-                        if isinstance(raw_sources, list)
-                        else [raw_sources]
-                    )
-                    for raw_source in entries:
-                        source = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_source)
-                        source_group = source.get("group", group)
-                        if (
-                            "extra" in source
-                            or not isinstance(source_group, str)
-                            or canonicalize_name(source_group)
-                            != canonicalize_name(group)
-                        ):
-                            continue
-                        relocated = cls._resolution_source(
-                            source,
-                            project,
-                            directory=directory,
-                            group=target,
-                        )
-                        added = cls._resolution_add_source(
-                            sources, dependency, relocated
-                        )
-                        if added.failure:
-                            return r[t.Cli.TomlDocument].from_failure(added)
-            for group, metadata_value in t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                project_uv.get("dependency-groups", {}),
-            ).items():
-                if canonicalize_name(group) not in renamed:
-                    return r[t.Cli.TomlDocument].fail(
-                        f"resolution group metadata has no declaration: {name}:{group}",
-                    )
-                group_metadata[renamed[canonicalize_name(group)]] = deepcopy(
-                    metadata_value
-                )
-            for raw_index in t.Cli.JSON_LIST_ADAPTER.validate_python(
-                project_uv.get("index", []),
-            ):
-                index = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_index)
-                identity = index.get("name", "")
-                if not isinstance(identity, str):
-                    return r[t.Cli.TomlDocument].fail(
-                        f"invalid resolution index name: {project.directory}",
-                    )
-                if identity in index_entries and index_entries[identity] != index:
-                    return r[t.Cli.TomlDocument].fail(
-                        f"resolution index declarations conflict: {identity}",
-                    )
-                index_entries[identity] = deepcopy(dict(index))
-        if view_project:
-            view_project["dependencies"] = dependencies
-            view_project["optional-dependencies"] = extras
-        binding_requirements = (
-            member_bindings if view_project else [*dependencies, *member_bindings]
+            development.extend(t.Cli.JSON_LIST_ADAPTER.validate_python(legacy_dev))
+            declared_groups["dev"] = development
+        validated_groups = m.Infra.DependencyGroupDeclarations.model_validate(
+            {"dependency-groups": declared_groups},
         )
-        if binding_requirements:
-            if canonicalize_name(virtual_name) in seen_groups:
-                return r[t.Cli.TomlDocument].fail(
-                    f"resolution binding group collides with a declaration:"
-                    f" {virtual_name}",
-                )
-            groups[virtual_name] = binding_requirements
-        native_uv["sources"] = sources
-        native_uv["override-dependencies"] = retained_overrides
-        if constraints:
-            native_uv["constraint-dependencies"] = constraints
-        if group_metadata:
-            native_uv["dependency-groups"] = group_metadata
-        if index_entries:
-            native_uv["index"] = list(index_entries.values())
-        view: t.JsonDict = {
-            c.Infra.DEPENDENCY_GROUPS: groups,
-            c.Infra.TOOL: {"uv": native_uv},
+        return {
+            group: cls.dependency_group_wire(entries)
+            for group, entries in validated_groups.dependency_groups.items()
         }
-        if view_project:
-            view[c.Infra.PROJECT] = view_project
-        return r[t.Cli.TomlDocument].ok(u.Cli.toml_document_from_mapping(view))
+
+    @classmethod
+    def _resolution_group_targets(
+        cls,
+        state: _ResolutionViewState,
+        declared_groups: t.JsonDict,
+        name: str,
+        *,
+        root: bool,
+    ) -> p.Result[dict[str, str]]:
+        """Rename the declared groups and refuse target collisions.
+
+        Returns:
+            The declared groups mapped to their view-level target names.
+
+        """
+        renamed = {
+            canonicalize_name(group): (
+                group if root else f"{name}{state.policy.member_group_separator}{group}"
+            )
+            for group in declared_groups
+        }
+        if len(renamed) != len(declared_groups):
+            return r[dict[str, str]].fail(
+                f"resolution project has colliding normalized group names: {name}",
+            )
+        for target in renamed.values():
+            normalized = canonicalize_name(target)
+            if normalized in state.seen_groups:
+                return r[dict[str, str]].fail(
+                    f"resolution dependency-group names collide: {target}",
+                )
+            state.seen_groups.add(normalized)
+        return r[dict[str, str]].ok(renamed)
+
+    @classmethod
+    def _resolution_root_project_sources(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+        project_sources: t.JsonMapping,
+    ) -> None:
+        """Relocate the root content-only project's declared sources."""
+        for dependency, raw_sources in project_sources.items():
+            normalized_dependency = canonicalize_name(dependency)
+            if normalized_dependency in state.overridden:
+                continue
+            entries = (
+                t.Cli.JSON_LIST_ADAPTER.validate_python(raw_sources)
+                if isinstance(raw_sources, list)
+                else [raw_sources]
+            )
+            state.sources[normalized_dependency] = [
+                cls._resolution_source(
+                    t.Cli.JSON_MAPPING_ADAPTER.validate_python(entry),
+                    project,
+                    directory=state.directory,
+                    group=None,
+                )
+                for entry in entries
+            ]
+
+    @classmethod
+    def _resolution_extra_requirements(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+        optional: t.JsonMapping,
+        name: str,
+        *,
+        root: bool,
+    ) -> p.Result[dict[str, t.Pair[str, set[str]]]]:
+        """Rewrite the project's extras into view-level target groups.
+
+        Returns:
+            Each declared extra mapped to its target name and the canonical
+            dependency names it selects.
+
+        """
+        resolved: dict[str, t.Pair[str, set[str]]] = {}
+        failure = r[dict[str, t.Pair[str, set[str]]]]
+        for extra, raw_requirements in optional.items():
+            target = (
+                extra if root else f"{name}{state.policy.member_group_separator}{extra}"
+            )
+            normalized = canonicalize_name(target)
+            if normalized in state.seen_extras:
+                return failure.fail(
+                    f"resolution optional-dependency names collide: {target}",
+                )
+            state.seen_extras.add(normalized)
+            selected: list[t.JsonValue] = []
+            for requirement in t.Cli.JSON_LIST_ADAPTER.validate_python(
+                raw_requirements,
+            ):
+                if not isinstance(requirement, str):
+                    return failure.fail(
+                        "optional dependency is not a requirement string",
+                    )
+                selected.append(cls._resolution_requirement(requirement, project))
+            state.extras[target] = selected
+            optional_names = {
+                FlextInfraUtilitiesDependencies.dep_name(requirement)
+                for requirement in selected
+                if isinstance(requirement, str)
+            }
+            resolved[extra] = (target, optional_names)
+        return failure.ok(resolved)
+
+    @classmethod
+    def _resolution_context_sources(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+        project_sources: t.JsonMapping,
+        contexts: t.SequenceOf[t.Triple[str, t.StrSequence, str]],
+        *,
+        qualifier: str,
+    ) -> p.Result[bool]:
+        """Relocate extra- and group-qualified sources to their view targets.
+
+        Each context carries its view-level target name, the canonical
+        dependency names it selects, and the declared qualifier origin. A
+        source carrying the opposite qualifier never relocates, and a
+        mismatched declared qualifier leaves the entry to its owning context.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        forbidden = "extra" if qualifier == "group" else "group"
+        for target, selected_names, origin in contexts:
+            for dependency, raw_sources in project_sources.items():
+                dependency_name = canonicalize_name(dependency)
+                if (
+                    dependency_name in state.overridden
+                    or dependency_name not in selected_names
+                ):
+                    continue
+                entries = (
+                    t.Cli.JSON_LIST_ADAPTER.validate_python(raw_sources)
+                    if isinstance(raw_sources, list)
+                    else [raw_sources]
+                )
+                for raw_source in entries:
+                    source = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_source)
+                    declared = source.get(qualifier, origin)
+                    if (
+                        forbidden in source
+                        or not isinstance(declared, str)
+                        or canonicalize_name(declared) != canonicalize_name(origin)
+                    ):
+                        continue
+                    relocated = cls._resolution_source(
+                        source,
+                        project,
+                        directory=state.directory,
+                        group=target if qualifier == "group" else None,
+                    )
+                    if qualifier == "extra":
+                        relocated["extra"] = target
+                    added = cls._resolution_add_source(
+                        state.sources, dependency, relocated
+                    )
+                    if added.failure:
+                        return r[bool].from_failure(added)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _resolution_group_entries(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+        declared_groups: t.JsonDict,
+        renamed: t.MappingKV[str, str],
+    ) -> None:
+        """Rewrite the project's group entries under their target names."""
+        for group, raw_entries in declared_groups.items():
+            target = renamed[canonicalize_name(group)]
+            rewritten: list[t.JsonValue] = []
+            for entry in t.Cli.JSON_LIST_ADAPTER.validate_python(raw_entries):
+                if isinstance(entry, str):
+                    rewritten.append(cls._resolution_requirement(entry, project))
+                else:
+                    inclusion = m.Infra.DependencyGroupInclude.model_validate(entry)
+                    included = inclusion.include_group
+                    rewritten.append({
+                        "include-group": renamed[canonicalize_name(included)],
+                    })
+            state.groups[target] = rewritten
+
+    @classmethod
+    def _resolution_group_metadata(
+        cls,
+        state: _ResolutionViewState,
+        project_uv: t.JsonMapping,
+        renamed: t.MappingKV[str, str],
+        name: str,
+    ) -> p.Result[bool]:
+        """Copy the project's group metadata under its renamed targets.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        for group, metadata_value in t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            project_uv.get("dependency-groups", {}),
+        ).items():
+            if canonicalize_name(group) not in renamed:
+                return r[bool].fail(
+                    f"resolution group metadata has no declaration: {name}:{group}",
+                )
+            state.group_metadata[renamed[canonicalize_name(group)]] = deepcopy(
+                metadata_value
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _resolution_index_entries(
+        cls,
+        state: _ResolutionViewState,
+        project: m.Infra.UvResolutionProject,
+        project_uv: t.JsonMapping,
+    ) -> p.Result[bool]:
+        """Merge the project's index declarations without conflicts.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        for raw_index in t.Cli.JSON_LIST_ADAPTER.validate_python(
+            project_uv.get("index", []),
+        ):
+            index = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_index)
+            identity = index.get("name", "")
+            if not isinstance(identity, str):
+                return r[bool].fail(
+                    f"invalid resolution index name: {project.directory}",
+                )
+            if (
+                identity in state.index_entries
+                and state.index_entries[identity] != index
+            ):
+                return r[bool].fail(
+                    f"resolution index declarations conflict: {identity}",
+                )
+            state.index_entries[identity] = deepcopy(dict(index))
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _resolution_group_requirement_names(

@@ -49,6 +49,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
+
+
         """
         if self._source_authority is not None and updates:
             return r[T].fail(
@@ -128,6 +130,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         Returns:
             The captured value after clean recovery, or the recovery failure
             annotated with its residual cleanup error.
+
         """
         cleaned = self._recover_prepared(prepared.plan.layout)
         if cleaned.failure:
@@ -154,6 +157,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             The prepared cursor and its authenticated candidate manifest.
+
         """
         return self._materialize_package_writes(
             session,
@@ -174,6 +178,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             Actual native consumer success or its first causal failure.
+
         """
         if runtime_root is None:
             return r[bool].ok(value=True)
@@ -293,6 +298,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             Success only while every pre-consumer observation remains current.
+
         """
         current = u.Cli.atomic_inventory_physical_tree(manifest.root.path)
         if current.failure:
@@ -314,7 +320,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         originals = FlextInfraStagedPackage.source_inputs_current(plan)
         if originals.failure:
             return r[bool].from_failure(originals)
-        journal = FlextInfraCodegenPreconditions.unchanged_journal(
+        journal = FlextInfraMiseArtifactsState.unchanged_journal(
             session,
             "source preview journal changed during validation",
         )
@@ -335,6 +341,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         """
         writes: list[tuple[Path, bytes, int]] = []
         for before in plan.inputs:
+            if not before.path.is_relative_to(plan.workspace):
+                continue
             content = (
                 plan.updates[before.path].encode(c.DEFAULT_ENCODING)
                 if before.path in plan.updates
@@ -414,9 +422,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             The scope identity report of the transaction scope.
 
         """
-        if self._producer.failure:
-            return r[m.Infra.GitIdentityReport].from_failure(self._producer)
-        producer = FlextInfraCodegenPreconditions.producer_current(self._producer.value)
+        producer = self._file_session_authority()
         if producer.failure:
             return r[m.Infra.GitIdentityReport].from_failure(producer)
         identity = self._planner.scope_identity()
@@ -475,7 +481,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         roots: t.MappingKV[str, Path],
         inputs: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Create a durable file-only cursor using the existing journal lifecycle.
+        """Authenticate the producer before creating a durable file-only cursor.
+
+        Authority is re-proven before preparing a layout or opening its journal.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
@@ -485,26 +493,18 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         authority = self._file_session_authority()
         if authority.failure:
             return result_type.from_failure(authority)
-        if set(roots.values()) - self._file_leases.keys():
-            return result_type.fail("file session requires every destination lease")
-        transaction_id = secrets.token_hex(16)
-        prepared = self._planner.file_layout(
-            scope_root,
-            roots,
-            transaction_id=transaction_id,
-        )
+        prepared = self._leased_file_layout(scope_root, roots)
         if prepared.failure:
             return result_type.from_failure(prepared)
         layout = prepared.value
-        mismatch = self._file_lease_mismatch(layout)
-        if mismatch is not None:
-            return result_type.fail(mismatch)
+        if layout.transaction_id is None:
+            return result_type.fail("file session lacks its invocation identity")
         plan = m.Infra.CodegenFileSessionPlan(layout=layout)
         opened = self._open_file_transaction_journal(
             layout,
             plan,
             inputs,
-            transaction_id,
+            layout.transaction_id,
         )
         if opened.failure:
             return result_type.from_failure(opened)
@@ -517,11 +517,42 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             ),
         )
 
+    def _leased_file_layout(
+        self,
+        scope_root: Path,
+        roots: t.MappingKV[str, Path],
+    ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
+        """Bind one invocation identity to authenticated, leased physical roots.
+
+        This layout proof checks destination leases and their physical identities;
+        the publication admission or journal entrypoint owns producer authority.
+
+        Returns:
+            The physical participant layout carrying its invocation identity.
+
+        """
+        result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
+        if set(roots.values()) - self._file_leases.keys():
+            return result_type.fail("file session requires every destination lease")
+        prepared = self._planner.file_layout(
+            scope_root,
+            roots,
+            transaction_id=secrets.token_hex(16),
+        )
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        layout = prepared.value
+        mismatch = self._file_lease_mismatch(layout)
+        if mismatch is not None:
+            return result_type.fail(mismatch)
+        return result_type.ok(layout)
+
     def _file_session_authority(self) -> p.Result[bool]:
         """Resolve the current producer or cold source authority receipt.
 
         Returns:
             Whether the active authority is current, or its first failure.
+
         """
         if self._source_authority is not None:
             return FlextInfraCodegenPreconditions.source_authority_current(
@@ -529,7 +560,14 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             )
         if self._producer.failure:
             return r[bool].from_failure(self._producer)
-        return FlextInfraCodegenPreconditions.producer_current(self._producer.value)
+        return FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            self._prior_publications,
+            reference=self._producer.value.generator_reference,
+        ).flat_map(
+            lambda outputs: FlextInfraCodegenPreconditions.producer_current(
+                self._producer.value, outputs=outputs
+            )
+        )
 
     def _file_lease_mismatch(
         self,
@@ -629,7 +667,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    prepared_journal.error or "file preparation failed",
+                    r[bool].from_failure(prepared_journal),
                 ),
             )
         ready = self._write_journal(
@@ -641,7 +679,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    ready.error or "file cursor persistence failed",
+                    r[bool].from_failure(ready),
                 ),
             )
         return result_type.ok((prepared_journal.value, ready.value))
@@ -655,15 +693,6 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         *,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
         | None = None,
-        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
-        staged_validator: Callable[
-            [
-                m.Infra.CodegenTransactionSession,
-                t.VariadicTuple[m.Infra.CodegenStagedFile],
-            ],
-            p.Result[m.Infra.CodegenTransactionSession],
-        ]
-        | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Compose file publication through the same durable phase lifecycle.
 
@@ -672,103 +701,149 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         result_type = r[t.VariadicTuple[Path]]
-        bound = self._bound_file_analysis(analysis)
-        if bound.failure:
-            return result_type.from_failure(bound)
-        analysis = bound.value
-        admitted = self._admitted_batch(analysis, batch_admission)
+        if self._producer.failure:
+            return result_type.from_failure(self._producer)
+        admitted = FlextInfraMisePublication.admit_batch(
+            analysis,
+            producer=self._producer.value,
+            admission=policy.admission,
+            prior_publications=self._prior_publications,
+        )
         if admitted.failure:
             return result_type.from_failure(admitted)
-        session = self._started_file_session(scope_root, roots, analysis)
+        if admitted.value.analysis is None:
+            return result_type.fail("publication lacks its admitted producer analysis")
+        analysis = admitted.value.analysis
+        admission = admitted.value.model_copy(
+            update={
+                "source_topology": policy.source_topology
+                if "source_topology" in policy.model_fields_set
+                else admitted.value.source_topology,
+                "scope_roots": policy.scope_roots
+                if "scope_roots" in policy.model_fields_set
+                else admitted.value.scope_roots,
+                "source_scope": policy.source_scope
+                if "source_scope" in policy.model_fields_set
+                else admitted.value.source_scope,
+            }
+        )
+        if (
+            analysis.files
+            and not policy.directories
+            and policy.staged_validator is None
+            and not analysis.issues
+            and analysis.exception is None
+            and not any(
+                u.Infra.codegen_file_requires_effect(file) for file in analysis.files
+            )
+        ):
+            return self._publish_unchanged_file_phase(
+                scope_root,
+                roots,
+                admission,
+                publication_receipts=publication_receipts,
+            )
+        session = self.begin_files_locked(scope_root, roots, analysis.inputs)
         if session.failure:
             return result_type.from_failure(session)
-        prepared = self.append_directories_locked(
-            session.value.model_copy(
-                update={"exception": session.value.exception or analysis.exception},
-            ),
-            analysis.phase,
-            policy.directories,
-        )
-        if prepared.failure:
-            return result_type.from_failure(prepared)
-        published = self.append_phase_locked(
-            prepared.value,
-            analysis.phase,
-            analysis.files,
-            issues=analysis.issues,
-            staged_validator=staged_validator,
-            batch_admission=admitted.value,
-        )
-        if published.failure:
-            return result_type.from_failure(published)
-        return self.commit_locked(
-            published.value,
-            publication_receipts=publication_receipts,
-        )
 
-    def _bound_file_analysis(
-        self,
-        analysis: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Bind the producer authority onto the published analysis.
+        def publish(
+            started: m.Infra.CodegenTransactionSession,
+        ) -> p.Result[t.VariadicTuple[Path]]:
+            """Publish the admitted phase under the prepared journal's recovery.
 
-        Args:
-            analysis: The producer analysis being published.
+            Returns:
+                The committed paths, or the first publication failure.
 
-        Returns:
-            The analysis bound to the current producer, or the authority
-            failure.
-        """
-        if self._producer.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(self._producer)
-        return FlextInfraCodegenPreconditions.bind_producer_analysis(
-            analysis,
-            self._producer.value,
-        )
-
-    @staticmethod
-    def _admitted_batch(
-        analysis: m.Infra.CodegenPhaseAnalysis,
-        batch_admission: m.Infra.CodegenPhaseOutcome | None,
-    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
-        """Admit the producer analysis unless an external admission is given.
-
-        Args:
-            analysis: The bound producer analysis being published.
-            batch_admission: The external batch admission, when supplied.
-
-        Returns:
-            The effective batch admission, or the first admission failure.
-        """
-        if batch_admission is not None:
-            if batch_admission.analysis != analysis:
-                return r[m.Infra.CodegenPhaseOutcome].fail(
-                    "external batch admission differs from captured producer context"
+            """
+            bound = self.bind_publication_proof(
+                started,
+                analysis.files,
+                source_topology=admission.source_topology,
+                scope_roots=admission.scope_roots,
+                source_scope=admission.source_scope,
+                phase=analysis.phase,
+                batch_admission=admission,
+            )
+            if bound.failure:
+                return result_type.from_failure(bound)
+            recorded = self.record_publication(bound.value, phase=analysis.phase)
+            if recorded.failure:
+                return result_type.from_failure(recorded)
+            prepared = self.append_directories_locked(
+                recorded.value.model_copy(
+                    update={
+                        "exception": recorded.value.exception or analysis.exception
+                    },
+                ),
+                analysis.phase,
+                policy.directories,
+            )
+            if prepared.failure:
+                return result_type.from_failure(prepared)
+            published = self.append_phase_locked(
+                prepared.value,
+                analysis.phase,
+                analysis.files,
+                issues=analysis.issues,
+                staged_validator=policy.staged_validator,
+                batch_admission=admission,
+            )
+            return published.flat_map(
+                lambda ready: self.commit_locked(
+                    ready,
+                    publication_receipts=publication_receipts,
                 )
-            return r[m.Infra.CodegenPhaseOutcome].ok(batch_admission)
-        return FlextInfraMisePublication.admit_batch(analysis)
+            )
 
-    def _started_file_session(
+        return self.publish_prepared_locked(
+            session.value,
+            publish,
+        )
+
+    def _publish_unchanged_file_phase(
         self,
         scope_root: Path,
         roots: t.MappingKV[str, Path],
-        analysis: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Open the file session and bind its publication proof.
-
-        Args:
-            scope_root: The transaction scope root.
-            roots: The elected destination roots under their leases.
-            analysis: The bound producer analysis being published.
+        admission: m.Infra.CodegenPhaseOutcome,
+        *,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome] | None,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Publish observed no-op outputs without authorizing staging or effects.
 
         Returns:
-            The proof-bound file session, or the first failure.
+            No written paths after the complete admitted observation is proven.
+
+
         """
-        result_type = r[m.Infra.CodegenTransactionSession]
-        started = self.begin_files_locked(scope_root, roots, analysis.inputs)
-        if started.failure:
-            return result_type.from_failure(started)
-        return self.bind_publication_proof(started.value, analysis.files)
+        result_type = r[t.VariadicTuple[Path]]
+        prepared = self._leased_file_layout(scope_root, roots)
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        layout = prepared.value
+        outcome = self._file_transaction_guard(layout).flat_map(
+            lambda _guarded: FlextInfraMiseArtifactsJournal.observed_outcome(
+                layout,
+                admission,
+                producer=(
+                    self._source_authority
+                    if self._source_authority is not None
+                    else self._producer.value
+                ),
+            )
+        )
+        if outcome.failure:
+            return result_type.from_failure(outcome)
+        current = FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            (*self._prior_publications, outcome.value),
+            reference=self._producer.value.generator_reference,
+            destinations=tuple(output.path for output in outcome.value.outputs),
+        ).flat_map(lambda _current: self.publish_outcome(scope_root, outcome.value))
+        if current.failure:
+            return result_type.from_failure(current)
+        if publication_receipts is not None:
+            publication_receipts.append(outcome.value)
+        return result_type.ok(())
 
     def validate(
         self,

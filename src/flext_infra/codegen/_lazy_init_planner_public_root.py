@@ -24,6 +24,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
 
         Returns:
             The declared names and their corresponding lazy targets.
+
         """
         governed_lazy_map = {
             name: target
@@ -55,6 +56,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
 
         Returns:
             Whether the target is direct or belongs to an upstream facade.
+
         """
         module_path, _attr_name = target
         return module_path.rsplit(".", maxsplit=1)[

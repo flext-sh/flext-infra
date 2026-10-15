@@ -11,16 +11,18 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra
-from tests import tm, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraDeclarationPayload:
     """Exercise semantic identity and inherited declarations without source parsing."""
 
     @staticmethod
-    def test_same_named_declarations_use_captured_occurrence(tmp_path: Path) -> None:
+    def test_same_named_declarations_use_captured_occurrence(
+        declaration_workspace: t.Pair[Path, Path],
+    ) -> None:
         """Resolve each nested declaration in its own native class scope."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        root, package = declaration_workspace
         source = (
             '"""Unicode source prefix: caf\u00e9."""\n'
             "from pydantic import BaseModel\n"
@@ -57,6 +59,24 @@ class TestsFlextInfraDeclarationPayload:
     @pytest.mark.parametrize(
         ("definition", "accepted"),
         [
+            (
+                ("class Holder:\n    class Payload(ForeignBase): value: str\n"),
+                True,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase): print('class body effect')\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase): value: str; print('effect')\n"
+                ),
+                False,
+            ),
             (
                 (
                     "class Parent(ForeignBase):\n"
@@ -173,6 +193,33 @@ class TestsFlextInfraDeclarationPayload:
             ),
             (
                 (
+                    "from builtins import property as native_property\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                    "        @computed_field\n"
+                    "        @native_property\n"
+                    "        def size(self) -> int:\n"
+                    "            return len(self.value)\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "def property(function):\n"
+                    "    return function\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                    "        @computed_field\n"
+                    "        @property\n"
+                    "        def size(self) -> int:\n"
+                    "            return len(self.value)\n"
+                ),
+                False,
+            ),
+            (
+                (
                     "class ForeignBase:\n"
                     "    pass\n"
                     "class Holder:\n"
@@ -273,13 +320,13 @@ class TestsFlextInfraDeclarationPayload:
         ],
     )
     def test_native_model_identity(
-        tmp_path: Path,
+        declaration_workspace: t.Pair[Path, Path],
         definition: str,
         *,
         accepted: bool,
     ) -> None:
         """Model admission preserves ancestry, declaration behavior and settings."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        root, package = declaration_workspace
         source = (
             "from pydantic import BaseModel as ForeignBase, "
             "field_serializer, computed_field\n"
@@ -355,13 +402,13 @@ class TestsFlextInfraDeclarationPayload:
         ],
     )
     def test_native_protocol_identity(
-        tmp_path: Path,
+        declaration_workspace: t.Pair[Path, Path],
         definition: str,
         *,
         accepted: bool,
     ) -> None:
         """Aliased protocols and their concrete implementations remain distinct."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        root, package = declaration_workspace
         source = "from typing import Protocol as Contract\n" + definition
         path = package / "contracts.py"
         path.write_text(source, encoding="utf-8")

@@ -203,6 +203,9 @@ class TestsFlextInfraTransactionDirectoryJournal:
                         ),
                     },
                 )
+            tm.that(snapshot.mode is not None, eq=True)
+            if snapshot.mode is None:
+                pytest.fail("the observed journal snapshot has no physical mode")
             tm.ok(
                 u.Cli.atomic_write_binary_file_guarded(
                     snapshot,

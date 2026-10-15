@@ -512,6 +512,7 @@ class FlextInfraModelsCodegenJournalModels:
                     or if dependent group requires a durable original preimage; or if
                     dependent group preimage differs from original bytes; or if absent
                     group original cannot carry a preimage.
+
             """
             if self.dependency_group is None:
                 if (

@@ -264,6 +264,7 @@ class FlextInfraUtilitiesDocsApi:
 
         Returns:
             The export target mapping contributed by the module.
+
         """
         project_root, root_package, sources = context
         key = f"{module_name}:{symbol_name}"
