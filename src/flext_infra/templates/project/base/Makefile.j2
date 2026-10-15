@@ -60,7 +60,7 @@ mkdir -p "$$(dirname "$$database")"; \
 {%- endmacro -%}
 {#- Every pytest-running verb owns its children's scratch: ONE transient
     sandbox per recipe shell under the declared scratch root
-    (make.pytest_scratch: $HOME/tmp/.flext-runtime<checkout>/scratch), exposed
+    (make.pytest_scratch: $HOME/.local/state/.flext-runtime<checkout>/scratch), exposed
     through the standard temp triplet and deleted when the shell exits. The
     verb DECLARES the scratch for the suite it starts instead of inheriting the
     caller's ambient /tmp (fleet repos reject a test scratch under /tmp;

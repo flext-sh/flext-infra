@@ -431,13 +431,9 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             issues,
             c.Infra.RUFF,
         )
-        # A declared findings status reports violations, not a tool failure:
-        # the verdict below is issue-driven, so the parse must not treat the
-        # findings exit code as a crash (errors still exit with another code).
-        return (
-            passed or result.outcome.raw_return_code in self._findings_exit_codes(),
-            parsed,
-        )
+        # Ruff's findings exit is a valid scanner result, but every reported
+        # finding still blocks the lint gate under the current quality baseline.
+        return passed and not parsed, parsed
 
     @staticmethod
     @override

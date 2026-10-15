@@ -163,14 +163,25 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             request.repository_root,
             runtime_root=request.runtime_root,
         )
+        actual_environment = environment.absolute()
+        actual_prefix = Path(sys.prefix).absolute()
+        actual_runtime = runtime.resolve()
         if (
             environment.is_symlink()
-            or environment.absolute() != Path(sys.prefix).absolute()
+            or actual_environment != actual_prefix
             or not runtime.is_file()
-            or runtime.resolve() != request.source_authority.runtime
+            or actual_runtime != request.source_authority.runtime
             or sys.flags.optimize != request.source_authority.optimize
         ):
-            return r[bool].fail("native reference runtime authority differs")
+            return r[bool].fail(
+                "native reference runtime authority differs: "
+                f"environment={actual_environment} symlink={environment.is_symlink()} "
+                f"prefix={actual_prefix} runtime={actual_runtime} "
+                f"runtime_file={runtime.is_file()} "
+                f"expected_runtime={request.source_authority.runtime} "
+                f"optimize={sys.flags.optimize} "
+                f"expected_optimize={request.source_authority.optimize}"
+            )
         return current
 
     def _native_reference_probe(

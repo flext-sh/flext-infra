@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
-from os.path import normpath
 from pathlib import Path
 from types import MappingProxyType
 from typing import Self, override
@@ -96,40 +95,62 @@ class FlextInfraRopeProject(Project):
 
         def __init__(
             self,
+            root: Path,
             sources: Mapping[Path, bytes],
-            directories: t.SequenceOf[Path] = (),
+            source_folders: t.SequenceOf[str],
         ) -> None:
+            self._root = root.resolve()
             self._sources = MappingProxyType({
-                Path(self.realpath(str(path))): source
-                for path, source in sources.items()
+                path.resolve(): content for path, content in sources.items()
             })
-            self._directories = frozenset({
-                *(parent for path in self._sources for parent in path.parents),
-                *(Path(self.realpath(str(directory))) for directory in directories),
-            })
-            children: dict[Path, set[Path]] = {}
-            for path in (*self._sources, *self._directories):
-                if path != path.parent:
-                    children.setdefault(path.parent, set()).add(path)
-            self._children = {
-                path: tuple(sorted(entries)) for path, entries in children.items()
-            }
+            if any(not path.is_relative_to(self._root) for path in self._sources):
+                msg = "Rope snapshot source is outside its project root"
+                raise ValueError(msg)
+            directories = {self._root}
+            for path in (
+                *self._sources,
+                *(self._root / folder for folder in source_folders),
+            ):
+                resolved = path.resolve()
+                if not resolved.is_relative_to(self._root):
+                    msg = "Rope snapshot folder is outside its project root"
+                    raise ValueError(msg)
+                directories.update(
+                    parent
+                    for parent in (resolved, *resolved.parents)
+                    if parent.is_relative_to(self._root) and parent not in self._sources
+                )
+            self._directories = frozenset(directories)
 
         @staticmethod
         def realpath(path: str) -> str:
-            """Normalize an absolute captured identity without consulting disk.
+            """Return the canonical identity Rope uses for snapshot paths."""
+            return str(Path(path).expanduser().resolve())
 
-            Returns:
-                The lexical absolute resource path.
+        def exists(self, path: str) -> bool:
+            """Report only files and folders captured by this snapshot."""
+            resolved = Path(path).resolve()
+            return resolved in self._sources or resolved in self._directories
 
-            Raises:
-                ValueError: If the resource lacks an absolute captured identity.
+        def isfile(self, path: str) -> bool:
+            """Recognize only captured source files."""
+            return Path(path).resolve() in self._sources
 
-            """
-            if not Path(path).is_absolute():
-                msg = f"Snapshot resource path must be absolute: {path}"
-                raise ValueError(msg)
-            return normpath(path)
+        def isdir(self, path: str) -> bool:
+            """Recognize only declared or captured parent folders."""
+            return Path(path).resolve() in self._directories
+
+        def listdir(self, path: str) -> list[str]:
+            """Enumerate captured direct children without consulting live disk."""
+            directory = Path(path).resolve()
+            if directory not in self._directories:
+                msg = f"Rope snapshot folder is absent: {path}"
+                raise FileNotFoundError(msg)
+            return sorted({
+                child.name
+                for child in (*self._sources, *self._directories)
+                if child.parent == directory
+            })
 
         def read(self, path: str) -> bytes:
             """Read the exact captured source, including proposed edits.
@@ -319,8 +340,7 @@ class FlextInfraRopeProject(Project):
         external = cls.SnapshotExternalProject(files)
         project = cls(
             root,
-            fscommands=files,
-            external_project=external,
+            fscommands=cls.SnapshotFiles(Path(root), sources, source_folders),
             ropefolder=None,
             save_objectdb=False,
             save_history=False,
