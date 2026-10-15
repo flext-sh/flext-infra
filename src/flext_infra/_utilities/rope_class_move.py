@@ -1,4 +1,4 @@
-"""Atomic, fail-fast Rope class relocation for ``u.Infra``.
+"""Atomic, fail-fast Rope declaration relocation for ``u.Infra``.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -19,7 +19,45 @@ from flext_infra._utilities import (
 
 
 class FlextInfraUtilitiesRopeClassMove:
-    """Own the single semantic implementation of class relocation."""
+    """Own identity-preserving class and module relocation through Rope."""
+
+    @classmethod
+    def move_module(
+        cls,
+        rope_project: p.Infra.RopeProject,
+        source_file: Path,
+        destination_directory: Path,
+    ) -> Path:
+        """Move one module through Rope's existing identity-preserving engine.
+
+        Returns:
+            The relocated module path.
+
+        Raises:
+            FileNotFoundError: If either declared owner is absent.
+            FileExistsError: If the destination already contains the module.
+        """
+        root = Path(rope_project.root.real_path).resolve()
+        source = cls._owned_path(root, root / source_file)
+        destination = cls._owned_path(root, root / destination_directory)
+        if not source.is_file():
+            raise FileNotFoundError(source)
+        if not destination.is_dir():
+            raise FileNotFoundError(destination)
+        target = destination / source.name
+        if target.exists():
+            raise FileExistsError(target)
+        rope_project.validate()
+        mover = FlextInfraUtilitiesRopeRuntime.create_move(
+            rope_project,
+            cls._resource(rope_project, root, source),
+            None,
+        )
+        changes = mover.get_changes(
+            rope_project.get_resource(destination.relative_to(root).as_posix()),
+        )
+        rope_project.do(changes)
+        return target
 
     @classmethod
     def move_class(cls, request: m.Infra.ClassMoveRequest) -> Path:

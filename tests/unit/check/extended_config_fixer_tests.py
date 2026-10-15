@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests import t, u
+from tests import t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -282,4 +280,4 @@ class TestsFlextInfraExtendedConfigFixer:
             items = ["a", "b", "c"]
             arr = u.Cli.toml_array(items)
             tm.that(len(arr), eq=3)
-            tm.that(list(arr), has="a")
+            tm.that(u.Cli.toml_as_string_list(arr), eq=items)

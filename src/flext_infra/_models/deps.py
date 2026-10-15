@@ -17,7 +17,7 @@ from flext_infra._models import (
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsMixins,
 )
-from flext_infra._models._config import FlextInfraConfigModelsScaffold
+from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
@@ -150,6 +150,33 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
     class ExtraPathsCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps extra-paths``."""
 
+    class GitSourceReferenceMigration(m.ContractModel):
+        """Explicit source scope and reference transition; no source conversion."""
+
+        url_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^https://[^/?#]+/[^?#]+/$",
+                description=(
+                    "Canonical Git URL directory prefix selecting dependency sources"
+                ),
+            ),
+        ]
+        source_ref: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[^\s@#;]+$",
+                description="Only this existing explicit Git reference may change",
+            ),
+        ]
+        target_ref: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[^\s@#;]+$",
+                description="Operator-declared replacement Git reference",
+            ),
+        ]
+
     class ModernizeCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps modernize``."""
 
@@ -181,6 +208,23 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 ),
             ),
         ] = False
+        git_source_url_prefix: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                alias="git-source-url-prefix",
+                description="Explicit Git source URL scope",
+            ),
+        ] = None
+        git_source_ref_from: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                alias="git-source-ref-from", description="Explicit reference to migrate"
+            ),
+        ] = None
+        git_source_ref_to: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(alias="git-source-ref-to", description="Replacement Git reference"),
+        ] = None
 
     # Codegen consumes the pure pyproject
     # renderer directly, so no deps CLI payload remains for path/workspace modes.
@@ -207,6 +251,16 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.MutableJsonMapping,
             m.Field(description="Validated plain TOML payload"),
         ] = m.Field(default_factory=dict[str, t.JsonValue])
+        document: Annotated[
+            t.Cli.TomlDocument | None,
+            m.Field(
+                default=None,
+                exclude=True,
+                description=(
+                    "Original parsed TOML tree retaining authored layout and comments"
+                ),
+            ),
+        ] = None
 
     class PackagedDataSelection(m.ContractModel):
         """Validated data inputs separated by Hatch selection semantics."""
@@ -499,6 +553,14 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
     class ToolingContextRequest(m.ArbitraryTypesModel):
         """Declared inputs the modernizer resolves into a runtime context."""
 
+        planned_sources: Annotated[
+            t.MappingKV[Path, str],
+            m.Field(
+                exclude=True,
+                description="Captured Python candidate bytes overriding disk",
+            ),
+        ]
+
         project_name: Annotated[
             t.NonEmptyStr,
             m.Field(description="Distribution name of the project"),
@@ -518,10 +580,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         scaffold_project: Annotated[
             FlextInfraConfigModelsScaffold.ScaffoldProjectSpec,
             m.Field(description="Scaffold project specification"),
-        ]
-        upstream: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Upstream branch the project integrates on"),
         ]
         runtime_dependency_overlay: Annotated[
             t.StrSequence,

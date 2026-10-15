@@ -32,6 +32,49 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
 
+    @staticmethod
+    def codegen_target_snapshot(
+        path: Path,
+    ) -> p.Result[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]:
+        """Capture the original leaf or the exact still-missing parent chain.
+
+        Returns:
+            The observed file state when the leaf exists, the missing-parent
+            chain plan when it does not, or the propagated read failure.
+        """
+        result_type = r[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]
+        observed = u.Cli.atomic_read_binary_file_state(path, required=False)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        if observed.value.parent_device is not None:
+            return result_type.ok(observed.value)
+        witness = u.Cli.atomic_plan_directory_chain(path.parent)
+        if witness.failure:
+            return result_type.from_failure(witness)
+        if not witness.value.directories:
+            return result_type.fail(
+                f"codegen destination parent changed during snapshot: {path}",
+            )
+        return result_type.ok(witness.value)
+
+    @staticmethod
+    def codegen_initializer_is_authored(content: bytes | None) -> bool:
+        """Elect initializer ownership from content and declared generator markers.
+
+        Returns:
+            Whether a nonempty existing initializer belongs to its author.
+        """
+        return (
+            content is not None
+            and bool(content.strip())
+            and not content.startswith(
+                tuple(
+                    header.encode(c.DEFAULT_ENCODING)
+                    for header in c.Infra.AUTOGEN_HEADERS
+                ),
+            )
+        )
+
     class JournalLeaseTimeoutError(TimeoutError):
         """Another process held the journal lease past the acquisition deadline."""
 
@@ -171,10 +214,10 @@ class FlextInfraUtilitiesCodegenFilePlan:
         """Whether publication must change a generated-file destination.
 
         Returns:
-                    The resulting ``bool``.
-        from flext_cli import m as cli_m
-
+            Whether bytes, mode or declared tracking require publication.
         """
+        if plan.index_before is not None:
+            return True
         if isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan):
             return plan.desired_content is not None
         return FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(

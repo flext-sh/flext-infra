@@ -1,0 +1,20 @@
+id: ban-direct-structlog-import
+snapshots:
+  from structlog.stdlib import BoundLogger:
+    labels:
+    - source: structlog.stdlib
+      style: primary
+      start: 5
+      end: 21
+  import structlog:
+    labels:
+    - source: structlog
+      style: primary
+      start: 7
+      end: 16
+  import structlog.testing:
+    labels:
+    - source: structlog.testing
+      style: primary
+      start: 7
+      end: 24

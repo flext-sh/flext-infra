@@ -8,10 +8,12 @@ at the first defect, that what runs is what the lock pins:
    toolchain selector accepts and, unless the tool declares that its upstream
    publishes none, carries a checksum for the current platform;
 2. install root — ``mise where <key>@<version>`` names the install root;
-3. self-containment — ``mise which <binary>`` and every symlink hop it
-   resolves through stay inside that root;
+3. self-containment — ``mise which <binary> --tool <key>@<version>`` and every
+   symlink hop it resolves through stay inside that root;
 4. real version — the tool's declared ``version_probe`` reports the locked
-   version.
+   version;
+5. runtime lint inventory — every executable declared by ``c.Infra.LINT_TOOLS``
+   exists in the invoking virtual environment, never a host PATH substitute.
 
 There is no fallback, retry, or warning-only mode.
 
@@ -301,7 +303,13 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         )
         if root.failure:
             return r[str].from_failure(root)
-        binary = self._mise_line(mise_binary, "which", entry.version_probe.binary)
+        binary = self._mise_line(
+            mise_binary,
+            "which",
+            entry.version_probe.binary,
+            "--tool",
+            f"{entry.selector or entry.name}@{version}",
+        )
         if binary.failure:
             return r[str].from_failure(binary)
         receipt = self.installation(
@@ -337,9 +345,9 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         self.logger.info(
             "mise_proof_inputs",
             lock_path=str(lock_path),
-            lock_sha256=u.Cli.sha256_bytes(source.value.encode(c.Cli.ENCODING_DEFAULT)),
+            lock_sha256=u.Cli.sha256_bytes(source.value.encode(c.DEFAULT_ENCODING)),
             config_sha256=u.Cli.sha256_bytes(
-                config.Infra.codegen.model_dump_json().encode(c.Cli.ENCODING_DEFAULT)
+                config.Infra.codegen.model_dump_json().encode(c.DEFAULT_ENCODING)
             ),
             uv_executable=str(self.uv_executable),
             python_executable=sys.executable,
@@ -450,6 +458,19 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
                 f"executable={sys.executable} version={sys.version.split()[0]} "
                 f"prefix={sys.prefix} base={sys.base_prefix} "
                 f"expected-base={python_root.value}"
+            )
+        for name, command in c.Infra.LINT_TOOLS:
+            binary = Path(sys.executable).parent / (
+                command[0] + (".exe" if os.name == "nt" else "")
+            )
+            if not binary.is_file() or not os.access(binary, os.X_OK):
+                return r[bool].fail(
+                    f"Declared lint tool {name} is not executable in the runtime: "
+                    f"{binary}; repair the declared lock with make upg, "
+                    "then provision with make setup"
+                )
+            self.logger.info(
+                "runtime_lint_tool_proven", tool=name, executable=str(binary)
             )
         return r[bool].ok(value=True)
 

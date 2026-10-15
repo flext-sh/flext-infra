@@ -64,9 +64,8 @@ above are not declared with `autouse=True`.
 ```python
 from __future__ import annotations
 
-from flext_tests import FlextTestsSettings, tm
-
 from flext_core import FlextSettings
+from flext_tests import FlextTestsSettings, tm
 
 
 def test_settings_isolation(settings: FlextTestsSettings) -> None:
@@ -81,9 +80,8 @@ def test_settings_isolation(settings: FlextTestsSettings) -> None:
 When a fixture is not enough:
 
 ```python
-from flext_tests import FlextTestsSettings
-
 from flext_core import FlextContainer, FlextSettings
+from flext_tests import FlextTestsSettings
 
 FlextSettings.reset_for_testing()
 FlextTestsSettings.reset_for_testing()
@@ -151,7 +149,7 @@ For a standalone test without the settings plugin, keep the reset on both sides 
 mutation, including assertion failure:
 
 ```python
-from flext_tests import tm
+from tests import tm
 
 from flext_core import FlextSettings
 

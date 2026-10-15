@@ -12,7 +12,7 @@ from flext_infra import FlextInfraServiceBase, m, t
 from flext_infra._base_projects import FlextInfraProjectSelectionMixin
 
 
-class FlextInfraProjectSelectionServiceBase[TDomainResult](
+class FlextInfraProjectSelectionServiceBase[TDomainResult: t.JsonPayload](
     FlextInfraServiceBase[TDomainResult],
     FlextInfraProjectSelectionMixin,
 ):

@@ -79,9 +79,6 @@ class FlextInfraWorkspaceCheckReportsMixin:
     ) -> m.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results.
 
-        ``summary`` carries the invocation's typed targets and executions into
-        the report ``properties`` so a consumer proves what the receipt covers.
-
         Returns:
             The resulting ``m.Infra.SarifReport``.
 

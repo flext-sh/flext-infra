@@ -11,11 +11,11 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t
+from flext_infra import c, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocsCommandContractMixin,
     FlextInfraUtilitiesDocsGeneratePlanMixin,
-    FlextInfraUtilitiesWorkspaceManifest,
+    FlextInfraUtilitiesProjectManagedArtifacts,
 )
 
 if TYPE_CHECKING:
@@ -114,7 +114,7 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                         t.MutableMappingKV[Path, str],
                     ]
                 ].fail(f"docs guide source is absent: {path}")
-            content = state.content.decode(c.Cli.ENCODING_DEFAULT)
+            content = state.content.decode(c.DEFAULT_ENCODING)
             if path.parent == source_root:
                 sources[path] = content
             else:
@@ -199,17 +199,17 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             ValueError: If issues.
 
         """
-        loaded = FlextInfraUtilitiesWorkspaceManifest.load_workspace_manifest(
+        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
             repository_root,
         )
         if loaded.failure:
             return r[list[t.Infra.DocsRenderedArtifactTuple]].from_failure(loaded)
         effective_verbs = (
-            *config.Infra.codegen.make.verbs,
+            *loaded.value.spec.make.verbs,
             *(
-                verb
-                for manifest in loaded.value
-                for verb in manifest.repository.extra_verbs
+                loaded.value.spec.repository.extra_verbs
+                if loaded.value.spec.repository
+                else ()
             ),
         )
         destination_root = scope.path / c.Infra.DIR_DOCS / "guides"

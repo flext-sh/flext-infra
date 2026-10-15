@@ -1,0 +1,20 @@
+# Rewire an `__mro__` membership probe to the public relationship API.
+#
+# `X in Y.__mro__` reads an owner's internal method-resolution order. The
+# observable equivalent is the public `issubclass(Y, X)`: X is in Y's MRO
+# exactly when Y is a subclass of X. This is the mechanical cutover that
+# retires the shape probe the `ban-test-implementation-shape` law reports.
+# The negated form is a sibling rule because its replacement differs.
+id: rewire-mro-membership-to-issubclass
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/examples/**/*.py"
+  - "**/conftest.py"
+rule:
+  pattern: $A in $B.__mro__
+fix: issubclass($B, $A)
+message: >-
+  `X in Y.__mro__` reads implementation shape; use the public
+  `issubclass(Y, X)` relationship instead.

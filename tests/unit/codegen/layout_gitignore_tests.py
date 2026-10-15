@@ -9,13 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, infra
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from tests import u
+from tests import tm, u
 from tests.unit.codegen.layout_fixture import (
     archive_root,
     build_loose_project,

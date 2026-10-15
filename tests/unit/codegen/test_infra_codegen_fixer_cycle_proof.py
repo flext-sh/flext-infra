@@ -14,11 +14,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from tests import m, u
+from tests import m, t, tm, u
 
 
 def _reports_import_cycle(result: m.Infra.AutoFixResult) -> bool:
@@ -28,8 +27,40 @@ def _reports_import_cycle(result: m.Infra.AutoFixResult) -> bool:
     )
 
 
+def _fix_workspace(
+    *,
+    tmp_path: Path,
+    project: Path,
+    package_name: str,
+) -> t.SequenceOf[m.Infra.AutoFixResult]:
+    """Provision one codegen checkout and return the fixer's workspace results.
+
+    Returns:
+        The resulting ``t.SequenceOf[m.Infra.AutoFixResult]``.
+
+    """
+    u.Tests.declare_workspace_projects(tmp_path, (project.name,))
+    u.Tests.provision_checkout(project)
+    return FlextInfraCodegenFixer(repository_root=tmp_path).fix_workspace(
+        projects=[
+            u.Tests.create_project_info(
+                project,
+                name=project.name,
+                package_name=package_name,
+            ),
+        ],
+    )
+
+
 class TestsFlextInfraCodegenFixerCycleProof:
     """Behavior contract for the fixer's cycle proof and import rebinding."""
+
+    @staticmethod
+    def test_missing_repository_propagates_discovery_failure(tmp_path: Path) -> None:
+        """A missing repository cannot produce a successful empty fix report."""
+        missing = tmp_path / "missing"
+        with pytest.raises(RuntimeError, match=str(missing)):
+            FlextInfraCodegenFixer(repository_root=missing).fix_workspace()
 
     @staticmethod
     @pytest.mark.slow
@@ -44,16 +75,10 @@ class TestsFlextInfraCodegenFixerCycleProof:
                 "beta.py": "from cycle_pkg import alpha\n",
             },
         )
-        u.Tests.declare_workspace_projects(tmp_path, (project.name,))
-        u.Tests.provision_checkout(project)
-        results = FlextInfraCodegenFixer(repository_root=tmp_path).fix_workspace(
-            projects=[
-                u.Tests.create_project_info(
-                    project,
-                    name=project.name,
-                    package_name="cycle_pkg",
-                ),
-            ],
+        results = _fix_workspace(
+            tmp_path=tmp_path,
+            project=project,
+            package_name="cycle_pkg",
         )
         flagged = {
             violation.module
@@ -77,16 +102,10 @@ class TestsFlextInfraCodegenFixerCycleProof:
                 "beta.py": "",
             },
         )
-        u.Tests.declare_workspace_projects(tmp_path, (project.name,))
-        u.Tests.provision_checkout(project)
-        results = FlextInfraCodegenFixer(repository_root=tmp_path).fix_workspace(
-            projects=[
-                u.Tests.create_project_info(
-                    project,
-                    name=project.name,
-                    package_name="clean_pkg",
-                ),
-            ],
+        results = _fix_workspace(
+            tmp_path=tmp_path,
+            project=project,
+            package_name="clean_pkg",
         )
         tm.that([result for result in results if _reports_import_cycle(result)], eq=[])
 

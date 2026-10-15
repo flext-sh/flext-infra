@@ -13,6 +13,8 @@ from flext_cli import m as cli_m
 
 from flext_core import m
 from flext_infra import t
+from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
+from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
 
 
 class FlextInfraModelsDocsGeneration:
@@ -41,6 +43,11 @@ class FlextInfraModelsDocsGeneration:
             str,
             m.Field(description="Primary package name for scope"),
         ] = ""
+        governance_source: (
+            FlextInfraConfigModelsWorkspace.CodegenBootstrapSource | None
+        ) = m.Field(
+            default=None, description="Captured source and ref owning governance links"
+        )
         # Why (docs_audit_policy root-cause fix): a member-project scope inside
         # a larger declared workspace does not own the physical repository
         # (its docs policy file lives at the workspace root, not under
@@ -180,6 +187,10 @@ class FlextInfraModelsDocsGeneration:
             frozen=True,
         )
 
+        producer: Annotated[
+            FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis,
+            m.Field(description="Authenticated producer captured before this render"),
+        ]
         scopes: Annotated[
             t.VariadicTuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts],
             m.Field(min_length=1, description="Ordered selected scope inventories"),
@@ -188,6 +199,17 @@ class FlextInfraModelsDocsGeneration:
             t.VariadicTuple[cli_m.Cli.AtomicFileState],
             m.Field(min_length=1, description="Exact sources consumed by rendering"),
         ]
+        source_roots: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Exact roots elected for this batch source topology"),
+        ] = ()
+        source_scope: Path | None = m.Field(
+            default=None, description="Member elected for this source readset"
+        )
+        source_directories: Annotated[
+            t.VariadicTuple[cli_m.Cli.AtomicDirectoryChainPlan],
+            m.Field(description="Physical directory presence consumed by the batch"),
+        ] = ()
         # Why (X-47): the physical workspace root is required for source
         # verification even when the root is excluded from `scopes` (DECLARED
         # conform scope), so it can no longer be inferred from `scopes[0]`.

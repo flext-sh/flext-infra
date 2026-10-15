@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from rope.base import codeanalyze
-
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeStructure:
@@ -21,11 +20,26 @@ class FlextInfraUtilitiesRopeStructure:
         Returns:
             Rope logical regions with scope and TYPE_CHECKING context.
 
+        Raises:
+            TypeError: If Rope's source analyzer does not satisfy its contracts.
+
         """
         if not source:
             return ()
-        lines = codeanalyze.SourceLinesAdapter(source)
-        finder = codeanalyze.LogicalLineFinder(lines)
+        lines = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            "rope.base.codeanalyze",
+            "SourceLinesAdapter",
+        )(source)
+        if not isinstance(lines, p.Infra.RopeSourceLines):
+            msg = "Rope source lines do not satisfy their source contract"
+            raise TypeError(msg)
+        finder = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            "rope.base.codeanalyze",
+            "LogicalLineFinder",
+        )(lines)
+        if not isinstance(finder, p.Infra.RopeLogicalLineFinder):
+            msg = "Rope logical line finder does not satisfy its region contract"
+            raise TypeError(msg)
         statements: t.MutableSequenceOf[m.Infra.LogicalStatement] = []
         enclosers: t.MutableSequenceOf[t.Triple[int, c.Infra.RopeScopeKind, str]] = []
         type_checking_guards: t.MutableSequenceOf[int] = []
@@ -80,7 +94,7 @@ class FlextInfraUtilitiesRopeStructure:
             Whether one logical-line region opens a TYPE_CHECKING branch.
 
         """
-        normalized = " ".join(text.split())
+        normalized = " ".join(text.partition("#")[0].split())
         return normalized in {"if TYPE_CHECKING:", "if TYPE_CHECKING is True:"}
 
     @staticmethod

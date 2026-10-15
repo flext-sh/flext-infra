@@ -9,15 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-    c,
-    m,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, r, t, u
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -67,27 +62,24 @@ class FlextInfraDocCollector:
                     f"inventories are not extracted plans: {pending}",
                 )
             u.Infra.verify_plan_collection_sources(scope_root, configuration, bundle)
-            inputs = (snapshot, *bundle.source_states)
+            inputs = FlextInfraCodegenPreconditions.unique_states(
+                (snapshot, *bundle.source_states),
+            )
+            if inputs.failure:
+                return r[bool].from_failure(inputs)
+            files: list[m.Infra.CodegenFilePlan] = []
+            for plan in bundle.files:
+                sources = FlextInfraCodegenPreconditions.unique_states(
+                    (snapshot, *plan.source_states),
+                )
+                if sources.failure:
+                    return r[bool].from_failure(sources)
+                files.append(plan.model_copy(update={"source_states": sources.value}))
             analysis = m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.DOCS,
-                files=bundle.files,
-                inputs=inputs,
+                files=tuple(files),
+                inputs=inputs.value,
             )
-
-            def validate() -> p.Result[bool]:
-                unchanged = cls._require_unchanged(
-                    configuration_path,
-                    snapshot,
-                    "plan collection configuration changed during publication",
-                )
-                if unchanged.failure:
-                    return unchanged
-                u.Infra.verify_plan_collection_publication(
-                    scope_root,
-                    configuration,
-                    bundle,
-                )
-                return r[bool].ok(value=True)
 
             published = transaction.publish_file_phase_locked(
                 scope_root,
@@ -99,11 +91,22 @@ class FlextInfraDocCollector:
                         for path in bundle.required_directories
                         if path not in roots.values()
                     ),
-                    validator=validate,
                 ),
             )
             if published.failure:
                 return r[bool].from_failure(published)
+            unchanged = cls._require_unchanged(
+                configuration_path,
+                snapshot,
+                "plan collection configuration changed during publication",
+            )
+            if unchanged.failure:
+                return unchanged
+            u.Infra.verify_plan_collection_publication(
+                scope_root,
+                configuration,
+                bundle,
+            )
             pruned = cls._prune_bundle_directories(bundle)
             if pruned.failure:
                 return r[bool].from_failure(pruned)

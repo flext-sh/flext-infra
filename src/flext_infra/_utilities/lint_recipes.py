@@ -232,9 +232,9 @@ class FlextInfraUtilitiesLintRecipes:
                     # The ruff-lint gate applies both as whole-module rewrites
                     # before planning; reaching the planner breaks that contract.
                     msg = (
-                        f"{path}: lint recipe {recipe.value} for {issue.code} is a "
-                        "whole-module recipe and requires the Ruff lint gate; it "
-                        "never reaches the edit planner"
+                        f"{path}:{issue.line}: : lint recipe {recipe.value} for "
+                        f"{issue.code} is a whole-module recipe and requires the "
+                        "Ruff lint gate; it never reaches the edit planner"
                     )
                     raise ValueError(msg)
         return sections, summaries, wants_notice
@@ -442,8 +442,8 @@ class FlextInfraUtilitiesLintRecipes:
 
         """
         return len(
-            line.encode(c.Cli.ENCODING_DEFAULT)[:col_offset].decode(
-                c.Cli.ENCODING_DEFAULT,
+            line.encode(c.DEFAULT_ENCODING)[:col_offset].decode(
+                c.DEFAULT_ENCODING,
             ),
         )
 
@@ -742,8 +742,8 @@ class FlextInfraUtilitiesLintRecipes:
         prefix = sum(len(text) for text in lines[: lineno - 1])
         column = len(
             lines[lineno - 1]
-            .encode(c.Cli.ENCODING_DEFAULT)[:col_offset]
-            .decode(c.Cli.ENCODING_DEFAULT),
+            .encode(c.DEFAULT_ENCODING)[:col_offset]
+            .decode(c.DEFAULT_ENCODING),
         )
         return prefix + column
 

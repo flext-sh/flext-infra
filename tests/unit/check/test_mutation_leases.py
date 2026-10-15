@@ -10,12 +10,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenFileLeases
 from flext_infra.gates import FlextInfraRuffFormatGate
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraMutationLeases:

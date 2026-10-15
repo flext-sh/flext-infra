@@ -7,13 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from difflib import unified_diff
+from fnmatch import fnmatchcase
 from pathlib import Path
-
-from flext_tests import tm
 
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraConformSupport:
@@ -35,6 +34,7 @@ class TestsFlextInfraConformSupport:
         return m.Infra.RepositoryConformTarget(
             repository=repository,
             root=root,
+            toolchain_root=root,
             make_profile=make_profile,
             beads=u.Tests.beads_project(repository.name),
             canonical_project_name=repository.distribution,
@@ -78,6 +78,18 @@ class TestsFlextInfraConformSupport:
             The versionable project tree independently of Git test fixtures.
 
         """
+        ignored_directories = tuple(
+            artifact.name
+            for artifact in config.Infra.codegen.artifacts
+            if artifact.gitignore and not artifact.generated_source and artifact.is_dir
+        )
+        ignored_files = tuple(
+            artifact.name
+            for artifact in config.Infra.codegen.artifacts
+            if artifact.gitignore
+            and not artifact.generated_source
+            and not artifact.is_dir
+        )
         return tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
@@ -85,6 +97,16 @@ class TestsFlextInfraConformSupport:
                 if path.is_file()
                 and ".git" not in path.relative_to(root).parts
                 and ".infra-baseline" not in path.relative_to(root).parts
+                and c.Infra.TRANSACTION_STATE_DIRNAME
+                not in path.relative_to(root).parts
+                and not any(
+                    fnmatchcase(part, pattern)
+                    for part in path.relative_to(root).parts[:-1]
+                    for pattern in ignored_directories
+                )
+                and not any(
+                    fnmatchcase(path.name, pattern) for pattern in ignored_files
+                )
             ),
         )
 

@@ -11,7 +11,7 @@ from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_core import m
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraModelsMiseToolchain:
@@ -159,6 +159,58 @@ class FlextInfraModelsMiseToolchain:
             re.compile(self.pattern.replace(placeholder, "0"))
             return self
 
+    class MiseHttpToolOptions(_ConfigContract):
+        """Native HTTP backend declarations, projected without URL inference."""
+
+        url: Annotated[
+            t.NonEmptyStr, m.Field(description="Native HTTP artifact URL template")
+        ]
+        version_list_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Authoritative native release-list URL"),
+        ] = None
+        version_json_path: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native jq-like version extraction path"),
+        ] = None
+        version_expr: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Native release-list expression")
+        ] = None
+        version_order: Annotated[
+            Literal["semver"] | None,
+            m.Field(description="Native ordering of discovered releases"),
+        ] = None
+        checksum: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Declared native artifact digest")
+        ] = None
+        checksum_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Authoritative published checksum URL"),
+        ] = None
+        checksum_expr: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native checksum manifest expression"),
+        ] = None
+        format: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Native archive format")
+        ] = None
+        strip_components: Annotated[
+            int | None, m.Field(ge=0, description="Native archive directory stripping")
+        ] = None
+        bin_path: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native install-relative executable directory"),
+        ] = None
+
+    class MisePostinstallOptions(_ConfigContract):
+        """Native per-tool postinstall contract, including warm installation policy."""
+
+        run: Annotated[t.NonEmptyStr, m.Field(description="Native postinstall command")]
+        when: Annotated[
+            Literal["always"] | None,
+            m.Field(description="Run on every installation when explicitly declared"),
+        ] = None
+
     class MiseToolEntry(_ConfigContract):
         """One declarative fleet tool rendered into generated ``.mise.toml``.
 
@@ -214,6 +266,28 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = "scalar"
+        http: Annotated[
+            FlextInfraModelsMiseToolchain.MiseHttpToolOptions | None,
+            m.Field(
+                description="Native HTTP backend options for a declared source artifact"
+            ),
+        ] = None
+        depends: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Declared tool keys installed before this tool"),
+        ] = ()
+        install_env: Annotated[
+            t.StrMapping,
+            m.Field(
+                description="Native installation environment, part of the tool identity"
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
+        postinstall: Annotated[
+            FlextInfraModelsMiseToolchain.MisePostinstallOptions | None,
+            m.Field(
+                description="Native source build or qualification after installation"
+            ),
+        ] = None
         lock_checksum: Annotated[
             bool,
             m.Field(
@@ -293,6 +367,20 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = ()
+        uv_override_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "PEP 508 overrides rendered into every generated "
+                    "[tool.uv] override-dependencies from this SSOT. Declared "
+                    "for consumers whose transitive dependency graph pins a "
+                    "flext family member on a different integration ref than "
+                    "the declared line: the override resolves the whole "
+                    "family to one provider and ref. The declared value "
+                    "replaces any retained value; empty removes the key."
+                ),
+            ),
+        ] = ()
         environment_path_prepends: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -313,6 +401,15 @@ class FlextInfraModelsMiseToolchain:
                     "Keep true: "
                     "make upg writes the committed mise.lock. "
                     "Override toolchain.mise_lockfile; never edit the projection."
+                ),
+            ),
+        ] = True
+        mise_disable_update_warning: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as [settings] disable_update_warning. "
+                    "The self-managed Mise release moves through make upg."
                 ),
             ),
         ] = True
@@ -473,6 +570,15 @@ class FlextInfraModelsMiseToolchain:
 
         @m.computed_field
         @property
+        def mise_platforms_by_host(self) -> t.MappingKV[str, str]:
+            """Project the canonical host identities into shell case keys."""
+            return {
+                f"{system}/{machine}": platform
+                for (system, machine), platform in c.Infra.MISE_PLATFORM_BY_HOST.items()
+            }
+
+        @m.computed_field
+        @property
         def mise_install_keys(self) -> t.VariadicTuple[str]:
             """Every [tools] key the project declares, in projection order.
 
@@ -567,15 +673,28 @@ class FlextInfraModelsMiseToolchain:
                     duplicate_names,
                 )
                 raise ValueError(msg)
-            keyless = sorted(
+            declared_keys = {"python", self.mise_selector, *self.tool_keys.values()}
+            undeclared_dependencies = sorted(
+                f"{entry.name}:{dependency}"
+                for entry in self.tools
+                for dependency in entry.depends
+                if dependency not in declared_keys
+            )
+            if undeclared_dependencies:
+                msg = (
+                    "tool installation dependencies must be declared tools: "
+                    + ", ".join(undeclared_dependencies)
+                )
+                raise ValueError(msg)
+            non_http = sorted(
                 entry.name
                 for entry in self.tools
-                if entry.form == "table" and entry.selector is None
+                if entry.http is not None
+                and not (entry.selector or entry.name).startswith("http:")
             )
-            if keyless:
-                msg = (
-                    "toolchain tools with table form must declare their "
-                    "selector: " + ", ".join(keyless)
+            if non_http:
+                msg = "HTTP options require native HTTP selectors: " + ", ".join(
+                    non_http
                 )
                 raise ValueError(msg)
             npm_backed = sorted(

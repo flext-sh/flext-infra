@@ -10,10 +10,9 @@ import venv
 from pathlib import Path
 
 from flext_cli import cli as cli_facade
-from flext_tests import tm
 
 from flext_infra import config, u
-from tests import c, m, t
+from tests import c, m, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 
 
@@ -31,9 +30,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         return tm.ok(
             u.Infra.repository_baseline_branch(
                 repo_root,
-                preference=tuple(
-                    config.Infra.codegen.branch_policy.integration_branch_preference,
-                ),
+                declared_branch=config.Infra.codegen.branch_policy.integration_branch,
             ),
         )
 

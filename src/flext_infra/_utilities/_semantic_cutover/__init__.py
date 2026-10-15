@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.alias_cst import (
@@ -27,6 +27,12 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._semantic_cutover.class_scope import (
         FlextInfraUtilitiesSemanticCutoverClassScope,
+    )
+    from flext_infra._utilities._semantic_cutover.constant_consumers import (
+        FlextInfraUtilitiesSemanticConstantConsumers,
+    )
+    from flext_infra._utilities._semantic_cutover.contracts import (
+        FlextInfraUtilitiesSemanticContracts,
     )
     from flext_infra._utilities._semantic_cutover.declaration_payload import (
         FlextInfraUtilitiesDeclarationPayload,
@@ -97,10 +103,15 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.self_facade import (
         FlextInfraUtilitiesSemanticCutoverSelfFacade,
     )
+    from flext_infra._utilities._semantic_cutover.test_helpers import (
+        FlextInfraUtilitiesSemanticTestHelpers,
+    )
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDeclarationPayload",
+    "FlextInfraUtilitiesSemanticConstantConsumers",
+    "FlextInfraUtilitiesSemanticContracts",
     "FlextInfraUtilitiesSemanticCutoverAliasCst",
     "FlextInfraUtilitiesSemanticCutoverAliases",
     "FlextInfraUtilitiesSemanticCutoverBase",
@@ -128,6 +139,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticFamilyTypeReferences",
     "FlextInfraUtilitiesSemanticHelperReferences",
     "FlextInfraUtilitiesSemanticNestingTypes",
+    "FlextInfraUtilitiesSemanticTestHelpers",
 )
 
 install_lazy_exports(
@@ -135,6 +147,8 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraUtilitiesDeclarationPayload": ".declaration_payload",
+        "FlextInfraUtilitiesSemanticConstantConsumers": ".constant_consumers",
+        "FlextInfraUtilitiesSemanticContracts": ".contracts",
         "FlextInfraUtilitiesSemanticCutoverAliasCst": ".alias_cst",
         "FlextInfraUtilitiesSemanticCutoverAliases": ".aliases",
         "FlextInfraUtilitiesSemanticCutoverBase": ".base",
@@ -166,6 +180,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticFamilyTypeReferences": ".family_type_references",
         "FlextInfraUtilitiesSemanticHelperReferences": ".helper_references",
         "FlextInfraUtilitiesSemanticNestingTypes": ".nesting_types",
+        "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
     }),
     public_exports=__all__,
 )

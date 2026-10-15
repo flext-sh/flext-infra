@@ -12,9 +12,13 @@ from importlib.util import resolve_name
 
 from flext_infra import m, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
+)
+from flext_infra._utilities._rope_analysis.sourcescan import (
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
+)
+from flext_infra._utilities._rope_source_bases_inventory_collector import (
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 

@@ -145,12 +145,25 @@ class FlextInfraTypesBase:
         t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
     ]
     "Resolved private-import specs, declared re-export targets, and facade owners."
+    type ConstantFacadeIndex = tuple[
+        t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
+        t.MappingKV[str, set[str]],
+        t.MappingKV[str, t.VariadicTuple[str]],
+    ]
+    "Live constants facades, export identities, and declared class ancestry."
+    type ConstantConsumerContext = t.Quad[
+        _ast.Module,
+        str,
+        ConstantFacadeIndex,
+        t.MutableMappingKV[t.Pair[str, str], str | None],
+    ]
+    "One module's constants facade selection and shared identity cache."
     type EditResult = tuple[bool, t.StrSequence]
     "Validated edit outcome: (success, report_lines)."
     type EditResultWithDescs = tuple[bool, t.StrSequence, t.StrSequence]
     "(success, descriptions, report_lines) — includes what was attempted."
-    type LintSnapshot = t.MappingKV[str, t.StrSequence]
-    "Lint errors per tool: {tool_name: [error_lines]}."
+    type LintSnapshot[Receipt] = t.MappingKV[str, Receipt]
+    "Native gate receipts or diagnostic deltas, keyed by canonical tool name."
 
     # ── Lint policy types ────────────────────────────────────────────
 
@@ -171,6 +184,8 @@ class FlextInfraTypesBase:
     """
     type PerFileIgnores = t.MappingKV[str, t.SequenceOf[RuffRule]]
     "Ruff per-file exemptions: {path_glob: [named_rule]}, never a blanket mask."
+
+    type LifecycleContext = Literal["local", "ci"]
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."

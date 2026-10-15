@@ -41,71 +41,55 @@ class FlextInfraModelsGit(
 
         repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
 
-    class GitLaneVerificationRequest(GitRepoRequest):
-        """One read-only lane admission and census request over a repository.
+    class GitSigningConfigObservation(m.ContractModel):
+        """Native configuration origin and outcome without exporting key material."""
 
-        A single owner carries the whole lane contract: the declared
-        integration authority and the explicitly selected ownership sources
-        for the census evaluator, plus the verified boundary, candidate and
-        expected tip for the native admission evaluator. It extends
-        ``GitRepoRequest`` so the native facts read accepts it wherever a
-        repository-scoped query is required.
-        """
-
-        remote: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Lane remote the integration tip is verified on"),
-        ] = "origin"
-        operation: Annotated[
-            Literal["verify", "create", "retire"],
-            m.Field(description="Boundary being verified, never an effect selector"),
-        ] = "verify"
-        candidate: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Commit whose integration ancestry must be proved"),
-        ] = "HEAD"
-        expected_tip: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Previously observed tip; drift refuses admission"),
-        ] = None
-        declared: Annotated[
+        key: Annotated[
+            t.NonEmptyStr, m.Field(description="Inspected native Git setting")
+        ]
+        scope: Annotated[
+            str | None, m.Field(description="Native effective config scope")
+        ]
+        origin: Annotated[
+            str | None, m.Field(description="Native effective config origin")
+        ]
+        value: Annotated[
             str | None,
-            m.Field(description="Governing integration declaration"),
+            m.Field(
+                exclude=True, description="Private native config value for projection"
+            ),
         ] = None
-        evidence_file: Annotated[
-            Path | None,
-            m.Field(description="Typed Bead/PR evidence captured by the coordinator"),
-        ] = None
-        governance_file: Annotated[
-            Path | None,
-            m.Field(description="Global coordination governance SSOT"),
-        ] = None
-        read_pull_requests: Annotated[
+        process: Annotated[
+            m.Cli.ProcessOutcome, m.Field(description="Original native query outcome")
+        ]
+
+    class GitSigningIdentityReport(m.ContractModel):
+        """Read-only signing references; no private files or command execution."""
+
+        repo_root: Annotated[Path, m.Field(description="Inspected repository root")]
+        signing_format: Annotated[
+            str | None, m.Field(description="Declared native signing format")
+        ]
+        key_path: Annotated[
+            Path | None, m.Field(description="Declared file key reference, unread")
+        ]
+        inline_public_key: Annotated[
             bool,
-            m.Field(description="Explicitly authorize public PR ownership reads"),
-        ] = False
-        read_beads: Annotated[
-            bool,
-            m.Field(description="Explicitly authorize declared Beads ownership reads"),
-        ] = False
-
-        @m.model_validator(mode="after")
-        def _validate_ownership_selection(self) -> Self:
-            """Reject competing evidence sources instead of ignoring selection.
-
-            Returns:
-                The uniquely selected ownership request.
-
-            Raises:
-                ValueError: If receipt and live ownership are both selected.
-
-            """
-            if self.evidence_file is not None and (
-                self.read_pull_requests or self.read_beads
-            ):
-                msg = "select either an ownership receipt or authorized live sources"
-                raise ValueError(msg)
-            return self
+            m.Field(description="Git literal public reference: key:: or raw ssh-"),
+        ]
+        public_fingerprint: Annotated[
+            str | None,
+            m.Field(description="Verified public fingerprint, unknown until verified"),
+        ]
+        allowed_signers_path: Annotated[
+            Path | None, m.Field(description="Declared public trust file, unread")
+        ]
+        observations: Annotated[
+            tuple[FlextInfraModelsGit.GitSigningConfigObservation, ...],
+            m.Field(
+                description="Native origin, scope and raw outcome for every setting"
+            ),
+        ]
 
     class GitLaneEvidence(m.ContractModel):
         """Repository-bound coordinator receipt, never a cleanup instruction."""
@@ -296,30 +280,6 @@ class FlextInfraModelsGit(
         repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         reference: Annotated[t.NonEmptyStr, m.Field(description="Exact Git ref")]
 
-    class GitSubmoduleDeclaration(m.ContractModel):
-        """One ``.gitmodules`` submodule section, parsed once by its single owner."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        path: Annotated[
-            Path,
-            m.Field(description="Submodule path relative to the superproject root"),
-        ]
-        url: Annotated[str, m.Field(description="Declared URL; empty when undeclared")]
-        branch: Annotated[
-            str,
-            m.Field(description="Declared branch; empty when undeclared"),
-        ]
-        managed: Annotated[
-            bool | None,
-            m.Field(
-                description=(
-                    "Declared flext-managed flag: None when absent, True only for "
-                    "an explicit true, False for any other explicit value"
-                ),
-            ),
-        ]
-
     class GitCommitishRequest(m.ContractModel):
         """Repository plus commit-ish for resolve/ancestor/merge ops."""
 
@@ -390,12 +350,9 @@ class FlextInfraModelsGit(
             m.Field(description="Local commit-ish pushed to the remote branch"),
         ] = "HEAD"
 
-    class GitRemoteRequest(m.ContractModel):
+    class GitRemoteRequest(GitRepoRequest):
         """One repository plus one remote name."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         remote: Annotated[t.NonEmptyStr, m.Field(description="Remote name")] = "origin"
 
     class GitRemoteBranchRequest(GitRemoteRequest):
@@ -406,6 +363,53 @@ class FlextInfraModelsGit(
             t.NonEmptyStr | None,
             m.Field(description="Remote tip the mutation is leased on"),
         ] = None
+
+    class GitLaneVerificationRequest(GitRemoteRequest):
+        """Read-only admission and census against the live integration tip."""
+
+        declared: Annotated[
+            str | None, m.Field(description="Governing integration declaration")
+        ] = None
+        evidence_file: Annotated[
+            Path | None, m.Field(description="Coordinator ownership receipt")
+        ] = None
+        governance_file: Annotated[
+            Path | None, m.Field(description="Coordination governance SSOT")
+        ] = None
+        read_pull_requests: Annotated[
+            bool, m.Field(description="Authorize public PR ownership reads")
+        ] = False
+        read_beads: Annotated[
+            bool, m.Field(description="Authorize declared Beads ownership reads")
+        ] = False
+        operation: Annotated[
+            Literal["verify", "create", "retire"],
+            m.Field(description="Boundary being verified, not an effect selector"),
+        ] = "verify"
+        candidate: Annotated[
+            t.NonEmptyStr, m.Field(description="Commit requiring integration ancestry")
+        ] = "HEAD"
+        expected_tip: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Previously observed tip")
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _validate_ownership_selection(self) -> Self:
+            """Reject competing receipt and live ownership evidence sources.
+
+            Returns:
+                The validated instance.
+
+            Raises:
+                ValueError: If an ownership receipt competes with authorized
+                    live sources.
+            """
+            if self.evidence_file is not None and (
+                self.read_pull_requests or self.read_beads
+            ):
+                msg = "select either an ownership receipt or authorized live sources"
+                raise ValueError(msg)
+            return self
 
     class GitRefHeadsRequest(m.ContractModel):
         """List every ref below one namespace.

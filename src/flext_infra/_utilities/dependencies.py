@@ -13,7 +13,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 from flext_cli import u
-from packaging.requirements import InvalidRequirement, Requirement
+from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
@@ -140,139 +140,46 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         )
 
     @staticmethod
-    def dependency_profile_upstreams(
-        profiles: t.SequenceOf[m.Infra.ScaffoldDependencyProfileSpec],
+    def project_development_requirements(
+        scaffold: m.Infra.ScaffoldProjectSpec,
         *,
         distribution: str,
-        runtime_names: t.Infra.StrSet,
+        kind: c.Infra.ProjectKind,
+        declared: t.StrSequence = (),
     ) -> t.StrSequence:
-        """Return the most specific shared profile upstreams one project selects.
+        """Compose development policy over the target's own requirement declarations.
 
-        The root of the dependency tree declares no upstream distribution: a
-        distribution that IS a profile's upstream owns that profile. Otherwise
-        every shared profile whose upstream is a runtime dependency is a
-        candidate, and a candidate implied by another candidate's runtime is
-        dropped. One entry is the governed selection; none means no declared
-        profile governs the project; several are an ambiguous declaration.
+        Existing requirement spellings, marker variants and sources stay intact.
+        FLEXT suppliers apply only to the declared FLEXT kind and never to their
+        own distribution; installed packages and project names do not elect policy.
 
         Returns:
-            The most specific shared profile upstreams one project selects.
-
+            Authored requirements followed by missing applicable suppliers.
         """
-        shared = tuple(item for item in profiles if item.project is None)
-        own = next(
-            (
+        own = canonicalize_name(distribution)
+        authored = tuple(
+            dict.fromkeys(
                 item
-                for item in shared
-                if item.upstream.replace("_", "-") == distribution
-            ),
-            None,
-        )
-        candidates = (
-            (own,)
-            if own is not None
-            else tuple(
-                item
-                for item in shared
-                if item.upstream.replace("_", "-") in runtime_names
+                for item in declared
+                if canonicalize_name(Requirement(item).name) != own
             )
         )
-        runtime_of = {
-            item.upstream: {
-                name
-                for dependency in item.runtime
-                if (
-                    name := FlextInfraUtilitiesDependencies.dep_name(
-                        dependency,
-                    )
-                )
-            }
-            for item in candidates
-        }
-        return tuple(
-            item.upstream
-            for item in candidates
-            if not any(
-                item.upstream.replace("_", "-") in runtime_of[other.upstream]
-                for other in candidates
-                if other is not item
-            )
-        )
-
-    @staticmethod
-    def dependency_profile_rows(
-        profiles: t.SequenceOf[m.Infra.ScaffoldDependencyProfileSpec],
-        *,
-        upstream: str,
-        distribution: str,
-    ) -> t.SequenceOf[m.Infra.ScaffoldDependencyProfileSpec]:
-        """Return the shared upstream profile followed by the project's additions.
-
-        Empty when the upstream declares no shared profile.
-
-        Returns:
-            The shared upstream profile followed by the project's additions.
-
-        """
-        base = next(
-            (
-                item
-                for item in profiles
-                if item.project is None and item.upstream == upstream
+        names = {canonicalize_name(Requirement(item).name) for item in authored}
+        policy = (
+            *scaffold.dev,
+            *(
+                scaffold.required_flext_dev
+                if kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+                else ()
             ),
-            None,
         )
-        if base is None:
-            return ()
-        return (base, *(item for item in profiles if item.project == distribution))
-
-    @classmethod
-    def composed_dependency_profile(
-        cls,
-        profiles: t.SequenceOf[m.Infra.ScaffoldDependencyProfileSpec],
-        *,
-        upstream: str,
-        distribution: str,
-    ) -> m.Infra.ScaffoldDependencyProfileSpec | None:
-        """Compose the shared upstream and project-specific dependency rows once.
-
-        Returns:
-            The resulting ``m.Infra.ScaffoldDependencyProfileSpec | None``.
-        """
-        rows = cls.dependency_profile_rows(
-            profiles,
-            upstream=upstream,
-            distribution=distribution,
-        )
-        if not rows:
-            return None
-        profile, *additions = rows
-        if not additions:
-            return profile
-        return m.Infra.ScaffoldDependencyProfileSpec.model_validate(
-            {
-                **profile.model_dump(),
-                "runtime": tuple(
-                    dict.fromkeys((
-                        *profile.runtime,
-                        *(
-                            requirement
-                            for item in additions
-                            for requirement in item.runtime
-                        ),
-                    )),
-                ),
-                "codegen": tuple(
-                    dict.fromkeys((
-                        *profile.codegen,
-                        *(
-                            requirement
-                            for item in additions
-                            for requirement in item.codegen
-                        ),
-                    )),
-                ),
-            },
+        return (
+            *authored,
+            *(
+                requirement
+                for requirement in policy
+                if canonicalize_name(Requirement(requirement).name) not in {*names, own}
+            ),
         )
 
     @classmethod
@@ -373,6 +280,46 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             visit(root)
         return tuple(ordered)
 
+    @classmethod
+    def workspace_dependency_order(
+        cls,
+        root: Path,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+    ) -> t.StrSequence:
+        """Order declared packages by their actual runtime dependency graph.
+
+        Returns:
+            Dependencies before consumers, with stable distribution-name ties.
+
+        Raises:
+            ValueError: If distributions collide or the runtime graph is cyclic.
+        """
+        by_name = {
+            canonicalize_name(repository.distribution): repository
+            for repository in repositories
+        }
+        if len(by_name) != len(repositories):
+            msg = "workspace declares duplicate distribution identities"
+            raise ValueError(msg)
+        graph = {
+            name: tuple(
+                dependency
+                for dependency in cls.project_dependency_names_from_payload(
+                    u.Cli.toml_read_json(
+                        root / repository.path / c.PYPROJECT_FILENAME,
+                    ).unwrap(),
+                )
+                if dependency in by_name
+            )
+            for name, repository in by_name.items()
+        }
+        waves = cls.dependency_waves(graph)
+        if waves.failure:
+            raise ValueError(waves.error)
+        return tuple(
+            by_name[name].distribution for wave in waves.value for name in wave
+        )
+
     @staticmethod
     def dependency_waves(
         edges: Mapping[str, t.StrSequence],
@@ -401,7 +348,9 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                 "dependency graph references names outside the graph: "
                 + ", ".join(unknown),
             )
-        pending: dict[str, set[str]] = {name: set(deps) for name, deps in edges.items()}
+        pending: t.MutableMappingKV[str, set[str]] = {
+            name: set(deps) for name, deps in edges.items()
+        }
         waves: list[t.StrSequence] = []
         while pending:
             ready = frozenset(name for name, deps in pending.items() if not deps)
@@ -551,18 +500,6 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             raise ValueError(msg)
         return versions
 
-    @staticmethod
-    def _parsed_requirement(requirement_text: str) -> Requirement | None:
-        """Parse one PEP 508 requirement string, or None when invalid.
-
-        Returns:
-            The resulting ``Requirement | None``.
-        """
-        try:
-            return Requirement(requirement_text.strip())
-        except InvalidRequirement:
-            return None
-
     @classmethod
     def rewrite_requirement_constraint(
         cls,
@@ -580,26 +517,24 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         guard = cls._rewritable_requirement(requirement, internal_names)
         if guard is None:
             return None
-        dependency_name, requirement_part = guard
+        dependency_name, parsed = guard
         raw_text = requirement.strip()
-        requirement_part, marker_separator, marker_part = raw_text.partition(";")
-        head = cls._requirement_head(requirement_part)
+        head = parsed.name
+        if parsed.extras:
+            head = f"{head}[{','.join(sorted(parsed.extras))}]"
         locked_version = resolved_versions.get(dependency_name)
         if locked_version is None:
             return None
-        parsed = cls._parsed_requirement(requirement_part)
-        if parsed is not None and not parsed.specifier.contains(
+        if not parsed.specifier.contains(
             locked_version,
             prereleases=True,
         ):
             return None
-        retained = (
-            ()
-            if parsed is None
-            else tuple(
+        retained = tuple(
+            sorted(
                 str(specifier)
                 for specifier in parsed.specifier
-                if specifier.operator in {"<", "<=", "!="}
+                if specifier.operator != ">="
             )
         )
         constraint = cls.constraint_specifier(locked_version)
@@ -608,9 +543,8 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         if retained:
             constraint = ",".join((constraint, *retained))
         rewritten = f"{head}{constraint}"
-        marker_text = marker_part.strip()
-        if marker_separator and marker_text:
-            rewritten = f"{rewritten}; {marker_text}"
+        if parsed.marker is not None:
+            rewritten = f"{rewritten}; {parsed.marker}"
         return rewritten if rewritten != raw_text else None
 
     @classmethod
@@ -618,39 +552,22 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         cls,
         requirement: str,
         internal_names: t.StrSequence,
-    ) -> t.Pair[str, str] | None:
-        """Return the dependency name and part of one rewritable requirement.
+    ) -> t.Pair[str, Requirement] | None:
+        """Parse the complete declaration before deciding whether it is rewritable.
 
         Returns:
-            The dependency name and requirement part, or None when the
-            requirement carries a direct URL, an unparsable head, or an
-            internal dependency name.
+            The dependency name and parsed requirement, or None for a direct
+            reference or an internal dependency. Invalid declarations raise
+            the original PEP 508 parsing error.
 
         """
-        raw_text = requirement.strip()
-        if not raw_text or " @ " in raw_text:
+        parsed = Requirement(requirement.strip())
+        dependency_name = canonicalize_name(parsed.name)
+        if parsed.url is not None or dependency_name in {
+            canonicalize_name(name) for name in internal_names
+        }:
             return None
-        requirement_part = raw_text.partition(";")[0]
-        if " @ " in requirement_part:
-            return None
-        head = cls._requirement_head(requirement_part)
-        dependency_name = cls.dep_name(head)
-        if dependency_name is None or dependency_name in set(internal_names):
-            return None
-        return dependency_name, requirement_part
-
-    @staticmethod
-    def _requirement_head(requirement_part: str) -> str:
-        """Return the canonical head of one requirement part.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(
-            requirement_part.strip(),
-        )
-        return head_match.group("head").strip() if head_match is not None else ""
+        return dependency_name, parsed
 
     @classmethod
     def declared_dependency_names(

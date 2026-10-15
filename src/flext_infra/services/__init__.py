@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.services import _codegen
@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.services.cli_dispatch import FlextInfraCliDispatchService
     from flext_infra.services.cli_mod_progress import FlextInfraCliModProgress
-    from flext_infra.services.cli_route_base import FlextInfraCliRouteBase
     from flext_infra.services.cli_routes import FlextInfraCliRouteService
     from flext_infra.services.cli_routes_codegen import FlextInfraCodegenRoutes
     from flext_infra.services.cli_routes_refactor import FlextInfraRefactorRoutes
@@ -36,7 +35,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCandidateBootstrapService",
     "FlextInfraCliDispatchService",
     "FlextInfraCliModProgress",
-    "FlextInfraCliRouteBase",
     "FlextInfraCliRouteService",
     "FlextInfraCodegen",
     "FlextInfraCodegenRoutes",
@@ -55,7 +53,6 @@ install_lazy_exports(
         "FlextInfraCandidateBootstrapService": ".candidate_bootstrap",
         "FlextInfraCliDispatchService": ".cli_dispatch",
         "FlextInfraCliModProgress": ".cli_mod_progress",
-        "FlextInfraCliRouteBase": ".cli_route_base",
         "FlextInfraCliRouteService": ".cli_routes",
         "FlextInfraCodegen": ".codegen",
         "FlextInfraCodegenRoutes": ".cli_routes_codegen",

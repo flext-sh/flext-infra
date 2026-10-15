@@ -11,17 +11,158 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import flext_tests
 import pytest
-from flext_tests import tm
 
-from flext_infra import infra
+from flext_infra import infra, p, r
+from flext_infra.codegen import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+)
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from tests import c, u
+from flext_infra.transformers import FlextInfraSemanticPublication
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDeclarationRelocation:
     """Exercise real Rope bindings and preserve the original source inventory."""
+
+    @staticmethod
+    @pytest.mark.parametrize("lazy", [False, True])
+    @pytest.mark.parametrize("consumer_name", ["_config.py", "_settings.py"])
+    def test_settings_imports_do_not_promote_family_payload_to_layer_zero(
+        tmp_path: Path,
+        consumer_name: str,
+        *,
+        lazy: bool,
+    ) -> None:
+        """Family payloads retain their finding, never gaining a leaf-import bypass."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = package / "_models"
+        family.mkdir()
+        consumer = package / consumer_name
+        owner = family / "config.py"
+        base = family / "base.py"
+        sources = {
+            owner: "class ConfigPayload:\n    pass\n",
+            base: "class ModelsBase:\n    pass\n",
+            family / "__init__.py": (
+                "from flext_core.lazy import install_lazy_exports\n"
+                "install_lazy_exports(__name__, globals(), {\n"
+                "    'ConfigPayload': '.config', 'ModelsBase': '.base',\n"
+                "})\n"
+                if lazy
+                else f"from {package.name}._models.config import ConfigPayload\n"
+                f"from {package.name}._models.base import ModelsBase\n"
+            ),
+            consumer: (
+                f"from {package.name}._models import ("
+                "ConfigPayload as Payload, ModelsBase)\n"
+                "class Config(ModelsBase):\n    payload = Payload\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+            tm.that(len(planned), eq=1)
+            proposed = dict(sources)
+            proposed.update({edit.file_path: edit.updated_source for edit in planned})
+            tm.that(consumer.read_text(encoding="utf-8"), eq=sources[consumer])
+            tm.that(
+                proposed[consumer],
+                lacks="._models.config import ConfigPayload as Payload",
+            )
+            tm.that(proposed[consumer], has="._models import ConfigPayload as Payload")
+            tm.that(proposed[consumer], has="._models.base import ModelsBase")
+            repeated = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=proposed,
+                ),
+            )
+            tm.that(repeated, eq=())
+        for path, source in proposed.items():
+            path.write_text(source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.{consumer.stem} import Config; "
+                        f"from {package.name}._models.config import ConfigPayload; "
+                        f"from {package.name}._models.base import ModelsBase; "
+                        "assert Config.payload is ConfigPayload; "
+                        "assert issubclass(Config, ModelsBase)"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
+    def test_settings_imports_preserve_external_lazy_package(
+        tmp_path: Path,
+    ) -> None:
+        """Resolve the actual external provider without treating it as local WIP."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = Path(flext_tests.__file__).resolve()
+        tm.that(provider.is_relative_to(root), eq=False)
+        consumer = package / "_settings.py"
+        source = "from flext_tests import tm\nclass Settings:\n    matcher = tm\n"
+        consumer.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources={consumer: source},
+                ),
+            )
+        tm.that(planned, eq=())
+        tm.that(consumer.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_settings_imports_do_not_evade_illegal_declaration_owners(
+        tmp_path: Path,
+    ) -> None:
+        """A non-config model leaf remains a finding, never a direct-import bypass."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = package / "_models"
+        family.mkdir()
+        sources = {
+            family / "payload.py": "class Payload:\n    pass\n",
+            family / "__init__.py": (
+                f"from {package.name}._models.payload import Payload\n"
+            ),
+            package / "_config.py": (
+                f"from {package.name}._models import Payload\n"
+                "class Config:\n    payload = Payload\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+            tm.that(planned, eq=())
 
     @staticmethod
     def _seed(
@@ -30,7 +171,7 @@ class TestsFlextInfraDeclarationRelocation:
         body: str = "value: str = Field(default='payload')",
         base: str = "PayloadBase",
         variants: frozenset[str] = frozenset(),
-    ) -> tuple[Path, dict[Path, str]]:
+    ) -> t.Pair[Path, t.MutableMappingKV[Path, str]]:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         stem = u.derive_class_stem(root.name)
         models = (
@@ -344,6 +485,381 @@ class TestsFlextInfraDeclarationRelocation:
             del sys.modules[spec.name]
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("dependency", "annotation", "shadow"),
+        [
+            ("from decimal import Decimal as Amount", "Amount", "Amount"),
+            ("import decimal as amounts", "amounts.Decimal", "amounts"),
+        ],
+    )
+    @pytest.mark.parametrize("conflict", [False, True])
+    def test_guarded_dependency_public_consumer(
+        tmp_path: Path,
+        dependency: str,
+        annotation: str,
+        shadow: str,
+        *,
+        conflict: bool,
+    ) -> None:
+        """Guarded aliases resolve at the model owner without capturing local names."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            body=f"amount: '{annotation}'",
+        )
+        origin = next(path for path in sources if path.parent.name == "_utilities")
+        target = next(path for path in sources if path.parent.name == "_models")
+        sources[origin] = (
+            "from typing import TYPE_CHECKING as Checking\n"
+            f"if Checking:\n    {dependency}\n"
+            + sources[origin]
+            + f"\ndef shadow({shadow}: str) -> str:\n    return {shadow}\n"
+        )
+        if conflict:
+            sources[target] = f"{shadow} = str\n" + sources[target]
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            if conflict:
+                with pytest.raises(ValueError, match="conflicting dependency"):
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=sources,
+                    )
+                planned = ()
+            else:
+                planned = tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=sources,
+                    ),
+                )
+                proposed = dict(sources)
+                proposed.update({
+                    edit.file_path: edit.updated_source for edit in planned
+                })
+                tm.that(
+                    tm.ok(
+                        u.Infra.plan_semantic_cutover(
+                            c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                            rope_workspace=rope,
+                            sources=proposed,
+                        ),
+                    ),
+                    eq=(),
+                )
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+        if conflict:
+            return
+        for edit in planned:
+            edit.file_path.write_text(edit.updated_source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {target.parent.parent.name} import m; "
+                        f"from {target.parent.parent.name}.consumer import build; "
+                        f"from {target.parent.parent.name}._utilities.payload import "
+                        f"shadow; "
+                        "from decimal import Decimal; "
+                        "from typing import get_type_hints; "
+                        "assert get_type_hints(build)['return'] is m.Payload; "
+                        "assert m.Payload.model_fields['amount'].annotation is "
+                        "Decimal; "
+                        "assert m.Payload.model_validate({'amount': '2.5'}).amount "
+                        "== Decimal('2.5'); "
+                        "assert "
+                        "m.Payload.model_validate({'amount': '2.5'}).model_dump_json() "
+                        '== \'{"amount":"2.5"}\'; '
+                        "assert shadow('lexical') == 'lexical'"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(target.parent.parent.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize("guard", ["TYPE_CHECKING", "Checking"])
+    def test_unrelated_type_checking_guard_refuses_without_mutation(
+        tmp_path: Path,
+        guard: str,
+    ) -> None:
+        """A same-spelled local flag is not the typing module's guard identity."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            body="amount: 'Amount'",
+        )
+        origin = next(path for path in sources if path.parent.name == "_utilities")
+        sources[origin] = (
+            f"{guard} = False\nif {guard}:\n"
+            "    from decimal import Decimal as Amount\n" + sources[origin]
+        )
+        origin.write_text(sources[origin], encoding="utf-8")
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match=r"unresolved/outer dependency.*Amount"),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            )
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("refused", ["destination", "exposure"])
+    @pytest.mark.parametrize("independent_group", [False, True])
+    def test_failed_dependent_group_preserves_independent_public_runtime(
+        tmp_path: Path,
+        refused: str,
+        *,
+        independent_group: bool,
+    ) -> None:
+        """A destination refusal recovers only its invocation's dependent group."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            body="count: int = Field(default=3)",
+        )
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+        target = next(path for path in sources if path.parent.name == "_models")
+        package = target.parent.parent
+        blocked = target if refused == "destination" else target.parent / "__init__.py"
+        if refused == "exposure":
+            blocked.write_text("", encoding="utf-8")
+            sources[blocked] = ""
+        independent = root / "independent.py"
+        independent.write_text("VALUE = 'before'\n", encoding="utf-8")
+        independent_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(independent, required=True)
+        )
+        plans = [
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=independent,
+                before=independent_before,
+                desired_content=b"VALUE = 'after'\n",
+                desired_mode=independent_before.mode,
+                dependency_group=independent.stem if independent_group else None,
+            )
+        ]
+        for edit in edits:
+            before = tm.ok(
+                u.Cli.atomic_read_binary_file_state(edit.file_path, required=True)
+            )
+            plans.append(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=edit.file_path,
+                    before=before,
+                    desired_content=edit.updated_source.encode("utf-8"),
+                    desired_mode=before.mode,
+                    dependency_group=package.name,
+                )
+            )
+        if refused == "exposure":
+            exposure = tm.ok(
+                FlextInfraCodegenLazyInit(repository_root=root).plan_files()
+            )
+            plans.extend(
+                item.model_copy(update={"dependency_group": package.name})
+                for item in exposure.files
+                if item.path == blocked
+            )
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        )
+        receipts: list[m.Infra.CodegenStagedFile] = []
+
+        def refuse_destination(
+            session: m.Infra.CodegenTransactionSession,
+            _staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            before = tm.ok(u.Cli.atomic_read_binary_file_state(blocked, required=True))
+            tm.ok(
+                u.Cli.atomic_write_binary_file_guarded(
+                    before,
+                    sources[blocked].encode("utf-8")
+                    + b"\n# authored destination change\n",
+                    permission_mode=before.mode,
+                )
+            )
+            return r[m.Infra.CodegenTransactionSession].ok(session)
+
+        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
+            started = transaction.begin_files_locked(scope, {f"@{root.name}": root}, ())
+            if started.failure:
+                return r[t.VariadicTuple[Path]].from_failure(started)
+            admitted = transaction.append_phase_locked(
+                started.value,
+                c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                tuple(plans),
+                staged_validator=refuse_destination,
+            )
+            if admitted.failure:
+                return r[t.VariadicTuple[Path]].from_failure(admitted)
+            return transaction.commit_locked(admitted.value, published_files=receipts)
+
+        failed = transaction.run_files_locked({f"@{root.name}": root}, publish)
+        tm.fail(failed)
+        tm.that(independent.read_text(encoding="utf-8"), eq="VALUE = 'after'\n")
+        tm.that(
+            blocked.read_text(encoding="utf-8"),
+            eq=sources[blocked] + "\n# authored destination change\n",
+        )
+        for path, source in sources.items():
+            if path != blocked:
+                tm.that(path.read_text(encoding="utf-8"), eq=source)
+        tm.that(tuple(item.before.path for item in receipts), eq=(independent,))
+        consumer = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-B",
+                    "-c",
+                    (
+                        f"from {package.name}.consumer import build; "
+                        f"from {package.name} import m; "
+                        "from independent import VALUE; "
+                        "assert not hasattr(m, 'Payload'); "
+                        "assert build().count == 3; assert VALUE == 'after'"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent) + ":" + str(root)}
+                ),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize("accepted", [False, True])
+    def test_public_group_cutover_is_accepted_or_recovers_on_consumer_rejection(
+        tmp_path: Path,
+        *,
+        accepted: bool,
+    ) -> None:
+        """A fresh consumer accepts the full cutover, never a partial runtime."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(
+            tmp_path,
+            body="count: int = Field(default=3)",
+        )
+        before_sources = {path: path.read_bytes() for path in root.rglob("*.py")}
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+        target = next(path for path in sources if path.parent.name == "_models")
+        package = target.parent.parent
+        plans: list[m.Infra.SemanticFilePlan] = []
+        for edit in edits:
+            before = tm.ok(
+                u.Cli.atomic_read_binary_file_state(edit.file_path, required=True)
+            )
+            source = edit.updated_source
+            if not accepted and edit.file_path == target:
+                source = source.replace("Field(default=3)", "Field(default=7)")
+            plans.append(
+                m.Infra.SemanticFilePlan(
+                    project=root,
+                    path=edit.file_path,
+                    before=before,
+                    desired_content=source.encode("utf-8"),
+                    desired_mode=before.mode,
+                    changes=("declaration relocation",),
+                )
+            )
+
+        def consume() -> p.Result[bool]:
+            result = u.Cli.run(
+                (
+                    sys.executable,
+                    "-B",
+                    "-c",
+                    (
+                        f"from {package.name} import m; "
+                        f"from {package.name}.consumer import build; "
+                        "assert build().__class__ is m.Payload; "
+                        "assert build().count == 3; "
+                        "assert m.Payload.model_validate({'count': 4}).model_dump() == "
+                        "{'count': 4}"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+            if result.failure:
+                return r[bool].from_failure(result)
+            return r[bool].ok(u.Cli.process_succeeded(result.value.outcome))
+
+        result = FlextInfraSemanticPublication.publish_semantic_file_plans(
+            plans,
+            repository_root=root,
+            projection_roots=(root,),
+            dependency_group=package.name,
+            validator=consume,
+        )
+        if accepted:
+            tm.ok(result)
+            tm.that(tm.ok(consume()), eq=True)
+            with infra.rope_workspace(root) as rope:
+                tm.that(
+                    tm.ok(
+                        u.Infra.plan_semantic_cutover(
+                            c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                            rope_workspace=rope,
+                            sources={
+                                path: path.read_text(encoding="utf-8")
+                                for path in sources
+                            },
+                        )
+                    ),
+                    eq=(),
+                )
+        else:
+            tm.fail(result)
+            for path, content in before_sources.items():
+                tm.that(path.read_bytes(), eq=content)
+            original = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-B",
+                        "-c",
+                        (
+                            f"from {package.name}.consumer import build; "
+                            "assert build().count == 3"
+                        ),
+                    ),
+                    cwd=root,
+                    options=m.Cli.ProcessOptions(
+                        env={"PYTHONPATH": str(package.parent)}
+                    ),
+                )
+            )
+            tm.that(u.Cli.process_succeeded(original.outcome), eq=True)
+
+    @staticmethod
     def test_real_scan_selects_the_immutable_declaration_phase(tmp_path: Path) -> None:
         """Test real scan selects the immutable declaration phase."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(tmp_path)
@@ -498,10 +1014,10 @@ class TestsFlextInfraDeclarationRelocation:
 
     @staticmethod
     @pytest.mark.slow
-    def test_uncomposed_model_owner_is_a_finding_and_other_rules_apply(
+    def test_uncomposed_model_owner_preserves_findings_and_failed_publication(
         tmp_path: Path,
     ) -> None:
-        """Zero composed model owners report the declaration; mod still rewrites."""
+        """An unresolved owner stays visible; failed candidate gates publish nothing."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
             variants=frozenset({"uncomposed"}),
@@ -537,13 +1053,153 @@ class TestsFlextInfraDeclarationRelocation:
             )
             tm.ok(planned)
             tm.that(planned.value, empty=True)
-            applied = FlextInfraCodemodSemanticApply.apply(root, preflight, rope)
+            applied = FlextInfraCodemodSemanticApply.apply(
+                root,
+                preflight,
+                rope,
+                source_preview=infra.source_preview(root),
+                workspace_factory=infra.rope_workspace,
+            )
         tm.that(len(findings), eq=1)
         tm.that(findings[0].file_path, eq=origin.resolve())
         tm.that(findings[0].declaration, eq=f"{stem}UtilitiesPayload.Payload")
         tm.that(findings[0].expected_owner, has="one authored model owner")
         tm.that(findings[0].reason, has="found []")
-        tm.ok(applied)
-        published = origin.read_text(encoding="utf-8")
-        tm.that(published, has="from __future__ import annotations")
-        tm.that(published, has="class Payload(")
+        tm.fail(applied)
+        tm.that(applied.error, has="quality checks failed")
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("split", [False, True])
+    def test_public_preset_dependency_moves_without_self_facade_cycle(
+        tmp_path: Path,
+        *,
+        split: bool,
+    ) -> None:
+        """The public model consumer loads the relocated payload and its preset."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(tmp_path)
+        stem = u.derive_class_stem(root.name)
+        target = next(path for path in sources if path.parent.name == "_models")
+        owner = f"{stem}ModelsPayload"
+        sources[target] = (
+            "from pydantic import BaseModel, Field\n"
+            f"class {owner}:\n    Field = Field\n"
+            "    class Preset(BaseModel):\n        pass\n"
+            f"__all__ = ['{owner}']\n"
+        )
+        origin = next(path for path in sources if path.parent.name == "_utilities")
+        sources[origin] = f"from {target.parent.parent.name} import m\n" + sources[
+            origin
+        ].replace("class Payload(PayloadBase)", "class Payload(m.Preset)").replace(
+            "Field(default=", "m.Field(default="
+        )
+        sources[origin] = sources[origin].replace(
+            "\ndef local():",
+            "\n    @staticmethod\n    def consume(value: Payload) -> str:\n"
+            "        return value.value\n\ndef local():",
+        )
+        if split:
+            parts = origin.parent / "_payload_parts"
+            parts.mkdir()
+            (parts / "__init__.py").write_text("", encoding="utf-8")
+            sources[parts / "payload_part.py"] = sources.pop(origin)
+            sources[origin] = (
+                f"from {target.parent.parent.name}._utilities."
+                "_payload_parts.payload_part "
+                f"import {stem}UtilitiesPayload\n"
+                f"__all__ = ['{stem}UtilitiesPayload']\n"
+            )
+            sources[target.parent.parent / "utilities.py"] = (
+                f"from {target.parent.parent.name}._utilities.payload "
+                f"import {stem}UtilitiesPayload\n"
+                f"class {stem}Utilities({stem}UtilitiesPayload):\n    pass\n"
+                f"u = {stem}Utilities\n__all__ = ['u', '{stem}Utilities']\n"
+            )
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
+        with infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+        for edit in planned:
+            edit.file_path.write_text(edit.updated_source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {target.parent.parent.name} import m; "
+                        f"from {target.parent.parent.name}._utilities.payload "
+                        f"import {stem}UtilitiesPayload; "
+                        "from typing import get_type_hints; "
+                        f"assert get_type_hints({stem}UtilitiesPayload.consume)"
+                        "['value'] is m.Payload; "
+                        "assert issubclass(m.Payload, m.Preset); "
+                        "assert m.Payload.model_validate("
+                        "{'value': 'consumer'}).value == 'consumer'"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(target.parent.parent.parent)}
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize("competing", [False, True])
+    def test_composed_preset_identity_resolves_local_model_owner(
+        tmp_path: Path,
+        *,
+        competing: bool,
+    ) -> None:
+        """Unrelated composition parts do not compete with the preset owner."""
+        root, sources = TestsFlextInfraDeclarationRelocation._seed(tmp_path)
+        stem = u.derive_class_stem(root.name)
+        target = next(path for path in sources if path.parent.name == "_models")
+        owner = f"{stem}ModelsPayload"
+        sources[target] = (
+            "from pydantic import BaseModel\n"
+            f"class {owner}:\n    class Preset(BaseModel):\n        pass\n"
+            f"__all__ = ['{owner}']\n"
+        )
+        origin = next(path for path in sources if path.parent.name == "_utilities")
+        sources[origin] = (
+            f"from {target.parent.parent.name}._models.payload import {owner}\n"
+            + sources[origin].replace(
+                "class Payload(PayloadBase)", f"class Payload({owner}.Preset)"
+            )
+        )
+        other = target.with_name("other.py")
+        other_owner = f"{stem}ModelsOther"
+        sources[other] = (
+            f"from {target.parent.parent.name}._models.payload import {owner}\n"
+            f"class {other_owner}{f'({owner})' if competing else ''}:\n    pass\n"
+            f"__all__ = ['{other_owner}']\n"
+        )
+        facade = target.parent.parent / "models.py"
+        sources[facade] = (
+            f"from {target.parent.parent.name}._models.other import {other_owner}\n"
+            + sources[facade].replace(f"({owner})", f"({owner}, {other_owner})")
+        )
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            findings = u.Infra.declaration_relocation_findings(rope, sources)
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+        tm.that(len(findings), eq=1 if competing else 0)
+        tm.that(bool(planned), eq=not competing)

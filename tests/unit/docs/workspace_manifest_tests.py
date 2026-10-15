@@ -1,14 +1,4 @@
-"""The fleet-umbrella question has exactly one owner and one signal.
-
-Why this exists: the workspace-manifest path was re-derived in five places, and
-a sixth copy asked the wrong file. It tested the Beads override, which every
-project carries, so every standalone project was classified as a fleet umbrella.
-That misrouting collapsed each project's docs scope onto an identical root scope
-and silently dropped its README and project docs.
-
-These cases pin the signal itself, independently of the docs generator, so the
-classification cannot drift again. Both artifacts are written through the shared
-fixture owners, so a test never encodes a second spelling of either file.
+"""Legacy manifest validation stays separate from Git topology and codegen policy.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,16 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c
-from tests import u
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from flext_infra import c, config
+from tests import t, tm, u
 
 _PROBE = "flext-probe"
 
@@ -34,27 +20,83 @@ class TestsFlextInfraWorkspaceManifest:
     """Classification of a checkout as a fleet umbrella."""
 
     @staticmethod
-    def test_invalid_manifest_cannot_expand_discovery(tmp_path: Path) -> None:
-        """Invalid declarations fail before exclusions or refactor policy are used."""
-        manifest = u.Infra.workspace_manifest_path(tmp_path)
-        manifest.parent.mkdir(parents=True)
-        manifest.write_text("version: invalid\n", encoding="utf-8")
-        with pytest.raises(c.ValidationError):
-            u.Infra.manifest_nonparticipant_paths(tmp_path)
-        with pytest.raises(c.ValidationError):
-            u.Infra.load_refactor_config(tmp_path)
+    @pytest.mark.parametrize("target_path", [".", "nested/candidate", "${HOME}"])
+    def test_relative_bootstrap_paths_survive_public_manifest_loading(
+        tmp_path: Path,
+        target_path: str,
+    ) -> None:
+        """Topology paths stay relative and discovery does not expand YAML inputs."""
+        manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest,
+                {
+                    **tm.ok(u.Cli.yaml_safe_load(manifest)),
+                    "candidate_bootstrap_targets": [
+                        {
+                            "path": target_path,
+                            "what": c.Infra.CodegenConformSurface.MAKEFILE.value,
+                        },
+                    ],
+                },
+            ),
+        )
+
+        loaded = tm.ok(u.Infra.load_workspace_manifest(tmp_path))[0]
+        tm.that(loaded.candidate_bootstrap_targets[0].path, eq=Path(target_path))
+        tm.that(
+            loaded.candidate_bootstrap_targets[0].what
+            is c.Infra.CodegenConformSurface.MAKEFILE,
+            eq=True,
+        )
+        tm.that(u.Infra.repository_nonparticipant_paths(tmp_path), empty=True)
+        tm.that(
+            u.Infra.load_refactor_config(tmp_path).project_scan_dirs,
+            eq=config.Infra.source_scan.roots,
+        )
 
     @staticmethod
-    def _config_dir(root: Path) -> Path:
-        """Create and return the checkout's config directory.
+    @pytest.mark.parametrize("target_path", ["", " ", "/absolute/candidate"])
+    def test_invalid_bootstrap_paths_fail_public_manifest_loading(
+        tmp_path: Path,
+        target_path: str,
+    ) -> None:
+        """The legacy transport rejects empty and absolute bootstrap paths."""
+        manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest,
+                {
+                    **tm.ok(u.Cli.yaml_safe_load(manifest)),
+                    "candidate_bootstrap_targets": [
+                        {
+                            "path": target_path,
+                            "what": c.Infra.CodegenConformSurface.MAKEFILE.value,
+                        },
+                    ],
+                },
+            ),
+        )
 
-        Returns:
-            The resulting ``Path``.
+        tm.that(u.Infra.load_workspace_manifest(tmp_path).failure, eq=True)
 
-        """
-        config = root / c.CONFIG_DIR_NAME
-        config.mkdir(parents=True, exist_ok=True)
-        return config
+    @staticmethod
+    @pytest.mark.parametrize("payload", ["version: invalid\n", "{}\n"])
+    def test_invalid_legacy_manifest_does_not_own_discovery(
+        tmp_path: Path,
+        payload: str,
+    ) -> None:
+        """Legacy errors remain visible without supplying topology or policy."""
+        manifest = u.Infra.workspace_manifest_path(tmp_path)
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(payload, encoding=c.DEFAULT_ENCODING)
+        tm.that(u.Infra.load_workspace_manifest(tmp_path).failure, eq=True)
+        tm.that(u.Infra.repository_nonparticipant_paths(tmp_path), empty=True)
+        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=False)
+        tm.that(
+            u.Infra.load_refactor_config(tmp_path).project_scan_dirs,
+            eq=config.Infra.source_scan.roots,
+        )
 
     @staticmethod
     def test_manifest_path_is_derived_from_the_declared_names(
@@ -85,15 +127,21 @@ class TestsFlextInfraWorkspaceManifest:
         tm.that(u.Infra.fleet_umbrella(tmp_path), eq=False)
 
     @staticmethod
-    def test_workspace_role_declares_a_fleet_umbrella(tmp_path: Path) -> None:
-        """Only the typed workspace role selects aggregate documentation."""
+    @pytest.mark.parametrize("declared", [False, True])
+    def test_git_members_declare_a_fleet_umbrella(
+        tmp_path: Path,
+        *,
+        declared: bool,
+    ) -> None:
+        """Git composition, not a legacy role, selects aggregate documentation."""
         u.Tests.write_standalone_workspace_manifest(
             tmp_path,
             _PROBE,
             role=c.Infra.MakeProfile.WORKSPACE,
         )
-
-        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=True)
+        if declared:
+            u.Tests.WorktreeFixture.write_gitmodules(tmp_path, (_PROBE,))
+        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=declared)
 
     @staticmethod
     def test_a_beads_override_never_makes_a_checkout_an_umbrella(
@@ -110,23 +158,31 @@ class TestsFlextInfraWorkspaceManifest:
         tm.that(u.Infra.fleet_umbrella(tmp_path), eq=False)
 
     @staticmethod
-    def test_invalid_manifest_cannot_erase_participant_exclusions(
+    @pytest.mark.parametrize("scan_dirs", [None, [""]])
+    def test_invalid_codegen_cannot_supply_default_refactor_settings(
         tmp_path: Path,
+        scan_dirs: t.JsonValue,
     ) -> None:
-        """An invalid declared scope fails before discovery can widen it."""
-        manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
-        manifest.write_text("{}\n", encoding=c.Cli.ENCODING_DEFAULT)
-
-        with pytest.raises(c.ValidationError):
-            u.Infra.manifest_nonparticipant_paths(tmp_path)
-
-    @staticmethod
-    def test_invalid_manifest_cannot_supply_default_refactor_settings(
-        tmp_path: Path,
-    ) -> None:
-        """A present invalid manifest is never treated as undeclared settings."""
-        manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
-        manifest.write_text("{}\n", encoding=c.Cli.ENCODING_DEFAULT)
-
-        with pytest.raises(c.ValidationError):
+        """The compiled codegen owner rejects invalid declared refactor inputs."""
+        directory = tmp_path / c.Infra.CODEGEN_CONFIG_DIR
+        directory.mkdir()
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "refactor": {"project_scan_dirs": scan_dirs},
+                            },
+                        },
+                    },
+                },
+            ),
+        )
+        loaded = u.Infra.load_codegen_inputs(tmp_path)
+        tm.fail(loaded, has="project_scan_dirs")
+        tm.that(isinstance(loaded.exception, c.ValidationError), eq=True)
+        with pytest.raises(RuntimeError, match="project_scan_dirs") as raised:
             u.Infra.load_refactor_config(tmp_path)
+        tm.that(isinstance(raised.value.__cause__, c.ValidationError), eq=True)

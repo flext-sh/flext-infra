@@ -16,21 +16,20 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
+from types import MappingProxyType
 from typing import Self, override
 
 from rope.base.project import Project
 from rope.base.resources import File, Folder
 
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraRopeProject(Project):
     """Rope project with the upstream self-warning initializer repaired."""
 
-    # Rope recomputes both folder lists on every module lookup (it walks the
-    # whole root and resolves every sys.path entry) because a live project
-    # can gain folders while open. A read-only analysis pass cannot, so it
-    # freezes them for its duration; outside one, Rope's behaviour stands.
+    # Import roots are declared by FLEXT; a read-only analysis pass also
+    # freezes their resource identities and the external Python path.
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
 
     class SnapshotFiles:
@@ -40,11 +39,8 @@ class FlextInfraRopeProject(Project):
         are errors, never an invitation to consult a newer disk version.
         """
 
-        def __init__(self, sources: Mapping[Path, str]) -> None:
-            self._sources = {
-                path.resolve(): source.encode("utf-8")
-                for path, source in sources.items()
-            }
+        def __init__(self, sources: Mapping[Path, bytes]) -> None:
+            self._sources = MappingProxyType(dict(sources))
 
         def read(self, path: str) -> bytes:
             """Read the exact captured source, including proposed edits.
@@ -59,7 +55,7 @@ class FlextInfraRopeProject(Project):
     def from_snapshot(
         cls,
         root: str,
-        sources: Mapping[Path, str],
+        sources: Mapping[Path, bytes],
         source_folders: t.SequenceOf[str],
         ignored_resources: t.SequenceOf[str] = (),
     ) -> Self:
@@ -102,7 +98,7 @@ class FlextInfraRopeProject(Project):
             This project, its folder layout computed once for the pass.
 
         """
-        source_folders: list[File | Folder] = super().get_source_folders()
+        source_folders = self.get_source_folders()
         python_path_folders: list[File | Folder] = super().get_python_path_folders()
         self._frozen_folders = (source_folders, python_path_folders)
         try:
@@ -112,14 +108,25 @@ class FlextInfraRopeProject(Project):
 
     @override
     def get_source_folders(self) -> list[File | Folder]:
-        """Return the source folders, frozen during a read-only pass.
+        """Return declared import roots, frozen during a read-only pass.
+
+        Package roots also expose their parent so their qualified name resolves.
+        Unrelated workspace resources never participate in source discovery.
 
         Returns:
-            The folders Rope's own contract returns.
+            Declared folders and the import roots of declared packages.
 
         """
         if self._frozen_folders is None:
-            folders: list[File | Folder] = super().get_source_folders()
+            folders: list[File | Folder] = list(self._custom_source_folders)
+            for folder in self._custom_source_folders:
+                if (
+                    isinstance(folder, Folder)
+                    and folder.has_child(c.Infra.INIT_PY)
+                    and not folder.get_child(c.Infra.INIT_PY).is_folder()
+                    and folder.parent not in folders
+                ):
+                    folders.append(folder.parent)
             return folders
         return list(self._frozen_folders[0])
 

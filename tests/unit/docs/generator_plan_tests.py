@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.docs.generator import FlextInfraDocGenerator
-from tests import c, m, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,7 +45,10 @@ class TestsFlextInfraDocsGeneratorPlan:
         sibling = project / "docs/api-reference/generated/modules/api/v1/private.md"
         source_state = u.Cli.atomic_read_binary_file_state(source, required=True)
         tm.ok(source_state)
+        producer = FlextInfraCodegenPreconditions.capture_producer()
+        tm.ok(producer)
         bundle = m.Infra.DocsGenerationBundle(
+            producer=producer.value,
             scopes=(
                 m.Infra.DocsScopeArtifacts(
                     scope=m.Infra.DocScope(
@@ -143,7 +145,7 @@ class TestsFlextInfraDocsGeneratorPlan:
             if plan.desired_content is not None
             and plan.path.parent not in directories_before
         }
-        tm.that(planned_new_parents.difference(required.value), eq=set())
+        tm.that(planned_new_parents.difference(required.value), empty=True)
 
     def test_plan_files_returns_exact_read_only_docs_plans(
         self,

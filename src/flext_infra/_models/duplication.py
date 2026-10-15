@@ -52,6 +52,19 @@ class FlextInfraModelsDuplication:
             t.StrSequence,
             m.Field(description="Scope directory names"),
         ] = c.Infra.JSCPD_SCOPE_DIRNAMES
+        fleet: Annotated[
+            t.StrictBool,
+            m.Field(
+                description=(
+                    "Scan this governed workspace's declared members together in "
+                    "one cross-project jscpd run; the member set is derived from "
+                    "the workspace composition and is never listed here. Default "
+                    "on: a clone shared between two projects is a finding, never "
+                    "a per-project blind spot; a standalone checkout degrades to "
+                    "its own scope"
+                ),
+            ),
+        ] = True
 
     class JscpdConfig(m.ContractModel):
         """Complete generated jscpd invocation configuration."""
@@ -170,6 +183,15 @@ class FlextInfraModelsDuplication:
                 ),
             ),
         ] = False
+        kind: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "jscpd clone classification; the field is absent from some "
+                    "jscpd report versions and defaults to 'exact'"
+                ),
+            ),
+        ] = "exact"
         lines: Annotated[
             t.PositiveInt,
             m.Field(description="Duplicated logical line count"),

@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import (
     __author__,
     __author_email__,
@@ -21,6 +19,7 @@ from flext_infra import (
     __version_info__,
     u,
 )
+from tests import tm
 
 
 class TestsFlextInfraInfraVersionExtra:

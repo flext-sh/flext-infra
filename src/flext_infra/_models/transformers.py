@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -57,7 +58,8 @@ class FlextInfraModelsTransformers:
             ),
         ]
         changes: Annotated[
-            t.VariadicTuple[str], m.Field(description="Recorded migration operations")
+            t.VariadicTuple[str],
+            m.Field(description="Recorded migration operations"),
         ] = m.Field(default_factory=tuple)
         source_states: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
@@ -86,6 +88,34 @@ class FlextInfraModelsTransformers:
             t.VariadicTuple[str],
             m.Field(description="Recorded migration operations"),
         ] = ()
+
+    class SemanticBehaviorRewriteRequest(m.ArbitraryTypesModel):
+        """One consumer rewrite over its declared behavior owner facts."""
+
+        path: Annotated[Path, m.Field(description="Consumer source identity")]
+        source: Annotated[str, m.Field(description="Consumer source text")]
+        modules: Annotated[
+            t.MappingKV[str, t.Pair[str, bool]],
+            m.Field(description="Qualified source text and package identities"),
+        ]
+        ownership: Annotated[
+            t.Pair[
+                t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
+                frozenset[t.Quad[str, str, str, str]],
+            ],
+            m.Field(description="Declared utility owners and facade dispatch needs"),
+        ]
+        utility_imports: Annotated[
+            frozenset[t.Pair[str, str]],
+            m.Field(description="Elected self-facade import identities"),
+        ] = m.Field(default_factory=frozenset)
+        declaration_imports: Annotated[
+            frozenset[t.Pair[str, str]],
+            m.Field(
+                description="External declaration receivers eligible for proven lower "
+                "binding"
+            ),
+        ] = m.Field(default_factory=frozenset)
 
     class DeclarationRelocationFinding(m.ContractModel):
         """One payload declaration whose relocation owner cannot be resolved."""
@@ -279,7 +309,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Body indent width stripped per line"),
         ]
         docstring_span: Annotated[
-            tuple[int, int] | None, m.Field(description="Wrapper docstring line span")
+            tuple[int, int] | None,
+            m.Field(description="Wrapper docstring line span"),
         ] = None
 
     class HeaderInfo(m.ArbitraryTypesModel):
@@ -299,6 +330,49 @@ class FlextInfraModelsTransformers:
             FlextInfraModelsTransformers.HeaderSpan,
             m.Field(description="Byte offsets for the header sections"),
         ]
+
+    class FacadeNamespaceCutover(m.ArbitraryTypesModel):
+        """Shared planning state for one duplicate facade-namespace cutover.
+
+        Replaces the untyped parameter bundle the nesting planner threaded
+        through its helpers: the Rope project, the physical root, the editable
+        sources, the prospective bytes and the accumulated consumer rewrites
+        travel as one resolved contract.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        project: Annotated[
+            t.Infra.RopeProject,
+            m.Field(description="Rope project snapshot holding the editable sources"),
+        ]
+        root: Annotated[Path, m.Field(description="Physical project root")]
+        sources: Annotated[
+            t.MappingKV[Path, str],
+            m.Field(description="Editable source bytes per path"),
+        ]
+        working: Annotated[
+            t.MutableMappingKV[Path, str],
+            m.Field(description="Prospective source bytes per path"),
+        ]
+
+    class FacadeNamespaceSite(m.ArbitraryTypesModel):
+        """Resolved duplicate-facade site for one editable source module."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        path: Annotated[Path, m.Field(description="Source path holding the facade")]
+        source: Annotated[str, m.Field(description="Source bytes holding the facade")]
+        facade: Annotated[ast.ClassDef, m.Field(description="Facade composition class")]
+        namespace: Annotated[
+            ast.ClassDef,
+            m.Field(description="Single composed namespace class"),
+        ]
+        children: Annotated[
+            tuple[ast.ClassDef, ...],
+            m.Field(description="Facade body classes"),
+        ]
+        tree: Annotated[ast.Module, m.Field(description="Parsed source module")]
 
 
 __all__: list[str] = ["FlextInfraModelsTransformers"]

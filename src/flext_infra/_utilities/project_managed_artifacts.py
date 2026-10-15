@@ -9,16 +9,371 @@ from __future__ import annotations
 import os
 import stat
 from collections.abc import MutableMapping
+from copy import deepcopy
+from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
 
+from flext_core import FlextStrictYamlConfigSource
 from flext_infra import c, m, p, r, t
+from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import FlextInfraUtilitiesGit
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts:
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
+
+    @classmethod
+    def load_codegen_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Load one root's full policy through the ordered strict YAML source.
+
+        Returns:
+            The effective codegen declaration and exact consulted file snapshots.
+        """
+        result_type = r[m.Infra.CodegenInputs]
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            projections=projections,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            partial(cls._repository_codegen_spec, document.value.values),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        verified = cls._verify_unchanged_snapshots(document.value.sources)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.CodegenInputs(
+                spec=loaded.value,
+                sources=document.value.sources,
+            ),
+        )
+
+    @classmethod
+    def load_repository_declaration_inputs(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.RepositoryDeclarationInputs]:
+        """Validate only repository policy through the same captured YAML layers.
+
+        An absent optional repository subsection declares no self-owned deltas.
+        Invalid declared policy retains its cause; unrelated editor or tool policy
+        belongs to its own typed consumer and does not determine topology.
+
+        Returns:
+            Strict repository policy with current consulted source snapshots.
+        """
+        result_type = r[m.Infra.RepositoryDeclarationInputs]
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        codegen = u.Cli.json_walk_path(document.value.values, ("Infra", "codegen"))
+        section = r[t.JsonMapping].create_from_callable(
+            partial(t.Cli.JSON_MAPPING_ADAPTER.validate_python, codegen),
+        )
+        if section.failure:
+            return result_type.from_failure(section)
+        loaded = u.validate_value(
+            m.Infra.RepositoryDeltaSpec,
+            section.value.get("repository", {}),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        verified = cls._verify_unchanged_snapshots(document.value.sources)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.RepositoryDeclarationInputs(
+                spec=loaded.value,
+                sources=document.value.sources,
+            ),
+        )
+
+    @classmethod
+    def load_config_document_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        filename: str,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+    ) -> p.Result[m.Infra.ConfigDocumentInputs]:
+        """Capture and compose one F.yaml through the same strict layer reader.
+
+        Returns:
+            The typed document and ordered snapshots, with no ambient source lookup.
+        """
+        result_type = r[m.Infra.ConfigDocumentInputs]
+        elected = r[tuple[Path, ...]].create_from_callable(
+            partial(
+                FlextInfraConfig.config_sources_for_repository,
+                repository_root,
+                filename=filename,
+            ),
+        )
+        if elected.failure:
+            return result_type.from_failure(elected)
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            repository_root,
+            filename=filename,
+        )
+        selected = tuple(dict.fromkeys(layers))
+        if any(projection.path not in selected[1:] for projection in projections):
+            error = ValueError(
+                "projected codegen declaration is outside elected layers"
+            )
+            return result_type.fail(str(error), exception=error)
+        snapshots: list[m.Cli.AtomicFileState] = []
+        for path in selected:
+            observed = u.Cli.atomic_read_binary_file_state(
+                path,
+                required=path == selected[0] or path in elected.value,
+            )
+            if observed.failure:
+                return result_type.from_failure(observed)
+            snapshots.append(observed.value)
+        loaded = r[t.JsonMapping].create_from_callable(
+            partial(
+                cls._repository_config_document,
+                selected,
+                tuple(snapshots),
+                projections,
+            ),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        verified = cls._verify_unchanged_snapshots(snapshots)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.ConfigDocumentInputs(
+                values=loaded.value,
+                sources=tuple(snapshots),
+            ),
+        )
+
+    @staticmethod
+    def _verify_unchanged_snapshots(
+        snapshots: t.SequenceOf[m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Fail when a consulted configuration file changed during loading.
+
+        Returns:
+            Success when every snapshot still matches its consulted bytes.
+
+        """
+        for before in snapshots:
+            observed = u.Cli.atomic_read_binary_file_state(
+                before.path,
+                required=before.content is not None,
+            )
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != before:
+                error = ValueError(
+                    f"codegen configuration changed during read: {before.path}"
+                )
+                return r[bool].fail(str(error), exception=error)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def load_refactor_csv_campaigns(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.RefactorCsvCampaignsSpec]:
+        """Elect only this target's declared campaigns through its F.yaml layers.
+
+        Returns:
+            The validated campaign declaration; generic defaults own an empty set.
+        """
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.INFRA_CONFIG_FILENAME,
+        )
+        if document.failure:
+            return r[m.Infra.RefactorCsvCampaignsSpec].from_failure(document)
+        return u.validate_value(
+            m.Infra.RefactorCsvCampaignsSpec,
+            u.Cli.json_walk_path(
+                document.value.values,
+                ("Infra", "refactor_csv_campaigns"),
+            ),
+        )
+
+    @classmethod
+    def project_codegen_inputs(
+        cls,
+        repository_root: Path,
+        captured: m.Infra.CodegenInputs,
+        *,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        include_local: bool = True,
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Project pending layers from captured bytes without rereading their sources.
+
+        Returns:
+            A validated preview retaining the original input identities.
+        """
+        result_type = r[m.Infra.CodegenInputs]
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        if not captured.sources:
+            error = ValueError("codegen projection requires captured library inputs")
+            return result_type.fail(str(error), exception=error)
+        if captured.sources[0].path != layers[0] or any(
+            state.path not in layers for state in captured.sources
+        ):
+            error = ValueError("captured codegen inputs do not belong to this root")
+            return result_type.fail(str(error), exception=error)
+        selected = tuple(
+            dict.fromkeys(
+                layers if include_local else layers[:2],
+            ),
+        )
+        if any(projection.path not in selected[1:] for projection in projections):
+            error = ValueError(
+                "projected codegen declaration is outside elected layers"
+            )
+            return result_type.fail(str(error), exception=error)
+        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            lambda: cls._repository_codegen_spec(
+                cls._repository_config_document(
+                    selected, captured.sources, projections
+                ),
+            ),
+        )
+        return loaded.map(
+            lambda spec: m.Infra.CodegenInputs(spec=spec, sources=captured.sources),
+        )
+
+    @staticmethod
+    def read_codegen_config_document(content: bytes) -> p.Result[t.JsonMapping]:
+        """Parse captured YAML bytes through the single strict config transport.
+
+        Returns:
+            A mapping, including the source's defined empty-document representation.
+        """
+        return r[t.JsonMapping].create_from_callable(
+            partial(
+                FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document,
+                content,
+            ),
+        )
+
+    @staticmethod
+    def _parse_codegen_config_document(content: bytes) -> t.JsonMapping:
+        """Apply the strict source's mapping and empty-document contracts.
+
+        Returns:
+            Validated configuration values from immutable source bytes.
+        """
+        return deepcopy(
+            FlextInfraUtilitiesProjectManagedArtifacts._parsed_config_content(content),
+        )
+
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _parsed_config_content(content: bytes) -> t.JsonMapping:
+        """Memoize successful strict parsing of exact immutable source bytes.
+
+        Exceptions leave unchanged and are never cached. The admission owner
+        copies each successful value before exposing it to consumers.
+
+        Returns:
+            The validated document owned by this content memo.
+        """
+        parsed = FlextStrictYamlConfigSource.unique_key_load(
+            content.decode(c.DEFAULT_ENCODING),
+        )
+        return (
+            {} if parsed is None else t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
+        )
+
+    @staticmethod
+    def _repository_codegen_spec(
+        document: t.JsonMapping,
+    ) -> m.Infra.CodegenConfigSpec:
+        """Validate composed policy with its model's already-compiled schema.
+
+        Returns:
+            The validated full repository codegen policy.
+        """
+        codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
+        return m.Infra.CodegenConfigSpec.model_validate(codegen)
+
+    @staticmethod
+    def _repository_config_document(
+        sources: tuple[Path, ...],
+        snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
+    ) -> t.JsonMapping:
+        """Merge ordered captured F.yaml bytes and explicitly projected layers.
+
+        Returns:
+            The composed document; schema consumers validate their owned section.
+
+        """
+        merged: t.JsonDict = {}
+        parse_document = (
+            FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document
+        )
+        for path in sources:
+            captured = next((item for item in snapshots if item.path == path), None)
+            if captured is None or captured.content is None:
+                payload: t.JsonMapping = {}
+            else:
+                payload = parse_document(captured.content)
+            projected = next(
+                (item for item in projections if item.path == path),
+                None,
+            )
+            values = (
+                FlextStrictYamlConfigSource.merge_values(
+                    dict(payload),
+                    dict(projected.values),
+                )
+                if projected is not None
+                else dict(payload)
+            )
+            merged = FlextStrictYamlConfigSource.merge_values(merged, values)
+        return merged
+
+    @staticmethod
+    def compose_ruff_per_file_ignores(
+        tooling: m.Infra.ToolConfigDocument,
+        project: m.Infra.ProjectRuffConfig,
+    ) -> t.Infra.PerFileIgnores:
+        """Compose shared policy with this project's validated Ruff additions.
+
+        Returns:
+            Deterministic scoped rules retaining both owners' declarations.
+
+        """
+        shared = tooling.tools.ruff.lint.per_file_ignores
+        local = project.per_file_ignores
+        return {
+            pattern: tuple(
+                sorted({
+                    *shared.get(pattern, ()),
+                    *local.get(pattern, ()),
+                })
+            )
+            for pattern in sorted(shared.keys() | local.keys())
+        }
 
     @classmethod
     def _validated_config_roots(
@@ -445,7 +800,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         try:
-            source_text = content.decode(c.Cli.ENCODING_DEFAULT)
+            source_text = content.decode(c.DEFAULT_ENCODING)
         except UnicodeDecodeError as exc:
             return r[m.Infra.ProjectManagedArtifactsFragment].fail_op(
                 f"decode project config source {source}",

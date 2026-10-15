@@ -20,10 +20,9 @@ import sysconfig
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from flext_infra import FlextInfraFlextBindingService, c, config
-from tests import m, t, u
+from flext_infra import c, config
+from flext_infra.workspace import FlextInfraFlextBindingService
+from tests import m, t, tm, u
 
 if TYPE_CHECKING:
     from flext_cli import p
@@ -165,7 +164,7 @@ class TestsFlextInfraWorktreeBinding:
         )
         consumer = self._consumer(tmp_path)
         declaration = consumer / c.PYPROJECT_FILENAME
-        with declaration.open("a", encoding=c.Cli.ENCODING_DEFAULT) as stream:
+        with declaration.open("a", encoding=c.DEFAULT_ENCODING) as stream:
             stream.write(f'[dependency-groups]\ndev = ["{distribution}"]\n')
         before = declaration.read_bytes()
 

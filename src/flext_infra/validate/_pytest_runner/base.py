@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Self
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, settings, t, u
 from flext_infra.base import s
 
 
@@ -66,6 +66,15 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
         ),
     ] = False
+    unbounded: Annotated[
+        bool,
+        m.Field(
+            description=(
+                "Run every phase without a deadline: the local full suite "
+                "(make test-full) has no time limit; every other verb is budgeted."
+            ),
+        ),
+    ] = False
 
     @staticmethod
     def _environment_value(name: str) -> str:
@@ -96,20 +105,31 @@ class FlextInfraPytestRunnerBase(s[int]):
         collection_command_prefix: t.StrTuple = (),
         profile_enabled: bool = False,
         slow_phase: bool = False,
+        unbounded: bool = False,
     ) -> Self:
         """Create the runner exclusively from generated Make inputs.
 
         Returns:
             The resulting ``Self``.
 
+        Raises:
+            ValueError: If the Make-owned pytest repository root is not absolute.
+
         """
         ci = config.Infra.codegen.make.ci
+        repository_root = Path(
+            settings.env_required(c.Infra.PYTEST_ENV_REPOSITORY_ROOT)
+        )
+        if not repository_root.is_absolute():
+            msg = "Make-owned pytest repository root must be absolute"
+            raise ValueError(msg)
         return cls(
-            repository_root=Path.cwd(),
+            repository_root=repository_root,
             started_at_monotonic=started_at_monotonic,
             collection_command_prefix=collection_command_prefix,
             profile_enabled=profile_enabled,
             slow_phase=slow_phase,
+            unbounded=unbounded,
             ci_context=(u.Infra.env_lookup(ci.variable) or "").strip() == ci.value,
             target=Path(cls._environment_value(c.Infra.PYTEST_ENV_TARGET)),
             target_file=cls._optional_environment_path(

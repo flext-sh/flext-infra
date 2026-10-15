@@ -82,6 +82,27 @@ class FlextInfraModelsGitWorktreeState:
             m.Field(description="Index blob or gitlink object identifier"),
         ]
 
+    class GitIndexFileState(m.ContractModel):
+        """One exact tracked artifact and its immutable staged content."""
+
+        entry: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
+            m.Field(description="Stage-zero entry, absent for an untracked file"),
+        ]
+        content: Annotated[
+            bytes | None,
+            m.Field(exclude=True, description="Bytes of the captured index blob"),
+        ]
+
+    class GitIndexRetirementRequest(m.ContractModel):
+        """Remove only the captured entry under Git's native index lock."""
+
+        repo_root: Annotated[Path, m.Field(description="Exact owning repository")]
+        entry: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry,
+            m.Field(description="Required immutable preimage of the index entry"),
+        ]
+
     class GitWorktreeObservedFile(m.ContractModel):
         """The observed worktree layer of one file before a guarded effect.
 

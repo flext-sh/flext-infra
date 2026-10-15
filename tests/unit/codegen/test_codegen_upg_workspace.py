@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_core import r
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 pytestmark = [pytest.mark.slow, pytest.mark.remote]
 
@@ -32,8 +31,16 @@ class TestsFlextInfraCodegenUpgWorkspace:
         )
         member = u.Tests.repository_ref("fixture-member", path=Path("fixture-member"))
         source = tmp_path / "member-origin"
-        u.Tests.WorktreeFixture.write_python_project(source, member.distribution)
-        u.Tests.initialize_git_repo(source)
+        beads = u.Tests.beads_project(member.name)
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            source,
+            member.distribution,
+            beads=u.Tests.BeadsIdentity(
+                workspace=beads.workspace,
+                database=beads.database,
+                issue_prefix=beads.issue_prefix,
+            ),
+        )
         branch = u.Tests.checkout_integration(source)
         u.Tests.git_bootstrap(
             root,
@@ -92,6 +99,13 @@ class TestsFlextInfraCodegenUpgWorkspace:
         checkout = root / member.path
         tm.that((checkout / c.PYPROJECT_FILENAME).exists(), eq=False)
         tm.that((root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        custom = root / c.Infra.MAKEFILE_CUSTOM_INCLUDE
+        custom.write_text(
+            custom.read_text(encoding="utf-8") + "post-upg:\n"
+            '\t@$(UV) lock --check --project "$(RUNTIME_ROOT)"\n'
+            '\t@printf "hook-native-lock-satisfied %s\\n" "$(RUNTIME_ROOT)"\n',
+            encoding="utf-8",
+        )
 
         process = tm.ok(
             u.Tests.run_isolated_make(
@@ -127,3 +141,64 @@ class TestsFlextInfraCodegenUpgWorkspace:
             eq=True,
         )
         tm.that((checkout / ".venv").exists(), eq=False)
+        tm.that((checkout / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.that(process.stdout, has=f"hook-native-lock-satisfied {root}")
+
+        # The running Makefile does not yet declare this new Git member. Its
+        # generated successor must include it in the containing root's lock.
+        added = u.Tests.repository_ref("added-member", path=Path("added-member"))
+        added_source = tmp_path / "added-origin"
+        added_beads = u.Tests.beads_project(added.name)
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            added_source,
+            added.distribution,
+            beads=u.Tests.BeadsIdentity(
+                workspace=added_beads.workspace,
+                database=added_beads.database,
+                issue_prefix=added_beads.issue_prefix,
+            ),
+        )
+        added_branch = u.Tests.checkout_integration(added_source)
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                "-b",
+                added_branch,
+                str(added_source),
+                added.path.as_posix(),
+            ),
+        )
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "config",
+                "-f",
+                c.Infra.GITMODULES,
+                f"submodule.{added.path.as_posix()}.flext-managed",
+                "true",
+            ),
+        )
+        u.Tests.commit_git_changes(root, "Declare additional governed member")
+        added_checkout = root / added.path
+        tm.that((added_checkout / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        expanded = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "upg"],
+                cwd=root,
+                env={"GIT_ALLOW_PROTOCOL": "file:https:ssh"},
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(expanded.outcome),
+            eq=True,
+            msg=expanded.stdout + expanded.stderr,
+        )
+        tm.that((root / c.Infra.UV_LOCK_FILENAME).is_file(), eq=True)
+        tm.that(expanded.stdout, has=f"hook-native-lock-satisfied {root}")
+        for project in (checkout, added_checkout):
+            tm.that((project / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.that((added_checkout / ".venv").exists(), eq=False)

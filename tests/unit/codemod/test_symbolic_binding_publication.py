@@ -11,11 +11,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import u
+from tests import tm, u
 
 # Shared fixture line: the owned-constant read every receiver scenario asserts on.
 _OWNED_CI_LINE = (
@@ -108,7 +107,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         tm.that(all(not entry.actionable for entry in findings), eq=True)
         tm.ok(
             FlextInfraModReplacements.publish(
-                root, FlextInfraModGateEngine.recounted(findings)
+                root, FlextInfraModGateEngine.recounted(findings), {}
             )
         )
         tm.that(consumer.read_text(encoding="utf-8"), eq=before)
@@ -173,7 +172,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         tm.that(all(not entry.actionable for entry in findings), eq=True)
         tm.ok(
             FlextInfraModReplacements.publish(
-                root, FlextInfraModGateEngine.recounted(findings)
+                root, FlextInfraModGateEngine.recounted(findings), {}
             )
         )
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)

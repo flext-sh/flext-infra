@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import config, m
+from flext_cli import cli
+
+from flext_infra import config, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -23,26 +25,11 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     """
 
     if TYPE_CHECKING:
-        include_local_scopes: bool
+        options: m.Infra.CensusOptions
 
         @property
         def project_names(self) -> t.StrSequence | None:
             """Selected projects of the composed census service."""
-            ...
-
-        @property
-        def kind_names(self) -> t.StrSequence | None:
-            """Normalized symbol-kind filters of the census service."""
-            ...
-
-        @property
-        def rule_names(self) -> t.StrSequence | None:
-            """Normalized analysis filters of the census service."""
-            ...
-
-        @property
-        def family_names(self) -> t.StrSequence | None:
-            """Normalized family filters of the census service."""
             ...
 
         @staticmethod
@@ -65,6 +52,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             *,
+            source_preview: p.Infra.SourcePreview,
             findings: m.Infra.ScanFindings,
             scan_config: m.Infra.ScanConfig,
         ) -> m.Infra.WorkspaceReport:
@@ -84,7 +72,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         return "unused" in rule_names
 
     @staticmethod
-    def _project_name_for_module(
+    def project_name_for_module(
         module: m.Infra.RopeModuleIndexEntry,
         convention: m.Infra.RopeModuleConvention,
     ) -> str:
@@ -102,7 +90,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         return ""
 
     @staticmethod
-    def _is_production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:
+    def is_production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:
         """Return whether a module belongs to one configured production root.
 
         Returns:
@@ -122,6 +110,8 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     def _collect_report(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
+        *,
+        source_preview: p.Infra.SourcePreview,
     ) -> m.Infra.WorkspaceReport:
         """Inventory the selected modules then assemble the census report.
 
@@ -129,24 +119,35 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             The resulting ``m.Infra.WorkspaceReport``.
 
         """
-        kind_names = self.kind_names
-        rule_names = self.rule_names
+        kind_names = u.Infra.normalize_sequence_values(self.options.kinds)
+        rule_names = u.Infra.normalize_sequence_values(self.options.rules)
         scan_config = m.Infra.ScanConfig(
             kind_names=kind_names,
             rule_names=rule_names,
-            selected_families=self._selected_families(self.family_names),
+            selected_families=self._selected_families(
+                u.Infra.normalize_sequence_values(self.options.families),
+            ),
             selected_kinds=frozenset(kind_names) if kind_names else None,
             selected_rules=frozenset(rule_names) if rule_names else None,
             include_object_references=self._should_collect_object_references(
                 rule_names,
             ),
-            include_local_scopes=self.include_local_scopes,
+            include_local_scopes=self.options.include_local_scopes,
         )
         findings = m.Infra.ScanFindings(project_objects={}, report_projects=set())
+        current_project = None
         for module in rope.modules(project_names=self.project_names):
-            if self._is_production_module(module):
+            if self.is_production_module(module):
+                if current_project != module.project_root:
+                    current_project = module.project_root
+                    cli.display_text(f"census: scan {current_project}")
                 self._scan_module(rope, module, scan_config, findings=findings)
-        return self._assemble_report(rope, findings=findings, scan_config=scan_config)
+        return self._assemble_report(
+            rope,
+            source_preview=source_preview,
+            findings=findings,
+            scan_config=scan_config,
+        )
 
 
 __all__: list[str] = ["FlextInfraRefactorCensusCollectHelpersMixin"]

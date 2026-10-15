@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer, config, main
-from tests import c, m, u
+from flext_infra import config, main
+from flext_infra.deps import FlextInfraPyprojectModernizer
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

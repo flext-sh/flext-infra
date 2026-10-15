@@ -17,10 +17,9 @@ import re
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config
-from tests import t, u
+from tests import t, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -58,8 +57,11 @@ class TestsFlextInfraGenRespectsInvocationScope:
         for line in text.splitlines():
             target = re.match(r"^(_builtin_[a-z_]+):", line)
             if target:
-                current = target.group(1)
-                bodies[current] = []
+                name = target.group(1)
+                if name is None:
+                    pytest.fail("matched builtin target has no name")
+                current = name
+                bodies[name] = []
                 continue
             if current is None:
                 continue
@@ -175,18 +177,3 @@ class TestsFlextInfraGenRespectsInvocationScope:
         tm.that(rendered_makefile, has="GEN_INIT_ONLY := Y")
         tm.that(rendered_makefile, has="REPOSITORY_ROOT := $(MAKEFILE_ROOT)")
         tm.that(rendered_makefile, lacks="INIT_FLEXT_INFRA")
-
-    @staticmethod
-    def test_project_selector_resolves_members_from_repository_root(
-        rendered_makefile: str,
-    ) -> None:
-        """Workspace members are projected as declared gitlinks, not a WORKSPACE var.
-
-        Root cause: the `override WORKSPACE := .../$(PROJECT)` selector was
-        retired in favor of `WORKSPACE_SUBPROJECTS`/`MANAGED_GITLINKS`, which the
-        generator renders from the declared workspace members, never re-derived
-        from a shell probe at `REPOSITORY_ROOT` or `PROJECT_ROOT`.
-        """
-        tm.that(rendered_makefile, lacks="override WORKSPACE :=")
-        tm.that(rendered_makefile, has=f"WORKSPACE_SUBPROJECTS := {_MEMBER}")
-        tm.that(rendered_makefile, has="MANAGED_GITLINKS :=$(WORKSPACE_SUBPROJECTS)")

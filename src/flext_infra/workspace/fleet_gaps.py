@@ -9,7 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraWorkspaceDetector, c, config, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
@@ -218,9 +219,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         """
         base = u.Infra.resolve_integration_branch(
             repo_root,
-            preference=(
-                config.Infra.codegen.branch_policy.integration_branch_preference
-            ),
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
             declared=declared,
         )
         if base.failure:
@@ -259,7 +258,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         if not stamp_path.is_file():
             return None
         parsed = u.Cli.json_parse(
-            stamp_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            stamp_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if parsed.failure or not isinstance(parsed.value, dict):
             return None
@@ -280,7 +279,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
             Counts keyed by canonical checkout root and executed quality gate.
         """
         result = r[t.MappingKV[tuple[Path, str], int]]
-        counts: dict[tuple[Path, str], int] = {}
+        counts: t.MutableMappingKV[tuple[Path, str], int] = {}
         if self.quality_receipts is None:
             return result.ok(counts)
         roots = frozenset(
@@ -349,7 +348,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         path: Path,
         summary: m.Infra.CheckReportSummary,
         roots: frozenset[Path],
-        counts: dict[tuple[Path, str], int],
+        counts: t.MutableMappingKV[tuple[Path, str], int],
     ) -> p.Result[bool]:
         """Add one receipt's full-project lint/Pyrefly counts, refusing ambiguity.
 
@@ -428,7 +427,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         if not report_path.is_file():
             return 0
         parsed = u.Cli.json_parse(
-            report_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            report_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if parsed.failure or not isinstance(parsed.value, dict):
             return 0

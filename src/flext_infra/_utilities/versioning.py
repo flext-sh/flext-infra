@@ -156,7 +156,7 @@ class FlextInfraUtilitiesVersioning:
         """
         pyproject = repository_root / c.PYPROJECT_FILENAME
         try:
-            content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            content = pyproject.read_text(encoding=c.DEFAULT_ENCODING)
         except OSError as exc:
             return r[str].fail_op("read", exc)
         version = FlextInfraUtilitiesVersioning._extract_project_version_from_text(
@@ -288,7 +288,7 @@ class FlextInfraUtilitiesVersioning:
         """
         pyproject = project_path / c.PYPROJECT_FILENAME
         try:
-            content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            content = pyproject.read_text(encoding=c.DEFAULT_ENCODING)
         except OSError as exc:
             return r[bool].fail_op("read", exc)
         rendered = FlextInfraUtilitiesVersioning.render_project_version(

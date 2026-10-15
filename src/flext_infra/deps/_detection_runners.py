@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from functools import partial
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
@@ -20,14 +20,6 @@ if TYPE_CHECKING:
 class FlextInfraDependencyDetectionRunnersMixin:
     """Mixin holding raw-run contract plus external analysis-tool runners."""
 
-    if TYPE_CHECKING:
-        # Conversion helper provided by the concrete analyzer; declared for static
-        # resolution only (runtime impl lives on the concrete via FLEXT).
-        def _to_toml_config(
-            self,
-            payload: t.MappingKV[str, t.JsonValue],
-        ) -> t.JsonMapping: ...
-
     def run_deptry(
         self,
         project_path: Path,
@@ -35,104 +27,173 @@ class FlextInfraDependencyDetectionRunnersMixin:
         *,
         config_path: Path | None = None,
         json_output_path: Path | None = None,
-        extend_exclude: t.StrSequence | None = None,
     ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
-        """Run deptry analysis on a project and parse JSON output.
+        """Consume every native deptry finding over the project's production source.
 
         Returns:
             The resulting ``p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]``.
 
         """
+        result_type = r[t.Pair[t.SequenceOf[t.JsonMapping], int]]
         settings = config_path or project_path / c.PYPROJECT_FILENAME
-        if not settings.exists():
-            return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok(([], 0))
-        out_file = json_output_path or project_path / ".deptry-report.json"
+        out_file = json_output_path or (
+            project_path / f".deptry-report-{u.generate_id()}.json"
+        )
+        settings_state = self._deptry_preflight(project_path, settings, out_file)
+        if settings_state.failure:
+            return result_type.from_failure(settings_state)
+        cmd_result = self._ran_deptry_process(
+            venv_bin,
+            project_path,
+            settings,
+            out_file,
+        )
+        if cmd_result.failure:
+            return result_type.from_failure(cmd_result)
+        analyzed = self._verified_deptry_report(
+            settings_state.value,
+            out_file,
+            cmd_result.value,
+        )
+        if analyzed.failure:
+            return result_type.from_failure(analyzed)
+        issues, raw_return_code = analyzed.value
+        cleaned = self._cleanup_deptry_output(out_file, json_output_path)
+        if cleaned.failure:
+            return result_type.from_failure(cleaned)
+        return result_type.ok((
+            issues,
+            raw_return_code,
+        ))
+
+    @staticmethod
+    def _deptry_preflight(
+        project_path: Path,
+        settings: Path,
+        out_file: Path,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Authenticate the deptry settings and reserve its report destination.
+
+        Args:
+            project_path: Project root holding the production source.
+            settings: Resolved deptry configuration file path.
+            out_file: Resolved native report destination.
+
+        Returns:
+            The authenticated settings state, or the first preflight failure.
+        """
+        settings_state = u.Cli.atomic_read_binary_file_state(settings, required=True)
+        if settings_state.failure:
+            return r[m.Cli.AtomicFileState].from_failure(settings_state)
+        source = project_path / c.Infra.DEFAULT_SRC_DIR
+        if not source.is_dir():
+            return r[m.Cli.AtomicFileState].fail(
+                f"deptry production source is missing: {source}",
+            )
+        before = u.Cli.atomic_read_binary_file_state(out_file, required=False)
+        if before.failure:
+            return r[m.Cli.AtomicFileState].from_failure(before)
+        if before.value.content is not None:
+            return r[m.Cli.AtomicFileState].fail(
+                f"deptry report destination already exists: {out_file}",
+            )
+        return r[m.Cli.AtomicFileState].ok(settings_state.value)
+
+    @staticmethod
+    def _ran_deptry_process(
+        venv_bin: Path,
+        project_path: Path,
+        settings: Path,
+        out_file: Path,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Run native deptry once and reject a failed or interrupted process.
+
+        Args:
+            venv_bin: Virtual environment binary directory owning deptry.
+            project_path: Working directory of the deptry process.
+            settings: Resolved deptry configuration file path.
+            out_file: Resolved native report destination.
+
+        Returns:
+            The completed command output, or the native process failure.
+        """
         result = u.Cli.run_raw(
-            self._deptry_command(venv_bin, settings, out_file, extend_exclude),
+            [
+                str(venv_bin / c.Infra.DEPTRY),
+                str(c.Infra.DEFAULT_SRC_DIR),
+                "--config",
+                str(settings),
+                "--json-output",
+                str(out_file),
+                "--no-ansi",
+            ],
             cwd=project_path,
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if result.failure:
-            return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].from_failure(result)
-        issues: t.SequenceOf[t.JsonMapping] = []
-        if out_file.exists():
-            loaded_result = u.Cli.files_read_json(out_file)
-            if loaded_result.failure:
-                return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].from_failure(
-                    loaded_result,
-                )
-            normalized = self._normalized_deptry_issues(loaded_result)
-            if normalized.failure:
-                return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].from_failure(
-                    normalized,
-                )
-            issues = normalized.value
-            cleaned = self._cleanup_deptry_output(out_file, json_output_path)
-            if cleaned.failure:
-                return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].from_failure(cleaned)
+            return r[p.Cli.CommandOutput].from_failure(result)
         cmd_result: p.Cli.CommandOutput = result.value
-        return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok((
+        outcome = cmd_result.outcome
+        if (
+            outcome.timed_out
+            or outcome.forwarded_signal is not None
+            or outcome.raw_return_code not in {0, 1}
+        ):
+            failure = m.Cli.ProcessOutcome.model_validate(outcome, from_attributes=True)
+            return r[p.Cli.CommandOutput].fail(
+                f"deptry process failed: {failure.model_dump_json()}\n"
+                f"stdout:\n{cmd_result.stdout}\nstderr:\n{cmd_result.stderr}"
+            )
+        return r[p.Cli.CommandOutput].ok(cmd_result)
+
+    @staticmethod
+    def _verified_deptry_report(
+        settings_state: m.Cli.AtomicFileState,
+        out_file: Path,
+        cmd_result: p.Cli.CommandOutput,
+    ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
+        """Parse the native report and prove its consistency with the process.
+
+        Args:
+            settings_state: Authenticated settings state of the run.
+            out_file: Resolved native report destination.
+            cmd_result: Completed deptry command output.
+
+        Returns:
+            The native issues with the process return code, or the first
+            parse, verification or consistency failure.
+        """
+        result_type = r[t.Pair[t.SequenceOf[t.JsonMapping], int]]
+        report_state = u.Cli.atomic_read_binary_file_state(out_file, required=True)
+        if report_state.failure:
+            return result_type.from_failure(report_state)
+        report_bytes = report_state.value.content
+        if report_bytes is None:
+            return result_type.fail(
+                f"deptry did not produce its native report: {out_file}"
+            )
+        report = r[m.Infra.DeptryNativeReport].create_from_callable(
+            partial(
+                m.Infra.DeptryNativeReport.model_validate_json,
+                report_bytes,
+                strict=True,
+            )
+        )
+        if report.failure:
+            return result_type.from_failure(report)
+        verified = u.Cli.atomic_verify_binary_file_states((
+            settings_state,
+            report_state.value,
+        ))
+        if verified.failure:
+            return result_type.from_failure(verified)
+        issues = tuple(item.model_dump(mode="json") for item in report.value.root)
+        if cmd_result.outcome.raw_return_code != int(bool(issues)):
+            return result_type.fail("deptry exit status contradicts its native report")
+        return result_type.ok((
             issues,
             cmd_result.outcome.raw_return_code,
         ))
-
-    @staticmethod
-    def _deptry_command(
-        venv_bin: Path,
-        settings: Path,
-        out_file: Path,
-        extend_exclude: t.StrSequence | None,
-    ) -> t.MutableSequenceOf[str]:
-        """Compose the deptry invocation for one project.
-
-        Returns:
-            The composed deptry command line.
-
-        """
-        cmd: t.MutableSequenceOf[str] = [
-            str(venv_bin / c.Infra.DEPTRY),
-            ".",
-            "--config",
-            str(settings),
-            "--json-output",
-            str(out_file),
-            "--no-ansi",
-        ]
-        if extend_exclude:
-            for excluded in extend_exclude:
-                cmd.extend(["--extend-exclude", excluded])
-        return cmd
-
-    def _normalized_deptry_issues(
-        self,
-        loaded_result: p.Result[t.JsonValue],
-    ) -> p.Result[t.SequenceOf[t.JsonMapping]]:
-        """Validate and convert every deptry JSON issue mapping.
-
-        Returns:
-            The resulting converted issues, keeping only issues whose conversion
-            preserves the declared key surface.
-
-        """
-        if not isinstance(loaded_result.value, list):
-            return r[t.SequenceOf[t.JsonMapping]].ok(())
-        normalized: t.MutableSequenceOf[t.JsonMapping] = []
-        for index, item in enumerate(loaded_result.value):
-            if not isinstance(item, Mapping):
-                return r[t.SequenceOf[t.JsonMapping]].fail(
-                    f"deptry JSON issue {index} must be a mapping",
-                )
-            try:
-                typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
-            except c.ValidationError as exc:
-                return r[t.SequenceOf[t.JsonMapping]].fail_op(
-                    "validate deptry issue",
-                    exc,
-                )
-            converted_issue = self._to_toml_config(typed_item)
-            if len(converted_issue) == len(typed_item):
-                normalized.append(converted_issue)
-        return r[t.SequenceOf[t.JsonMapping]].ok(normalized)
 
     @staticmethod
     def _cleanup_deptry_output(

@@ -11,16 +11,74 @@ import re
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, m, u
+from tests import c, m, p, tm, u
 
 pytestmark = pytest.mark.slow
 
 
+def _run_make_help(
+    project_root: Path,
+    *extra_args: str,
+) -> p.Cli.CommandOutput:
+    """Run the generated ``help`` verb in isolation and require success.
+
+    The literal-description proof and the inert-override proof share one real
+    invocation against the same generated checkout, so the rendered verb has a
+    single owner. ``extra_args`` are the trailing command words a caller adds
+    to prove they are inert.
+
+    Returns:
+        The resulting ``p.Cli.CommandOutput``.
+
+    """
+    process = tm.ok(
+        u.Cli.run_raw(
+            [c.Infra.MAKE, "--no-print-directory", "help", *extra_args],
+            cwd=project_root,
+            options=m.Cli.ProcessOptions(
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            ),
+        ),
+    )
+    tm.that(
+        u.Cli.process_succeeded(process.outcome),
+        eq=True,
+        msg=process.stdout + process.stderr,
+    )
+    return process
+
+
 class TestsFlextInfraCodegenMakeVerbs:
     """Prove every declared verb renders one reachable, inert-input target."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "profile",
+        [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
+    )
+    def test_accessor_recipe_preserves_backend_workspace_scope(
+        tmp_path: Path,
+        profile: c.Infra.MakeProfile,
+    ) -> None:
+        """Workspace selection is complete; standalone selection stays local."""
+        project_root, _repository_root = u.Tests.render_make_environment(
+            tmp_path, profile
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        recipes = tuple(
+            line
+            for line in makefile.splitlines()
+            if "refactor accessor-migrate" in line
+        )
+        tm.that(recipes, len=1)
+        tm.that(recipes[0], has='--repository-root "$(PROJECT_ROOT)"')
+        tm.that(recipes[0], has="--apply")
+        tm.that(
+            "--projects ." in recipes[0],
+            eq=profile is c.Infra.MakeProfile.STANDALONE,
+        )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -169,7 +227,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         )
         gates = ",".join(config.Infra.codegen.make.check_gates_default)
         invocation = invocation_log.read_text(encoding="utf-8")
-        tm.that(invocation, has="-m flext_infra check run")
+        tm.that(invocation, has="-m flext_infra workspace capture-gate")
         tm.that(invocation, has=f"--gates {gates}")
         tm.that(invocation, lacks="--apply")
 
@@ -193,20 +251,7 @@ class TestsFlextInfraCodegenMakeVerbs:
                 ),
             ),
         )
-        process = tm.ok(
-            u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "help"],
-                cwd=project_root,
-                options=m.Cli.ProcessOptions(
-                    remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
-                ),
-            ),
-        )
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
-        )
+        process = _run_make_help(project_root)
         tm.that(process.stdout, has=description)
         tm.that((project_root / "make-effect").exists(), eq=False)
         tm.that((project_root / "shell-effect").exists(), eq=False)
@@ -301,21 +346,7 @@ class TestsFlextInfraCodegenMakeVerbs:
             c.Infra.MakeProfile.STANDALONE,
         )
 
-        process = tm.ok(
-            u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "help", "FOO=bar"],
-                cwd=project_root,
-                options=m.Cli.ProcessOptions(
-                    remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
-                ),
-            ),
-        )
-
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
-        )
+        _run_make_help(project_root, "FOO=bar")
 
     @staticmethod
     def test_generated_makefile_routes_every_verb_unconditionally(
@@ -335,8 +366,9 @@ class TestsFlextInfraCodegenMakeVerbs:
 
         tm.that(
             makefile,
-            has="upg: _builtin_require_runtime_root _bootstrap_setup_tools",
+            has="upg: _bootstrap_setup_tools",
         )
+        tm.that(makefile, has="upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle")
         tm.that(makefile, has="_builtin-fmt: _builtin_fmt_all")
         tm.that(makefile, has="_builtin-fix: _builtin_fix_all")
         tm.that(makefile, lacks="fix-enforcement")

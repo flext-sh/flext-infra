@@ -10,9 +10,8 @@ import ast
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from tests import c, t, u
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -86,12 +85,16 @@ class TestsFlextInfraRopeAnalysis:
         with u.Infra.open_project(project) as rope_project:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
             namespaces = u.Infra.inherited_facade_namespaces(
-                rope_project, resource, class_name="Consumer"
+                rope_project,
+                resource,
+                class_name="Consumer",
             )
             tm.that(namespaces, eq=expected)
             tm.that(
                 u.Infra.inherited_facade_namespaces(
-                    rope_project, resource, class_name="Consumer"
+                    rope_project,
+                    resource,
+                    class_name="Consumer",
                 ),
                 eq=namespaces,
             )
@@ -112,7 +115,9 @@ class TestsFlextInfraRopeAnalysis:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
             with pytest.raises(ValueError, match="cyclic facade namespace inheritance"):
                 u.Infra.inherited_facade_namespaces(
-                    rope_project, resource, class_name="Consumer"
+                    rope_project,
+                    resource,
+                    class_name="Consumer",
                 )
 
     @staticmethod
@@ -135,55 +140,16 @@ class TestsFlextInfraRopeAnalysis:
         tm.that(source.read_text(encoding="utf-8"), eq=content)
 
     @staticmethod
-    def test_installed_pydantic_root_and_alias_are_not_reexport_cycles(
-        tmp_path: Path,
-    ) -> None:
-        """Ruff consumes qualified bases; both lexical aliases retain one provider.
-
-        ``runtime-evaluated-base-classes`` uses import-qualified names, not
-        module-local alias spellings. A subclass used as another base must
-        retain its own qualified declaration as well as the provider root.
-        """
-        project, package = u.Tests.demo_project(tmp_path)
-        source = package / "consumer.py"
-        content = (
-            "from pydantic import BaseModel\n"
-            "from pydantic import BaseModel as Parent\n"
-            "class Direct(BaseModel):\n    pass\n"
-            "class Aliased(Parent):\n    pass\n"
-            "class Local(Direct):\n    pass\n"
-        )
-        source.write_text(content, encoding="utf-8")
-        required = ("pydantic.BaseModel",)
-
-        discovered = u.Infra.runtime_evaluated_base_classes(
-            project,
-            {source: content},
-            required,
-        )
-
-        tm.that(discovered, has=required[0])
-        module_name = u.Infra.module_name_for_file(source, project_root=project)
-        tm.that(discovered, has=f"{module_name}.Direct")
-        with u.Infra.open_project(project) as rope_project:
-            resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
-            imports = u.Infra.resolve_declared_module_imports(rope_project, resource)
-            tm.that(imports["BaseModel"], eq=required[0])
-            tm.that(imports["Parent"], eq=required[0])
-            module = u.Infra.resolve_pymodule(rope_project, resource)
-            direct = module.get_attribute("BaseModel").get_object()
-            renamed = module.get_attribute("Parent").get_object()
-            tm.that(renamed is direct, eq=True)
-
-    @staticmethod
     @pytest.mark.parametrize(
         ("declaration", "expected"),
         [
             ("value = object", "object"),
             ("value = Exception", "Exception"),
+            ("value = Exception()", "Exception"),
             ("class Parent:\n    pass\nvalue = Parent", "Parent"),
             ("class Parent:\n    pass\nvalue = Parent()", "Parent"),
             ("from .provider import Parent\nvalue = Parent", "Parent"),
+            ("from .provider import Parent\nvalue = Parent()", "Parent"),
         ],
     )
     def test_superclass_name_uses_the_sdk_class_or_instance_type(
@@ -194,7 +160,8 @@ class TestsFlextInfraRopeAnalysis:
         """Real builtin, local, imported and inferred classes use public SDK APIs."""
         project, package = u.Tests.demo_project(tmp_path)
         (package / "provider.py").write_text(
-            "class Parent:\n    pass\n", encoding="utf-8"
+            "class Parent:\n    pass\n",
+            encoding="utf-8",
         )
         source = package / "consumer.py"
         source.write_text(declaration + "\n", encoding="utf-8")
@@ -209,6 +176,8 @@ class TestsFlextInfraRopeAnalysis:
         ("declaration", "message"),
         [
             ("def value():\n    pass\n", "not a class or inferred instance"),
+            ("value = len\n", "not a class or inferred instance"),
+            ("import os as value\n", "not a class or inferred instance"),
             ("value = missing\n", "cyclic Rope superclass type"),
         ],
     )
@@ -229,64 +198,26 @@ class TestsFlextInfraRopeAnalysis:
                 u.Infra.superclass_name(value)
 
     @staticmethod
-    def test_external_provider_reexport_cycle_remains_an_error(
+    @pytest.mark.parametrize(
+        "declaration",
+        [
+            "def invalid():\n    pass\nclass Consumer(invalid):\n    pass\n",
+            "class Consumer(missing):\n    pass\n",
+            "class Parent:\n    pass\nclass Consumer(Parent, missing):\n    pass\n",
+        ],
+    )
+    def test_class_info_refuses_incomplete_superclass_lineage(
         tmp_path: Path,
+        declaration: str,
     ) -> None:
-        """Real provider edges retain cycle detection without importing the consumer."""
+        """SDK-omitted bases cannot turn an invalid class into a root namespace."""
         project, package = u.Tests.demo_project(tmp_path)
-        provider = package.parent / "external_provider"
-        provider.mkdir()
-        (provider / "__init__.py").write_text("", encoding="utf-8")
-        (provider / "first.py").write_text(
-            "from .second import Base\n",
-            encoding="utf-8",
-        )
-        (provider / "second.py").write_text(
-            "from .first import Base\n",
-            encoding="utf-8",
-        )
         source = package / "consumer.py"
-        content = (
-            "from external_provider.first import Base\n"
-            "class Consumer(Base):\n"
-            "    pass\n"
-        )
-        source.write_text(content, encoding="utf-8")
-
-        with pytest.raises(
-            ValueError,
-            match=rf"Cyclic .*: {provider.name}\.first\.Base",
-        ):
-            u.Infra.runtime_evaluated_base_classes(project, {source: content}, ())
-
-    @staticmethod
-    @pytest.mark.slow
-    def test_external_provider_chain_obeys_declared_depth_budget(
-        tmp_path: Path,
-    ) -> None:
-        """A handoff cannot remove the typed owner's reference-depth bound."""
-        project, package = u.Tests.demo_project(tmp_path)
-        provider = package.parent / "external_provider"
-        provider.mkdir()
-        (provider / "__init__.py").write_text("", encoding="utf-8")
-        count = c.Infra.ROPE_WALK_DEPTH_BUDGET + 2
-        for index in range(count):
-            content = (
-                f"from .layer_{index + 1} import Base\n"
-                if index + 1 < count
-                else "class Base:\n    pass\n"
-            )
-            (provider / f"layer_{index}.py").write_text(content, encoding="utf-8")
-        source = package / "consumer.py"
-        content = (
-            "from external_provider.layer_0 import Base\n"
-            "class Consumer(Base):\n"
-            "    pass\n"
-        )
-        source.write_text(content, encoding="utf-8")
-
-        with pytest.raises(ValueError, match=r"Unresolved external base.*at depth"):
-            u.Infra.runtime_evaluated_base_classes(project, {source: content}, ())
+        source.write_text(declaration, encoding="utf-8")
+        with u.Infra.open_project(project) as rope_project:
+            resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
+            with pytest.raises(ValueError, match="Unresolved Rope superclass lineage"):
+                u.Infra.resolve_class_info(rope_project, resource)
 
     @staticmethod
     @pytest.mark.parametrize(

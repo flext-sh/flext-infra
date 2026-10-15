@@ -16,24 +16,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_cli import cli
-from flext_tests import tm
 
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
 
-# Why (flext-oftik class, flext-2j4lr): 15 of this module's 21 cases drive real
-# release phases over a real Git repository, and one phase costs ~8-9 s today
-# because pydantic rebuilds every r[T] generic per call (profiled 73% of the
-# phase). That is the slow HARNESS the 60 s arm of OPERATOR LAW flext-38p39
-# declares an exception for -- the per-case ceiling itself is never raised.
-# Declared once for the module, exactly as the three sibling real-harness
-# modules under tests/unit/deps already declare it. The previous per-case
-# expression drifted: two cases fired `Timeout (>10.0s)` while identical-cost
-# siblings carried no marker at all.
+# These scenarios drive real release phases over Git repositories; their
+# integration harness shares the declared slow policy.
 pytestmark = pytest.mark.slow
 
 

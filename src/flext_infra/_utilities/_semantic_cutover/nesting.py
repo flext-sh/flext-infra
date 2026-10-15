@@ -12,10 +12,13 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import libcst as cst
+
 from flext_infra import m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverClassScope,
@@ -327,13 +330,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         merged = {edit.file_path: edit for edit in promoted}
         for edit in promoted:
             proposed[edit.file_path] = edit.updated_source
+        consolidated = cls._facade_namespace_edits(rope_workspace, proposed)
+        for edit in consolidated:
+            proposed[edit.file_path] = edit.updated_source
         flattened = cls._family_flatten_edits(rope_workspace, proposed)
         for edit in flattened:
             proposed[edit.file_path] = edit.updated_source
         nested = cls._plan_orphan_nesting(rope_workspace, proposed)
         if nested.failure:
             return planned.from_failure(nested)
-        for edit in (*flattened, *nested.value):
+        for edit in (*consolidated, *flattened, *nested.value):
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
                 file_path=edit.file_path,
@@ -346,6 +352,353 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 else edit.changes,
             )
         return planned.ok(tuple(merged[path] for path in sorted(merged)))
+
+    @classmethod
+    def _facade_namespace_edits(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Move duplicate facade namespaces to their declared inherited owners.
+
+        The canonical namespace's base identities elect destinations. No symbol
+        catalog participates; an occupied declaration owner is never overwritten.
+
+        Returns:
+            The resulting ``t.VariadicTuple[m.Infra.SemanticMigrationEdit]``.
+
+        """
+        project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+            workspace.rope_project,
+            sources,
+        )
+        cutover = m.Infra.FacadeNamespaceCutover(
+            project=project,
+            root=Path(project.root.real_path),
+            sources=sources,
+            working=dict(sources),
+        )
+        try:
+            for path, source in cls._editable_sources(sources):
+                site = cls._facade_namespace_site(workspace, path, source)
+                if site is not None:
+                    cls._apply_facade_namespace_site(cutover, site)
+            return cls._facade_namespace_result(cutover)
+        finally:
+            project.close()
+
+    @classmethod
+    def _facade_namespace_site(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        path: Path,
+        source: str,
+    ) -> m.Infra.FacadeNamespaceSite | None:
+        """Resolve one source's duplicate facade site, or ``None`` to skip it.
+
+        Returns:
+            The resolved site, or ``None`` when the source declares no single
+            internal composed namespace facade.
+
+        """
+        policy = workspace.convention(path).module_policy
+        if not policy.is_internal_namespace or policy.expected_alias is None:
+            return None
+        tree = ast.parse(source)
+        facade = next(
+            (
+                node
+                for node in tree.body
+                if isinstance(node, ast.ClassDef)
+                and node.name == policy.expected_family
+            ),
+            None,
+        )
+        if facade is None:
+            return None
+        children = [node for node in facade.body if isinstance(node, ast.ClassDef)]
+        composed = [node for node in children if node.bases]
+        if len(composed) != 1:
+            return None
+        namespace = composed[0]
+        return m.Infra.FacadeNamespaceSite(
+            path=path,
+            source=source,
+            facade=facade,
+            namespace=namespace,
+            children=tuple(children),
+            tree=tree,
+        )
+
+    @classmethod
+    def _apply_facade_namespace_site(
+        cls,
+        cutover: m.Infra.FacadeNamespaceCutover,
+        site: m.Infra.FacadeNamespaceSite,
+    ) -> None:
+        """Plan child moves and consumer rewrites for one resolved facade site."""
+        rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]] = {}
+        for child in site.children:
+            if child is site.namespace or child.bases or child.decorator_list:
+                continue
+            cls._apply_facade_namespace_child(cutover, site, child, rewrites)
+        for consumer, changes in rewrites.items():
+            consumer_resource = cutover.project.get_resource(
+                consumer.relative_to(cutover.root).as_posix()
+            )
+            cutover.working[consumer] = (
+                FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+                    consumer_resource,
+                    cutover.sources[consumer],
+                    changes,
+                ).new_contents
+            )
+
+    @classmethod
+    def _apply_facade_namespace_child(
+        cls,
+        cutover: m.Infra.FacadeNamespaceCutover,
+        site: m.Infra.FacadeNamespaceSite,
+        child: ast.ClassDef,
+        rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]],
+    ) -> None:
+        """Move one duplicate child declaration and record its consumer rewrites."""
+        resource = cutover.project.get_resource(
+            site.path.relative_to(cutover.root).as_posix()
+        )
+        owner = (
+            cutover.project
+            .get_pymodule(resource)
+            .get_attribute(site.facade.name)
+            .get_object()
+        )
+        target = owner.get_attribute(site.namespace.name).get_object()
+        destinations = [
+            base for base in target.get_superclasses() if base.get_name() == child.name
+        ]
+        if len(destinations) != 1:
+            return
+        destination_path = cls._facade_namespace_destination(
+            cutover,
+            site,
+            child,
+            destinations[0],
+        )
+        binding = owner.get_attribute(child.name)
+        for consumer, rewrite in cls._collect_namespace_occurrence_rewrites(
+            cutover,
+            binding,
+            child.name,
+            site.namespace.name,
+        ):
+            rewrites.setdefault(consumer, []).append(rewrite)
+        child_cst = cls._facade_namespace_child_cst(site, child)
+        cutover.working[destination_path] = cls._facade_namespace_child_module(
+            site.tree,
+            child,
+            child_cst,
+        )
+        rewrites.setdefault(site.path, []).append(
+            cls._facade_namespace_removal(site.source, child)
+        )
+
+    @classmethod
+    def _facade_namespace_destination(
+        cls,
+        cutover: m.Infra.FacadeNamespaceCutover,
+        site: m.Infra.FacadeNamespaceSite,
+        child: ast.ClassDef,
+        destination: t.Infra.RopePyObject,
+    ) -> Path:
+        """Resolve one child's inherited declaration-owner destination.
+
+        Returns:
+            The editable path that carries the child's declaration owner.
+
+        Raises:
+            ValueError: If the owner has no scope, no module resource, lies
+                outside the editable inventory, or is already occupied.
+
+        """
+        if destination.get_scope() is None:
+            msg = "namespace declaration owner has no source scope"
+            raise ValueError(msg)
+        module = destination.get_module()
+        if module is None or (destination_resource := module.get_resource()) is None:
+            msg = "namespace declaration owner has no module resource"
+            raise ValueError(msg)
+        destination_path = Path(destination_resource.real_path).resolve()
+        if destination_path not in cutover.sources or destination_path == site.path:
+            msg = "namespace declaration owner is outside the editable inventory"
+            raise ValueError(msg)
+        declaration = next(
+            node
+            for node in ast.parse(cutover.sources[destination_path]).body
+            if isinstance(node, ast.ClassDef) and node.name == child.name
+        )
+        if declaration.bases or any(
+            not isinstance(node, ast.Pass)
+            and not (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            )
+            for node in declaration.body
+        ):
+            msg = "namespace declaration owner is already occupied"
+            raise ValueError(msg)
+        return destination_path
+
+    @staticmethod
+    def _facade_namespace_child_cst(
+        site: m.Infra.FacadeNamespaceSite,
+        child: ast.ClassDef,
+    ) -> cst.ClassDef:
+        """Extract one facade child's concrete-syntax node.
+
+        Returns:
+            The child's CST class definition.
+
+        Raises:
+            TypeError: If the facade body is not an indented declaration.
+
+        """
+        parsed = cst.parse_module(site.source)
+        facade_cst = next(
+            node
+            for node in parsed.body
+            if isinstance(node, cst.ClassDef) and node.name.value == site.facade.name
+        )
+        if not isinstance(facade_cst.body, cst.IndentedBlock):
+            msg = "namespace facade requires an indented declaration"
+            raise TypeError(msg)
+        return next(
+            node
+            for node in facade_cst.body.body
+            if isinstance(node, cst.ClassDef) and node.name.value == child.name
+        )
+
+    @staticmethod
+    def _facade_namespace_child_module(
+        tree: ast.Module,
+        child: ast.ClassDef,
+        child_cst: cst.ClassDef,
+    ) -> str:
+        """Render one relocated child module with the imports it still uses.
+
+        Returns:
+            The relocated child's module source text.
+
+        """
+        used = {node.id for node in ast.walk(child) if isinstance(node, ast.Name)}
+        imports = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.Import | ast.ImportFrom)
+            and any(
+                (alias.asname or alias.name.partition(".")[0]) in used
+                for alias in node.names
+            )
+        ]
+        return (
+            "from __future__ import annotations\n\n"
+            + "\n".join(ast.unparse(node) for node in imports)
+            + "\n\n"
+            + cst.Module(body=(child_cst,)).code
+            + f"\n__all__ = [{child.name!r}]\n"
+        )
+
+    @staticmethod
+    def _facade_namespace_removal(
+        source: str,
+        child: ast.ClassDef,
+    ) -> m.Infra.SourceRewrite:
+        """Compute the byte range removing a relocated child from its facade.
+
+        Returns:
+            The deletion rewrite for the child's source span.
+
+        Raises:
+            ValueError: If the child has no complete source range.
+
+        """
+        if child.end_lineno is None:
+            msg = "namespace declaration has no complete source range"
+            raise ValueError(msg)
+        lines = source.splitlines(keepends=True)
+        start = sum(map(len, lines[: child.lineno - 1]))
+        end = sum(map(len, lines[: child.end_lineno]))
+        return m.Infra.SourceRewrite(start=start, end=end, text="")
+
+    @classmethod
+    def _collect_namespace_occurrence_rewrites(
+        cls,
+        cutover: m.Infra.FacadeNamespaceCutover,
+        binding: t.Infra.RopePyName,
+        child_name: str,
+        namespace_name: str,
+    ) -> t.VariadicTuple[t.Pair[Path, m.Infra.SourceRewrite]]:
+        """Collect consumer rewrites for one duplicate namespace declaration.
+
+        Every non-defining occurrence of the duplicate child name across the
+        editable sources is rewritten to the canonical namespace name.
+
+        Returns:
+            Each consumer path paired with the canonical-name rewrite it needs.
+
+        """
+        finder = FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
+            cutover.project,
+            child_name,
+            binding,
+            imports=True,
+            in_hierarchy=False,
+        )
+        collected: list[t.Pair[Path, m.Infra.SourceRewrite]] = []
+        for consumer, _consumer_source in cls._editable_sources(cutover.sources):
+            consumer_resource = cutover.project.get_resource(
+                consumer.relative_to(cutover.root).as_posix()
+            )
+            for occurrence in finder.find_occurrences(resource=consumer_resource):
+                if occurrence.is_defined():
+                    continue
+                start, end = occurrence.get_word_range()
+                collected.append((
+                    consumer,
+                    m.Infra.SourceRewrite(
+                        start=start,
+                        end=end,
+                        text=namespace_name,
+                    ),
+                ))
+        return tuple(collected)
+
+    @classmethod
+    def _facade_namespace_result(
+        cls,
+        cutover: m.Infra.FacadeNamespaceCutover,
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Assemble the edits for every path whose prospective bytes changed.
+
+        Returns:
+            The edits for every source whose prospective bytes changed.
+
+        """
+        return tuple(
+            m.Infra.SemanticMigrationEdit(
+                file_path=path,
+                original_source=source,
+                updated_source=cutover.working[path],
+                changes=(
+                    (
+                        "consolidated facade namespace through declaration-owner "
+                        "inheritance"
+                    ),
+                ),
+            )
+            for path, source in cutover.sources.items()
+            if cutover.working[path] != source
+        )
 
     @classmethod
     def _plan_orphan_nesting(

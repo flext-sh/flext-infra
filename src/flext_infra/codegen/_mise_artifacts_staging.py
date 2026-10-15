@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, u
+from flext_infra import config, m, r, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsCandidates,
-    FlextInfraMiseArtifactsProcess as process,
+    FlextInfraMiseArtifactsProcess,
 )
 
 if TYPE_CHECKING:
@@ -92,11 +92,11 @@ class FlextInfraMiseStaging:
             )
         created = u.Cli.atomic_create_directory_chain_guarded(
             stage_plan.value,
-            permission_mode=0o700,
+            permission_mode=config.Infra.codegen.modes.directory_private,
         )
         if created.failure:
             return result_type.from_failure(created)
-        config_write = process.write_new(
+        config_write = FlextInfraMiseArtifactsProcess.write_new(
             stage_root / project.layout.config.name,
             project.config.replacement_content,
             project.config.replacement_mode,

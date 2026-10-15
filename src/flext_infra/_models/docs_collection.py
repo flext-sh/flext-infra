@@ -13,7 +13,7 @@ from flext_cli import m as cli_m
 
 from flext_core import m
 from flext_infra import t
-from flext_infra._models._config import FlextInfraConfigModelsArtifact
+from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
 
 
 class FlextInfraModelsDocsCollection:
@@ -53,24 +53,20 @@ class FlextInfraModelsDocsCollection:
         )
         plan_globs: Annotated[
             t.VariadicTuple[str],
-            m.BeforeValidator(
-                lambda value: tuple(value) if isinstance(value, list) else value,
+            m.Field(
+                strict=False,
+                min_length=1,
+                description="Explicit plan discovery patterns",
             ),
-            m.Field(min_length=1, description="Explicit plan discovery patterns"),
         ]
         exclude_globs: Annotated[
             t.VariadicTuple[str],
-            m.BeforeValidator(
-                lambda value: tuple(value) if isinstance(value, list) else value,
-            ),
-            m.Field(description="Explicit source exclusions"),
+            m.Field(strict=False, description="Explicit source exclusions"),
         ] = ()
         updated_fields: Annotated[
             t.VariadicTuple[str],
-            m.BeforeValidator(
-                lambda value: tuple(value) if isinstance(value, list) else value,
-            ),
             m.Field(
+                strict=False,
                 description="Source-owned substantive update fields in priority order",
             ),
         ] = ("source_updated_at",)
@@ -104,10 +100,10 @@ class FlextInfraModelsDocsCollection:
         ] = None
         sources: Annotated[
             t.VariadicTuple[FlextInfraModelsDocsCollection.PlanCollectionSource],
-            m.BeforeValidator(
-                lambda value: tuple(value) if isinstance(value, list) else value,
+            m.Field(
+                strict=False,
+                description="Complete explicitly associated source inventory",
             ),
-            m.Field(description="Complete explicitly associated source inventory"),
         ] = ()
 
         @m.model_validator(mode="after")

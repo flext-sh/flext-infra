@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import sys
 import textwrap
 from collections.abc import MutableMapping
 
@@ -27,6 +28,11 @@ class FlextInfraImportNormalizationPlacementMixin(
     ``try/except ImportError`` guard around imports becomes the plain imports:
     a missing dependency fails loud at import time.
     """
+
+    _IMPORT_SECTION_STDLIB = 0
+    _IMPORT_SECTION_THIRD_PARTY = 1
+    _IMPORT_SECTION_OWN = 2
+    _MIN_REORDERABLE_IMPORTS = 2
 
     # -- import guards ---------------------------------------------------------------
 
@@ -81,6 +87,128 @@ class FlextInfraImportNormalizationPlacementMixin(
             )
         )
 
+    # -- layer ordering ---------------------------------------------------------------
+
+    @classmethod
+    def _layer_order_edits(
+        cls,
+        state: m.Infra.ImportLawPass,
+        lines: t.StrSequence,
+    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        """Reorder module-level imports into the canonical layer groups.
+
+        The region between the first and the last module-level import
+        statement is rewritten only when it holds nothing but import
+        statements. The stable sort mirrors the formatter sections
+        (standard library, third party, own namespace) and orders the
+        own-namespace imports by the tooling import-layer order, then by
+        module path, so make mod and the formatter sections converge on
+        one layout.
+
+        Returns:
+            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+
+        """
+        statements = [
+            node
+            for node in state.tree.body
+            if isinstance(node, ast.Import | ast.ImportFrom)
+        ]
+        if len(statements) < cls._MIN_REORDERABLE_IMPORTS:
+            return ()
+        start = statements[0].lineno
+        end = cls._end_line(statements[-1])
+        region = (
+            node
+            for node in state.tree.body
+            if node.lineno <= end and cls._end_line(node) >= start
+        )
+        if any(not isinstance(node, ast.Import | ast.ImportFrom) for node in region):
+            return ()
+        ordered = sorted(statements, key=lambda node: cls._import_sort_key(state, node))
+        if [id(node) for node in ordered] == [id(node) for node in statements]:
+            return ()
+        replacement: list[str] = []
+        previous_section: int | None = None
+        for node in ordered:
+            section = cls._import_section(state, node)
+            if previous_section is not None and section != previous_section:
+                replacement.append("")
+            replacement.extend(lines[node.lineno - 1 : cls._end_line(node)])
+            previous_section = section
+        return [(start, end, tuple(replacement))]
+
+    @classmethod
+    def _import_sort_key(
+        cls,
+        state: m.Infra.ImportLawPass,
+        node: ast.Import | ast.ImportFrom,
+    ) -> tuple[int, int, str, int]:
+        """Return the stable sort key of one module-level import statement.
+
+        A root import from the own namespace ranks by the earliest layer
+        letter it imports (``from ns import t, m`` ranks at ``t``); a
+        submodule import ranks by the module path; anything else ranks at
+        the ``other`` slot.
+
+        Returns:
+            The ``(section, layer rank, module path, source line)`` tuple.
+
+        """
+        section = cls._import_section(state, node)
+        root = state.scope.namespace_dir.name
+        if isinstance(node, ast.ImportFrom) and (node.module or root) == root:
+            layer = min(
+                (
+                    u.Infra.module_import_layer(f"{root}.{alias.name}")
+                    for alias in node.names
+                ),
+                default=u.Infra.module_import_layer(
+                    f"{root}.{c.Infra.IMPORT_LAW_OTHER_LAYER}",
+                ),
+            )
+            module = root
+        else:
+            module = (
+                node.module or ""
+                if isinstance(node, ast.ImportFrom)
+                else node.names[0].name
+            )
+            layer = (
+                u.Infra.module_import_layer(module)
+                if section == cls._IMPORT_SECTION_OWN
+                else 0
+            )
+        return (section, layer, module, node.lineno)
+
+    @classmethod
+    def _import_section(
+        cls,
+        state: m.Infra.ImportLawPass,
+        node: ast.Import | ast.ImportFrom,
+    ) -> int:
+        """Return the formatter section rank of one import statement.
+
+        Returns:
+            ``0`` for the standard library, ``1`` for third parties and
+            ``2`` for the module's own namespace.
+
+        """
+        root = (
+            (node.module or "").split(".")[0]
+            if isinstance(node, ast.ImportFrom) and not node.level
+            else node.names[0].name.split(".")[0]
+            if isinstance(node, ast.Import) and node.names
+            else ""
+        )
+        if not root or root == state.scope.namespace_dir.name:
+            return cls._IMPORT_SECTION_OWN
+        return (
+            cls._IMPORT_SECTION_STDLIB
+            if root in sys.stdlib_module_names
+            else cls._IMPORT_SECTION_THIRD_PARTY
+        )
+
     # -- hoisting and direction ------------------------------------------------------
 
     @classmethod
@@ -95,6 +223,9 @@ class FlextInfraImportNormalizationPlacementMixin(
             The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
 
         """
+        promoted = cls._typing_runtime_edits(state, lines)
+        if promoted:
+            return promoted
         placed: MutableMapping[c.Infra.ImportPlacement, list[str]] = {
             placement: [] for placement in c.Infra.ImportPlacement
         }
@@ -113,6 +244,118 @@ class FlextInfraImportNormalizationPlacementMixin(
             ),
         )
         return edits
+
+    @classmethod
+    def _typing_runtime_edits(
+        cls,
+        state: m.Infra.ImportLawPass,
+        lines: t.StrSequence,
+    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        """Promote allowed runtime reads using the existing definition-time analysis.
+
+        Returns:
+            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+
+        """
+        edits: list[tuple[int, int, t.StrSequence]] = []
+        promoted: list[str] = []
+        for guard in state.tree.body:
+            if not (
+                isinstance(guard, ast.If) and cls._is_type_checking_test(guard.test)
+            ):
+                continue
+            guard_edits, removed, guard_promoted = cls._promote_guard_body(
+                state,
+                lines,
+                guard,
+            )
+            promoted.extend(guard_promoted)
+            if guard_edits:
+                edits.extend(
+                    ((guard.lineno, cls._end_line(guard), ()),)
+                    if all(id(statement) in removed for statement in guard.body)
+                    else guard_edits
+                )
+        if promoted:
+            edits.extend(cls._insertion_edits(state, tuple(promoted), ()))
+        return edits
+
+    @classmethod
+    def _promote_guard_body(
+        cls,
+        state: m.Infra.ImportLawPass,
+        lines: t.StrSequence,
+        guard: ast.If,
+    ) -> tuple[
+        list[tuple[int, int, t.StrSequence]],
+        set[int],
+        list[str],
+    ]:
+        """Select runtime-read aliases of one TYPE_CHECKING guard for promotion.
+
+        Returns:
+            The per-statement edits, the removed statement ids, and the
+            promoted renderings.
+
+        Raises:
+            ValueError: If the guard is ambiguous or forces a reverse import.
+
+        """
+        guard_edits: list[tuple[int, int, t.StrSequence]] = []
+        removed: set[int] = set()
+        promoted: list[str] = []
+        for node in guard.body:
+            if not isinstance(node, ast.Import | ast.ImportFrom):
+                continue
+            selected = cls._runtime_selected_aliases(state, node)
+            if not selected:
+                continue
+            if guard.orelse:
+                msg = (
+                    f"{state.scope.file_path}: runtime import promotion "
+                    "requires an unambiguous TYPE_CHECKING guard"
+                )
+                raise ValueError(msg)
+            kept = [alias for alias in node.names if alias not in selected]
+            promoted.append(cls._render(node, selected))
+            if not kept:
+                removed.add(id(node))
+            indent = cls._line_indent(lines[node.lineno - 1])
+            guard_edits.append((
+                node.lineno,
+                cls._end_line(node),
+                (f"{indent}{cls._render(node, kept)}",) if kept else (),
+            ))
+        return guard_edits, removed, promoted
+
+    @classmethod
+    def _runtime_selected_aliases(
+        cls,
+        state: m.Infra.ImportLawPass,
+        node: ast.Import | ast.ImportFrom,
+    ) -> list[ast.alias]:
+        """Select the aliases a runtime read requires, rejecting reverse edges.
+
+        Returns:
+            The aliases whose binding is read at runtime.
+
+        Raises:
+            ValueError: If a runtime binding requires a forbidden reverse import.
+
+        """
+        selected: list[ast.alias] = []
+        for alias in node.names:
+            bound = alias.asname or alias.name.partition(".")[0]
+            if not cls._runtime_uses(state.tree, bound, state.parents):
+                continue
+            if cls._is_reverse(state, node, alias):
+                msg = (
+                    f"{state.scope.file_path}: runtime binding {bound} "
+                    "requires a forbidden reverse namespace import"
+                )
+                raise ValueError(msg)
+            selected.append(alias)
+        return selected
 
     @classmethod
     def _statement_edit(
@@ -201,12 +444,9 @@ class FlextInfraImportNormalizationPlacementMixin(
             target = state.root_exports.get(alias.name, scope.namespace)
         else:
             target = node.module or ""
-            package_dir = u.Infra.import_package_dir(scope.project_root, target)
-            if package_dir is not None:
-                target = u.Infra.import_lazy_exports(package_dir, target).get(
-                    alias.name,
-                    target,
-                )
+            exports = u.Infra.import_lazy_exports(scope.project_root, target)
+            if exports is not None:
+                target = exports.get(alias.name, target)
         if target.split(".")[0] != scope.namespace:
             return False
         return u.Infra.module_import_layer(target) > scope.layer
@@ -227,7 +467,9 @@ class FlextInfraImportNormalizationPlacementMixin(
             case ast.Import(names=names), ast.Import():
                 pass
             case ast.ImportFrom(
-                names=names, module=module, level=level
+                names=names,
+                module=module,
+                level=level,
             ), ast.ImportFrom(
                 module=node_module,
                 level=node_level,

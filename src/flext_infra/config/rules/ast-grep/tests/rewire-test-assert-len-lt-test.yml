@@ -1,0 +1,10 @@
+id: rewire-test-assert-len-lt
+valid:
+  - assert len(items) < 64
+  - |
+    from tests import tm
+    assert len(items) < 64, 'bounded'
+invalid:
+  - |
+    from tests import tm
+    assert len(items) < 64

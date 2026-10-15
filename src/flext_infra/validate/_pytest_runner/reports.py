@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import FlextInfraPytestDiagExtractor, c, m, r, u
+from flext_infra import c, m, r, u
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
+from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -160,7 +161,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
         Raises:
             FileNotFoundError: If ``not junit.exists()``.
-            RuntimeError: Always; or if non-coverage accounting requires the durable
+            RuntimeError: Always; or if testmon accounting requires the durable
                 selection plan; or if testmon selected node IDs outside the complete
                 collection inventory.
             ValueError: If JUnit must be a regular file; or if ``junit.stat().st_size ==
@@ -187,7 +188,9 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         inventory_count = None
         owns_no_tests = False
         selection_plan: m.Infra.PytestSelectionPlan | None = None
-        if context.execution_mode != c.Infra.PytestExecutionMode.COVERAGE:
+        # Only a testmon run publishes a selection plan; the coverage and the
+        # full operations account from their JUnit evidence alone.
+        if context.testmon_db is not None:
             selection_plan = m.Infra.PytestSelectionPlan.model_validate_json(
                 (log.parent / "selection-plan.json").read_text(encoding="utf-8"),
             )
@@ -224,8 +227,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         msg = self._failure_detail("pytest executed zero tests", log)
         raise RuntimeError(msg)
 
+    @staticmethod
     def _selected_inventory(
-        self,
         log: Path,
         context: m.Infra.PytestRunContext,
         selection_plan: m.Infra.PytestSelectionPlan | None,
@@ -234,19 +237,19 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
         Returns:
             The resulting ``(deselected, inventory_count)`` pair; the inventory
-            count stays unset under the coverage plugin.
+            count stays unset for a run without testmon (coverage and full).
 
         Raises:
-            RuntimeError: If non-coverage accounting requires the durable selection
+            RuntimeError: If testmon accounting requires the durable selection
                 plan; or if testmon selected node IDs outside the complete
                 collection inventory.
 
         """
-        if context.execution_mode == c.Infra.PytestExecutionMode.COVERAGE:
+        if context.testmon_db is None:
             return (0, None)
         if selection_plan is None:
             msg = (
-                "non-coverage accounting requires the durable selection plan: "
+                "testmon accounting requires the durable selection plan: "
                 f"{log.parent / 'selection-plan.json'}"
             )
             raise RuntimeError(msg)
@@ -277,14 +280,11 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             msg = "testmon selected node IDs outside the complete collection inventory"
             raise RuntimeError(msg)
         inventory_count = len(inventory.node_ids)
-        # An empty selection of a declared file runs its whole inventory
-        # under noselect; a nonempty one is enforced by the manifest.
-        deselected = (
-            0
-            if self.target_file is not None and not selected.node_ids
-            else inventory_count - len(selected.node_ids)
-        )
-        return (deselected, inventory_count)
+        # Deselection is what pytest observably skipped. An empty selection of a
+        # declared file runs under --testmon-forceselect, so an unchanged file
+        # is a complete deselection (a typed cache hit); the complete phase of
+        # the same verb then executes the whole file.
+        return (inventory_count - len(selected.node_ids), inventory_count)
 
     def _diagnostics(self, report_dir: Path) -> p.Result[m.Infra.PytestDiagnostics]:
         """Extract diagnostics through the canonical typed service.
@@ -296,7 +296,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         extractor = FlextInfraPytestDiagExtractor(
             repository_root=self.root,
             junit=report_dir / "junit.xml",
-            log=report_dir / "pytest.log",
+            log_path=report_dir / "pytest.log",
             report_log=report_dir / "events.jsonl",
         )
         return extractor.extract(
@@ -356,7 +356,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
         """
         phases: t.MutableSequenceOf[t.Pair[str, m.Infra.PytestDiagnostics]] = []
-        if context.execution_mode != c.Infra.PytestExecutionMode.COVERAGE:
+        if context.testmon_db is not None:
             selection_plan = m.Infra.PytestSelectionPlan.model_validate_json(
                 (report_dir / "selection-plan.json").read_text(encoding="utf-8"),
             )

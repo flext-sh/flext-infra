@@ -7,15 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
+from functools import partial
 from typing import TYPE_CHECKING
 
+import mkdocs.config
 import pytest
-from flext_tests import tm
-from mkdocs.config import load_config
+from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.structure.files import get_files
 from mkdocs.structure.nav import get_navigation
 
-from tests import m, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -49,7 +51,11 @@ class TestsFlextInfraDocsRender:
             u.Infra.docs_project_mkdocs(scope, {}, []),
             encoding="utf-8",
         )
-        configuration = load_config(config_file=str(config_file), plugins=[])
+        # MkDocs accepts a positional file path and applies plugin kwargs as overrides.
+        load_config = u.type_adapter(Callable[[str], MkDocsConfig]).validate_python(
+            partial(mkdocs.config.load_config, plugins=[]),
+        )
+        configuration = load_config(str(config_file))
         files = get_files(configuration)
         navigation = get_navigation(files, configuration)
         tm.that(
@@ -99,7 +105,10 @@ class TestsFlextInfraDocsRender:
             u.Infra.docs_root_mkdocs({"site_title": "Workspace"}),
             encoding="utf-8",
         )
-        configuration = load_config(config_file=str(config_file), plugins=[])
+        load_config = u.type_adapter(Callable[[str], MkDocsConfig]).validate_python(
+            partial(mkdocs.config.load_config, plugins=[]),
+        )
+        configuration = load_config(str(config_file))
         files = get_files(configuration)
         navigation = get_navigation(files, configuration)
 

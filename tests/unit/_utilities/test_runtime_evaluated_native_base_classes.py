@@ -10,9 +10,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
@@ -134,19 +133,30 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
         )
 
-    @pytest.mark.parametrize("name", ["ABC", "ABCMeta"])
-    def test_native_abc_provider_metadata_preserves_class_bases(
+    @pytest.mark.parametrize(
+        ("module", "name"),
+        [
+            ("abc", "ABC"),
+            ("abc", "ABCMeta"),
+            ("enum", "Enum"),
+            ("enum", "IntEnum"),
+            ("enum", "Flag"),
+            ("enum", "IntFlag"),
+        ],
+    )
+    def test_native_provider_namespace_preserves_class_bases(
         self,
         tmp_path: Path,
+        module: str,
         name: str,
     ) -> None:
-        """CPython's ABCMeta metadata assignment is not a lineage mutation."""
+        """Real stdlib metadata and iterable unpacking never invent class bases."""
         tm.that(
             u.Infra.runtime_evaluated_base_classes(
                 tmp_path,
                 {
                     tmp_path / "src" / "abc_contract" / "models.py": (
-                        f"from abc import {name}\nclass Consumer({name}): pass\n"
+                        f"from {module} import {name}\nclass Consumer({name}): pass\n"
                     ),
                 },
                 u.Tests.runtime_evaluated_roots(),
@@ -350,10 +360,21 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
         )
 
+    @pytest.mark.parametrize(
+        "publication",
+        [
+            "class Facade(Parent): Alias = Parent.Payload\n",
+            (
+                "class Facade(Parent): pass\n"
+                "Payload = Parent.Payload\nFacade.Alias = Payload\n"
+            ),
+        ],
+    )
     def test_provider_reexports_and_inherited_aliases_use_declared_source(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
+        publication: str,
     ) -> None:
         """Static provider provenance supplies lazy exports without importing them."""
         provider = installed_dependency_path / "declared_provider"
@@ -370,8 +391,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 provider / "models.py",
                 u.Tests.runtime_root_import()
                 + "class Contracts:\n    class Payload(RuntimeRoot): pass\n"
-                "class Parent(Contracts): pass\n"
-                "class Facade(Parent): Alias = Parent.Payload\n",
+                "class Parent(Contracts): pass\n" + publication,
             ),
         )
         source = (
@@ -560,7 +580,17 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             "class Namespace:\n    Contract = Contract\n"
             f"{mutation}\nclass Consumer(Contract): pass\n"
         )
-        with pytest.raises(ValueError, match="Unsupported class binding mutation"):
+        expected = (
+            u.Infra.rope_attribute_not_found_error_types()
+            if mutation == "del Contract"
+            else (ValueError,)
+        )
+        message = (
+            "Attribute Contract not found"
+            if mutation == "del Contract"
+            else "Unsupported class binding mutation"
+        )
+        with pytest.raises(expected, match=message):
             u.Infra.runtime_evaluated_base_classes(
                 tmp_path,
                 {tmp_path / "src" / "mutation_contract" / "models.py": source},

@@ -11,8 +11,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
@@ -22,6 +24,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
@@ -79,6 +82,97 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         "                    f'is outside {directory}'\n"
         "                )\n"
     )
+
+    @classmethod
+    def capture_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Authenticate one complete epoch against a cold native consumer."""
+        current = FlextInfraCodegenPreconditions.source_authority_current(
+            request.source_authority,
+        )
+        if current.failure:
+            return r[m.Infra.NativeImportReference].from_failure(current)
+        inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
+        if inputs.failure:
+            return r[m.Infra.NativeImportReference].from_failure(inputs)
+        observed = FlextInfraWorkspaceNativeReference.capture(request.modules)
+        if observed.failure:
+            return r[m.Infra.NativeImportReference].from_failure(observed)
+        authored = FlextInfraWorkspaceNativeReference.authored_sources_current(
+            observed.value, request.source_authority.inputs
+        )
+        if authored.failure:
+            return r[m.Infra.NativeImportReference].from_failure(authored)
+        runtime_root = Path(sys.prefix).absolute().parent
+        environment = u.Infra.runtime_environment_dir(
+            runtime_root, runtime_root=runtime_root
+        )
+        runtime = u.Infra.runtime_python(runtime_root, runtime_root=runtime_root)
+        if (
+            environment.is_symlink()
+            or environment.absolute() != Path(sys.prefix).absolute()
+            or not runtime.is_file()
+            or runtime.resolve() != request.source_authority.runtime
+            or sys.flags.optimize != request.source_authority.optimize
+        ):
+            return r[m.Infra.NativeImportReference].fail(
+                "native reference runtime authority differs"
+            )
+        roots = tuple(str(root) for root in request.import_roots)
+        code = (
+            "import importlib, json, sys\n"
+            "payload = json.loads(sys.stdin.read())\n"
+            "sys.path[:0] = payload['roots']\n"
+            "from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native\n"
+            "for name in payload['modules']: importlib.import_module(name)\n"
+            "sys.stdout.write(native.capture(tuple(payload['modules'])).unwrap().model_dump_json())\n"
+        )
+        from json import dumps
+
+        with TemporaryDirectory() as cache:
+            child = u.Cli.run_raw(
+                [
+                    str(runtime),
+                    *("-O",) * request.source_authority.optimize,
+                    "-B",
+                    "-X",
+                    f"pycache_prefix={cache}",
+                    "-c",
+                    code,
+                ],
+                cwd=runtime_root,
+                options=m.Cli.ProcessOptions(
+                    input_data=dumps({"roots": roots, "modules": request.modules})
+                ),
+            )
+        if child.failure:
+            return r[m.Infra.NativeImportReference].from_failure(child)
+        if not u.Cli.process_succeeded(child.value.outcome):
+            return r[m.Infra.NativeImportReference].fail(
+                "cold native reference import failed: " + child.value.stderr
+            )
+        reference = m.Infra.NativeImportObservation.model_validate_json(
+            child.value.stdout
+        )
+        compared = FlextInfraWorkspaceNativeReference.compare(observed.value, reference)
+        if compared.failure:
+            return r[m.Infra.NativeImportReference].from_failure(compared)
+        current = FlextInfraCodegenPreconditions.source_authority_current(
+            request.source_authority,
+        )
+        if current.failure:
+            return r[m.Infra.NativeImportReference].from_failure(current)
+        inputs = FlextInfraMiseArtifactsVerification.states_current(request.inputs)
+        if inputs.failure:
+            return r[m.Infra.NativeImportReference].from_failure(inputs)
+        return r[m.Infra.NativeImportReference].ok(
+            m.Infra.NativeImportReference.model_validate({
+                **reference.model_dump(),
+                "source_authority": request.source_authority,
+            }),
+        )
 
     def build_report(
         self,
@@ -548,7 +642,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         own self-scoped runs). A layout no plan claims is therefore verified
         against its real on-disk contract: import it in the fresh runtime and
         resolve the exports it declares. A plan that does claim the layout
-        must still carry a usable importable WRITE/SKIP contract, and a
+        must still carry an importable, non-removal contract, and a
         broken live package fails on its import or on a declared name that
         cannot resolve.
 
@@ -566,8 +660,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 plan
                 for plan in layout_plans
                 if plan.context.importable
-                and plan.action
-                in {c.Infra.LazyInitAction.WRITE, c.Infra.LazyInitAction.SKIP}
+                and plan.action is not c.Infra.LazyInitAction.REMOVE
             )
             if not any(plan.context.pkg_dir == layout.package_dir for plan in owned):
                 return r[m.Infra.FreshImportProbe].fail(
@@ -637,16 +730,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             The resulting ``p.Result[m.Infra.ValidationReport]``.
 
         """
-        interpreter = u.Infra.runtime_python(
-            self.repository_root,
-            runtime_root=self.runtime_root,
-        )
-        if not interpreter.is_file():
-            return r[m.Infra.ValidationReport].fail(
-                f"fresh-import target interpreter is missing: {interpreter}; "
-                "make setup provisions it",
-            )
-        env = self._workspace_import_env(tuple(layout.src_dir for layout in layouts))
         workers = config.Infra.codegen.fresh_import_workers
         u.Cli.info(f"fresh-import: running {len(probes)} probes with {workers} workers")
 
@@ -655,11 +738,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         # ``-B``: a validator never writes into the checkout it validates, so
         # the probed sources leave no bytecode cache behind.
         def run_probe(probe: m.Infra.FreshImportProbe) -> p.Result[p.Cli.CommandOutput]:
-            return u.Cli.run_raw(
-                [str(interpreter), "-B", "-W", "error", "-"],
-                cwd=self.repository_root,
-                timeout=c.Infra.TIMEOUT_SHORT,
-                options=m.Cli.ProcessOptions(env=env, input_data=probe.code),
+            return self._execute_probe(
+                probe,
+                source_roots=tuple(layout.src_dir for layout in layouts),
             )
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -688,6 +769,49 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         summary = f"{len(probes)} fresh-import probe(s) passed"
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(passed=True, violations=(), summary=summary),
+        )
+
+    def _execute_probe(
+        self,
+        probe: m.Infra.FreshImportProbe,
+        *,
+        cwd: Path | None = None,
+        source_roots: t.SequenceOf[Path] = (),
+        isolated: bool = False,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Run the selected native consumer in its declared physical runtime."""
+        interpreter = u.Infra.runtime_python(
+            self.repository_root,
+            runtime_root=self.runtime_root,
+        )
+        environment = u.Infra.runtime_environment_dir(
+            self.repository_root,
+            runtime_root=self.runtime_root,
+        )
+        if environment.is_symlink() or not environment.is_dir():
+            return r[p.Cli.CommandOutput].fail(
+                f"fresh-import runtime must be physical: {environment}",
+            )
+        if not interpreter.is_file():
+            return r[p.Cli.CommandOutput].fail(
+                f"fresh-import target interpreter is missing: {interpreter}; "
+                "make setup provisions it",
+            )
+        return u.Cli.run_raw(
+            [
+                str(interpreter),
+                *(("-I",) if isolated else ()),
+                "-B",
+                "-W",
+                "error",
+                "-",
+            ],
+            cwd=self.repository_root if cwd is None else cwd,
+            timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(
+                env=self._workspace_import_env(source_roots),
+                input_data=probe.code,
+            ),
         )
 
     def _workspace_import_env(

@@ -10,6 +10,8 @@ import ast
 import importlib.util
 from pathlib import Path
 
+from flext_infra import c, t
+
 
 class FlextInfraUtilitiesRopeSourceBasesAliases:
     """Alias and lazy-module resolution part of the source-bases composite."""
@@ -41,7 +43,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         cls._stdlib_backing_cache[target] = backing or ""
         return backing
 
-    _stdlib_backing_cache: dict[str, str] | None = None
+    _stdlib_backing_cache: t.StrDict | None = None
 
     @classmethod
     def lazy_module_aliases(
@@ -49,7 +51,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         module: str,
         path: Path,
         source: str,
-    ) -> dict[str, str]:
+    ) -> t.StrDict:
         """Read the ``install_lazy_exports`` namespace alias map of one module.
 
         The canonical package facade binds its public namespace names (``m``,
@@ -64,11 +66,15 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             Alias name to absolute provider module path.
 
         """
-        # A generated module that does not parse is a defect to surface, never
-        # an empty alias map (fail loud).
+        # Lazy package propagation belongs to initializers. Ordinary module
+        # bindings are resolved by the lexical inventory, so their executable
+        # bodies are not inputs to this package-alias reader.
+        if path.name != c.Infra.INIT_PY:
+            return {}
+        # A required initializer that does not parse remains a real input error.
         parsed = ast.parse(source, filename=str(path))
-        package = module if path.name == "__init__.py" else module.rpartition(".")[0]
-        aliases: dict[str, str] = {}
+        package = module
+        aliases: t.StrDict = {}
         for node in ast.walk(parsed):
             if not (
                 isinstance(node, ast.Call)

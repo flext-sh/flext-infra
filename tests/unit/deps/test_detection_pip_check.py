@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from tests import tm
 
 
 class TestsFlextInfraDepsDetectionPipCheck:
@@ -35,7 +34,9 @@ class TestsFlextInfraDepsDetectionPipCheck:
             venv_bin,
         )
 
-        tm.that(tm.ok(result), eq=([], 0))
+        lines, exit_code = tm.ok(result)
+        tm.that(lines, empty=True)
+        tm.that(exit_code, eq=0)
 
     def test_conflicts_and_exit_code_are_reported(self, tmp_path: Path) -> None:
         """Test conflicts and exit code are reported."""
@@ -60,7 +61,9 @@ class TestsFlextInfraDepsDetectionPipCheck:
             venv_bin,
         )
 
-        tm.that(tm.ok(result), eq=([], 0))
+        lines, exit_code = tm.ok(result)
+        tm.that(lines, empty=True)
+        tm.that(exit_code, eq=0)
 
     @staticmethod
     def test_unlaunchable_pip_is_a_failure(tmp_path: Path) -> None:

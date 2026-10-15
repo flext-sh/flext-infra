@@ -12,7 +12,6 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._constants import FlextInfraConstantsSharedInfra
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
@@ -78,8 +77,12 @@ class FlextInfraConfigModelsProvider:
             m.Field(gt=0, description="PR page bound; saturation fails the inventory"),
         ]
         lane_governance_file: Annotated[
-            Path,
-            m.Field(description="Global coordination SSOT, consumed without copying"),
+            Path | None,
+            m.Field(
+                default=None,
+                description="Explicit host coordination SSOT, unavailable when "
+                "undeclared",
+            ),
         ]
         ci_trigger_branches: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
@@ -92,21 +95,18 @@ class FlextInfraConfigModelsProvider:
                 ),
             ),
         ]
-        integration_branch_preference: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+        integration_branch: Annotated[
+            t.NonEmptyStr,
             m.Field(
-                default=FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE,
-                min_length=1,
                 description=(
-                    "Ordered names tried against live Git to derive one "
-                    "repository's integration baseline. A workspace that "
-                    "integrates on a versioned line declares it here, so a "
-                    "release name never has to be hardcoded in the package. "
-                    "The provider default stays the last-resort fallback, "
-                    "never the answer."
+                    "The one versioned line this workspace's repositories "
+                    "integrate on. Baseline resolution checks exactly this "
+                    "line against published Git and fails loud otherwise: "
+                    "no conventional-name list is probed, and no release "
+                    "name is hardcoded in the package."
                 ),
             ),
-        ] = FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE
+        ]
 
     class GithubActionPinSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One GitHub Action reference from the codegen catalog."""

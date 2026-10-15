@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraSonarcloudClient[TResult](s[TResult]):
+class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
     """Derive one project identity and authenticate without persisting secrets."""
 
     @staticmethod

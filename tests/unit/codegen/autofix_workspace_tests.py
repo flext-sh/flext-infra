@@ -12,10 +12,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from tests import m
@@ -84,6 +83,7 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         tm.that(result.violations_skipped, empty=True)
         tm.that(result.files_modified, empty=True)
 
+    @pytest.mark.slow
     def test_files_modified_tracks_affected_files(self, tmp_path: Path) -> None:
         """Test files modified tracks affected files."""
         project = u.Tests.create_codegen_project(

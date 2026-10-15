@@ -6,15 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 
 from flext_cli import u as cli_u
 
-from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenFilePlan,
-    FlextInfraUtilitiesDocsScope,
-)
+from flext_infra import FlextInfraConfig, c, m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesDocsScope
 
 
 class FlextInfraUtilitiesDocsGenerateSourcesMixin:
@@ -46,7 +44,6 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
-        from flext_cli import u as cli_u
         """
         planned = cli_u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
@@ -77,7 +74,6 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
-        from flext_cli import u as cli_u
         """
         roots = FlextInfraUtilitiesDocsScope.docs_repository_roots(
             repository_root,
@@ -85,25 +81,209 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         )
         if roots.failure:
             return r[t.VariadicTuple[Path]].from_failure(roots)
+        return FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths_for_roots(
+            roots.value,
+        )
+
+    @staticmethod
+    def docs_scope_source_roots(
+        repository_root: Path,
+        scope: m.Infra.DocScope,
+        aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
+    ) -> t.VariadicTuple[Path]:
+        """Elect the current scope and its actual shared metadata owners.
+
+        Returns:
+            The resulting ``t.VariadicTuple[Path]``.
+
+        """
+        return tuple(
+            dict.fromkeys((
+                repository_root,
+                *(
+                    (item.path for item in aggregate_scopes)
+                    if scope.name == c.Infra.RK_ROOT
+                    else (scope.path,)
+                ),
+            ))
+        )
+
+    @staticmethod
+    def docs_scope_from_sources(
+        scope: m.Infra.DocScope,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState],
+    ) -> m.Infra.DocScope:
+        """Derive scope metadata and package identity from the captured inventory.
+
+        Returns:
+            The resulting ``m.Infra.DocScope``.
+
+        Raises:
+            ValueError: If docs scope is disabled in captured metadata.
+
+        """
+        if scope.name == c.Infra.RK_ROOT:
+            return scope
+        state = FlextInfraUtilitiesDocsScope.project_state(
+            scope.path,
+            source_states=source_states,
+        )
+        if not FlextInfraUtilitiesDocsScope.docs_scope_enabled(state.docs_meta):
+            msg = f"docs scope is disabled in captured metadata: {scope.path}"
+            raise ValueError(msg)
+        return scope.model_copy(
+            update={
+                "name": state.project_name,
+                "package_name": state.package_name,
+                "project_class": (
+                    FlextInfraUtilitiesDocsScope.classify_project_from_meta(
+                        state.project_name,
+                        state.docs_meta,
+                    )
+                ),
+            }
+        )
+
+    @staticmethod
+    def docs_source_directories(
+        roots: t.SequenceOf[Path],
+        *,
+        source_scope: Path | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]]:
+        """Capture presence and physical ancestry used by docs discovery.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]]``.
+
+        """
+        states: list[m.Cli.AtomicDirectoryChainPlan] = []
+        for root in roots:
+            for (
+                path,
+                _recursive,
+                _suffixes,
+            ) in FlextInfraUtilitiesDocsGenerateSourcesMixin._source_trees(
+                root,
+                source_scope,
+            ):
+                state = cli_u.Cli.atomic_plan_directory_chain(path)
+                if state.failure:
+                    return r[
+                        t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]
+                    ].from_failure(
+                        state,
+                    )
+                states.append(state.value)
+        return r[t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]].ok(tuple(states))
+
+    @staticmethod
+    def docs_source_paths_for_roots(
+        roots: t.SequenceOf[Path],
+        *,
+        source_scope: Path | None = None,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Discover only the elected roots and declared template dependencies.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+
+        """
         paths: set[Path] = set()
-        for root in roots.value:
+        for root in roots:
             collected = (
                 FlextInfraUtilitiesDocsGenerateSourcesMixin._collected_root_paths(
                     root,
+                    source_scope=source_scope,
                 )
             )
             if collected.failure:
                 return r[t.VariadicTuple[Path]].from_failure(collected)
             paths.update(collected.value)
-        templates_root = Path(__file__).absolute().parent.parent / "templates"
-        paths.update({
+            elected = r[t.VariadicTuple[Path]].create_from_callable(
+                partial(
+                    FlextInfraConfig.config_sources_for_repository,
+                    root,
+                    filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+                )
+            )
+            if elected.failure:
+                return r[t.VariadicTuple[Path]].from_failure(elected)
+            paths.update(elected.value)
+        templates_root = FlextInfraConfig.ssot_config_dir().parent / "templates"
+        templates = cli_u.Cli.template_capture_sources((
             templates_root / c.Infra.TEMPLATE_MKDOCS_PROJECT,
             templates_root / c.Infra.TEMPLATE_MKDOCS_ROOT,
-        })
+        ))
+        if templates.failure:
+            return r[t.VariadicTuple[Path]].from_failure(templates)
+        paths.update(state.path for state in templates.value)
         return r[t.VariadicTuple[Path]].ok(tuple(sorted(paths)))
 
+    @staticmethod
+    def _source_trees(
+        root: Path,
+        source_scope: Path | None,
+    ) -> t.VariadicTuple[t.Triple[Path, bool, frozenset[str]]]:
+        """Declare the source grammar once for capture and published membership.
+
+        Returns:
+            The resulting ``t.VariadicTuple[t.Triple[Path, bool, frozenset[str]]]``.
+
+        """
+        return (
+            (root / "config", False, frozenset({".yaml", ".yml"})),
+            *(
+                ((root / c.Infra.DEFAULT_SRC_DIR, True, frozenset({".py"})),)
+                if source_scope is None or source_scope == root
+                else ()
+            ),
+            (root / c.Infra.DIR_DOCS / "guides", False, frozenset({".md"})),
+        )
+
+    @staticmethod
+    def docs_source_path_is_input(
+        path: Path,
+        roots: t.SequenceOf[Path],
+        *,
+        source_scope: Path | None = None,
+    ) -> bool:
+        """Derive whether an owned publication becomes an input of the same owner.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        for root in roots:
+            if path in {
+                root / c.Infra.GITMODULES,
+                root / c.PYPROJECT_FILENAME,
+                root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME,
+            }:
+                return True
+            for (
+                tree,
+                recursive,
+                suffixes,
+            ) in FlextInfraUtilitiesDocsGenerateSourcesMixin._source_trees(
+                root,
+                source_scope,
+            ):
+                if (
+                    path.suffix in suffixes
+                    and path.is_relative_to(tree)
+                    and (recursive or path.parent == tree)
+                    and not (path.suffix == ".md" and path.name == "README.md")
+                ):
+                    return True
+        return False
+
     @classmethod
-    def _collected_root_paths(cls, root: Path) -> p.Result[t.VariadicTuple[Path]]:
+    def _collected_root_paths(
+        cls,
+        root: Path,
+        *,
+        source_scope: Path | None = None,
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Collect one repository root's documented physical source paths.
 
         Returns:
@@ -129,24 +309,17 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         )
         collectors = (
             cls._collected_fixed_paths(paths, fixed_paths),
-            cls._collected_tree_paths(
-                paths,
-                root / "config",
-                recursive=False,
-                suffixes=frozenset({".yaml", ".yml"}),
-            ),
-            cls._collected_tree_paths(
-                paths,
-                root / c.Infra.DEFAULT_SRC_DIR,
-                recursive=True,
-                suffixes=frozenset({".py"}),
-            ),
-            cls._collected_tree_paths(
-                paths,
-                root / c.Infra.DIR_DOCS / "guides",
-                recursive=False,
-                suffixes=frozenset({".md"}),
-                excluded_names=frozenset({"README.md"}),
+            *(
+                cls._collected_tree_paths(
+                    paths,
+                    tree,
+                    recursive=recursive,
+                    suffixes=suffixes,
+                    excluded_names=(
+                        frozenset({"README.md"}) if ".md" in suffixes else frozenset()
+                    ),
+                )
+                for tree, recursive, suffixes in cls._source_trees(root, source_scope)
             ),
         )
         for collected in collectors:
@@ -204,25 +377,64 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def docs_verify_sources(
+    def docs_verify_source_topology(
         repository_root: Path,
         source_states: t.SequenceOf[m.Cli.AtomicFileState],
         *,
         extra_roots: t.SequenceOf[Path] = (),
+        source_roots: t.SequenceOf[Path] = (),
+        source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = (),
+        created_directories: t.SequenceOf[m.Cli.AtomicDirectoryState] = (),
+        source_scope: Path | None = None,
     ) -> p.Result[bool]:
-        """Require exact source topology and physical states to remain unchanged.
+        """Admit only the current batch's source membership and directory ancestry.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        discovered = FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(
-            repository_root,
-            extra_roots,
+        created = {item.path: item for item in created_directories}
+        for expected in source_directories:
+            observed = cli_u.Cli.atomic_plan_directory_chain(expected.target)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != expected:
+                owned_chain = tuple(created.get(path) for path in expected.directories)
+                if not (
+                    expected.directories
+                    and all(item is not None for item in owned_chain)
+                    and not observed.value.directories
+                    and observed.value.anchor_path == expected.target
+                    and observed.value.anchor_ancestry
+                    == (
+                        *expected.anchor_ancestry,
+                        *(
+                            (item.device, item.inode)
+                            for item in owned_chain
+                            if item is not None
+                        ),
+                    )
+                ):
+                    return r[bool].fail(
+                        f"{c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER}: "
+                        f"{expected.target}",
+                    )
+        discovered = (
+            FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths_for_roots(
+                source_roots,
+                source_scope=source_scope,
+            )
+            if source_roots
+            else FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(
+                repository_root,
+                extra_roots,
+            )
         )
         if discovered.failure:
             return r[bool].from_failure(discovered)
-        expected_paths = tuple(state.path for state in source_states)
+        expected_paths = tuple(
+            state.path for state in source_states if state.content is not None
+        )
         if discovered.value != expected_paths:
             added = sorted(set(discovered.value).difference(expected_paths))
             removed = sorted(set(expected_paths).difference(discovered.value))
@@ -231,23 +443,6 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 f"added={[path.as_posix() for path in added]}, "
                 f"removed={[path.as_posix() for path in removed]}",
             )
-        current = FlextInfraUtilitiesCodegenFilePlan.required_file_states(
-            discovered.value,
-        )
-        if current.failure:
-            return r[bool].from_failure(current)
-        for expected, observed in zip(source_states, current.value, strict=True):
-            if observed != expected:
-                model_fields = type(expected).model_fields
-                differing = tuple(
-                    field
-                    for field in model_fields
-                    if getattr(expected, field) != getattr(observed, field)
-                )
-                return r[bool].fail(
-                    f"{c.Infra.DOCS_SOURCE_STATE_RACE_MARKER}: {expected.path}; "
-                    f"differing={list(differing)}",
-                )
         return r[bool].ok(value=True)
 
 

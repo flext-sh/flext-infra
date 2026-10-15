@@ -36,7 +36,7 @@ class FlextInfraUtilitiesRefactorCensus:
         """Serialize any Pydantic model payload to a JSON file."""
         export_path.write_text(
             model_payload.model_dump_json(indent=2),
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
     @staticmethod
@@ -773,8 +773,8 @@ class FlextInfraUtilitiesRefactorCensus:
         workspace: Path,
         candidate: m.Infra.RemovalCandidate,
         *,
-        gates: t.StrSequence,
-        source_cache: MutableMapping[Path, str] | None = None,
+        options: m.Infra.RemovalPreviewOptions,
+        source_preview: p.Infra.SourcePreview,
     ) -> p.Result[bool]:
         """Preview one simple removal candidate, requiring clean gates.
 
@@ -790,19 +790,19 @@ class FlextInfraUtilitiesRefactorCensus:
         planned = FlextInfraUtilitiesRefactorCensus._planned_simple_removal(
             rope,
             candidate,
-            source_cache=source_cache,
+            source_cache=options.source_cache,
         )
         if planned.failure:
             if planned.error_code == c.Infra.CENSUS_UNSUPPORTED_SIMPLE_REMOVAL_CODE:
                 return r[bool].ok(value=False)
             return r[bool].from_failure(planned)
-        updates, post_write = planned.unwrap()
+        updates = planned.unwrap()[0]
         try:
             applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
                 updates,
                 workspace=workspace,
-                gates=gates,
-                post_write=post_write,
+                source_preview=source_preview,
+                gates=options.gates,
             )
         except RuntimeError as exc:
             FlextInfraUtilitiesRefactorCensus._census_log.warning(

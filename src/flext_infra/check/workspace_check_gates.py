@@ -16,7 +16,8 @@ from flext_cli import cli
 from flext_infra import c, config, m, p, r, t, u
 
 if TYPE_CHECKING:
-    from flext_infra import FlextInfraGate, FlextInfraGateRegistry
+    from flext_infra.check import FlextInfraGateRegistry
+    from flext_infra.gates import FlextInfraGate
 
 
 class FlextInfraWorkspaceCheckGatesMixin:

@@ -9,13 +9,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.__version__ import FlextInfraVersion
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from tests import c, m, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -67,6 +66,20 @@ class TestsFlextInfraGateErrorReporting:
         )
         for gate in gates:
             tm.that(report, has=f"- {gate}: FAIL")
+        sarif = m.Infra.SarifReport.model_validate_json(
+            (receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_bytes(),
+        )
+        summary = tm.not_none(sarif.properties)
+        retained = summary.results[0]
+        tm.that(retained.total_findings, eq=project.total_findings)
+        for gate in gates:
+            original = project.gates[gate]
+            published = retained.gates[gate]
+            native = tm.not_none(published.raw_receipt)
+            tm.that(published.issues, eq=original.issues)
+            tm.that(published.outcome, eq=original.outcome)
+            tm.that(published.raw_output, eq="")
+            tm.that(native.read_text(encoding="utf-8"), eq=original.raw_output)
 
     @staticmethod
     def test_ruff_format_reports_each_unformatted_file_once(

@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraCiSystemPackages:
@@ -52,6 +50,8 @@ class TestsFlextInfraCiSystemPackages:
         first_approval = (
             f"make {config.Infra.codegen.make.approval_verbs[0]} (blocking)"
         )
+        # The single blocking approval step (setup -> audit -> check -> test)
+        # needs the engines installed before it runs.
         tm.that(
             rendered.index(self.step_name) < rendered.index(first_approval),
             eq=True,

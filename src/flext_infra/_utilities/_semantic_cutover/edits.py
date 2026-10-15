@@ -67,11 +67,14 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
         """
         edits: list[m.Infra.SemanticMigrationEdit] = []
         failures: list[str] = []
+        first_failure: p.Result[t.Infra.TransformResult] | None = None
         for path, source in items:
             planned = r[t.Infra.TransformResult].create_from_callable(
                 partial(rewrite, path, source),
             )
             if planned.failure:
+                if first_failure is None:
+                    first_failure = planned
                 failures.append(f"{path}: {planned.error}")
                 continue
             updated, changes = planned.value
@@ -85,7 +88,12 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
                     ),
                 )
         result = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
-        return result.fail("; ".join(failures)) if failures else result.ok(tuple(edits))
+        if first_failure is not None:
+            return result.fail(
+                "; ".join(failures),
+                exception=first_failure.exception,
+            )
+        return result.ok(tuple(edits))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverEdits"]

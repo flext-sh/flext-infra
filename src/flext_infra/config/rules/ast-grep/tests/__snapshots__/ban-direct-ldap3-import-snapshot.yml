@@ -1,0 +1,20 @@
+id: ban-direct-ldap3-import
+snapshots:
+  from ldap3 import Server:
+    labels:
+    - source: ldap3
+      style: primary
+      start: 5
+      end: 10
+  from ldap3.core.exceptions import LDAPException:
+    labels:
+    - source: ldap3.core.exceptions
+      style: primary
+      start: 5
+      end: 26
+  import ldap3:
+    labels:
+    - source: ldap3
+      style: primary
+      start: 7
+      end: 12

@@ -90,11 +90,6 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             if result.failure:
                 return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(result)
             for state in result.value:
-                previous = states.get(state.path)
-                if previous is not None and previous != state:
-                    return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                        f"lazy-init sidecar changed during inventory: {state.path}",
-                    )
                 states[state.path] = state
         return r[tuple[m.Cli.AtomicFileState, ...]].ok(
             tuple(states[path] for path in sorted(states)),

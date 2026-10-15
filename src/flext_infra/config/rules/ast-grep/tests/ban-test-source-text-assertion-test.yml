@@ -1,0 +1,37 @@
+# Shape only: the cases below exercise the read/assert pairing on syntax
+# alone; every invalid case reads an owner's source and asserts its text, and
+# every valid case is a shape this law structurally keeps.
+id: ban-test-source-text-assertion
+valid:
+  # Behavioral assertions over the public surface.
+  - assert svc.run(payload).success
+  - tm.that(facade.execute(), eq=expected)
+  # An `in` check over ordinary data is not a source probe.
+  - assert "x" in container
+  - assert container in registry
+  # Whole-text equality against an expected literal is a fixture comparison.
+  - assert SOURCE == expected_text
+  # Reading the owner's data (not its text) and asserting the data.
+  - |
+    payload = load_fixture("cli.json")
+    assert "def main" in payload
+invalid:
+  # The read call is the `in` operand itself.
+  - |
+    assert "def main" in Path(__file__).with_name("cli.py").read_text()
+  # The read text is bound first and asserted later.
+  - |
+    source = Path("src/ai_hub/api.py").read_text()
+    assert "class AiHub" in source
+  # The library spelling of the same read.
+  - |
+    from ai_hub import cli
+    assert "class AiHubCli" in inspect.getsource(cli)
+  # The module-level binding asserted through the tests facade helper.
+  - |
+    SOURCE = Path(__file__).parents[2].joinpath("src", "cli.py").read_text()
+
+    def test_cli() -> None:
+        tm.that(SOURCE, has="def main")
+  # The read call asserted directly through the helper.
+  - tm.that(Path("cli.py").read_text(), eq=expected)

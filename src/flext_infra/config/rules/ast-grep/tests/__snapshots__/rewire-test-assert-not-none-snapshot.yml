@@ -1,0 +1,23 @@
+id: rewire-test-assert-not-none
+snapshots:
+  ? |
+    from tests import tm
+    assert entry.key is not None
+  : fixed: |
+      from tests import tm
+      tm.not_none(entry.key)
+    labels:
+    - source: assert entry.key is not None
+      style: primary
+      start: 21
+      end: 49
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert entry.key is not None
+      style: secondary
+      start: 0
+      end: 50

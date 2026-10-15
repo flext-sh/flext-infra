@@ -14,10 +14,9 @@ from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra, p
-from tests import c, t, u
+from tests import c, t, tm, u
 
 # NOTE(flext-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
 # the only fixture owner; conftest must not re-export or shadow its fixtures.

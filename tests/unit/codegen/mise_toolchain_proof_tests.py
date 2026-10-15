@@ -14,12 +14,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import config, m, t
+from flext_infra import config, m, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.mise_toolchain_proof import FlextInfraCodegenMiseToolchainProof
-from tests import c
+from tests import c, tm
 
 
 class TestsFlextInfraMiseToolchainProof:
@@ -29,6 +28,56 @@ class TestsFlextInfraMiseToolchainProof:
     VERSION = "1.2.3"
     PLATFORM = "linux-x64"
     CHECKSUM = "sha256:00"
+
+    @staticmethod
+    def test_setup_proof_requires_the_declared_runtime_lint_tools() -> None:
+        """The real setup proof validates the lint inventory in its own runtime."""
+        root = tm.ok(
+            u.Infra.git_runtime_root(
+                m.Infra.GitRepoRequest(repo_root=Path(__file__).parent)
+            )
+        ).repository_root
+        uv = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+        tm.ok(
+            FlextInfraCodegenMiseToolchainProof(
+                repository_root=root, uv_executable=uv
+            ).execute()
+        )
+
+    @staticmethod
+    def test_uv_binary_belongs_to_its_declared_mise_installation() -> None:
+        """A bundled executable from another tool cannot own UV resolution."""
+        root = tm.ok(
+            u.Infra.git_repository_root(
+                m.Infra.GitRepoRequest(repo_root=Path(__file__).parent)
+            )
+        ).repository_root
+        entry = next(
+            tool
+            for tool in config.Infra.codegen.toolchain.tools
+            if tool.name == c.Infra.UV
+        )
+        reader = tm.ok(u.Infra.managed_mise_self(root))
+        installation = tm.ok(
+            u.Cli.run_raw(
+                (
+                    str(reader),
+                    "-C",
+                    str(root),
+                    "where",
+                    entry.selector or entry.name,
+                ),
+                cwd=root,
+                timeout=c.Infra.TIMEOUT_SHORT,
+            )
+        )
+        tm.that(u.Cli.process_succeeded(installation.outcome), eq=True)
+        tm.that(installation.stderr, eq="")
+        binary = tm.ok(u.Infra.managed_mise_binary(entry.name, root))
+        tm.that(
+            binary.is_relative_to(Path(installation.stdout.strip()).resolve()),
+            eq=True,
+        )
 
     @classmethod
     def _entry(cls) -> m.Infra.MiseToolEntry:

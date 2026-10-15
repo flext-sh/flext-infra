@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from types import FunctionType
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 # Declaration-only protocol types stay
 # behind one guard so structural contracts add no reverse runtime dependency.
@@ -20,6 +21,66 @@ if TYPE_CHECKING:
 @runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
+
+    @runtime_checkable
+    class FunctionDescriptor(Protocol):
+        """Native descriptor capability used to authenticate its defining function."""
+
+        __func__: FunctionType
+
+    @runtime_checkable
+    class GitIndexLock(Protocol):
+        """Native gitdb LockedFD capability consumed by index publication."""
+
+        def open(self, *, write: Literal[True], stream: Literal[False]) -> int:
+            """Acquire the native index lock and return its owned raw descriptor."""
+            ...
+
+        def commit(self) -> None:
+            """Close the descriptor and publish its locked replacement."""
+            ...
+
+        def rollback(self) -> None:
+            """Close the descriptor and remove only its unpublished lock."""
+            ...
+
+    @runtime_checkable
+    class SourcePreview(Protocol):
+        """Consumer-owned capability for validating authenticated source views."""
+
+        def preview_sources[T](
+            self,
+            workspace: Path,
+            updates: t.MappingKV[Path, str],
+            validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+            *,
+            inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+            runtime_root: Path | None = None,
+        ) -> p.Result[T]:
+            """Validate staged candidates while preserving live sources."""
+            ...
+
+    @runtime_checkable
+    class ExternalCacheDirectory(Protocol):
+        """Shared consumer contract for declared tool cache placement."""
+
+        @property
+        def data_home_environment_variable(self) -> str: ...
+
+        @property
+        def user_home_environment_variable(self) -> str: ...
+
+        @property
+        def home_cache_directory(self) -> Path: ...
+
+        @property
+        def external_storage_directory(self) -> Path: ...
+
+    @runtime_checkable
+    class PytestStopController(Protocol):
+        """Native distributed controller's mutable stop request."""
+
+        shouldstop: bool | str
 
     @runtime_checkable
     class SupervisedProcess(Protocol):
@@ -46,6 +107,14 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             params: m.Infra.ApplyRenamesInput,
         ) -> p.Result[m.Infra.ApplyRenamesReport]: ...
+
+    class SemanticRenameCandidateProvider(Protocol):
+        """Select meaningful names from actual declarations, never token counts."""
+
+        def rename_decision(
+            self,
+            declaration: m.Infra.Object,
+        ) -> m.Infra.SemanticRenameDecision | None: ...
 
     @runtime_checkable
     class ModProgress(Protocol):
@@ -167,9 +236,18 @@ class FlextInfraProtocolsBase(Protocol):
     class CandidateBootstrapPlanner(Protocol):
         """Conform plan boundary consumed by the candidate campaign."""
 
+        def continue_after_publication(
+            self,
+            receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        ) -> p.Result[bool]:
+            """Advance only through verified effects of the captured producer."""
+            ...
+
         def surface_contract(
             self,
             surface: c.Infra.CodegenConformSurface,
+            *,
+            codegen: m.Infra.CodegenConfigSpec,
         ) -> m.Infra.CodegenConformSurfaceContract:
             """Resolve the declared output set for a recovery surface."""
             ...
@@ -183,7 +261,23 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class DocsArtifactPlanner(Protocol):
-        """Docs render planner the complete conform transaction publishes."""
+        """Captured scope batches published by the owning docs service."""
+
+        def prepare_batches(
+            self,
+        ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
+            """Capture the next scope after the preceding batch settles."""
+            ...
+
+        def publish_batch(
+            self,
+            bundle: m.Infra.DocsGenerationBundle,
+            *,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
+        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+            """Admit, publish and settle one captured scope batch."""
+            ...
 
         def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
             """Freeze the configured render and its authenticated inputs."""
@@ -215,6 +309,40 @@ class FlextInfraProtocolsBase(Protocol):
             include_root: bool,
         ) -> FlextInfraProtocolsBase.DocsArtifactPlanner:
             """Bind the planner to the repositories conform publishes."""
+            ...
+
+    @runtime_checkable
+    class GateExecutionParams(Protocol):
+        """Read-only assembly boundary separating acceptance and native outcome."""
+
+        @property
+        def project_dir(self) -> Path:
+            """Project whose gate was executed."""
+            ...
+
+        @property
+        def verdict(self) -> bool:
+            """Acceptance decided by the caller."""
+            ...
+
+        @property
+        def outcome(self) -> c.Infra.ToolOutcome:
+            """Native tool outcome, independent of acceptance."""
+            ...
+
+        @property
+        def issues(self) -> t.SequenceOf[m.Infra.Issue]:
+            """Complete native diagnostics."""
+            ...
+
+        @property
+        def raw_output(self) -> str:
+            """Unmodified native output."""
+            ...
+
+        @property
+        def started(self) -> float:
+            """Monotonic execution start time."""
             ...
 
     @runtime_checkable
@@ -266,6 +394,9 @@ class FlextInfraProtocolsBase(Protocol):
             roots: t.MappingKV[str, Path],
             analysis: m.Infra.CodegenPhaseAnalysis,
             policy: m.Infra.CodegenPhasePublicationPolicy,
+            *,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
         ) -> p.Result[t.VariadicTuple[Path]]:
             """Publish one recoverable multi-root phase and verify before commit."""
             ...
@@ -480,6 +611,8 @@ class FlextInfraProtocolsBase(Protocol):
         def surface_contract(
             cls,
             surface: c.Infra.CodegenConformSurface,
+            *,
+            codegen: m.Infra.CodegenConfigSpec,
         ) -> m.Infra.CodegenConformSurfaceContract: ...
 
         @classmethod
@@ -487,6 +620,8 @@ class FlextInfraProtocolsBase(Protocol):
             cls,
             root: Path,
             profile: c.Infra.MakeProfile,
+            *,
+            inputs: m.Infra.CodegenInputs | None = None,
         ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
 
         @staticmethod
@@ -537,7 +672,7 @@ class FlextInfraProtocolsBase(Protocol):
             destination: str,
             failure_prefix: str,
             project_context: m.Infra.ProjectRenderContext | None,
-        ) -> p.Result[str]: ...
+        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
         @classmethod
         def compose_project_artifact(
@@ -547,6 +682,7 @@ class FlextInfraProtocolsBase(Protocol):
             rendered: str,
             *,
             render_inputs: m.Infra.CodegenRenderInputs | None = None,
+            source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
         @staticmethod
@@ -785,14 +921,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Run deptry on a project and return issues."""
             ...
 
-        def govern_deptry_issues(
-            self,
-            project_path: Path,
-            issues: t.SequenceOf[t.JsonMapping],
-        ) -> p.Result[t.SequenceOf[t.JsonMapping]]:
-            """Drop findings the governed dependency profile makes policy."""
-            ...
-
         def build_project_report(
             self,
             project_name: str,
@@ -936,3 +1064,6 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
+
+
+__all__: list[str] = ["FlextInfraProtocolsBase"]

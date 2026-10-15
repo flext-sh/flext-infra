@@ -13,8 +13,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen import (
+from flext_infra.codegen._mise_artifacts_files import (
     FlextInfraMiseArtifactsFiles as files,
+)
+from flext_infra.codegen._mise_artifacts_verification import (
     FlextInfraMiseArtifactsVerification as verify,
 )
 
@@ -815,15 +817,10 @@ class FlextInfraMiseArtifactsState:
             )
             if authenticated.failure:
                 return authenticated
-        # Foreign residents inside recorded temporary trees never block the
-        # restore itself. The journal receipt authenticates the destinations;
-        # staging residue revokes only the cleanup, which still fails closed
-        # after the rollback (guarded deletion refuses unmanifested or
-        # non-empty trees), so a mixed recovery retains the journal and the
-        # foreign bytes instead of stranding published destinations behind
-        # them. Pre-restore authentication of every recorded tree and resident
-        # aborted the rollback before it started, which replaced the tested
-        # mixed outcome with a lost publication.
+        # The receipt authenticates publication destinations independently of
+        # staging cleanup. Guarded deletion refuses foreign or unmanifested
+        # residents and retains their bytes and journal for owner correction.
+        # Recovery preserves files already published.
         return r[bool].ok(value=True)
 
     @classmethod

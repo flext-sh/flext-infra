@@ -13,7 +13,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraWorkspaceDetector, c, config, m, t, u
+from flext_infra import c, config, m, t, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraToolTablesPhase:
@@ -29,19 +30,33 @@ class FlextInfraToolTablesPhase:
         path: Path,
         planned_sources: t.SequenceOf[Path] = (),
     ) -> t.StrSequence:
-        """Derive the project's first-party namespaces from one source each.
-
-        The config-owned base namespaces, the live packages under ``src/``
-        (never a name invented from the distribution), and, for a workspace
-        root, the packages of the subprojects it declares. ``planned_sources``
-        are files a scaffold publishes with the rendered pyproject: their
-        packages under ``src/`` are live in the tree being produced. Ruff's
-        projected known-first-party, deptry's and the lazy-init renderer all
-        read this owner.
+        """Compose Ruff's import-order families over owned target namespaces.
 
         Returns:
-            The sorted first-party namespaces.
+            The sorted namespaces in the declared import-order family.
 
+        """
+        return sorted({
+            *FlextInfraToolTablesPhase.deptry_first_party_namespaces(
+                path=path,
+                planned_sources=planned_sources,
+            ),
+            *FlextInfraToolTablesPhase._workspace_project_namespaces(path),
+        })
+
+    @staticmethod
+    def deptry_first_party_namespaces(
+        *,
+        path: Path,
+        planned_sources: t.SequenceOf[Path] = (),
+    ) -> t.StrSequence:
+        """Derive only packages owned by this target's production tree.
+
+        Peer distributions remain dependencies even when their source checkouts
+        share a superproject or their packages are installed in the same runtime.
+
+        Returns:
+            Target-local live and planned production namespaces.
         """
         src_dir = path / c.Infra.DEFAULT_SRC_DIR
         planned_parts = (
@@ -55,10 +70,8 @@ class FlextInfraToolTablesPhase:
             if len(parts) > 1 and parts[0].isidentifier()
         }
         return sorted({
-            *config.Infra.tooling.tools.deptry.known_first_party,
             *u.Infra.discover_first_party_namespaces(path),
             *planned_packages,
-            *FlextInfraToolTablesPhase._workspace_project_namespaces(path),
         })
 
     @staticmethod
@@ -172,13 +185,12 @@ class FlextInfraToolTablesPhase:
         """
         return frozenset(
             Path(path).parts[0]
-            for path in u.Infra.manifest_nonparticipant_paths(project_dir.resolve())
+            for path in u.Infra.repository_nonparticipant_paths(project_dir.resolve())
         )
 
     def _phases(
         self,
         *,
-        first_party: t.StrSequence,
         path: Path,
     ) -> t.SequenceOf[m.Infra.DepsToml.PhaseConfig]:
         """Build every policy table; coverage is measured, never floor-gated.
@@ -236,10 +248,7 @@ class FlextInfraToolTablesPhase:
                     ),
                     toml.ListOp(
                         key=c.Infra.ADDOPTS,
-                        values=(
-                            *pytest.standard_addopts,
-                            f"--timeout={pytest.case_timeout_seconds}",
-                        ),
+                        values=pytest.standard_addopts,
                         strategy=replace,
                     ),
                     toml.ListOp(
@@ -321,7 +330,8 @@ class FlextInfraToolTablesPhase:
                 operations=(
                     toml.ListOp(
                         key=c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE,
-                        values=first_party,
+                        values=self.deptry_first_party_namespaces(path=path),
+                        strategy=replace,
                     ),
                 ),
             ),
@@ -388,7 +398,6 @@ class FlextInfraToolTablesPhase:
         return u.Infra.apply_toml_phases(
             payload,
             *self._phases(
-                first_party=self.first_party_namespaces(path=path.parent),
                 path=path.parent,
             ),
         )
