@@ -74,7 +74,7 @@ class FlextInfraModelsGit(
             Path | None, m.Field(description="Declared file key reference, unread")
         ]
         inline_public_key: Annotated[
-            bool, m.Field(description="Git declares an inline key:: public reference")
+            bool, m.Field(description="Native Git literal public reference: key:: or ssh-")
         ]
         public_fingerprint: Annotated[
             str | None,
