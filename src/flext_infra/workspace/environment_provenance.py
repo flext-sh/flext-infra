@@ -26,6 +26,64 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     """Bind installed packages to live local or immutable CI workspace sources."""
 
     @classmethod
+    def editable_members(
+        cls,
+        repository_root: Path,
+        *,
+        metadata_paths: t.StrSequence | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]:
+        """Elect declared mutable members with authenticated installed editables.
+
+        Frozen or registry-installed dependencies remain libraries even when
+        their checkouts are present. The invocation's CI variable does not
+        change the observed installation's ownership.
+
+        Returns:
+            Members whose installed metadata and physical source match declaration.
+
+        """
+        root = repository_root.expanduser().resolve()
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        if workspace.failure:
+            return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(workspace)
+        selected: list[m.Infra.RepositoryRef] = []
+        for repository in u.Infra.mutable_flext_members(workspace.value):
+            if not repository.package:
+                continue
+            matches = u.installed_distributions(
+                name=repository.distribution,
+                path=metadata_paths,
+            )
+            if len(matches) != 1:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                    "member provenance distribution count mismatch: "
+                    f"distribution={repository.distribution} expected=1 "
+                    f"actual={len(matches)}",
+                )
+            raw = matches[0].read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+            if raw is None:
+                continue
+            receipt = m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True)
+            if receipt.dir_info is None or not receipt.dir_info.editable:
+                continue
+            if not repository.editable:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                    f"member is installed editable against declaration: "
+                    f"{repository.distribution}",
+                )
+            authenticated = cls._validate_editable_provenance(
+                repository,
+                root,
+                metadata_paths=metadata_paths,
+            )
+            if authenticated.failure:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(
+                    authenticated,
+                )
+            selected.append(repository)
+        return r[t.VariadicTuple[m.Infra.RepositoryRef]].ok(tuple(selected))
+
+    @classmethod
     def execute_request(
         cls,
         request: p.Infra.WorkspaceEnvironmentRequest,

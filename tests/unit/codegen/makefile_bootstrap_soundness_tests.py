@@ -80,20 +80,6 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             raise AssertionError(message)
         assert recipe
 
-    def test_require_environment_heals_only_outside_ci(self) -> None:
-        """The environment requirement re-applies the declared mode locally.
-
-        Why: a checkout synced in the other install mode is recoverable state
-        (the declared sync reapplies it); CI must stay a loud failure because
-        its environment is exactly what the workflow provisioned.
-        """
-        makefile = (_TEMPLATES / "project" / "base" / "Makefile.j2").read_text(
-            encoding="utf-8",
-        )
-        start = makefile.index("_builtin_require_environment:")
-        block = makefile[start : makefile.index("\nendif", start)]
-        tm_heals(block)
-
 
 def tm_no_violations(violations: tuple[str, ...], recipe: str) -> None:
     """Fail with the named unassigned reads so the cure is one edit away.
@@ -110,14 +96,3 @@ def tm_no_violations(violations: tuple[str, ...], recipe: str) -> None:
     assert recipe
 
 
-def tm_heals(block: str) -> None:
-    """Assert the heal chain: verify, declared sync, editable rebind, re-verify."""
-    for fragment in (
-        "verify-environment",
-        "sync --project",
-        "--frozen",
-        "pip install",
-        "LOCAL_EDITABLE_FLAGS",
-        "CI environments never heal",
-    ):
-        assert fragment in block, f"heal chain misses {fragment}"

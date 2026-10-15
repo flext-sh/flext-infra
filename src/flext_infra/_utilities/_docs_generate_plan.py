@@ -107,21 +107,6 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
-        # The physical repository root is carried by the bundle: the first output
-        # scope is a member when the root is excluded from the render.
-
-        repository_root = bundle.repository_root
-        scope_roots = tuple(scoped.scope.path for scoped in bundle.scopes)
-        # The single race barrier of the docs cycle: every snapshotted source is
-        # re-read here, once, immediately before publication planning; the
-        # destination CAS re-validates physically at publish time.
-        stable = FlextInfraUtilitiesDocsGeneratePlanMixin.docs_verify_sources(
-            repository_root,
-            bundle.source_states,
-            extra_roots=scope_roots,
-        )
-        if stable.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)
         plans: list[m.Infra.CodegenFilePlan] = []
         for scoped in bundle.scopes:
             for artifact in scoped.artifacts:
@@ -134,7 +119,9 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                 )
                 if planned.failure:
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
-                plans.append(planned.value)
+                plans.append(planned.value.model_copy(update={
+                    "dependency_group": scoped.scope.path.as_posix(),
+                }))
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(plans))
 
     @staticmethod

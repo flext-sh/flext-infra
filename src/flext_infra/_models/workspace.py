@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
@@ -41,6 +41,16 @@ class FlextInfraModelsWorkspace:
 
         repository_root: Annotated[Path, m.Field(description="Repository root path")]
 
+    class LifecycleFileObservation(m.ContractModel):
+        """Bounded physical file evidence without retaining source contents."""
+
+        path: Annotated[Path, m.Field(description="Observed physical leaf")]
+        sha256: Annotated[
+            str | None, m.Field(description="Byte digest; absent for an absent leaf")
+        ]
+        mode: Annotated[int | None, m.Field(description="Observed permission mode")]
+        size: Annotated[int, m.Field(ge=0, description="Observed byte count")]
+
     class LifecycleReceipt(m.ContractModel):
         """One public Make invocation; an absent outcome is never a green receipt."""
 
@@ -64,6 +74,34 @@ class FlextInfraModelsWorkspace:
         error: Annotated[
             str | None, m.Field(description="First execution failure, if observed")
         ] = None
+        repository_root: Annotated[
+            Path | None, m.Field(description="Repository whose public Makefile ran")
+        ] = None
+        environment_root: Annotated[
+            Path | None, m.Field(description="Physical interpreter environment observed")
+        ] = None
+        before_files: Annotated[
+            t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleFileObservation],
+            m.Field(description="Config-declared file observations before execution"),
+        ] = ()
+        after_files: Annotated[
+            t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleFileObservation],
+            m.Field(description="Same bounded file observations after execution"),
+        ] = ()
+        elapsed_seconds: Annotated[
+            float | None, m.Field(ge=0, description="Measured invocation wall time")
+        ] = None
+        applicable: Annotated[
+            bool | None,
+            m.Field(description="Observed applicability; absent for unreached commands"),
+        ] = None
+        applicability_reason: Annotated[
+            str | None, m.Field(description="Observed reason a dependency stays a library")
+        ] = None
+        execution_context: Annotated[
+            Literal["local", "ci"] | None,
+            m.Field(description="Declared lifecycle context, absent for other receipts"),
+        ] = None
 
     class LifecycleReport(m.ContractModel):
         """Complete declared scope and ordered reached/unreached lifecycle receipts."""
@@ -74,6 +112,35 @@ class FlextInfraModelsWorkspace:
             t.VariadicTuple[FlextInfraModelsWorkspace.LifecycleReceipt],
             m.Field(description="Ordered public command receipts for the entire scope"),
         ]
+
+        @m.computed_field
+        @property
+        def executed_commands(self) -> int:
+            """Count only commands with a reaped native process outcome."""
+            return sum(receipt.outcome is not None for receipt in self.receipts)
+
+        @m.computed_field
+        @property
+        def failed_commands(self) -> int:
+            """Count causal execution or precondition failures."""
+            return sum(receipt.error is not None for receipt in self.receipts)
+
+        @m.computed_field
+        @property
+        def inapplicable_commands(self) -> int:
+            """Count explicit applicability decisions, never inferred passes."""
+            return sum(receipt.applicable is False for receipt in self.receipts)
+
+        @m.computed_field
+        @property
+        def unreached_commands(self) -> int:
+            """Count required commands whose execution has not been reached."""
+            return sum(
+                receipt.outcome is None
+                and receipt.error is None
+                and receipt.applicable is not False
+                for receipt in self.receipts
+            )
 
     class WorkspaceOperationReceipt(m.ContractModel):
         """Original in-process repository operation, with its observed effects."""

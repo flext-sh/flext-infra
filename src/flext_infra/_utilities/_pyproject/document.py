@@ -123,7 +123,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             project_name=project_name,
             required_dev_dependencies=required_dev_dependencies,
         )
-        cls._sync_member_environment_dev(source, (*member_requests, *member_groups))
+        cls._sync_member_environment_dev(
+            source,
+            (*member_requests, *member_groups, *member_requirements),
+        )
         requirement_sources = cls._normalized_requirement_sources(
             source,
             project_name,

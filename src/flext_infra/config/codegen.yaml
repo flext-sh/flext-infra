@@ -573,6 +573,27 @@ Infra:
       # The generation fixed point and the clean tree close every CI run and
       # every push: a projection that drifts from its source is red.
       - { verb: verify-clean, contexts: [ local, ci, pre_push ] }
+      # Root mutation verbs own their existing member fanout. Per-repository
+      # consumers run from the invoking root with the member's Makefile.
+      lifecycle_steps:
+      - { verb: help, scope: root, contexts: [ local, ci ] }
+      - { verb: setup, scope: root, contexts: [ local, ci ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: upg, scope: root, contexts: [ local ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: mod, scope: root, contexts: [ local, ci ] }
+      - { verb: fix, scope: root, contexts: [ local, ci ] }
+      - { verb: fmt, scope: root, contexts: [ local, ci ] }
+      - { verb: check, scope: each, contexts: [ local, ci ] }
+      - { verb: test, scope: each, contexts: [ local, ci ] }
+      - { verb: build, scope: each, contexts: [ local, ci ] }
+      - { verb: examples, scope: each, contexts: [ local, ci ] }
+      - { verb: docs, scope: each, contexts: [ local, ci ] }
+      - { verb: status, scope: each, contexts: [ local, ci ] }
+      - { verb: audit, scope: each, contexts: [ local, ci ] }
+      - { verb: verify-clean, scope: each, contexts: [ local, ci ] }
+      lifecycle_observed_files: [ Makefile, pyproject.toml, uv.lock, mise.lock ]
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -630,8 +651,7 @@ Infra:
         arguments: [ SOURCE_ROOT, SOURCE_URL_PREFIX, SOURCE_REF_FROM, SOURCE_REF_TO ]
         description: Migrate an explicitly selected dependency Git reference through the current tool owner before the consumer resolves its own locks.
       - name: validate-lifecycle
-        description: Serially run setup, gen, upg, setup, gen, gen in the root and every governed member, publishing typed receipts and stopping at the first failure.
-        profiles: [ workspace ]
+        description: Execute the declared public runtime acceptance steps serially, with root-owned mutation fanout and typed first-failure receipts.
       # Workspace-only (topology owns applicability): a standalone Makefile
       # never declares it. Never merges; a rerun continues the same lanes.
       - name: propagate

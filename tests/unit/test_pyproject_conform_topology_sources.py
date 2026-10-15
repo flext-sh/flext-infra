@@ -285,6 +285,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         consumer = self._member_ref("acme-driver", "plugins/driver")
         workspace = self._workspace(provider, consumer)
         bound = f'{provider.distribution}[feature]>=1; python_version >= "3.13"'
+        runtime_requirement = 'typing-extensions>=4; python_version >= "3.13"'
         provider_path = tmp_path / provider.path / c.PYPROJECT_FILENAME
         provider_path.parent.mkdir(parents=True)
         provider_path.write_text(
@@ -297,7 +298,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         consumer_path.parent.mkdir(parents=True)
         consumer_path.write_text(
             f'[project]\nname = "{consumer.distribution}"\nversion = "1.0.0"\n'
-            f"dependencies = ['{bound}']\n"
+            f"dependencies = ['{bound}', '{runtime_requirement}']\n"
             '[dependency-groups]\nchecks = ["hypothesis>=6"]\n'
             'qa = [{include-group = "checks"}]\n',
             encoding="utf-8",
@@ -326,6 +327,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             eq={"build>=1", "hypothesis>=6", "pytest>=8"},
         )
         tm.that({"pytest>=8", "hypothesis>=6"}.issubset(dev), eq=True)
+        tm.that({"idna>=3", runtime_requirement}.issubset(dev), eq=True)
         tm.that(
             f"{provider.distribution}[feature] @ "
             f"git+{provider.url}@{u.Tests.integration().branch}" in dev,

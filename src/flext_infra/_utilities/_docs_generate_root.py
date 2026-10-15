@@ -31,6 +31,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         src_paths: t.SequenceOf[str],
         catalog_entries: t.SequenceOf[m.Infra.DocsCatalogEntry],
         exclude_docs: t.StrSequence,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> list[t.Pair[Path, str]]:
         """Render the static aggregate mkdocs and catalog root pages.
 
@@ -44,6 +45,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
                     workspace_contract,
                     src_paths,
+                    source_states=source_states,
                 ),
             ),
             (
@@ -62,6 +64,8 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         scopes: t.SequenceOf[m.Infra.DocScope],
         workspace_contract: t.JsonMapping,
         exclude_docs: t.StrSequence,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+        source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = (),
     ) -> p.Result[
         t.Triple[
             list[t.Pair[Path, str]],
@@ -83,10 +87,15 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         for scope in scopes:
             if scope.name == c.Infra.RK_ROOT:
                 continue
+            src_path = scope.path / c.Infra.DEFAULT_SRC_DIR
             src_exists = (
-                FlextInfraUtilitiesDocsGenerateRootMixin._source_directory_exists(
-                    scope.path / "src",
+                r[bool].ok(
+                    not next(
+                        item for item in source_directories if item.target == src_path
+                    ).directories,
                 )
+                if source_states is not None
+                else cls._source_directory_exists(src_path)
             )
             if src_exists.failure:
                 return r[
@@ -105,6 +114,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                     root_api.extend(
                         FlextInfraUtilitiesDocsGenerateRootMixin.docs_project_api_artifacts(
                             scope,
+                            source_states,
                         ),
                     )
                 continue
@@ -114,11 +124,15 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                     FlextInfraUtilitiesDocsApi.public_contract(
                         scope.path,
                         scope.package_name,
+                        source_states=source_states,
                     ),
+                    source_states=source_states,
                 )
             )
             scope_modules[scope.name] = (
-                FlextInfraUtilitiesDocsGenerateRootMixin._module_names(scope)
+                FlextInfraUtilitiesDocsGenerateRootMixin._module_names(
+                    scope, source_states,
+                )
             )
             catalog_entries.append(
                 m.Infra.DocsCatalogEntry(
@@ -138,6 +152,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 src_paths,
                 catalog_entries,
                 exclude_docs,
+                source_states,
             ),
             (
                 repository_root / "docs/api-reference/generated/overview.md",
@@ -275,6 +290,9 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         cls,
         repository_root: Path,
         scopes: t.SequenceOf[m.Infra.DocScope],
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+        source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = (),
     ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
         """Render aggregate root targets from the complete discovered project set.
 
@@ -285,6 +303,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         """
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
             repository_root,
+            source_states=source_states,
         )
         exclude_docs = FlextInfraUtilitiesDocsRender.as_string_sequence(
             workspace_contract,
@@ -295,6 +314,8 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             scopes,
             workspace_contract,
             exclude_docs,
+            source_states,
+            source_directories,
         )
         if aggregated.failure:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
@@ -325,6 +346,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         repository_root: Path,
         aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
         source_states: t.SequenceOf[m.Cli.AtomicFileState],
+        source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = (),
     ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
         """Return the rendered artifact inventory for one docs scope.
 
@@ -338,6 +360,8 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             return FlextInfraUtilitiesDocsGenerateRootMixin.docs_root_artifacts(
                 repository_root,
                 aggregate_scopes,
+                source_states=source_states,
+                source_directories=source_directories,
             )
         return FlextInfraUtilitiesDocsGenerateRootMixin.docs_project_artifacts(
             scope,
