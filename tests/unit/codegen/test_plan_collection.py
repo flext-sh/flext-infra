@@ -68,6 +68,30 @@ class TestsFlextInfraPlanCollection:
         tm.that(config.sources[0].plan_globs, eq=("**/*.md",))
         tm.that(config.sources[0].exclude_globs, eq=())
 
+    def test_native_configuration_preserves_tuple_models_and_paths(self) -> None:
+        """Validate the same public configuration with native Python values."""
+        original = self._config()
+        validated = m.Infra.PlanCollectionConfig.model_validate({
+            "enabled": original.enabled,
+            "canonical_dir": original.canonical_dir,
+            "sources": original.sources,
+        })
+
+        tm.that(validated.canonical_dir, eq=original.canonical_dir)
+        tm.that(validated.sources, eq=original.sources)
+        tm.that(validated.sources[0].root, eq=original.sources[0].root)
+
+    def test_source_sequence_fields_reject_scalar_strings(self) -> None:
+        """Keep scalar strings invalid at the public source model boundary."""
+        source = self._config().sources[0]
+        payload = source.model_dump()
+        for field_name in ("plan_globs", "exclude_globs", "updated_fields"):
+            with pytest.raises(ValueError, match="valid tuple"):
+                m.Infra.PlanCollectionSource.model_validate({
+                    **payload,
+                    field_name: source.plan_globs[0],
+                })
+
     def test_disabled_configuration_has_no_publication_sources(self) -> None:
         """Test disabled configuration has no publication sources."""
         config = m.Infra.PlanCollectionConfig(

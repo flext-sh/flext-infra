@@ -151,11 +151,12 @@ class FlextInfraWorkspaceChecker(
             return r[t.VariadicTuple[Path]].fail(
                 "--file requires explicit canonical --gates selection"
             )
+        requested = u.Infra.normalize_sequence_values(params.projects)
         if (
             params.apply
             or params.ruff_args is not None
             or params.pyright_args is not None
-            or (params.project_names and tuple(params.project_names) != (".",))
+            or (requested and tuple(requested) != (".",))
         ):
             return r[t.VariadicTuple[Path]].fail(
                 "file-gate requires read-only local selection without tool overrides",
@@ -267,7 +268,7 @@ class FlextInfraWorkspaceChecker(
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok((
                 m.Infra.CheckProjectTarget(name=owner.name, path=owner.path),
             ))
-        requested = params.project_names
+        requested = u.Infra.normalize_sequence_values(params.projects)
         if requested:
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
                 tuple(

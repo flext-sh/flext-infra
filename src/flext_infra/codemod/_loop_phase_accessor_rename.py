@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import m, p, r, u
+from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
 from flext_infra.refactor._accessor_rewrite import (
     FlextInfraAccessorMigrationRewriteMixin,
 )
@@ -42,29 +43,30 @@ class FlextInfraAccessorRenamePhase(FlextInfraAccessorMigrationRewriteMixin):
         )
         if iter_result.failure:
             return r[bool].from_failure(iter_result)
-        changed = False
+        original: dict[Path, str] = {}
         for py_file in iter_result.value:
             read = u.Cli.files_read_text(py_file)
             if read.failure:
                 return r[bool].from_failure(read)
+            original[py_file] = read.value
+        snapshot = u.Infra.snapshot_project(rope_workspace.rope_project, original)
+        edits: list[m.Infra.SemanticMigrationEdit] = []
+        for py_file, source in original.items():
             updated_source, rewrite_changes = self._apply_automated_rewrites(
-                rope_workspace.rope_project,
+                snapshot,
                 py_file,
-                read.value,
+                source,
             )
             if not any(change.automated for change in rewrite_changes):
                 continue
-            ok, report = u.Infra.protected_source_write(
-                py_file,
-                request=m.Infra.ProtectedSourceWriteRequest(
-                    workspace=root,
+            edits.append(
+                m.Infra.SemanticMigrationEdit(
+                    file_path=py_file,
+                    original_source=source,
                     updated_source=updated_source,
-                    gates=(),
+                    changes=tuple(
+                        change.reason for change in rewrite_changes if change.automated
+                    ),
                 ),
             )
-            if not ok:
-                return r[bool].fail(
-                    "; ".join(report[:3]) or "protected write failed",
-                )
-            changed = True
-        return r[bool].ok(value=changed)
+        return FlextInfraCodemodSemanticApply.publish_planned_edits(root, edits)

@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, t, u
+from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
+from flext_infra._models.rope import FlextInfraModelsRope
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
 )
@@ -57,24 +59,28 @@ class FlextInfraCodegenLazyInitPlanner(
     _module_exports_cache: MutableMapping[
         tuple[str, bool, bool, bool, bool, bool],
         t.LazyAliasMap,
-    ] = u.PrivateAttr(default_factory=dict)
+    ] = u.PrivateAttr(
+        default_factory=dict[tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap],
+    )
     _package_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, frozenset[str]],
     )
     _source_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, frozenset[str]],
     )
     _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, FlextInfraModelsCodegenLazyInitModels.LazyInitPlan],
     )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, t.StrSequence],
     )
     _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, Path],
     )
     _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
-        u.PrivateAttr(default_factory=dict)
+        u.PrivateAttr(
+            default_factory=dict[Path, FlextInfraModelsRope.RopeProjectLayout],
+        )
     )
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",

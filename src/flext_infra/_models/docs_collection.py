@@ -53,23 +53,14 @@ class FlextInfraModelsDocsCollection:
         )
         plan_globs: Annotated[
             t.VariadicTuple[str],
-            m.BeforeValidator(
-                lambda value: tuple(value) if isinstance(value, list) else value,
-            ),
             m.Field(min_length=1, description="Explicit plan discovery patterns"),
         ]
         exclude_globs: Annotated[
             t.VariadicTuple[str],
-            m.BeforeValidator(
-                lambda value: tuple(value) if isinstance(value, list) else value,
-            ),
             m.Field(description="Explicit source exclusions"),
         ] = ()
         updated_fields: Annotated[
             t.VariadicTuple[str],
-            m.BeforeValidator(
-                lambda value: tuple(value) if isinstance(value, list) else value,
-            ),
             m.Field(
                 description="Source-owned substantive update fields in priority order",
             ),
@@ -81,6 +72,24 @@ class FlextInfraModelsDocsCollection:
         publication: Literal["plan-artifacts", "private"] = m.Field(
             description="Authorized publication classification",
         )
+
+        @m.field_validator(
+            "plan_globs",
+            "exclude_globs",
+            "updated_fields",
+            mode="before",
+        )
+        @classmethod
+        def _tuple_from_list(
+            cls,
+            value: t.JsonPayload,
+        ) -> t.JsonPayload:
+            """Convert lists from the canonical validation producer domain.
+
+            Returns:
+                A tuple for list input, otherwise the original validation value.
+            """
+            return tuple(value) if isinstance(value, list) else value
 
     class PlanCollectionConfig(m.ContractModel):
         """Repository-owned associations; projection is separately authorized."""
@@ -104,11 +113,21 @@ class FlextInfraModelsDocsCollection:
         ] = None
         sources: Annotated[
             t.VariadicTuple[FlextInfraModelsDocsCollection.PlanCollectionSource],
-            m.BeforeValidator(
-                lambda value: tuple(value) if isinstance(value, list) else value,
-            ),
             m.Field(description="Complete explicitly associated source inventory"),
         ] = ()
+
+        @m.field_validator("sources", mode="before")
+        @classmethod
+        def _tuple_from_list(
+            cls,
+            value: t.JsonPayload,
+        ) -> t.JsonPayload:
+            """Preserve native models and paths while converting source lists.
+
+            Returns:
+                A tuple for list input, otherwise the original validation value.
+            """
+            return tuple(value) if isinstance(value, list) else value
 
         @m.model_validator(mode="after")
         def _authorization_matches_sources(self) -> Self:

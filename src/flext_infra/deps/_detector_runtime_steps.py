@@ -34,7 +34,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         detector = self._detector
         projects_result = self._deps.discover_project_paths(
             root,
-            projects_filter=params.project_names,
+            projects_filter=u.Infra.normalize_sequence_values(params.projects),
         )
         if projects_result.failure:
             return r[tuple[t.SequenceOf[Path], Path]].from_failure(projects_result)

@@ -5,6 +5,17 @@ accessor-renames, dataclass-modelizer, pydantic-presets, compat-alias, private-i
 future-annotations, class-nesting, deferred-models, contract-drift). Layer order stays
 in `config/tooling.yaml` (`lazy-init.import-layer-order`).
 
+`accessor-migrations.yaml` extends the existing accessor phase with typed expression
+rules. Each rule binds a removed accessor to its qualified declaring class, backing
+field, origin package, and public normalizer. The phase proves those member identities
+through the live Rope graph before replacing a complete read expression. Actual fields
+and overrides owned by other classes, and ordinary payload strings, remain outside the
+selected contract. An unknown receiver, overridden owned backing field, write use, or
+captured normalizer facade rejects the transformation before publication. The public
+normalizers preserve scope token parsing and optional path resolution without adding
+serialized computed fields. Consumer propagation runs through `make mod`; repeated
+passes produce no accessor changes.
+
 `flatten-family-namespace-wrapper.yaml` declares the single-wrapper family rule. The
 existing class-nesting phase consumes its typed operation and collision policy; it does
 not create another mod loop or publication path. Planning uses a closed, read-only Rope

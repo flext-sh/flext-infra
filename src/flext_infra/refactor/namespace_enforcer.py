@@ -127,7 +127,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         enforcer = cls(repository_root=params.repository_root)
         report = enforcer.enforce(
             apply=params.apply,
-            project_names=params.project_names,
+            project_names=u.Infra.normalize_sequence_values(params.projects),
             gates=params.gates,
         )
         cli.display_text(cls.render_text(report))
