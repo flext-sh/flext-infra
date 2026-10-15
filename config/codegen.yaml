@@ -1,7 +1,28 @@
 Infra:
   codegen:
-<<<<<<< HEAD
     # Declarative SSOT for deterministic project conformance.
+    repository:
+      project:
+        package_name: flext_infra
+        class_stem: FlextInfra
+        namespace: Infra
+        constant_name: flext-infra
+        namespace_attribute: infra
+        alias: infra
+        environment_prefix: FLEXT_INFRA_
+        description: FLEXT Infrastructure Tooling - Build automation, code generation,
+          and workspace management
+        license: MIT
+        author_name: FLEXT Team
+        author_email: team@flext.sh
+        upstream: flext_cli
+        namespace_scan_dirs: []
+        homepage: https://github.com/flext-sh/flext-infra
+        documentation: https://github.com/flext-sh/flext-infra/blob/main/README.md
+        repository_root_rel: .
+        year: 2026
+      namespace_scan_dirs:
+      - src
     version: 1
     # Projections no template renders any more; generation removes the
     # generated copy from every consumer (renamed: install-git-hooks.sh ->
@@ -2352,27 +2373,3 @@ Infra:
           destination: "src/{package_name}/_typings/base.py"
           profiles: [workspace, standalone]
           delegate: render
-=======
-    repository:
-      project:
-        package_name: flext_infra
-        class_stem: FlextInfra
-        namespace: Infra
-        constant_name: flext-infra
-        namespace_attribute: infra
-        alias: infra
-        environment_prefix: FLEXT_INFRA_
-        description: FLEXT Infrastructure Tooling - Build automation, code generation,
-          and workspace management
-        license: MIT
-        author_name: FLEXT Team
-        author_email: team@flext.sh
-        upstream: flext_cli
-        namespace_scan_dirs: []
-        homepage: https://github.com/flext-sh/flext-infra
-        documentation: https://github.com/flext-sh/flext-infra/blob/main/README.md
-        repository_root_rel: .
-        year: 2026
-      namespace_scan_dirs:
-      - src
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d

@@ -11,10 +11,10 @@ from pathlib import Path
 
 from flext_core import FlextStrictYamlConfigSource
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
-from flext_infra.codegen._conform import FlextInfraCodegenConformBeadsRoutes
 from flext_infra._utilities.workspace_inventory import (
     FlextInfraUtilitiesWorkspaceInventory,
 )
+from flext_infra.codegen._conform import FlextInfraCodegenConformBeadsRoutes
 
 
 class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
@@ -96,10 +96,6 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         if captured.failure:
             return result_type.from_failure(captured)
         if captured.value.content is None:
-<<<<<<< HEAD
-            return result_type.ok(())
-        delta = cls._repository_migration_delta(captured.value.content)
-=======
             return result_type.ok(
                 m.Infra.CodegenPhaseAnalysis(
                     phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
@@ -114,7 +110,6 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         if legacy.failure:
             return result_type.from_failure(legacy)
         delta = u.Infra.repository_declaration_delta(legacy.value)
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
         if delta.failure:
             return result_type.from_failure(delta)
         layers = FlextInfraConfig.config_layer_paths_for_repository(
@@ -142,31 +137,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             inputs,
             captured.value,
             delta.value,
+            legacy.value,
         )
-
-    @staticmethod
-    def _repository_migration_delta(
-        content: bytes,
-    ) -> p.Result[m.Infra.RepositoryDeltaSpec]:
-        """Parse the captured migration input and validate its retirement boundary.
-
-        Returns:
-            The self-owned declaration or the original input failure.
-        """
-        result_type = r[m.Infra.RepositoryDeltaSpec]
-        parsed = u.Infra.read_codegen_config_document(content)
-        if parsed.failure:
-            return result_type.from_failure(parsed)
-        legacy = u.validate_value(m.Infra.WorkspaceManifestSpec, parsed.value)
-        if legacy.failure:
-            return result_type.from_failure(legacy)
-        if legacy.value.external_consumers:
-            error = ValueError(
-                "manifest retirement requires verified public host inventory "
-                "coverage for its external consumers",
-            )
-            return result_type.fail(str(error), exception=error)
-        return u.Infra.repository_declaration_delta(legacy.value)
 
     @staticmethod
     def _repository_declaration_compatible(
@@ -210,13 +182,14 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         inputs: m.Infra.CodegenInputs,
         captured: m.Cli.AtomicFileState,
         delta: m.Infra.RepositoryDeltaSpec,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        legacy: m.Infra.WorkspaceManifestSpec,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Validate the projected declaration before planning input retirement.
 
         Returns:
             The guarded source declaration and its dependent retirement.
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -247,12 +220,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         )
         if declaration.failure:
             return result_type.from_failure(declaration)
-<<<<<<< HEAD
-        retirement = cls._absent_file_plan(root, captured.path)
-=======
         retirement_obstacles: list[str] = []
         first_exception: BaseException | None = None
-        if legacy.value.external_consumers:
+        if legacy.external_consumers:
             discovered = (
                 FlextInfraUtilitiesWorkspaceInventory.discover_external_consumers(
                     root,
@@ -266,7 +236,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 covered = {consumer.root for consumer in discovered.value}
                 missing = tuple(
                     consumer
-                    for consumer in legacy.value.external_consumers
+                    for consumer in legacy.external_consumers
                     if consumer.root.resolve() not in covered
                 )
                 if missing:
@@ -275,7 +245,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                         "coverage for its external consumers: "
                         + ", ".join(str(consumer.root) for consumer in missing),
                     )
-        if legacy.value.candidate_dependencies:
+        if legacy.candidate_dependencies:
             retirement_obstacles.append(
                 "candidate dependency coordinates must be adopted by the "
                 "declared dependency provenance before manifest retirement",
@@ -286,10 +256,10 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                 m.Infra.CodegenPhaseAnalysis(
                     phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
                     files=(declaration.value,),
-                    inputs=(*inputs.sources, captured.value),
+                    inputs=(*inputs.sources, captured),
                     issues=tuple(
                         m.Infra.Issue(
-                            file=str(legacy_path),
+                            file=str(captured.path),
                             line=0,
                             column=0,
                             code=c.Infra.ToolOutcome.ERROR.value,
@@ -300,8 +270,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                     exception=exception,
                 ),
             )
-        retirement = cls._absent_file_plan(root, legacy_path)
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
+        retirement = cls._absent_file_plan(root, captured.path)
         if retirement.failure:
             return result_type.from_failure(retirement)
         if retirement.value.before != captured:
@@ -318,7 +287,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                         update={"tracking_dependencies": (declaration.value.path,)},
                     ),
                 ),
-                inputs=(*inputs.sources, captured.value),
+                inputs=(*inputs.sources, captured),
             ),
         )
 

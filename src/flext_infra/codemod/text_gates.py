@@ -844,40 +844,11 @@ class FlextInfraModTextGateEngine:
             files.update(prefix / path for path in report.files)
             plans.extend(analysis.files)
             actionable += report.actionable
-<<<<<<< HEAD
             conflicting_dependencies.update(cls._conflicting_inputs(analysis, inputs))
         if conflicting_dependencies:
             plans = cls._without_conflicting_plans(
                 plans, conflicting_dependencies, issues
             )
-=======
-            for state in project_inputs if project_plans else ():
-                previous = inputs.setdefault(state.path, state)
-                if previous != state:
-                    conflicting_dependencies.add(state.path)
-        if conflicting_dependencies:
-            affected = tuple(
-                plan
-                for plan in plans
-                if any(
-                    state.path in conflicting_dependencies
-                    for state in plan.source_states
-                )
-            )
-            for plan in affected:
-                dependencies = tuple(
-                    str(state.path)
-                    for state in plan.source_states
-                    if state.path in conflicting_dependencies
-                )
-                issues.append(
-                    cls._source_issue(
-                        plan.path,
-                        f"text dependency identity changed during planning: {dependencies}",
-                    )
-                )
-            plans = [plan for plan in plans if plan not in affected]
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             inputs = {
                 state.path: state for plan in plans for state in plan.source_states
             }

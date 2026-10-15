@@ -49,7 +49,6 @@ class FlextInfraStagedPackage:
             return result_type.from_failure(discovered)
         normalized, layouts = discovered.value
         selected: list[m.Infra.RopeProjectLayout] = []
-<<<<<<< HEAD
         states: dict[Path, m.Cli.AtomicFileState] = {}
         source_paths = dict.fromkeys((
             *normalized,
@@ -64,15 +63,6 @@ class FlextInfraStagedPackage:
             if resolved.failure:
                 return result_type.from_failure(resolved)
             local = resolved.value
-=======
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        for path in updates:
-            root = u.Infra.project_root(path)
-            local = u.Infra.layout(root) if root is not None else None
-            if local is None:
-                return result_type.fail(f"preview source has no project layout: {path}")
-            layouts[local.package_name] = local
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
             if not any(item.project_root == local.project_root for item in selected):
                 pinned = cls._pin_closure(
                     local,
@@ -347,13 +337,9 @@ class FlextInfraStagedPackage:
     def _pin_layout(
         cls,
         layout: m.Infra.RopeProjectLayout,
-<<<<<<< HEAD
         states: dict[Path, m.Cli.AtomicFileState],
         *,
         updates: t.MappingKV[Path, str] | None = None,
-=======
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
     ) -> p.Result[tuple[str, ...]]:
         paths = cls._source_paths(layout, governed=updates is not None)
         if paths.failure:
@@ -400,13 +386,9 @@ class FlextInfraStagedPackage:
         local: m.Infra.RopeProjectLayout,
         layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
         selected: list[m.Infra.RopeProjectLayout],
-<<<<<<< HEAD
         states: dict[Path, m.Cli.AtomicFileState],
         *,
         updates: t.MappingKV[Path, str] | None = None,
-=======
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
->>>>>>> 734b15fc8230b9b36ab8e161e9a40ed2957ae92d
     ) -> p.Result[bool]:
         queue = [local.package_name]
         while queue:
