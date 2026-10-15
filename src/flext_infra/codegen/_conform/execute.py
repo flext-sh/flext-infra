@@ -820,11 +820,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        paths = cls._bootstrap_validation_paths(session, publications, plans)
-        if paths.failure:
-            return result_type.from_failure(paths)
-        for path in paths.value:
-            parsed = u.Cli.toml_read_document(path)
+        # A converged surface stages nothing: the transaction still consults the
+        # validator for the unchanged phase, and there is nothing to parse.
+        if not publications:
+            return result_type.ok(session)
+        for publication in publications:
+            if publication.replacement is None:
+                return result_type.fail(
+                    "pyproject bootstrap requires a replacement for every publication",
+                )
+            parsed = u.Cli.toml_read_document(publication.replacement.path)
             if parsed.failure:
                 return result_type.from_failure(parsed)
         current = FlextInfraMiseArtifactsVerification.plans_current(
@@ -853,6 +858,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        # A converged .mise.toml stages nothing: the unchanged phase still
+        # consults the validator, and upg must continue past it.
+        if not publications:
+            return result_type.ok(session)
         if len(plans) != 1:
             return result_type.fail("mise-config requires one file plan")
         paths = cls._bootstrap_validation_paths(session, publications, plans)
