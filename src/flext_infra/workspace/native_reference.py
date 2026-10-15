@@ -868,8 +868,10 @@ class FlextInfraWorkspaceNativeReference:
     def _extension_callback(
         cls,
         value: p.AttributeProbe,
+        *,
+        binding: str,
     ) -> p.Result[t.Triple[str, str, str]]:
-        """Read registered native extension slots without authored accessors."""
+        """Authenticate physical native exports without evaluating authored accessors."""
         native = type(value)
         slots = cls._class_namespace(native)
         metadata: dict[str, str] = {}
@@ -899,6 +901,14 @@ class FlextInfraWorkspaceNativeReference:
                 "extension callback supplier is not a native extension",
             )
         namespace = vars(supplier)
+        if any(exported is value for exported in namespace.values()):
+            # A compiled helper can retain a class-qualified name while its
+            # extension publishes it directly and gives the class a C descriptor.
+            return r[t.Triple[str, str, str]].ok((
+                metadata["__module__"],
+                metadata["__name__"],
+                metadata["__qualname__"],
+            ))
         components = metadata["__qualname__"].split(".")
         lexical_owner = None
         for component in components[:-1]:
@@ -927,6 +937,7 @@ class FlextInfraWorkspaceNativeReference:
             return r[t.Triple[str, str, str]].fail(
                 "extension callback differs from its registered descriptor",
                 error_data={
+                    "binding": binding,
                     "supplier": metadata["__module__"],
                     "name": metadata["__name__"],
                     "qualname": metadata["__qualname__"],
@@ -1669,7 +1680,7 @@ class FlextInfraWorkspaceNativeReference:
                 continue
             if type(value) is not FunctionType:
                 if type(value) is not BuiltinFunctionType:
-                    extension = cls._extension_callback(value)
+                    extension = cls._extension_callback(value, binding=binding)
                     if extension.failure:
                         return r[m.Infra.NativeImportObservation].from_failure(
                             extension
