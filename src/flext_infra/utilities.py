@@ -55,6 +55,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDocsValidate,
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesGitignore,
+    FlextInfraUtilitiesGitRemote,
+    FlextInfraUtilitiesGitWorktreeIO,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesIterationDirectory,
