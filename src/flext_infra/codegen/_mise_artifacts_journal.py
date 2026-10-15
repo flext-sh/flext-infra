@@ -96,6 +96,33 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             The resulting ``p.Result[m.Infra.CodegenTransactionJournal]``.
 
         """
+        reference = producer.generator_reference if producer is not None else None
+        if reference is not None:
+            metrics = {
+                "bindings": len(reference.bindings),
+                "binding_bytes": sum(
+                    len(item.binding.encode(c.DEFAULT_ENCODING))
+                    for item in reference.bindings
+                ),
+                "code_bytes": sum(
+                    len((item.code or "").encode(c.DEFAULT_ENCODING))
+                    for item in reference.bindings
+                ),
+                "operand_bytes": sum(
+                    len(value.encode(c.DEFAULT_ENCODING))
+                    for item in reference.bindings
+                    for _name, value in item.operands
+                ),
+                "operational_bytes": sum(
+                    len(value.encode(c.DEFAULT_ENCODING))
+                    for item in reference.bindings
+                    for _name, value in item.operational
+                ),
+            }
+            u.Cli.info(
+                "native authority "
+                + " ".join(f"{name}={size}" for name, size in metrics.items())
+            )
         physical_scope = files.physical_directory_identity(plan.layout.scope_root)
         if physical_scope.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(physical_scope)
@@ -420,6 +447,10 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
 
         """
         content = journal.model_dump_json().encode(c.DEFAULT_ENCODING)
+        u.Cli.info(
+            f"codegen journal state={journal.state} bytes={len(content)} "
+            f"entries={len(journal.entries)} intents={len(journal.staging_intents)}"
+        )
         if expected.path != layout.journal_path:
             return r[m.Cli.AtomicFileState].fail(
                 "codegen journal expected state belongs to another path",
@@ -469,6 +500,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return result_type.fail("codegen transaction journal is absent")
         if journal_snapshot.mode != c.Infra.JOURNAL_MODE:
             return result_type.fail("codegen transaction journal mode is not 0600")
+        u.Cli.info(f"codegen journal read bytes={len(journal_snapshot.content)}")
         validated = m.Infra.CodegenTransactionJournal.model_validate_json(
             journal_snapshot.content,
         )

@@ -184,7 +184,7 @@ class FlextInfraDocGeneratorBundleMixin:
         )
         if paths.failure:
             return result_type.from_failure(paths)
-        sources = u.Infra.required_file_states(paths.value)
+        sources = cls._captured_source_states(paths.value, source_roots)
         if sources.failure:
             return result_type.from_failure(sources)
         manifest = u.Cli.atomic_read_binary_file_state(

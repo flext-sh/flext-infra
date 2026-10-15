@@ -337,6 +337,9 @@ class FlextInfraMisePublication:
         ordered = tuple(
             sorted(publications, key=lambda item: item.index_before is not None)
         )
+        authority = FlextInfraMisePublication._generator_authority(ordered, journal)
+        if authority.failure:
+            return result_type.from_failure(authority)
         for index, publication in enumerate(ordered, start=1):
             u.Cli.emit_raw(
                 f"  publish [{index}/{len(publications)}] {publication.before.path}\n"
@@ -346,7 +349,6 @@ class FlextInfraMisePublication:
                 publications,
                 written,
                 published_states,
-                journal,
             )
             if blocking is not None:
                 issues.append(blocking)
@@ -467,7 +469,6 @@ class FlextInfraMisePublication:
         published_states: t.MutableMappingKV[
             Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
         ],
-        journal: m.Infra.CodegenTransactionJournal | None,
     ) -> t.Pair[m.Infra.Issue | None, BaseException | None]:
         """Name the first failed publication prerequisite of one target.
 
@@ -476,7 +477,6 @@ class FlextInfraMisePublication:
             publications: Every staged publication of the batch.
             written: Destination paths already written by earlier targets.
             published_states: Before and after states of published targets.
-            journal: The transaction journal admitting the batch, if any.
 
         Returns:
             The blocking prerequisite issue with its causal exception, or
@@ -488,15 +488,6 @@ class FlextInfraMisePublication:
             publications,
             written,
         )
-        if ready.success:
-            ordered = tuple(
-                sorted(publications, key=lambda item: item.index_before is not None)
-            )
-            ready = FlextInfraMisePublication._generator_authority(
-                ordered,
-                published_states,
-                journal,
-            )
         if ready.success:
             ready = FlextInfraMisePublication._source_prerequisites(
                 publication.source_states,
@@ -611,12 +602,9 @@ class FlextInfraMisePublication:
     @staticmethod
     def _generator_authority(
         ordered: t.VariadicTuple[m.Infra.CodegenStagedFile],
-        published_states: t.MappingKV[
-            Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
-        ],
         journal: m.Infra.CodegenTransactionJournal | None,
     ) -> p.Result[bool]:
-        """Reauthenticate generator trees with staged and published authority.
+        """Authenticate the executor epoch when publication consumes staged candidates.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -626,16 +614,11 @@ class FlextInfraMisePublication:
             return r[bool].ok(value=True)
         authority = {item.path: item for item in journal.outputs}
         for staged in ordered:
-            if staged.replacement is None or staged.before.path in published_states:
+            if staged.replacement is None:
                 continue
             encoded = FlextInfraMiseArtifactsJournal.source_record(
                 "staging", staged.replacement
             )
-            if encoded.failure:
-                return r[bool].from_failure(encoded)
-            authority[encoded.value.path] = encoded.value
-        for _before, after in published_states.values():
-            encoded = FlextInfraMiseArtifactsJournal.source_record("output", after)
             if encoded.failure:
                 return r[bool].from_failure(encoded)
             authority[encoded.value.path] = encoded.value

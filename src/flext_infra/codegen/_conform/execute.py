@@ -857,10 +857,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         ports = self.ports
-        if ports is None:
+        producer = self.producer
+        if ports is None or producer is None:
             return r[m.Infra.CodegenResult].fail(
                 "complete conform requires the facade-wired docs and fresh-import "
-                "ports; run it through FlextInfra.codegen_conform",
+                "ports and an authenticated producer; "
+                "run it through FlextInfra.codegen_conform",
             )
         seeded = self._seed_declared_beads_identity(request.root)
         if seeded.failure:
@@ -868,6 +870,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         policy = ports.participant_policy(
             request.root,
             initial_workspace=self.initial_workspace,
+            producer=producer,
         )
         if policy.failure:
             return r[m.Infra.CodegenResult].from_failure(policy)
@@ -875,7 +878,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         transaction = FlextInfraCodegenTransaction(
             mise_owner,
             participant_policy=policy.value,
-            producer=self.producer,
+            producer=producer,
         )
         batches: list[m.Infra.CodegenPhaseOutcome] = []
 

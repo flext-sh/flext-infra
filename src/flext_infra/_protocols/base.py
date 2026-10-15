@@ -254,12 +254,14 @@ class FlextInfraProtocolsBase(Protocol):
             root: Path,
             *,
             initial_workspace: m.Infra.WorkspaceSpec | None,
+            producer: m.Infra.CodegenPhaseAnalysis,
         ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
             """Read the request's physical topology without acquiring a lease.
 
             ``initial_workspace`` is the declared topology of a scaffold whose
             own workspace configuration is not rendered yet; ``None`` reads
             the repository's committed declaration.
+            ``producer`` carries the executor's already authenticated epoch.
             """
             ...
 

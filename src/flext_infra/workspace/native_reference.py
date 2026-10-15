@@ -1059,7 +1059,9 @@ class FlextInfraWorkspaceNativeReference:
         supplier: str,
         qualname: str,
         namespace: t.MappingKV[str, p.AttributeProbe],
-        compiled: dict[Path, t.VariadicTuple[p.Infra.NativeCodeIdentity]],
+        compiled: dict[
+            Path, t.MappingKV[str, t.VariadicTuple[p.Infra.NativeCodeIdentity]]
+        ],
         instructions: dict[
             int, t.Pair[p.Infra.NativeCodeIdentity, t.VariadicTuple[Instruction]]
         ],
@@ -1086,20 +1088,23 @@ class FlextInfraWorkspaceNativeReference:
             after = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             if before != after:
                 return result.fail(f"native class declaration source changed: {path}")
-            compiled[path] = cls._code_units(root)
-        candidates = [
-            unit
-            for unit in compiled[path]
-            if unit.co_qualname == qualname
-            and not unit.co_flags & (CO_NEWLOCALS | CO_OPTIMIZED)
-            and isinstance(unit, CodeType)
-        ]
+            indexed: dict[str, list[p.Infra.NativeCodeIdentity]] = {}
+            for unit in cls._code_units(root):
+                if (
+                    not unit.co_flags & (CO_NEWLOCALS | CO_OPTIMIZED)
+                    and isinstance(unit, CodeType)
+                ):
+                    indexed.setdefault(unit.co_qualname, []).append(unit)
+            compiled[path] = MappingProxyType({
+                name: tuple(units) for name, units in indexed.items()
+            })
+        candidates = compiled[path].get(qualname, ())
         if len(candidates) > 1:
-            candidates = [
+            candidates = tuple(
                 unit
                 for unit in candidates
                 if unit.co_firstlineno == namespace.get("__firstlineno__")
-            ]
+            )
             if len(candidates) != 1:
                 return result.fail(
                     f"native class declaration is ambiguous: {supplier}::{qualname}"
@@ -1133,6 +1138,8 @@ class FlextInfraWorkspaceNativeReference:
                 continue
             function = member.__func__
             if type(function) is not FunctionType:
+                continue
+            if not declarations.intersection(function.__code__.co_names):
                 continue
             if type(member) is classmethod and not function.__code__.co_argcount:
                 continue
@@ -1214,7 +1221,9 @@ class FlextInfraWorkspaceNativeReference:
         origins: dict[str, Path] = {}
         sources: set[t.Triple[str, str, str]] = set()
         evidence: list[m.Infra.NativeBindingEvidence] = []
-        compiled: dict[Path, t.VariadicTuple[p.Infra.NativeCodeIdentity]] = {}
+        compiled: dict[
+            Path, t.MappingKV[str, t.VariadicTuple[p.Infra.NativeCodeIdentity]]
+        ] = {}
         instructions: dict[
             int, t.Pair[p.Infra.NativeCodeIdentity, t.VariadicTuple[Instruction]]
         ] = {}
