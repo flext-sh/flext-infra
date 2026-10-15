@@ -11,6 +11,7 @@ from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_core import m
+
 from flext_infra import c, t
 
 
@@ -108,6 +109,23 @@ class FlextInfraModelsMiseToolchain:
         mise.lock version. The probe is data; no tool has a default probe.
         """
 
+        tool: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Declared prerequisite tool key owning an external probe executable"
+                )
+            ),
+        ] = None
+        resources: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Exact relative installed resources authenticated before an "
+                    "external probe"
+                )
+            ),
+        ] = ()
         binary: Annotated[
             t.NonEmptyStr,
             m.Field(description="Executable name resolved through `mise which`"),
@@ -157,6 +175,17 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             # A malformed expression raises re.PatternError unchanged here.
             re.compile(self.pattern.replace(placeholder, "0"))
+            if self.tool is not None and not self.resources:
+                msg_0 = "external version probes require installed resources"
+                raise ValueError(msg_0)
+            for resource in self.resources:
+                parts = resource.split("/")
+                if any(
+                    not part or part in {".", ".."} or "\\" in part or "\0" in part
+                    for part in parts
+                ):
+                    msg_0 = "version probe resources require exact relative components"
+                    raise ValueError(msg_0)
             return self
 
     class MiseHttpToolOptions(_ConfigContract):
@@ -173,11 +202,15 @@ class FlextInfraModelsMiseToolchain:
             t.NonEmptyStr | None,
             m.Field(description="Native jq-like version extraction path"),
         ] = None
+        version_regex: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native release-list extraction regular expression"),
+        ] = None
         version_expr: Annotated[
             t.NonEmptyStr | None, m.Field(description="Native release-list expression")
         ] = None
         version_order: Annotated[
-            Literal["semver"] | None,
+            Literal["source", "semver"] | None,
             m.Field(description="Native ordering of discovered releases"),
         ] = None
         checksum: Annotated[
@@ -514,6 +547,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``str``.
+
             """
             major, minor = self.python_version.split(".")[:2]
             next_minor = int(minor) + 1
@@ -526,6 +560,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``str``.
+
             """
             return self.python_version
 
@@ -536,6 +571,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: self.tool_version_pins.get(entry.name, entry.version)
@@ -549,6 +585,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: entry.selector
@@ -565,6 +602,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {entry.name: entry.selector or entry.name for entry in self.tools}
 
@@ -588,6 +626,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return (
                 "python",
@@ -602,6 +641,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: entry.version_prefix
@@ -686,6 +726,17 @@ class FlextInfraModelsMiseToolchain:
                     + ", ".join(undeclared_dependencies)
                 )
                 raise ValueError(msg)
+            invalid_probes = sorted(
+                entry.name
+                for entry in self.tools
+                if entry.version_probe.tool is not None
+                and entry.version_probe.tool not in entry.depends
+            )
+            if invalid_probes:
+                raise ValueError(
+                    "external probe tools must be declared installation dependencies: "
+                    + ", ".join(invalid_probes)
+                )
             non_http = sorted(
                 entry.name
                 for entry in self.tools

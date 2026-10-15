@@ -28,6 +28,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``t.VariadicTuple[t.Pair[str, str]]``.
+
         """
         return (
             ("componentKeys", project_key),
@@ -47,6 +48,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         token_result = self.optional_token()
         if token_result.failure:

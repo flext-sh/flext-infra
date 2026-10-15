@@ -111,6 +111,7 @@ class FlextInfraPytestDiagXmlMixin:
 
         Returns:
             Whether the shared applicability owner emitted complete evidence.
+
         """
         properties = [
             (prop.attrib.get("name", ""), prop.attrib.get("value", ""))

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Annotated, Self
 
 from flext_core import m
+
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
 
@@ -197,6 +198,7 @@ class FlextInfraModelsRelease:
 
             Returns:
                 The resulting ``str``.
+
             """
             return c.Infra.TAG_FORMAT.format(version=self.next)
 
@@ -207,6 +209,7 @@ class FlextInfraModelsRelease:
 
             Returns:
                 The resulting ``bool``.
+
             """
             return self.declared or self.next != self.current
 

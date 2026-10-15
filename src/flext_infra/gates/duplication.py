@@ -286,9 +286,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         if loaded.failure:
             return r[t.StrSequence].from_failure(loaded)
         repository = loaded.value.spec.repository
-        return r[t.StrSequence].ok(
-            repository.duplication_trees if repository is not None else (),
-        )
+        return r[t.StrSequence].ok(repository.duplication_trees)
 
     def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.

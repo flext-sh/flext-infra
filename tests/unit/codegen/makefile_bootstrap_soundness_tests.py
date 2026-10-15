@@ -25,17 +25,24 @@ from tests.unit.codegen.test_mise_pin_bootstrap import (
 class TestsFlextInfraMakefileBootstrapSoundness:
     """Public Make preserves physical ownership and native tool configuration."""
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("verb", ["setup", "upg"])
-    @pytest.mark.parametrize("associated", [False, True])
-    def test_cold_reader_elects_before_runtime_admission_without_resolving_locks(
-        self,
+    @staticmethod
+    def _reader_workspace_checkout(
         tmp_path: Path,
-        verb: str,
         *,
         associated: bool,
-    ) -> None:
-        """Frozen UV establishes membership before the real environment guard."""
+    ) -> tuple[Path, Path, Path, Path]:
+        """Render a workspace root with one member copied from a standalone seed.
+
+        Args:
+            tmp_path: Test-scoped scratch root.
+            associated: Whether the member joins the workspace instead of
+                being excluded from it.
+
+        Returns:
+            The workspace root, the member checkout, the elected runtime
+            owner, and the member environment directory.
+
+        """
         root, _ = u.Tests.render_make_environment(
             tmp_path / "container",
             c.Infra.MakeProfile.WORKSPACE,
@@ -73,6 +80,23 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             ),
         )
         elected = root if associated else member
+        return root, member, elected, elected / c.Infra.ENVIRONMENT_DIRECTORY
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("verb", ["setup", "upg"])
+    @pytest.mark.parametrize("associated", [False, True])
+    def test_cold_reader_elects_before_runtime_admission_without_resolving_locks(
+        self,
+        tmp_path: Path,
+        verb: str,
+        *,
+        associated: bool,
+    ) -> None:
+        """Frozen UV establishes membership before the real environment guard."""
+        root, member, elected, environment = self._reader_workspace_checkout(
+            tmp_path,
+            associated=associated,
+        )
         foreign = tmp_path / "foreign-environment"
         foreign.mkdir()
         environment = elected / c.Infra.ENVIRONMENT_DIRECTORY
@@ -83,7 +107,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         isolation = tmp_path / "native-tools"
         (isolation / "home").mkdir(parents=True)
-        native_env = MisePinBootstrapFixture._environment(isolation)
+        native_env = MisePinBootstrapFixture.environment(isolation)
         for project in (root, member):
             tm.ok(
                 u.Cli.run_checked(
@@ -105,7 +129,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         locks = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in lock_paths
         )
-        system_tools = MisePinBootstrapFixture._system_path_without_mise(isolation)
+        system_tools = MisePinBootstrapFixture.system_path_without_mise(isolation)
         optional_credential_provider = system_tools / "gh"
         if optional_credential_provider.is_symlink():
             optional_credential_provider.unlink()
@@ -230,8 +254,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             u.Tests.run_isolated_make(arguments, cwd=caller, env=context_env),
         )
         tm.that(
-            observed.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(observed.outcome),
+            eq=True,
             msg=observed.stdout + observed.stderr,
         )
         context = m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
@@ -247,8 +271,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(context.environment_path, eq=environment)
         tm.that(context.resolution_root, eq=resolution)
         tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stdout + process.stderr,
         )
         tm.that(process.stdout, has=f"physical-runtime-root={physical}\n")
@@ -260,6 +284,80 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(environment.exists(), eq=False)
         tm.that((caller / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
         tm.that((caller / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+
+    @staticmethod
+    def _provisioned_native_venv(
+        binary: Path,
+        environment: Path,
+        native_options: m.Cli.ProcessOptions,
+    ) -> None:
+        """Create a real native virtual environment with the managed binary.
+
+        Args:
+            binary: Managed mise binary used to create the environment.
+            environment: Environment directory to provision.
+            native_options: Isolation options for the native invocation.
+
+        """
+        created = tm.ok(
+            u.Cli.run_raw(
+                [str(binary), "venv", "--python", sys.executable, str(environment)],
+                cwd=environment.parent,
+                options=native_options,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(created.outcome),
+            eq=True,
+            msg=created.stdout + created.stderr,
+        )
+
+    @staticmethod
+    def _runtime_context_probe(
+        project: Path,
+        env: dict[str, str],
+        *,
+        cwd: Path,
+    ) -> m.Infra.WorkspaceRuntimeContext:
+        """Probe the native runtime context of one submitted project path.
+
+        Args:
+            project: Checkout whose resolution context is observed.
+            env: Environment variables applied to the native invocation.
+            cwd: Working directory of the native invocation.
+
+        Returns:
+            The validated runtime context reported by the detector.
+
+        """
+        observed = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-I",
+                    "-c",
+                    (
+                        "from pathlib import Path; import sys; "
+                        "from flext_infra.workspace import "
+                        "FlextInfraWorkspaceDetector; "
+                        "context=FlextInfraWorkspaceDetector.resolution_context("
+                        "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())"
+                    ),
+                    str(project),
+                ),
+                cwd=cwd,
+                options=m.Cli.ProcessOptions(
+                    env=env,
+                    remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                ),
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(observed.outcome),
+            eq=True,
+            msg=observed.stdout + observed.stderr,
+        )
+        return m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
 
     @pytest.mark.parametrize("invocation", ["root", "member"])
     @pytest.mark.parametrize("hosted", [False, True])
@@ -299,18 +397,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         native_options = m.Cli.ProcessOptions(
             remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
         )
-        created = tm.ok(
-            u.Cli.run_raw(
-                [str(binary), "venv", "--python", sys.executable, str(environment)],
-                cwd=root,
-                options=native_options,
-            ),
-        )
-        tm.that(
-            created.outcome.raw_return_code,
-            eq=0,
-            msg=created.stdout + created.stderr,
-        )
+        self._provisioned_native_venv(binary, environment, native_options)
         tm.that(environment.is_symlink(), eq=False)
         tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
         member_environment = member / c.Infra.ENVIRONMENT_DIRECTORY
@@ -335,42 +422,15 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         process = tm.ok(
             u.Tests.run_isolated_make(["help"], cwd=project, env=context_env),
         )
-        observed = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-I",
-                    "-c",
-                    (
-                        "from pathlib import Path; import sys; "
-                        "from flext_infra.workspace import "
-                        "FlextInfraWorkspaceDetector; "
-                        "context=FlextInfraWorkspaceDetector.resolution_context("
-                        "Path(sys.argv[1])).unwrap(); print(context.model_dump_json())"
-                    ),
-                    str(project),
-                ),
-                cwd=project,
-                options=m.Cli.ProcessOptions(
-                    env=context_env,
-                    remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
-                ),
-            ),
-        )
-        tm.that(
-            observed.outcome.raw_return_code,
-            eq=0,
-            msg=observed.stdout + observed.stderr,
-        )
-        context = m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
+        context = self._runtime_context_probe(project, context_env, cwd=project)
         u.Cli.emit_raw(
             f"native context runtime={context.runtime_root} "
             f"environment={context.environment_path} "
             f"resolution={context.resolution_root} hosted={context.standalone}\n",
         )
         tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stdout + process.stderr,
         )
         tm.that(process.stdout, has=f"elected-root={elected.resolve()}\n")
@@ -436,8 +496,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             ),
         )
         tm.that(
-            provisioned.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(provisioned.outcome),
+            eq=True,
             msg=provisioned.stdout + provisioned.stderr,
         )
         tm.that(environment.is_symlink(), eq=False)
@@ -450,8 +510,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         process = tm.ok(u.Tests.run_isolated_make(["help"], cwd=project))
         tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stdout + process.stderr,
         )
         tm.that(process.stdout, has=f"independent-root={project.resolve()}\n")
@@ -506,8 +566,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         baseline = tm.ok(u.Tests.run_isolated_make(["help"], cwd=project))
         tm.that(
-            baseline.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(baseline.outcome),
+            eq=True,
             msg=baseline.stdout + baseline.stderr,
         )
         tm.that(baseline.stdout, has="nested-help-executed")
@@ -542,16 +602,21 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that((project / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
 
     @pytest.mark.parametrize("associated_clone", [False, True])
-    def test_help_observes_native_workspace_owner_without_member_environment(
-        self,
+    @staticmethod
+    def _native_owner_workspace_checkout(
         tmp_path: Path,
         *,
         associated_clone: bool,
-    ) -> None:
-        """Make reports UV membership before a member environment exists.
+    ) -> tuple[Path, Path]:
+        """Copy a standalone seed member into a fresh workspace root.
 
-        This proves owner election only. It does not qualify cold bootstrap,
-        dependency provisioning or setup/upgrade delegation.
+        Args:
+            tmp_path: Test-scoped scratch root.
+            associated_clone: Whether the member gets its own Git origin.
+
+        Returns:
+            The workspace root and the member checkout.
+
         """
         root, _ = u.Tests.render_make_environment(
             tmp_path / "container",
@@ -588,6 +653,23 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                 root / c.PYPROJECT_FILENAME,
                 u.Cli.toml_dumps(document),
             ),
+        )
+        return root, member
+
+    def test_help_observes_native_workspace_owner_without_member_environment(
+        self,
+        tmp_path: Path,
+        *,
+        associated_clone: bool,
+    ) -> None:
+        """Make reports UV membership before a member environment exists.
+
+        This proves owner election only. It does not qualify cold bootstrap,
+        dependency provisioning or setup/upgrade delegation.
+        """
+        root, member = self._native_owner_workspace_checkout(
+            tmp_path,
+            associated_clone=associated_clone,
         )
         binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
         native_options = m.Cli.ProcessOptions(
@@ -722,8 +804,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
 
         tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stdout + process.stderr,
         )
         native_paths: set[Path] = set()
@@ -796,8 +878,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             tm.that(process.stdout, lacks="physical-invoker=")
         else:
             tm.that(
-                process.outcome.raw_return_code,
-                eq=0,
+                u.Cli.process_succeeded(process.outcome),
+                eq=True,
                 msg=process.stdout + process.stderr,
             )
             tm.that(process.stdout, has=f"physical-invoker={binary}\n")

@@ -9,8 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
+
 from tests import c, m, t, tm, u
 
 pytestmark = [pytest.mark.slow, pytest.mark.remote]
@@ -20,15 +20,21 @@ class TestsFlextInfraCodegenUpgWorkspace:
     """Upgrade a real workspace with an indexed, uninitialized member."""
 
     @staticmethod
-    def test_upg_materializes_member_before_resolving_workspace_lock(
+    def _declared_member_checkout(
+        root: Path,
         tmp_path: Path,
-    ) -> None:
-        """Test upg materializes member before resolving workspace lock."""
-        root, _ = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.WORKSPACE,
-            bootstrap=True,
-        )
+    ) -> tuple[str, Path, m.Infra.RepositoryRef]:
+        """Attach a governed origin member and capture its indexed gitlink.
+
+        Args:
+            root: Workspace root receiving the submodule.
+            tmp_path: Test-scoped scratch root hosting the member origin.
+
+        Returns:
+            The recorded gitlink of the member, its checkout path, and the
+            member repository reference.
+
+        """
         member = u.Tests.repository_ref("fixture-member", path=Path("fixture-member"))
         source = tmp_path / "member-origin"
         beads = u.Tests.beads_project(member.name)
@@ -73,6 +79,70 @@ class TestsFlextInfraCodegenUpgWorkspace:
                 cwd=root,
             ),
         ).strip()
+        return gitlink, root / member.path, member
+
+    @staticmethod
+    def _added_member_checkout(root: Path, tmp_path: Path) -> Path:
+        """Attach an additional governed member the Makefile does not declare.
+
+        Args:
+            root: Workspace root receiving the submodule.
+            tmp_path: Test-scoped scratch root hosting the member origin.
+
+        Returns:
+            The checkout path of the additionally attached member.
+
+        """
+        added = u.Tests.repository_ref("added-member", path=Path("added-member"))
+        added_source = tmp_path / "added-origin"
+        added_beads = u.Tests.beads_project(added.name)
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            added_source,
+            added.distribution,
+            beads=u.Tests.BeadsIdentity(
+                workspace=added_beads.workspace,
+                database=added_beads.database,
+                issue_prefix=added_beads.issue_prefix,
+            ),
+        )
+        added_branch = u.Tests.checkout_integration(added_source)
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                "-b",
+                added_branch,
+                str(added_source),
+                added.path.as_posix(),
+            ),
+        )
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "config",
+                "-f",
+                c.Infra.GITMODULES,
+                f"submodule.{added.path.as_posix()}.flext-managed",
+                "true",
+            ),
+        )
+        u.Tests.commit_git_changes(root, "Declare additional governed member")
+        return root / added.path
+
+    def test_upg_materializes_member_before_resolving_workspace_lock(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test upg materializes member before resolving workspace lock."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.WORKSPACE,
+            bootstrap=True,
+        )
+        gitlink, checkout, member = self._declared_member_checkout(root, tmp_path)
         repository = u.Tests.repository_ref(
             root.name,
             role=c.Infra.MakeProfile.WORKSPACE,
@@ -146,44 +216,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
 
         # The running Makefile does not yet declare this new Git member. Its
         # generated successor must include it in the containing root's lock.
-        added = u.Tests.repository_ref("added-member", path=Path("added-member"))
-        added_source = tmp_path / "added-origin"
-        added_beads = u.Tests.beads_project(added.name)
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            added_source,
-            added.distribution,
-            beads=u.Tests.BeadsIdentity(
-                workspace=added_beads.workspace,
-                database=added_beads.database,
-                issue_prefix=added_beads.issue_prefix,
-            ),
-        )
-        added_branch = u.Tests.checkout_integration(added_source)
-        u.Tests.git_bootstrap(
-            root,
-            (
-                "-c",
-                "protocol.file.allow=always",
-                "submodule",
-                "add",
-                "-b",
-                added_branch,
-                str(added_source),
-                added.path.as_posix(),
-            ),
-        )
-        u.Tests.git_bootstrap(
-            root,
-            (
-                "config",
-                "-f",
-                c.Infra.GITMODULES,
-                f"submodule.{added.path.as_posix()}.flext-managed",
-                "true",
-            ),
-        )
-        u.Tests.commit_git_changes(root, "Declare additional governed member")
-        added_checkout = root / added.path
+        added_checkout = self._added_member_checkout(root, tmp_path)
         tm.that((added_checkout / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
         expanded = tm.ok(
             u.Tests.run_isolated_make(

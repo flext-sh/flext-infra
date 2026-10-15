@@ -153,6 +153,7 @@ class FlextInfraRefactorRoutes:
 
         Returns:
             The first planning/write failure or the generated artifact receipt.
+
         """
         root = request.repository_root.resolve()
         target = (root / request.output).resolve()
@@ -190,6 +191,7 @@ class FlextInfraRefactorRoutes:
 
         Returns:
             The original authentication, runtime or lint failure, or preview proof.
+
         """
         root = request.repository_root.resolve()
         with infra.rope_workspace(root) as workspace:
@@ -209,6 +211,7 @@ class FlextInfraRefactorRoutes:
 
         Returns:
             The completed semantic relocation result.
+
         """
         with infra.rope_workspace(request.repository_root) as workspace:
             target = u.Infra.move_module(

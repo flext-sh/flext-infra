@@ -13,12 +13,17 @@ from __future__ import annotations
 
 from fnmatch import fnmatchcase
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
 
 
 class FlextInfraCodegenLayoutPlanMixin:
     """Build the per-project layout plan from the declarative layout SSOT."""
+
+    if TYPE_CHECKING:
+        # Mixin contract: the composing command service owns the resolved root.
+        repository_root: Path
 
     @property
     def _layout_spec(self) -> m.Infra.LayoutSpec:
@@ -47,6 +52,7 @@ class FlextInfraCodegenLayoutPlanMixin:
 
         Raises:
             ValueError: If ``member.failure``; or if unsafe layout project identity.
+
         """
         pyproject_path = project_dir / c.PYPROJECT_FILENAME
         project_name = u.Infra.project_name_from_payload(

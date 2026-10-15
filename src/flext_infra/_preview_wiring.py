@@ -43,6 +43,7 @@ class FlextInfraPreviewWiring:
 
         Returns:
             The resulting ``p.Infra.SourcePreview``.
+
         """
         return FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=repository_root),

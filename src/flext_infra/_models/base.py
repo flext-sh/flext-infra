@@ -16,6 +16,9 @@ from flext_cli import c, m, t
 class FlextInfraModelsBase:
     """Base models for flext-infra project."""
 
+    class FrozenArbitrary(m.ImmutableValueModel, m.ArbitraryTypesModel):
+        """Frozen arbitrary-types preset for immutable internal value models."""
+
     class ProcessExit(m.ContractModel):
         """Structured process outcome propagated through a Result failure."""
 

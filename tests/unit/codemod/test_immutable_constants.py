@@ -9,8 +9,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra import infra
-from tests import c, m, tm, u
+from tests import c, m, p, t, tm
 
 
 class TestsFlextInfraImmutableConstants:
@@ -18,10 +17,12 @@ class TestsFlextInfraImmutableConstants:
 
     @staticmethod
     def test_integer_returns_and_frozenset_predicates_reach_fixed_point(
-        tmp_path: Path,
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: t.Tests.SourceCandidate,
+        infra_subprocess: p.Cli.CommandRunner,
     ) -> None:
         """Immutable reuse preserves types, membership and fresh construction."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        root, package = constants_workspace
         owner = package / c.Infra.CONSTANTS_PY
         initializer = package / c.Infra.INIT_PY
         consumer = package / "consumer.py"
@@ -70,33 +71,9 @@ class TestsFlextInfraImmutableConstants:
                 "    return observe(frozenset({'wire'})) in frozenset({'wire'})\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as workspace:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources=sources,
-                )
-            )
-            tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
-            proposed = {
-                **sources,
-                **{edit.file_path: edit.updated_source for edit in edits},
-            }
-            repeated = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources=proposed,
-                )
-            )
-            tm.that(repeated, empty=True)
-        for path, source in proposed.items():
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        result = tm.ok(
-            u.Cli.run(
+        constant_candidate(sources, (consumer,))
+        tm.ok(
+            infra_subprocess.capture(
                 (
                     sys.executable,
                     "-W",
@@ -130,7 +107,8 @@ class TestsFlextInfraImmutableConstants:
                         "assert consumer.constructed() is not consumer.constructed()\n"
                         "assert consumer.dynamic_owner('WIRE')\n"
                         "assert consumer.dynamic_input('wire', {'wire'})\n"
-                        "assert consumer.shadowed('custom', lambda values: {'custom'})\n"
+                        "assert consumer.shadowed('custom', "
+                        "lambda values: {'custom'})\n"
                         "seen = []\n"
                         "def observe(value):\n"
                         "    seen.append(value)\n"
@@ -145,12 +123,14 @@ class TestsFlextInfraImmutableConstants:
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             )
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @staticmethod
-    def test_reassigned_and_mutable_owners_are_not_candidates(tmp_path: Path) -> None:
+    def test_reassigned_and_mutable_owners_are_not_candidates(
+        constants_workspace: t.Pair[Path, Path],
+        constant_candidate: t.Tests.SourceCandidate,
+    ) -> None:
         """Reassignment, mutable containers and call-produced values stay local."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        _root, package = constants_workspace
         owner = package / c.Infra.CONSTANTS_PY
         consumer = package / "consumer.py"
         sources = {
@@ -171,14 +151,4 @@ class TestsFlextInfraImmutableConstants:
                 "    return value in frozenset({'wire'})\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as workspace:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-                    rope_workspace=workspace,
-                    sources=sources,
-                )
-            )
-        tm.that(edits, empty=True)
+        constant_candidate(sources, ())

@@ -12,7 +12,7 @@ from typing import override
 
 from flext_cli import FlextCliConfig
 
-from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 
@@ -32,6 +32,7 @@ class FlextInfraConfig(FlextCliConfig):
 
         Raises:
             TypeError: If the config namespace is not a filesystem package.
+
         """
         package = files(cls.__module__.partition(".")[0])
         if not isinstance(package, Path):
@@ -68,6 +69,7 @@ class FlextInfraConfig(FlextCliConfig):
         Raises:
             ValueError: If the filename is not one repository-local YAML file.
             FileNotFoundError: If the declared packaged default is absent.
+
         """
         candidates = cls.config_layer_paths_for_repository(
             repository_root,
@@ -97,6 +99,7 @@ class FlextInfraConfig(FlextCliConfig):
 
         Raises:
             ValueError: If the root or owned YAML filename is not explicit.
+
         """
         relative = Path(filename)
         if (

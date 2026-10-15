@@ -80,6 +80,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
 
         Returns:
             The declared requirement entries, or the parse failure.
+
         """
         result_type = r[t.SequenceOf[str | m.Infra.DependencyGroupInclude]]
         if dependency_group:
@@ -115,6 +116,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             The rendered requirement text with whether it retains a direct
             reference, or a failure when the requirement is unparseable or
             an internal dependency version is unknown to this release.
+
         """
         result_type = r[t.Pair[str, bool]]
         try:
@@ -198,6 +200,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
 
         Returns:
             Whether a rendered requirement retains a direct reference.
+
         """
         validated_groups = u.validate_value(
             m.Infra.DependencyGroupDeclarations,
@@ -244,6 +247,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
 
         Returns:
             Whether the bounded Hatch targets rendered successfully.
+
         """
         u.Cli.toml_remove_key_if_present(tool, "uv")
         bounded = cls._sdist_boundary(hatch)

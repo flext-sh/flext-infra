@@ -6,19 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from importlib import import_module
+from itertools import chain
 from pathlib import Path
 from types import UnionType
-from typing import TypeAliasType, get_args, override
+from typing import TypeAliasType, Union, get_args, get_origin, override
 
-from flext_cli import cli
-
-from flext_infra import FlextInfraServiceBase, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenProtocolModelAnnotations,
-    FlextInfraCodegenProtocolModelRender,
-)
+from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra.codegen import FlextInfraCodegenProtocolModelRender
 
 
 class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -26,222 +21,213 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     @override
     def execute(self) -> p.Result[t.Cli.ResultValue]:
-        """Assemble generated protocol modules for the member repository.
+        """Use the canonical self conformance transaction for publication.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        targeted = self._resolve_target(self.repository_root)
-        if targeted.failure:
-            return r[t.Cli.ResultValue].from_failure(targeted)
-        target = targeted.value
-        resolved = self._resolve_models(self.repository_root, target)
-        if resolved.failure:
-            return r[t.Cli.ResultValue].from_failure(resolved)
-        if not resolved.value:
-            cli.display_text(
-                "protocol-models: no referenced model protocols to assemble",
-            )
-            return r[t.Cli.ResultValue].ok(value=True)
-        modules = FlextInfraCodegenProtocolModelRender.render_member_modules(
-            resolved.value,
-            target,
-        )
-        return self._settle(self.repository_root, modules, dry=self.effective_dry_run)
+        from flext_infra import FlextInfra
 
-    @classmethod
-    def _resolve_target(
-        cls,
-        root: Path,
-    ) -> p.Result[FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget]:
-        """Derive the member target from its declared pyproject name.
-
-        Returns:
-            The resulting
-                ``p.Result[FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget]``.
-
-        """
-        manifest = root / "pyproject.toml"
-        if not manifest.is_file():
-            return r[
-                FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
-            ].fail(f"no pyproject manifest at {manifest}")
-        declared = u.Cli.toml_read_json(manifest)
-        if declared.failure:
-            return r[
-                FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
-            ].from_failure(declared)
-        name = u.Cli.json_pick_str(
-            u.Cli.json_deep_mapping(declared.value, "project"),
-            "name",
-        )
-        if not name:
-            return r[
-                FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
-            ].fail(f"pyproject manifest declares no project name: {manifest}")
-        package = name.replace("-", "_")
-        container = "".join(part.capitalize() for part in package.split("_"))
-        return r[FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget].ok(
-            FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget(
-                package_name=package,
-                facade_container=container,
-                package_module_prefix=f"{package}.",
-                protocol_ref_prefix=f"p.{container}",
-                models_facade_name="m",
-                facade_probes=(
-                    ("m", f"{package}.models.{container}Models"),
-                    ("p", f"{package}.protocols.{container}Protocols"),
-                    ("c", f"{package}.constants.{container}Constants"),
-                    ("t", f"{package}.typings.{container}Types"),
+        outcome = FlextInfra(repository_root=self.repository_root).codegen_conform(
+            m.Infra.CodegenConformRequest(
+                root=self.repository_root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=(
+                    c.Infra.CodegenConformMode.CHECK
+                    if self.effective_dry_run
+                    else c.Infra.CodegenConformMode.APPLY
                 ),
-            ),
+            )
+        )
+        if outcome.failure:
+            return r[t.Cli.ResultValue].from_failure(outcome)
+        return r[t.Cli.ResultValue].ok(value=True)
+
+    @classmethod
+    def render_modules(
+        cls,
+        project: p.Infra.ProjectSpec,
+        workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> p.Result[t.MappingKV[Path, str]]:
+        """Plan the elected project's protocol sources without writing files.
+
+        Returns:
+            The resulting ``p.Result[t.MappingKV[Path, str]]``.
+
+        Raises:
+            ValueError: If indexed module unavailable.
+
+        """
+        facades: dict[str, p.Infra.RopePyName] = {}
+        runtime_facades: dict[str, p.ModuleOwned] = {}
+        package_dir: Path | None = None
+        for entry in workspace.modules():
+            if entry.package_name != project.package_name:
+                continue
+            resource = workspace.resource(entry.file_path)
+            if resource is None:
+                msg = f"indexed module unavailable: {entry.file_path}"
+                raise ValueError(msg)
+            owner = u.Infra.published_facade_owner(workspace.rope_project, resource)
+            if owner is None:
+                continue
+            facades[owner[0]] = u.Infra.resolve_pymodule(
+                workspace.rope_project, resource
+            ).get_attribute(owner[1])
+            runtime_facades[owner[0]] = getattr(
+                import_module(entry.module_name), owner[1]
+            )
+            package_dir = entry.package_dir
+        if package_dir is None or not {"m", "p"}.issubset(facades):
+            return r[t.MappingKV[Path, str]].fail(
+                f"project has no declared model/protocol facade: {project.package_name}"
+            )
+        directory = (
+            package_dir / u.Infra.facade_families()["p"].directory
+        ).relative_to(workspace.repository_root)
+        models: dict[str, p.ModelType] = {}
+        declarations: dict[str, p.Infra.RopePyName] = {}
+        aliases: dict[str, tuple[str, ...]] = {}
+        base = (
+            workspace.rope_project
+            .get_module("pydantic")
+            .get_attribute("BaseModel")
+            .get_object()
+        )
+        for name in sorted(cls._referenced_names(workspace, facades["p"], directory)):
+            manual = cls._member(facades["p"], name)
+            if manual is not None:
+                module = manual.get_object().get_module()
+                if (
+                    module is not None
+                    and module.get_resource() is not None
+                    and (
+                        not module
+                        .get_resource()
+                        .read()
+                        .startswith(c.Infra.AUTOGEN_HEADERS)
+                    )
+                ):
+                    continue
+            declared = cls._member(facades["m"], name)
+            if declared is None:
+                return r[t.MappingKV[Path, str]].fail(
+                    f"referenced protocol p.{name} resolves to no declared model"
+                )
+            candidate = runtime_facades["m"]
+            for component in name.split("."):
+                candidate = getattr(candidate, component)
+            value = (
+                candidate.__value__
+                if isinstance(candidate, TypeAliasType)
+                else candidate
+            )
+            leaves = (
+                get_args(value) if get_origin(value) in {UnionType, Union} else (value,)
+            )
+            routes: list[str] = []
+            for leaf in leaves:
+                module = workspace.rope_project.get_module(leaf.__module__)
+                first, separator, tail = leaf.__qualname__.partition(".")
+                binding = module.get_attribute(first)
+                if separator:
+                    binding = cls._member(binding, tail)
+                if binding is None or base not in u.Infra.class_ancestry(
+                    binding.get_object()
+                ):
+                    return r[t.MappingKV[Path, str]].fail(
+                        f"referenced protocol p.{name} is not a model declaration"
+                    )
+                prefix, separator, _last = name.rpartition(".")
+                route = (
+                    (f"{prefix}.{leaf.__name__}" if separator else leaf.__name__)
+                    if isinstance(candidate, TypeAliasType)
+                    else name
+                )
+                models[route] = leaf
+                declarations[route] = binding
+                routes.append(route)
+            if isinstance(candidate, TypeAliasType):
+                aliases[name] = tuple(routes)
+        return r[t.MappingKV[Path, str]].ok(
+            FlextInfraCodegenProtocolModelRender.render_member_modules(
+                models,
+                project,
+                workspace,
+                runtime_facades,
+                declarations,
+                directory,
+                aliases,
+            )
         )
 
-    @classmethod
-    def _resolve_models(
-        cls,
-        root: Path,
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
-    ) -> p.Result[t.SequenceOf[type[m.BaseModel]]]:
-        """Resolve every referenced protocol name against the models facade.
+    @staticmethod
+    def _member(
+        binding: p.Infra.RopePyName,
+        name: str,
+    ) -> p.Infra.RopePyName | None:
+        """Follow the exact declared route, including inherited nested namespaces.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[type[m.BaseModel]]]``.
+            The resulting ``p.Infra.RopePyName | None``.
 
         """
-        referenced = cls._referenced_names(root, target)
-        manual = cls._manual_protocol_names(root, target)
-        wanted = sorted(referenced - manual)
-        if not wanted:
-            return r[t.SequenceOf[type[m.BaseModel]]].ok(())
-        try:
-            facade = import_module(f"{target.package_name}.models")
-        except ImportError as exc:
-            return r[t.SequenceOf[type[m.BaseModel]]].fail(
-                f"member models facade not importable: {exc}",
-                exception=exc,
-            )
-        container = getattr(facade, f"{target.facade_container}Models", None)
-        if container is None:
-            return r[t.SequenceOf[type[m.BaseModel]]].fail(
-                f"models facade declares no {target.facade_container}Models container",
-            )
-        models: list[type[m.BaseModel]] = []
-        for name in wanted:
-            candidate = getattr(container, name, None)
-            if candidate is None:
-                return r[t.SequenceOf[type[m.BaseModel]]].fail(
-                    f"referenced protocol {target.protocol_ref_prefix}.{name} "
-                    f"resolves to no model on {target.facade_container}Models",
-                )
-            models.extend(cls._model_leaves(candidate))
-        return r[t.SequenceOf[type[m.BaseModel]]].ok(tuple(models))
-
-    @classmethod
-    def _model_leaves(
-        cls,
-        candidate: p.AttributeProbe,
-    ) -> t.VariadicTuple[type[m.BaseModel]]:
-        """Expand discriminated-union aliases into their leaf models.
-
-        Returns:
-            The resulting ``t.VariadicTuple[type[m.BaseModel]]``.
-
-        """
-        if isinstance(candidate, TypeAliasType):
-            value = candidate.__value__
-            if isinstance(value, UnionType):
-                return tuple(
-                    leaf
-                    for leaf in get_args(value)
-                    if isinstance(leaf, type) and issubclass(leaf, m.BaseModel)
-                )
-            candidate = value
-        if isinstance(candidate, type) and issubclass(candidate, m.BaseModel):
-            return (candidate,)
-        return ()
+        for component in name.split("."):
+            child = binding.get_object().get_attributes().get(component)
+            if child is None:
+                return None
+            binding = child
+        return binding
 
     @classmethod
     def _referenced_names(
         cls,
-        root: Path,
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        binding: p.Infra.RopePyName,
+        directory: Path,
     ) -> set[str]:
-        """Scan member sources for ``<protocols_ref>.<Name>`` references.
+        """Read actual imported protocol primaries from every indexed Python root.
 
         Returns:
             The resulting ``set[str]``.
 
+        Raises:
+            ValueError: If indexed module unavailable.
+
         """
-        pattern = re.compile(
-            rf"\b{re.escape(target.protocol_ref_prefix)}\.([A-Z]\w*)\b",
-        )
         found: set[str] = set()
-        source = root / "src" / target.package_name
-        for path in sorted(source.rglob("*.py")):
-            if "_protocols" in path.parts:
+        for entry in workspace.modules():
+            if entry.file_path.is_relative_to(workspace.repository_root / directory):
                 continue
-            found.update(pattern.findall(path.read_text(encoding="utf-8")))
-        return found
-
-    @classmethod
-    def _manual_protocol_names(
-        cls,
-        root: Path,
-        target: FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget,
-    ) -> set[str]:
-        """Collect protocol class names already hand-declared by the member.
-
-        Returns:
-            The resulting ``set[str]``.
-
-        """
-        pattern = re.compile(r"^class ([A-Z]\w*)\b", re.MULTILINE)
-        found: set[str] = set()
-        protocols = root / "src" / target.package_name / "_protocols"
-        for path in sorted(protocols.glob("*.py")):
-            if path.name.startswith("generated_models"):
-                continue
-            found.update(pattern.findall(path.read_text(encoding="utf-8")))
-        return found
-
-    @classmethod
-    def _settle(
-        cls,
-        root: Path,
-        modules: t.MappingKV[str, str],
-        *,
-        dry: bool,
-    ) -> p.Result[t.Cli.ResultValue]:
-        """Compare or write generated modules under the member protocols dir.
-
-        Returns:
-            The resulting ``p.Result[t.Cli.ResultValue]``.
-
-        """
-        changed: list[str] = []
-        for relative, content in sorted(modules.items()):
-            destination = root / relative
-            if (
-                destination.is_file()
-                and destination.read_text(encoding="utf-8") == content
-            ):
-                continue
-            changed.append(relative)
-            if not dry:
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                destination.write_text(content, encoding="utf-8")
-        if changed and dry:
-            return r[t.Cli.ResultValue].fail(
-                f"{len(changed)} generated protocol module(s) drifted: "
-                f"{', '.join(changed)}",
+            resource = workspace.resource(entry.file_path)
+            if resource is None:
+                msg = f"indexed module unavailable: {entry.file_path}"
+                raise ValueError(msg)
+            module = u.Infra.resolve_pymodule(workspace.rope_project, resource)
+            source = module.source_code
+            primaries = (
+                (source[begin:end], u.Infra.scope_at(module, begin))
+                for begin, end in u.Infra.reference_regions(source)
             )
-        verb = "checked" if dry else "assembled"
-        cli.display_text(
-            f"protocol-models: {verb} {len(modules)} module(s), {len(changed)} updated",
-        )
-        return r[t.Cli.ResultValue].ok(value=True)
+            quoted = (
+                (expression[begin:end], scope)
+                for expression, scope, _line in u.Infra.scoped_quoted_type_references(
+                    source,
+                    workspace.rope_project,
+                    module,
+                )
+                for begin, end in u.Infra.reference_regions(expression)
+            )
+            for primary, scope in chain(primaries, quoted):
+                name, separator, tail = primary.partition(".")
+                if not separator or not u.Infra.same_name(
+                    binding, u.Infra.expression_name(scope, name)
+                ):
+                    continue
+                if tail:
+                    found.add(tail)
+        return found
 
 
 __all__: list[str] = ["FlextInfraCodegenProtocolModels"]

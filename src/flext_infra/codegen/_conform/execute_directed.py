@@ -37,7 +37,9 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
         """
         with FlextInfraCodegenFileLeases.mutation_lease(request.root):
-            observed = FlextInfraMiseArtifactsVerification.publication_current(request)
+            observed = FlextInfraMiseArtifactsVerification.publication_current(
+                request,
+            )
             if observed.failure:
                 return r[m.Infra.CodegenResult].from_failure(observed)
             return r[m.Infra.CodegenResult].ok(
@@ -166,6 +168,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         Returns:
             The pseudo-root mapping of the initializer publication, or the
             first selection or staging failure.
+
         """
         selected = self._select_repositories(request, workspace, repository)
         if selected.failure:
@@ -275,8 +278,8 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
                         if not file.path.parent.is_dir()
                     }),
                 ),
+                staged_validator=validate_stage if stage_plan is not None else None,
             ),
-            staged_validator=validate_stage if stage_plan is not None else None,
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)

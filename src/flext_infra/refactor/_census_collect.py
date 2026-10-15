@@ -112,6 +112,7 @@ class FlextInfraRefactorCensusCollectMixin:
         duplicate_keys = frozenset(
             self._object_key(item)
             for group in duplicates
+            if not group.semantic_candidate
             for item in group.definitions[1:]
         )
         project_reports = tuple(

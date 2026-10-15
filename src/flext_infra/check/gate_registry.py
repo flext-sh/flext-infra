@@ -133,6 +133,7 @@ class FlextInfraGateRegistry:
 
         Returns:
             An opaque digest of actual selected external executable identities.
+
         """
         observed: list[str] = []
         for gate_id in gate_ids:

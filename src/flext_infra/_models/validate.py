@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
+from flext_core import u
 from typing_extensions import TypeForm
 
-from flext_core import u
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
 

@@ -193,6 +193,7 @@ class FlextInfraUtilitiesGitignore:
 
         Returns:
             The exact final fragment, empty only when no local artifacts are declared.
+
         """
         sections = FlextInfraUtilitiesGitignore._runtime_gitignore_sections(codegen)
         if not sections:
@@ -398,6 +399,7 @@ class FlextInfraUtilitiesGitignore:
 
         Returns:
             The single derived policy section or an empty declaration.
+
         """
         local_projections = tuple(
             f"/{item.path.as_posix()}"

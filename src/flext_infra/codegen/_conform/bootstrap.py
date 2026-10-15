@@ -8,14 +8,11 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, assert_never
+from typing import Annotated, assert_never
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, m, s, t, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
@@ -68,6 +65,16 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     )
     producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
         default=None, exclude=True, description="Producer captured before planning"
+    )
+    docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Actual docs planner retained before effects",
+    )
+    docs_producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Original docs producer captured before effects",
     )
 
     def _record_file_failure(
@@ -146,6 +153,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Raises:
             ValueError: If declared package namespace is unresolved.
+
         """
         roots: list[t.Pair[str, Path]] = []
         if target.repository.package:
@@ -218,17 +226,12 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         *,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.CodegenConformSurfaceContract:
-        """Resolve a declared surface without defaulting an invalid input.
+        """Resolve the declared conformance surface to its owned contract.
 
         Returns:
             The contract owned by the declared conformance surface.
 
-        Raises:
-            TypeError: If unsupported codegen conform surface.
         """
-        if not isinstance(surface, c.Infra.CodegenConformSurface):
-            message = f"unsupported codegen conform surface: {surface}"
-            raise TypeError(message)
         return cls._declared_surface_contract(surface, codegen=codegen)
 
     @classmethod
@@ -246,6 +249,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Returns:
             The contract owned by the declared conformance surface.
+
         """
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
@@ -328,6 +332,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Returns:
             The managed runtime binding paths as POSIX strings.
+
         """
         return frozenset(
             item.path.as_posix()
@@ -346,6 +351,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Returns:
             The root and resolution pyproject paths as POSIX strings.
+
         """
         return frozenset(
             path.as_posix()

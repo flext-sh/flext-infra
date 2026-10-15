@@ -12,8 +12,9 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
+from typing_extensions import TypeForm
 
-from flext_infra import c, main
+from flext_infra import c, m, main
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from tests import t, tm, u
@@ -22,18 +23,18 @@ from tests import t, tm, u
 class TestsFlextInfraModRuleFixtureSnapshots:
     """Verification rejects snapshot drift; the refresh records it for review."""
 
-    @pytest.mark.slow
-    def test_protocol_candidates_require_native_semantic_admission(
-        self, tmp_path: Path
-    ) -> None:
-        """Raw superclass candidates retain only actual protocol declarations."""
-        u.Tests.WorktreeFixture.write_python_project(tmp_path, "protocol-fixture")
-        _ = self._owner(tmp_path)
-        rule = (
-            self._catalog(tmp_path)
-            / "rules"
-            / "ban-manual-protocol-outside-protocols.yml"
-        )
+    def _elected_rule(self, tmp_path: Path, name: str) -> m.Infra.CodemodRule:
+        """Copy one declared rule fixture and return its elected plan entry.
+
+        Args:
+            tmp_path: Provisioned workspace root receiving the rule copy.
+            name: Rule fixture file name inside the source catalog.
+
+        Returns:
+            The plan entry electing the copied rule resource.
+
+        """
+        rule = self._catalog(tmp_path) / "rules" / name
         tm.ok(
             u.Cli.atomic_write_text_file(
                 rule,
@@ -44,10 +45,22 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 ).read_text(encoding=c.DEFAULT_ENCODING),
             ),
         )
-        elected = next(
+        return next(
             item
             for item in tm.ok(u.Infra.codemod_rule_plan(tmp_path)).rules
             if item.resource == rule
+        )
+
+    @pytest.mark.slow
+    def test_protocol_candidates_require_native_semantic_admission(
+        self, tmp_path: Path
+    ) -> None:
+        """Raw superclass candidates retain only actual protocol declarations."""
+        u.Tests.WorktreeFixture.write_python_project(tmp_path, "protocol-fixture")
+        _ = self._owner(tmp_path)
+        elected = self._elected_rule(
+            tmp_path,
+            "ban-manual-protocol-outside-protocols.yml",
         )
         u.Tests.provision_checkout(tmp_path)
         namespace = u.Infra.project_package_name(tmp_path)
@@ -109,7 +122,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 for finding in report.entries:
                     tm.that(finding.rule_id, eq=elected.id)
                     tm.that(finding.file, eq=sample.relative_to(tmp_path))
-                    mapping = u.type_adapter(t.JsonMapping)
+                    mapping = u.type_adapter(TypeForm(t.JsonMapping))
                     native = u.Infra.mod_native_payload(finding, readers)
                     captures = mapping.validate_python(native["metaVariables"])
                     single = mapping.validate_python(captures["single"])
@@ -391,6 +404,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Raises:
             TypeError: If the snapshot or fix is not of the expected type.
+
         """
         owner = Path(__file__).resolve().parents[3]
         original = (
@@ -724,6 +738,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Returns:
             The path to the live provider catalog.
+
         """
         plan = tm.ok(u.Infra.codemod_rule_plan(root))
         catalogs = tuple(
@@ -823,6 +838,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Returns:
             The resulting ``tuple[Path, Path]``.
+
         """
         name = "snapshot-fixture-provider"
         package = site / name.replace("-", "_")
@@ -832,7 +848,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
         version = project["version"]
         assert isinstance(version, str)
-        dependencies = u.type_adapter(t.StrSequence).validate_python(
+        dependencies = u.type_adapter(TypeForm(t.StrSequence)).validate_python(
             project["dependencies"],
         )
         tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))

@@ -34,6 +34,7 @@ class FlextInfraStagedPackage:
 
         Returns:
             A result wrapping the planned stage source or the first failure encountered.
+
         """
         result_type = r[m.Infra.StageSourcePlan]
         workspace = workspace.resolve()
@@ -66,6 +67,9 @@ class FlextInfraStagedPackage:
             ),
         ))
         for path in source_paths:
+            root = u.Infra.project_root(path)
+            if any(item.project_root == root for item in selected):
+                continue
             resolved = cls._source_layout(path, layouts)
             if resolved.failure:
                 if path in normalized:
@@ -75,16 +79,15 @@ class FlextInfraStagedPackage:
                 # read outside any rope layout; only rewrite targets need one.
                 continue
             local = resolved.value
-            if not any(item.project_root == local.project_root for item in selected):
-                pinned = cls._pin_closure(
-                    local,
-                    layouts,
-                    selected,
-                    states,
-                    updates=normalized,
-                )
-                if pinned.failure:
-                    return result_type.from_failure(pinned)
+            pinned = cls._pin_closure(
+                local,
+                layouts,
+                selected,
+                states,
+                updates=normalized,
+            )
+            if pinned.failure:
+                return result_type.from_failure(pinned)
         metadata = cls._pin_workspace_metadata(workspace, states)
         if metadata.failure:
             return result_type.from_failure(metadata)
@@ -123,6 +126,7 @@ class FlextInfraStagedPackage:
         Returns:
             Whether every original input kept its identity, or the first
             identity failure.
+
         """
         for before in inputs:
             observed = states.get(before.path)
@@ -153,6 +157,7 @@ class FlextInfraStagedPackage:
 
         Returns:
             Desired sources or the first ambiguous, foreign or symlinked path.
+
         """
         result_type = r[dict[Path, str]]
         normalized: dict[Path, str] = {}
@@ -170,12 +175,13 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _source_layout(
         path: Path,
-        layouts: dict[str, m.Infra.RopeProjectLayout],
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
     ) -> p.Result[m.Infra.RopeProjectLayout]:
         """Resolve a source owner without replacing another package's identity.
 
         Returns:
             The unique source layout or the first ownership failure.
+
         """
         result_type = r[m.Infra.RopeProjectLayout]
         root = u.Infra.project_root(path)
@@ -196,6 +202,7 @@ class FlextInfraStagedPackage:
 
         Returns:
             Success only while every original source path remains in the closure.
+
         """
         current = FlextInfraMiseArtifactsVerification.states_current(plan.inputs)
         if current.failure:
@@ -222,6 +229,7 @@ class FlextInfraStagedPackage:
 
         Returns:
             The superproject root or the standalone repository root.
+
         """
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         if identity.failure:
@@ -238,6 +246,7 @@ class FlextInfraStagedPackage:
 
         Returns:
             The immutable candidate plan or the first discovery failure.
+
         """
         result_type = r[m.Infra.StagePackagePlan]
         workspace = cls.workspace_root(root)

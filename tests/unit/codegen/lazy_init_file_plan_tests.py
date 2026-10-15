@@ -163,6 +163,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         Returns:
             The resulting ``tuple[Path, Path, list[Path]]`` of the workspace
             root, the member repository and the seeded package paths.
+
         """
         root = tmp_path / "flext-scope-root"
         member = root / "apps" / "flext-scope-member"

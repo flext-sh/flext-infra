@@ -11,17 +11,168 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models import (
     FlextInfraModelsDepsToml,
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsMixins,
 )
 from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
+
+GitSourceUrlPrefixField = Annotated[
+    t.NonEmptyStr | None,
+    m.Field(
+        alias="git-source-url-prefix",
+        description="Explicit Git source URL scope",
+    ),
+]
+GitSourceRefFromField = Annotated[
+    t.NonEmptyStr | None,
+    m.Field(alias="git-source-ref-from", description="Explicit reference to migrate"),
+]
+GitSourceRefToField = Annotated[
+    t.NonEmptyStr | None,
+    m.Field(alias="git-source-ref-to", description="Replacement Git reference"),
+]
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
     """Models for dependency detection and modernization reporting."""
+
+    class ProjectPackagingDeclaration(m.ContractModel):
+        """Native packaging facts retained independently of Python export health."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="ignore",
+            frozen=True,
+            populate_by_name=True,
+        )
+        uv_package: Annotated[
+            bool | None,
+            m.Field(
+                validation_alias=m.AliasPath("tool", "uv", "package"),
+                description="Explicit native UV package participation declaration",
+            ),
+        ] = None
+        build_backend: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                validation_alias=m.AliasPath("build-system", "build-backend"),
+                description="Declared native Python build backend",
+            ),
+        ] = None
+
+    class ProjectMetadataState(m.ArbitraryTypesModel):
+        """One TOML ingress retaining metadata and its native packaging declaration."""
+
+        metadata: Annotated[
+            p.ProjectMetadata,
+            m.Field(description="Original canonical PEP 621 and FLEXT metadata"),
+        ]
+        packaging: Annotated[
+            FlextInfraModelsDeps.ProjectPackagingDeclaration,
+            m.Field(description="Packaging facts from the same parsed document"),
+        ]
+
+    class InstalledResourceSnapshot(m.ContractModel):
+        """An exact installed resource authenticated by its owning wheel inventory."""
+
+        resource: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(
+                description="Physical installed resource bytes verified against RECORD"
+            ),
+        ]
+        inventory: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                min_length=1,
+                description="Owning distribution metadata and RECORD snapshots",
+            ),
+        ]
+
+    class RuntimeDependencyProvider(m.Value):
+        """One imported package associated with an authenticated locked supplier."""
+
+        modules: Annotated[
+            t.StrTuple,
+            m.Field(
+                min_length=1,
+                description="Native import identities supplied by metadata",
+            ),
+        ]
+        package: Annotated[
+            FlextInfraModelsWorkspace.LockedPackage,
+            m.Field(description="Exact package selected by the target's native lock"),
+        ]
+        requirement: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Target-qualified PEP 508 requirement retaining its source"
+            ),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                min_length=1, description="Authenticated distribution metadata states"
+            ),
+        ]
+
+    class RuntimeDependencyInputs(m.Value):
+        """Interpreter, lock and import-provider proof injected by the owner."""
+
+        target_root: Annotated[Path, m.Field(description="Selected repository root")]
+        python: Annotated[Path, m.Field(description="Elected consumer interpreter")]
+        lock: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Captured native UV lock of the selected runtime"),
+        ]
+        providers: Annotated[
+            t.VariadicTuple[FlextInfraModelsDeps.RuntimeDependencyProvider],
+            m.Field(description="All matching suppliers; ambiguity is preserved"),
+        ]
+        development_only: Annotated[
+            t.StrTuple,
+            m.Field(description="Contract-owned requirements forbidden in runtime"),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                min_length=1,
+                description="Native lock and production-source input states",
+            ),
+        ]
+
+    class RuntimeDependencyPlan(m.Value):
+        """Calculated target requirements and unchanged diagnostic identities."""
+
+        source: Annotated[
+            m.Cli.AtomicPhysicalTreeManifest,
+            m.Field(description="Exact production tree establishing applicability"),
+        ]
+        before: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(
+                description="Authenticated pyproject state consumed by native deptry"
+            ),
+        ]
+        dependencies: Annotated[
+            t.StrTuple,
+            m.Field(
+                description="Calculated runtime requirements, including marker variants"
+            ),
+        ]
+        unresolved_modules: Annotated[
+            t.StrTuple,
+            m.Field(description="Missing or ambiguous import suppliers remaining red"),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                description="Every metadata, lock and source state backing this plan"
+            ),
+        ]
 
     class DependencyMarkerEnvironment(m.Value):
         """Complete PEP 508 facts reported by the consumer interpreter."""
@@ -208,23 +359,9 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 ),
             ),
         ] = False
-        git_source_url_prefix: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                alias="git-source-url-prefix",
-                description="Explicit Git source URL scope",
-            ),
-        ] = None
-        git_source_ref_from: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                alias="git-source-ref-from", description="Explicit reference to migrate"
-            ),
-        ] = None
-        git_source_ref_to: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(alias="git-source-ref-to", description="Replacement Git reference"),
-        ] = None
+        git_source_url_prefix: GitSourceUrlPrefixField = None
+        git_source_ref_from: GitSourceRefFromField = None
+        git_source_ref_to: GitSourceRefToField = None
 
     # Codegen consumes the pure pyproject
     # renderer directly, so no deps CLI payload remains for path/workspace modes.
@@ -277,7 +414,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
     class RuffProjectFacts(m.ContractModel):
         """Measured per-project facts the canonical Ruff phase derives from."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         first_party: Annotated[
             t.StrSequence,
             m.Field(description="Detected first-party namespaces"),

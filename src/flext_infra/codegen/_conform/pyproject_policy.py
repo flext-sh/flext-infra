@@ -76,6 +76,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         Returns:
             The owner-first resolution projects, or the first collection
             failure.
+
         """
         result_type = r[list[m.Infra.UvResolutionProject]]
         desired = {file.path: file for file in planned}
@@ -95,7 +96,13 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                 state = captured.value
                 content = state.content
             else:
-                state = projected.before
+                before = projected.before
+                if isinstance(before, m.Cli.AtomicDirectoryChainPlan):
+                    # An absent-leaf plan cannot authenticate a consulted input.
+                    return result_type.fail(
+                        f"native resolution input is absent: {path}",
+                    )
+                state = before
                 content = projected.desired_content
                 sources.extend(projected.source_states)
             if content is None:
@@ -136,6 +143,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
         Returns:
             The managed resolution view plans, or the first planning failure.
+
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         policy = inputs.spec.make.uv_resolution
@@ -210,6 +218,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
         Returns:
             The formatted view source, or the first render or format failure.
+
         """
         rendered = u.Infra.pyproject_native_resolution_view(
             owner,

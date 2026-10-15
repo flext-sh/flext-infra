@@ -60,6 +60,7 @@ class FlextInfraConfigModelsTemplates:
 
             Raises:
                 ValueError: If an additional setting redeclares a managed key.
+
             """
             managed = (
                 set(self.scalar_settings)
@@ -249,6 +250,7 @@ class FlextInfraConfigModelsTemplates:
 
             Raises:
                 ValueError: If a path escapes its repository or a binding is versioned.
+
             """
             if (
                 self.path.is_absolute()
@@ -269,6 +271,7 @@ class FlextInfraConfigModelsTemplates:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return tuple(
                 dict.fromkeys(

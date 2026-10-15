@@ -15,6 +15,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
+from flext_infra._utilities._semantic_cutover.family_type_references import (
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
 
 
 class FlextInfraUtilitiesDeclarationPayload:
@@ -33,7 +36,7 @@ class FlextInfraUtilitiesDeclarationPayload:
                 continue
             found.append(current)
             if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(current):
-                pending.extend(cls._direct_bases(current))
+                pending.extend(cls.direct_bases(current))
         return found
 
     @classmethod
@@ -55,6 +58,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         Returns:
             The header statement with its native worder and base-list span,
             or ``None`` when the header has no parenthesized base list.
+
         """
         headers = tuple(
             statement
@@ -78,266 +82,23 @@ class FlextInfraUtilitiesDeclarationPayload:
         first, last = words.get_word_parens_range(end - 1)
         return header, (words, first, last)
 
-    @staticmethod
-    def _native_subscription_bindings(
-        project: p.Infra.RopeProject,
-    ) -> t.SequenceOf[p.Infra.RopePyName]:
-        """Collect the native subscription contracts of declared generic owners.
-
-        Args:
-            project: The Rope project supplying the declaration providers.
-
-        Returns:
-            Native ``__class_getitem__`` bindings of Pydantic and Protocol.
-        """
-        return tuple(
-            binding
-            for provider, owner in (
-                ("pydantic", "BaseModel"),
-                ("typing", "Protocol"),
-                ("typing_extensions", "Protocol"),
-            )
-            if (
-                binding := project
-                .get_module(provider)
-                .get_attribute(owner)
-                .get_object()
-                .get_attributes()
-                .get("__class_getitem__")
-            )
-            is not None
-        )
-
     @classmethod
-    def _generic_subscription_context(
-        cls,
-        module: p.Infra.RopeSourceModule,
-        header: m.Infra.LogicalStatement,
-        scope: p.Infra.RopeScope,
-    ) -> t.Triple[
-        t.SequenceOf[t.Pair[int, int]],
-        p.Infra.RopeScope,
-        t.SequenceOf[p.Infra.RopePyName],
-    ]:
-        """Resolve header subscription matches, scope, and native bindings.
-
-        Args:
-            module: The source module declaring the class header.
-            header: The resolved class header statement.
-            scope: The class scope used as the declaration boundary.
-
-        Returns:
-            Header subscription match regions, the header's enclosing scope,
-            and the native subscription bindings of declared generic owners.
-        """
-        finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
-        parent = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
-            module,
-            header.start_offset,
-            declaration_line=scope.get_start(),
-        )
-        try:
-            subscriptions_in_header = tuple(
-                finder.get_match_regions(
-                    "${generic_owner}[${generic_arguments}]",
-                    {},
-                    start=header.start_offset,
-                    end=header.end_offset,
-                )
-            )
-        except AttributeError:
-            # Rope's similarfinder cannot region every header shape (a
-            # Subscript node inside the matched span carries no region): a
-            # header it cannot region simply has no matchable subscription.
-            return (), parent, ()
-        subscriptions = cls._native_subscription_bindings(module.pycore.project)
-        return subscriptions_in_header, parent, subscriptions
-
-    @staticmethod
-    def _native_subscription_at(
-        text: str,
-        offset: int,
-        argument_start: int,
-        argument_end: int,
-        subscriptions_in_header: t.SequenceOf[t.Pair[int, int]],
-    ) -> t.Pair[int, int] | None:
-        """Resolve the single native subscription region covering the argument.
-
-        Args:
-            text: The class header text holding the argument.
-            offset: The header start offset making regions header-relative.
-            argument_start: Header-relative start offset of the argument.
-            argument_end: Header-relative end offset of the argument.
-            subscriptions_in_header: Native subscription regions in the header.
-
-        Returns:
-            The argument-relative subscription span, or ``None`` when the
-            argument does not carry exactly one enclosing native subscription.
-        """
-        native_subscriptions = tuple(
-            (start - offset, stop - offset)
-            for start, stop in subscriptions_in_header
-            if argument_start <= start - offset
-            and stop - offset <= argument_end
-            and not text[argument_start : start - offset].strip("() \t\r\n")
-            and not text[stop - offset : argument_end].strip("() \t\r\n")
-        )
-        if len(native_subscriptions) != 1:
-            return None
-        return native_subscriptions[0]
-
-    @classmethod
-    def _specialization_owner(
-        cls,
-        parent: p.Infra.RopeScope,
-        subscriptions: t.SequenceOf[p.Infra.RopePyName],
-        bases: t.SequenceOf[p.Infra.RopePyObject],
-        specialization: str,
-    ) -> p.Infra.RopePyObject | None:
-        """Resolve the abstract owner admitted by one specialization argument.
-
-        Args:
-            parent: The scope enclosing the class header declaration.
-            subscriptions: Native subscription contracts of generic owners.
-            bases: Already admitted direct bases used for identity exclusion.
-            specialization: The subscription argument text being resolved.
-
-        Returns:
-            The proven generic declaration owner, or ``None`` when the
-            specialization binds no new admitted generic owner.
-        """
-        argument_words = cls._worder(specialization)
-        owner_first, _last = argument_words.code_finder.get_word_parens_range(
-            0,
-            "[",
-            "]",
-        )
-        expression = argument_words.get_primary_at(owner_first - 1)
-        binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
-            parent,
-            expression,
-        )
-        if binding is None:
-            return None
-        owner = binding.get_object()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
-            return None
-        subscription = owner.get_attributes().get("__class_getitem__")
-        if subscription is None or not any(
-            FlextInfraUtilitiesRopeRuntimeModules.same_name(known, subscription)
-            for known in subscriptions
-        ):
-            return None
-        return None if owner in bases else owner
-
-    @classmethod
-    def _admitted_generic_owner(
-        cls,
-        header: m.Infra.LogicalStatement,
-        first: int,
-        argument: str,
-        context: t.Triple[
-            t.SequenceOf[t.Pair[int, int]],
-            p.Infra.RopeScope,
-            t.SequenceOf[p.Infra.RopePyName],
-        ],
-        bases: t.SequenceOf[p.Infra.RopePyObject],
-    ) -> p.Infra.RopePyObject | None:
-        """Resolve one specialized header argument's declaration owner.
-
-        Args:
-            header: The resolved class header statement.
-            first: Offset of the header base list opening parenthesis.
-            argument: The specialized header argument being resolved.
-            context: Header subscription matches, enclosing scope, and native
-                subscription bindings of declared generic owners.
-            bases: Already admitted direct bases used for identity exclusion.
-
-        Returns:
-            The abstract declaration owner proven to specialize the argument,
-            or ``None`` when the argument carries no admitted owner.
-        """
-        subscriptions_in_header, parent, subscriptions = context
-        text = header.text
-        offset = header.start_offset
-        argument_start = text.index(argument, first + 1)
-        argument_end = argument_start + len(argument)
-        region = cls._native_subscription_at(
-            text,
-            offset,
-            argument_start,
-            argument_end,
-            subscriptions_in_header,
-        )
-        if region is None:
-            return None
-        start, stop = region
-        return cls._specialization_owner(
-            parent,
-            subscriptions,
-            bases,
-            text[start:stop],
-        )
-
-    @classmethod
-    def _extend_generic_owners(
-        cls,
-        bases: list[p.Infra.RopePyObject],
-        header: m.Infra.LogicalStatement,
-        first: int,
-        specialized_arguments: t.SequenceOf[str],
-        context: t.Triple[
-            t.SequenceOf[t.Pair[int, int]],
-            p.Infra.RopeScope,
-            t.SequenceOf[p.Infra.RopePyName],
-        ],
-    ) -> None:
-        """Extend direct bases with proven generic declaration owners.
-
-        Args:
-            bases: Native direct bases, extended in place in header order.
-            header: The resolved class header statement.
-            first: Offset of the header base list opening parenthesis.
-            specialized_arguments: Header arguments carrying a subscription.
-            context: Header subscription matches, enclosing scope, and native
-                subscription bindings of declared generic owners.
-        """
-        for argument in specialized_arguments:
-            owner = cls._admitted_generic_owner(
-                header,
-                first,
-                argument,
-                context,
-                bases,
-            )
-            if owner is not None:
-                bases.append(owner)
-
-    @classmethod
-    def _direct_bases(
-        cls,
-        value: p.Infra.RopePyObject,
+    def direct_bases(
+        cls, value: p.Infra.RopePyObject
     ) -> t.SequenceOf[p.Infra.RopePyObject]:
-        """Resolve generic ancestry without erasing the source's specialization.
-
-        Rope supplies lexical boundaries and bindings. A generic subscription
-        contributes its owner only when it inherits the native Pydantic/typing
-        subscription contract; custom class subscription behavior is not assumed.
-
-        Args:
-            value: The class whose direct bases are to be resolved.
+        """Return native bases and proven generic owners in their original scope.
 
         Returns:
-            Native direct bases, including proven generic declaration owners.
+            Direct bases without erasing specialization or guessing subscriptions.
 
         Raises:
-            TypeError: If the class module has no native project owner.
+            TypeError: If a source class lacks its native project owner.
+
         """
         bases = list(value.get_superclasses())
         if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
             return bases
-        scope = value.get_scope()
-        module = value.get_module()
+        scope, module = value.get_scope(), value.get_module()
         if scope is None or module is None:
             return bases
         if not isinstance(module, p.Infra.RopeSourceModule):
@@ -346,22 +107,70 @@ class FlextInfraUtilitiesDeclarationPayload:
         resolved = cls._header_argument_span(value, scope, module)
         if resolved is None:
             return bases
-        header, span = resolved
-        words, first, last = span
-        arguments, _keywords = words.get_parameters(first, last - 1)
-        specialized_arguments = tuple(
-            argument for argument in arguments if "[" in argument
+        header, (_words, first, last) = resolved
+        arguments = tuple(
+            (begin, end)
+            for begin, end in FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
+                header.text, first + 1, last - 1, ","
+            )
+            if "[" in header.text[begin:end]
         )
-        if not specialized_arguments:
+        if not arguments:
             return bases
-        context = cls._generic_subscription_context(module, header, scope)
-        cls._extend_generic_owners(
-            bases,
-            header,
-            first,
-            specialized_arguments,
-            context,
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        parent = runtime.scope_at(
+            module, header.start_offset, declaration_line=scope.get_start()
         )
+        subscriptions = tuple(
+            binding
+            for provider, name in (
+                ("pydantic", "BaseModel"),
+                ("typing", "Protocol"),
+                ("typing_extensions", "Protocol"),
+            )
+            if (
+                binding := module.pycore.project
+                .get_module(provider)
+                .get_attribute(name)
+                .get_object()
+                .get_attributes()
+                .get("__class_getitem__")
+            )
+            is not None
+        )
+        for begin, end in arguments:
+            argument = header.text[begin:end]
+            regions = tuple(
+                (left, right)
+                for left, right in FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
+                    runtime.build_string_module(None, argument),
+                    "${generic_owner}[${generic_arguments}]",
+                    arguments={},
+                )
+                if not argument[:left].strip("() \t\r\n")
+                and not argument[right:].strip("() \t\r\n")
+            )
+            if len(regions) != 1:
+                continue
+            left, right = regions[0]
+            specialization = argument[left:right]
+            words = cls._worder(specialization)
+            opening, _closing = words.code_finder.get_word_parens_range(0, "[", "]")
+            binding = runtime.expression_name(parent, words.get_primary_at(opening - 1))
+            if binding is None:
+                continue
+            owner = binding.get_object()
+            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
+                continue
+            subscription = owner.get_attributes().get("__class_getitem__")
+            if (
+                subscription is not None
+                and owner not in bases
+                and any(
+                    runtime.same_name(known, subscription) for known in subscriptions
+                )
+            ):
+                bases.append(owner)
         return bases
 
     @staticmethod
@@ -373,6 +182,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Raises:
             TypeError: If the reader does not satisfy the declared Rope contract.
+
         """
         words = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
             "rope.base.worder",
@@ -397,6 +207,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             Every qualified class declaration matching the supplied short name.
+
         """
         resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
@@ -456,6 +267,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             The bound model declaration, or ``None`` for a different contract.
+
         """
         resolved = cls._class_binding(project, path, qualified_name)
         if resolved is None:
@@ -473,11 +285,9 @@ class FlextInfraUtilitiesDeclarationPayload:
         if base not in ancestry or settings in ancestry:
             return None
         scope = value.get_scope()
-        statements = (
-            None
-            if scope is None
-            else cls._admitted_payload_statements(module, value, scope)
-        )
+        if scope is None:
+            return None
+        statements = cls._admitted_payload_statements(module, value, scope)
         if statements is None:
             return None
         finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
@@ -506,6 +316,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         Returns:
             The class logical statements when the scope leads with no
             statements and the body holds only declarations, else ``None``.
+
         """
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(
             module.source_code,
@@ -516,6 +327,18 @@ class FlextInfraUtilitiesDeclarationPayload:
             for statement in statements
         ):
             return None
+        located = cls._header_argument_span(value, scope, module)
+        if located is not None:
+            header, (_words, _first, last) = located
+            inline = header.text[last:].lstrip()
+            if (
+                inline.startswith(":")
+                and inline[1:].strip()
+                and not cls._payload_statement_sequence(
+                    inline[1:].strip(), docstring=value.get_doc() is not None
+                )
+            ):
+                return None
         if not cls._payload_body(value, scope, statements):
             return None
         return statements
@@ -530,6 +353,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             The native module and class binding, or ``None`` for a non-class.
+
         """
         resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
@@ -566,12 +390,13 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             The native protocol binding, or ``None`` for a different contract.
+
         """
         resolved = cls._class_binding(project, path, qualified_name)
         if resolved is None:
             return None
         _module, binding = resolved
-        bases = cls._direct_bases(binding.get_object())
+        bases = cls.direct_bases(binding.get_object())
         return (
             binding
             if any(
@@ -582,8 +407,9 @@ class FlextInfraUtilitiesDeclarationPayload:
             else None
         )
 
-    @staticmethod
+    @classmethod
     def _payload_body(
+        cls,
         value: p.Infra.RopePyObject,
         scope: p.Infra.RopeScope,
         statements: t.SequenceOf[m.Infra.LogicalStatement],
@@ -592,23 +418,54 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             Whether the class body contains only declaration statements.
+
         """
         return all(
-            statement.category
-            in {
-                c.Infra.StatementCategory.ANN_ASSIGN,
-                c.Infra.StatementCategory.ASSIGN,
-                c.Infra.StatementCategory.FUNC_DEF,
-            }
-            or statement.text.strip() == "pass"
+            statement.category == c.Infra.StatementCategory.FUNC_DEF
             or statement.text.lstrip().startswith("@")
-            or (
-                statement.line == scope.get_body_start() and value.get_doc() is not None
+            or cls._payload_statement_sequence(
+                statement.text,
+                docstring=(
+                    statement.line == scope.get_body_start()
+                    and value.get_doc() is not None
+                ),
             )
             for statement in statements
             if scope.get_start() < statement.line <= scope.get_end()
             and statement.enclosing_kind == c.Infra.RopeScopeKind.CLASS
             and statement.enclosing_name == value.get_name()
+        )
+
+    @staticmethod
+    def _payload_statement_sequence(source: str, *, docstring: bool) -> bool:
+        """Admit each simple statement through the shared native region splitter.
+
+        Returns:
+            Whether every semicolon-delimited statement remains declaration data.
+
+        """
+        regions = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
+            source, 0, len(source), ";"
+        )
+        return bool(regions) and all(
+            statement.category
+            in {
+                c.Infra.StatementCategory.ANN_ASSIGN,
+                c.Infra.StatementCategory.ASSIGN,
+            }
+            or statement.text.strip() == "pass"
+            or (
+                index == 0
+                and docstring
+                and FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(
+                    statement.text
+                )
+                is not None
+            )
+            for index, (begin, end) in enumerate(regions)
+            for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
+                source[begin:end]
+            )
         )
 
     @staticmethod
@@ -621,6 +478,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             Whether every decorator is allowed and one belongs to Pydantic.
+
         """
         scope = method.get_scope()
         if scope is None:

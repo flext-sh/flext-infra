@@ -23,6 +23,9 @@ if TYPE_CHECKING:
 class FlextInfraConstantsWorkspace:
     """Workspace infrastructure constants."""
 
+    # CPython Include/object.h: Py_TPFLAGS_IMMUTABLETYPE.
+    CPYTHON_IMMUTABLE_TYPE_FLAG: ClassVar[int] = 1 << 8
+
     @unique
     class BeadIssueStatus(StrEnum):
         """Beads issue status values."""

@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
 from flext_core import FlextService, t
-from flext_infra import c, m, p, r, settings, u
-from flext_infra._base_payload import FlextInfraCommandPayloadMixin
+
+from flext_infra import FlextInfraCommandPayloadMixin, c, m, p, r, settings, u
 
 
 class FlextInfraServiceBase[TDomainResult: t.JsonPayload](
@@ -133,6 +133,7 @@ class FlextInfraServiceBase[TDomainResult: t.JsonPayload](
 
         Returns:
             The resulting ``Path``.
+
         """
         return self.repository_root
 
@@ -148,6 +149,7 @@ class FlextInfraServiceBase[TDomainResult: t.JsonPayload](
 
         Returns:
             The resulting ``bool``.
+
         """
         return self.dry_run or self.check_only or (not self.apply_changes)
 

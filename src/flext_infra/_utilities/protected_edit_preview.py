@@ -206,6 +206,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             Returns:
                 A result indicating whether the staged changes pass validation and any
                 associated reports.
+
             """
             return FlextInfraUtilitiesProtectedEditPreview._preview_write_reports(
                 candidates,
@@ -243,6 +244,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         Returns:
             A pair of lint snapshots, the first for the original source and the second
               for the updated source.
+
         """
         original_source = py_file.read_text(encoding=c.DEFAULT_ENCODING)
         before = FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(
