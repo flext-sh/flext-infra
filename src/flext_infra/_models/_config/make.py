@@ -166,8 +166,8 @@ class FlextInfraConfigModelsMake(
 
         Implements the preserved #1001 delta (bead flext-j0u23): two-phase
         generations with per-mode caps, a per-repository byte budget with a
-        three-stage quota ladder, a save-ref allowlist (never save from PRs)
-        and a cache-key namespace.
+        three-stage quota ladder and a cache-key namespace. Event identity
+        determines publication eligibility; branch names are not policy.
         """
 
         mode: Annotated[
@@ -202,10 +202,6 @@ class FlextInfraConfigModelsMake(
             int,
             m.Field(ge=0, le=100, description="Quota-ladder block stage"),
         ] = 95
-        allowed_save_refs: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Refs whose pushes may publish cache generations"),
-        ] = ("main", "0.12.0-dev")
         key_prefix: Annotated[
             t.NonEmptyStr,
             m.Field(description="Actions cache key namespace"),
@@ -405,8 +401,8 @@ class FlextInfraConfigModelsMake(
 
             Implements the preserved #1001 delta (bead flext-j0u23): two-phase
             generations with per-mode caps, a per-repository byte budget with a
-            three-stage quota ladder, a save-ref allowlist (never save from PRs)
-            and a cache-key namespace.
+            three-stage quota ladder and a cache-key namespace. Event identity
+            determines publication eligibility; branch names are not policy.
             """
 
             mode: Annotated[
@@ -441,10 +437,6 @@ class FlextInfraConfigModelsMake(
                 int,
                 m.Field(ge=0, le=100, description="Quota-ladder block stage"),
             ] = 95
-            allowed_save_refs: Annotated[
-                tuple[t.NonEmptyStr, ...],
-                m.Field(description="Refs whose pushes may publish cache generations"),
-            ] = ("main", "0.12.0-dev")
             key_prefix: Annotated[
                 t.NonEmptyStr,
                 m.Field(description="Actions cache key namespace"),
