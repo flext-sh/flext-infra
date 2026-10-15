@@ -10,9 +10,9 @@ from importlib.util import resolve_name
 from pathlib import Path
 from types import MappingProxyType
 
+import flext_core
 import pytest
 
-import flext_core
 from flext_infra import config
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase

@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from functools import partial
+from functools import lru_cache, partial
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
@@ -142,6 +142,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
             Returns:
                 A distinct public module receiver, or the existing target.
+
             """
             module, receiver, member = target
             if (
@@ -183,7 +184,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         """Follow the imported facade's declared classes and base bindings.
 
         Returns:
-            Pairs of module and class names representing the behavior lineage.
+            A tuple of pairs representing the lineage of the behavior, where each
+            pair contains the module and class name.
+
+        A ``ValueError`` fails on a cyclic or inconsistent facade inheritance
+        identity, and a ``TypeError`` propagates from unsupported facade
+        inheritance identities through ``_behavior_base_identity``.
+
         """
         resolved = cls._facade_declared_class(modules, module, receiver, frozenset())
         if resolved is None:
@@ -328,13 +335,20 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         ))
         # Provider discovery expands the inventory, never the owners eligible
         # for a reference. Its declared inheritance lineage elects those owners.
+        base_imports: MutableMapping[str, t.StrTuple] = {}
         while True:
             inherited_statements = tuple(
                 statement
                 for module, (source, _package) in modules.items()
                 if directories.intersection(module.split("."))
                 or module.endswith((".typings", ".models", ".utilities"))
-                for statement in cls._behavior_base_imports(source)
+                for statement in (
+                    base_imports[source]
+                    if source in base_imports
+                    else base_imports.setdefault(
+                        source, cls._behavior_base_imports(source)
+                    )
+                )
             )
             expanded = FlextInfraUtilitiesPrivateImportFacades.source_modules(
                 sources, (*statements, *inherited_statements)
@@ -352,6 +366,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         Returns:
             The declared import statements.
+
         """
         tree = ast.parse(source)
         called = {
@@ -383,6 +398,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         Returns:
             The imports that supply declared base names.
+
         """
         tree = ast.parse(source)
         names = {
@@ -433,13 +449,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                         member, ast.FunctionDef | ast.AsyncFunctionDef
                     ) or member.name.startswith("_"):
                         continue
-                    if (
-                        utility_directory in parts
-                        and declaration.name in exports
-                        and not member.name.startswith("_")
-                        and cls._behavior_member_binding(declaration, member.name)
-                        is member
-                    ):
+                    if cls._behavior_member_binding(declaration, member.name) is member:
                         owners.setdefault((parts[0], member.name), []).append((
                             module,
                             declaration.name,
@@ -613,13 +623,28 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     c.Infra.UTILITIES_PY
                 ).directory,
             )
+
+            def rewrite(
+                path: Path,
+                source: str,
+                modules: t.MappingKV[str, t.Pair[str, bool]] = modules,
+                ownership: t.Pair[
+                    t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
+                    frozenset[t.Quad[str, str, str, str]],
+                ] = ownership,
+            ) -> t.Infra.TransformResult:
+                return cls.rewrite_behavior_consumer(
+                    m.Infra.SemanticBehaviorRewriteRequest(
+                        path=path,
+                        source=source,
+                        modules=modules,
+                        ownership=ownership,
+                    ),
+                )
+
             planned = cls._semantic_edits(
                 cls._editable_sources(owner_sources),
-                partial(
-                    cls._rewrite_behavior_request,
-                    modules=modules,
-                    ownership=ownership,
-                ),
+                rewrite,
             )
             if planned.failure:
                 return planned
@@ -693,6 +718,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         Returns:
             Whether both receivers reach the identical utility declaration.
+
         """
         module, receiver, member = target
         expected = cls._behavior_effective_declaration(
@@ -703,33 +729,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             modules, cls._behavior_lineage(modules, existing, existing_receiver), member
         )
         return expected is not None and effective == expected
-
-    @classmethod
-    def _rewrite_behavior_request(
-        cls,
-        path: Path,
-        source: str,
-        *,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
-        ownership: t.Pair[
-            t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
-            frozenset[t.Quad[str, str, str, str]],
-        ],
-    ) -> t.Infra.TransformResult:
-        """Compose one typed rewrite request for a consumer source view.
-
-        Returns:
-            The rewritten source and its composed semantic import edits.
-
-        """
-        return cls.rewrite_behavior_consumer(
-            m.Infra.SemanticBehaviorRewriteRequest(
-                path=path,
-                source=source,
-                modules=modules,
-                ownership=ownership,
-            ),
-        )
 
     @classmethod
     def rewrite_behavior_consumer(
@@ -766,6 +765,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]
         ] = {}
 
+        # Owner facts are immutable for this request; lexical checks still run
+        # for every reference. A new source/candidate creates a fresh resolver.
+        @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
         def resolve(qualified: str) -> t.Triple[str, str, str] | None:
             imported = next(
                 (
@@ -962,7 +964,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan the class-name base for every facade the detector selected.
 

@@ -81,6 +81,7 @@ class TestsFlextInfraCodegenConstantsQualityGate:
     def test_real_workspace_run_returns_report(tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
         gate = FlextInfraCodegenQualityGate(
+            workspace_factory=infra.rope_workspace,
             repository_root=tmp_path,
             source_preview=infra.source_preview(tmp_path),
         )
@@ -111,6 +112,7 @@ class TestsFlextInfraCodegenConstantsQualityGate:
         u.Tests.provision_checkout(project)
         tm.that(u.Tests.run_lazy_init(project), eq=0)
         gate = FlextInfraCodegenQualityGate(
+            workspace_factory=infra.rope_workspace,
             repository_root=project,
             source_preview=infra.source_preview(project),
         )

@@ -14,7 +14,6 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
     FlextInfraCodegenLazyInitGenerationMixin,
@@ -83,7 +82,11 @@ class FlextInfraCodegenLazyInit(
             )
         return r[bool].ok(value=True)
 
-    def plan_files(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+    def plan_files(
+        self,
+        *,
+        evidence_root: Path | None = None,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return one complete immutable lazy-init analysis receipt.
 
         Returns:
@@ -114,7 +117,7 @@ class FlextInfraCodegenLazyInit(
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
         analysis = planned.value
         evidence = u.Infra.publish_refactor_report_evidence(
-            resolved_repository_root,
+            resolved_repository_root if evidence_root is None else evidence_root,
             analysis,
             relative_path=c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH,
         )
@@ -208,7 +211,7 @@ class FlextInfraCodegenLazyInit(
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         target_roots = 0
         for root in roots:
-            import_roots = FlextInfraUtilitiesRopeCore.import_project_roots(root)
+            import_roots = u.Infra.import_project_roots(root)
             with FlextInfraRopeWorkspace.open_workspace(
                 root,
                 rope_repository_root=import_roots[0],

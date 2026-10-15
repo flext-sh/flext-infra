@@ -175,26 +175,35 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 break
             facts = u.Infra.codemod_project_facts(
                 project_dir,
-                tuple(rules_by_id[finding.rule_id] for finding in report.root),
-            )
-            snapshot = u.Infra.codemod_binding_snapshot(
-                project_dir,
                 tuple(
-                    u.Cli.atomic_read_binary_file_state(
-                        u.Infra.codemod_source_path(project_dir, Path(finding.file)),
-                        required=True,
-                    ).unwrap()
-                    for finding in report.root
-                ),
-                tuple(
-                    condition.arg[0]
-                    for finding in report.root
-                    for condition in rules_by_id[finding.rule_id].context
-                    if condition.predicate
-                    is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
+                    rules_by_id[rule_id]
+                    for rule_id in dict.fromkeys(
+                        finding.rule_id for finding in report.root
+                    )
                 ),
             )
-            with u.Infra.codemod_binding_project(project_dir, snapshot) as (
+            snapshot = (
+                u.Infra.codemod_binding_snapshot(
+                    project_dir,
+                    tuple(
+                        u.Cli.atomic_read_binary_file_state(
+                            path,
+                            required=True,
+                        ).unwrap()
+                        for path in dict.fromkeys(
+                            u.Infra.codemod_source_path(project_dir, Path(finding.file))
+                            for finding in report.root
+                            if finding.rule_id in facts.binding_rule_ids
+                        )
+                    ),
+                    facts.binding_modules,
+                )
+                if facts.binding_rule_ids
+                else m.Infra.CodemodBindingSnapshot(states=())
+            )
+            with u.Infra.codemod_binding_project(
+                project_dir, u.Infra.codemod_source_epoch(snapshot)
+            ) as (
                 project,
                 sources,
             ):

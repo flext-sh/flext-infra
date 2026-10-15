@@ -114,6 +114,9 @@ class TestsFlextInfraUtilitiesCodegenTestSupport:
             return m.Infra.GithubWorkflowRenderSpec(
                 dist=dist,
                 gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
+                setup_operations_report_directory=(
+                    c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
+                ),
                 make_profile=make_profile,
                 repository_branch=repository_branch,
                 ci_trigger_branches=ci_trigger_branches,
@@ -238,6 +241,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
         class MakeEnvironmentShape:
             """Repository-shape knobs for the generated Make fixture."""
 
+            project_name: str = "fixture-project"
             package: bool = True
             examples_module: str | None = None
             extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = ()
@@ -260,7 +264,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             shape = u.Tests.MakeEnvironmentShape() if shape is None else shape
             role = c.Infra.MakeProfile(profile.value)
             repository = u.Tests.repository_ref(
-                "fixture-project",
+                shape.project_name,
                 role=role,
             ).model_copy(
                 update={
@@ -271,7 +275,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     "script_dispatch": shape.script_dispatch,
                 },
             )
-            project_root = tmp_path / profile.value / "fixture-project"
+            project_root = tmp_path / profile.value / shape.project_name
             u.Tests.WorktreeFixture.write_python_project(
                 project_root,
                 repository.distribution,
@@ -320,7 +324,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             repository_root = project_root
             workspace = u.Tests.workspace_spec(
                 repository,
-                project=u.Tests.project_spec("fixture-project"),
+                project=u.Tests.project_spec(shape.project_name),
             )
             request = u.Tests.conform_request(
                 project_root,
@@ -346,6 +350,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 paths.update(
                     project_root / name
                     for name in (c.PYPROJECT_FILENAME, c.Infra.MISE_TOML_FILENAME)
+                )
+                paths.update(
+                    project_root / directory / c.PYPROJECT_FILENAME
+                    for directory in (
+                        plan.make_spec.uv_resolution.local_directory,
+                        plan.make_spec.uv_resolution.standalone_directory,
+                    )
                 )
             artifacts = tuple(
                 file

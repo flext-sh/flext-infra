@@ -12,15 +12,12 @@ from typing import TYPE_CHECKING
 
 from flext_infra import m, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.refactor import FlextInfraRefactorCensusApplyFormattingMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraRefactorCensusRemovalMixin(
-    FlextInfraRefactorCensusApplyFormattingMixin,
-):
+class FlextInfraRefactorCensusRemovalMixin:
     """Preview and apply the inventory's removal candidates through gates.
 
     Removal of unreferenced objects is the census's own effect: it acts on
@@ -152,7 +149,7 @@ class FlextInfraRefactorCensusRemovalMixin(
                 )
         if not touched_paths:
             return False
-        self.normalize_touched_files(touched_paths)
+        u.Infra.normalize_touched_files(touched_paths, self.root)
         FlextInfraCodegenLazyInit(repository_root=self.root).plan_files().unwrap()
         rope.reload()
         return True

@@ -29,6 +29,25 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     can_fix: ClassVar[bool] = True
 
     @override
+    def _check_env(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> t.StrMapping:
+        """Keep native cache writes outside authenticated source candidates.
+
+        Returns:
+            The resulting ``t.StrMapping``.
+
+        """
+        return {
+            **(super()._check_env(project_dir, ctx) or {}),
+            c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
+                u.Infra.ruff_cache_directory(project_dir)
+            ),
+        }
+
+    @override
     def _get_check_dirs(
         self,
         project_dir: Path,
@@ -183,7 +202,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with self._mutation_lease(project_dir):
-            import_graph = (
+            import_graph: t.MappingKV[str, frozenset[str]] = (
                 u.Infra.project_import_graph(project_dir)[0]
                 if any(
                     recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
@@ -232,6 +251,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
         Raises:
             FileNotFoundError: If ``before.content is None``.
+
         """
         if before.content is None:
             raise FileNotFoundError(before.path)

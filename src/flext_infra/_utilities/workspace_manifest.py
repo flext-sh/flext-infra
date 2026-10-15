@@ -40,9 +40,10 @@ class FlextInfraUtilitiesWorkspaceManifest:
 
         Returns:
             The validated declaration belonging to the document's own repository.
+
         """
         result_type = r[m.Infra.RepositoryDeltaSpec]
-        fields = frozenset(m.Infra.RepositoryDeltaSpec.model_fields)
+        fields = set(m.Infra.RepositoryDeltaSpec.model_fields)
         values = legacy.model_dump(
             mode="json",
             include=fields.intersection(m.Infra.WorkspaceManifestSpec.model_fields),
@@ -65,15 +66,14 @@ class FlextInfraUtilitiesWorkspaceManifest:
                         include=fields.intersection(
                             m.Infra.RepositoryPolicyOverlaySpec.model_fields,
                         ),
+                        # Why: the overlay's ``project`` is the selector that
+                        # matched this policy (the distribution name string);
+                        # the delta's ``project`` is ProjectSpec metadata. The
+                        # selector is admission, never delta content.
+                        exclude={"project"},
                         exclude_computed_fields=True,
                     ),
                 )
-        if legacy.candidate_dependencies:
-            error = ValueError(
-                "candidate dependency coordinates must be adopted by the "
-                "declared dependency provenance before manifest retirement",
-            )
-            return result_type.fail(str(error), exception=error)
         validated = u.validate_value(m.Infra.RepositoryDeltaSpec, values)
         if validated.failure:
             return result_type.from_failure(validated)

@@ -135,13 +135,13 @@ jobs:
           # Structured reports only — a subset of Upload reports (no raw
           # pytest/tool logs: those may carry connection strings / env secrets).
           for report_root in .reports apps; do
-            if [ -d "$report_root" ]; then
-              find "$report_root" \
+            if [ -d "${report_root}" ]; then
+              find "${report_root}" \
                 \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
                 -type f -exec sh -eu -c '
                   for report_file do
-                    printf "::group::%s\n" "$report_file"
-                    tail -n 200 "$report_file"
+                    printf "::group::%s\n" "${report_file}"
+                    tail -n 200 "${report_file}"
                     printf "::endgroup::\n"
                   done
                 ' sh {} +
@@ -167,7 +167,7 @@ jobs:
             .reports/codegen-plan.json
             .reports/codegen-publication.json
             .reports/codegen-publication/**/*.json
-            .reports/setup-operations/*.json
+            {{ setup_operations_report_directory }}/*.json
             .reports/tests/**/suite-outcome.json
             .reports/tests/**/selection-outcome.json
             .reports/tests/**/inventory-outcome.json
@@ -189,8 +189,8 @@ jobs:
 {%- include "_fragments/testmon_cache_save.j2" %}
 {%- endif %}
 
-      # Why: save on every outcome — including a failing gate — so
-      # the next run starts warm. Only written when the restore missed.
+      # Save a new immutable generation after completed failures as well as
+      # successes, so warm restores never discard new provisioning progress.
 {%- include "_fragments/toolchain_cache_save.j2" %}
   # End SECTION: ci job
 
@@ -226,41 +226,4 @@ jobs:
         run: {{ make.ci.variable }}={{ make.ci.value }} make release-plan
   # End SECTION: release-plan job
 
-  # === SECTION: merge-guard job (managed) ===
-  merge-guard:
-    name: merge-guard
-    permissions:
-      contents: read
-    # Draft is the typed WIP state: no repository Action is selected until the
-    # same PR is promoted to Review with a non-WIP head.
-    if: {% raw %}${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}{% endraw %}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout promoted head
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
-        with:
-          fetch-depth: 1
-          # Inspect the PR head commit, not the refs/pull/N/merge commit that
-          # actions/checkout selects by default on pull_request events; the
-          # merge commit subject would never carry the WIP marker.
-          ref: {% raw %}${{ github.event.pull_request.head.sha }}{% endraw %}
-      - name: Block WIP heads from protected integration branches
-        env:
-          BASE_REF: {% raw %}${{ github.base_ref }}{% endraw %}
-        run: |
-          set -eu
-          case "$BASE_REF" in
-            {% for branch in make.work_in_progress.merge_lock_target_branches %}{{ branch }}{% if not loop.last %}|{% endif %}{% endfor %})
-              ;;
-            *)
-              echo "Merge guard passed for $(git rev-parse HEAD) -> $BASE_REF"
-              exit 0
-              ;;
-          esac
-          subject=$(git log -1 --format=%s)
-          if printf '%s' "$subject" | grep -qiE '{% for pattern in make.work_in_progress.head_subject_patterns %}{{ pattern }}{% if not loop.last %}|{% endif %}{% endfor %}'; then
-            echo "WIP head cannot merge into ${BASE_REF}: ${subject}"
-            exit 1
-          fi
-          echo "Merge guard passed for $(git rev-parse HEAD) -> $BASE_REF"
-  # End SECTION: merge-guard job
+

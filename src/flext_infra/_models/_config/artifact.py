@@ -29,6 +29,7 @@ from flext_infra._models._config.release import FlextInfraConfigModelsRelease
 from flext_infra._models._config.render import FlextInfraConfigModelsRender
 from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
 from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
 
@@ -178,10 +179,9 @@ class FlextInfraConfigModelsArtifact:
         repository: Annotated[
             FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
             m.Field(
-                default_factory=FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
                 description="This repository's self-owned declaration differences",
             ),
-        ]
+        ] = m.Field(default_factory=FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec)
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
         retired_projections: Annotated[
             t.VariadicTuple[str | FlextInfraConfigModelsArtifact.RetiredProjectionSpec],
@@ -293,12 +293,6 @@ class FlextInfraConfigModelsArtifact:
                 ),
             ),
         ]
-        uv_exclude_dependencies: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec
-            ],
-            m.Field(description="Project-scoped official uv dependency exclusions"),
-        ] = ()
         sonarcloud: Annotated[
             FlextInfraConfigModelsRender.SonarcloudSpec,
             m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),
@@ -350,6 +344,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``Mapping[str, bool]``.
+
             """
             return {
                 f"**/{artifact.name}": True
@@ -364,6 +359,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``Mapping[str, bool]``.
+
             """
             return {
                 f"**/{artifact.name}/**": True
@@ -378,6 +374,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``Mapping[str, bool]``.
+
             """
             return dict(self.vscode_files_exclude_map)
 
@@ -388,6 +385,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return tuple(
                 artifact.name
@@ -402,6 +400,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return tuple(
                 artifact.name
@@ -416,6 +415,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return tuple(f"**/{name}/**" for name in self.generated_sources)
 
@@ -444,6 +444,7 @@ class FlextInfraConfigModelsArtifact:
             Returns:
                 The resulting
                     ``t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec]``.
+
             """
             scaffold_sections = self.scaffold.gitignore_sections
             # A declared section may already govern a derived artifact, in
@@ -459,11 +460,17 @@ class FlextInfraConfigModelsArtifact:
             declared_patterns = {
                 pattern for section in scaffold_sections for pattern in section.patterns
             }
-            for managed in self.managed_files:
-                parts = managed.path.parts
+            versioned_paths = tuple(
+                managed.path for managed in self.managed_file_specs
+            ) + tuple(
+                path.with_name(c.Infra.UV_LOCK_FILENAME)
+                for path in self.uv_resolution_pyprojects
+            )
+            for path in versioned_paths:
+                parts = path.parts
                 candidates = [
                     *(f"!{'/'.join(parts[:depth])}/" for depth in range(1, len(parts))),
-                    f"!{managed.path.as_posix()}",
+                    f"!{path.as_posix()}",
                 ]
                 managed_allowed.extend(
                     candidate
@@ -510,6 +517,7 @@ class FlextInfraConfigModelsArtifact:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             # A generated source tree is tracked: ignoring it would hide the
             # modules a regeneration adds from ``git add``.
@@ -523,6 +531,56 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec],
             m.Field(description="Files owned by conform"),
         ]
+
+        @m.computed_field
+        @property
+        def uv_resolution_pyprojects(self) -> t.VariadicTuple[Path]:
+            """Derive native resolver documents from the configured directories."""
+            return tuple(
+                directory / c.PYPROJECT_FILENAME
+                for directory in (
+                    self.make.uv_resolution.local_directory,
+                    self.make.uv_resolution.standalone_directory,
+                )
+            )
+
+        @m.computed_field
+        @property
+        def managed_file_specs(
+            self,
+        ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec]:
+            """Compose native resolver artifacts from the one path policy.
+
+            Raises:
+                ValueError: If managed files do not declare exactly one root
+                    ``pyproject.toml`` owner, or if a derived resolver artifact
+                    collides with an already declared managed file.
+
+            """
+            roots = tuple(
+                item
+                for item in self.managed_files
+                if item.path == Path(c.PYPROJECT_FILENAME)
+            )
+            if len(roots) != 1:
+                msg = "managed files require exactly one root pyproject owner"
+                raise ValueError(msg)
+            owner = roots[0]
+            projected = tuple(
+                FlextInfraConfigModelsTemplates.ManagedFileSpec(
+                    path=path,
+                    owner=owner.owner,
+                    policy="full",
+                    mode=owner.mode,
+                )
+                for path in self.uv_resolution_pyprojects
+            )
+            declared = {item.path for item in self.managed_files}
+            if any(item.path in declared for item in projected):
+                msg = "native resolver artifacts derive from make.uv_resolution only"
+                raise ValueError(msg)
+            return (*self.managed_files, *projected)
+
         scaffold: Annotated[
             FlextInfraConfigModelsScaffold.ScaffoldSpec,
             m.Field(description="Typed new-project scaffold policy"),
@@ -555,7 +613,7 @@ class FlextInfraConfigModelsArtifact:
             )
             github_managed = tuple(
                 managed
-                for managed in self.managed_files
+                for managed in self.managed_file_specs
                 if managed.path.parts[:1] == (".github",)
             )
             template_paths = set(github_templates)
@@ -589,6 +647,20 @@ class FlextInfraConfigModelsArtifact:
                 msg = f"GitHub artifacts must be full-managed: {non_full}"
                 raise ValueError(msg)
             return self
+
+    class RepositoryDeclarationInputs(FlextInfraConfigModelsContract.ConfigContract):
+        """Self-owned topology policy and the exact consulted configuration states."""
+
+        spec: Annotated[
+            FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
+            m.Field(description="Validated repository declaration subsection"),
+        ]
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                exclude=True, description="Exact consulted configuration input states"
+            ),
+        ] = ()
 
     class CodegenInputs(FlextInfraConfigModelsContract.ConfigContract):
         """Full effective codegen policy and its ordered consulted snapshots."""
@@ -643,6 +715,7 @@ class FlextInfraConfigModelsArtifact:
     class CodegenConformRequest(FlextInfraConfigModelsContract.ConfigContract):
         """Validated public request for ``flext-infra codegen conform``."""
 
+        model_config = m.ConfigDict(use_enum_values=False)
         root: Annotated[Path, m.Field(description="Repository or workspace root")]
         what: Annotated[
             c.Infra.CodegenConformSurface,
@@ -660,6 +733,12 @@ class FlextInfraConfigModelsArtifact:
             str | None,
             m.Field(description="Exact package or module for a file-only surface"),
         ] = None
+        declaration_kind: Annotated[
+            c.Infra.ProjectKind | None,
+            m.Field(
+                description="Explicit self-owned kind supplied by native bootstrap"
+            ),
+        ] = None
 
         @m.model_validator(mode="after")
         def _validate_lazy_init_scope(self) -> Self:
@@ -676,6 +755,12 @@ class FlextInfraConfigModelsArtifact:
                 c.Infra.CodegenConformSurface.LAZY_INIT,
                 c.Infra.CodegenConformSurface.FACADES,
             }
+            if self.declaration_kind is not None and (
+                self.what != c.Infra.CodegenConformSurface.MAKEFILE
+                or self.scope != c.Infra.CodegenConformScope.SELF
+            ):
+                msg = "kind bootstrap requires the target's self Makefile surface"
+                raise ValueError(msg)
             facades = self.what == c.Infra.CodegenConformSurface.FACADES
             if self.module is not None and not file_only:
                 msg = "--module belongs only to lazy-init or facades"
@@ -768,6 +853,11 @@ class FlextInfraConfigModelsArtifact:
 
     class CodegenFilePlan(FlextInfraConfigModelsContract.ConfigContract):
         """Exact before state and desired state for one managed file."""
+
+        dependency_group: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Invocation-local dependent publication group"),
+        ] = None
 
         project: Annotated[Path, m.Field(description="Physical owning project root")]
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
@@ -888,6 +978,13 @@ class FlextInfraConfigModelsArtifact:
     class CodegenRepositoryPlanTask(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's read-only planning inputs sent to a fleet worker."""
 
+        selected_inputs: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenInputs | None,
+            m.Field(
+                exclude=True,
+                description="Invoking repository's already captured configuration",
+            ),
+        ] = None
         root: Annotated[Path, m.Field(description="Generation scope root")]
         workspace: Annotated[
             FlextInfraConfigModelsWorkspace.WorkspaceSpec,
@@ -905,9 +1002,11 @@ class FlextInfraConfigModelsArtifact:
             FlextInfraConfigModelsContexts.RepositoryRef,
             m.Field(description="Repository this task plans"),
         ]
-        contract: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenConformSurfaceContract,
-            m.Field(description="Surface contract of the selected scope"),
+        surface: Annotated[
+            FlextInfraConfigVocabulary.CodegenConformSurface,
+            m.Field(
+                description="Requested surface resolved against each target policy"
+            ),
         ]
 
     class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):
@@ -1058,22 +1157,6 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Planning failures retained alongside valid outputs"),
         ] = ()
 
-    class CodegenResult(FlextInfraConfigModelsContract.ConfigContract):
-        """Public conformance outcome for check and apply modes."""
-
-        plan: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenPlan,
-            m.Field(description="Plan that governed the operation"),
-        ]
-        written_files: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Files atomically replaced by apply"),
-        ] = ()
-        errors: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Fail-closed validation or write errors"),
-        ] = ()
-
     class RenameCampaignSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared CSV-driven rename campaign applied by the mod verb."""
 
@@ -1174,6 +1257,10 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsArtifact.RenameCampaignSpec],
             m.Field(default=(), description="Ordered rename campaigns"),
         ] = ()
+        semantic_plan: Annotated[
+            Path | None,
+            m.Field(description="Explicit workspace-relative semantic rename artifact"),
+        ] = None
 
     class SedPatternSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared literal regex substitution applied across the mod scope."""

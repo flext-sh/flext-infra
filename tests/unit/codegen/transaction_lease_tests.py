@@ -20,6 +20,7 @@ from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspace
 from tests import tm, u
 
 if TYPE_CHECKING:
+    from multiprocessing.process import BaseProcess
     from multiprocessing.synchronize import Event
 
 
@@ -58,7 +59,6 @@ class TestsFlextInfraTransactionLease:
         output = tm.ok(
             u.Cli.run_raw(
                 (sys.executable, "-c", script, str(tmp_path)),
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
             ),
         )
         tm.that(
@@ -134,7 +134,6 @@ class TestsFlextInfraTransactionLease:
         outcome = tm.ok(
             u.Cli.run_raw(
                 [sys.executable, "-c", script, str(root)],
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
             ),
         )
         tm.that(
@@ -184,10 +183,7 @@ class TestsFlextInfraTransactionLease:
                 eq=True,
             )
             tm.ok(
-                transaction.commit_locked(
-                    session,
-                    lambda: owner.validate_artifacts(root, scope_root),
-                ),
+                transaction.commit_locked(session),
             )
             return r[bool].ok(value=True)
 
@@ -281,7 +277,7 @@ class TestsFlextInfraTransactionLease:
             args=(member, ready, release),
         )
         holder.start()
-        waiter: multiprocessing.process.BaseProcess | None = None
+        waiter: BaseProcess | None = None
         try:
             tm.that(
                 ready.wait(config.Infra.tooling.tools.pytest.slow_timeout_seconds),

@@ -161,6 +161,12 @@ namespace-enforce` / `refactor accessor-migrate` without `--apply` reports
   without writing) and publish their structured receipts under
   `.reports/refactor/`; a second run over a converged tree writes nothing.
 
+`flext-infra refactor namespace-enforce --module <dotted-module> --apply` limits
+import normalization and declared relocations to one owned source module. An unknown
+or ambiguous module fails before effects. The shared import-normalization phase also
+removes own-package import aliases, preserves shadowed homonyms and rejects canonical
+name capture; `make mod` consumes that same owner.
+
 The public `flext-infra refactor move-module` command moves an existing module
 through the same Rope engine and rewrites its import references. Its required
 `--repository-root`, `--source-file`, and `--destination-directory` arguments
@@ -198,13 +204,35 @@ Two surfaces compose the per-repository verbs into fleet-scale loops. Both are
   missing native output and duplicate full-project repo/gate selections fail
   before hygiene probes. The auditor never searches by time or combines counts
   from multiple captures of the same repo/gate.
-- `flext-infra refactor violations-sweep` measures the repository's mod scan
-  totals, runs the canonical repair sequence (`make fix`, `make fmt`,
-  `make mod`) in order, measures again, and publishes
-  `.reports/refactor/violations-sweep.json`. The command FAILS the moment any
-  total increased: automation may reduce a tree's violations, never grow
-  them. A sweep over a tree the repair sequence cannot improve is a
-  zero-delta success.
+- `flext-infra refactor violations-sweep` observes the full governed mod catalog
+  before and after an ordered canonical Make sequence. Its default comes from
+  `Infra.codegen.make.violations_sweep_repair_verbs`; `--repair-verbs` accepts a
+  comma-separated sequence from the typed selector-free Make vocabulary,
+  including generation, namespace repair and audit. `--rules` validates exact
+  rule IDs for audit-only focus; a focused request refuses unfiltered repair
+  verbs before effects. Isolated mutation belongs to `refactor ast --rules`.
+  Focus never hides other rules or projects from regression detection. Audit
+  runs independently against every discovered project's Makefile from the
+  workspace root and must preserve the authenticated Python source/catalog
+  bytes, rule plan and inventory. Receipts retain each operation's cwd, timing,
+  raw process outcome, audit snapshots and failed/unexecuted verdicts. Introduced
+  occurrences, increased totals, operation failures and audit mutations remain
+  failures, with the first cause preserved after inspection/publication failure.
+  The latest receipt is `.reports/refactor/violations-sweep.json`; full
+  invocation-local before/after evidence remains preserved alongside it. Root
+  audit success or unchanged totals alone never prove every project green.
+
+  The default is an independent ordered sweep policy, not a second public-verb
+  registry. `MakeVerbSpec` declares names, arguments, descriptions, activation
+  production and profile applicability, but no repair-effect classification.
+  Registry order and `make.workflow` therefore cannot derive the sweep sequence:
+  the workflow also includes provisioning and validation and omits structural
+  repair. `check_gates_fixable` describes gates consumed by one repair operation,
+  not the ordering or selection of Make operations. Even mutating operations may
+  generate projections, remove artifacts or publish releases, so mutation alone
+  is not sweep eligibility. Keep this policy explicit until a canonical semantic
+  operation contract can determine both its membership and execution order;
+  never infer either from verb names, help text or Make recipes.
 
 ## Mandatory unsafe repair channel (operator law 2026-10-05)
 

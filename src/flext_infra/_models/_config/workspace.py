@@ -11,6 +11,7 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, t
+from packaging.utils import canonicalize_name
 
 from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
@@ -21,6 +22,36 @@ from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 class FlextInfraConfigModelsWorkspace:
     """Workspace manifest, integration, and policy models."""
+
+    class GitSubmoduleDeclaration(m.ContractModel):
+        """One Git configuration section parsed by its canonical owner."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            frozen=True,
+        )
+
+        path: Annotated[
+            Path,
+            m.Field(description="Submodule path relative to the superproject root"),
+        ]
+        url: Annotated[
+            str,
+            m.Field(description="Declared URL; empty when undeclared"),
+        ]
+        branch: Annotated[
+            str,
+            m.Field(description="Declared branch; empty when undeclared"),
+        ]
+        managed: Annotated[
+            bool | None,
+            m.Field(
+                description=(
+                    "Native Git boolean: absent inherits participation; "
+                    "true participates and false does not"
+                ),
+            ),
+        ]
 
     class RefactorConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Refactor file-selection configuration."""
@@ -34,12 +65,86 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Allowed file extensions (empty = all by pattern)"),
         ] = m.Field(default_factory=tuple)
 
-    class RepositoryDeltaSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class DependencyCommitSourceSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One dependency distribution resolved to an immutable Git commit.
+
+        A staged candidate and a workspace member's recorded gitlink are the
+        same fact: a distribution, its canonical repository and the exact
+        commit it resolves to.
+        """
+
+        distribution: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact dependency distribution name"),
+        ]
+        url: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical HTTPS Git repository URL"),
+        ]
+        commit: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Full immutable Git commit OID"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_source(self) -> Self:
+            if not self.url.startswith("https://") or not self.url.endswith(".git"):
+                msg = "dependency commit source URL must be canonical HTTPS Git"
+                raise ValueError(msg)
+            if (
+                FlextInfraConfigVocabulary.GIT_COMMIT_OID_RE.fullmatch(self.commit)
+                is None
+            ):
+                msg = "dependency commit source must pin a full Git OID"
+                raise ValueError(msg)
+            return self
+
+    class CandidateDependenciesSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Share candidate-source validation without changing declaration shape."""
+
+        candidate_dependencies: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec],
+            m.Field(description="Candidate-only exact dependency Git sources"),
+        ] = ()
+
+        @m.field_validator("candidate_dependencies")
+        @classmethod
+        def _validate_candidate_dependencies(
+            cls,
+            values: t.VariadicTuple[
+                FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec
+            ],
+        ) -> t.VariadicTuple[
+            FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec
+        ]:
+            """Require one immutable candidate per distribution and repository.
+
+            Returns:
+                The validated candidate dependency tuple unchanged.
+
+            Raises:
+                ValueError: If any distribution or repository URL repeats.
+
+            """
+            distributions = tuple(
+                canonicalize_name(item.distribution, validate=True) for item in values
+            )
+            if len(set(distributions)) != len(distributions):
+                msg = "candidate dependency distributions must be unique"
+                raise ValueError(msg)
+            urls = tuple(item.url for item in values)
+            if len(set(urls)) != len(urls):
+                msg = "candidate dependency repository URLs must be unique"
+                raise ValueError(msg)
+            return values
+
+    class RepositoryDeltaSpec(CandidateDependenciesSpec):
         """Own repository differences; Git and project metadata own identity.
 
         The effective codegen configuration composes this declaration from the
         library defaults, the selected repository and its local overlay. It
-        never declares another repository or a workspace participant.
+        never declares another runtime repository or workspace participant.
+        Recovery targets authorize bounded publication into existing worktrees.
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
@@ -61,6 +166,21 @@ class FlextInfraConfigModelsWorkspace:
         namespace_scan_dirs: Annotated[
             t.StrSequence,
             m.Field(description="Own namespace analysis roots"),
+        ] = ()
+        candidate_bootstrap_targets: Annotated[
+            t.VariadicTuple[
+                FlextInfraConfigModelsWorkspace.CandidateBootstrapTargetSpec
+            ],
+            m.Field(description="Declared candidate worktrees and recovery surfaces"),
+        ] = ()
+        workspace_inventory_command: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Own public host inventory argv; empty leaves host discovery "
+                    "unselected, with no external participant catalogue"
+                ),
+            ),
         ] = ()
         refactor: Annotated[
             FlextInfraConfigModelsWorkspace.RefactorConfigSpec | None,
@@ -154,41 +274,130 @@ class FlextInfraConfigModelsWorkspace:
                 raise ValueError(msg)
             return self
 
-    class DependencyCommitSourceSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One dependency distribution resolved to an immutable Git commit.
+    class DependencyGroupInclude(m.ContractModel):
+        """One native PEP 735 inclusion at its original array position."""
 
-        A staged candidate and a workspace member's recorded gitlink are the
-        same fact: a distribution, its canonical repository and the exact
-        commit it resolves to.
-        """
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-        distribution: Annotated[
+        include_group: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Exact dependency distribution name"),
-        ]
-        url: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical HTTPS Git repository URL"),
-        ]
-        commit: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Full immutable Git commit OID"),
+            m.Field(alias="include-group", description="Referenced dependency group"),
         ]
 
-        @m.model_validator(mode="after")
-        def _validate_source(self) -> Self:
-            if not self.url.startswith("https://") or not self.url.endswith(".git"):
-                msg = "dependency commit source URL must be canonical HTTPS Git"
+    class DependencyGroupEntries(
+        m.RootModel[t.VariadicTuple[str | DependencyGroupInclude]]
+    ):
+        """Native ordered PEP 735 entries, without resolving local references."""
+
+        @m.model_validator(mode="before")
+        @classmethod
+        def toml_array(cls, value: t.JsonValue) -> t.JsonPayload:
+            """Freeze an array while retaining each native inclusion table.
+
+            Returns:
+                The array frozen as a tuple, or the untouched payload.
+
+            """
+            return tuple(value) if isinstance(value, list) else value
+
+    class DependencyGroupDeclarations(m.ContractModel):
+        """Shared native dependency-group grammar and local reference graph."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+
+        dependency_groups: Annotated[
+            t.MappingKV[
+                str,
+                t.VariadicTuple[
+                    str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+                ],
+            ],
+            m.Field(
+                alias="dependency-groups", description="Ordered native group entries"
+            ),
+        ]
+
+        @m.field_validator("dependency_groups", mode="before")
+        @classmethod
+        def toml_group_arrays(cls, value: t.JsonValue) -> t.JsonPayload:
+            """Freeze TOML containers without converting inclusion tables to strings.
+
+            Returns:
+                The mapping with every group array frozen as a tuple, or the
+                untouched payload.
+
+            """
+            if isinstance(value, dict):
+                return {
+                    name: tuple(entries) if isinstance(entries, list) else entries
+                    for name, entries in value.items()
+                }
+            return value
+
+        @m.field_validator("dependency_groups")
+        @classmethod
+        def local_group_graph(
+            cls,
+            groups: t.MappingKV[
+                str,
+                t.VariadicTuple[
+                    str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+                ],
+            ],
+        ) -> t.MappingKV[
+            str,
+            t.VariadicTuple[
+                str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+            ],
+        ]:
+            """Reject missing, ambiguous or cyclic local group inclusions.
+
+            Returns:
+                The validated group entries with their inclusion graph.
+
+            Raises:
+                ValueError: If dependency group names have colliding normalized
+                    identities; or if a group includes an undeclared group; or
+                    if the local group inclusions form a cycle.
+
+            """
+            names = {canonicalize_name(name, validate=True): name for name in groups}
+            if len(names) != len(groups):
+                msg = "dependency group names have colliding normalized identities"
                 raise ValueError(msg)
-            if (
-                FlextInfraConfigVocabulary.GIT_COMMIT_OID_RE.fullmatch(self.commit)
-                is None
-            ):
-                msg = "dependency commit source must pin a full Git OID"
-                raise ValueError(msg)
-            return self
+            graph: dict[str, tuple[str, ...]] = {}
+            for name, entries in groups.items():
+                references = tuple(
+                    canonicalize_name(entry.include_group, validate=True)
+                    for entry in entries
+                    if not isinstance(entry, str)
+                )
+                if any(reference not in names for reference in references):
+                    msg = f"dependency group includes an undeclared group: {name}"
+                    raise ValueError(msg)
+                graph[canonicalize_name(name)] = references
+            active: list[str] = []
+            visited: set[str] = set()
 
-    class DependencyManifestSpec(m.ContractModel):
+            def visit(name: str) -> None:
+                if name in active:
+                    msg = "cyclic dependency group inclusion: " + " -> ".join(
+                        (*active, name),
+                    )
+                    raise ValueError(msg)
+                if name in visited:
+                    return
+                active.append(name)
+                for reference in graph[name]:
+                    visit(reference)
+                active.pop()
+                visited.add(name)
+
+            for name in graph:
+                visit(name)
+            return groups
+
+    class DependencyManifestSpec(DependencyGroupDeclarations):
         """Dependency facts one member's own ``pyproject.toml`` declares."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
@@ -211,13 +420,23 @@ class FlextInfraConfigModelsWorkspace:
             ),
         ] = ()
         dependency_groups: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            t.MappingKV[
+                str,
+                t.VariadicTuple[
+                    str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+                ],
+            ],
             m.Field(
                 validation_alias=FlextInfraConfigVocabulary.DEPENDENCY_GROUPS,
                 description="PEP 735 dependency groups (dev, codegen, ...)",
             ),
         ] = m.Field(
-            default_factory=lambda: MappingProxyType[str, t.StrSequence]({}),
+            default_factory=lambda: MappingProxyType[
+                str,
+                t.VariadicTuple[
+                    str | FlextInfraConfigModelsWorkspace.DependencyGroupInclude
+                ],
+            ]({}),
         )
 
     class DependencyEdgeSpec(m.ContractModel):
@@ -308,7 +527,7 @@ class FlextInfraConfigModelsWorkspace:
         path: Annotated[Path, m.Field(description="Workspace-relative path")]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
 
-    class WorkspaceManifestSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class WorkspaceManifestSpec(CandidateDependenciesSpec):
         """Complete versioned input contract for ``config/workspace.yaml``."""
 
         version: Annotated[
@@ -378,10 +597,6 @@ class FlextInfraConfigModelsWorkspace:
             FlextInfraConfigModelsContexts.WorkspaceIntegrationSpec | None,
             m.Field(description="Optional integration provider overlay"),
         ] = None
-        candidate_dependencies: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec],
-            m.Field(description="Candidate-only exact dependency Git sources"),
-        ] = ()
         candidate_bootstrap_targets: Annotated[
             FlextInfraConfigModelsWorkspace.CandidateBootstrapTargets,
             m.Field(description="Declared candidate worktrees conformed by Infra"),
@@ -453,12 +668,6 @@ class FlextInfraConfigModelsWorkspace:
                     + ", ".join(sorted(unknown_projects))
                 )
                 raise ValueError(msg)
-            candidate_names = tuple(
-                item.distribution for item in self.candidate_dependencies
-            )
-            if len(set(candidate_names)) != len(candidate_names):
-                msg = "candidate dependency distributions must be unique"
-                raise ValueError(msg)
             targets = self.candidate_bootstrap_targets
             if len({target.path for target in targets}) != len(targets):
                 msg = "candidate bootstrap targets must be unique"
@@ -470,6 +679,39 @@ class FlextInfraConfigModelsWorkspace:
 
         url: Annotated[t.NonEmptyStr, m.Field(description="Infrastructure Git URL")]
         ref: Annotated[t.NonEmptyStr, m.Field(description="Infrastructure Git ref")]
+
+    class HostWorkspaceInventoryEntry(FlextInfraConfigModelsContract.ConfigContract):
+        """One checkout identity received from the public host inventory."""
+
+        project_id: Annotated[
+            t.NonEmptyStr, m.Field(description="Forge project identity")
+        ]
+        owner: Annotated[t.NonEmptyStr, m.Field(description="Resolved forge owner")]
+        path: Annotated[Path, m.Field(description="Physical checkout root")]
+        checkout_id: Annotated[t.NonEmptyStr, m.Field(description="Checkout identity")]
+        governing_checkout_id: Annotated[
+            t.NonEmptyStr, m.Field(description="Project's governing checkout identity")
+        ]
+        project_profile: Annotated[
+            FlextInfraConfigVocabulary.ProjectKind | Literal["unclassified"],
+            m.Field(description="Host's declared governance and architecture profile"),
+        ]
+        upstream_project_id: Annotated[
+            str | None, m.Field(description="Declared fork upstream identity")
+        ]
+        effective_ref: Annotated[
+            str | None, m.Field(description="Host's resolved checkout reference")
+        ]
+
+    class HostWorkspaceInventory(FlextInfraConfigModelsContract.ConfigContract):
+        """Exact public host inventory envelope parsed once at ingress."""
+
+        entries: Annotated[
+            t.VariadicTuple[
+                FlextInfraConfigModelsWorkspace.HostWorkspaceInventoryEntry
+            ],
+            m.Field(description="Canonical discovered checkout identities"),
+        ]
 
     class ExternalConsumerSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One out-of-workspace repository propagation adjusts as a guest.
@@ -498,12 +740,6 @@ class FlextInfraConfigModelsWorkspace:
                 ),
             ),
         ] = None
-        advance_locks: Annotated[
-            bool,
-            m.Field(
-                description="Run the consumer's make upg so flext pins advance",
-            ),
-        ] = True
         fix_namespace: Annotated[
             bool,
             m.Field(description="Run the consumer's make fix-namespace verb"),
@@ -513,7 +749,7 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Run the consumer's make fix-accessors verb"),
         ] = True
 
-    class WorkspaceSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class WorkspaceSpec(CandidateDependenciesSpec):
         """Local identity plus topology read from this repository's Git inputs."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
@@ -575,10 +811,6 @@ class FlextInfraConfigModelsWorkspace:
                 ),
             ),
         ] = None
-        candidate_dependencies: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec],
-            m.Field(description="Candidate-only exact dependency Git sources"),
-        ] = ()
         candidate_bootstrap_targets: Annotated[
             FlextInfraConfigModelsWorkspace.CandidateBootstrapTargets,
             m.Field(description="Declared candidate worktrees for bootstrap"),
@@ -586,6 +818,12 @@ class FlextInfraConfigModelsWorkspace:
         subprojects: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
             m.Field(description="Direct governed repositories from local .gitmodules"),
+        ] = ()
+        pending_subprojects: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsWorkspace.GitSubmoduleDeclaration],
+            m.Field(
+                description="Managed Git declarations awaiting checkout provisioning",
+            ),
         ] = ()
         external_dependency_paths: Annotated[
             t.VariadicTuple[Path],
@@ -642,6 +880,29 @@ class FlextInfraConfigModelsWorkspace:
                     "external dependencies cannot also be governed subprojects: "
                     f"{', '.join(sorted(path.as_posix() for path in overlap))}"
                 )
+                raise ValueError(msg)
+            pending_paths = {item.path for item in self.pending_subprojects}
+            invalid_pending_paths = tuple(
+                item.path
+                for item in self.pending_subprojects
+                if item.path.is_absolute()
+                or not item.path.parts
+                or ".." in item.path.parts
+                or item.managed is False
+            )
+            if invalid_pending_paths:
+                msg = (
+                    "pending subprojects require managed workspace-relative paths: "
+                    + ", ".join(path.as_posix() for path in invalid_pending_paths)
+                )
+                raise ValueError(msg)
+            if len(pending_paths) != len(self.pending_subprojects):
+                msg = "pending subproject paths must be unique"
+                raise ValueError(msg)
+            if pending_paths.intersection(
+                subproject_paths | set(self.external_dependency_paths),
+            ):
+                msg = "pending subprojects cannot also have resolved identities"
                 raise ValueError(msg)
             consumer_names = [item.name for item in self.external_consumers]
             if len(set(consumer_names)) != len(consumer_names):

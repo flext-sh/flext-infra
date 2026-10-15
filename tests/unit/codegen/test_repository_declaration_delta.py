@@ -54,7 +54,7 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         project = u.Tests.project_spec(repository.distribution)
         integration = m.Infra.WorkspaceIntegrationSpec(
             provider=repository.provider,
-            branch=config.Infra.codegen.branch_policy.integration_branch_preference[0],
+            branch=config.Infra.codegen.branch_policy.integration_branch,
         )
         legacy = m.Infra.WorkspaceManifestSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -70,10 +70,54 @@ class TestsFlextInfraRepositoryDeclarationDelta:
             declaration.model_dump_json(),
         )
 
-        tm.that(portable.project, eq=project)
+        # A portable declaration compares through the same public JSON boundary
+        # it traveled: ``t.StrSequence`` contracts read back as lists, so the
+        # expected values are canonicalized identically before equality.
+        tm.that(
+            portable.project,
+            eq=m.Infra.ProjectSpec.model_validate_json(project.model_dump_json()),
+        )
         tm.that(portable.integration, eq=integration)
-        tm.that(portable.namespace_scan_dirs, eq=legacy.namespace_scan_dirs)
+        tm.that(
+            tuple(portable.namespace_scan_dirs),
+            eq=tuple(legacy.namespace_scan_dirs),
+        )
         tm.that(portable.read_only, eq=read_only)
+
+    def test_own_policy_overlay_never_poisons_the_project_metadata(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The overlay's project selector is admission, never delta content.
+
+        Why (aihub-l42it.11): the matching overlay dumped its selector string
+        over the delta's ``project`` key, so any manifest carrying both a
+        project block and an own-policy overlay failed the migration with
+        ``project: Input should be a valid dictionary``.
+        """
+        repository = u.Tests.repository_ref(tmp_path.name)
+        project = u.Tests.project_spec(repository.distribution)
+        overlay = m.Infra.RepositoryPolicyOverlaySpec(
+            project=repository.distribution,
+            beads_enabled=False,
+            ci_enabled=True,
+        )
+        legacy = m.Infra.WorkspaceManifestSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=repository.name,
+            repository=repository,
+            project=project,
+            repository_policy_overlays=(overlay,),
+        )
+
+        declaration = tm.ok(u.Infra.repository_declaration_delta(legacy))
+
+        tm.that(
+            declaration.project,
+            eq=m.Infra.ProjectSpec.model_validate_json(project.model_dump_json()),
+        )
+        tm.that(declaration.beads_enabled, eq=False)
+        tm.that(declaration.ci_enabled, eq=True)
 
     def test_foreign_members_do_not_change_own_declaration(
         self,
@@ -99,4 +143,3 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         )
 
         tm.that(after, eq=before)
-

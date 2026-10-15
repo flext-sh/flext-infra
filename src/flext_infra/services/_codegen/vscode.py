@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import FlextStrictYamlConfigSource
+
 from flext_infra import c, config, m, r, t, u
 
 if TYPE_CHECKING:
@@ -40,6 +41,7 @@ class FlextInfraCodegenVscodeMixin:
 
         Returns:
             Library defaults overlaid by this project's and local declarations.
+
         """
         return u.Infra.load_codegen_inputs(repository_root).map(
             lambda inputs: inputs.spec.vscode,
@@ -58,6 +60,7 @@ class FlextInfraCodegenVscodeMixin:
 
         Returns:
             Local declarations without promoting unchanged indexed defaults.
+
         """
         result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
         substitutions = cls._runtime_substitutions(repository_root, None)
@@ -114,6 +117,7 @@ class FlextInfraCodegenVscodeMixin:
 
         Returns:
             Minimal overrides representable by the canonical configuration merge.
+
         """
         result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
         substitutions = cls._runtime_substitutions(repository_root, runtime_root)
@@ -156,9 +160,10 @@ class FlextInfraCodegenVscodeMixin:
 
         Returns:
             The minimal override buckets the canonical merge can reproduce.
+
         """
         artifact_settings = cls._artifact_settings()
-        buckets: dict[str, t.MutableJsonMapping] = {
+        buckets: dict[str, dict[str, t.JsonValue]] = {
             "scalar_settings": {},
             "list_settings": {},
             "map_union_settings": {},
@@ -178,9 +183,11 @@ class FlextInfraCodegenVscodeMixin:
             if present and selected is not None:
                 field, normalized = selected
                 buckets[field][key] = normalized
-        return r[t.MutableJsonMapping].ok({
-            field: values for field, values in buckets.items() if values
-        })
+        deltas: t.MutableJsonMapping = {}
+        for field, values in buckets.items():
+            if values:
+                deltas[field] = values
+        return r[t.MutableJsonMapping].ok(deltas)
 
     @classmethod
     def _classify_vscode_setting(
@@ -189,13 +196,14 @@ class FlextInfraCodegenVscodeMixin:
         value: t.JsonValue,
         spec: m.Infra.CodegenVscodeSpec,
         expected: t.JsonMapping,
-        artifact_settings: t.JsonMapping,
+        artifact_settings: t.MappingKV[str, t.MappingKV[str, str | bool]],
     ) -> p.Result[t.Pair[tuple[str, t.JsonValue] | None, bool]]:
         """Classify one portable setting into its representable delta bucket.
 
         Returns:
             A bucket assignment and explicit presence flag; absence is carried
             inside a nonempty tuple when the setting is already owned.
+
         """
         result_type = r[t.Pair[tuple[str, t.JsonValue] | None, bool]]
         if (
@@ -232,6 +240,7 @@ class FlextInfraCodegenVscodeMixin:
         Returns:
             The ``map_union_settings`` bucket assignment, or a representability
             failure when the value is not a mapping.
+
         """
         result_type = r[tuple[str, t.JsonValue]]
         if not isinstance(value, Mapping):
@@ -256,6 +265,7 @@ class FlextInfraCodegenVscodeMixin:
 
         Returns:
             The effective declaration after ordered mapping/list composition.
+
         """
         baseline = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             spec.model_dump(mode="json"),
@@ -338,6 +348,7 @@ class FlextInfraCodegenVscodeMixin:
 
         Returns:
             The validated editor document.
+
         """
         parsed = u.Cli.json_parse(cls._normalize_jsonc(content))
         if parsed.failure:
@@ -525,6 +536,7 @@ class FlextInfraCodegenVscodeMixin:
 
         Returns:
             Complete derived maps consumed by rendering and migration.
+
         """
         codegen = config.Infra.codegen
         return {
@@ -621,6 +633,7 @@ class FlextInfraCodegenVscodeMixin:
 
         Returns:
             Declared environment tokens and their effective checkout paths.
+
         """
         result_type = r[t.VariadicTuple[t.Pair[str, str]]]
         if runtime_root is None:
@@ -675,12 +688,14 @@ class FlextInfraCodegenVscodeMixin:
 
         Returns:
             The bound JSON value, preserving nested configuration structure.
+
         """
         if isinstance(value, str):
             for token, replacement in substitutions:
+                literal = replacement.replace("\\", "\\\\")
                 value = re.sub(
                     re.escape(token) + r"(?=$|[/\\:;\s])",
-                    lambda _match, replacement=replacement: replacement,
+                    literal,
                     value,
                 )
             return value

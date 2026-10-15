@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import sys
 from pathlib import Path
 
@@ -28,6 +27,7 @@ def symbolic_workspace(mod_workspace: Path) -> Path:
 
     Returns:
         The resulting ``Path``.
+
     """
     tests = mod_workspace / "tests"
     (tests / "unit" / "codegen").mkdir(parents=True)
@@ -50,7 +50,9 @@ class TestsFlextInfraSymbolicBindingPublication:
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.parametrize("receiver", ["source", "replacement", "intermediate"])
+    @pytest.mark.parametrize(
+        "receiver", ["source", "replacement", "intermediate", "conditional", "loop"]
+    )
     def test_rebound_receiver_is_diagnostic_without_mutation(
         symbolic_workspace: Path,
         receiver: str,
@@ -77,6 +79,10 @@ class TestsFlextInfraSymbolicBindingPublication:
                 + _OWNED_CI_LINE
                 + "u = canonical.TestsFlextInfraUtilities\n"
             )
+        elif receiver == "conditional":
+            before += "if True:\n    utilities = canonical\n" + _OWNED_CI_LINE
+        elif receiver == "loop":
+            before += "for utilities in (canonical,):\n    pass\n" + _OWNED_CI_LINE
         else:
             before += (
                 "original = utilities.TestsFlextInfraUtilities\n"
@@ -107,7 +113,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         tm.that(all(not entry.actionable for entry in findings), eq=True)
         tm.ok(
             FlextInfraModReplacements.publish(
-                root, FlextInfraModGateEngine.recounted(findings)
+                root, FlextInfraModGateEngine.recounted(findings), {}
             )
         )
         tm.that(consumer.read_text(encoding="utf-8"), eq=before)
@@ -172,7 +178,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         tm.that(all(not entry.actionable for entry in findings), eq=True)
         tm.ok(
             FlextInfraModReplacements.publish(
-                root, FlextInfraModGateEngine.recounted(findings)
+                root, FlextInfraModGateEngine.recounted(findings), {}
             )
         )
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
@@ -261,6 +267,26 @@ class TestsFlextInfraSymbolicBindingPublication:
         import_only = consumer.with_name("import_only.py")
         import_only.write_text("import tests.utilities\n", encoding="utf-8")
         u.Tests.git_bootstrap(root, ("add", "tests"))
+        probe = (
+            "import json\n"
+            "from typing import get_args\n"
+            "from tests.unit.codegen import consumer as value\n"
+            "from tests import u\n"
+            "owner = u.CodegenTestSupport.Ci\n"
+            "print(json.dumps({\n"
+            " 'pep': get_args(value.Pep.__value__)[1] is owner,\n"
+            " 'assigned': get_args(value.Assigned)[1] is owner,\n"
+            " 'actual': value.Actual.__value__ is owner,\n"
+            " 'literal': get_args(value.LiteralData.__value__),\n"
+            " 'compared': get_args(value.ComparedMetadata.__value__)[1],\n"
+            " 'payload': value.payload,\n"
+            " 'ordinary': value.ordinary,\n"
+            " 'forward': value.forward,\n"
+            " 'reverse': value.reverse,\n"
+            " 'different': value.different,\n"
+            "}, sort_keys=True))\n"
+        )
+        baseline = tm.ok(u.Cli.run((sys.executable, "-c", probe), cwd=root))
         report = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
         symbolic = tuple(
             entry
@@ -290,52 +316,6 @@ class TestsFlextInfraSymbolicBindingPublication:
                 root, FlextInfraModGateEngine.recounted(symbolic)
             )
         )
-        after = consumer.read_text(encoding="utf-8")
-        protected = {
-            "Pep",
-            "Assigned",
-            "LiteralData",
-            "ComparedMetadata",
-            "payload",
-            "ordinary",
-            "forward",
-            "reverse",
-            "different",
-        }
-        for name in protected:
-            original = next(
-                node
-                for node in ast.walk(ast.parse(source))
-                if (
-                    (isinstance(node, ast.TypeAlias) and node.name.id == name)
-                    or (
-                        isinstance(node, ast.Assign)
-                        and any(
-                            isinstance(target, ast.Name) and target.id == name
-                            for target in node.targets
-                        )
-                    )
-                )
-            )
-            preserved = next(
-                node
-                for node in ast.walk(ast.parse(after))
-                if (
-                    (isinstance(node, ast.TypeAlias) and node.name.id == name)
-                    or (
-                        isinstance(node, ast.Assign)
-                        and any(
-                            isinstance(target, ast.Name) and target.id == name
-                            for target in node.targets
-                        )
-                    )
-                )
-            )
-            tm.that(ast.dump(preserved), eq=ast.dump(original))
-        actual = next(
-            node
-            for node in ast.walk(ast.parse(after))
-            if isinstance(node, ast.TypeAlias) and node.name.id == "Actual"
-        )
-        tm.that(ast.unparse(actual.value), eq="u.CodegenTestSupport.Ci")
+        runtime = tm.ok(u.Cli.run((sys.executable, "-c", probe), cwd=root))
+        tm.that(runtime.stdout, eq=baseline.stdout)
         tm.that(import_only.read_text(encoding="utf-8"), eq="import tests.utilities\n")

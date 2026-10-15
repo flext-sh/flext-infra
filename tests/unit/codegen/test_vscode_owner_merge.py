@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from yaml.parser import ParserError
 
 from flext_infra import FlextInfraConfig, c, config, infra, t
 from flext_infra.codegen import FlextInfraCodegenConform
@@ -66,6 +67,67 @@ class TestsFlextInfraVscodeOwnerMerge:
         fresh = tm.ok(u.Infra.load_codegen_inputs(root))
         tm.that(fresh.spec.make.gate_acceptance_policy, eq=baseline)
         tm.that(projected.sources, eq=captured.sources)
+
+    @staticmethod
+    def test_repository_policy_does_not_admit_unrelated_editor_policy(
+        tmp_path: Path,
+    ) -> None:
+        """Topology validates its policy while editor rejection retains its cause."""
+        directory = tmp_path / c.CONFIG_DIR_NAME
+        directory.mkdir()
+        path = directory / c.Infra.CODEGEN_CONFIG_FILENAME
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {"read_only": True},
+                            "vscode": {"unrecognized_setting": True},
+                        }
+                    },
+                },
+            )
+        )
+        declaration = tm.ok(u.Infra.load_repository_declaration_inputs(tmp_path))
+        tm.that(declaration.spec.read_only, eq=True)
+        tm.that(path in {state.path for state in declaration.sources}, eq=True)
+        complete = u.Infra.load_codegen_inputs(tmp_path)
+        tm.that(complete.failure, eq=True)
+        tm.that(complete.exception is not None, eq=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {"codegen": {"repository": {"unknown_policy": True}}},
+                },
+            )
+        )
+        invalid = u.Infra.load_repository_declaration_inputs(tmp_path)
+        tm.that(invalid.failure, eq=True)
+        tm.that(invalid.exception is not None, eq=True)
+
+    @staticmethod
+    def test_captured_yaml_values_are_isolated_and_new_bytes_revalidated() -> None:
+        """Memoized parsing never shares mutable values or accepts malformed edits."""
+        original = b"Infra:\n  values:\n    nested: [first]\n"
+        first = tm.ok(u.Infra.read_codegen_config_document(original))
+        nested = t.Cli.JSON_MAPPING_ADAPTER.validate_python(first["Infra"])
+        values = t.Cli.JSON_MAPPING_ADAPTER.validate_python(nested["values"])
+        assert isinstance(first, dict)
+        first["Infra"] = {"values": {"nested": ["changed"]}}
+        again = tm.ok(u.Infra.read_codegen_config_document(original))
+        tm.that(again, eq={"Infra": {"values": {"nested": ["first"]}}})
+        tm.that(values["nested"], eq=["first"])
+        malformed = b"Infra: [\n"
+        with pytest.raises(ParserError):
+            u.Infra.read_codegen_config_document(malformed)
+        corrected = tm.ok(
+            u.Infra.read_codegen_config_document(
+                b"Infra:\n  values:\n    nested: [second]\n",
+            )
+        )
+        tm.that(corrected, eq={"Infra": {"values": {"nested": ["second"]}}})
 
     @staticmethod
     def test_portable_declaration_rejects_unrepresentable_list_replacement(
@@ -154,6 +216,9 @@ class TestsFlextInfraVscodeOwnerMerge:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         published = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.that(published.plan is not None, eq=True)
+        if published.plan is None:
+            pytest.fail("conform did not return its actual plan")
         targets = {
             root / entry.path
             for entry in config.Infra.codegen.managed_files
@@ -165,6 +230,40 @@ class TestsFlextInfraVscodeOwnerMerge:
             update={"mode": c.Infra.CodegenConformMode.CHECK},
         )
         tm.ok(infra.codegen_conform(checked, initial_workspace=workspace))
+
+    @staticmethod
+    def test_runtime_binding_second_apply_preserves_physical_state(
+        tmp_path: Path,
+    ) -> None:
+        """Applying the public binding twice settles without replacing any file."""
+        root = tmp_path / "project"
+        workspace = u.Tests.standalone_workspace(root)
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        first = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.that(first.plan is not None, eq=True)
+        if first.plan is None:
+            pytest.fail("conform did not return its actual plan")
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(file.path, required=True))
+            for file in first.plan.files
+        )
+        tm.that(bool(before), eq=True)
+
+        second = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+
+        tm.that(second.written_files, eq=())
+        tm.that(
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(state.path, required=True))
+                for state in before
+            ),
+            eq=before,
+        )
 
     @staticmethod
     def test_invalid_member_config_keeps_valid_workspace_binding(
@@ -250,7 +349,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         with pytest.raises(ValueError, match="runtime binding must be runtime-local"):
             m.Infra.ManagedFileSpec.model_validate({
-                **governed.model_dump(),
+                **governed.model_dump(round_trip=True),
                 "tracking": "versioned",
                 "runtime_binding": True,
             })
@@ -476,7 +575,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             (member / environment.removeprefix("${workspaceFolder}/")).resolve(),
             eq=u.Infra.runtime_environment_dir(member),
         )
-        interpreter_list = u.type_adapter(t.StrSequence).validate_python(
+        interpreter_list: t.StrSequence = u.type_adapter(list[str]).validate_python(
             doc["ruff.interpreter"],
         )
         tm.that(
@@ -560,7 +659,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.ok(
             u.Cli.yaml_dump(
                 config_dir / c.Infra.CODEGEN_CONFIG_FILENAME,
-                {"Infra": {"codegen": {"vscode": migrated.values}}},
+                {"Infra": {"codegen": {"vscode": dict(migrated.values)}}},
             ),
         )
         standalone_rendered = tm.ok(

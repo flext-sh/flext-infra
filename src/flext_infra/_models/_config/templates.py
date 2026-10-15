@@ -60,6 +60,7 @@ class FlextInfraConfigModelsTemplates:
 
             Raises:
                 ValueError: If an additional setting redeclares a managed key.
+
             """
             managed = (
                 set(self.scalar_settings)
@@ -95,6 +96,21 @@ class FlextInfraConfigModelsTemplates:
             t.JsonMapping,
             m.Field(description="JSON-compatible declaration fragment"),
         ]
+
+    class ConfigDocumentInputs(FlextInfraConfigModelsContract.ConfigContract):
+        """One composed F.yaml document with its consulted physical sources."""
+
+        values: Annotated[
+            t.JsonMapping,
+            m.Field(description="Strictly parsed and ordered configuration document"),
+        ]
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                exclude=True,
+                description="Exact physical files consulted by this document",
+            ),
+        ] = ()
 
     class TemplateEntrySpec(FlextInfraConfigModelsContract.ConfigContract):
         """One scaffold artifact and its typed rendering owner."""
@@ -234,6 +250,7 @@ class FlextInfraConfigModelsTemplates:
 
             Raises:
                 ValueError: If a path escapes its repository or a binding is versioned.
+
             """
             if (
                 self.path.is_absolute()
@@ -254,6 +271,7 @@ class FlextInfraConfigModelsTemplates:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return tuple(
                 dict.fromkeys(

@@ -53,7 +53,6 @@ class TestsFlextInfraPytestProfile:
             u.Cli.run_raw(
                 (sys.executable, "-c", script, str(output)),
                 cwd=tmp_path,
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
             ),
         )
         tm.that(
@@ -69,10 +68,7 @@ class TestsFlextInfraPytestProfile:
         interruption: str,
     ) -> None:
         """Preserve native SIGTERM and timeout outcomes alongside measured progress."""
-        deadline = max(
-            1,
-            config.Infra.tooling.tools.pytest.case_timeout_seconds // 4,
-        )
+        deadline = config.Infra.tooling.tools.pytest.termination_grace_seconds
         probe = tmp_path / "termination_probe.py"
         action = (
             "os.kill(os.getpid(), signal.SIGTERM)"
@@ -522,7 +518,7 @@ class TestsFlextInfraPytestProfile:
         tm.that(selection.splitlines(), has="tests/test_runtime.py::test_runtime")
         tm.that(command, has=c.Infra.PYTEST_SELECTED_COLLECTION_OPTION)
         tm.that(command, has="--no-cov")
-        tm.that(command, has="--testmon --testmon-noselect")
+        tm.that(command, has="--testmon --testmon-forceselect")
         tm.that((reports_root / latest_name / "coverage.xml").is_file(), eq=False)
         # A cold run has no database to inspect before pytest; its only cache
         # receipt is the post-run seed decision.

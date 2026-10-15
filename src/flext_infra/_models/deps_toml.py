@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 from flext_cli import m
 
 from flext_infra import c, t
+from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
 
 
 class FlextInfraModelsDepsToml:
@@ -21,15 +22,9 @@ class FlextInfraModelsDepsToml:
     class DepsToml:
         """Declarative TOML sync model domain."""
 
-        class GroupInclude(m.ContractModel):
-            """One PEP 735 reference to another dependency group."""
-
-            include_group: Annotated[
-                t.NonEmptyStr,
-                m.Field(alias="include-group", description="Referenced group name"),
-            ]
-
-        class MemberRequirements(m.ContractModel):
+        class MemberRequirements(
+            FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations
+        ):
             """Typed dependency declarations needed to provision one member."""
 
             name: Annotated[
@@ -44,20 +39,10 @@ class FlextInfraModelsDepsToml:
                 t.MappingKV[str, t.StrTuple],
                 m.Field(description="Every declared optional requirement group"),
             ]
-            dependency_groups: Annotated[
-                t.MappingKV[
-                    str,
-                    t.VariadicTuple[
-                        str | FlextInfraModelsDepsToml.DepsToml.GroupInclude
-                    ],
-                ],
-                m.Field(description="PEP 735 requirement and inclusion entries"),
-            ]
 
             @m.field_validator(
                 "dependencies",
                 "optional_dependencies",
-                "dependency_groups",
                 mode="before",
             )
             @classmethod
@@ -66,6 +51,7 @@ class FlextInfraModelsDepsToml:
 
                 Returns:
                     The same declarations with array containers converted to tuples.
+
                 """
                 if isinstance(value, list):
                     return tuple(value)
@@ -75,37 +61,6 @@ class FlextInfraModelsDepsToml:
                         for name, entries in value.items()
                     }
                 return value
-
-            @m.field_validator("dependency_groups")
-            @classmethod
-            def declared_group_references(
-                cls,
-                groups: t.MappingKV[
-                    str,
-                    t.VariadicTuple[
-                        str | FlextInfraModelsDepsToml.DepsToml.GroupInclude
-                    ],
-                ],
-            ) -> t.MappingKV[
-                str,
-                t.VariadicTuple[str | FlextInfraModelsDepsToml.DepsToml.GroupInclude],
-            ]:
-                """Require every inclusion to name a declared group.
-
-                Returns:
-                    The validated dependency groups.
-
-                Raises:
-                    ValueError: If an inclusion names an undeclared group.
-                """
-                for name, entries in groups.items():
-                    if any(
-                        not isinstance(entry, str) and entry.include_group not in groups
-                        for entry in entries
-                    ):
-                        message = f"invalid member dependency group {name}"
-                        raise ValueError(message)
-                return groups
 
         class SetOp(m.ContractModel):
             """Set one TOML key to one JSON-compatible value."""

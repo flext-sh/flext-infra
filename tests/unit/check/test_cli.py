@@ -122,6 +122,36 @@ class TestsFlextInfraWorkspaceCheckCli:
 
         tm.that(exit_code, eq=1)
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        "entrypoint",
+        [("flext-infra",), (sys.executable, "-m", "flext_infra")],
+        ids=["installed_console", "module"],
+    )
+    def test_process_entrypoints_preserve_rejected_gate_exit(
+        tmp_path: Path,
+        entrypoint: t.StrSequence,
+    ) -> None:
+        """Both shipped entrypoints retain a failed Result's native exit status."""
+        workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
+        gate = "invalid-exit-contract-gate"
+        output = tm.ok(
+            u.Cli.run_raw([
+                *entrypoint,
+                "check",
+                "run",
+                "--repository-root",
+                str(workspace),
+                "--projects",
+                "flext-core",
+                "--gates",
+                gate,
+            ])
+        )
+
+        tm.that(output.outcome.raw_return_code, eq=c.Cli.EXIT_CODE_FAILURE)
+        tm.that(output.stdout + output.stderr, has=f"unknown gate '{gate}'")
+
     @pytest.mark.parametrize("reports_directory", [None, "artifacts/check"])
     def test_run_cli_handles_multiple_projects(
         self,

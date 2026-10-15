@@ -16,12 +16,13 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
+from types import MappingProxyType
 from typing import Self, override
 
 from rope.base.project import Project
 from rope.base.resources import File, Folder
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 
 
 class FlextInfraRopeProject(Project):
@@ -31,6 +32,56 @@ class FlextInfraRopeProject(Project):
     # freezes their resource identities and the external Python path.
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
 
+    @property
+    @override
+    def address(self) -> str:
+        """Declared project root address.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        return super().address
+
+    @property
+    @override
+    def root(self) -> p.Infra.RopeRoot:
+        """Declared project root folder.
+
+        Returns:
+            The resulting ``p.Infra.RopeRoot``.
+
+        """
+        return super().root
+
+    @override
+    def get_pymodule(
+        self,
+        resource: t.Infra.RopeResource,
+        force_errors: bool = False,
+    ) -> t.Infra.RopePyModule:
+        """Declared Python module owned by one project resource.
+
+        Returns:
+            The resulting ``t.Infra.RopePyModule``.
+
+        """
+        return super().get_pymodule(resource, force_errors=force_errors)
+
+    @override
+    def find_module(
+        self,
+        modname: str,
+        folder: p.Infra.RopeRoot | None = None,
+    ) -> t.Infra.RopeResource | None:
+        """Declared resolution of one module name to its resource.
+
+        Returns:
+            The resulting ``t.Infra.RopeResource | None``.
+
+        """
+        return super().find_module(modname, folder)
+
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
 
@@ -38,11 +89,8 @@ class FlextInfraRopeProject(Project):
         are errors, never an invitation to consult a newer disk version.
         """
 
-        def __init__(self, sources: Mapping[Path, str]) -> None:
-            self._sources = {
-                path.resolve(): source.encode("utf-8")
-                for path, source in sources.items()
-            }
+        def __init__(self, sources: Mapping[Path, bytes]) -> None:
+            self._sources = MappingProxyType(dict(sources))
 
         def read(self, path: str) -> bytes:
             """Read the exact captured source, including proposed edits.
@@ -57,7 +105,7 @@ class FlextInfraRopeProject(Project):
     def from_snapshot(
         cls,
         root: str,
-        sources: Mapping[Path, str],
+        sources: Mapping[Path, bytes],
         source_folders: t.SequenceOf[str],
         ignored_resources: t.SequenceOf[str] = (),
     ) -> Self:
@@ -94,7 +142,7 @@ class FlextInfraRopeProject(Project):
 
     @contextmanager
     def frozen_layout(self) -> Generator[Self]:
-        """Freeze the source and Python path folders for one read-only pass.
+        """Declared freeze of the source and Python path folders for one read-only pass.
 
         Yields:
             This project, its folder layout computed once for the pass.
@@ -134,7 +182,7 @@ class FlextInfraRopeProject(Project):
 
     @override
     def get_python_path_folders(self) -> list[File | Folder]:
-        """Return the Python path folders, frozen during a read-only pass.
+        """Declared Python path folders, frozen during a read-only pass.
 
         Returns:
             The folders Rope's own contract returns.

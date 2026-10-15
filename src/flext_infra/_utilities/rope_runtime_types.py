@@ -58,6 +58,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
 
         Returns:
             The resulting ``TypeGuard[t.Infra.RopePyModule]``.
+
         """
         return isinstance(
             value,

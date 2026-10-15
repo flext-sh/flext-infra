@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -37,6 +38,131 @@ def _provision_edited_sample(
 
 @pytest.mark.usefixtures("provisioned_workspace")
 class TestsFlextInfraUtilitiesProtectedEdit:
+    @staticmethod
+    @pytest.mark.parametrize(
+        "mode", ["empty", "malformed", "signal", "timeout", "launch"]
+    )
+    def test_native_lint_failure_never_becomes_a_diagnostic_zero(
+        tmp_path: Path,
+        mode: str,
+    ) -> None:
+        """Process failures retain native receipts without invented findings."""
+        programs = {
+            "empty": f"raise SystemExit({c.Cli.EXIT_CODE_FAILURE})",
+            "malformed": "print('{}')",
+            "signal": "import os, signal; os.kill(os.getpid(), signal.SIGTERM)",
+            "timeout": "import time; time.sleep(30)",
+        }
+        command = (
+            (str(tmp_path / "absent-lint-executable"),)
+            if mode == "launch"
+            else (sys.executable, "-c", programs[mode])
+        )
+        executed = u.Cli.run_raw(command, cwd=tmp_path, timeout=1)
+        receipt = u.Infra.lint_gate_result(c.Infra.RUFF, executed)
+        tm.that(receipt.errors, eq=())
+        tm.that(receipt.execution_error is not None, eq=True)
+        tm.that(
+            u.Infra.lint_execution_errors({receipt.tool_name: receipt}), empty=False
+        )
+        tm.that(
+            u.Infra.lint_new_errors(
+                {receipt.tool_name: receipt}, {receipt.tool_name: receipt}
+            ),
+            eq={},
+        )
+        if executed.failure:
+            tm.that(receipt.output, eq=None)
+            tm.that(receipt.execution_error, eq=executed.error)
+            tm.that(receipt.error_code, eq=executed.error_code)
+            tm.that(receipt.error_data, eq=executed.error_data)
+            if executed.exception is not None:
+                tm.that(receipt.error_traceback or "", has=str(executed.exception))
+        else:
+            tm.that(receipt.output is not None, eq=True)
+            if receipt.output is not None:
+                tm.that(
+                    receipt.output.outcome.model_dump(),
+                    eq={
+                        "raw_return_code": executed.value.outcome.raw_return_code,
+                        "timed_out": executed.value.outcome.timed_out,
+                        "forwarded_signal": executed.value.outcome.forwarded_signal,
+                    },
+                )
+                tm.that(receipt.output.stdout, eq=executed.value.stdout)
+                tm.that(receipt.output.stderr, eq=executed.value.stderr)
+
+    @staticmethod
+    def test_configuration_failure_is_not_cached_as_clean_lint(
+        tmp_path: Path,
+    ) -> None:
+        """Changing only the native configuration must recover a failed snapshot."""
+        project_config, py_file, _, _ = _provision_edited_sample(tmp_path)
+        configuration = tmp_path / c.PYPROJECT_FILENAME
+        configuration.write_text(
+            project_config + "[tool.ruff]\nline-length = 'invalid'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        failed = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(u.Infra.lint_execution_errors(failed), empty=False)
+        tm.that(failed[c.Infra.RUFF].errors, eq=())
+        configuration.write_text(project_config, encoding=c.DEFAULT_ENCODING)
+        recovered = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(u.Infra.lint_execution_errors(recovered), eq=())
+        tm.that(recovered[c.Infra.RUFF].errors, eq=())
+        tm.that(recovered[c.Infra.RUFF].output is not None, eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize("inherited", [False, True])
+    def test_valid_configuration_changes_reobserve_unchanged_source(
+        tmp_path: Path,
+        *,
+        inherited: bool,
+    ) -> None:
+        """Native configuration changes invalidate observations, including extends."""
+        project_config, py_file, _, _ = _provision_edited_sample(tmp_path)
+        py_file.write_text("import os\n", encoding=c.DEFAULT_ENCODING)
+        configuration = tmp_path / c.PYPROJECT_FILENAME
+        if inherited:
+            configuration = tmp_path / "policy.toml"
+            (tmp_path / c.PYPROJECT_FILENAME).write_text(
+                "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+                "[tool.ruff]\nextend = 'policy.toml'\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            project_config = "[lint]\nselect = ['F401']\n"
+            configuration.write_text(project_config, encoding=c.DEFAULT_ENCODING)
+        before = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(u.Infra.lint_execution_errors(before), eq=())
+        tm.that(before[c.Infra.RUFF].errors, empty=False)
+        configuration.write_text(
+            project_config.replace("F401", "F821"), encoding=c.DEFAULT_ENCODING
+        )
+        after = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(u.Infra.lint_execution_errors(after), eq=())
+        tm.that(after[c.Infra.RUFF].errors, eq=())
+        configuration.write_text(project_config, encoding=c.DEFAULT_ENCODING)
+        restored = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
+        tm.that(restored[c.Infra.RUFF].errors, eq=before[c.Infra.RUFF].errors)
+
+    @staticmethod
+    def test_native_ruff_findings_retain_violation_exit_separately(
+        tmp_path: Path,
+    ) -> None:
+        """A validated native finding is not a launch or report failure."""
+        _, py_file, _, _ = _provision_edited_sample(tmp_path)
+        py_file.write_text("import os\n", encoding=c.DEFAULT_ENCODING)
+        snapshot = u.Infra.lint_snapshot(
+            py_file, tmp_path, gates=(c.Infra.RUFF,), source="import os\n"
+        )
+        receipt = snapshot[c.Infra.RUFF]
+        tm.that(receipt.errors, empty=False)
+        tm.that(receipt.execution_error, eq=None)
+        tm.that(receipt.output is not None, eq=True)
+        if receipt.output is not None:
+            tm.that(u.Cli.process_succeeded(receipt.output.outcome), eq=False)
+        tm.that(u.Infra.lint_new_errors(snapshot, snapshot), eq={})
+
     @staticmethod
     @pytest.fixture
     def provisioned_workspace(tmp_path: Path) -> None:
@@ -218,7 +344,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             ),
         )
 
-        tm.that(result, eq=(True, []))
+        tm.that(result[0], eq=True)
+        tm.that(result[1], empty=True)
         tm.that(
             py_file.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n"),
             eq=updated_source.rstrip("\n"),
@@ -266,7 +393,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             gates=("lint",),
         )
 
-        tm.that(result, eq=(True, []))
+        tm.that(result[0], eq=True)
+        tm.that(result[1], empty=True)
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original_source)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
 
@@ -342,7 +470,10 @@ class TestsFlextInfraUtilitiesProtectedEdit:
                 {py_file.resolve(): invalid},
                 parse_candidate,
             )
-        tm.that(raised.value.text, eq=invalid)
+        # The staged parse failure is identified by the candidate path it
+        # names: this interpreter sources SyntaxError.text from the on-disk
+        # file named by ``filename``, so text always shows the live line.
+        tm.that(raised.value.filename, eq=str(py_file.resolve()))
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
         fresh = preview.preview_sources(
@@ -401,7 +532,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         profile_directory = (
             Path(selected_profile) if selected_profile is not None else None
         )
-        previous_profiles = (
+        previous_profiles: set[Path] = (
             set(profile_directory.glob("*.pstats"))
             if profile_directory is not None
             else set()
@@ -446,7 +577,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             ),
         )
 
-        tm.that(result, eq=(True, []))
+        tm.that(result[0], eq=True)
+        tm.that(result[1], empty=True)
         tm.that(
             (
                 left_file.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n")

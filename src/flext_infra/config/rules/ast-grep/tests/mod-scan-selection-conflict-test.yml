@@ -1,0 +1,10 @@
+id: mod-scan-selection-conflict
+valid:
+  - Engine.scan(root, fix=False, selection=rules)
+  - Engine.scan(root, fix=False, rule_ids=rules)
+  - Engine.scan(root, fix=False, plan=plan)
+  - Engine.scan(root, fix=False, rule_ids=choose(plan=plan))
+invalid:
+  - Engine.scan(root, fix=False, rule_ids=rules, selection=rules)
+  - Engine.scan(root, fix=False, plan=plan, selection=plan)
+  - Engine.scan(root, fix=False, rule_ids=rules, plan=plan)

@@ -1,0 +1,381 @@
+# The facade letters' producers never bind their own product (the import law,
+# operator-ruling-2026-10-08-import-law, per-letter reading).
+#
+# Every FLEXT package publishes its family letters (c, t, p, m, u, config,
+# settings) as runtime aliases from the package root, and each letter has one
+# producer tree: `constants.py`/`_constants/**` produce `c`,
+# `typings.py`/`_typings/**` produce `t`, and so on through
+# `models.py`/`_models/**`, `protocols.py`/`_protocols/**`,
+# `utilities.py`/`_utilities/**`, `config.py`/`_config.py`/`_config/**` and
+# `settings.py`/`_settings.py`/`_settings/**`. A producer that binds its own
+# letter — `from ai_hub import c` inside `_constants/**` — reaches for a
+# facade that is still being assembled from the very declarations the module
+# carries, so the binding is an import cycle by construction and a hidden
+# self-dependency even when the resolver tolerates it.
+#
+# The law is per letter, exactly as the operator ciphered it. Importing a
+# DIFFERENT letter is subject to the independent strict layer-direction law
+# (`t < m`: `_models/**` importing `t` is forward family assembly). Layer-zero
+# config/settings cannot import ANY own-namespace object; the companion
+# settings-config-boundary rule enforces that stronger boundary. Each letter
+# gets its own document, scoped to
+# its own producer tree, banning only its own letter; one document per letter
+# in the style of settings-config-boundary.yml, whose per-file-family
+# documents this file mirrors. `ban-infra-utility-module-self-facade-import`
+# keeps its narrower flext-infra utilities scope beside the `u` document.
+#
+# Imported names are matched exactly, regardless of their local alias.
+# The plain-import form (`import pkg.c`) binds the package but imports the
+# letter as a submodule, which is the same self-letter reach. TYPE_CHECKING
+# and function/class-local imports do not authorize a self-facade dependency.
+#
+# Genericity: no document names a package. The imported module's root is
+# captured as $MODULE (or the dotted path as $PATH for the plain-import form)
+# and the engine admits the finding only when that root is the scanned
+# project's own package (context own-package, read from the project's
+# declared package name) — the same guard ban-private-import and the
+# namespace law use. A letter imported from another package (`from
+# flext_core import m` inside ai-hub's `_models/base.py`) is a legitimate
+# cross-package facade binding and never matches.
+#
+# Detection-only: the repair rebinds the consumer to the private submodule
+# that owns the declaration, which the import relocation phases author from
+# the live dependency graph.
+
+id: ban-constants-own-letter-import
+language: python
+severity: error
+files:
+  - "**/_constants/**/*.py"
+  - "**/constants.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  ruling: operator-ruling-2026-10-08-import-law
+  description: >-
+    The constants producer tree never binds its own package's c letter from
+    the own package root; sibling declarations are imported through their
+    private submodules.
+  context:
+    MODULE:
+      is: own-package
+    PATH:
+      is: own-package
+rule:
+  any:
+    - matches: root-imported-name
+      pattern: $NAME
+      inside:
+        stopBy: end
+        kind: import_from_statement
+        has:
+          field: module_name
+          pattern: $MODULE
+    - kind: dotted_name
+      pattern: $PATH
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(c|constants)$"
+      any:
+        - inside:
+            kind: import_statement
+        - inside:
+            kind: aliased_import
+            field: name
+            inside:
+              kind: import_statement
+constraints:
+  NAME:
+    regex: "^c$"
+message: >-
+  The constants producer binds its own letter from the own-package root: `c`
+  is the facade this tree is still assembling. Import the sibling declaration
+  through its private submodule instead.
+---
+id: ban-typings-own-letter-import
+language: python
+severity: error
+files:
+  - "**/_typings/**/*.py"
+  - "**/typings.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  ruling: operator-ruling-2026-10-08-import-law
+  description: >-
+    The typings producer tree never binds its own package's t letter from the
+    own package root; sibling declarations are imported through their private
+    submodules.
+  context:
+    MODULE:
+      is: own-package
+    PATH:
+      is: own-package
+rule:
+  any:
+    - matches: root-imported-name
+      pattern: $NAME
+      inside:
+        stopBy: end
+        kind: import_from_statement
+        has:
+          field: module_name
+          pattern: $MODULE
+    - kind: dotted_name
+      pattern: $PATH
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(t|typings)$"
+      any:
+        - inside:
+            kind: import_statement
+        - inside:
+            kind: aliased_import
+            field: name
+            inside:
+              kind: import_statement
+constraints:
+  NAME:
+    regex: "^t$"
+message: >-
+  The typings producer binds its own letter from the own-package root: `t`
+  is the facade this tree is still assembling. Import the sibling declaration
+  through its private submodule instead.
+---
+id: ban-models-own-letter-import
+language: python
+severity: error
+files:
+  - "**/_models/**/*.py"
+  - "**/models.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  ruling: operator-ruling-2026-10-08-import-law
+  description: >-
+    The models producer tree never binds its own package's m letter from the
+    own package root; sibling declarations are imported through their private
+    submodules.
+  context:
+    MODULE:
+      is: own-package
+    PATH:
+      is: own-package
+rule:
+  any:
+    - matches: root-imported-name
+      pattern: $NAME
+      inside:
+        stopBy: end
+        kind: import_from_statement
+        has:
+          field: module_name
+          pattern: $MODULE
+    - kind: dotted_name
+      pattern: $PATH
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(m|models)$"
+      any:
+        - inside:
+            kind: import_statement
+        - inside:
+            kind: aliased_import
+            field: name
+            inside:
+              kind: import_statement
+constraints:
+  NAME:
+    regex: "^m$"
+message: >-
+  The models producer binds its own letter from the own-package root: `m`
+  is the facade this tree is still assembling. Import the sibling declaration
+  through its private submodule instead.
+---
+id: ban-protocols-own-letter-import
+language: python
+severity: error
+files:
+  - "**/_protocols/**/*.py"
+  - "**/protocols.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  ruling: operator-ruling-2026-10-08-import-law
+  description: >-
+    The protocols producer tree never binds its own package's p letter from
+    the own package root; sibling declarations are imported through their
+    private submodules.
+  context:
+    MODULE:
+      is: own-package
+    PATH:
+      is: own-package
+rule:
+  any:
+    - matches: root-imported-name
+      pattern: $NAME
+      inside:
+        stopBy: end
+        kind: import_from_statement
+        has:
+          field: module_name
+          pattern: $MODULE
+    - kind: dotted_name
+      pattern: $PATH
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(p|protocols)$"
+      any:
+        - inside:
+            kind: import_statement
+        - inside:
+            kind: aliased_import
+            field: name
+            inside:
+              kind: import_statement
+constraints:
+  NAME:
+    regex: "^p$"
+message: >-
+  The protocols producer binds its own letter from the own-package root: `p`
+  is the facade this tree is still assembling. Import the sibling declaration
+  through its private submodule instead.
+---
+id: ban-utilities-own-letter-import
+language: python
+severity: error
+files:
+  - "**/_utilities/**/*.py"
+  - "**/utilities.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  ruling: operator-ruling-2026-10-08-import-law
+  description: >-
+    The utilities producer tree never binds its own package's u letter from
+    the own package root; sibling declarations are imported through their
+    private submodules.
+  context:
+    MODULE:
+      is: own-package
+    PATH:
+      is: own-package
+rule:
+  any:
+    - matches: root-imported-name
+      pattern: $NAME
+      inside:
+        stopBy: end
+        kind: import_from_statement
+        has:
+          field: module_name
+          pattern: $MODULE
+    - kind: dotted_name
+      pattern: $PATH
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(u|utilities)$"
+      any:
+        - inside:
+            kind: import_statement
+        - inside:
+            kind: aliased_import
+            field: name
+            inside:
+              kind: import_statement
+constraints:
+  NAME:
+    regex: "^u$"
+message: >-
+  The utilities producer binds its own letter from the own-package root: `u`
+  is the facade this tree is still assembling. Import the sibling declaration
+  through its private submodule instead.
+---
+id: ban-config-own-letter-import
+language: python
+severity: error
+files:
+  - "**/_config.py"
+  - "**/_config/**/*.py"
+  - "**/config.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  ruling: operator-ruling-2026-10-08-import-law
+  description: >-
+    The config producer modules never bind their own package's config letter
+    from the own package root; sibling declarations are imported through
+    their private submodules.
+  context:
+    MODULE:
+      is: own-package
+    PATH:
+      is: own-package
+rule:
+  any:
+    - matches: root-imported-name
+      pattern: $NAME
+      inside:
+        stopBy: end
+        kind: import_from_statement
+        has:
+          field: module_name
+          pattern: $MODULE
+    - kind: dotted_name
+      pattern: $PATH
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.config$"
+      any:
+        - inside:
+            kind: import_statement
+        - inside:
+            kind: aliased_import
+            field: name
+            inside:
+              kind: import_statement
+constraints:
+  NAME:
+    regex: "^config$"
+message: >-
+  The config producer binds its own letter from the own-package root:
+  `config` is the facade this tree is still assembling. Import the sibling
+  declaration through its private submodule instead.
+---
+id: ban-settings-own-letter-import
+language: python
+severity: error
+files:
+  - "**/_settings.py"
+  - "**/_settings/**/*.py"
+  - "**/settings.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  ruling: operator-ruling-2026-10-08-import-law
+  description: >-
+    The settings producer modules never bind their own package's settings
+    letter from the own package root; sibling declarations are imported
+    through their private submodules.
+  context:
+    MODULE:
+      is: own-package
+    PATH:
+      is: own-package
+rule:
+  any:
+    - matches: root-imported-name
+      pattern: $NAME
+      inside:
+        stopBy: end
+        kind: import_from_statement
+        has:
+          field: module_name
+          pattern: $MODULE
+    - kind: dotted_name
+      pattern: $PATH
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.settings$"
+      any:
+        - inside:
+            kind: import_statement
+        - inside:
+            kind: aliased_import
+            field: name
+            inside:
+              kind: import_statement
+constraints:
+  NAME:
+    regex: "^settings$"
+message: >-
+  The settings producer binds its own letter from the own-package root:
+  `settings` is the facade this tree is still assembling. Import the sibling
+  declaration through its private submodule instead.

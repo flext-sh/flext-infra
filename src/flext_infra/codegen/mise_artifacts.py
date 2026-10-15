@@ -43,10 +43,7 @@ class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
         source = u.Cli.files_read_text(path)
         if source.failure:
             return r[t.JsonMapping].from_failure(source)
-        payload = u.Cli.toml_mapping_from_text(source.value)
-        if payload is None:
-            return r[t.JsonMapping].fail(f"invalid TOML in {path.name}")
-        return r[t.JsonMapping].ok(payload)
+        return u.Cli.toml_mapping_from_text_result(source.value)
 
     @staticmethod
     def _tool_version(raw_tool: t.JsonValue) -> str | None:
@@ -122,6 +119,7 @@ class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
 
         Returns:
             The TOML consumer's first failure or the validated declaration.
+
         """
         config_result = cls._read_toml(path)
         if config_result.failure:
@@ -182,6 +180,7 @@ class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
 
         Returns:
             The file read by the native TOML validator, or its original failure.
+
         """
         path = repository_root / c.Infra.CONFIG_SPEC[0]
         validated = cls.validate_config_file(path)

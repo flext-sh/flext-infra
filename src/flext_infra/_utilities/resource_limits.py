@@ -169,6 +169,7 @@ class FlextInfraUtilitiesResourceLimits:
 
         Returns:
             The resulting ``Path``.
+
         """
         return FlextInfraUtilitiesResourceLimits.project_cache_directory(
             project_dir,
@@ -186,6 +187,7 @@ class FlextInfraUtilitiesResourceLimits:
 
         Returns:
             The resulting ``Path``.
+
         """
         return FlextInfraUtilitiesResourceLimits.project_cache_directory(
             project_dir,
@@ -208,6 +210,7 @@ class FlextInfraUtilitiesResourceLimits:
 
         Raises:
             ValueError: If the project metadata cannot be read.
+
         """
         metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
             project_dir,
@@ -228,8 +231,8 @@ class FlextInfraUtilitiesResourceLimits:
             joined with the spec's FLEXT-owned storage directory.
 
         """
-        home = settings.env_lookup(str(spec.data_home_environment_variable)) or str(
-            Path(settings.env_required(str(spec.user_home_environment_variable)))
+        home = settings.env_lookup(spec.data_home_environment_variable) or str(
+            Path(settings.env_required(spec.user_home_environment_variable))
             / spec.home_cache_directory,
         )
         return Path(home) / spec.external_storage_directory

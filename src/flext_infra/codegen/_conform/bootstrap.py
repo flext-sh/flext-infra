@@ -8,14 +8,11 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, assert_never
+from typing import Annotated, assert_never
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, s, t, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
@@ -65,6 +62,19 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         default=None,
         exclude=True,
         description="First native file planning cause",
+    )
+    producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
+        default=None, exclude=True, description="Producer captured before planning"
+    )
+    docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Actual docs planner retained before effects",
+    )
+    docs_producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Original docs producer captured before effects",
     )
 
     def _record_file_failure(
@@ -143,6 +153,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
 
         Raises:
             ValueError: If declared package namespace is unresolved.
+
         """
         roots: list[t.Pair[str, Path]] = []
         if target.repository.package:
@@ -212,8 +223,29 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     def surface_contract(
         cls,
         surface: c.Infra.CodegenConformSurface,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.CodegenConformSurfaceContract:
-        """Resolve a declared surface without defaulting an invalid input.
+        """Resolve the declared conformance surface to its owned contract.
+
+        Returns:
+            The contract owned by the declared conformance surface.
+
+        """
+        return cls._declared_surface_contract(surface, codegen=codegen)
+
+    @classmethod
+    def _declared_surface_contract(
+        cls,
+        surface: c.Infra.CodegenConformSurface,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> m.Infra.CodegenConformSurfaceContract:
+        """Resolve one admitted surface into its conformance contract.
+
+        Args:
+            surface: The declared conformance surface.
+            codegen: The codegen configuration owning managed destinations.
 
         Returns:
             The contract owned by the declared conformance surface.
@@ -224,11 +256,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 contract = m.Infra.CodegenConformSurfaceContract(complete_governed=True)
             case c.Infra.CodegenConformSurface.RUNTIME_BINDINGS:
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset(
-                        item.path.as_posix()
-                        for item in config.Infra.codegen.managed_files
-                        if item.runtime_binding
-                    ),
+                    destinations=cls._runtime_binding_destinations(codegen),
                     runtime_bindings=True,
                     delegates=False,
                     pyproject=False,
@@ -247,7 +275,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 )
             case c.Infra.CodegenConformSurface.PYPROJECT:
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.PYPROJECT_FILENAME}),
+                    destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
                     templates=False,
                     custom=False,
@@ -292,6 +320,43 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             case _:
                 assert_never(surface)
         return contract
+
+    @staticmethod
+    def _runtime_binding_destinations(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> frozenset[str]:
+        """Collect the managed runtime binding destinations.
+
+        Args:
+            codegen: The codegen configuration owning managed file specs.
+
+        Returns:
+            The managed runtime binding paths as POSIX strings.
+
+        """
+        return frozenset(
+            item.path.as_posix()
+            for item in codegen.managed_file_specs
+            if item.runtime_binding
+        )
+
+    @staticmethod
+    def _pyproject_destinations(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> frozenset[str]:
+        """Collect the managed pyproject destinations.
+
+        Args:
+            codegen: The codegen configuration owning resolution pyprojects.
+
+        Returns:
+            The root and resolution pyproject paths as POSIX strings.
+
+        """
+        return frozenset(
+            path.as_posix()
+            for path in (Path(c.PYPROJECT_FILENAME), *codegen.uv_resolution_pyprojects)
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenConformBootstrap"]

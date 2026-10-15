@@ -9,9 +9,10 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import ClassVar
 
-from flext_infra import FlextInfraGitService, c, infra, m, p, t, u
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from flext_infra.services.cli_routes_refactor import FlextInfraRefactorRoutes
+from flext_infra import FlextInfraGitService, c, infra, m, p, r, t, u
+from flext_infra.check import FlextInfraGateRegistry
+from flext_infra.release import FlextInfraReleaseOrchestrator
+from flext_infra.services import FlextInfraRefactorRoutes
 from flext_infra.workspace import (
     FlextInfraFlextBindingService,
     FlextInfraWorkspaceDetector,
@@ -20,12 +21,32 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceFleetGaps,
     FlextInfraWorkspaceFleetVerbs,
     FlextInfraWorkspaceLifecycle,
+    FlextInfraWorkspaceLockCompleteness,
     FlextInfraWorkspacePropagation,
 )
 
 
 class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
     """Own refactor, release, and workspace routes."""
+
+    @staticmethod
+    def _editable_members(
+        params: p.Infra.WorkspaceRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Print eligible relative member paths from installed provenance.
+
+        Returns:
+            The eligible count or the original provenance failure.
+
+        """
+        selected = FlextInfraWorkspaceEnvironmentProvenance.editable_members(
+            params.repository_root,
+        )
+        if selected.failure:
+            return selected
+        for repository in selected.value:
+            u.Cli.emit_raw(f"{repository.path}\n")
+        return r[int].ok(len(selected.value))
 
     @staticmethod
     def _apply_flext_binding(
@@ -62,16 +83,46 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
         )
 
     @staticmethod
+    def _payload_json_formatter(payload: t.JsonPayload) -> str:
+        """Serialize an erased command payload through the canonical JSON owner.
+
+        Returns:
+            The canonical JSON text of the payload.
+
+        """
+        encoded = u.Cli.json_dumps(u.normalize_to_json_value(payload))
+        if encoded.failure:
+            return encoded.error or "command payload serialization failed"
+        return encoded.value
+
+    @staticmethod
     def _capture_gate(
         params: m.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Retain the original checker process and return its unchanged status."""
+        root = params.repository_root.expanduser().resolve()
         captured = u.Infra.git_capture_gate(
             params,
-            inputs=u.Infra.load_codegen_inputs(params.repository_root).unwrap(),
+            inputs=u.Infra.load_codegen_inputs(root).unwrap(),
             load_inputs=u.Infra.load_codegen_inputs,
+            read_runtime_identity=FlextInfraWorkspaceRoutes._check_runtime_identity,
         ).unwrap()
         u.Cli.framework_exit(captured.process.raw_return_code)
+
+    @staticmethod
+    def _check_runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
+        """Compose actual installed Python provenance and declared scanners.
+
+        Returns:
+            The resulting ``p.Result[str]``.
+
+        """
+        return FlextInfraGateRegistry.default().runtime_identity(
+            gate_ids,
+            installed_identity=(
+                FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
+            ),
+        )
 
     workspace_routes: ClassVar[
         MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]
@@ -92,6 +143,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 help_text="Inspect native public signing references without key access",
                 model_cls=m.Infra.GitRepoRequest,
                 handler=u.Infra.git_signing_identity,
+                success_formatter=_payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
                 name="capture-gate",
@@ -102,7 +154,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             m.Cli.ResultCommandRoute(
                 name="validate-lifecycle",
                 help_text="Validate the root and governed member lifecycles serially",
-                model_cls=m.Infra.WorkspaceEnvironmentRequest,
+                model_cls=m.Infra.WorkspaceRequest,
                 handler=FlextInfraWorkspaceLifecycle.execute_request,
                 success_message="workspace serial lifecycle validated",
             ),
@@ -142,11 +194,27 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 ),
             ),
             m.Cli.ResultCommandRoute(
+                name="editable-members",
+                help_text=(
+                    "List declared members with authenticated installed editables"
+                ),
+                model_cls=m.Infra.WorkspaceRequest,
+                handler=_editable_members,
+            ),
+            m.Cli.ResultCommandRoute(
                 name="verify-environment",
                 help_text="Verify live workspace editable provenance",
-                model_cls=m.Infra.WorkspaceEnvironmentRequest,
+                model_cls=m.Infra.WorkspaceRequest,
                 handler=FlextInfraWorkspaceEnvironmentProvenance.execute_request,
                 success_message="workspace editable provenance verified",
+            ),
+            m.Cli.ResultCommandRoute(
+                name="verify-lock",
+                help_text="Verify the committed uv.lock carries every referenced "
+                "package",
+                model_cls=m.Infra.WorkspaceRequest,
+                handler=FlextInfraWorkspaceLockCompleteness.execute_request,
+                success_message="lock completeness verified",
             ),
             m.Cli.ResultCommandRoute(
                 name="flext-binding",
@@ -185,7 +253,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                         c.Infra.FLEET_ROUTE_NAME,
                         (
                             "Run one mutating verb in every governed member "
-                            "concurrently and publish its receipts"
+                            "in dependency order and publish its receipts"
                         ),
                         FlextInfraWorkspaceFleetVerbs,
                         FlextInfraWorkspaceFleetVerbs.execute_command,

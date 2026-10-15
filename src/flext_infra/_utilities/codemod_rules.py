@@ -22,6 +22,7 @@ from packaging.utils import canonicalize_name
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesResourceLimits,
 )
 
@@ -29,8 +30,326 @@ from flext_infra._utilities import (
 class FlextInfraUtilitiesCodemodRules:
     """Resolve universal, runtime-transitive, and local ast-grep rule layers."""
 
+    @staticmethod
+    def _read_provider_declaration(config_path: Path) -> t.JsonMapping:
+        """Read and parse one provider's codemod config declaration.
+
+        Returns:
+            The parsed provider declaration mapping.
+
+        Raises:
+            ValueError: If the provider config content is absent.
+
+
+        """
+        state = u.Cli.atomic_read_binary_file_state(config_path, required=True).unwrap()
+        if state.content is None:
+            msg = f"codemod provider config is absent: {config_path}"
+            raise ValueError(msg)
+        return u.Cli.yaml_parse(state.content.decode(c.DEFAULT_ENCODING)).unwrap()
+
+    @staticmethod
+    def _merge_native_config(
+        native_config: t.JsonDict,
+        declaration: t.JsonMapping,
+        config_path: Path,
+    ) -> None:
+        """Merge the declaration's non-projected keys into the native config.
+
+        Raises:
+            ValueError: If two providers declare conflicting native values.
+
+        """
+        projected_inputs = {
+            c.Infra.CODEMOD_RULE_DIRS_KEY,
+            c.Infra.CODEMOD_UTIL_DIRS_KEY,
+            c.Infra.CODEMOD_TEST_CONFIGS_KEY,
+            c.Infra.CODEMOD_SCOPE_KEY,
+        }
+        for key, value in declaration.items():
+            if key in projected_inputs:
+                continue
+            if key in native_config and native_config[key] != value:
+                msg = f"native codemod configuration conflicts for {key}: {config_path}"
+                raise ValueError(msg)
+            native_config[key] = value
+
+    @staticmethod
+    def _validated_utility_directories(
+        raw_directories: t.JsonValue,
+        config_path: Path,
+    ) -> t.VariadicTuple[Path]:
+        """Validate and resolve one declaration's utility directories.
+
+        Returns:
+            The resolved utility directories contained in the provider owner.
+
+        Raises:
+            ValueError: If the directories are not a sequence of existing
+                paths inside the provider owner.
+            TypeError: If codemod utility directories are not a sequence; or if codemod
+                utility directory is not a path.
+
+        """
+        if not isinstance(raw_directories, Sequence) or isinstance(
+            raw_directories, str
+        ):
+            msg = f"codemod utility directories are not a sequence: {config_path}"
+            raise TypeError(msg)
+        directories: list[Path] = []
+        for relative in raw_directories:
+            if not isinstance(relative, str):
+                msg = f"codemod utility directory is not a path: {config_path}"
+                raise TypeError(msg)
+            directory = (config_path.parent / relative).resolve()
+            if not directory.is_relative_to(config_path.parent):
+                msg = f"codemod utility directory escapes its owner: {directory}"
+                raise ValueError(msg)
+            if not directory.is_dir():
+                msg = f"codemod utility directory is absent: {directory}"
+                raise ValueError(msg)
+            directories.append(directory)
+        return tuple(directories)
+
+    @staticmethod
+    def _admit_utility_documents(
+        path: Path,
+        global_documents: dict[tuple[str, str], t.JsonMapping],
+    ) -> None:
+        """Admit one utility file's documents under a unique identity.
+
+        Raises:
+            ValueError: If the utility input is absent or one of its
+                documents lacks a unique native identity and language.
+            TypeError: If codemod utility lacks native identity/language.
+
+        """
+        observed = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+        if observed.content is None:
+            msg = f"codemod utility input is absent: {path}"
+            raise ValueError(msg)
+        for document in u.Cli.yaml_parse_documents(
+            observed.content.decode(c.DEFAULT_ENCODING)
+        ).unwrap():
+            identity = document.get("id")
+            language = document.get("language")
+            if not isinstance(identity, str) or not isinstance(language, str):
+                msg = f"codemod utility lacks native identity/language: {path}"
+                raise TypeError(msg)
+            key = (language, identity)
+            if key in global_documents and global_documents[key] != document:
+                msg = f"codemod utility identity is ambiguous: {path}:{identity}"
+                raise ValueError(msg)
+            global_documents[key] = document
+
     @classmethod
-    def codemod_rule_plan(cls, root: Path) -> p.Result[m.Infra.CodemodRulePlan]:
+    def _collect_utility_documents(
+        cls,
+        declaration: t.JsonMapping,
+        config_path: Path,
+    ) -> dict[tuple[str, str], t.JsonMapping]:
+        """Collect one provider's utility documents by language and identity.
+
+        Returns:
+            The provider's utility documents keyed by (language, identity).
+            Malformed directories or ambiguous documents fail through the
+            validation helpers with ``ValueError``.
+
+        """
+        global_documents: dict[tuple[str, str], t.JsonMapping] = {}
+        raw_directories = declaration.get(c.Infra.CODEMOD_UTIL_DIRS_KEY)
+        if raw_directories is None:
+            return global_documents
+        for directory in cls._validated_utility_directories(
+            raw_directories, config_path
+        ):
+            for path in sorted(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}")):
+                cls._admit_utility_documents(path, global_documents)
+        return global_documents
+
+    @classmethod
+    def _project_provider_utilities(
+        cls,
+        config_path: Path,
+        native_config: t.JsonDict,
+        aliases: dict[Path, dict[str, str]],
+        utilities: dict[str, t.JsonMapping],
+    ) -> None:
+        """Project one provider's utilities under qualified global identities.
+
+        Raises:
+            ValueError: If a provider config is absent, its native values
+                conflict, or its projected utility is not a mapping.
+            TypeError: If projected codemod utility is not a mapping.
+
+        """
+        declaration = cls._read_provider_declaration(config_path)
+        cls._merge_native_config(native_config, declaration, config_path)
+        global_documents = cls._collect_utility_documents(declaration, config_path)
+        namespace = u.Cli.sha256_content(
+            u.Cli.json_dumps(
+                [global_documents[key] for key in sorted(global_documents)],
+                sort_keys=True,
+            ).unwrap()
+        )
+        qualified = {
+            identity: u.Cli.sha256_content(namespace + "\0" + identity)
+            for _language, identity in global_documents
+        }
+        aliases[config_path] = qualified
+        for document in global_documents.values():
+            projected = cls._qualified_global_matches(document, qualified)
+            if not isinstance(projected, Mapping):
+                msg = "projected codemod utility is not a mapping"
+                raise TypeError(msg)
+            projected = {**projected, "id": qualified[str(document["id"])]}
+            serialized = u.Cli.json_dumps(projected, sort_keys=True).unwrap()
+            utilities[u.Cli.sha256_content(serialized)] = projected
+
+    @classmethod
+    def _project_rule_document(
+        cls,
+        rule: m.Infra.CodemodRule,
+        documents: dict[Path, t.SequenceOf[t.JsonMapping]],
+        rule_directory: Path,
+        aliases: t.MappingKV[Path, dict[str, str]],
+    ) -> None:
+        """Project one elected rule document under its owning provider aliases.
+
+        Raises:
+            ValueError: If the rule input is absent, its election is
+                ambiguous, or it changed before projection.
+
+        """
+        path = rule.resource.resolve()
+        if path not in documents:
+            observed = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            if observed.content is None:
+                msg = f"codemod rule input is absent: {path}"
+                raise ValueError(msg)
+            documents[path] = u.Cli.yaml_parse_documents(
+                observed.content.decode(c.DEFAULT_ENCODING)
+            ).unwrap()
+        elected = [
+            document for document in documents[path] if document.get("id") == rule.id
+        ]
+        if len(elected) != 1:
+            msg = f"elected codemod rule document is ambiguous: {path}:{rule.id}"
+            raise ValueError(msg)
+        document = elected[0]
+        declared = cls._validated_document_rule(rule.provider, path, document).unwrap()
+        if declared.digest != rule.digest:
+            msg = f"elected codemod rule changed before projection: {path}:{rule.id}"
+            raise ValueError(msg)
+        owner = max(
+            (config for config in aliases if path.is_relative_to(config.parent)),
+            key=lambda config: len(config.parent.parts),
+        )
+        projected = cls._qualified_global_matches(document, aliases[owner])
+        u.Cli.yaml_dump(
+            rule_directory
+            / f"{u.Cli.sha256_content(rule.id)}{c.Infra.CODEMOD_RULE_SUFFIX}",
+            projected,
+        ).unwrap()
+
+    @classmethod
+    def codemod_stage_scan_ruleset(
+        cls, plan: m.Infra.CodemodRulePlan, destination: Path
+    ) -> m.Infra.CodemodRuleset:
+        """Project elected documents and scoped utilities into one native scan.
+
+        Absent inputs, conflicting native configuration, ambiguous utility
+        identities, and rule drift fail through the validation helpers with
+        ``ValueError``.
+
+        Returns:
+            The staged native scan ruleset and its projected configuration.
+
+        """
+        rule_directory = destination / c.Infra.CODEMOD_RULE_DIRS_KEY
+        utility_directory = destination / c.Infra.CODEMOD_UTIL_DIRS_KEY
+        u.Cli.ensure_dir(rule_directory).unwrap()
+        u.Cli.ensure_dir(utility_directory).unwrap()
+        native_config: t.JsonDict = {}
+        aliases: dict[Path, dict[str, str]] = {}
+        documents: dict[Path, t.SequenceOf[t.JsonMapping]] = {}
+        utilities: dict[str, t.JsonMapping] = {}
+        for ruleset in plan.rulesets:
+            cls._project_provider_utilities(
+                ruleset.config.resolve(),
+                native_config,
+                aliases,
+                utilities,
+            )
+        for digest, document in utilities.items():
+            u.Cli.yaml_dump(
+                utility_directory / f"{digest}{c.Infra.CODEMOD_RULE_SUFFIX}", document
+            ).unwrap()
+        for rule in plan.rules:
+            cls._project_rule_document(rule, documents, rule_directory, aliases)
+        native_config[c.Infra.CODEMOD_RULE_DIRS_KEY] = [rule_directory.name]
+        native_config[c.Infra.CODEMOD_UTIL_DIRS_KEY] = [utility_directory.name]
+        config_path = destination / c.Infra.CODEMOD_CONFIG_FILENAME
+        u.Cli.yaml_dump(config_path, native_config).unwrap()
+        return m.Infra.CodemodRuleset(
+            provider=",".join(plan.provider_order),
+            config=config_path,
+            rule_ids=tuple(rule.id for rule in plan.rules),
+            fixable_rule_ids=tuple(rule.id for rule in plan.rules if rule.fixable),
+        )
+
+    @classmethod
+    def _qualified_global_matches(
+        cls,
+        value: t.JsonMapping | t.JsonValue,
+        aliases: t.StrMapping,
+        local_names: frozenset[str] = frozenset(),
+    ) -> t.JsonValue:
+        """Preserve native local utility shadows while qualifying provider globals.
+
+        Returns:
+            The value with provider-global ``matches`` references qualified.
+
+        Raises:
+            ValueError: If a qualified global utility conflicts with a
+                native local utility.
+
+        """
+        if isinstance(value, Mapping):
+            local = value.get("utils")
+            shadows: frozenset[str] = local_names | (
+                frozenset(local) if isinstance(local, Mapping) else frozenset()
+            )
+            if isinstance(local, Mapping) and set(aliases.values()).intersection(local):
+                msg = "qualified global utility conflicts with a native local utility"
+                raise ValueError(msg)
+            return {
+                key: (
+                    item
+                    if key == c.Infra.CODEMOD_RULE_METADATA_KEY
+                    else aliases[item]
+                    if key == "matches"
+                    and isinstance(item, str)
+                    and item in aliases
+                    and item not in shadows
+                    else cls._qualified_global_matches(item, aliases, shadows)
+                )
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [
+                cls._qualified_global_matches(item, aliases, local_names)
+                for item in value
+            ]
+        return value
+
+    @classmethod
+    def codemod_rule_plan(
+        cls,
+        root: Path,
+        *,
+        rule_ids: t.StrSequence | None = None,
+    ) -> p.Result[m.Infra.CodemodRulePlan]:
         """Build the sole executable rule plan for check and mutation.
 
         Every call reads the current rule files; parsing is reused only for
@@ -41,6 +360,68 @@ class FlextInfraUtilitiesCodemodRules:
             The resulting ``p.Result[m.Infra.CodemodRulePlan]``.
 
         """
+        plans: list[m.Infra.CodemodRulePlan] = []
+        for project_root in FlextInfraUtilitiesProjectDiscovery.governed_project_roots(
+            root
+        ):
+            planned = cls._project_rule_plan(project_root)
+            if planned.failure:
+                return r[m.Infra.CodemodRulePlan].from_failure(planned)
+            plans.append(planned.value)
+        composed = cls._union_plans(tuple(plans))
+        if composed.failure or rule_ids is None:
+            return composed
+        if not rule_ids or any(not rule_id.strip() for rule_id in rule_ids):
+            return r[m.Infra.CodemodRulePlan].fail(
+                "codemod rule selection requires non-empty exact rule IDs",
+            )
+        selected = frozenset(rule_ids)
+        if len(selected) != len(rule_ids):
+            return r[m.Infra.CodemodRulePlan].fail(
+                "duplicate codemod rule IDs in selection",
+            )
+        plan = composed.value
+        unknown = selected.difference(rule.id for rule in plan.rules)
+        if unknown:
+            return r[m.Infra.CodemodRulePlan].fail(
+                "unknown codemod rule IDs: " + ", ".join(sorted(unknown)),
+            )
+        rulesets = tuple(
+            ruleset.model_copy(
+                update={
+                    field: tuple(
+                        rule_id
+                        for rule_id in getattr(ruleset, field)
+                        if rule_id in selected
+                    )
+                    for field in ("rule_ids", "fixable_rule_ids")
+                }
+            )
+            for ruleset in plan.rulesets
+            if selected.intersection(ruleset.rule_ids)
+        )
+        return r[m.Infra.CodemodRulePlan].ok(
+            plan.model_copy(
+                update={
+                    "provider_order": tuple(ruleset.provider for ruleset in rulesets),
+                    "rules": tuple(rule for rule in plan.rules if rule.id in selected),
+                    "rulesets": rulesets,
+                    "project_rule_ids": {
+                        project: tuple(rule for rule in rules if rule in selected)
+                        for project, rules in plan.project_rule_ids.items()
+                    },
+                }
+            ),
+        )
+
+    @classmethod
+    def _project_rule_plan(cls, root: Path) -> p.Result[m.Infra.CodemodRulePlan]:
+        """Elect providers against one project's declared runtime dependencies.
+
+        Returns:
+            The project's applicable rule plan.
+
+        """
         project = cls.codemod_project_requirements(root)
         if project.failure:
             return r[m.Infra.CodemodRulePlan].from_failure(project)
@@ -49,34 +430,105 @@ class FlextInfraUtilitiesCodemodRules:
         indexed = cls._indexed_distributions(paths)
         discovered = cls._indexed_provider_configs(paths)
         runtime_closure = cls.codemod_runtime_closure(direct_runtime, indexed)
-        universal = cls._providers(
+        # Universal scope is a fleet law: it applies to every project,
+        # the provider's own home repository included. Runtime scope is
+        # consumer-targeting (see the provider sgconfig contract), so a
+        # distribution never elects itself through its consumers' graph.
+        universal_result = cls._providers(
             discovered,
             scope=c.Infra.CODEMOD_SCOPE_UNIVERSAL,
-            selected=frozenset(indexed).difference({root_name}),
+            selected=frozenset(indexed),
         )
-        runtime = cls._providers(
+        if universal_result.failure:
+            return r[m.Infra.CodemodRulePlan].from_failure(universal_result)
+        runtime_result = cls._providers(
             discovered,
             scope=c.Infra.CODEMOD_SCOPE_RUNTIME,
             selected=runtime_closure.difference({root_name}),
         )
+        if runtime_result.failure:
+            return r[m.Infra.CodemodRulePlan].from_failure(runtime_result)
+        universal, runtime = universal_result.value, runtime_result.value
         universal_order = cls._provider_order(universal, indexed)
-        if universal_order.failure:
-            return r[m.Infra.CodemodRulePlan].from_failure(universal_order)
         runtime_order = cls._provider_order(runtime, indexed)
-        if runtime_order.failure:
-            return r[m.Infra.CodemodRulePlan].from_failure(runtime_order)
         providers: list[t.Pair[str, Path]] = []
-        for name in (*universal_order.value, *runtime_order.value):
+        for name in (*universal_order, *runtime_order):
             provider_config = universal.get(name) or runtime.get(name)
             if provider_config is None:
                 return r[m.Infra.CodemodRulePlan].fail(
                     f"codemod provider disappeared from resolved graph: {name}",
                 )
             providers.append((name, provider_config))
-        local_config = root / c.Infra.CODEMOD_CONFIG_RELPATH
-        if local_config.is_file():
-            providers.append((f"{root_name}:local", local_config))
-        return cls._compose(tuple(providers), root_name, runtime_closure)
+        return cls._compose(tuple(providers), root_name, runtime_closure, root)
+
+    @staticmethod
+    def _union_plans(
+        plans: t.SequenceOf[m.Infra.CodemodRulePlan],
+    ) -> p.Result[m.Infra.CodemodRulePlan]:
+        """Scan shared catalogs once while retaining each project's election.
+
+        Returns:
+            The conflict-free union with project-specific applicability.
+
+        """
+        rules: t.MutableMappingKV[str, m.Infra.CodemodRule] = {}
+        rulesets: t.MutableMappingKV[Path, m.Infra.CodemodRuleset] = {}
+        projects: t.MutableMappingKV[Path, t.StrSequence] = {}
+        for plan in plans:
+            projects.update(plan.project_rule_ids)
+            for rule in plan.rules:
+                previous = rules.get(rule.id)
+                if previous is not None and previous.digest != rule.digest:
+                    return r[m.Infra.CodemodRulePlan].fail(
+                        f"conflicting governed codemod rule {rule.id}: "
+                        f"{previous.resource} != {rule.resource}",
+                    )
+                rules.setdefault(rule.id, rule)
+            for ruleset in plan.rulesets:
+                elected = tuple(
+                    rule_id
+                    for rule_id in ruleset.rule_ids
+                    if rules[rule_id].provider == ruleset.provider
+                )
+                if not elected:
+                    continue
+                elected_ruleset = ruleset.model_copy(
+                    update={
+                        "rule_ids": elected,
+                        "fixable_rule_ids": tuple(
+                            rule_id
+                            for rule_id in ruleset.fixable_rule_ids
+                            if rule_id in elected
+                        ),
+                    }
+                )
+                key = elected_ruleset.config.resolve()
+                previous = rulesets.get(key)
+                rulesets[key] = (
+                    elected_ruleset
+                    if previous is None
+                    else previous.model_copy(
+                        update={
+                            field: tuple(
+                                dict.fromkeys(
+                                    (
+                                        *getattr(previous, field),
+                                        *getattr(elected_ruleset, field),
+                                    ),
+                                )
+                            )
+                            for field in ("rule_ids", "fixable_rule_ids")
+                        }
+                    )
+                )
+        return r[m.Infra.CodemodRulePlan].ok(
+            m.Infra.CodemodRulePlan(
+                provider_order=tuple(ruleset.provider for ruleset in rulesets.values()),
+                rules=tuple(rules.values()),
+                rulesets=tuple(rulesets.values()),
+                project_rule_ids=projects,
+            ),
+        )
 
     @staticmethod
     def codemod_rule_filter(rule_ids: t.StrSequence) -> str:
@@ -260,7 +712,7 @@ class FlextInfraUtilitiesCodemodRules:
         *,
         scope: str,
         selected: frozenset[str],
-    ) -> MutableMapping[str, Path]:
+    ) -> p.Result[t.MappingKV[str, Path]]:
 
         providers: MutableMapping[str, Path] = {}
         for name in sorted(selected):
@@ -269,19 +721,17 @@ class FlextInfraUtilitiesCodemodRules:
                 continue
             declared_scope = cls._config_scope(provider_config)
             if declared_scope.failure:
-                raise ValueError(
-                    declared_scope.error or f"resolve codemod scope: {provider_config}",
-                )
+                return r[t.MappingKV[str, Path]].from_failure(declared_scope)
             if declared_scope.value == scope:
                 providers[name] = provider_config
-        return providers
+        return r[t.MappingKV[str, Path]].ok(providers)
 
     @classmethod
     def _provider_order(
         cls,
         providers: t.MappingKV[str, Path],
         indexed: t.MappingKV[str, Distribution],
-    ) -> p.Result[t.StrSequence]:
+    ) -> t.StrSequence:
 
         selected = frozenset(providers)
         edges = {
@@ -292,17 +742,10 @@ class FlextInfraUtilitiesCodemodRules:
             )
             for name in selected
         }
-        try:
-            ordered = FlextInfraUtilitiesDependencies.dependency_order(
-                tuple(selected),
-                dependencies=lambda name: edges.get(name, ()),
-            )
-        except ValueError as exc:
-            return r[t.StrSequence].fail(
-                f"codemod provider cycle: {exc}",
-                exception=exc,
-            )
-        return r[t.StrSequence].ok(ordered)
+        return FlextInfraUtilitiesDependencies.dependency_order(
+            tuple(selected),
+            dependencies=lambda name: edges[name],
+        )
 
     @staticmethod
     def _provider_config(name: str) -> Path | None:
@@ -351,6 +794,7 @@ class FlextInfraUtilitiesCodemodRules:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         parsed = u.Cli.yaml_parse(config.read_text(encoding=c.DEFAULT_ENCODING))
         if parsed.failure:
@@ -428,7 +872,7 @@ class FlextInfraUtilitiesCodemodRules:
             The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRuleset]]``.
 
         """
-        parsed = cls._rules(provider, provider_config)
+        parsed = cls.codemod_catalog_rules(provider, provider_config)
         if parsed.failure:
             return r[t.SequenceOf[m.Infra.CodemodRuleset]].from_failure(parsed)
         elected: list[str] = []
@@ -465,6 +909,7 @@ class FlextInfraUtilitiesCodemodRules:
         providers: t.SequenceOf[t.Pair[str, Path]],
         root_name: str,
         runtime_closure: frozenset[str],
+        root: Path,
     ) -> p.Result[m.Infra.CodemodRulePlan]:
         """Elect every provider rule once, honouring each rule's declared scope.
 
@@ -498,16 +943,22 @@ class FlextInfraUtilitiesCodemodRules:
                 provider_order=tuple(provider_order),
                 rules=tuple(selected.values()),
                 rulesets=tuple(rulesets),
+                project_rule_ids={root.resolve(): tuple(selected)},
             ),
         )
 
     @classmethod
-    def _rules(
+    def codemod_catalog_rules(
         cls,
         provider: str,
         config: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
+        """Read every validated catalog declaration before execution election.
 
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRule]]``.
+
+        """
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -543,31 +994,6 @@ class FlextInfraUtilitiesCodemodRules:
                 )
             )
         return cls._cached_rules(provider, tuple(sources))
-
-    @staticmethod
-    def _load_cached_rules(
-        cache_file: Path,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]] | None:
-        """Load one cached rule list, or ``None`` when the cache entry is absent.
-
-        Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.CodemodRule]] | None``.
-
-        """
-        if not cache_file.is_file():
-            return None
-        loaded = u.Cli.json_loads(
-            cache_file.read_text(encoding=c.DEFAULT_ENCODING),
-        )
-        if loaded.failure:
-            return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(loaded)
-        if not isinstance(loaded.value, list):
-            return r[t.SequenceOf[m.Infra.CodemodRule]].fail(
-                f"codemod rule cache is not a rule list: {cache_file}",
-            )
-        return r[t.SequenceOf[m.Infra.CodemodRule]].ok(
-            tuple(m.Infra.CodemodRule.model_validate(item) for item in loaded.value),
-        )
 
     @staticmethod
     def _write_rule_cache(
@@ -625,9 +1051,21 @@ class FlextInfraUtilitiesCodemodRules:
             )
             / f"{u.Cli.sha256_content(identity.value)}.json"
         )
-        loaded = cls._load_cached_rules(cache_file)
-        if loaded is not None:
-            return loaded
+        if cache_file.is_file():
+            loaded = u.Cli.json_loads(
+                cache_file.read_text(encoding=c.DEFAULT_ENCODING),
+            )
+            if loaded.failure:
+                return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(loaded)
+            if not isinstance(loaded.value, list):
+                return r[t.SequenceOf[m.Infra.CodemodRule]].fail(
+                    f"codemod rule cache is not a rule list: {cache_file}",
+                )
+            return r[t.SequenceOf[m.Infra.CodemodRule]].ok(
+                tuple(
+                    m.Infra.CodemodRule.model_validate(item) for item in loaded.value
+                ),
+            )
         parsed = cls._parse_rules(provider, sources)
         return cls._write_rule_cache(cache_file, parsed)
 
@@ -665,6 +1103,39 @@ class FlextInfraUtilitiesCodemodRules:
         return body
 
     @classmethod
+    def _validated_rule_identity(
+        cls,
+        parsed_rule: t.JsonMapping,
+        resource: Path,
+    ) -> p.Result[t.Triple[str, str, t.VariadicTuple[int]]]:
+        """Validate the rule id, canonical form and declared finding receipt.
+
+        Returns:
+            The rule id with its canonical JSON and declared receipt, or the
+            first validation failure.
+
+        """
+        rule_id = parsed_rule.get("id")
+        if not isinstance(rule_id, str) or not rule_id.strip():
+            return r[t.Triple[str, str, t.VariadicTuple[int]]].fail(
+                f"ast-grep rule document missing id: {resource}",
+            )
+        canonical = u.Cli.json_dumps(
+            dict(parsed_rule),
+            sort_keys=True,
+        )
+        if canonical.failure:
+            return r[t.Triple[str, str, t.VariadicTuple[int]]].from_failure(canonical)
+        declared = cls._declared_expected(parsed_rule)
+        if declared.failure:
+            return r[t.Triple[str, str, t.VariadicTuple[int]]].fail(
+                f"{declared.error}: {resource}",
+            )
+        return r[t.Triple[str, str, t.VariadicTuple[int]]].ok(
+            (rule_id, canonical.value, declared.value),
+        )
+
+    @classmethod
     def _validated_document_rule(
         cls,
         provider: str,
@@ -677,40 +1148,65 @@ class FlextInfraUtilitiesCodemodRules:
             The resulting ``p.Result[m.Infra.CodemodRule]``.
 
         """
-        rule_id = parsed_rule.get("id")
-        if not isinstance(rule_id, str) or not rule_id.strip():
-            return r[m.Infra.CodemodRule].fail(
-                f"ast-grep rule document missing id: {resource}",
-            )
-        canonical = u.Cli.json_dumps(
-            dict(parsed_rule),
-            sort_keys=True,
-        )
-        if canonical.failure:
-            return r[m.Infra.CodemodRule].from_failure(canonical)
-        declared = cls._declared_expected(parsed_rule)
-        if declared.failure:
-            return r[m.Infra.CodemodRule].fail(f"{declared.error}: {resource}")
+        identity = cls._validated_rule_identity(parsed_rule, resource)
+        if identity.failure:
+            return r[m.Infra.CodemodRule].from_failure(identity)
+        rule_id, canonical_json, declared_receipt = identity.value
         metadata = parsed_rule.get(c.Infra.CODEMOD_RULE_METADATA_KEY)
         declared_metadata: t.JsonMapping = (
             metadata if isinstance(metadata, Mapping) else {}
         )
-        context = cls._declared_context(
-            declared_metadata.get(c.Infra.CODEMOD_RULE_CONTEXT_KEY),
+        declared_fields = (
+            cls._declared_context(
+                declared_metadata.get(c.Infra.CODEMOD_RULE_CONTEXT_KEY),
+            ),
+            cls._declared_ensure_imports(
+                declared_metadata.get(c.Infra.CODEMOD_RULE_ENSURE_IMPORTS_KEY),
+            ),
         )
-        if context.failure:
-            return r[m.Infra.CodemodRule].fail(f"{context.error}: {resource}")
+        for declared_field in declared_fields:
+            if declared_field.failure:
+                return r[m.Infra.CodemodRule].fail(
+                    f"{declared_field.error}: {resource}"
+                )
+        context, ensure_imports = declared_fields
         binding = cls._rule_binding_result(parsed_rule, context.value, rule_id)
         if binding.failure:
             return r[m.Infra.CodemodRule].fail(f"{binding.error}: {resource}")
+        detector = parsed_rule.get("rule")
+        negative = detector.get("not") if isinstance(detector, Mapping) else None
+        alternatives = negative.get("any") if isinstance(negative, Mapping) else None
+        module_absence = (
+            isinstance(detector, Mapping)
+            and str(parsed_rule["language"]).casefold() == "python"
+            and set(detector) == {"kind", "not"}
+            and detector.get("kind") == "module"
+            and isinstance(negative, Mapping)
+            and (
+                (set(negative) == {"has"} and isinstance(negative.get("has"), Mapping))
+                or (
+                    set(negative) == {"any"}
+                    and isinstance(alternatives, list)
+                    and bool(alternatives)
+                    and all(
+                        isinstance(item, Mapping)
+                        and set(item) == {"has"}
+                        and isinstance(item.get("has"), Mapping)
+                        for item in alternatives
+                    )
+                )
+            )
+            and not context.value
+        )
         return r[m.Infra.CodemodRule].ok(
             m.Infra.CodemodRule.model_validate({
                 "id": rule_id,
-                "digest": u.Cli.sha256_content(canonical.value),
+                "digest": u.Cli.sha256_content(canonical_json),
                 "provider": provider,
                 "resource": resource,
                 "fixable": "fix" in parsed_rule,
-                "expected": declared.value[0] if declared.value else None,
+                "module_absence": module_absence,
+                "expected": declared_receipt[0] if declared_receipt else None,
                 "owner": declared_metadata.get(
                     c.Infra.CODEMOD_RULE_OWNER_KEY,
                 ),
@@ -721,8 +1217,70 @@ class FlextInfraUtilitiesCodemodRules:
                     c.Infra.CODEMOD_RULE_RELOCATION_KEY,
                 ),
                 "context": context.value,
+                "ensure_imports": ensure_imports.value,
             }),
         )
+
+    @staticmethod
+    def _validated_ensure_import_entry(
+        item: t.JsonValue,
+    ) -> p.Result[m.Infra.CodemodEnsureImport]:
+        """Validate one declared ``{module, name}`` ensure-imports entry.
+
+        Returns:
+            The validated ensure-import record, or the first entry failure.
+
+        """
+        failure = r[m.Infra.CodemodEnsureImport]
+        if not isinstance(item, Mapping):
+            return failure.fail(
+                f"ensure-imports entry must be a {{module, name}} mapping, "
+                f"got {type(item).__name__}",
+            )
+        entry: t.JsonMapping = item
+        unknown: list[str] = sorted(set(entry) - {"module", "name"})
+        if unknown:
+            return failure.fail(f"ensure-imports entry has unknown keys {unknown}")
+        module = entry.get("module")
+        name = entry.get("name")
+        if not isinstance(module, str) or not module.strip():
+            return failure.fail("ensure-imports entry requires a non-empty module")
+        if not isinstance(name, str) or not name.strip():
+            return failure.fail("ensure-imports entry requires a non-empty name")
+        return failure.ok(
+            m.Infra.CodemodEnsureImport.model_validate({
+                "module": module,
+                "name": name,
+            }),
+        )
+
+    @classmethod
+    def _declared_ensure_imports(
+        cls,
+        declared: t.JsonValue | None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]:
+        """Validate the rule's declared required module imports.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]``.
+
+        """
+        failure = r[t.VariadicTuple[m.Infra.CodemodEnsureImport]]
+        if declared is None:
+            return failure.ok(value=())
+        if not isinstance(declared, Sequence) or isinstance(declared, str):
+            return failure.fail(
+                f"ensure-imports must be a list of {{module, name}} mappings, "
+                f"got {type(declared).__name__}",
+            )
+        declared_items: t.SequenceOf[t.JsonValue] = declared
+        entries: list[m.Infra.CodemodEnsureImport] = []
+        for item in declared_items:
+            model = cls._validated_ensure_import_entry(item)
+            if model.failure:
+                return failure.from_failure(model)
+            entries.append(model.value)
+        return failure.ok(value=tuple(entries))
 
     @classmethod
     def _parse_rules(

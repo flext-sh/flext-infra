@@ -57,6 +57,28 @@ class TestsFlextInfraSymbolicTextCutover:
         tm.that(captured[child], eq=child.read_bytes())
 
     @staticmethod
+    def test_snapshot_closes_declared_module_owners(mod_workspace: Path) -> None:
+        """Requested owners capture transitive imports, not unrelated inventory."""
+        namespace = u.Infra.project_package_name(mod_workspace)
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+        dependency = package / "dependency.py"
+        dependency.write_text("class Public:\n    pass\n", encoding="utf-8")
+        owner = package / "owner.py"
+        owner.write_text("from .dependency import Public\n", encoding="utf-8")
+        unrelated = package / "unrelated.py"
+        unrelated.write_text("class Independent:\n    pass\n", encoding="utf-8")
+        module_name = f"{namespace}.owner"
+
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace, modules=(module_name, module_name)
+        )
+
+        captured = {state.path: state.content for state in snapshot.states}
+        tm.that(captured[owner], eq=owner.read_bytes())
+        tm.that(captured[dependency], eq=dependency.read_bytes())
+        tm.that(unrelated in captured, eq=False)
+
+    @staticmethod
     def test_snapshot_preserves_imports_in_nested_statement_suites(
         mod_workspace: Path,
     ) -> None:
@@ -143,7 +165,9 @@ class TestsFlextInfraSymbolicTextCutover:
             (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
         )
         with (
-            u.Infra.codemod_binding_project(mod_workspace, snapshot) as (
+            u.Infra.codemod_binding_project(
+                mod_workspace, u.Infra.codemod_source_epoch(snapshot)
+            ) as (
                 project,
                 sources,
             ),

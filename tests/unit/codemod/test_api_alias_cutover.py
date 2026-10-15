@@ -48,7 +48,7 @@ class TestsFlextInfraApiAliasCutover:
             ),
             consumer: consumer_source,
         }
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="ban-compat-alias.yml",
             rule_id="ban-compat-alias",
             repository="flext-sample",
@@ -57,7 +57,6 @@ class TestsFlextInfraApiAliasCutover:
             text="sample = FlextSample",
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
 
         with infra.rope_workspace(tmp_path) as rope:
@@ -144,7 +143,7 @@ class TestsFlextInfraApiAliasCutover:
                 f"    return {receiver}.sample\n\n" + unchanged
             ),
         }
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="ban-compat-alias.yml",
             rule_id="ban-compat-alias",
             repository="flext-sample",
@@ -153,7 +152,6 @@ class TestsFlextInfraApiAliasCutover:
             text="sample = FlextSample",
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
 
         with infra.rope_workspace(tmp_path) as rope:
@@ -275,7 +273,7 @@ class TestsFlextInfraApiAliasCutover:
             ),
             consumer: consumer_source,
         }
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="ban-compat-alias.yml",
             rule_id="ban-compat-alias",
             repository="flext-sample",
@@ -284,7 +282,6 @@ class TestsFlextInfraApiAliasCutover:
             text="sample = FlextSample",
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
 
         with infra.rope_workspace(tmp_path) as rope:
@@ -345,7 +342,7 @@ class TestsFlextInfraApiAliasCutover:
                 f"    return {reflection.replace('sample_api', receiver)}\n"
             ),
         }
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="ban-compat-alias.yml",
             rule_id="ban-compat-alias",
             repository="flext-sample",
@@ -354,7 +351,6 @@ class TestsFlextInfraApiAliasCutover:
             text="sample = FlextSample",
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
 
         with infra.rope_workspace(tmp_path) as rope:

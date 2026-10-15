@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from importlib.resources import files
 from pathlib import Path
 from typing import override
 
 from flext_cli import FlextCliConfig
 
-from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 
@@ -24,49 +25,31 @@ class FlextInfraConfig(FlextCliConfig):
 
     @classmethod
     def ssot_config_dir(cls) -> Path:
-        """Public resolution of the packaged/workspace ``config/`` directory.
+        """Resolve defaults from the installed namespace's owned package data.
 
         Returns:
             The resulting ``Path``.
 
+        Raises:
+            TypeError: If the config namespace is not a filesystem package.
+
         """
-        return cls._config_dir()
+        package = files(cls.__module__.partition(".")[0])
+        if not isinstance(package, Path):
+            msg = "packaged config source requires a filesystem package"
+            raise TypeError(msg)
+        return package / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
 
     @classmethod
     @override
     def _config_files(cls) -> list[Path]:
-        """Elect the existing whole-namespace sources for the global singleton.
+        """Elect only packaged namespace defaults for the library singleton.
 
         Returns:
             The resulting ``list[Path]``.
 
         """
-        project_directory = Path.cwd() / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
-        user_directory = cls._user_config_dir()
-        inherited = super()._config_files()
-        reserved = {
-            FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME,
-            FlextInfraConfigVocabulary.CODEGEN_ORG_OVERRIDES_FILENAME,
-        }
-        files = [
-            item
-            for item in inherited
-            if item.name not in reserved and not item.is_relative_to(user_directory)
-        ]
-        org = (
-            project_directory
-            / FlextInfraConfigVocabulary.CODEGEN_ORG_OVERRIDES_FILENAME
-        )
-        if org.is_file():
-            files.append(org)
-        files.extend(item for item in inherited if item.is_relative_to(user_directory))
-        local = (
-            project_directory
-            / FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME
-        )
-        if local.is_file():
-            files.append(local)
-        return list(dict.fromkeys(files))
+        return cls._yaml_files_in(cls.ssot_config_dir())
 
     @classmethod
     def config_sources_for_repository(
@@ -86,6 +69,7 @@ class FlextInfraConfig(FlextCliConfig):
         Raises:
             ValueError: If the filename is not one repository-local YAML file.
             FileNotFoundError: If the declared packaged default is absent.
+
         """
         candidates = cls.config_layer_paths_for_repository(
             repository_root,
@@ -115,6 +99,7 @@ class FlextInfraConfig(FlextCliConfig):
 
         Raises:
             ValueError: If the root or owned YAML filename is not explicit.
+
         """
         relative = Path(filename)
         if (

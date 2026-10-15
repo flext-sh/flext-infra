@@ -427,7 +427,7 @@ class TestsFlextInfraCodegenConform:
         ]
         tm.that(
             addopts,
-            has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
+            eq=list(config.Infra.tooling.tools.pytest.standard_addopts),
         )
 
     @staticmethod
@@ -496,6 +496,9 @@ class TestsFlextInfraCodegenConform:
         )
         first = infra.codegen_new(service)
         first_result = tm.ok(first)
+        tm.that(first_result.plan is not None, eq=True)
+        if first_result.plan is None:
+            pytest.fail("generation did not return its actual plan")
         editor_settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             tm.ok(
                 u.Cli.json_parse(settings_path.read_text(encoding=c.DEFAULT_ENCODING))
@@ -757,8 +760,7 @@ class TestsFlextInfraCodegenConform:
             lacks="scripts",
         )
 
-    # Why (suite budget): two conform apply cycles plus a check over a full
-    # managed tree on a real git repo; the per-case wall only holds idle.
+    # Two conform apply cycles plus a check exercise the slow integration harness.
     @staticmethod
     @pytest.mark.slow
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
@@ -869,9 +871,7 @@ class TestsFlextInfraCodegenConform:
             u.Tests.codegen_file_text(second_pyproject),
             eq=u.Tests.codegen_file_text(first_pyproject),
         )
-        tm.that(addopts, has=f"--timeout={pytest_policy.case_timeout_seconds}")
-        tm.that(addopts, lacks="--session-timeout")
-        tm.that(set(addopts) >= set(pytest_policy.standard_addopts), eq=True)
+        tm.that(addopts, eq=list(pytest_policy.standard_addopts))
         tm.that(report, lacks="fail_under")
 
     @staticmethod

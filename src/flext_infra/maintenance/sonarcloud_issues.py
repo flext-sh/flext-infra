@@ -28,6 +28,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``t.VariadicTuple[t.Pair[str, str]]``.
+
         """
         return (
             ("componentKeys", project_key),
@@ -47,6 +48,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         token_result = self.optional_token()
         if token_result.failure:
@@ -87,7 +89,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
         token, key = credentials.value
         branch = u.Infra.repository_baseline_branch(
             self.repository_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            declared_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
         if branch.failure:
             return result_type.from_failure(branch)
@@ -147,7 +149,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
                     )
                 seen.add(issue.key)
                 findings.append(issue)
-            if total is not None and len(findings) > total:
+            if len(findings) > total:
                 return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
                     "SonarCloud returned more issues than its total",
                 )

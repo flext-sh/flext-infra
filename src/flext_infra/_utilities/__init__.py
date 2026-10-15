@@ -190,6 +190,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectUvSources,
     )
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
+    from flext_infra._utilities._rope.restructure import FlextInfraRopeRestructure
     from flext_infra._utilities._rope_analysis.base import (
         FlextInfraUtilitiesRopeAnalysisBase,
     )
@@ -228,6 +229,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._semantic_cutover.constant_consumers import (
         FlextInfraUtilitiesSemanticConstantConsumers,
+    )
+    from flext_infra._utilities._semantic_cutover.contracts import (
+        FlextInfraUtilitiesSemanticContracts,
     )
     from flext_infra._utilities._semantic_cutover.declaration_payload import (
         FlextInfraUtilitiesDeclarationPayload,
@@ -432,6 +436,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.rope_runtime_base import (
         FlextInfraUtilitiesRopeRuntimeBase,
     )
+    from flext_infra._utilities.rope_runtime_module_queries import (
+        FlextInfraUtilitiesRopeRuntimeModuleQueries,
+    )
     from flext_infra._utilities.rope_runtime_modules import (
         FlextInfraUtilitiesRopeRuntimeModules,
     )
@@ -456,6 +463,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.workspace_fingerprint import (
         FlextInfraUtilitiesWorkspaceFingerprint,
     )
+    from flext_infra._utilities.workspace_inventory import (
+        FlextInfraUtilitiesWorkspaceInventory,
+    )
     from flext_infra._utilities.workspace_manifest import (
         FlextInfraUtilitiesWorkspaceManifest,
     )
@@ -468,6 +478,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraFlextUtilitiesCodemodBindingChain",
     "FlextInfraRopeProject",
+    "FlextInfraRopeRestructure",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacades",
@@ -606,6 +617,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
+    "FlextInfraUtilitiesRopeRuntimeModuleQueries",
     "FlextInfraUtilitiesRopeRuntimeModules",
     "FlextInfraUtilitiesRopeRuntimeRefactors",
     "FlextInfraUtilitiesRopeRuntimeTypes",
@@ -615,6 +627,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeSourceBasesRuntime",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSemanticConstantConsumers",
+    "FlextInfraUtilitiesSemanticContracts",
     "FlextInfraUtilitiesSemanticCutover",
     "FlextInfraUtilitiesSemanticCutoverAliasCst",
     "FlextInfraUtilitiesSemanticCutoverAliases",
@@ -647,6 +660,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesTransformerHeaderParser",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesWorkspaceFingerprint",
+    "FlextInfraUtilitiesWorkspaceInventory",
     "FlextInfraUtilitiesWorkspaceManifest",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
@@ -664,6 +678,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraFlextUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraRopeProject": "._rope.project",
+        "FlextInfraRopeRestructure": "._rope.restructure",
         "FlextInfraUtilitiesBase": ".base",
         "FlextInfraUtilitiesCodegen": ".codegen",
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
@@ -812,6 +827,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeModulePatch": ".rope_module_patch",
         "FlextInfraUtilitiesRopeRuntime": ".rope_runtime",
         "FlextInfraUtilitiesRopeRuntimeBase": ".rope_runtime_base",
+        "FlextInfraUtilitiesRopeRuntimeModuleQueries": ".rope_runtime_module_queries",
         "FlextInfraUtilitiesRopeRuntimeModules": ".rope_runtime_modules",
         "FlextInfraUtilitiesRopeRuntimeRefactors": ".rope_runtime_refactors",
         "FlextInfraUtilitiesRopeRuntimeTypes": ".rope_runtime_types",
@@ -823,6 +839,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticConstantConsumers": (
             "._semantic_cutover.constant_consumers"
         ),
+        "FlextInfraUtilitiesSemanticContracts": "._semantic_cutover.contracts",
         "FlextInfraUtilitiesSemanticCutover": ".semantic_cutover",
         "FlextInfraUtilitiesSemanticCutoverAliasCst": "._semantic_cutover.alias_cst",
         "FlextInfraUtilitiesSemanticCutoverAliases": "._semantic_cutover.aliases",
@@ -893,6 +910,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesTransformerHeaderParser": ".transformer_header_parser",
         "FlextInfraUtilitiesVersioning": ".versioning",
         "FlextInfraUtilitiesWorkspaceFingerprint": ".workspace_fingerprint",
+        "FlextInfraUtilitiesWorkspaceInventory": ".workspace_inventory",
         "FlextInfraUtilitiesWorkspaceManifest": ".workspace_manifest",
         "FlextInfraWorktreeLifecycle": ".worktree_lifecycle",
         "FlextInfraWorktreeProvisioning": ".worktree_provisioning",

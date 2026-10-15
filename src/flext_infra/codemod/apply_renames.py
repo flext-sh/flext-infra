@@ -113,7 +113,7 @@ class FlextInfraApplyRenames:
         csv_path, driver = state
         plans, pending = planned
 
-        def verify() -> p.Result[bool]:
+        def verify(candidate_root: Path) -> p.Result[bool]:
             nonlocal pending
             current_driver = u.Cli.atomic_read_binary_file_state(
                 csv_path,
@@ -123,11 +123,15 @@ class FlextInfraApplyRenames:
                 return r[bool].fail(
                     f"rename campaign driver changed during publish: {csv_path}",
                 )
-            _fresh, remaining = cls._plan(params, roots, pairs)
+            publication_root = Path(commonpath(roots))
+            candidate_roots = tuple(
+                candidate_root / path.relative_to(publication_root) for path in roots
+            )
+            _fresh, remaining = cls._plan(params, candidate_roots, pairs)
             pending = remaining
             if remaining:
                 return r[bool].fail(
-                    f"CSV campaign post-scan found {remaining} pending edits",
+                    f"CSV campaign candidate scan found {remaining} pending edits",
                 )
             return r[bool].ok(value=True)
 
@@ -145,12 +149,47 @@ class FlextInfraApplyRenames:
             validator=verify,
         )
         if publication.failure:
-            return r[t.Pair[t.SequenceOf[Path], int]].from_failure(publication)
+            return cls._compensate_refused_campaign(publication, plans)
         changed = publication.value
         # Empty transactions do not invoke the publisher's validator.
         if not changed:
             verify().unwrap()
         return r[t.Pair[t.SequenceOf[Path], int]].ok((changed, pending))
+
+    @staticmethod
+    def _compensate_refused_campaign(
+        publication: p.Result[t.VariadicTuple[Path]],
+        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+    ) -> p.Result[t.Pair[t.SequenceOf[Path], int]]:
+        """Restore every planned campaign file after a refused publication.
+
+        The publication preserves its gains by contract; the campaign owner
+        compensates them, so a drifted driver never leaves half-applied renames
+        behind.
+
+        Returns:
+            The original publication failure, enriched when compensation fails.
+
+        """
+        compensation_errors: list[str] = []
+        for plan in plans:
+            state = plan.before
+            if plan.desired_content is None or state.content is None:
+                continue
+            restored = u.Cli.files_write_binary(state.path, state.content)
+            if restored.failure:
+                compensation_errors.append(f"{state.path}: {restored.error}")
+        if compensation_errors:
+            return r[t.Pair[t.SequenceOf[Path], int]].fail(
+                publication.error or "campaign publication failed",
+                error_code=publication.error_code,
+                exception=publication.exception,
+                error_data={
+                    **(publication.error_data or {}),
+                    "compensation_errors": compensation_errors,
+                },
+            )
+        return r[t.Pair[t.SequenceOf[Path], int]].from_failure(publication)
 
     @classmethod
     def run(

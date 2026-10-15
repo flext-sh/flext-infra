@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_cli import u as cli_u
-
 from flext_core import u as core_u
+
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, t, tm, u
@@ -602,7 +602,7 @@ class TestsFlextInfraSemanticPhaseContract:
         tmp_path: Path,
         inherited_import: bool,
     ) -> None:
-        """Typing facade imports are removed while the utility behavior runs."""
+        """Repeated typing references relocate while the real utility runs."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         typing_family = u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY)
         utility_family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
@@ -636,7 +636,7 @@ class TestsFlextInfraSemanticPhaseContract:
             ),
             package / "consumer.py": (
                 f"from {package.name}.typings import {typing_owner}\n"
-                f"value = {typing_owner}.parse('aligned')\n"
+                f"value = {typing_owner}.parse({typing_owner}.parse('aligned'))\n"
             ),
             package / "unrelated.py": (
                 f"from {package.name}.typings import {typing_owner}\n"
@@ -657,7 +657,7 @@ class TestsFlextInfraSemanticPhaseContract:
             sources[package / "consumer.py"] = (
                 f"from {consumer_package.name} import u\n"
                 f"from {package.name}.typings import {typing_owner}\n"
-                f"value = {typing_owner}.parse('aligned')\n"
+                f"value = {typing_owner}.parse({typing_owner}.parse('aligned'))\n"
                 "existing = u.parse('existing')\n"
             )
         for path, source in sources.items():
@@ -835,9 +835,6 @@ class TestsFlextInfraSemanticPhaseContract:
     ) -> None:
         """Test annotations and nesting complete in one atomic cutover."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        # Publication runs through the codegen transaction, which coordinates
-        # only inside an exact Git worktree root, exactly as in production.
-        u.Tests.initialize_git_repo(root)
         family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
         owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
         path = package / "constants.py"
@@ -853,10 +850,7 @@ class TestsFlextInfraSemanticPhaseContract:
             "",
         )
         path.write_text(source, encoding="utf-8")
-        # Semantic publication runs inside a codegen transaction, which only
-        # coordinates through a real repository rooted at the project.
-        u.Tests.initialize_git_repo(root)
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="require-future-annotations.yml",
             rule_id="require-future-annotations",
             repository=root.name,
@@ -865,23 +859,34 @@ class TestsFlextInfraSemanticPhaseContract:
             text=source,
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
-        report = m.Infra.ModScanReport(
-            findings=1,
-            actionable=0,
-            detection_only=1,
-            non_actionable_with_fix=0,
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({path}),
             entries=(finding,),
         )
         with infra.rope_workspace(root) as rope:
-            tm.ok(FlextInfraCodemodSemanticApply.apply(root, report, rope))
+            tm.ok(
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    rope,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            )
         published = path.read_text(encoding="utf-8")
         tm.that(published, has="from __future__ import annotations")
         tm.that(published, has=f"    class {owner}Member")
         with infra.rope_workspace(root) as rope:
-            tm.ok(FlextInfraCodemodSemanticApply.apply(root, report, rope))
+            tm.ok(
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    rope,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            )
         tm.that(path.read_text(encoding="utf-8"), eq=published)
 
     @staticmethod

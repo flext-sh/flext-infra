@@ -9,6 +9,11 @@ from __future__ import annotations
 from typing import Annotated, override
 
 from flext_infra import config, m, p, r, t
+from flext_infra._models.deps import (
+    GitSourceRefFromField,
+    GitSourceRefToField,
+    GitSourceUrlPrefixField,
+)
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._modernizer.document import FlextInfraPyprojectModernizerDocument
 from flext_infra.deps._modernizer.run import FlextInfraPyprojectModernizerRun
@@ -60,6 +65,9 @@ class FlextInfraPyprojectModernizerBase(
             description="Caller-owned project ManagedArtifacts resolution",
         ),
     ] = None
+    git_source_url_prefix: GitSourceUrlPrefixField = None
+    git_source_ref_from: GitSourceRefFromField = None
+    git_source_ref_to: GitSourceRefToField = None
     tomlsort_sort_first: t.StrSequence = m.Field(
         default_factory=_config_sort_first,
         exclude=True,

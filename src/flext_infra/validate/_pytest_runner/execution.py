@@ -65,6 +65,7 @@ class FlextInfraPytestRunnerExecution(
 
         Raises:
             ValueError: If test target has no declared project owner.
+
         """
         testmon_keys = (
             config.Infra.codegen.make.testmon_cache.database_environment_variable,
@@ -332,22 +333,24 @@ class FlextInfraPytestRunnerExecution(
             f"{shlex.join(command)}\n",
         ).unwrap()
         capture = u.Infra.git_begin_gate_capture(
-            self.root,
-            c.Infra.VERB_TEST,
-            command,
-            m.Infra.GateExecutionIntent(
-                test_selection=m.Infra.GateTestIntent(
-                    execution_mode=execution_mode,
-                    target=self.target,
-                    target_file=self.target_file,
-                    ci_context=self.ci_context,
-                    slow_phase=self.slow_phase,
-                    unbounded=self.unbounded,
-                    profile_enabled=self.profile_enabled,
+            m.Infra.GateCaptureBeginRequest(
+                repository_root=self.root,
+                gate=c.Infra.VERB_TEST,
+                command=command,
+                intent=m.Infra.GateExecutionIntent(
+                    test_selection=m.Infra.GateTestIntent(
+                        execution_mode=execution_mode,
+                        target=self.target,
+                        target_file=self.target_file,
+                        ci_context=self.ci_context,
+                        slow_phase=self.slow_phase,
+                        unbounded=self.unbounded,
+                        profile_enabled=self.profile_enabled,
+                    ),
                 ),
+                runtime_identity=self.testmon_environment(execution_mode),
             ),
             inputs=u.Infra.load_codegen_inputs(self.root).unwrap(),
-            runtime_identity=self.testmon_environment(execution_mode),
         )
         u.Cli.atomic_write_text_file(
             report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
@@ -586,7 +589,15 @@ class FlextInfraPytestRunnerExecution(
         return r.ok(final_exit)
 
     def _capture_original_suite(self, report_dir: Path) -> None:
-        """Bind the already executed suite to its original typed reports."""
+        """Bind the already executed suite to its original typed reports.
+
+        Args:
+            report_dir: The directory containing the report files.
+
+        Raises:
+            ValueError: If the original suite checkpoint has no native test selection.
+
+        """
         start = m.Infra.GateCaptureStart.model_validate_json(
             u.Cli.files_read_binary(
                 report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
@@ -621,9 +632,14 @@ class FlextInfraPytestRunnerExecution(
             msg = "original suite checkpoint has no native test selection"
             raise ValueError(msg)
         u.Infra.git_finish_gate_capture(
-            start, outcome, reports, report_dir,
+            m.Infra.GateCaptureFinishRequest(
+                started=start,
+                process=outcome,
+                reports=reports,
+                report_root=report_dir,
+                runtime_identity=self.testmon_environment(selection.execution_mode),
+            ),
             inputs=u.Infra.load_codegen_inputs(self.root),
-            runtime_identity=self.testmon_environment(selection.execution_mode),
         ).unwrap()
 
     @staticmethod
@@ -831,8 +847,8 @@ class FlextInfraPytestRunnerExecution(
         ).unwrap()
         selection = selection_plan.node_ids
         # A declared file whose inventory was collected still runs: testmon may
-        # select nothing for a file that has in-scope tests, and noselect
-        # executes that file. An empty scope is owns_no_tests and is not this
+        # select nothing for a file that has in-scope tests, and the declared
+        # file selection executes it. An empty scope is owns_no_tests and is not this
         # guard. A suite with no proved inventory stays a failure.
         if (
             not selection
@@ -853,7 +869,7 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
-        # A declared file always executes under noselect, so an empty testmon
+        # A declared file always executes under forceselect, so an empty testmon
         # selection over a restored cache is never a cache hit for it.
         cache_hit = (
             self.target_file is None

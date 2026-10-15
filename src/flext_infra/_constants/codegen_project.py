@@ -99,19 +99,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
         OFFLINE = "offline"
 
     @unique
-    class MakeProfile(StrEnum):
-        """Generated Makefile profile for one repository.
-
-        Topology is proven by the repository itself: a checkout that declares
-        ``.gitmodules`` is a workspace, and one that does not is standalone.
-        This mirrors ``MakeProfile``, which the detector returns, so the two
-        vocabularies cannot drift.
-        """
-
-        WORKSPACE = "workspace"
-        STANDALONE = "standalone"
-
-    @unique
     class CheckoutKind(StrEnum):
         """Physical checkout topology for one repository."""
 
@@ -242,7 +229,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     "mise.lock platform suffix of a Linux host without glibc."
     GIT_URL_SUFFIX: ClassVar[str] = ".git"
     "Canonical clone-URL suffix every governed RepositoryRef URL carries."
-    CUSTOM_MAKE_FILENAME: ClassVar[str] = "custom.mk"
     CUSTOM_CI_STEPS_FILENAME: ClassVar[str] = ".github/ci-custom-steps.yml"
     """Project-owned steps injected into generated CI, symmetric to custom.mk.
 
@@ -256,6 +242,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
+    INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"
     CODEGEN_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.yaml"
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"
     CODEGEN_GEN_SUFFIX: ClassVar[str] = ".gen.yaml"

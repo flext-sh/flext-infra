@@ -6,21 +6,28 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import override
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.codemod import FlextInfraImportNormalizationPhase
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
 from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
 from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
+from flext_infra.refactor import FlextInfraAccessorMigrationReportMixin
 from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_infra.transformers import FlextInfraSemanticPublication
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     """Apply guarded rewrites and retain accepted progress for fix-forward."""
+
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = (
+        m.Field(exclude=True, description="Injected candidate Rope workspace factory")
+    )
 
     source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
         exclude=True,
@@ -114,7 +121,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             fix=False,
         ).unwrap()
 
-        self._apply_ast_phase(self.repository_root, self.rope, initial)
+        after_syntax = self._apply_ast_phase(self.repository_root, self.rope, initial)
         self.progress.emit("mod: apply declared consumer text cutovers")
         self._apply_text_phase(
             self.repository_root,
@@ -125,20 +132,23 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         )
         FlextInfraImportNormalizationPhase.apply(
             self.repository_root,
-            initial,
+            after_syntax,
             self.rope,
         ).unwrap()
         self.rope.refresh()
         self.progress.emit("mod: apply the workspace constants census")
         census_runner = FlextInfraRefactorCensus(
+            workspace_factory=self.workspace_factory,
             source_preview=self.source_preview,
             repository_root=self.repository_root,
             apply_changes=True,
-            families=("c",),
-            rules=(
-                c.Infra.CensusRule.CONSTANT_CONSUMERS,
-                c.Infra.CensusRule.DUPLICATE,
-                c.Infra.CensusRule.WRONG_TIER,
+            options=m.Infra.CensusOptions(
+                families=("c",),
+                rules=(
+                    c.Infra.CensusRule.CONSTANT_CONSUMERS,
+                    c.Infra.CensusRule.DUPLICATE,
+                    c.Infra.CensusRule.WRONG_TIER,
+                ),
             ),
         )
         census = census_runner.build_report()
@@ -163,8 +173,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
         return result
 
-    @staticmethod
     def _apply_ast_phase(
+        self,
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         current: m.Infra.ModScanReport,
@@ -178,20 +188,111 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             RuntimeError: If the syntax cascade repeats a source state.
 
         """
-        after_ast = current
+        after_ast = FlextInfraModGateEngine.authored(current)
+        plans: dict[Path, m.Infra.SemanticFilePlan] = {}
+        inputs: dict[Path, m.Cli.AtomicFileState] = {}
+        if after_ast.actionable:
+            for target in u.Infra.ast_grep_scan_targets(root):
+                path = root / target
+                paths = (
+                    u.Infra.iter_directory_python_files(path)
+                    if path.is_dir()
+                    else (path,)
+                )
+                for source in paths:
+                    inputs[source.resolve()] = u.Cli.atomic_read_binary_file_state(
+                        source, required=True
+                    ).unwrap()
         seen: set[t.VariadicTuple[t.Pair[str, str]]] = set()
         while after_ast.actionable:
-            state = FlextInfraCodemodSemanticApply.source_fingerprint(root, after_ast)
+            state = tuple(
+                sorted(
+                    (str(path), plan.desired_content.hex())
+                    for path, plan in plans.items()
+                    if plan.desired_content is not None
+                )
+            )
             if state in seen:
                 msg = "mod syntax cascade cycle before semantic publication"
                 raise RuntimeError(msg)
             seen.add(state)
             before_ast = after_ast
-            FlextInfraModGateEngine.scan(root, fix=True).unwrap()
-            rope_workspace.refresh()
-            after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+            wave = FlextInfraModReplacements.compose(root, after_ast).unwrap()
+            for plan in wave:
+                original = plans.get(plan.path)
+                for source in (plan.before, *plan.source_states):
+                    if source.path not in plans:
+                        inputs.setdefault(source.path, source)
+                plans[plan.path] = (
+                    plan
+                    if original is None
+                    else plan.model_copy(
+                        update={
+                            "before": original.before,
+                            "changes": (*original.changes, *plan.changes),
+                        }
+                    )
+                )
+            after_ast = FlextInfraModGateEngine.authored(
+                self._preview_ast_candidate(root, plans, inputs)
+            )
             FlextInfraCodemodBatchApply.validate_fix_match(before_ast, after_ast)
-        return after_ast
+        if plans:
+            accepted = FlextInfraModReplacements.admit(
+                root, tuple(plans.values())
+            ).unwrap()
+            candidate = FlextInfraStagedPackage.plan_sources(
+                root,
+                {
+                    plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+                    for plan in accepted
+                    if plan.desired_content is not None
+                },
+                inputs=tuple(inputs.values()),
+            ).unwrap()
+            FlextInfraAccessorMigrationReportMixin.validate_candidate(
+                candidate, self.source_preview, (c.Infra.LINT,)
+            ).unwrap()
+            FlextInfraSemanticPublication.publish_source_candidate(
+                accepted, candidate=candidate
+            ).unwrap()
+            rope_workspace.refresh()
+        return FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+
+    def _preview_ast_candidate(
+        self,
+        root: Path,
+        plans: t.MappingKV[Path, m.Infra.SemanticFilePlan],
+        inputs: MutableMapping[Path, m.Cli.AtomicFileState],
+    ) -> m.Infra.ModScanReport:
+        """Bind each wave's authenticated plan to its transactional scan.
+
+        Returns:
+            The full-catalog report for this candidate's staged bytes.
+
+        """
+        candidate = FlextInfraStagedPackage.plan_sources(
+            root,
+            {
+                path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+                for path, plan in plans.items()
+                if plan.desired_content is not None
+            },
+            inputs=tuple(inputs.values()),
+        ).unwrap()
+        for source in candidate.inputs:
+            inputs.setdefault(source.path, source)
+
+        def scan(
+            view_root: Path, _paths: t.MappingKV[Path, Path]
+        ) -> m.Infra.ModScanReport:
+            return FlextInfraModGateEngine.scan_candidate(
+                root, view_root, candidate
+            ).unwrap()
+
+        return self.source_preview.preview_sources(
+            root, candidate.updates, scan, inputs=candidate.inputs
+        ).unwrap()
 
     @staticmethod
     def _apply_text_phase(
@@ -272,6 +373,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             FlextInfraCodemodSemanticApply.apply_transaction_paths(
                 root,
                 transaction_paths,
+                source_preview=self.source_preview,
             )
             rope_workspace.refresh()
             after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
@@ -284,6 +386,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             root,
             FlextInfraModGateEngine.authored(after_ast),
             rope_workspace,
+            source_preview=self.source_preview,
+            workspace_factory=self.workspace_factory,
         )
         if semantic.failure:
             return outcome.from_failure(semantic)
@@ -469,7 +573,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return r[t.Cli.ResultValue].fail(message)
             self.progress.emit(
                 "mod: joint AST, semantic, and text fixed point verified "
-                "with zero findings",
+                "with zero AST/text findings",
             )
             return r[t.Cli.ResultValue].ok(value=True)
 
@@ -589,9 +693,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         return r[int].ok(pending)
 
     @staticmethod
-    def validate_fix_match(
-        before: m.Infra.ModScanReport,
-        after_apply: m.Infra.ModScanReport,
+    def validate_fix_match[FindingT: m.Infra.ModOccurrence](
+        before: m.Infra.ModOccurrenceReport[FindingT],
+        after_apply: m.Infra.ModOccurrenceReport[FindingT],
     ) -> None:
         """Reject unresolved rewrites while preserving valid rule cascades.
 

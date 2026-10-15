@@ -10,16 +10,17 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import flext_core
-from flext_infra import c, infra, m, u as fleet_u
+import pytest
+
+from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
     FlextInfraDuplicateApplyPhase,
 )
-from tests import tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p, t
 
 _CORE_CONSTANT = "SHARED_LIMIT = 42\n"
 _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
@@ -27,6 +28,55 @@ _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
 
 class TestsFlextInfraCodemodDuplicateApply:
     """Cure identity-proven duplicates; plan every structural clone."""
+
+    def test_cure_models_preserve_native_definition_identity(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Census cure contracts consume the same typed source objects directly."""
+        path = tmp_path / "definition.py"
+        path.write_text(_CORE_CONSTANT, encoding=c.DEFAULT_ENCODING)
+        statement = u.Infra.logical_statements(_CORE_CONSTANT)[0]
+        item = m.Infra.Object(
+            file_path=str(path),
+            line=1,
+            project="fixture",
+            name="SHARED_LIMIT",
+            kind="constant",
+        )
+        definition = m.Infra.DuplicateDefinition(
+            item=item,
+            path=path,
+            source=_CORE_CONSTANT,
+            statement=statement,
+            body=_CORE_CONSTANT,
+            consumers=0,
+            layer=0,
+        )
+        copy = m.Infra.DuplicateCopyCure(
+            definition=definition,
+            consumer_files=(),
+            in_module_uses=0,
+        )
+        planned = m.Infra.DuplicateGroupCure(
+            owner=copy,
+            copies=(),
+            edits=(),
+        )
+        assert planned.owner is copy
+        assert planned.owner.definition is definition
+        assert planned.owner.definition.statement is statement
+        assert planned.owner.definition.source == path.read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        deletion = m.Infra.DuplicateDeletion(
+            path=path,
+            name=item.name,
+            line=item.line,
+            project=item.project,
+        )
+        assert deletion.path == definition.path
+        assert deletion.name == definition.item.name
 
     @staticmethod
     def _module(summary: str) -> str:
@@ -43,49 +93,22 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
 
     @staticmethod
-    def _workspace(tmp_path: Path) -> tuple[Path, Path]:
+    def _workspace(duplicate_project: Path) -> tuple[Path, Path]:
         """One governed fixture workspace with a provisioned interpreter.
 
-        The regenerated lazy initializer imports ``flext_core``, so the
-        fixture environment also receives the running interpreter's installed
-        package; otherwise the fresh-import gate fails on the fixture's bare
-        virtual environment, not on the published sources.
+        The installed session owner provisions one physical worker environment.
+        Each exclusive case restores source and report state at the same path,
+        so editable imports resolve this case without cloning or running setup.
 
         Returns:
             The repository root and its source package.
 
         """
-        root, package = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        tm.ok(u.Tests.create_python_environment(root))
-        site = Path(
-            tm.ok(
-                fleet_u.Cli.run(
-                    [
-                        str(fleet_u.Infra.runtime_python(root)),
-                        "-c",
-                        "import sysconfig; print(sysconfig.get_paths()['purelib'])",
-                    ],
-                ),
-            ).stdout.strip(),
-        )
-        # The regenerated lazy initializer imports flext_core and its real
-        # dependency set: a path file exposes the running interpreter's
-        # installed packages to the fixture environment, so the fresh-import
-        # probe judges the published sources, never the bare fixture virtual
-        # environment.
-        (site / "fixture_dependency_set.pth").write_text(
-            f"{Path(flext_core.__file__).parent.parent}\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        return root, package
+        return duplicate_project, duplicate_project / "src" / "flext_demo"
 
     @staticmethod
     def _objects(
-        rope_workspace: object,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
         paths: t.SequenceOf[Path],
         name: str,
     ) -> t.VariadicTuple[m.Infra.Object]:
@@ -129,10 +152,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_trivial_group_keeps_owner_and_rewires_consumers(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """The consumer-carrying definition wins and every copy disappears."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         core = package / "core.py"
         side = package / "side.py"
         core.write_text(
@@ -190,9 +213,9 @@ class TestsFlextInfraCodemodDuplicateApply:
             source = (package / f"{name}.py").read_text(encoding=c.DEFAULT_ENCODING)
             tm.that(source, has="from flext_demo.side import SHARED_LIMIT")
 
-    def test_phase_cures_once_then_converges(self, tmp_path: Path) -> None:
+    def test_phase_cures_once_then_converges(self, duplicate_project: Path) -> None:
         """The mod-loop callback changes sources once and reports the fixed point."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         core = package / "core.py"
         side = package / "side.py"
         core.write_text(
@@ -217,10 +240,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_different_homonyms_are_planned_never_written(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """Two same-name objects with different values stay untouched."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         first = package / "first.py"
         second = package / "second.py"
         first.write_text(
@@ -259,10 +282,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_byte_identical_body_with_free_name_is_planned_only(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """Equal text reading a per-module global is never auto-unified."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         first = package / "left.py"
         second = package / "right.py"
         body = self._module("Module context trap") + "LIMIT = BASE\n"
@@ -296,12 +319,71 @@ class TestsFlextInfraCodemodDuplicateApply:
             eq=before,
         )
 
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "def str(value):\n    return value + 'custom'\n\nLIMIT = str('value')\n",
+            "LIMIT = str.upper('value')\n",
+        ],
+    )
+    def test_constructor_shadow_or_attribute_call_never_cures(
+        self,
+        duplicate_project: Path,
+        source: str,
+    ) -> None:
+        """Equal text cannot authorize custom or attribute-based constructors."""
+        root, package = self._workspace(duplicate_project)
+        first, second = package / "left.py", package / "right.py"
+        for path in (first, second):
+            path.write_text(self._module("Binding trap") + source, encoding="utf-8")
+        before = first.read_bytes(), second.read_bytes()
+        with infra.rope_workspace(root) as workspace:
+            group = self._group(
+                self._objects(workspace, (first, second), "LIMIT"),
+                value_identical=True,
+            )
+            outcome = tm.ok(
+                FlextInfraCodemodDuplicateApply.census_duplicates(
+                    root, workspace, (group,), apply=True
+                )
+            )
+        tm.that(outcome.edits, empty=True)
+        tm.that(outcome.plans, length=1)
+        tm.that((first.read_bytes(), second.read_bytes()), eq=before)
+
+    def test_rebound_module_definition_never_deletes_another_occurrence(
+        self,
+        duplicate_project: Path,
+    ) -> None:
+        """A module with two same-name assignments has no single cure owner."""
+        root, package = self._workspace(duplicate_project)
+        first, second = package / "left.py", package / "right.py"
+        for path in (first, second):
+            path.write_text(
+                self._module("Rebound declaration") + "LIMIT = 42\nLIMIT = 99\n",
+                encoding="utf-8",
+            )
+        before = first.read_bytes(), second.read_bytes()
+        with infra.rope_workspace(root) as workspace:
+            group = self._group(
+                self._objects(workspace, (first, second), "LIMIT"),
+                value_identical=True,
+            )
+            outcome = tm.ok(
+                FlextInfraCodemodDuplicateApply.census_duplicates(
+                    root, workspace, (group,), apply=True
+                )
+            )
+        tm.that(outcome.edits, empty=True)
+        tm.that(outcome.plans, length=1)
+        tm.that((first.read_bytes(), second.read_bytes()), eq=before)
+
     def test_structural_clone_is_planned_without_writes(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """A semantic jscpd clone becomes a plan; the sources never change."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         owner = package / "holder.py"
         clone = package / "mirror.py"
         owner_block = "def handle(seed):\n    total = seed + 1\n    return total * 2\n"
@@ -337,16 +419,20 @@ class TestsFlextInfraCodemodDuplicateApply:
         tm.that(outcome.plans, length=1)
         plan = outcome.plans[0]
         tm.that(plan.origin, eq="jscpd")
-        tm.that(plan.reason, has="never auto-unified")
+        assert plan.reason
+        assert plan.edits[0].action == c.Infra.DUPLICATE_KEEP_ACTION
+        assert plan.edits[1].action == c.Infra.DUPLICATE_DELETE_ACTION
         tm.that(plan.owner_file_path, eq=owner)
         tm.that(
             (owner.read_bytes(), clone.read_bytes()),
             eq=before,
         )
 
-    def test_declaration_only_clone_is_filtered_out(self, tmp_path: Path) -> None:
+    def test_declaration_only_clone_is_filtered_out(
+        self, duplicate_project: Path
+    ) -> None:
         """A clone without executable python behavior produces no plan."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         owner = package / "typing_owner.py"
         clone = package / "typing_mirror.py"
         block = "from typing import ClassVar\n\nNAME: ClassVar[str] = 'x'\n"
@@ -375,10 +461,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_census_rule_applies_the_cure_through_the_public_verb(
         self,
-        tmp_path: Path,
+        duplicate_project: Path,
     ) -> None:
         """``refactor census --rules duplicate --apply`` cures and reports."""
-        root, package = self._workspace(tmp_path)
+        root, package = self._workspace(duplicate_project)
         core = package / "core.py"
         side = package / "side.py"
         core.write_text(
@@ -423,7 +509,7 @@ class TestsFlextInfraCodemodDuplicateApply:
         """
         owner_start, owner_end = owner_span
         clone_start, clone_end = clone_span
-        summary = {
+        summary: t.JsonDict = {
             "clones": 1,
             "duplicatedLines": 3,
             "duplicatedTokens": 40,
@@ -477,11 +563,6 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
 
 
-_PREFLIGHT = m.Infra.ModScanReport(
-    findings=0,
-    actionable=0,
-    detection_only=0,
-    non_actionable_with_fix=0,
-    files=frozenset(),
-    entries=(),
+_PREFLIGHT = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+    files=frozenset(), entries=()
 )

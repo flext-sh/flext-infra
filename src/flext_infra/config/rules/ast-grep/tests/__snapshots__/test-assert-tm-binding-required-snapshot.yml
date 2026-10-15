@@ -1,0 +1,16 @@
+id: test-assert-tm-binding-required
+snapshots:
+  assert condition:
+    labels:
+    - source: assert condition
+      style: primary
+      start: 0
+      end: 16
+  ? |
+    from tests import tm
+    assert left == right
+  : labels:
+    - source: assert left == right
+      style: primary
+      start: 21
+      end: 41

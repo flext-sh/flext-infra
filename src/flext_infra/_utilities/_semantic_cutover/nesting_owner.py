@@ -218,7 +218,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         """
         checked = r[t.VariadicTuple[str]]
         selected = frozenset(members)
-        nodes_by_member: dict[str, ast.stmt] = {}
+        nodes_by_member: t.MutableMappingKV[str, ast.stmt] = {}
         for node in tree.body:
             name = (
                 node.name

@@ -50,6 +50,11 @@ class FlextInfraTypesAdapters:
     )
     "Validates t.StrSequence."
 
+    NON_EMPTY_STR_SEQ_ADAPTER: ClassVar[
+        m.TypeAdapter[t.VariadicTuple[t.NonEmptyStr]]
+    ] = u.type_adapter(tuple[t.NonEmptyStr, ...])
+    "Validates t.VariadicTuple[t.NonEmptyStr] at typed render boundaries."
+
     STR_ADAPTER: ClassVar[m.TypeAdapter[str]] = u.type_adapter(str)
     "Validates one string at boundaries whose upstream stubs expose Any."
 

@@ -1,0 +1,377 @@
+id: remove-test-own-literal-tautology
+snapshots:
+  assert (result.success or result.failure) and check(), explain():
+    labels:
+    - source: result.success or result.failure
+      style: primary
+      start: 8
+      end: 40
+    - source: assert (result.success or result.failure) and check(), explain()
+      style: secondary
+      start: 0
+      end: 64
+  assert check() and (result.failure or result.success):
+    labels:
+    - source: result.failure or result.success
+      style: primary
+      start: 20
+      end: 52
+    - source: assert check() and (result.failure or result.success)
+      style: secondary
+      start: 0
+      end: 53
+  assert produce().success or produce().failure, explain():
+    labels:
+    - source: produce().success or produce().failure
+      style: primary
+      start: 7
+      end: 45
+    - source: assert produce().success or produce().failure, explain()
+      style: secondary
+      start: 0
+      end: 56
+  assert result.success or result.failure:
+    labels:
+    - source: result.success or result.failure
+      style: primary
+      start: 7
+      end: 39
+    - source: assert result.success or result.failure
+      style: secondary
+      start: 0
+      end: 39
+  assert result.success or result.failure, explain():
+    labels:
+    - source: result.success or result.failure
+      style: primary
+      start: 7
+      end: 39
+    - source: assert result.success or result.failure, explain()
+      style: secondary
+      start: 0
+      end: 50
+  assert result.success or result.failure; observe():
+    labels:
+    - source: result.success or result.failure
+      style: primary
+      start: 7
+      end: 39
+    - source: assert result.success or result.failure
+      style: secondary
+      start: 0
+      end: 39
+  ? |
+    def test_contract():
+        assert result.success or result.failure
+  : labels:
+    - source: result.success or result.failure
+      style: primary
+      start: 32
+      end: 64
+    - source: assert result.success or result.failure
+      style: secondary
+      start: 25
+      end: 64
+  ? |
+    from flext_core import c
+    assert c.Core.TIMEOUT != 30
+  : labels:
+    - source: assert c.Core.TIMEOUT != 30
+      style: primary
+      start: 25
+      end: 52
+    - source: from flext_core import c
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import c
+        assert c.Core.TIMEOUT != 30
+      style: secondary
+      start: 0
+      end: 53
+    - source: c.Core.TIMEOUT
+      style: secondary
+      start: 32
+      end: 46
+    - source: '30'
+      style: secondary
+      start: 50
+      end: 52
+    - source: c.Core.TIMEOUT != 30
+      style: secondary
+      start: 32
+      end: 52
+  ? |
+    from flext_core import c
+    assert c.Core.TIMEOUT < 30
+  : labels:
+    - source: assert c.Core.TIMEOUT < 30
+      style: primary
+      start: 25
+      end: 51
+    - source: from flext_core import c
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import c
+        assert c.Core.TIMEOUT < 30
+      style: secondary
+      start: 0
+      end: 52
+    - source: c.Core.TIMEOUT
+      style: secondary
+      start: 32
+      end: 46
+    - source: '30'
+      style: secondary
+      start: 49
+      end: 51
+    - source: c.Core.TIMEOUT < 30
+      style: secondary
+      start: 32
+      end: 51
+  ? |
+    from flext_core import c
+    assert c.Core.TIMEOUT == 30
+  : labels:
+    - source: assert c.Core.TIMEOUT == 30
+      style: primary
+      start: 25
+      end: 52
+    - source: from flext_core import c
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import c
+        assert c.Core.TIMEOUT == 30
+      style: secondary
+      start: 0
+      end: 53
+    - source: c.Core.TIMEOUT
+      style: secondary
+      start: 32
+      end: 46
+    - source: '30'
+      style: secondary
+      start: 50
+      end: 52
+    - source: c.Core.TIMEOUT == 30
+      style: secondary
+      start: 32
+      end: 52
+  ? |
+    from flext_core import c
+    assert c.Core.TIMEOUT == 30, explain()
+  : labels:
+    - source: assert c.Core.TIMEOUT == 30, explain()
+      style: primary
+      start: 25
+      end: 63
+    - source: from flext_core import c
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import c
+        assert c.Core.TIMEOUT == 30, explain()
+      style: secondary
+      start: 0
+      end: 64
+    - source: c.Core.TIMEOUT
+      style: secondary
+      start: 32
+      end: 46
+    - source: '30'
+      style: secondary
+      start: 50
+      end: 52
+    - source: c.Core.TIMEOUT == 30
+      style: secondary
+      start: 32
+      end: 52
+  ? |
+    from flext_core import c
+    assert c.Core.TIMEOUT == 30; observe()
+  : labels:
+    - source: assert c.Core.TIMEOUT == 30
+      style: primary
+      start: 25
+      end: 52
+    - source: from flext_core import c
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import c
+        assert c.Core.TIMEOUT == 30; observe()
+      style: secondary
+      start: 0
+      end: 64
+    - source: c.Core.TIMEOUT
+      style: secondary
+      start: 32
+      end: 46
+    - source: '30'
+      style: secondary
+      start: 50
+      end: 52
+    - source: c.Core.TIMEOUT == 30
+      style: secondary
+      start: 32
+      end: 52
+  ? |
+    from flext_core import config
+    assert config.Api.base_url == "https://example"
+  : labels:
+    - source: assert config.Api.base_url == "https://example"
+      style: primary
+      start: 30
+      end: 77
+    - source: from flext_core import config
+      style: secondary
+      start: 0
+      end: 29
+    - source: |
+        from flext_core import config
+        assert config.Api.base_url == "https://example"
+      style: secondary
+      start: 0
+      end: 78
+    - source: config.Api.base_url
+      style: secondary
+      start: 37
+      end: 56
+    - source: '"https://example"'
+      style: secondary
+      start: 60
+      end: 77
+    - source: config.Api.base_url == "https://example"
+      style: secondary
+      start: 37
+      end: 77
+  ? |
+    from flext_core import config
+    def test_contract():
+        assert config.Api.base_url == "https://example"
+  : labels:
+    - source: assert config.Api.base_url == "https://example"
+      style: primary
+      start: 55
+      end: 102
+    - source: from flext_core import config
+      style: secondary
+      start: 0
+      end: 29
+    - source: |
+        from flext_core import config
+        def test_contract():
+            assert config.Api.base_url == "https://example"
+      style: secondary
+      start: 0
+      end: 103
+    - source: config.Api.base_url
+      style: secondary
+      start: 62
+      end: 81
+    - source: '"https://example"'
+      style: secondary
+      start: 85
+      end: 102
+    - source: config.Api.base_url == "https://example"
+      style: secondary
+      start: 62
+      end: 102
+  ? |
+    from flext_core import r
+    result = r.Ok(1)
+    assert result.failure or result.success
+  : labels:
+    - source: result.failure or result.success
+      style: primary
+      start: 49
+      end: 81
+    - source: assert result.failure or result.success
+      style: secondary
+      start: 42
+      end: 81
+  ? |
+    from tests import settings, tm
+    def test_contract():
+        tm.that(settings.Tests.workers, eq=4)
+  : labels:
+    - source: tm.that(settings.Tests.workers, eq=4)
+      style: primary
+      start: 56
+      end: 93
+    - source: from tests import settings, tm
+      style: secondary
+      start: 0
+      end: 30
+    - source: |
+        from tests import settings, tm
+        def test_contract():
+            tm.that(settings.Tests.workers, eq=4)
+      style: secondary
+      start: 0
+      end: 94
+    - source: settings.Tests.workers
+      style: secondary
+      start: 64
+      end: 86
+    - source: eq
+      style: secondary
+      start: 88
+      end: 90
+    - source: '4'
+      style: secondary
+      start: 91
+      end: 92
+    - source: eq=4
+      style: secondary
+      start: 88
+      end: 92
+    - source: (settings.Tests.workers, eq=4)
+      style: secondary
+      start: 63
+      end: 93
+  ? |
+    from tests import settings, tm
+    tm.that(settings.Tests.workers, eq=4)
+  : labels:
+    - source: tm.that(settings.Tests.workers, eq=4)
+      style: primary
+      start: 31
+      end: 68
+    - source: from tests import settings, tm
+      style: secondary
+      start: 0
+      end: 30
+    - source: |
+        from tests import settings, tm
+        tm.that(settings.Tests.workers, eq=4)
+      style: secondary
+      start: 0
+      end: 69
+    - source: settings.Tests.workers
+      style: secondary
+      start: 39
+      end: 61
+    - source: eq
+      style: secondary
+      start: 63
+      end: 65
+    - source: '4'
+      style: secondary
+      start: 66
+      end: 67
+    - source: eq=4
+      style: secondary
+      start: 63
+      end: 67
+    - source: (settings.Tests.workers, eq=4)
+      style: secondary
+      start: 38
+      end: 68

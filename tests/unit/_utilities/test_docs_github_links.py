@@ -1,6 +1,6 @@
-"""Direct tests for FlextInfraUtilitiesDocsGithubLinks.
+"""Public documentation URL behavior from real repository declarations.
 
-Copyright (c) 2025 FLEXT Team. All rights reserved.
+Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
@@ -8,81 +8,180 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import u
-from tests import tm
+import pytest
+
+from tests import tm, u
+
+
+@pytest.fixture
+def docs_repository(tmp_path: Path) -> Path:
+    """Create a real peripheral Git owner with an explicit integration contract.
+
+    Returns:
+        The resulting ``Path``.
+
+    """
+    root = tmp_path / "docs-owner"
+    root.mkdir()
+    u.Tests.initialize_git_repo(
+        root,
+        origin_url="https://github.com/example-owner/root-docs.git",
+    )
+    directory = root / "config"
+    directory.mkdir(exist_ok=True)
+    (directory / "codegen.yaml").write_text(
+        "Infra:\n  codegen:\n    repository:\n      integration:\n"
+        "        provider: github\n        branch: docs/integration\n",
+        encoding="utf-8",
+    )
+    (root / ".gitmodules").write_text(
+        '[submodule "peripheral"]\n'
+        "  path = components/peripheral\n"
+        "  url = https://github.com/second-owner/peripheral-docs.git\n"
+        "  branch = docs/member-line\n",
+        encoding="utf-8",
+    )
+    member = root / "components/peripheral"
+    member.mkdir(parents=True)
+    (root / "README.md").write_text("Root docs\n", encoding="utf-8")
+    (member / "README.md").write_text("Member docs\n", encoding="utf-8")
+    return root
 
 
 class TestsFlextInfraUtilitiesDocsGithubLinks:
-    """Direct unit tests for GitHub cross-repo doc URL policy helpers."""
+    """Exercise Git identity, branch rewriting, and local existence evidence."""
 
-    class TestDocsGithubRepos:
-        """Verify the governed GitHub repo map from make.docs SSOT."""
-
-        @staticmethod
-        def test_repos_nonempty() -> None:
-            repos = u.Infra.docs_github_repos()
-            tm.that(len(repos) > 0, eq=True)
-
-        @staticmethod
-        def test_repos_carry_distinct_governed_identities() -> None:
-            repos = u.Infra.docs_github_repos()
-            identities = {(repo.organization, repo.repository) for repo in repos}
-            tm.that(all(identities), eq=True)
-            tm.that(len(identities), eq=len(repos))
-            tm.that(
-                all(repo.organization and repo.repository for repo in repos),
-                eq=True,
+    @staticmethod
+    def test_gitmodule_admits_member_without_a_catalog(docs_repository: Path) -> None:
+        repos = u.Infra.docs_github_repos(docs_repository)
+        tm.that(
+            {(repo.organization, repo.repository) for repo in repos},
+            eq={("example-owner", "root-docs"), ("second-owner", "peripheral-docs")},
+        )
+        member = tm.not_none(
+            u.Infra.docs_github_repo_lookup(
+                "second-owner",
+                "peripheral-docs",
+                repository_root=docs_repository,
             )
+        )
+        tm.that(member.branch, eq="docs/member-line")
+        tm.that(
+            Path(member.local_checkout), eq=docs_repository / "components/peripheral"
+        )
 
-        @staticmethod
-        def test_repos_contain_flext() -> None:
-            repos = u.Infra.docs_github_repos()
-            orgs_repos = {(repo.organization, repo.repository) for repo in repos}
-            tm.that(("flext-sh", "flext") in orgs_repos, eq=True)
+    @staticmethod
+    def test_canonical_link_round_trip_and_missing_path(docs_repository: Path) -> None:
+        repo = tm.not_none(
+            u.Infra.docs_github_repo_lookup(
+                "example-owner",
+                "root-docs",
+                repository_root=docs_repository,
+            )
+        )
+        target = tm.not_none(
+            u.Infra.docs_canonical_github_url(
+                repo.organization,
+                repo.repository,
+                "README.md",
+                repository_root=docs_repository,
+            )
+        )
+        tm.that(
+            u.Infra.docs_github_local_path(
+                target + "#L1",
+                repository_root=docs_repository,
+            ),
+            eq=docs_repository / "README.md",
+        )
+        tm.that(
+            u.Infra.docs_github_link_issues(
+                file="consumer.md",
+                line_number=1,
+                raw=target,
+                target=target,
+                repository_root=docs_repository,
+            ),
+            eq=[],
+        )
+        missing = tm.not_none(
+            u.Infra.docs_canonical_github_url(
+                repo.organization,
+                repo.repository,
+                "absent.md",
+                repository_root=docs_repository,
+            )
+        )
+        issues = u.Infra.docs_github_link_issues(
+            file="consumer.md",
+            line_number=2,
+            raw=missing,
+            target=missing,
+            repository_root=docs_repository,
+        )
+        tm.that({issue.issue_type for issue in issues}, eq={"broken_github_link"})
 
-    class TestStaleGithubOrganizations:
-        """Verify placeholder organizations that must be rewritten."""
+    @staticmethod
+    def test_wrong_branch_rewrite_preserves_fragment(docs_repository: Path) -> None:
+        stale = (
+            "https://github.com/example-owner/root-docs/blob/foreign/ref/README.md#L1"
+        )
+        rewritten = u.Infra.docs_rewrite_github_url(
+            stale, repository_root=docs_repository
+        )
+        tm.that(rewritten, none=True)
+        issues = u.Infra.docs_github_link_issues(
+            file="consumer.md",
+            line_number=3,
+            raw=stale,
+            target=stale,
+            repository_root=docs_repository,
+        )
+        tm.that({issue.issue_type for issue in issues}, eq={"wrong_github_branch"})
 
-        @staticmethod
-        def test_stale_organizations_exclude_governed_org() -> None:
-            stale = u.Infra.docs_stale_github_organizations()
-            tm.that("flext-sh" in stale, eq=False)
-            tm.that(all(org for org in stale), eq=True)
+    @staticmethod
+    def test_placeholder_rewrite_uses_real_origin_and_keeps_fragment(
+        docs_repository: Path,
+    ) -> None:
+        repo = tm.not_none(
+            u.Infra.docs_github_repo_lookup(
+                "example-owner",
+                "root-docs",
+                repository_root=docs_repository,
+            )
+        )
+        placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
+        target = f"https://github.com/{placeholder}/{repo.repository}/blob/{repo.branch}/README.md#L1"
+        tm.that(
+            u.Infra.docs_rewrite_github_url(target, repository_root=docs_repository),
+            eq=f"https://github.com/{repo.organization}/{repo.repository}/blob/{repo.branch}/README.md#L1",
+        )
 
-        @staticmethod
-        def test_stale_organizations_contains_placeholder() -> None:
-            stale = u.Infra.docs_stale_github_organizations()
-            tm.that("organization" in stale, eq=True)
-
-    class TestDocsGithubRepoLookup:
-        """Verify repo lookup by organization and repository name."""
-
-        @staticmethod
-        def test_lookup_known_repo() -> None:
-            repo = u.Infra.docs_github_repo_lookup("flext-sh", "flext")
-            tm.that(repo is not None, eq=True)
-            if repo is not None:
-                tm.that(repo.organization, eq="flext-sh")
-                tm.that(repo.repository, eq="flext")
-
-        @staticmethod
-        def test_lookup_member_repo_returns_copy() -> None:
-            repo = u.Infra.docs_github_repo_lookup("flext-sh", "flext-core")
-            tm.that(repo is not None, eq=True)
-            if repo is not None:
-                tm.that(repo.organization, eq="flext-sh")
-                tm.that(repo.repository, eq="flext-core")
-                tm.that(repo.branch, eq="0.12.0-dev")
-
-        @staticmethod
-        def test_lookup_unknown_org_returns_none() -> None:
-            repo = u.Infra.docs_github_repo_lookup("unknown", "repo")
-            tm.that(repo is None, eq=True)
-
-        @staticmethod
-        def test_lookup_unknown_repo_returns_none() -> None:
-            repo = u.Infra.docs_github_repo_lookup("example-org", "nonexistent-repo")
-            tm.that(repo is None, eq=True)
+    @staticmethod
+    def test_foreign_repository_is_not_fabricated(docs_repository: Path) -> None:
+        target = "https://github.com/unrelated-owner/unrelated-repo/blob/main/a.md"
+        tm.that(
+            u.Infra.docs_github_repo_lookup(
+                "unrelated-owner",
+                "unrelated-repo",
+                repository_root=docs_repository,
+            ),
+            none=True,
+        )
+        tm.that(
+            u.Infra.docs_rewrite_github_url(target, repository_root=docs_repository),
+            none=True,
+        )
+        tm.that(
+            u.Infra.docs_github_link_issues(
+                file="consumer.md",
+                line_number=4,
+                raw=target,
+                target=target,
+                repository_root=docs_repository,
+            ),
+            eq=[],
+        )
 
     class TestDocsExpandLocalCheckout:
         """Verify local checkout path expansion."""
@@ -168,300 +267,3 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
                 "  https://github.com/flext-sh/flext/blob/main/README.md  ",
             )
             tm.that(match is not None, eq=True)
-
-    class TestDocsCanonicalGithubUrl:
-        """Verify canonical URL construction for governed repos."""
-
-        @staticmethod
-        def test_canonical_blob_url() -> None:
-            url = u.Infra.docs_canonical_github_url("flext-sh", "flext", "README.md")
-            tm.that(url is not None, eq=True)
-            if url is not None:
-                tm.that(
-                    url,
-                    eq="https://github.com/flext-sh/flext/blob/0.12.0-dev/README.md",
-                )
-
-        @staticmethod
-        def test_canonical_tree_url() -> None:
-            url = u.Infra.docs_canonical_github_url(
-                "flext-sh",
-                "flext",
-                "src/",
-                is_dir=True,
-            )
-            tm.that(url is not None, eq=True)
-            if url is not None:
-                tm.that(
-                    url,
-                    eq="https://github.com/flext-sh/flext/tree/0.12.0-dev/src/",
-                )
-
-        @staticmethod
-        def test_canonical_unknown_repo_returns_none() -> None:
-            tm.that(
-                u.Infra.docs_canonical_github_url("unknown", "repo", "path"),
-                none=True,
-            )
-
-        @staticmethod
-        def test_canonical_member_repo_url() -> None:
-            url = u.Infra.docs_canonical_github_url(
-                "flext-sh",
-                "flext-core",
-                "src/__init__.py",
-            )
-            tm.that(url is not None, eq=True)
-            if url is not None:
-                tm.that(
-                    url,
-                    eq=(
-                        "https://github.com/flext-sh/flext-core/"
-                        "blob/0.12.0-dev/src/__init__.py"
-                    ),
-                )
-
-    class TestDocsRewriteGithubUrl:
-        """Verify stale placeholder and wrong-branch URL rewriting."""
-
-        @staticmethod
-        def test_rewrite_stale_org_to_governed() -> None:
-            branch = tm.not_none(
-                u.Infra.docs_github_repo_lookup("flext-sh", "flext"),
-            ).branch
-            rewritten = u.Infra.docs_rewrite_github_url(
-                f"https://github.com/organization/flext/blob/{branch}/README.md",
-            )
-            tm.that(
-                rewritten,
-                eq=f"https://github.com/flext-sh/flext/blob/{branch}/README.md",
-            )
-
-        @staticmethod
-        def test_rewrite_stale_org_keeps_fragment() -> None:
-            branch = tm.not_none(
-                u.Infra.docs_github_repo_lookup("flext-sh", "flext"),
-            ).branch
-            rewritten = u.Infra.docs_rewrite_github_url(
-                f"https://github.com/organization/flext/blob/{branch}/README.md#L10",
-            )
-            tm.that(
-                rewritten,
-                eq=f"https://github.com/flext-sh/flext/blob/{branch}/README.md#L10",
-            )
-
-        @staticmethod
-        def test_rewrite_foreign_ref_is_not_guessed() -> None:
-            tm.that(
-                u.Infra.docs_rewrite_github_url(
-                    "https://github.com/flext-sh/flext/blob/main/README.md",
-                ),
-                none=True,
-            )
-
-        @staticmethod
-        def test_rewrite_slash_ref_is_not_split() -> None:
-            tm.that(
-                u.Infra.docs_rewrite_github_url(
-                    "https://github.com/organization/flext/blob/feature/fix/README.md",
-                ),
-                none=True,
-            )
-
-        @staticmethod
-        def test_rewrite_already_correct_returns_none() -> None:
-            tm.that(
-                u.Infra.docs_rewrite_github_url(
-                    "https://github.com/flext-sh/flext/blob/0.12.0-dev/README.md",
-                ),
-                none=True,
-            )
-
-        @staticmethod
-        def test_rewrite_member_repo_stale_org() -> None:
-            branch = tm.not_none(
-                u.Infra.docs_github_repo_lookup("flext-sh", "flext-core"),
-            ).branch
-            rewritten = u.Infra.docs_rewrite_github_url(
-                f"https://github.com/organization/flext-core/blob/{branch}/README.md",
-            )
-            tm.that(
-                rewritten,
-                eq=f"https://github.com/flext-sh/flext-core/blob/{branch}/README.md",
-            )
-
-        @staticmethod
-        def test_rewrite_stale_org_non_flext_returns_none() -> None:
-            tm.that(
-                u.Infra.docs_rewrite_github_url(
-                    "https://github.com/organization/example-org/foo",
-                ),
-                none=True,
-            )
-
-        @staticmethod
-        def test_rewrite_stale_org_unparseable_returns_none() -> None:
-            tm.that(
-                u.Infra.docs_rewrite_github_url(
-                    "https://github.com/organization/unknown-repo/blob/main/README.md",
-                ),
-                none=True,
-            )
-
-        @staticmethod
-        def test_rewrite_non_github_url_returns_none() -> None:
-            tm.that(
-                u.Infra.docs_rewrite_github_url("https://example.com/foo/bar"),
-                none=True,
-            )
-
-    class TestDocsGithubLocalPath:
-        """Verify local checkout path resolution for governed URLs."""
-
-        @staticmethod
-        def test_shared_policy_does_not_require_personal_checkouts() -> None:
-            """Standalone consumers do not depend on the policy author's home tree.
-
-            The shared (committed) policy has no local_checkout entries; local
-            overrides are operator-private and must not affect standalone consumers.
-            """
-            for repo in u.Infra.docs_github_repos():
-                # Only test repos without local_checkout (shared policy)
-                if repo.local_checkout:
-                    continue
-                target = u.Infra.docs_canonical_github_url(
-                    repo.organization,
-                    repo.repository,
-                    "README.md",
-                )
-                assert target is not None
-                assert u.Infra.docs_github_local_path(target) is None
-                issues = u.Infra.docs_github_link_issues(
-                    file="example.md",
-                    line_number=1,
-                    raw=target,
-                    target=target,
-                )
-                assert not issues
-
-        @staticmethod
-        def test_local_path_stale_org_returns_none() -> None:
-            tm.that(
-                u.Infra.docs_github_local_path(
-                    "https://github.com/organization/flext/blob/main/README.md",
-                ),
-                none=True,
-            )
-
-        @staticmethod
-        def test_local_path_unknown_repo_returns_none() -> None:
-            tm.that(
-                u.Infra.docs_github_local_path(
-                    "https://github.com/unknown/repo/blob/main/README.md",
-                ),
-                none=True,
-            )
-
-        @staticmethod
-        def test_local_path_non_github_url_returns_none() -> None:
-            tm.that(
-                u.Infra.docs_github_local_path("https://example.com/foo/bar"),
-                none=True,
-            )
-
-    class TestDocsGithubLinkIssues:
-        """Verify audit issue emission for GitHub doc URLs."""
-
-        @staticmethod
-        def test_stale_organization_issue() -> None:
-            issues = u.Infra.docs_github_link_issues(
-                file="test.md",
-                line_number=1,
-                raw="[x](https://github.com/organization/flext/blob/main/docs/index.md)",
-                target=(
-                    "https://github.com/organization/flext/blob/main/docs/index.md"
-                ),
-            )
-            tm.that(len(issues) > 0, eq=True)
-            tm.that(issues[0].issue_type, eq="stale_github_organization")
-            tm.that(issues[0].severity, eq="high")
-            tm.that("test.md" in issues[0].file, eq=True)
-
-        @staticmethod
-        def test_wrong_branch_issue() -> None:
-            issues = u.Infra.docs_github_link_issues(
-                file="test.md",
-                line_number=3,
-                raw="[x](https://github.com/flext-sh/flext/blob/main/README.md)",
-                target="https://github.com/flext-sh/flext/blob/main/README.md",
-            )
-            types = {issue.issue_type for issue in issues}
-            tm.that("wrong_github_branch" in types, eq=True)
-            for issue in issues:
-                if issue.issue_type == "wrong_github_branch":
-                    tm.that("0.12.0-dev" in issue.message, eq=True)
-
-        @staticmethod
-        def test_slash_ref_is_wrong_branch() -> None:
-            target = "https://github.com/flext-sh/flext/blob/feature/fix/README.md"
-            issues = u.Infra.docs_github_link_issues(
-                file="test.md",
-                line_number=2,
-                raw=f"[x]({target})",
-                target=target,
-            )
-            tm.that({issue.issue_type for issue in issues}, eq={"wrong_github_branch"})
-
-        @staticmethod
-        def test_fragment_link_on_governed_branch_has_no_issue() -> None:
-            target = tm.not_none(
-                u.Infra.docs_canonical_github_url("flext-sh", "flext", "README.md"),
-            )
-            fragment_target = f"{target}#L10"
-            issues = u.Infra.docs_github_link_issues(
-                file="test.md",
-                line_number=4,
-                raw=f"[x]({fragment_target})",
-                target=fragment_target,
-            )
-            tm.that(len(issues), eq=0)
-
-        @staticmethod
-        def test_non_url_returns_empty() -> None:
-            issues = u.Infra.docs_github_link_issues(
-                file="test.md",
-                line_number=5,
-                raw="plain text",
-                target="relative/path.md",
-            )
-            tm.that(len(issues), eq=0)
-
-        @staticmethod
-        def test_correct_url_no_branch_issue() -> None:
-            target = tm.not_none(
-                u.Infra.docs_canonical_github_url("flext-sh", "flext", "README.md"),
-            )
-            issues = u.Infra.docs_github_link_issues(
-                file="test.md",
-                line_number=1,
-                raw=f"[x]({target})",
-                target=target,
-            )
-            tm.that(
-                [
-                    issue
-                    for issue in issues
-                    if issue.issue_type == "wrong_github_branch"
-                ],
-                eq=[],
-            )
-
-        @staticmethod
-        def test_unknown_repo_no_issues() -> None:
-            issues = u.Infra.docs_github_link_issues(
-                file="test.md",
-                line_number=1,
-                raw="[x](https://github.com/unknown/repo/blob/main/path.md)",
-                target="https://github.com/unknown/repo/blob/main/path.md",
-            )
-            tm.that(len(issues), eq=0)

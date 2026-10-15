@@ -49,20 +49,15 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 )
             }
         )
-        with u.Infra.codemod_binding_project(
-            mod_workspace, m.Infra.CodemodBindingSnapshot(states=())
-        ) as (project, sources):
-            verdict = u.Infra.codemod_context_admits(
-                m.Infra.CodemodAdmission(
-                    root=mod_workspace,
-                    rule=rule,
-                    file_path=path,
-                    captures={"MOD": {"text": "flext_core"}},
-                    facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
-                ),
-                project=project,
-                sources=sources,
-            )
+        verdict = u.Infra.codemod_context_admits(
+            m.Infra.CodemodAdmission(
+                root=mod_workspace,
+                rule=rule,
+                file_path=path,
+                captures={"MOD": {"text": "flext_core"}},
+                facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+            ),
+        )
         tm.that(verdict, eq=admitted)
 
     @staticmethod
@@ -128,20 +123,15 @@ class TestsFlextInfraCodemodContextOwnPackage:
         consumer.write_text(f"from {module} import Helper\n", encoding="utf-8")
         rule = self._private_import_rule()
         for root in (workspace, member):
-            with u.Infra.codemod_binding_project(
-                root, m.Infra.CodemodBindingSnapshot(states=())
-            ) as (project, sources):
-                verdict = u.Infra.codemod_context_admits(
-                    m.Infra.CodemodAdmission(
-                        root=root,
-                        rule=rule,
-                        file_path=consumer,
-                        captures={"MOD": {"text": module}},
-                        facts=u.Infra.codemod_project_facts(root, (rule,)),
-                    ),
-                    project=project,
-                    sources=sources,
-                )
+            verdict = u.Infra.codemod_context_admits(
+                m.Infra.CodemodAdmission(
+                    root=root,
+                    rule=rule,
+                    file_path=consumer,
+                    captures={"MOD": {"text": module}},
+                    facts=u.Infra.codemod_project_facts(root, (rule,)),
+                ),
+            )
             tm.that(verdict, eq=admitted)
 
     @pytest.mark.parametrize(
@@ -171,20 +161,15 @@ class TestsFlextInfraCodemodContextOwnPackage:
         consumer.write_text(f"from {module} import Helper\n", encoding="utf-8")
 
         rule = self._private_import_rule()
-        with u.Infra.codemod_binding_project(
-            project, m.Infra.CodemodBindingSnapshot(states=())
-        ) as (rope_project, sources):
-            verdict = u.Infra.codemod_context_admits(
-                m.Infra.CodemodAdmission(
-                    root=project,
-                    rule=rule,
-                    file_path=consumer,
-                    captures={"MOD": {"text": module}},
-                    facts=u.Infra.codemod_project_facts(project, (rule,)),
-                ),
-                project=rope_project,
-                sources=sources,
-            )
+        verdict = u.Infra.codemod_context_admits(
+            m.Infra.CodemodAdmission(
+                root=project,
+                rule=rule,
+                file_path=consumer,
+                captures={"MOD": {"text": module}},
+                facts=u.Infra.codemod_project_facts(project, (rule,)),
+            ),
+        )
 
         tm.that(verdict, eq=admitted)
 
@@ -221,30 +206,31 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 )
             )
             facts = u.Infra.codemod_project_facts(project, (rule,))
-            with u.Infra.codemod_binding_project(
-                project, m.Infra.CodemodBindingSnapshot(states=())
-            ) as (rope_project, sources):
-                outcomes.append(
-                    u.Infra.codemod_context_admits(
-                        m.Infra.CodemodAdmission(
-                            root=project,
-                            rule=rule,
-                            file_path=consumer,
-                            captures={"MOD": {"text": f"{original}._support"}},
-                            facts=facts,
-                        ),
-                        project=rope_project,
-                        sources=sources,
-                    )
+            outcomes.append(
+                u.Infra.codemod_context_admits(
+                    m.Infra.CodemodAdmission(
+                        root=project,
+                        rule=rule,
+                        file_path=consumer,
+                        captures={"MOD": {"text": f"{original}._support"}},
+                        facts=facts,
+                    ),
                 )
+            )
         tm.that(outcomes, eq=[False, True])
 
     @staticmethod
-    @pytest.mark.parametrize("reexport", [False, True])
-    def test_occurrence_identity_is_lexical_and_immutable(
-        mod_workspace: Path, binding_probe_rule: m.Infra.CodemodRule, *, reexport: bool
-    ) -> None:
-        """Identical spelling in another scope never borrows a module binding."""
+    def _write_occurrence_modules(
+        mod_workspace: Path,
+        *,
+        reexport: bool,
+    ) -> tuple[Path, Path, str, str]:
+        """Author definer and consumer modules for one occurrence identity case.
+
+        Returns:
+            Consumer path, owner path, consumer source, and elected module name.
+
+        """
         namespace = u.Infra.project_package_name(mod_workspace)
         package_root = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
         module_name = f"{namespace}.definer"
@@ -262,7 +248,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
         consumer = mod_workspace / "consumer.py"
         source = (
             f"from {namespace}.definer import Public, u\n"
-            "note = '\u00e9'\n"
+            "note = 'é'\n"
             "value = Public\n"
             "def independent(Public):\n"
             "    return Public\n"
@@ -272,6 +258,21 @@ class TestsFlextInfraCodemodContextOwnPackage:
             "    return conditional\n"
         )
         consumer.write_text(source, encoding="utf-8")
+        return consumer, owner, source, module_name
+
+    @pytest.mark.parametrize("reexport", [False, True])
+    def test_occurrence_identity_is_lexical_and_immutable(
+        self,
+        mod_workspace: Path,
+        binding_probe_rule: m.Infra.CodemodRule,
+        *,
+        reexport: bool,
+    ) -> None:
+        """Identical spelling in another scope never borrows a module binding."""
+        consumer, owner, source, module_name = self._write_occurrence_modules(
+            mod_workspace,
+            reexport=reexport,
+        )
         rule = binding_probe_rule.model_copy(
             update={
                 "context": (
@@ -296,27 +297,32 @@ class TestsFlextInfraCodemodContextOwnPackage:
             (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
             (module_name,),
         )
-        for start, captured, expected in (
-            (source.index("Public", source.index("value =")), "Public", True),
-            (source.index("Public", source.index("return Public")), "Public", False),
-            (source.rindex("conditional"), "conditional", False),
+        epoch = u.Infra.codemod_source_epoch(closed)
+        with u.Infra.codemod_binding_project(mod_workspace, epoch) as (
+            project,
+            sources,
         ):
-            start_byte = len(source[:start].encode("utf-8"))
-            capture: t.JsonMapping = {
-                "OWNER": {
-                    "text": captured,
-                    "range": {
-                        "byteOffset": {
-                            "start": start_byte,
-                            "end": start_byte + len(captured.encode("utf-8")),
-                        }
-                    },
-                },
-            }
-            with u.Infra.codemod_binding_project(mod_workspace, closed) as (
-                project,
-                sources,
+            for start, captured, expected in (
+                (source.index("Public", source.index("value =")), "Public", True),
+                (
+                    source.index("Public", source.index("return Public")),
+                    "Public",
+                    False,
+                ),
+                (source.rindex("conditional"), "conditional", False),
             ):
+                start_byte = len(source[:start].encode("utf-8"))
+                capture: t.JsonMapping = {
+                    "OWNER": {
+                        "text": captured,
+                        "range": {
+                            "byteOffset": {
+                                "start": start_byte,
+                                "end": start_byte + len(captured.encode("utf-8")),
+                            }
+                        },
+                    },
+                }
                 for _ in range(2):
                     tm.that(
                         u.Infra.codemod_context_admits(
@@ -352,7 +358,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
             "class Public:\n    pass\nclass Independent:\n    pass\nu = Independent\n",
             encoding="utf-8",
         )
-        with u.Infra.codemod_binding_project(mod_workspace, closed) as (
+        with u.Infra.codemod_binding_project(mod_workspace, epoch) as (
             project,
             sources,
         ):
@@ -376,7 +382,9 @@ class TestsFlextInfraCodemodContextOwnPackage:
             (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
             (module_name,),
         )
-        with u.Infra.codemod_binding_project(mod_workspace, changed) as (
+        with u.Infra.codemod_binding_project(
+            mod_workspace, u.Infra.codemod_source_epoch(changed)
+        ) as (
             project,
             sources,
         ):

@@ -23,12 +23,239 @@ from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsSta
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 from tests import c, m, p, r, t, tm, u
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraTransactionDirectoryJournal:
     """Exercise creation and cleanup against real physical filesystem state."""
 
     _TRANSACTION_ID = "a" * 32
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_initial_invalid_source_dependencies_leave_no_staging_effects(
+        tmp_path: Path,
+    ) -> None:
+        """Initial staging recovery preserves the original files and first failure."""
+        root = u.Tests.git_repository(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(root)
+        target = root / "generated.md"
+        target.write_bytes(b"original document\n")
+        config_path = root / c.Infra.MISE_TOML_FILENAME
+        config_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(config_path, required=True),
+        )
+        target_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(target, required=True),
+        )
+        config_plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=config_path,
+            before=config_before,
+            desired_content=config_before.content,
+            desired_mode=config_before.mode,
+            owner="mise",
+        )
+        invalid = m.Infra.CodegenFilePlan(
+            project=root,
+            path=target,
+            before=target_before,
+            desired_content=b"generated document\n",
+            desired_mode=target_before.mode,
+            source_states=(config_before, config_before),
+            owner="conform",
+        )
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        before = TestsFlextInfraConformSupport.project_tree(root)
+        failed = owner.run_locked(
+            prepare=True,
+            operation=lambda scope_root: owner.begin_locked(
+                scope_root,
+                (config_plan,),
+                (config_plan, invalid),
+            ),
+        )
+        tm.fail(failed, has="journal entry source dependencies must be unique")
+        tm.that(
+            TestsFlextInfraConformSupport.project_tree(root),
+            eq=before,
+        )
+        tm.that((root / ".state").exists(), eq=False)
+        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
+        tm.that(
+            FlextInfraMiseWorkspacePlanner.journal_path(identity).exists(),
+            eq=False,
+        )
+        tm.ok(owner.run_locked(prepare=True, operation=r[Path].ok))
+
+    @staticmethod
+    def test_mise_snapshot_separates_render_inputs_from_local_config_sources(
+        tmp_path: Path,
+    ) -> None:
+        """Mixed render provenance authenticates without widening local config sets."""
+        root = u.Tests.git_repository(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(root)
+        config_dir = root / c.CONFIG_DIR_NAME
+        config_dir.mkdir()
+        local = config_dir / "scenario.yaml"
+        local.write_text("scenario: initial\n", encoding="utf-8")
+        template = tmp_path / "template.j2"
+        template.write_text("{{ scenario }}\n", encoding="utf-8")
+        template_state = tm.ok(
+            u.Cli.atomic_read_binary_file_state(template, required=True),
+        )
+        assert template_state.content is not None
+        config_sources = tm.ok(u.Infra.snapshot_config_sources(root))
+        local_state = next(source for source in config_sources if source.path == local)
+        assert local_state.content is not None
+        owner = FlextInfraCodegenMiseArtifacts(repository_root=root)
+        planner = FlextInfraMiseWorkspacePlanner(owner)
+        layout = tm.ok(planner.layout_from_selectors(root, (".",)))
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(
+                layout.projects[0].config, required=True
+            ),
+        )
+        config_plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=before.path,
+            before=before,
+            desired_content=before.content,
+            desired_mode=before.mode,
+            source_states=(template_state, *config_sources),
+        )
+
+        observed = tm.ok(planner.snapshot(layout, (config_plan,)))
+
+        tm.that(observed.projects[0].config.sources, eq=config_sources)
+        tm.ok(FlextInfraMiseArtifactsVerification.sources(observed))
+        template.write_text("{{ changed }}\n", encoding="utf-8")
+        tm.fail(planner.snapshot(layout, (config_plan,)), has=str(template))
+        template.write_bytes(template_state.content)
+        local.write_text("scenario: changed\n", encoding="utf-8")
+        tm.fail(planner.snapshot(layout, (config_plan,)), has=str(local))
+        local.write_bytes(local_state.content)
+        (config_dir / "added.yaml").write_text("added: true\n", encoding="utf-8")
+        tm.fail(
+            FlextInfraMiseArtifactsVerification.sources(observed),
+            has="Mise sources changed",
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("mutation", ["missing", "wrong-phase", "duplicate"])
+    @pytest.mark.parametrize("delivery", ["result", "raise"])
+    def test_persisted_journal_rejects_unowned_source_dependencies(
+        tmp_path: Path,
+        mutation: str,
+        delivery: str,
+    ) -> None:
+        """A persisted publication requires unique same-phase source authority."""
+        root = u.Tests.git_repository(tmp_path)
+        source_path = root / "source.txt"
+        target = root / "generated.md"
+        source_path.write_bytes(b"owned source\n")
+        target.write_bytes(b"original target\n")
+        source = tm.ok(
+            u.Cli.atomic_read_binary_file_state(source_path, required=True),
+        )
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(target, required=True),
+        )
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@source-authority-0": root}
+        original_errors: list[ValueError] = []
+
+        def reject_journal(
+            session: m.Infra.CodegenTransactionSession,
+            _publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            journal, snapshot = tm.ok(
+                FlextInfraMiseArtifactsJournal.read(session.plan.layout),
+            )
+            entry = journal.entries[0]
+            tm.that(entry.source_paths, eq=(source.path,))
+            if mutation == "duplicate":
+                corrupted = journal.model_copy(
+                    update={
+                        "entries": (
+                            entry.model_copy(
+                                update={
+                                    "source_paths": (*entry.source_paths, source.path)
+                                },
+                            ),
+                        ),
+                    },
+                )
+            else:
+                corrupted = journal.model_copy(
+                    update={
+                        "sources": (
+                            ()
+                            if mutation == "missing"
+                            else tuple(
+                                item.model_copy(update={"phase": "semantic"})
+                                for item in journal.sources
+                            )
+                        ),
+                    },
+                )
+            tm.that(snapshot.mode is not None, eq=True)
+            if snapshot.mode is None:
+                pytest.fail("the observed journal snapshot has no physical mode")
+            tm.ok(
+                u.Cli.atomic_write_binary_file_guarded(
+                    snapshot,
+                    corrupted.model_dump_json().encode(c.DEFAULT_ENCODING),
+                    permission_mode=snapshot.mode,
+                ),
+            )
+            with pytest.raises(ValueError, match="source dependenc") as rejected:
+                FlextInfraMiseArtifactsJournal.read(session.plan.layout)
+            original_errors.append(rejected.value)
+            if delivery == "raise":
+                raise rejected.value
+            return r[m.Infra.CodegenTransactionSession].fail(
+                str(rejected.value),
+                exception=rejected.value,
+            )
+
+        def publish(scope_root: Path) -> p.Result[m.Infra.CodegenTransactionSession]:
+            session = tm.ok(owner.begin_files_locked(scope_root, roots, ()))
+            planned = m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=before,
+                desired_content=b"generated target\n",
+                desired_mode=before.mode,
+                source_states=(source,),
+                owner="docs",
+            )
+            return owner.publish_prepared_locked(
+                session,
+                lambda current: owner.append_phase_locked(
+                    current,
+                    "docs",
+                    (planned,),
+                    staged_validator=reject_journal,
+                ),
+            )
+
+        if delivery == "raise":
+            with pytest.raises(ValueError, match="source dependenc") as propagated:
+                owner.run_files_locked(roots, publish)
+            tm.that(propagated.value is original_errors[0], eq=True)
+        else:
+            rejected = owner.run_files_locked(roots, publish)
+            tm.fail(rejected, has="source dependenc")
+            tm.that(rejected.exception is original_errors[0], eq=True)
+            assert rejected.error_data is not None
+            tm.that(bool(rejected.error_data["cleanup_error"]), eq=True)
+        tm.that(target.read_bytes(), eq=before.content)
+        tm.that(source_path.read_bytes(), eq=source.content)
 
     @staticmethod
     def test_live_artifact_verification_preserves_native_read_failure(
@@ -218,10 +445,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 owner="mise",
             )
             session = tm.ok(owner.begin_locked(scope_root, (plan,), (plan,)))
-            return owner.commit_locked(
-                session,
-                lambda: mise_owner.validate_artifacts(root, scope_root),
-            )
+            return owner.commit_locked(session)
 
         tm.ok(owner.run_locked(prepare=True, operation=publish))
         tm.that(stat.S_IMODE(config_path.stat().st_mode), eq=desired_mode)
@@ -705,10 +929,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 tm.fail(
                     owner.publish_prepared_locked(
                         session,
-                        lambda current: owner.commit_locked(
-                            current,
-                            lambda: r[bool].ok(value=True),
-                        ),
+                        owner.commit_locked,
                     ),
                     has="journal changed",
                 )

@@ -6,17 +6,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
+from json import dumps
 from operator import itemgetter
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, m, p, t
-from flext_cli import u as census_u
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeStructure,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
@@ -56,7 +63,8 @@ class FlextInfraUtilitiesRopeInventory:
         # The text the module snapshot was parsed from: names and offsets must
         # come from one snapshot even when the file changed on disk since.
         source = pymodule.source_code
-        parameter_lines = cls._parameter_lines(source)
+        parameter_lines = cls._parameter_lines(rope_project, pymodule)
+        constant_bindings = cls._constant_bindings(pymodule)
         items: t.MutableSequenceOf[m.Infra.Object] = []
         module_scope = pymodule.get_scope()
         if module_scope is None:
@@ -69,6 +77,7 @@ class FlextInfraUtilitiesRopeInventory:
                 resource=resource,
                 source=source,
                 parameter_lines=parameter_lines,
+                constant_bindings=constant_bindings,
                 name=name,
                 pyname=pyname,
                 module_name=module_entry.module_name
@@ -99,6 +108,7 @@ class FlextInfraUtilitiesRopeInventory:
         scope: p.Infra.RopeScopeDsl,
         *,
         parent_options: m.Infra.RopeInventoryRecordInput,
+        include_local_scopes: bool = True,
         include_references: bool = True,
     ) -> t.VariadicTuple[m.Infra.Object]:
         """Scope objects.
@@ -118,6 +128,7 @@ class FlextInfraUtilitiesRopeInventory:
                 cls._recorded_objects(
                     record_options,
                     child_scope=child_scope,
+                    include_local_scopes=include_local_scopes,
                     include_references=include_references,
                 ),
             )
@@ -164,21 +175,25 @@ class FlextInfraUtilitiesRopeInventory:
         include_local_scopes: bool = True,
         include_references: bool = True,
     ) -> t.VariadicTuple[m.Infra.Object]:
-        """Child scope objects.
+        """Include nested class declarations while respecting function-local scope.
 
         Returns:
             The resulting ``t.VariadicTuple[m.Infra.Object]``.
 
         """
         if (
-            not include_local_scopes
-            or record.kind not in {"class", "function", "method"}
+            record.kind not in {"class", "function", "method"}
             or child_scope is None
+            or (
+                not include_local_scopes
+                and child_scope.get_kind() != c.Infra.RopeScopeKind.CLASS
+            )
         ):
             return ()
         return cls._scope_objects(
             scope=child_scope,
             parent_options=cls._descend_options(record_options, record),
+            include_local_scopes=include_local_scopes,
             include_references=include_references,
         )
 
@@ -292,7 +307,11 @@ class FlextInfraUtilitiesRopeInventory:
         if kind == "parameter":
             # Rope reports a parameter at its function's ``def`` line; in a
             # multi-line signature the identifier lives on its own line.
-            line = options.parameter_lines.get((line, options.name), line)
+            line = options.parameter_lines[line, options.name]
+        elif (line, options.name) in options.constant_bindings and (
+            options.scope_chain or options.name != expected_alias
+        ):
+            kind = "constant"
         is_facade_member = cls._is_facade_member(
             options.convention,
             name=options.name,
@@ -344,32 +363,265 @@ class FlextInfraUtilitiesRopeInventory:
                 line=line,
                 child_scope=options.child_scope,
             ),
+            payload_fingerprint=(
+                cls._payload_fingerprint(options, scope_path) if kind == "class" else ""
+            ),
         )
 
+    @classmethod
+    def _payload_fingerprint(
+        cls,
+        options: m.Infra.RopeInventoryRecordInput,
+        qualified_name: str,
+    ) -> str:
+        """Describe native Pydantic candidates without asserting substitutability.
+
+        Literal values, native scope depth, declared bases, generics, fields,
+        config and complete validator/serializer bodies remain part of the
+        diagnostic. Only the declaration identifier and proven external alias
+        spellings are normalized. The implicit class/schema identity is
+        deliberately not treated as permission to merge declarations.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If native payload declaration has no class identifier.
+
+        """
+        payloads = FlextInfraUtilitiesDeclarationPayload
+        binding = payloads.payload_declaration(
+            options.rope_project,
+            Path(options.resource.real_path),
+            qualified_name,
+        )
+        if binding is None or options.child_scope is None:
+            return ""
+        bases = tuple(
+            cls._native_object_identity(base)
+            for base in payloads.direct_bases(binding.get_object())
+        )
+        if any(not base for base in bases):
+            return ""
+        scope = options.child_scope
+        module = options.rope_project.get_pymodule(options.resource)
+        statements = tuple(
+            statement
+            for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
+                options.source
+            )
+            if scope.get_start() <= statement.line <= scope.get_end()
+        )
+        if not statements:
+            return ""
+        header = statements[0]
+        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        references: list[t.Triple[int, int, str]] = []
+        for statement in statements:
+            for begin, end in types.reference_regions(statement.text):
+                start = statement.start_offset + begin
+                stop = statement.start_offset + end
+                lexical = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+                    module,
+                    start,
+                    declaration_line=(
+                        statement.line
+                        if statement.category
+                        in {
+                            c.Infra.StatementCategory.CLASS_DEF,
+                            c.Infra.StatementCategory.FUNC_DEF,
+                        }
+                        else None
+                    ),
+                )
+                value = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                    lexical,
+                    options.source[start:stop],
+                )
+                if value is None:
+                    continue
+                supplier, definition_line = value.get_definition_location()
+                if (
+                    supplier is module
+                    and definition_line is not None
+                    and (scope.get_start() <= definition_line <= scope.get_end())
+                ):
+                    continue
+                identity = cls._native_binding_identity(value)
+                if identity:
+                    references.append((start, stop, f"<native:{identity}>"))
+        definition_offset = header.start_offset + header.indent
+        definition_offset = options.source.find(
+            options.name,
+            definition_offset + len("class"),
+            header.end_offset,
+        )
+        if definition_offset < 0:
+            msg = "native payload declaration has no class identifier"
+            raise ValueError(msg)
+        references.append((
+            definition_offset,
+            definition_offset + len(options.name),
+            "<payload>",
+        ))
+        shapes = tuple(
+            (
+                statement.indent - header.indent,
+                cls._payload_statement_fingerprint(
+                    statement.text,
+                    statement.start_offset,
+                    references,
+                ),
+            )
+            for statement in statements
+        )
+        return dumps((bases, shapes), ensure_ascii=True, separators=(",", ":"))
+
     @staticmethod
-    def _parameter_lines(source: str) -> t.MappingKV[t.Pair[int, str], int]:
+    def _native_object_identity(value: p.Infra.RopePyObject) -> str:
+        runtime = FlextInfraUtilitiesRopeRuntime
+        if runtime.py_class(value) or runtime.py_function(value):
+            module = value.get_module()
+            scope = value.get_scope()
+            if module is None or scope is None:
+                return ""
+            names = []
+            while scope.parent is not None:
+                names.append(scope.pyobject.get_name())
+                scope = scope.parent
+            return f"{module.get_name()}::{'.'.join(reversed(names))}"
+        if runtime.abstract_class(value) and isinstance(
+            value, p.Infra.RopeBuiltinClass
+        ):
+            return f"{value.builtin.__module__}::{value.builtin.__qualname__}"
+        return ""
+
+    @classmethod
+    def _native_binding_identity(cls, value: p.Infra.RopePyName) -> str:
+        identity = cls._native_object_identity(value.get_object())
+        if identity:
+            return identity
+        supplier, line = value.get_definition_location()
+        if supplier is None or line is None:
+            return ""
+        return f"{supplier.get_name()}::line:{line}"
+
+    @staticmethod
+    def _payload_statement_fingerprint(
+        source: str,
+        offset: int,
+        references: t.SequenceOf[t.Triple[int, int, str]],
+    ) -> str:
+        """Keep literal bytes separate from normalized executable whitespace.
+
+        Args:
+            source: The source code of the statement.
+            offset: The starting character offset of the statement within the source code.
+            references: A sequence of triples containing the start and end offsets and the identity of referenced objects.
+
+        Returns:
+            A string representing the fingerprint of the statement, with literal bytes separated from normalized executable whitespace.
+
+        """
+        edits = []
+        cursor = -1
+        for begin, end, identity in sorted(
+            references, key=lambda item: (item[0], -item[1])
+        ):
+            if offset <= begin < end <= offset + len(source) and begin >= cursor:
+                edits.append((begin - offset, end - offset, identity))
+                cursor = end
+        pieces = []
+        previous = 0
+        literals = FlextInfraUtilitiesRopeRuntime.ignored_regions(source)
+        spans = [
+            (begin, end, dumps(("literal", source[begin:end]), ensure_ascii=True))
+            for begin, end, _metadata in literals
+            if source[begin] != "#"
+        ]
+        for begin, end, replacement in sorted((*edits, *spans)):
+            if begin < previous:
+                continue
+            pieces.extend((" ".join(source[previous:begin].split()), replacement))
+            previous = end
+        pieces.append(" ".join(source[previous:].split()))
+        return " ".join(piece for piece in pieces if piece)
+
+    @staticmethod
+    def _constant_bindings(
+        pymodule: t.Infra.RopePyModule,
+    ) -> frozenset[t.Pair[int, str]]:
+        """Recognize immutable declarations by typing identity, independent of case.
+
+        Returns:
+            Definition line and name pairs proven by native Rope matches.
+
+        """
+        bindings: set[t.Pair[int, str]] = set()
+        for pattern in (
+            "${constant}: ${immutable}[${contract}] = ${value}",
+            "${constant}: ${immutable} = ${value}",
+        ):
+            for start, _ in FlextInfraUtilitiesRopeRuntime.semantic_regions(
+                pymodule,
+                pattern,
+                arguments={"immutable": "name=typing.Final"},
+            ):
+                first, last = FlextInfraUtilitiesRopeRuntime.word_primary_range(
+                    pymodule.source_code,
+                    start,
+                )
+                bindings.add((
+                    pymodule.lines.get_line_number(start),
+                    pymodule.source_code[first:last],
+                ))
+        return frozenset(bindings)
+
+    @staticmethod
+    def _parameter_lines(
+        rope_project: t.Infra.RopeProject,
+        pymodule: t.Infra.RopePyModule,
+    ) -> t.MappingKV[t.Pair[int, str], int]:
         """Index parameter positions once for one immutable module snapshot.
 
         Returns:
             Parameter lines keyed by function definition line and parameter name.
 
+        Raises:
+            TypeError: If the immutable module has no native Rope scope.
+            ValueError: If a declared parameter has no native source occurrence.
+
         """
         positions: t.MutableMappingKV[t.Pair[int, str], int] = {}
-        for node in ast.walk(ast.parse(source)):
-            if not isinstance(
-                node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda
-            ):
-                continue
-            arguments = node.args
-            declared = (
-                *arguments.posonlyargs,
-                *arguments.args,
-                *((arguments.vararg,) if arguments.vararg else ()),
-                *arguments.kwonlyargs,
-                *((arguments.kwarg,) if arguments.kwarg else ()),
-            )
-            for argument in declared:
-                positions.setdefault((node.lineno, argument.arg), argument.lineno)
+        module_scope = pymodule.get_scope()
+        if module_scope is None:
+            message = "Rope parameter inventory has no module scope"
+            raise TypeError(message)
+        scopes = list(module_scope.get_scopes())
+        while scopes:
+            scope = scopes.pop()
+            scopes.extend(scope.get_scopes())
+            for name, pyname in scope.get_names().items():
+                if not FlextInfraUtilitiesRopeRuntime.parameter_name(pyname):
+                    continue
+                finder = FlextInfraUtilitiesRopeRuntime.create_occurrence_finder(
+                    rope_project,
+                    name,
+                    pyname,
+                    imports=False,
+                    in_hierarchy=False,
+                )
+                declaration = next(
+                    iter(finder.find_occurrences(pymodule=pymodule)), None
+                )
+                if declaration is None:
+                    message = f"Rope parameter declaration has no occurrence: {name}"
+                    raise ValueError(message)
+                _, definition_line = pyname.get_definition_location()
+                if definition_line is None:
+                    message = f"Rope parameter has no definition line: {name}"
+                    raise ValueError(message)
+                positions[definition_line, name] = declaration.lineno
         return positions
 
     @staticmethod
@@ -746,7 +998,7 @@ class FlextInfraUtilitiesRopeInventory:
             # evidence. The record reports an uncollected search — never an
             # unused classification — instead of failing the whole census
             # for one unanchorable symbol.
-            census_u.Cli.info(
+            u.Cli.info(
                 "rope census reference evidence unavailable: "
                 f"{options.resource.path}:{line}:{name}: {anchor_diagnostic}",
             )

@@ -26,6 +26,14 @@ if TYPE_CHECKING:
 class FlextInfraPreviewWiring:
     """Bind the authenticated source-preview boundary into the public facade."""
 
+    if TYPE_CHECKING:
+
+        def rope_workspace(
+            self,
+            repository_root: Path | None = None,
+            rope_repository_root: Path | None = None,
+        ) -> p.Infra.RopeWorkspaceDsl: ...
+
     @staticmethod
     def source_preview(repository_root: Path) -> p.Infra.SourcePreview:
         """Compose the authenticated source-view capability at the public boundary.
@@ -35,6 +43,7 @@ class FlextInfraPreviewWiring:
 
         Returns:
             The resulting ``p.Infra.SourcePreview``.
+
         """
         return FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=repository_root),
@@ -48,6 +57,7 @@ class FlextInfraPreviewWiring:
 
         """
         return FlextInfraRefactorCensus(
+            workspace_factory=self.rope_workspace,
             repository_root=request.repository_root,
             selected_projects=request.projects,
             apply_changes=request.apply,
@@ -56,12 +66,7 @@ class FlextInfraPreviewWiring:
             output_format=request.output_format,
             target_module=request.module,
             target_namespace=request.namespace,
-            json_output=request.json_output,
-            impact_map_output=request.impact_map_output,
-            kinds=request.kinds,
-            rules=request.rules,
-            families=request.families,
-            include_local_scopes=request.include_local_scopes,
+            options=request,
             source_preview=self.source_preview(request.repository_root),
         ).execute()
 
@@ -88,6 +93,7 @@ class FlextInfraPreviewWiring:
 
         """
         return FlextInfraCodegenQualityGate(
+            workspace_factory=self.rope_workspace,
             repository_root=request.repository_root,
             source_preview=self.source_preview(request.repository_root),
         ).execute()
