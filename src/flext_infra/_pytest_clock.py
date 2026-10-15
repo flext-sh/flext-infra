@@ -141,3 +141,6 @@ class FlextInfraPytestClock:
                     signal.raise_signal(signum)
 
         signal.signal(signal.SIGTERM, checkpoint)
+
+
+__all__: list[str] = ["FlextInfraPytestClock"]

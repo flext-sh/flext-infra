@@ -217,3 +217,6 @@ class FlextInfraConfigModelsBeads:
 
             """
             return bool(self.changed_files)
+
+
+__all__: list[str] = ["FlextInfraConfigModelsBeads"]

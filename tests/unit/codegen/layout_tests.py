@@ -107,14 +107,13 @@ class TestsFlextInfraCodegenLayout:
                 },
             },
         }
-        org_overlay = (
-            project
-            / c.Infra.CODEGEN_CONFIG_DIR
-            / c.Infra.CODEGEN_ORG_OVERRIDES_FILENAME
+        _, _, local_overlay = FlextInfraConfig.config_layer_paths_for_repository(
+            project,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
         )
-        tm.that(org_overlay.is_relative_to(tmp_path), eq=True)
-        org_overlay.parent.mkdir(exist_ok=True)
-        tm.ok(u.Cli.yaml_dump(org_overlay, overlay))
+        tm.that(local_overlay.is_relative_to(tmp_path), eq=True)
+        local_overlay.parent.mkdir(exist_ok=True)
+        tm.ok(u.Cli.yaml_dump(local_overlay, overlay))
 
         report = cls._fresh_layout_report(project)
 

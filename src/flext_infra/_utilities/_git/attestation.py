@@ -100,8 +100,12 @@ class FlextInfraUtilitiesGitAttestationMixin(
         inline = ssh and key is not None and key.startswith(("key::", "ssh-"))
         if inline and key is not None:
             try:
-                cls._validate_inline_ssh_key(key)
-            except ValueError:
+                kind, encoded, *_ = key.removeprefix("key::").split(maxsplit=2)
+                blob = b64decode(encoded, validate=True)
+                size = int.from_bytes(blob[:4], "big")
+                if len(blob) <= 4 + size or blob[4 : 4 + size] != kind.encode("ascii"):
+                    raise ValueError
+            except (ValueError, UnicodeError):
                 return r[m.Infra.GitSigningIdentityReport].fail(
                     "native Git signing configuration declares a malformed public key",
                 )

@@ -107,6 +107,8 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
+        # Each plan carries its batch inputs to the guarded publication owner.
+        # Planning never revalidates the complete fleet or rerenders its sources.
         plans: list[m.Infra.CodegenFilePlan] = []
         for scoped in bundle.scopes:
             for artifact in scoped.artifacts:

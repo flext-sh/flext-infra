@@ -127,9 +127,7 @@ class TestsNativeCompilerAdmission:
         native_consumer(consumer, str(tmp_path), module_name)
 
     @staticmethod
-    @pytest.mark.parametrize("defect", ["absent", "missing-spec", "broken-origin"])
-    def test_imported_class_preserves_its_supplier_failure(
-        native_consumer: p.Tests.NativeConsumer,
+    def test_source_proof_never_replays_an_absolute_import_effect(
         tmp_path: Path,
         defect: str,
     ) -> None:

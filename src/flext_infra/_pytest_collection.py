@@ -378,10 +378,6 @@ class FlextInfraPytestCollection:
         """Preserve the real class identity of every recorded warning."""
 
         def __init__(self, report_log: Path) -> None:
-            # Owner modules, never the root facades: this plugin loads in every
-            # consumer test process, and ``m.Infra`` builds the whole model
-            # family (seconds of class construction) to write one JSON line.
-
             self.report = report_log.with_suffix(
                 c.Infra.PYTEST_WARNING_EVENTS_SUFFIX,
             )

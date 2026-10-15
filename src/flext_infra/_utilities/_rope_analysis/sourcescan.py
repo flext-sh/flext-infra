@@ -604,3 +604,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                         )
                         target_map[local] = module_name
         return target_map
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisSourceScan"]

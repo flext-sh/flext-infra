@@ -17,7 +17,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenLayoutPlanMixin,
     FlextInfraMisePublication,
 )
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenLayoutGitignoreMixin:

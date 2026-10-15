@@ -468,6 +468,10 @@ class TestsFlextInfraLazyInitRuntime:
             encoding=c.DEFAULT_ENCODING,
         )
         initializer = package_root / c.Infra.INIT_PY
+        initializer.write_text(
+            '"""Authored package without published declarations."""\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
         original = initializer.read_text(encoding=c.DEFAULT_ENCODING)
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that(initializer.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
