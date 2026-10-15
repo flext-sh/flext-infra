@@ -718,27 +718,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if tool_name == c.Infra.MYPY:
             return cls._mypy_report_errors(source)
         if tool_name == c.Infra.PYRIGHT:
-            report = u.validate_value(
-                m.Infra.PyrightReport, source, from_json=True, strict=True
-            )
-            return report.flat_map(
-                lambda observed: (
-                    result.ok(
-                        tuple(
-                            f"{entry.file}:"
-                            f"{entry.range.start.line + 1 if entry.range else 0}:"
-                            f"{entry.range.start.character + 1 if entry.range else 0}: "
-                            f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
-                            for entry in observed.general_diagnostics
-                            if entry.severity in {"error", "warning"}
-                        )
-                    )
-                    if observed.summary.files_analyzed
-                    else result.fail(
-                        "pyright analyzed no files for the selected source"
-                    )
-                )
-            )
+            return cls._pyright_report_errors(source)
         if tool_name == c.Infra.PYREFLY:
             pyrefly = u.validate_value(
                 m.Infra.PyreflyReport, source, from_json=True, strict=True
@@ -754,6 +734,34 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if tool_name != c.Infra.RUFF:
             return result.fail(f"unsupported lint report contract: {tool_name}")
         return cls._ruff_report_errors(source)
+
+    @staticmethod
+    def _pyright_report_errors(source: str) -> p.Result[t.StrSequence]:
+        """Validate native diagnostics and require actual analyzed sources.
+
+        Returns:
+            Complete findings or the original malformed/empty-analysis failure.
+
+        """
+        result = r[t.StrSequence]
+        report = u.validate_value(
+            m.Infra.PyrightReport, source, from_json=True, strict=True
+        )
+        if report.failure:
+            return result.from_failure(report)
+        observed = report.value
+        if not observed.summary.files_analyzed:
+            return result.fail("pyright analyzed no files for the selected source")
+        return result.ok(
+            tuple(
+                f"{entry.file}:"
+                f"{entry.range.start.line + 1 if entry.range else 0}:"
+                f"{entry.range.start.character + 1 if entry.range else 0}: "
+                f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
+                for entry in observed.general_diagnostics
+                if entry.severity in {"error", "warning"}
+            ),
+        )
 
     @staticmethod
     def _mypy_report_errors(source: str) -> p.Result[t.StrSequence]:

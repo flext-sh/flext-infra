@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 import traceback
+from operator import itemgetter
 from pathlib import Path
 from typing import Literal
 
@@ -238,10 +239,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             c.Infra.CodegenConformSurface.LAZY_INIT,
             c.Infra.CodegenConformSurface.FACADES,
         }:
-            planned = self._plan_single_surface(request, inputs=inputs)
-            if planned.failure:
-                return r[m.Infra.CodegenPlan].from_failure(planned)
-            return r[m.Infra.CodegenPlan].ok(planned.value[0])
+            return self._plan_single_surface(request, inputs=inputs).map(
+                itemgetter(0),
+            )
         config_spec = inputs.spec
         root = request.root.expanduser().resolve()
         targets = self._planning_workspace(request, root, inputs=inputs)

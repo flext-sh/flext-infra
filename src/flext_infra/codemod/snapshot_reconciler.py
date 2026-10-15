@@ -40,11 +40,6 @@ class FlextInfraCodemodSnapshotReconciler:
         Returns:
             The resulting ``m.Infra.ModFixtureDirectories``.
 
-        Raises:
-            ValueError: If ast-grep config must be a regular file; or if invalid
-                ast-grep; or if ast-grep; or if ast-grep fixture path must not be a
-                symlink.
-
         """
         return cls._configuration_directories(config_root, fixtures=True)
 
@@ -69,6 +64,9 @@ class FlextInfraCodemodSnapshotReconciler:
 
         Returns:
             The directories the selected native operation consumes.
+
+        Raises:
+            ValueError: If the native scanner configuration is not a regular file.
 
         """
         config_path = config_root / c.Infra.CODEMOD_CONFIG_FILENAME

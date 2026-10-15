@@ -868,7 +868,6 @@ class FlextInfraMiseArtifactsVerification(
             The resulting ``p.Result[bool]``.
 
         """
-        destination_paths = frozenset(file.path for file in analysis.files)
         u.Cli.info(
             f"phase={analysis.phase} verify destinations={len(analysis.files)}",
         )
@@ -891,6 +890,34 @@ class FlextInfraMiseArtifactsVerification(
             if session is not None
             else {}
         )
+        inputs = cls._phase_inputs_live(analysis, session, entries)
+        if inputs.failure:
+            return inputs
+        for plan in analysis.files:
+            entry = entries.get(plan.path)
+            checked = (
+                cls._journal_phase_destination(analysis.phase, plan, session, entry)
+                if session is not None and entry is not None
+                else cls._unjournaled_phase_destination(analysis.phase, plan, session)
+            )
+            if checked.failure:
+                return checked
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _phase_inputs_live(
+        cls,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        session: m.Infra.CodegenTransactionSession | None,
+        entries: t.MappingKV[Path, m.Infra.CodegenJournalEntry],
+    ) -> p.Result[bool]:
+        """Prove non-destination inputs against live bytes or owned history.
+
+        Returns:
+            The first input failure in original analysis order.
+
+        """
+        destination_paths = frozenset(file.path for file in analysis.files)
         for source in analysis.inputs:
             if source.path in destination_paths:
                 continue
@@ -900,103 +927,150 @@ class FlextInfraMiseArtifactsVerification(
             else:
                 if not cls._historical_state_recorded(source, session, entry):
                     return r[bool].fail(
-                        f"published phase input has no historical journal proof: {source.path}",
+                        "published phase input has no historical journal proof: "
+                        f"{source.path}",
                     )
                 continue
             if checked.failure:
                 return checked
-        for plan in analysis.files:
-            entry = entries.get(plan.path)
-            if session is not None and entry is not None:
-                if entry.phase != analysis.phase:
-                    if (
-                        u.Infra.codegen_file_requires_effect(plan)
-                        or not isinstance(plan.before, m.Cli.AtomicFileState)
-                        or not cls._historical_state_recorded(
-                            plan.before,
-                            session,
-                            entry,
-                        )
-                    ):
-                        return r[bool].fail(
-                            f"published phase destination has no owned journal receipt: {plan.path}",
-                        )
-                    continue
-                desired_digest = (
-                    FlextInfraMiseArtifactsFiles.digest(plan.desired_content)
-                    if plan.desired_content is not None
-                    else None
-                )
-                if (entry.desired_sha256, entry.desired_mode) != (
-                    desired_digest,
-                    plan.desired_mode,
-                ):
-                    return r[bool].fail(
-                        f"published phase destination intent differs from journal: {plan.path}",
-                    )
-                if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
-                    parent = cls.materialized_directory_chain(
-                        session.journal,
-                        plan.before,
-                    )
-                    if parent.failure:
-                        return parent
-                    if entry.original_exists:
-                        return r[bool].fail(
-                            f"published absent destination had an original file: {plan.path}",
-                        )
-                elif cls._state_receipt_identity(plan.before) != (
-                    entry.original_parent_device,
-                    entry.original_parent_inode,
-                    entry.original_sha256,
-                    entry.original_mode,
-                    entry.original_device,
-                    entry.original_inode,
-                    entry.original_link_count,
-                    entry.original_file_attributes,
-                    entry.original_reparse_tag,
-                ):
-                    return r[bool].fail(
-                        f"published destination original differs from plan: {plan.path}",
-                    )
-                continue
-            if session is not None and u.Infra.codegen_file_requires_effect(plan):
-                return r[bool].fail(
-                    f"published phase destination has no owned journal receipt: {plan.path}",
-                )
-            before = u.Infra.codegen_file_before_state(plan)
-            if before.failure:
-                return r[bool].from_failure(before)
-            if session is not None:
-                unchanged = cls.states_current((before.value,))
-                if unchanged.failure:
-                    return unchanged
-            observed = FlextInfraMiseArtifactsFiles.read_state(
-                plan.path,
-                required=plan.desired_content is not None,
-            )
-            if observed.failure:
-                return r[bool].from_failure(observed)
-            current = observed.value
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _journal_phase_destination(
+        cls,
+        phase: c.Infra.CodegenStagedFilePhase,
+        plan: m.Infra.CodegenFilePlan,
+        session: m.Infra.CodegenTransactionSession,
+        entry: m.Infra.CodegenJournalEntry,
+    ) -> p.Result[bool]:
+        """Bind a phase's destination intent to this session's owned receipt.
+
+        Returns:
+            The matching intent and original-state proof.
+
+        """
+        if entry.phase != phase:
             if (
-                plan.path.name == c.Infra.INIT_PY
-                and u.Infra.codegen_initializer_is_authored(current.content)
-            ):
-                u.Cli.info(
-                    f"ownership=authored disposition=retained target={plan.path}",
-                )
-                continue
-            if (
-                current.content,
-                current.mode,
-            ) != (
-                plan.desired_content,
-                plan.desired_mode,
+                u.Infra.codegen_file_requires_effect(plan)
+                or not isinstance(plan.before, m.Cli.AtomicFileState)
+                or not cls._historical_state_recorded(plan.before, session, entry)
             ):
                 return r[bool].fail(
-                    f"published {analysis.phase} destination differs from receipt: "
+                    "published phase destination has no owned journal receipt: "
                     f"{plan.path}",
                 )
+            return r[bool].ok(value=True)
+        desired_digest = (
+            FlextInfraMiseArtifactsFiles.digest(plan.desired_content)
+            if plan.desired_content is not None
+            else None
+        )
+        if (entry.desired_sha256, entry.desired_mode) != (
+            desired_digest,
+            plan.desired_mode,
+        ):
+            return r[bool].fail(
+                f"published phase destination intent differs from journal: {plan.path}",
+            )
+        return cls._journal_original_destination(plan, session, entry)
+
+    @classmethod
+    def _journal_original_destination(
+        cls,
+        plan: m.Infra.CodegenFilePlan,
+        session: m.Infra.CodegenTransactionSession,
+        entry: m.Infra.CodegenJournalEntry,
+    ) -> p.Result[bool]:
+        """Prove the journal's original identity or materialized absence chain.
+
+        Returns:
+            The original-state proof without rereading an overwritten preimage.
+
+        """
+        if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
+            parent = cls.materialized_directory_chain(session.journal, plan.before)
+            if parent.failure:
+                return parent
+            if entry.original_exists:
+                return r[bool].fail(
+                    f"published absent destination had an original file: {plan.path}",
+                )
+        elif cls._state_receipt_identity(plan.before) != (
+            entry.original_parent_device,
+            entry.original_parent_inode,
+            entry.original_sha256,
+            entry.original_mode,
+            entry.original_device,
+            entry.original_inode,
+            entry.original_link_count,
+            entry.original_file_attributes,
+            entry.original_reparse_tag,
+        ):
+            return r[bool].fail(
+                f"published destination original differs from plan: {plan.path}",
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _unjournaled_phase_destination(
+        cls,
+        phase: c.Infra.CodegenStagedFilePhase,
+        plan: m.Infra.CodegenFilePlan,
+        session: m.Infra.CodegenTransactionSession | None,
+    ) -> p.Result[bool]:
+        """Require a physical no-effect receipt when no journal entry owns a file.
+
+        Returns:
+            The unchanged preimage and current publication proof.
+
+        """
+        if session is not None and u.Infra.codegen_file_requires_effect(plan):
+            return r[bool].fail(
+                "published phase destination has no owned journal receipt: "
+                f"{plan.path}",
+            )
+        before = u.Infra.codegen_file_before_state(plan)
+        if before.failure:
+            return r[bool].from_failure(before)
+        if session is not None:
+            unchanged = cls.states_current((before.value,))
+            if unchanged.failure:
+                return unchanged
+        return cls._published_destination_bytes(phase, plan)
+
+    @staticmethod
+    def _published_destination_bytes(
+        phase: c.Infra.CodegenStagedFilePhase,
+        plan: m.Infra.CodegenFilePlan,
+    ) -> p.Result[bool]:
+        """Read the destination and apply the existing authored-retention policy.
+
+        Returns:
+            The physical publication verdict with its original first cause.
+
+        """
+        observed = FlextInfraMiseArtifactsFiles.read_state(
+            plan.path,
+            required=plan.desired_content is not None,
+        )
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        current = observed.value
+        if (
+            plan.path.name == c.Infra.INIT_PY
+            and u.Infra.codegen_initializer_is_authored(current.content)
+        ):
+            u.Cli.info(
+                f"ownership=authored disposition=retained target={plan.path}",
+            )
+            return r[bool].ok(value=True)
+        if (current.content, current.mode) != (
+            plan.desired_content,
+            plan.desired_mode,
+        ):
+            return r[bool].fail(
+                f"published {phase} destination differs from receipt: {plan.path}",
+            )
         return r[bool].ok(value=True)
 
     @classmethod

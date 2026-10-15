@@ -63,7 +63,7 @@ class FlextInfraImportNormalization(
         """
         changed = False
         published = 0
-        u.Infra._codemod_progress(
+        u.Infra.codemod_progress(
             f"import normalization start project={project_root} files={len(files)}",
         )
         import_graph, _modules = u.Infra.project_import_graph(project_root)
@@ -76,7 +76,7 @@ class FlextInfraImportNormalization(
             source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
-            due = u.Infra._codemod_progress(
+            due = u.Infra.codemod_progress(
                 f"import normalization semantic {identity}",
                 due,
             )
@@ -87,7 +87,7 @@ class FlextInfraImportNormalization(
                 import_graph=import_graph,
             )
             candidate = normalized if normalized is not None else source
-            due = u.Infra._codemod_progress(
+            due = u.Infra.codemod_progress(
                 f"import normalization format {identity}",
                 due,
             )
@@ -97,14 +97,14 @@ class FlextInfraImportNormalization(
                 candidate,
             ).unwrap()
             if candidate != source:
-                due = u.Infra._codemod_progress(
+                due = u.Infra.codemod_progress(
                     f"import normalization publish {identity}",
                     due,
                 )
                 file_path.write_text(candidate, encoding=c.DEFAULT_ENCODING)
                 changed = True
                 published += 1
-        u.Infra._codemod_progress(
+        u.Infra.codemod_progress(
             f"import normalization finish project={project_root} "
             f"files={len(files)} published={published}",
         )

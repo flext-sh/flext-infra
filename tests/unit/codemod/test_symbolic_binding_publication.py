@@ -113,7 +113,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         tm.that(all(not entry.actionable for entry in findings), eq=True)
         tm.ok(
             FlextInfraModReplacements.publish(
-                root, FlextInfraModGateEngine.recounted(findings), {}
+                root, FlextInfraModGateEngine.recounted(findings)
             )
         )
         tm.that(consumer.read_text(encoding="utf-8"), eq=before)
@@ -178,7 +178,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         tm.that(all(not entry.actionable for entry in findings), eq=True)
         tm.ok(
             FlextInfraModReplacements.publish(
-                root, FlextInfraModGateEngine.recounted(findings), {}
+                root, FlextInfraModGateEngine.recounted(findings)
             )
         )
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)

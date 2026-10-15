@@ -110,8 +110,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
         if planned.failure:
             failure = planned.error
             if not failure:
-                msg = "codemod rule planning failed without a diagnostic"
-                raise RuntimeError(msg)
+                failure = "codemod rule planning failed without a diagnostic"
+                raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, failure, started)
 
         rules_by_id = {rule.id: rule for rule in planned.value.rules}
@@ -119,8 +119,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
         if binary.failure:
             failure = binary.error
             if not failure:
-                msg = "managed scanner resolution failed without a diagnostic"
-                raise RuntimeError(msg)
+                failure = "managed scanner resolution failed without a diagnostic"
+                raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, failure, started)
         findings: list[m.Infra.Issue] = []
         failures: list[m.Infra.Issue] = []

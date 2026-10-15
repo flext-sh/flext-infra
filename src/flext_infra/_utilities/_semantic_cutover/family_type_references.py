@@ -60,6 +60,19 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             changed = cls.rewrite_type_source(literal, project, scope, replacement)
             if changed != literal:
                 edits.append((begin, end, repr(changed)))
+        return cls._apply_type_rewrites(source, edits)
+
+    @staticmethod
+    def _apply_type_rewrites(
+        source: str,
+        edits: t.SequenceOf[t.Triple[int, int, str]],
+    ) -> str:
+        """Apply the outermost nonoverlapping type edits in reverse source order.
+
+        Returns:
+            The source with the admitted edits applied once.
+
+        """
         selected = []
         previous = -1
         for begin, end, changed in sorted(edits, key=lambda item: (item[0], -item[1])):

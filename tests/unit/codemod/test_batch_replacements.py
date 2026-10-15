@@ -128,7 +128,7 @@ class TestsFlextInfraBatchReplacements:
         )
         original = consumer.read_bytes()
         if mutation == "missing-proof":
-            report = report.model_copy(update={"scan_inputs": None})
+            report = report.model_copy(update={"source_states": None})
         elif mutation == "source-change":
             consumer.write_bytes(original + b"\n# changed consumer\n")
         elif mutation == "source-add":
@@ -472,7 +472,10 @@ class TestsFlextInfraBatchReplacements:
         rejected = self._report(bad, bad_before).entries[0]
         result = FlextInfraModReplacements.publish(
             root,
-            FlextInfraModGateEngine.recounted((accepted, rejected)),
+            m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+                entries=(accepted, rejected),
+                files=frozenset({good, bad}),
+            ),
         )
         tm.fail(result)
         tm.that(result.error, has="F821")

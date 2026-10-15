@@ -12,11 +12,13 @@ from importlib.machinery import PathFinder
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, p, r, t, u, validate
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
     FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsVerification,
 )
+from flext_infra.validate import FlextInfraValidateFreshImport
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -561,6 +563,107 @@ class FlextInfraCodegenPreconditions:
         return result_type.ok(tuple(states))
 
     @classmethod
+    def capture_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Authenticate the loaded producer against a cold native import.
+
+        Returns:
+            The sealed reference, or the first source or runtime failure.
+
+        """
+        result_type = r[m.Infra.NativeImportReference]
+        current = cls._native_inputs_current(request)
+        if current.failure:
+            return result_type.from_failure(current)
+        observed = FlextInfraWorkspaceNativeReference.capture(request.modules).flat_map(
+            lambda snapshot: (
+                FlextInfraWorkspaceNativeReference.authored_sources_current(
+                    snapshot, request.source_authority.inputs
+                ).map(lambda _: snapshot)
+            )
+        )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        consumer = FlextInfraValidateFreshImport(
+            repository_root=request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        output = consumer.native_reference_probe(request)
+        if output.failure:
+            return result_type.from_failure(output)
+        if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
+            return result_type.fail(
+                f"cold native source import failed: {output.value.outcome}\n"
+                f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}",
+            )
+        reference = m.Infra.NativeImportObservation.model_validate_json(
+            output.value.stdout
+        )
+        proof = (
+            FlextInfraWorkspaceNativeReference
+            .compare(observed.value, reference)
+            .flat_map(
+                lambda _: FlextInfraWorkspaceNativeReference.authored_sources_current(
+                    reference, request.source_authority.inputs
+                )
+            )
+            .flat_map(lambda _: cls._native_inputs_current(request))
+        )
+        return proof.map(
+            lambda _: m.Infra.NativeImportReference(
+                **reference.model_dump(),
+                source_authority=request.source_authority,
+            )
+        )
+
+    @classmethod
+    def _native_inputs_current(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[bool]:
+        """Recheck the pinned inputs and the executing physical runtime.
+
+        Returns:
+            Success when source, environment and interpreter identities agree.
+
+        """
+        current = cls.source_authority_current(request.source_authority).flat_map(
+            lambda _: FlextInfraMiseArtifactsVerification.states_current(request.inputs)
+        )
+        if current.failure:
+            return current
+        environment = u.Infra.runtime_environment_dir(
+            request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        runtime = u.Infra.runtime_python(
+            request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        actual_environment = environment.absolute()
+        actual_prefix = Path(sys.prefix).absolute()
+        actual_runtime = runtime.resolve()
+        if (
+            environment.is_symlink()
+            or actual_environment != actual_prefix
+            or not runtime.is_file()
+            or actual_runtime != request.source_authority.runtime
+            or sys.flags.optimize != request.source_authority.optimize
+        ):
+            return r[bool].fail(
+                "native reference runtime authority differs: "
+                f"environment={actual_environment} symlink={environment.is_symlink()} "
+                f"prefix={actual_prefix} runtime={actual_runtime} "
+                f"runtime_file={runtime.is_file()} "
+                f"expected_runtime={request.source_authority.runtime} "
+                f"optimize={sys.flags.optimize} "
+                f"expected_optimize={request.source_authority.optimize}"
+            )
+        return current
+
+    @classmethod
     def capture_producer(
         cls,
         repository_root: Path,
@@ -575,10 +678,6 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
-        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
-        if context.failure:
-            return result_type.from_failure(context)
-
         selection = FlextInfraWorkspaceNativeReference.producer_selections(
             entrypoint,
             collaborators,
@@ -586,8 +685,17 @@ class FlextInfraCodegenPreconditions:
         if selection.failure:
             return result_type.from_failure(selection)
         names = selection.value
+        environment = Path(sys.prefix).absolute()
+        if (
+            environment.name != c.Infra.ENVIRONMENT_DIRECTORY
+            or environment.is_symlink()
+        ):
+            return result_type.fail(
+                f"producer runtime is not a physical managed environment: {environment}"
+            )
+        runtime_root = environment.parent
         cold = cls.capture_source_authority(
-            context.value.runtime_root,
+            runtime_root,
             nominated=names,
         )
         if cold.failure:
@@ -595,10 +703,10 @@ class FlextInfraCodegenPreconditions:
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        reference = validate.FlextInfraValidateFreshImport.capture_native_reference(
+        reference = cls.capture_native_reference(
             m.Infra.NativeImportRequest(
-                repository_root=context.value.runtime_root,
-                runtime_root=context.value.runtime_root,
+                repository_root=repository_root,
+                runtime_root=runtime_root,
                 modules=names,
                 inputs=inputs.value,
                 source_authority=cold.value,
@@ -654,6 +762,37 @@ class FlextInfraCodegenPreconditions:
         namespaces = {
             namespace for namespace, root in roots.items() if root in ownership_prefixes
         }
+        editable = cls._editable_distribution_namespaces(paths, roots)
+        if editable.failure:
+            return result_type.from_failure(editable)
+        namespaces.update(editable.value[0])
+        if not namespaces:
+            return result_type.ok(
+                dict[str, t.VariadicTuple[m.Cli.AtomicPhysicalTreeEntry]]()
+            )
+        captured = cls._captured_distribution_inputs(
+            distribution, paths, tuple(editable.value[1].values())
+        )
+        if captured.failure:
+            return result_type.from_failure(captured)
+        trees.update((tree.root.path, tree) for tree in captured.value[0])
+        states.update((item.path, item) for item in captured.value[1])
+        return result_type.ok(
+            dict.fromkeys(namespaces, tuple(tree.root for tree in captured.value[0]))
+        )
+
+    @staticmethod
+    def _editable_distribution_namespaces(
+        paths: t.VariadicTuple[Path], roots: t.MappingKV[str, Path]
+    ) -> p.Result[t.Pair[set[str], t.DictKV[Path, m.Cli.AtomicFileState]]]:
+        """Elect editable namespaces through their physical native metadata.
+
+        Returns:
+            The elected namespaces and every metadata/source input used.
+
+        """
+        result_type = r[t.Pair[set[str], t.DictKV[Path, m.Cli.AtomicFileState]]]
+        namespaces: set[str] = set()
         elected: t.DictKV[Path, m.Cli.AtomicFileState] = {}
         for path in paths:
             if (
@@ -679,10 +818,32 @@ class FlextInfraCodegenPreconditions:
                     namespaces.add(namespace)
                     elected[state.path] = state
                     elected[project_source.path] = project_source
-        if not namespaces:
-            return result_type.ok(
-                dict[str, t.VariadicTuple[m.Cli.AtomicPhysicalTreeEntry]]()
-            )
+        return result_type.ok((namespaces, elected))
+
+    @classmethod
+    def _captured_distribution_inputs(
+        cls,
+        distribution: Distribution,
+        paths: t.VariadicTuple[Path],
+        elected: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[
+        t.Pair[
+            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
+        """Capture one elected distribution and reject conflicting input epochs.
+
+        Returns:
+            Its authenticated manifests and complete physical source states.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+            ]
+        ]
         captured = FlextInfraMiseArtifactsFiles.capture_distribution_sources(
             distribution
         )
@@ -692,14 +853,10 @@ class FlextInfraCodegenPreconditions:
             return result_type.fail(
                 "producer distribution file manifest changed while capturing ownership"
             )
-        sources = cls.unique_states((*elected.values(), *captured.value[1]))
+        sources = cls.unique_states((*elected, *captured.value[1]))
         if sources.failure:
             return result_type.from_failure(sources)
-        trees.update((tree.root.path, tree) for tree in captured.value[0])
-        states.update((item.path, item) for item in sources.value)
-        return result_type.ok(
-            dict.fromkeys(namespaces, tuple(tree.root for tree in captured.value[0]))
-        )
+        return result_type.ok((captured.value[0], sources.value))
 
     @classmethod
     def producer_current(

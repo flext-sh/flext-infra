@@ -23,6 +23,9 @@ class FlextInfraCProfileEntry:
         Returns:
             The resulting ``int``.
 
+        Raises:
+            ValueError: If the profile manifest has no repository owner.
+
         """
         report_root = Path.cwd().resolve() / ".reports" / "cprofile"
         profile_path = (

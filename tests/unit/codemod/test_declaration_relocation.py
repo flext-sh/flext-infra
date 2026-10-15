@@ -788,7 +788,9 @@ class TestsFlextInfraDeclarationRelocation:
                 started.value,
                 c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 tuple(plans),
-                staged_validator=refuse_destination,
+                publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(), staged_validator=refuse_destination
+                ),
             )
             if admitted.failure:
                 return r[t.VariadicTuple[Path]].from_failure(admitted)
@@ -869,7 +871,7 @@ class TestsFlextInfraDeclarationRelocation:
                 )
             )
 
-        def consume() -> p.Result[bool]:
+        def consume(candidate_root: Path) -> p.Result[bool]:
             result = u.Cli.run(
                 (
                     sys.executable,
@@ -884,8 +886,14 @@ class TestsFlextInfraDeclarationRelocation:
                         "{'count': 4}"
                     ),
                 ),
-                cwd=root,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+                cwd=candidate_root,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "PYTHONPATH": str(
+                            candidate_root / package.parent.relative_to(root)
+                        ),
+                    },
+                ),
             )
             if result.failure:
                 return r[bool].from_failure(result)
@@ -894,13 +902,15 @@ class TestsFlextInfraDeclarationRelocation:
         result = FlextInfraSemanticPublication.publish_semantic_file_plans(
             plans,
             repository_root=root,
-            projection_roots=(root,),
-            dependency_group=package.name,
-            validator=consume,
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(root,),
+                dependency_group=package.name,
+                validator=consume,
+            ),
         )
         if accepted:
             tm.ok(result)
-            tm.that(tm.ok(consume()), eq=True)
+            tm.that(tm.ok(consume(root)), eq=True)
             with infra.rope_workspace(root) as rope:
                 tm.that(
                     tm.ok(

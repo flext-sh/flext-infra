@@ -377,9 +377,7 @@ class TestsFlextInfraSemanticPublication:
         ) -> p.Result[t.VariadicTuple[Path]]:
             nonlocal foreign_state
             published = transaction.append_phase_locked(
-                session,
-                analysis.phase,
-                plans,
+                session, analysis.phase, analysis.files
             )
             if published.failure:
                 return r[t.VariadicTuple[Path]].from_failure(published)
@@ -390,13 +388,13 @@ class TestsFlextInfraSemanticPublication:
             foreign_state = tm.ok(
                 u.Cli.atomic_read_binary_file_state(second.path, required=True),
             )
-            return transaction.commit_locked(
-                published.value,
-                lambda: transaction.validate_phase_analysis_locked(
-                    analysis,
-                    session=published.value,
-                ),
+            verified = transaction.validate_phase_analysis_locked(
+                analysis,
+                session=published.value,
             )
+            if verified.failure:
+                return r[t.VariadicTuple[Path]].from_failure(verified)
+            return transaction.commit_locked(published.value)
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
             prepared = transaction.begin_files_locked(scope_root, roots, inputs)
@@ -490,7 +488,7 @@ class TestsFlextInfraSemanticPublication:
                 ),
             )
 
-        def validate() -> p.Result[bool]:
+        def validate(candidate_root: Path) -> p.Result[bool]:
             return u.Cli.run_raw((
                 sys.executable,
                 "-I",
@@ -500,15 +498,19 @@ class TestsFlextInfraSemanticPublication:
                     "assert all(runpy.run_path(path)['value'] == 'after' "
                     "for path in sys.argv[1:])"
                 ),
-                *(str(plan.path) for plan in plans),
+                *(
+                    str(candidate_root / plan.path.relative_to(mod_workspace))
+                    for plan in plans
+                ),
             )).map(lambda output: u.Cli.process_succeeded(output.outcome))
 
         tm.ok(
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 plans,
                 repository_root=mod_workspace,
-                preflight=preflight,
-                validator=validate,
+                options=m.Infra.SemanticPublicationOptions(
+                    source_guard=preflight, validator=validate
+                ),
             ),
         )
 
@@ -540,7 +542,7 @@ class TestsFlextInfraSemanticPublication:
                 )
             return verify_inputs()
 
-        def validate() -> p.Result[bool]:
+        def validate(candidate_root: Path) -> p.Result[bool]:
             consumer = u.Cli.run_raw((
                 sys.executable,
                 "-I",
@@ -550,7 +552,10 @@ class TestsFlextInfraSemanticPublication:
                     "assert all(runpy.run_path(path)['value'] == 'after' "
                     "for path in sys.argv[1:])"
                 ),
-                *(str(plan.path) for plan in plans),
+                *(
+                    str(candidate_root / plan.path.relative_to(mod_workspace))
+                    for plan in plans
+                ),
             ))
             if consumer.failure:
                 return r[bool].from_failure(consumer)
@@ -566,8 +571,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 plans,
                 repository_root=mod_workspace,
-                preflight=preflight,
-                validator=validate,
+                options=m.Infra.SemanticPublicationOptions(
+                    source_guard=preflight, validator=validate
+                ),
             ),
         )
         if stage == "preflight":
@@ -600,14 +606,14 @@ class TestsFlextInfraSemanticPublication:
         rejected = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (),
             repository_root=mod_workspace,
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(validator=validate),
         )
         tm.that(calls, eq=1)
         accepted = True
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (),
             repository_root=mod_workspace,
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(validator=validate),
         )
         tm.that(calls, eq=2)
         tm.that(
@@ -654,14 +660,14 @@ class TestsFlextInfraSemanticPublication:
                 FlextInfraSemanticPublication.publish_semantic_file_plans(
                     (),
                     repository_root=mod_workspace,
-                    validator=reject,
+                    options=m.Infra.SemanticPublicationOptions(validator=reject),
                 )
             tm.that(raised.value is failure, eq=True)
         else:
             rejected = FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=mod_workspace,
-                validator=reject,
+                options=m.Infra.SemanticPublicationOptions(validator=reject),
             )
             tm.fail(rejected, has=str(failure))
             tm.that(rejected.exception is failure, eq=True)
@@ -761,7 +767,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,)
+                ),
             ),
         )
         original_source = (
@@ -781,8 +789,8 @@ class TestsFlextInfraSemanticPublication:
         plans: list[m.Infra.SemanticFilePlan] = []
         for path in (previous, current):
             before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-            outgoing = ["DeclaredService"] if path == previous else []
-            incoming = [] if path == previous else ["DeclaredService"]
+            outgoing: t.StrSequence = ["DeclaredService"] if path == previous else []
+            incoming: t.StrSequence = [] if path == previous else ["DeclaredService"]
             plans.append(
                 m.Infra.SemanticFilePlan(
                     project=mod_workspace,
@@ -859,8 +867,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 plans,
                 repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
-                validator=validate,
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,), validator=validate
+                ),
             ),
         )
         initializer = package / c.Infra.INIT_PY
@@ -869,144 +878,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
-                validator=validate,
-            ),
-        )
-        tm.that(initializer.read_bytes(), eq=published)
-
-    @staticmethod
-    def test_publication_refreshes_warm_normalized_export_route(
-        mod_workspace: Path,
-    ) -> None:
-        """A moved declaration routes identically in warm and fresh consumers."""
-        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
-        previous = package / "previous.py"
-        current = package / "current.py"
-        consumer_path = package / "consumer.py"
-        for path, exported in ((previous, True), (current, False)):
-            path.write_text(
-                "class DeclaredService:\n"
-                "    @staticmethod\n"
-                "    def execute() -> str:\n"
-                f"        return {path.stem!r}\n\n"
-                f"__all__ = {['DeclaredService'] if exported else []!r}\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-        tm.ok(
-            FlextInfraSemanticPublication.publish_semantic_file_plans(
-                (),
-                repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
-            ),
-        )
-        original_source = (
-            f"from {package.name}.{previous.stem} import DeclaredService\n\n"
-            "def run() -> str:\n"
-            "    return DeclaredService.execute()\n"
-        )
-        warmed = tm.not_none(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=mod_workspace,
-                file_path=consumer_path,
-                source=original_source,
-            ),
-        )
-        tm.that(warmed, has=f"from {package.name} import DeclaredService\n")
-        candidate = original_source.replace(previous.stem, current.stem)
-        plans: list[m.Infra.SemanticFilePlan] = []
-        for path in (previous, current):
-            before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-            outgoing = ["DeclaredService"] if path == previous else []
-            incoming = [] if path == previous else ["DeclaredService"]
-            plans.append(
-                m.Infra.SemanticFilePlan(
-                    project=mod_workspace,
-                    path=path,
-                    before=before,
-                    desired_content=tm
-                    .not_none(before.content)
-                    .decode(c.DEFAULT_ENCODING)
-                    .replace(
-                        f"__all__ = {outgoing!r}",
-                        f"__all__ = {incoming!r}",
-                    )
-                    .encode(c.DEFAULT_ENCODING),
-                    desired_mode=before.mode,
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,), validator=validate
                 ),
-            )
-
-        def validate(candidate_root: Path) -> p.Result[bool]:
-            candidate_consumer = candidate_root / consumer_path.relative_to(
-                mod_workspace
-            )
-            normalized = tm.not_none(
-                FlextInfraImportNormalization.normalize_source(
-                    project_root=candidate_root,
-                    file_path=candidate_consumer,
-                    source=candidate,
-                ),
-            )
-            tm.that(normalized, eq=warmed)
-            tm.that(
-                FlextInfraImportNormalization.normalize_source(
-                    project_root=candidate_root,
-                    file_path=candidate_consumer,
-                    source=normalized,
-                ),
-                eq=None,
-            )
-            fresh = tm.ok(
-                u.Cli.run(
-                    (
-                        sys.executable,
-                        "-c",
-                        (
-                            "from pathlib import Path\n"
-                            "from flext_infra.refactor import (\n"
-                            "    FlextInfraImportNormalization,\n"
-                            ")\n"
-                            "normalized = FlextInfraImportNormalization"
-                            ".normalize_source(\n"
-                            f"    project_root=Path({str(candidate_root)!r}),\n"
-                            f"    file_path=Path({str(candidate_consumer)!r}),\n"
-                            f"    source={candidate!r},\n"
-                            ")\n"
-                            f"assert normalized == {normalized!r}\n"
-                            f"{normalized}\n"
-                            f"assert run() == {current.stem!r}\n"
-                        ),
-                    ),
-                    cwd=candidate_root,
-                    options=m.Cli.ProcessOptions(
-                        env={
-                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                                candidate_root
-                                / package.parent.relative_to(mod_workspace)
-                            ),
-                        },
-                    ),
-                ),
-            )
-            tm.that(u.Cli.process_succeeded(fresh.outcome), eq=True)
-            return r[bool].ok(True)
-
-        tm.ok(
-            FlextInfraSemanticPublication.publish_semantic_file_plans(
-                plans,
-                repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
-                validator=validate,
-            ),
-        )
-        initializer = package / c.Infra.INIT_PY
-        published = initializer.read_bytes()
-        tm.ok(
-            FlextInfraSemanticPublication.publish_semantic_file_plans(
-                (),
-                repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
-                validator=validate,
             ),
         )
         tm.that(initializer.read_bytes(), eq=published)
@@ -1060,8 +934,9 @@ class TestsFlextInfraSemanticPublication:
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (),
             repository_root=mod_workspace,
-            projection_roots=(mod_workspace,),
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(mod_workspace,), validator=validate
+            ),
         )
         if accepted:
             tm.ok(published)
@@ -1140,7 +1015,7 @@ class TestsFlextInfraSemanticPublication:
                 FlextInfraSemanticPublication.publish_semantic_file_plans(
                     plans,
                     repository_root=mod_workspace,
-                    validator=reject,
+                    options=m.Infra.SemanticPublicationOptions(validator=reject),
                 )
             tm.that(raised.value is failure, eq=True)
         else:
@@ -1148,7 +1023,7 @@ class TestsFlextInfraSemanticPublication:
                 FlextInfraSemanticPublication.publish_semantic_file_plans(
                     plans,
                     repository_root=mod_workspace,
-                    validator=reject,
+                    options=m.Infra.SemanticPublicationOptions(validator=reject),
                 ),
                 has=str(failure),
             )

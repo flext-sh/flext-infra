@@ -783,8 +783,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 analysis.phase,
                 analysis.files,
                 issues=analysis.issues,
-                staged_validator=policy.staged_validator,
-                batch_admission=admission,
+                publication_policy=policy.model_copy(update={"admission": admission}),
             )
             return published.flat_map(
                 lambda ready: self.commit_locked(

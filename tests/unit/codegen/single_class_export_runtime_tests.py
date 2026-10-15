@@ -125,10 +125,9 @@ class TestsFlextInfraSingleClassExportRuntime:
             )
         scan_root = workspace if workspace is not None else root
         family = u.Infra.facade_families()["u"]
-        declarations = package / family.directory
-        declarations.mkdir()
         class_name = f"{u.derive_class_stem(project_name)}{family.suffix}Publication"
-        source = declarations / "binding_inventory.py"
+        source = package / family.directory / "binding_inventory.py"
+        source.parent.mkdir()
         source.write_text(
             '"""External consumer publication fixture."""\n\n'
             "from __future__ import annotations\n\n\n"
@@ -136,7 +135,7 @@ class TestsFlextInfraSingleClassExportRuntime:
             '    """The class an external consumer instantiates."""\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        unrelated = declarations / "foreign.py"
+        unrelated = source.with_name("foreign.py")
         unrelated.write_text(
             '"""A foreign class is not elected by the owning project."""\n\n'
             "from __future__ import annotations\n\n\n"
@@ -144,27 +143,33 @@ class TestsFlextInfraSingleClassExportRuntime:
             '    """A declaration outside the project class stem."""\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        report = tm.ok(FlextInfraModGateEngine.scan(scan_root, fix=True))
         elected = {
             (scan_root / entry.file).resolve()
-            for entry in report.entries
+            for entry in tm.ok(
+                FlextInfraModGateEngine.scan(scan_root, fix=True)
+            ).entries
             if entry.rule_id == "declare-single-class-export"
         }
         tm.that(elected, eq={source.resolve()})
         tm.that(u.Tests.run_lazy_init(root), eq=0)
-        probe = (
-            "import sys\n"
-            f"sys.path.insert(0, {str(package.parent)!r})\n"
-            f"import {package_name}.{family.directory} as exports\n"
-            f"print({f'{package_name}.{family.directory}.{source.stem}'!r} in sys.modules)\n"
-            f"from {package_name}.{family.directory} import {class_name}\n"
-            f"{class_name}()\n"
-            "print('consumer-ready')\n"
-            "print(hasattr(exports, 'ForeignDeclaration'))\n"
-        )
         consumer = tm.ok(
             u.Cli.run_raw(
-                [sys.executable, "-c", probe],
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import sys\n"
+                        f"sys.path.insert(0, {str(package.parent)!r})\n"
+                        f"import {package_name}.{family.directory} as exports\n"
+                        "print("
+                        f"{f'{package_name}.{family.directory}.{source.stem}'!r}"
+                        " in sys.modules)\n"
+                        f"from {package_name}.{family.directory} import {class_name}\n"
+                        f"{class_name}()\n"
+                        "print('consumer-ready')\n"
+                        "print(hasattr(exports, 'ForeignDeclaration'))\n"
+                    ),
+                ],
                 cwd=root,
             ),
         )

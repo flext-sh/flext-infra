@@ -16,6 +16,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope_source_bases_inventory import (
     FlextInfraUtilitiesRopeSourceBasesInventory,
 )
 
@@ -162,7 +164,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """Index every captured module and its declared namespaces."""
             sys.setrecursionlimit(max(sys.getrecursionlimit(), 4096))
             self._modules = {
-                module: self.inventory(module, captured)
+                module: self._inventory(module, captured)
                 for module, captured in self._sources.items()
             }
             self._namespaces = {
@@ -228,7 +230,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         derived.add(reference.qualified_base)
             return tuple(sorted(derived))
 
-        def inventory(
+        def _inventory(
             self,
             module: str,
             captured: t.Pair[Path, str],
@@ -256,11 +258,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 shadowing.
 
             """
+            path, source = captured
             request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
                 module=module,
-                path=captured[0],
-                source=captured[1],
+                path=path,
+                source=source,
                 required_line=required_line,
                 allow_conditional=allow_conditional,
             )
@@ -411,7 +414,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     raise ValueError(message)
                 # Module execution can publish class members after the body's
                 # declaration line; its final bindings own the exported class.
-                self.inventory(
+                self._inventory(
                     name,
                     (Path(resource.real_path), module.source_code),
                     allow_conditional=True,
@@ -589,6 +592,23 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     visiting,
                     depth,
                 )
+            return self._provider_value_reference(
+                binding, tuple(remaining), visiting, depth
+            )
+
+        def _provider_value_reference(
+            self,
+            binding: p.Infra.RopePyName,
+            remaining: t.StrTuple,
+            visiting: frozenset[str],
+            depth: int,
+        ) -> str:
+            """Resolve native value ancestry and its remaining class members.
+
+            Returns:
+                The declaration identity reached by the original member sequence.
+
+            """
             value = binding.get_object()
             if remaining and FlextInfraUtilitiesRopeRuntime.instance_object(value):
                 # Attribute access on a facade instance (``meltano.Tap``)
@@ -919,7 +939,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     raise ValueError(message)
                 name = remaining.pop(0)
                 if module not in self._modules and module in self._sources:
-                    self._modules[module] = self.inventory(
+                    self._modules[module] = self._inventory(
                         module, self._sources[module]
                     )
                 bound = module in self._modules and name in self._modules[module]
@@ -1192,16 +1212,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Sorted configured roots and derived Ruff-qualified base expressions.
 
         """
-        return FlextInfraUtilitiesRopeSourceBasesRuntime._RuntimeBaseResolver(
+        return cls._RuntimeBaseResolver(
             project,
             sources,
             roots,
             extra_module_aliases,
         ).run()
 
-
-# The flat module-level re-export: the package lazy map and the
-# internal from-import contract resolve this name at module scope
-# (the S6 nesting moved the class inside the family facade).
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeSourceBasesRuntime"]

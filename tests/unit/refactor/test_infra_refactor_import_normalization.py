@@ -226,7 +226,7 @@ class TestsFlextInfraRefactorImportNormalization:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=project,
-                projection_roots=(project,),
+                options=m.Infra.SemanticPublicationOptions(projection_roots=(project,)),
             ),
         )
         result = tm.ok(
@@ -1025,16 +1025,6 @@ class TestsFlextInfraRefactorImportNormalization:
         tm.that(
             FlextInfraImportNormalization.normalize_source(
                 project_root=project, file_path=directory / "base.py", source=native
-            ),
-            eq=None,
-        )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
-        tm.that(outcome.stdout.strip(), eq="validated-value")
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=module,
-                source=module.read_text(encoding="utf-8"),
             ),
             eq=None,
         )

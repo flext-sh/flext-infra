@@ -415,10 +415,50 @@ class FlextInfraUtilitiesRopeInventory:
         if not statements:
             return ""
         header = statements[0]
-        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        references = cls._payload_references(options, module, scope, statements)
+        definition_offset = header.start_offset + header.indent
+        definition_offset = options.source.find(
+            options.name,
+            definition_offset + len("class"),
+            header.end_offset,
+        )
+        if definition_offset < 0:
+            msg = "native payload declaration has no class identifier"
+            raise ValueError(msg)
+        references.append((
+            definition_offset,
+            definition_offset + len(options.name),
+            "<payload>",
+        ))
+        shapes = tuple(
+            (
+                statement.indent - header.indent,
+                cls._payload_statement_fingerprint(
+                    statement.text,
+                    statement.start_offset,
+                    references,
+                ),
+            )
+            for statement in statements
+        )
+        return dumps((bases, shapes), ensure_ascii=True, separators=(",", ":"))
+
+    @classmethod
+    def _payload_references(
+        cls,
+        options: m.Infra.RopeInventoryRecordInput,
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScopeDsl,
+        statements: t.SequenceOf[m.Infra.LogicalStatement],
+    ) -> list[t.Triple[int, int, str]]:
         references: list[t.Triple[int, int, str]] = []
         for statement in statements:
-            for begin, end in types.reference_regions(statement.text):
+            for (
+                begin,
+                end,
+            ) in FlextInfraUtilitiesSemanticFamilyTypeReferences.reference_regions(
+                statement.text
+            ):
                 start = statement.start_offset + begin
                 stop = statement.start_offset + end
                 lexical = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
@@ -450,32 +490,7 @@ class FlextInfraUtilitiesRopeInventory:
                 identity = cls._native_binding_identity(value)
                 if identity:
                     references.append((start, stop, f"<native:{identity}>"))
-        definition_offset = header.start_offset + header.indent
-        definition_offset = options.source.find(
-            options.name,
-            definition_offset + len("class"),
-            header.end_offset,
-        )
-        if definition_offset < 0:
-            msg = "native payload declaration has no class identifier"
-            raise ValueError(msg)
-        references.append((
-            definition_offset,
-            definition_offset + len(options.name),
-            "<payload>",
-        ))
-        shapes = tuple(
-            (
-                statement.indent - header.indent,
-                cls._payload_statement_fingerprint(
-                    statement.text,
-                    statement.start_offset,
-                    references,
-                ),
-            )
-            for statement in statements
-        )
-        return dumps((bases, shapes), ensure_ascii=True, separators=(",", ":"))
+        return references
 
     @staticmethod
     def _native_object_identity(value: p.Infra.RopePyObject) -> str:
@@ -516,11 +531,12 @@ class FlextInfraUtilitiesRopeInventory:
 
         Args:
             source: The source code of the statement.
-            offset: The starting character offset of the statement within the source code.
-            references: A sequence of triples containing the start and end offsets and the identity of referenced objects.
+            offset: Starting character offset of the statement in its source.
+            references: Start/end offsets and identities of referenced objects.
 
         Returns:
-            A string representing the fingerprint of the statement, with literal bytes separated from normalized executable whitespace.
+            The statement fingerprint, retaining literal bytes separately from
+            normalized executable whitespace.
 
         """
         edits = []
@@ -1224,6 +1240,9 @@ class FlextInfraUtilitiesRopeInventory:
 
         Returns:
             The resulting ``str``.
+
+        Raises:
+            ValueError: If directory or filename families are ambiguous.
 
         """
         families = FlextInfraUtilitiesCodegenNamespace.facade_families().values()

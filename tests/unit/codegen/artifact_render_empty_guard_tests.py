@@ -71,6 +71,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         effective = tm.ok(u.Infra.load_codegen_inputs(root)).spec
         tm.that(u.Infra.codegen_templates_root(effective), eq=templates)
         u.Tests.copy_tracked_mise_seeds(root)
+        u.Tests.initialize_git_repo(root)
         repository = u.Tests.repository_ref("fixture-project")
         workspace = u.Tests.workspace_spec(
             repository,

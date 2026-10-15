@@ -459,7 +459,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     @staticmethod
     def _matched_declarations(
         options: PyprojectConformOptions,
-        members: t.SequenceOf[m.Infra.Contexts.RepositoryRef],
+        members: t.SequenceOf[m.Infra.RepositoryRef],
     ) -> p.Result[t.SequenceOf[m.Cli.AtomicFileState]]:
         """Match captured member declarations to the elected packaged members.
 
@@ -484,7 +484,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
     @staticmethod
     def _aggregated_member_rows(
-        members: t.SequenceOf[m.Infra.WorkspaceSubprojectSpec],
+        members: t.SequenceOf[m.Infra.RepositoryRef],
         declarations: t.SequenceOf[m.Cli.AtomicFileState],
         declared_lines: t.StrSequence,
         integration_branch: str | None,
@@ -522,7 +522,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
     @staticmethod
     def _member_requirement_row(
-        member: m.Infra.WorkspaceSubprojectSpec,
+        member: m.Infra.RepositoryRef,
         state: m.Cli.AtomicFileState,
         declared_lines: t.StrSequence,
         integration_branch: str | None,

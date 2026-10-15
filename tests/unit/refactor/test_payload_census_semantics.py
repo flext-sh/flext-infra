@@ -42,8 +42,6 @@ class TestsFlextInfraPayloadCensusSemantics:
         """Different holders match only when every native declaration input matches."""
         root = Path(rope_workspace.rope_project.root.real_path)
         path = root / "payloads.py"
-        generic = "[T]" if change == "generic" else ""
-        second_generic = "[T: int]" if change == "generic" else ""
         default = "'a b'"
         second_default = (
             "'different'"
@@ -86,13 +84,13 @@ class TestsFlextInfraPayloadCensusSemantics:
             "class AlternativeBase(Model):\n"
             "    model_config = ConfigDict(strict=True)\n"
             "class InputHolder:\n"
-            f"    class Input{generic}(Model):\n"
+            f"    class Input{'[T]' if change == 'generic' else ''}(Model):\n"
             "        model_config = ConfigDict(frozen=True)\n"
             f"        value: str = Field(default={default})\n"
             + validator
             + serializer
             + "class OutputHolder:\n"
-            f"    class Output{second_generic}({base}):\n"
+            f"    class Output{'[T: int]' if change == 'generic' else ''}({base}):\n"
             f"        model_config = ConfigDict(frozen={change != 'config'})\n"
             f"        value: str = {field}(default={second_default})\n"
             + second_validator

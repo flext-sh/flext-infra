@@ -175,7 +175,9 @@ class TestsFlextInfraFileParticipantRecovery:
                 session,
                 "semantic",
                 plans,
-                staged_validator=staged,
+                publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(), staged_validator=staged
+                ),
             )
             if appended.failure:
                 return r[t.VariadicTuple[Path]].from_failure(appended)

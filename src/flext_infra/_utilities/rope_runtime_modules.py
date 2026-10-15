@@ -237,24 +237,69 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         *,
         visited: frozenset[t.Pair[str, int]] = frozenset(),
     ) -> p.Infra.RopePyName | None:
-        """Resolve a class alias through its native pre-assignment name view."""
+        """Resolve a class alias through its native pre-assignment name view.
+
+        Returns:
+            The proven native alias, or None for an ambiguous lexical binding.
+
+        Raises:
+            TypeError: If the native alias holder does not expose its Python AST.
+            ValueError: If the class assignment identity is cyclic.
+
+        """
         if binding is None or not isinstance(binding, p.Infra.RopeAssignedName):
             return binding
         holder, line = binding.get_definition_location()
-        if holder is None or line is None:
-            return binding
-        source = holder.source_code
-        tree = holder.get_ast()
-        if not isinstance(tree, ast.AST):
-            msg = "native alias holder has no Python AST"
-            raise TypeError(msg)
+        if holder is not None and line is not None:
+            tree = holder.get_ast()
+            if not isinstance(tree, ast.AST):
+                msg = "native alias holder has no Python AST"
+                raise TypeError(msg)
+            statement = cls._class_alias_statement(holder, binding, tree)
+            if statement is not None:
+                declaration, scope, offset, primary = statement
+                if len(binding.assignments) != 1:
+                    return None
+                key = (holder.get_name(), offset)
+                if key in visited:
+                    msg = f"cyclic class assignment identity: {key}"
+                    raise ValueError(msg)
+                if not isinstance(primary, ast.Name):
+                    return binding
+                lookup = cls._class_alias_namespace(
+                    holder, tree, scope, primary, offset
+                )
+                if lookup is None:
+                    return None
+                lookup_parent, selected = lookup
+                temporary = cls.runtime_callable(
+                    "rope.base.pyscopes", "TemporaryScope"
+                )(scope.pycore, lookup_parent, selected)
+                if not isinstance(temporary, p.Infra.RopeScope):
+                    msg = (
+                        "native TemporaryScope does not satisfy the Rope scope contract"
+                    )
+                    raise TypeError(msg)
+                return cls._class_alias_value(
+                    temporary, declaration, primary, visited=visited | {key}
+                )
+        return binding
+
+    @classmethod
+    def _class_alias_statement(
+        cls,
+        holder: p.Infra.RopePyModule,
+        binding: p.Infra.RopeAssignedName,
+        tree: ast.AST,
+    ) -> tuple[ast.Assign | ast.AnnAssign, p.Infra.RopeScope, int, ast.expr] | None:
         if not binding.assignments:
-            return binding
+            return None
+        source = holder.source_code
         rhs = binding.assignments[0].ast_node
         rhs_offset = cls.source_offset(source, rhs)
         scope = cls.scope_at(holder, rhs_offset)
         if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
-            return binding
+            return None
         candidates = [
             node
             for node in ast.walk(tree)
@@ -264,28 +309,37 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         ]
         if not candidates:
             # Native loop/context/pattern bindings are outside class alias policy.
-            return binding
+            return None
         if len(candidates) != 1:
-            msg = f"native class alias RHS has no unique statement: {holder.get_name()}:{rhs_offset}"
+            msg = (
+                "native class alias RHS has no unique statement: "
+                f"{holder.get_name()}:{rhs_offset}"
+            )
             raise ValueError(msg)
         declaration = candidates[0]
         if declaration is None or not isinstance(
             declaration.value, ast.Name | ast.Attribute
         ):
-            return binding
+            return None
         offset = cls.source_offset(source, declaration)
         scope = cls.scope_at(holder, offset)
         if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
-            return binding
-        if len(binding.assignments) != 1:
             return None
-        key = (holder.get_name(), offset)
-        if key in visited:
-            msg = f"cyclic class assignment identity: {key}"
-            raise ValueError(msg)
         primary = declaration.value
         while isinstance(primary, ast.Attribute):
             primary = primary.value
+        return declaration, scope, offset, primary
+
+    @classmethod
+    def _class_alias_namespace(
+        cls,
+        holder: p.Infra.RopePyModule,
+        tree: ast.AST,
+        scope: p.Infra.RopeScope,
+        primary: ast.Name,
+        offset: int,
+    ) -> t.Pair[p.Infra.RopeScope, t.DictKV[str, p.Infra.RopePyName]] | None:
+        source = holder.source_code
         selected: dict[str, p.Infra.RopePyName] = {}
         prior = scope.get_defined_names().get(primary.id)
         if prior is not None:
@@ -315,49 +369,60 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 msg = "class-local unbound lookup has no native module scope"
                 raise TypeError(msg)
             lookup_parent = module_scope
-        if prior is None:
-            enclosing = scope.parent
-            execution_offset = offset
-            while enclosing is not None:
-                if enclosing.get_kind() == c.Infra.RopeScopeKind.FUNCTION:
-                    # FunctionScope owns lexical locals through its visitor;
-                    # PyFunction structural attributes contain no local names.
-                    if primary.id in enclosing.get_names():
-                        declarations = cls._scope_binding_nodes(
-                            tree, enclosing, primary.id
-                        )
-                        if len(declarations) != 1:
-                            return None
-                        node, unconditional = declarations[0]
-                        if (
-                            not unconditional
-                            or cls.source_offset(source, node) >= execution_offset
-                        ):
-                            return None
-                        break
-                    created = next(
-                        (
-                            node
-                            for node in ast.walk(tree)
-                            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-                            and node.lineno == enclosing.get_start()
-                        ),
-                        None,
+        if prior is None and not cls._enclosing_alias_available(
+            holder, tree, scope, primary, offset
+        ):
+            return None
+        return lookup_parent, selected
+
+    @classmethod
+    def _enclosing_alias_available(
+        cls,
+        holder: p.Infra.RopePyModule,
+        tree: ast.AST,
+        scope: p.Infra.RopeScope,
+        primary: ast.Name,
+        execution_offset: int,
+    ) -> bool:
+        enclosing = scope.parent
+        while enclosing is not None:
+            if enclosing.get_kind() == c.Infra.RopeScopeKind.FUNCTION:
+                # FunctionScope owns lexical locals through its visitor;
+                # PyFunction structural attributes contain no local names.
+                if primary.id in enclosing.get_names():
+                    declarations = cls._scope_binding_nodes(tree, enclosing, primary.id)
+                    if len(declarations) != 1:
+                        return False
+                    node, unconditional = declarations[0]
+                    return unconditional and (
+                        cls.source_offset(holder.source_code, node) < execution_offset
                     )
-                    if created is None:
-                        return None
-                    # An outer binding must be available when this inner
-                    # function is created; later call timing is not inferred.
-                    execution_offset = cls.source_offset(source, created)
-                enclosing = enclosing.parent
-        temporary = cls.runtime_callable("rope.base.pyscopes", "TemporaryScope")(
-            scope.pycore,
-            lookup_parent,
-            selected,
-        )
-        if not isinstance(temporary, p.Infra.RopeScope):
-            msg = "native TemporaryScope does not satisfy the Rope scope contract"
-            raise TypeError(msg)
+                created = next(
+                    (
+                        node
+                        for node in ast.walk(tree)
+                        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                        and node.lineno == enclosing.get_start()
+                    ),
+                    None,
+                )
+                if created is None:
+                    return False
+                # An outer binding must be available when this inner
+                # function is created; later call timing is not inferred.
+                execution_offset = cls.source_offset(holder.source_code, created)
+            enclosing = enclosing.parent
+        return True
+
+    @classmethod
+    def _class_alias_value(
+        cls,
+        temporary: p.Infra.RopeScope,
+        declaration: ast.Assign | ast.AnnAssign,
+        primary: ast.Name,
+        *,
+        visited: frozenset[t.Pair[str, int]],
+    ) -> p.Infra.RopePyName | None:
         result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
             temporary,
             primary,
@@ -365,7 +430,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if result is not None and not isinstance(result, p.Infra.RopePyName):
             msg = "class RHS lookup returned an invalid native name"
             raise TypeError(msg)
-        result = cls._class_assignment_alias(result, visited=visited | {key})
+        result = cls._class_assignment_alias(result, visited=visited)
         attributes: list[str] = []
         value = declaration.value
         while isinstance(value, ast.Attribute):
@@ -375,7 +440,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             if result is None:
                 return None
             result = result.get_object().get_attributes().get(attribute)
-            result = cls._class_assignment_alias(result, visited=visited | {key})
+            result = cls._class_assignment_alias(result, visited=visited)
         return result
 
     @staticmethod
@@ -384,7 +449,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         scope: p.Infra.RopeScope,
         name: str,
     ) -> list[t.Pair[ast.AST, bool]]:
-        """Elect structural lexical writes and their actual execution positions."""
+        """Elect structural lexical writes and their actual execution positions.
+
+        Returns:
+            Matching lexical writes with their unconditional execution status.
+
+        """
         parents = {
             child: parent
             for parent in ast.walk(tree)

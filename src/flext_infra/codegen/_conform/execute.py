@@ -926,28 +926,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
-        ports = self.ports
-        producer = self.producer
-        if ports is None or producer is None:
-            return r[m.Infra.CodegenResult].fail(
-                "complete conform requires the facade-wired docs and fresh-import "
-                "ports and an authenticated producer; "
-                "run it through FlextInfra.codegen_conform",
-            )
-        seeded = self._seed_declared_beads_identity(request.root)
-        if seeded.failure:
-            return r[m.Infra.CodegenResult].from_failure(seeded)
-        policy = ports.participant_policy(
-            request.root,
-            initial_workspace=self.initial_workspace,
-            producer=producer,
-        )
-        if policy.failure:
-            return r[m.Infra.CodegenResult].from_failure(policy)
-        mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
+        configured = self._managed_policy(request)
+        if configured.failure:
+            return r[m.Infra.CodegenResult].from_failure(configured)
+        policy, producer = configured.value
         transaction = FlextInfraCodegenTransaction(
-            mise_owner,
-            participant_policy=policy.value,
+            FlextInfraCodegenMiseArtifacts(repository_root=request.root),
+            participant_policy=policy,
             producer=producer,
         )
         prepared = transaction.run_locked(
@@ -979,6 +964,41 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             published.value,
             tuple(batches),
         )
+
+    def _managed_policy(
+        self,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[
+        t.Pair[m.Infra.CodegenParticipantPolicy, m.Infra.CodegenPhaseAnalysis]
+    ]:
+        """Bind the declared participant policy to its original producer.
+
+        Returns:
+            The policy and original producer, or their first prerequisite failure.
+
+        """
+        result = r[
+            t.Pair[m.Infra.CodegenParticipantPolicy, m.Infra.CodegenPhaseAnalysis]
+        ]
+        ports = self.ports
+        producer = self.producer
+        if ports is None or producer is None:
+            return result.fail(
+                "complete conform requires the facade-wired docs and fresh-import "
+                "ports and an authenticated producer; "
+                "run it through FlextInfra.codegen_conform",
+            )
+        seeded = self._seed_declared_beads_identity(request.root)
+        if seeded.failure:
+            return result.from_failure(seeded)
+        policy = ports.participant_policy(
+            request.root,
+            initial_workspace=self.initial_workspace,
+            producer=producer,
+        )
+        if policy.failure:
+            return result.from_failure(policy)
+        return result.ok((policy.value, producer))
 
     def _execute_managed_locked(
         self,
@@ -1258,12 +1278,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
             inputs=lazy_analysis.value.inputs,
             publications=lazy_analysis.value.publications,
+            issues=lazy_analysis.value.issues,
         )
         extended = transaction.append_phase_locked(
             session,
             owned_lazy_analysis.phase,
             owned_lazy_analysis.files,
-            issues=lazy_analysis.value.issues,
+            issues=owned_lazy_analysis.issues,
         )
         if extended.failure:
             return result_type.from_failure(extended)
