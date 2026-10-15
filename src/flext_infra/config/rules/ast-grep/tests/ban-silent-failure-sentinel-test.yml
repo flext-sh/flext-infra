@@ -51,6 +51,18 @@ valid:
         if res.failure:
             raise RuntimeError(res.error)
         return res
+  - |
+    def iterate(result) -> Iterator[p.Result[int]]:
+        if result.failure:
+            yield r[int].from_failure(result)
+            return
+        yield r[int].ok(1)
+  - |
+    def iterate(result) -> Iterator[p.Result[int]]:
+        if not result.success:
+            yield r[int].from_failure(result)
+            return
+        yield r[int].ok(1)
 invalid:
   - value = result.unwrap_or(False)
   - items = result.unwrap_or([])
@@ -96,3 +108,29 @@ invalid:
     def run(res):
         if not res.success:
             return True
+  - |
+    def iterate(result, other):
+        if result.failure:
+            yield r[int].from_failure(other)
+            return
+  - |
+    def iterate(result):
+        if result.failure:
+            yield None
+            return
+  - |
+    def iterate(result):
+        if result.failure:
+            r[int].from_failure(result)
+            return
+  - |
+    def iterate(result):
+        if result.failure:
+            yield r[int].from_failure(result)
+            record()
+            return
+  - |
+    def iterate(result):
+        if result.failure:
+            yield r[int].from_failure(result)
+            return False

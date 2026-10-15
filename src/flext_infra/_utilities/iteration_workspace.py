@@ -246,8 +246,17 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         if workers <= 1:
             return tuple(task(payload) for payload in payloads)
         context = multiprocessing.get_context("forkserver")
+        started = time.monotonic()
         with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
-            return tuple(pool.map(task, payloads))
+            results = tuple(pool.map(task, payloads))
+            mapped = time.monotonic()
+        finished = time.monotonic()
+        cli_u.Cli.info(
+            f"stage=fleet-map payloads={len(payloads)} workers={workers} "
+            f"map_elapsed={mapped - started:.3f}s "
+            f"shutdown_elapsed={finished - mapped:.3f}s",
+        )
+        return results
 
     @classmethod
     def iter_python_files(

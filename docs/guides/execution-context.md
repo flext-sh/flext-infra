@@ -237,6 +237,12 @@ inputs does not invalidate its proof. Publication still authenticates each
 participant's relevant inputs and effects. None of this proves an earlier process
 whose source context was not captured.
 
+Documentation targets and the executing producer can have different roots.
+Programmatic preparation receives the original authenticated producer explicitly
+when the target does not own the executing environment. Both single-bundle and
+per-scope preparation verify the actual entrypoints and current producer before
+consuming inputs; a target directory never supplies an implicit borrowed runtime.
+
 Native callback identity follows the elected supplier's actual registrations.
 Conditional attribute references record native absence as binding evidence;
 the cold comparison detects later appearance instead of rejecting an untaken
@@ -251,6 +257,11 @@ an uninitialized native slot from a slot shadowed by a derived declaration;
 neither state supplies a fabricated field value or executes the derived accessor.
 Optional native reads require the standard attribute reader and no custom missing
 attribute hook.
+Native callable observations retain both interpreter-exposed descriptor and slot
+values and their native argument referents. Neither storage form replaces the
+other, so changed callable arguments remain detectable.
+Native type-family selection uses identity comparisons and remains passive for
+metaclasses with hashing or equality hooks.
 Operand observations share one recursive encoder, parameterized by construction
 mode, and retain structured JSON values until the transport boundary.
 Recursive JSON strings are prohibited: re-encoding their escapes amplifies memory
@@ -1110,6 +1121,16 @@ rules with actual occurrences. Syntax-only findings need no import closure.
 The check gate and the mod scanner share this input election, deduplicating
 source reads without reducing the rule inventory or its diagnostic evidence.
 
+Facade consumer discovery resolves each native Rope `ImportedModule` once within
+the current source file. Repeated occurrences retain their binding and owner checks;
+the resolution map holds the native import objects, not a separate name registry.
+Rope's line tables convert AST byte columns to character offsets before resolving
+each binding. Each receiver is already a native AST `Name`: the same parsed
+module supplies its lexical scope at that offset, and Rope resolves the existing
+node without tokenizing and parsing its text again. Local shadows and native
+import identity remain checked. The resolution map does not persist across source
+observations or replace source, producer, or publication proof.
+
 AST replacements publish through the authenticated file-plan boundary, then reuse
 the import normalizer on only the rewritten files. Unused imports and formatting
 are normalized before the next mod check; normalization failures remain blocking.
@@ -1127,6 +1148,12 @@ staging after validation. Parser or validator exceptions retain their original c
 and leave live source bytes and modification times unchanged. Native Ruff uses the
 declared external project cache so its cache files never enter the authenticated
 source view.
+
+A nonempty admitted file phase with no required byte, permission, or directory
+effects publishes a fresh observation under the same root lease. It still verifies
+its producer, input and output identities, and rejects pending journals or foreign
+residue. It does not materialize a candidate source view or a publication staging
+tree. Equal desired bytes alone do not authorize this path.
 
 Journal footprint inspection and authorization hold the same root journal lease
 as publication. Authorization observes the current journal under that lease;

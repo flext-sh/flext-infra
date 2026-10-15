@@ -713,12 +713,17 @@ class FlextInfraCodegenPreconditions:
         )
 
     @classmethod
-    def producer_current(cls, producer: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
-        """Authenticate every captured input before selecting a consumer scope.
+    def producer_current(
+        cls,
+        producer: m.Infra.CodegenPhaseAnalysis,
+        *,
+        outputs: t.VariadicTuple[m.Infra.CodegenJournalSource] = (),
+    ) -> p.Result[bool]:
+        """Authenticate the original epoch and relevant invocation-owned effects.
 
         Returns:
-            Success only when every captured input, tree and native epoch is
-            unchanged since capture.
+            Success only for unchanged inputs and native code, with changed
+            physical sources accounted for by authenticated own outputs.
 
         """
         if not producer.inputs or producer.generator_reference is None:
@@ -727,6 +732,18 @@ class FlextInfraCodegenPreconditions:
         if states.failure:
             return r[bool].from_failure(states)
         by_path = {state.path: state for state in states.value}
+        authority = producer.generator_reference.source_authority
+        source_paths = {item.path for item in authority.inputs}
+        own_outputs = tuple(
+            output
+            for output in outputs
+            if output.path in source_paths
+            or any(
+                output.path.is_relative_to(tree.root.path)
+                for tree in authority.generator_trees
+            )
+        )
+        output_paths = {output.path for output in own_outputs}
         authenticated = cls._authenticated_tree_files(by_path, producer.generator_trees)
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
@@ -737,13 +754,15 @@ class FlextInfraCodegenPreconditions:
         retained = tuple(
             state
             for state in states.value
-            if state.path not in covered or state.path in representatives
+            if state.path not in output_paths
+            and (state.path not in covered or state.path in representatives)
         )
         current = FlextInfraMiseArtifactsComparison.states_current(retained)
         if current.failure:
             return current
         return cls.producer_trees_current(
             producer.generator_trees,
+            own_outputs,
             modules=producer.generator_modules,
             reference=producer.generator_reference,
         )
@@ -1102,19 +1121,41 @@ class FlextInfraCodegenPreconditions:
         cls,
         analysis: m.Infra.CodegenPhaseAnalysis,
         producer: m.Infra.CodegenPhaseAnalysis,
+        *,
+        outputs: t.VariadicTuple[m.Infra.CodegenJournalSource] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Bind the consumed producer epoch without expanding planner dependencies.
+        """Bind the original producer epoch to the current admitted planner inputs.
 
         Returns:
             The planner's exact inputs and files with authenticated producer metadata.
 
         """
-        result_type = r[m.Infra.CodegenPhaseAnalysis]
-        current = cls.producer_current(producer)
+        current = cls.producer_current(producer, outputs=outputs)
         if current.failure:
-            return result_type.from_failure(current)
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(current)
+        return cls.compose_producer_analysis(analysis, producer, outputs=outputs)
+
+    @classmethod
+    def compose_producer_analysis(
+        cls,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        producer: m.Infra.CodegenPhaseAnalysis,
+        *,
+        outputs: t.VariadicTuple[m.Infra.CodegenJournalSource] = (),
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Compose snapshots and producer metadata without granting authority.
+
+        Returns:
+            The planner analysis with its original producer metadata, or a
+            conflicting snapshot failure.
+
+        """
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
+        # Earlier owned publications may replace producer source bytes. Planner
+        # inputs still agree among themselves; the native epoch is never rewritten.
+        output_paths = {output.path for output in outputs}
         sources = cls.unique_states((
-            *producer.inputs,
+            *(state for state in producer.inputs if state.path not in output_paths),
             *analysis.inputs,
             *(source for plan in analysis.files for source in plan.source_states),
         ))

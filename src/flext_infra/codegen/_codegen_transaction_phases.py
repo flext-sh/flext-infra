@@ -78,10 +78,17 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
         )
         if not changed:
-            return self._unchanged_phase_session(
+            unchanged = self._unchanged_phase_session(
                 session,
                 plans,
                 batch_admission=batch_admission,
+            )
+            if unchanged.failure or staged_validator is None:
+                return unchanged
+            return self._validate_staged_consumer(
+                unchanged.value,
+                (),
+                staged_validator,
             )
         authorized = self._authorize_phase_destinations(session, phase, changed, plans)
         return self._append_authorized_phase(
@@ -1058,6 +1065,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             staged,
             batch_admission=batch_admission,
             journal=journal,
+            prior_publications=self._prior_publications,
         )
         if published.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(

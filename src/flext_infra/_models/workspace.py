@@ -59,7 +59,9 @@ class FlextInfraModelsWorkspace:
     class NativeBindingEvidence(m.Value):
         """Static binding and strict native executable transport."""
 
-        binding: str = m.Field(description="Module and lexical binding path")
+        binding: str = m.Field(
+            description="Root anchors, identity nodes and labeled native edges"
+        )
         kind: str = m.Field(description="Observed native descriptor category")
         supplier: str = m.Field(description="Actual defining module")
         name: str = m.Field(description="Advertised native name")

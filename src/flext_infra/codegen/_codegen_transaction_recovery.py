@@ -37,6 +37,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
         producer: m.Infra.CodegenPhaseAnalysis | None = None,
         source_authority: m.Infra.CodegenSourceAuthority | None = None,
+        prior_publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome] = (),
     ) -> None:
         """Initialize journal planning and recovery for one Mise artifact owner.
 
@@ -49,10 +50,13 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
         self._recovery = FlextInfraMiseRecovery()
         self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
-        if source_authority is not None and producer is not None:
+        if source_authority is not None and (
+            producer is not None or prior_publications
+        ):
             msg = "reference staging and publication require distinct authorities"
             raise ValueError(msg)
         self._source_authority = source_authority
+        self._prior_publications = prior_publications
         self._producer = (
             r[m.Infra.CodegenPhaseAnalysis].fail(
                 "cold source authority cannot authorize project publication",

@@ -231,15 +231,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         )
         if not rewrites:
             return source, ()
-        changed = refactors.content_change(
-            resource,
-            source,
-            rewrites,
+        module = runtime.build_string_module(
+            project,
+            refactors.content_change(resource, source, rewrites).new_contents,
+            resource=resource,
         )
-        proposed = runtime.build_string_module(
-            project, changed.new_contents, resource=resource
-        )
-        imports = runtime.module_imports_for_pymodule(project, proposed)
+        imports = runtime.module_imports_for_pymodule(project, module)
         imports.add_import(runtime.from_import(package, 0, [("c", None)]))
         imports.remove_duplicates()
         return imports.get_changed_source(), tuple(
@@ -622,9 +619,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                         if (
                             literal_type == "__builtin__.str"
                             and (start, end) not in literal_regions
-                        ):
-                            continue
-                        if (
+                        ) or (
                             literal_type == "__builtin__.int"
                             and not literal.isdecimal()
                         ):

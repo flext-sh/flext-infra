@@ -9,7 +9,19 @@ from __future__ import annotations
 import ast as _ast
 from collections.abc import Callable, Container as _Container, MutableMapping
 from datetime import date, datetime
+from dis import Instruction as _Instruction
 from pathlib import Path as _Path
+from types import (
+    BuiltinFunctionType as _BuiltinFunctionType,
+    ClassMethodDescriptorType as _ClassMethodDescriptorType,
+    CodeType as _CodeType,
+    GetSetDescriptorType as _GetSetDescriptorType,
+    MemberDescriptorType as _MemberDescriptorType,
+    MethodDescriptorType as _MethodDescriptorType,
+    MethodWrapperType as _MethodWrapperType,
+    UnionType as _UnionType,
+    WrapperDescriptorType as _WrapperDescriptorType,
+)
 from typing import Annotated, Literal
 
 # Why: flext_cli owns the pipeline models/result contract; flext_core's m/p
@@ -80,6 +92,36 @@ class FlextInfraTypesBase:
     "Jinja2 template rendering environment."
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
+    type NativeCode = _CodeType
+    "Exact interpreter code identity accepted by disassembly and marshal."
+    type NativeBuiltinCallable = _BuiltinFunctionType | _MethodWrapperType
+    "The two interpreter callable types with native receiver metadata."
+    type NativeDescriptor = (
+        _GetSetDescriptorType
+        | _MemberDescriptorType
+        | _ClassMethodDescriptorType
+        | _MethodDescriptorType
+        | _WrapperDescriptorType
+    )
+    "Exact interpreter descriptor identities accepted by native observation."
+    type NativeOperand = _cli_p.AttributeProbe | type | _UnionType | None
+    "A passively observed value, including native class identities and nulls."
+    type NativeType = type | type[_UnionType]
+    "Exact native type owners, including the interpreter's union type."
+    type NativeClassDeclarations = t.MappingKV[
+        str, t.VariadicTuple[t.Pair[int, frozenset[str]]]
+    ]
+    "Immutable compiler facts: class qualified names, source lines and stores."
+    type NativeCompilationFacts = t.DictKV[
+        t.Triple[bytes, str, int], NativeClassDeclarations
+    ]
+    "Invocation-local class facts keyed by exact source bytes and compiler inputs."
+    type NativeInstructionFacts = t.DictKV[
+        int, t.Pair[NativeCode, t.VariadicTuple[_Instruction]]
+    ]
+    "Immutable instructions indexed by strong native code identity."
+    type NativeInvocationFacts = t.Pair[NativeCompilationFacts, NativeInstructionFacts]
+    "The two immutable fact caches scoped to one native observation invocation."
 
     type ModelFieldSpec = m.FieldInfo
     "Field metadata a model-field factory returns, from the m facade."

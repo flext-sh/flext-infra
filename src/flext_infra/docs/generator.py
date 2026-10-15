@@ -10,9 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, t, u
-from flext_infra._utilities._docs_generate_sources import _DocsTopologyOptions
-from flext_infra.codegen import FlextInfraMisePublication
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.docs import FlextInfraDocGeneratorBundleMixin
@@ -24,11 +21,6 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 type _DocsScopePlan = t.Pair[m.Infra.DocScope, t.VariadicTuple[m.Infra.CodegenFilePlan]]
-type _DocsAdmission = t.Triple[
-    m.Infra.CodegenPhaseAnalysis,
-    m.Infra.CodegenPhaseOutcome,
-    t.VariadicTuple[m.Infra.CodegenFilePlan],
-]
 
 
 class FlextInfraDocGenerator(
@@ -71,10 +63,18 @@ class FlextInfraDocGenerator(
 
         """
         reports: list[m.Infra.DocsPhaseReport] = []
-        for prepared in self._prepare_batches(request):
+        receipts: list[m.Infra.CodegenPhaseOutcome] = []
+        for prepared in self._prepare_batches(
+            request,
+            entrypoint=self.generate,
+            collaborators=(self.prepare_batches, self.publish_batch),
+            publication_receipts=receipts,
+        ):
             if prepared.failure:
                 return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(prepared)
-            published = self.publish_batch(prepared.value)
+            published = self.publish_batch(
+                prepared.value, publication_receipts=receipts
+            )
             if published.failure:
                 return published
             reports.extend(published.value)
@@ -107,6 +107,7 @@ class FlextInfraDocGenerator(
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=bundle.repository_root),
             producer=bundle.producer,
+            prior_publications=tuple(publication_receipts or ()),
         )
         return transaction.run_files_locked(
             roots,
@@ -119,48 +120,6 @@ class FlextInfraDocGenerator(
             ),
         )
 
-    @classmethod
-    def _admitted_docs_batch(
-        cls,
-        bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[_DocsAdmission]:
-        """Verify topology, plan the files, and admit one docs batch.
-
-        Returns:
-            The resulting ``(analysis, admission, plans)`` triple.
-
-        """
-        result_type = r[_DocsAdmission]
-        topology = u.Infra.docs_verify_source_topology(
-            _DocsTopologyOptions(
-                repository_root=bundle.repository_root,
-                source_states=bundle.source_states,
-                source_roots=bundle.source_roots,
-                source_scope=bundle.source_scope,
-                source_directories=bundle.source_directories,
-            ),
-        )
-        if topology.failure:
-            return result_type.from_failure(topology)
-        plans = cls.plan_files(bundle)
-        if plans.failure:
-            return result_type.from_failure(plans)
-        analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.DOCS,
-            files=plans.value,
-            inputs=bundle.source_states,
-        )
-        bound_analysis = FlextInfraCodegenPreconditions.bind_producer_analysis(
-            analysis, bundle.producer
-        )
-        if bound_analysis.failure:
-            return result_type.from_failure(bound_analysis)
-        analysis = bound_analysis.value
-        admitted = FlextInfraMisePublication.admit_batch(analysis)
-        if admitted.failure:
-            return result_type.from_failure(admitted)
-        return result_type.ok((analysis, admitted.value, plans.value))
-
     def _published_scope(
         self,
         transaction: FlextInfraCodegenTransaction,
@@ -171,148 +130,54 @@ class FlextInfraDocGenerator(
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
         | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
-        """Admit, begin, stage, and commit one scope inside the shared locks.
+        """Publish one planned docs scope through the shared file lifecycle.
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
 
         """
         report_type = r[t.SequenceOf[m.Infra.DocsPhaseReport]]
-        prepared = self._admitted_docs_batch(bundle)
-        if prepared.failure:
-            return report_type.from_failure(prepared)
-        started = transaction.begin_files_locked(
-            scope_root,
-            roots,
-            prepared.value[0].inputs,
-        )
-        if started.failure:
-            return report_type.from_failure(started)
-
-        def staged_operation(
-            session: m.Infra.CodegenTransactionSession,
-        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
-            """Record, stage, commit, and report the admitted batch.
-
-            Returns:
-                The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
-
-            """
-            bound = self._recorded_publication_session(
-                transaction,
-                bundle,
-                session,
-                prepared.value[0],
-            )
-            if bound.failure:
-                return report_type.from_failure(bound)
-            staged = self._staged_session(transaction, bundle, roots, bound.value)
-            if staged.failure:
-                return report_type.from_failure(staged)
-            return self._committed_reports(
-                transaction,
-                bundle,
-                prepared.value,
-                staged.value,
-                publication_receipts=publication_receipts,
-            )
-
-        return transaction.publish_prepared_locked(started.value, staged_operation)
-
-    def _staged_session(
-        self,
-        transaction: FlextInfraCodegenTransaction,
-        bundle: m.Infra.DocsGenerationBundle,
-        roots: t.MappingKV[str, Path],
-        session: m.Infra.CodegenTransactionSession,
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Append the required directories outside the leased destinations.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
-
-        """
-        result_type = r[m.Infra.CodegenTransactionSession]
+        topology = u.Infra.docs_verify_source_topology(bundle)
+        if topology.failure:
+            return report_type.from_failure(topology)
+        plans = self.plan_files(bundle)
+        if plans.failure:
+            return report_type.from_failure(plans)
         directories = self.required_directories(bundle)
         if directories.failure:
-            return result_type.from_failure(directories)
-        staged = transaction.append_directories_locked(
-            session,
-            c.Infra.CodegenStagedFilePhase.DOCS,
-            tuple(path for path in directories.value if path not in roots.values()),
-        )
-        if staged.failure:
-            return result_type.from_failure(staged)
-        return result_type.ok(staged.value)
-
-    def _committed_reports(
-        self,
-        transaction: FlextInfraCodegenTransaction,
-        bundle: m.Infra.DocsGenerationBundle,
-        preparation: _DocsAdmission,
-        staged: m.Infra.CodegenTransactionSession,
-        *,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
-        | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
-        """Append the admitted phase, commit it, and report written files.
-
-        Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
-
-        """
-        analysis, admitted, plans = preparation
-        written = transaction.append_phase_locked(
-            staged,
-            analysis.phase,
-            analysis.files,
-            batch_admission=admitted,
-        )
-        if written.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(written)
-        committed = transaction.commit_locked(
-            written.value,
+            return report_type.from_failure(directories)
+        missing: list[Path] = []
+        for path in directories.value:
+            if path in roots.values():
+                continue
+            chain = u.Cli.atomic_plan_directory_chain(path)
+            if chain.failure:
+                return report_type.from_failure(chain)
+            if chain.value.directories:
+                missing.append(path)
+        written = transaction.publish_file_phase_locked(
+            scope_root,
+            roots,
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.DOCS,
+                files=plans.value,
+                inputs=bundle.source_states,
+            ),
+            m.Infra.CodegenPhasePublicationPolicy(
+                directories=tuple(missing),
+                source_topology=bundle.source_directories,
+                scope_roots=bundle.source_roots,
+                source_scope=bundle.source_scope,
+            ),
             publication_receipts=publication_receipts,
         )
-        if committed.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(committed)
+        if written.failure:
+            return report_type.from_failure(written)
         return self._generation_reports(
             bundle,
-            plans,
-            frozenset(committed.value),
+            plans.value,
+            frozenset(written.value),
         )
-
-    @staticmethod
-    def _recorded_publication_session(
-        transaction: FlextInfraCodegenTransaction,
-        bundle: m.Infra.DocsGenerationBundle,
-        session: m.Infra.CodegenTransactionSession,
-        analysis: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Bind planned destinations and record the docs publication phase.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
-
-        """
-        result_type = r[m.Infra.CodegenTransactionSession]
-        bound = transaction.bind_publication_proof(
-            session,
-            analysis.files,
-            source_topology=bundle.source_directories,
-            scope_roots=bundle.source_roots,
-            source_scope=bundle.source_scope,
-            phase=c.Infra.CodegenStagedFilePhase.DOCS,
-        )
-        if bound.failure:
-            return result_type.from_failure(bound)
-        incomplete = transaction.record_publication(
-            bound.value,
-            phase=c.Infra.CodegenStagedFilePhase.DOCS,
-        )
-        if incomplete.failure:
-            return result_type.from_failure(incomplete)
-        return result_type.ok(incomplete.value)
 
     def _generation_reports(
         self,
@@ -399,26 +264,52 @@ class FlextInfraDocGenerator(
         # (DECLARED conform scope); use the bundle's own authenticated root.
         return u.Infra.docs_required_directories(bundle)
 
-    def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
+    def prepare_bundle(
+        self,
+        *,
+        producer: m.Infra.CodegenPhaseAnalysis | None = None,
+    ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Freeze the configured render and all of its authenticated inputs.
+
+        Args:
+            producer: Invocation's original authenticated docs producer.
 
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
-        return self._prepare_request(self._configured_request())
+        return self._prepare_request(
+            self._configured_request(),
+            entrypoint=self.prepare_bundle,
+            collaborators=(self.publish_batch,),
+            producer=producer,
+        )
 
     def prepare_batches(
         self,
+        *,
+        producer: m.Infra.CodegenPhaseAnalysis | None = None,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+        | None = None,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-        """Yield the next captured scope only after the caller settles its batch.
+        """Pin the producer now and capture each scope after the previous settles.
+
+        Args:
+            producer: Invocation's original authenticated docs producer.
+            publication_receipts: Actual preceding outcomes shared with publication.
 
         Returns:
             An iterator over ``p.Result[m.Infra.DocsGenerationBundle]`` for
             each prepared batch.
 
         """
-        return self._prepare_batches(self._configured_request())
+        return self._prepare_batches(
+            self._configured_request(),
+            entrypoint=self.prepare_batches,
+            collaborators=(self.publish_batch,),
+            producer=producer,
+            publication_receipts=publication_receipts,
+        )
 
     @override
     def execute(self) -> p.Result[bool]:

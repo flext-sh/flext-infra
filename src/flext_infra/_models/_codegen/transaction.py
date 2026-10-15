@@ -6,27 +6,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
+from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
 from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
 class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
-
-    class CodegenPhasePublicationPolicy(m.ImmutableValueModel, m.ArbitraryTypesModel):
-        """Caller-owned directories and native admission for one publication."""
-
-        directories: t.VariadicTuple[Path] = m.Field(
-            description="Exact generated directories requested by the caller",
-        )
 
     class StagePackagePlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Pinned package/dependency inputs and the declared public facade contract."""
@@ -413,3 +408,45 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "codegen session layout and journal transaction ids differ"
                 raise ValueError(msg)
             return self
+
+    class CodegenPhasePublicationPolicy(m.ImmutableValueModel, m.ArbitraryTypesModel):
+        """Caller-owned directories and native admission for one publication."""
+
+        directories: t.VariadicTuple[Path] = m.Field(
+            description="Exact generated directories requested by the caller",
+        )
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(), description="Authenticated source directory ancestry"
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(), description="Source membership roots for this publication"
+        )
+        source_scope: Path | None = m.Field(
+            default=None,
+            description="Selected source scope within the membership roots",
+        )
+        admission: FlextInfraModelsCodegenPipelineModels.CodegenPhaseOutcome | None = (
+            m.Field(
+                default=None,
+                exclude=True,
+                description="Exact prior batch admission when the caller captured it",
+            )
+        )
+        staged_validator: (
+            Callable[
+                [
+                    FlextInfraModelsCodegenTransactionModels.CodegenTransactionSession,
+                    t.VariadicTuple[
+                        FlextInfraModelsCodegenJournalModels.CodegenStagedFile
+                    ],
+                ],
+                p.Result[
+                    FlextInfraModelsCodegenTransactionModels.CodegenTransactionSession
+                ],
+            ]
+            | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Real staged consumer required before publishing this batch",
+        )

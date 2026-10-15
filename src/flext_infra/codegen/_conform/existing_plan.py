@@ -210,13 +210,26 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         artifacts = u.Infra.snapshot_committed_project_managed_artifacts(target.root)
         if artifacts.failure:
             return result_type.from_failure(artifacts)
+        collected = cls._member_declaration_states(target.root, workspace)
+        if collected.failure:
+            return result_type.from_failure(collected)
+        sources = FlextInfraCodegenPreconditions.unique_states((
+            *artifacts.value.sources,
+            *collected.value[0],
+        ))
+        if sources.failure:
+            return result_type.from_failure(sources)
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=target.root,
             skip_check=True,
             managed_artifacts=artifacts.value.resolution,
         )
         conformed = cls.conformed_pyproject_source(
-            source, target=target, workspace=workspace, codegen=codegen
+            source,
+            target=target,
+            workspace=workspace,
+            codegen=codegen,
+            member_declarations=collected.value[1],
         )
         if conformed.failure:
             return result_type.from_failure(conformed)
@@ -245,7 +258,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             before=before,
             desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
             desired_mode=managed[0].mode,
-            source_states=artifacts.value.sources,
+            source_states=sources.value,
         )
         return result_type.ok((planned,))
 
@@ -920,12 +933,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         failure_path = facade_path if facade_path is not None else package_dir
         try:
             planned = self._utility_facade_plan(root, package_dir, family)
-        except (OSError, ValueError):
-            self._record_file_failure(failure_path, traceback.format_exc())
+        except (OSError, ValueError) as exception:
+            self._record_file_failure(
+                failure_path, traceback.format_exc(), exception=exception
+            )
             return ()
         if planned.failure:
             self._record_file_failure(
-                failure_path, planned.error or "facade planning failed"
+                failure_path,
+                planned.error or "facade planning failed",
+                exception=planned.exception,
             )
             return ()
         return planned.value
