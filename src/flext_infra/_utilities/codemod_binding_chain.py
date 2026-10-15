@@ -94,7 +94,7 @@ class _ChainDeclarationSpec(Protocol):
     def sources(self) -> t.MappingKV[Path, str]: ...
 
 
-class FlextInfraFlextUtilitiesCodemodBindingChain:
+class FlextInfraUtilitiesCodemodBindingChain:
     """Canonical namespace owner."""
 
     class FlextInfraUtilitiesCodemodBindingChain(FlextInfraUtilitiesCodemodRules):
@@ -1144,4 +1144,4 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             )
 
 
-__all__: list[str] = ["FlextInfraFlextUtilitiesCodemodBindingChain"]
+__all__: list[str] = ["FlextInfraUtilitiesCodemodBindingChain"]

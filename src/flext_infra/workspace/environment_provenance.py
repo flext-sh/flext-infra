@@ -21,10 +21,7 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.workspace import (
-    FlextInfraFlextBindingService,
-    FlextInfraWorkspaceDetector,
-)
+from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
@@ -503,7 +500,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         context = FlextInfraWorkspaceDetector.resolution_context(root)
         if context.failure:
             return r[m.Infra.PythonEnvironmentObservation].from_failure(context)
-        return FlextInfraFlextBindingService.consumer_package_environment(
+        return FlextInfraBindingService.consumer_package_environment(
             consumer_root=root,
             python=u.Infra.runtime_python(
                 root,

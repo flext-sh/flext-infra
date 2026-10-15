@@ -30,9 +30,9 @@ from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraFlextUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
@@ -60,7 +60,7 @@ _COMPOSE_MODULE_SEGMENT_COUNT = 2
 
 
 class FlextInfraUtilitiesCodemodProject(
-    FlextInfraFlextUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+    FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
 ):
     """Evaluate rule context over project facts: packages, layers, graphs."""
 

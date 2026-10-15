@@ -12,13 +12,13 @@ from __future__ import annotations
 from flext_cli import FlextCliUtilities
 
 from flext_infra._utilities import (
-    FlextInfraFlextUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegen,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodegenPathCutover,
+    FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesCompatibilityAliasValidation,
@@ -156,7 +156,7 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesCodegenFilePlan,
         FlextInfraUtilitiesGitignore,
         FlextInfraUtilitiesCodegenPathCutover,
-        FlextInfraFlextUtilitiesCodemodBindingChain,
+        FlextInfraUtilitiesCodemodBindingChain,
         FlextInfraUtilitiesCodemodProject,
         FlextInfraUtilitiesCodemodRules,
         FlextInfraUtilitiesCompatibilityAliasValidation,
