@@ -6,23 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import itertools
-import itertools
 import marshal
 import sys
 from base64 import b64encode
 from collections import deque
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from collections.abc import Callable
 from contextvars import ContextVar
-from dis import Instruction, get_instructions
 from functools import partial
 from gc import get_referents
 from importlib.machinery import ExtensionFileLoader, FrozenImporter, ModuleSpec
-from inspect import CO_NEWLOCALS, CO_OPTIMIZED, ModuleSpec
-from inspect import CO_NEWLOCALS, CO_OPTIMIZED
+from inspect import ModuleSpec
 from json import dumps
-from math import isnan
 from math import isnan
 from pathlib import Path
 from types import (
@@ -37,16 +31,12 @@ from types import (
     MethodDescriptorType,
     MethodType,
     MethodWrapperType,
-    MethodWrapperType,
     ModuleType,
     UnionType,
     WrapperDescriptorType,
 )
-from typing import TypeGuard
 from typing import ClassVar, Literal, TypeGuard, overload
 
-from flext_infra import c, codegen, m, p, r, t, u
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 from flext_infra import c, codegen, m, p, r, t, u
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 
@@ -114,14 +104,15 @@ class FlextInfraWorkspaceNativeReference:
         native_descriptors = (
             descriptor
             for descriptor in cls._class_namespace(value).values()
-            if type(descriptor) in {
-                MethodDescriptorType, ClassMethodDescriptorType,
+            if type(descriptor)
+            in {
+                MethodDescriptorType,
+                ClassMethodDescriptorType,
                 WrapperDescriptorType,
             }
         )
         if not any(
-            descriptor.__objclass__ is value
-            for descriptor in native_descriptors
+            descriptor.__objclass__ is value for descriptor in native_descriptors
         ):
             return r[t.Triple[str, str, str]].fail(
                 f"native class has no interpreter-owned callable descriptor: {qualified}",
@@ -468,7 +459,9 @@ class FlextInfraWorkspaceNativeReference:
                         return result.from_failure(captured)
                     if qualified not in captured.value.scopes:
                         alias = cls._native_class_alias(
-                            value, qualified, captured.value,
+                            value,
+                            qualified,
+                            captured.value,
                         )
                         if alias.failure:
                             return result.from_failure(alias)
@@ -1425,7 +1418,7 @@ class FlextInfraWorkspaceNativeReference:
                         )
                     )
                     and descriptor.__objclass__ is CodeType
-            ]
+                ],
             ]
         if native in {
             MemberDescriptorType,
@@ -2199,6 +2192,7 @@ class FlextInfraWorkspaceNativeReference:
                     MethodDescriptorType,
                     WrapperDescriptorType,
                 )
+            ):
                 if type(actual_supplier) is not str:
                     return r[m.Infra.NativeImportObservation].fail(
                         f"native descriptor owner has no source supplier: {binding}",
