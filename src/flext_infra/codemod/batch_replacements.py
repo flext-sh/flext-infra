@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,7 +15,7 @@ import libcst as cst
 from flext_infra import c, m, r, t, u
 from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
 from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
+from flext_infra.gates import FlextInfraRuffFormatGate
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
@@ -66,7 +66,14 @@ class FlextInfraModReplacements:
         return r[bool].ok(value=True)
 
     @classmethod
-    def publish(cls, root: Path, report: m.Infra.ModScanReport) -> p.Result[bool]:
+    def publish(
+        cls,
+        root: Path,
+        report: m.Infra.ModScanReport,
+        *,
+        preflight: Callable[[], p.Result[bool]] | None = None,
+        validator: Callable[[], p.Result[bool]] | None = None,
+    ) -> p.Result[bool]:
         """Validate byte coordinates and publish complete CAS-owned file plans.
 
         Returns:
@@ -88,9 +95,23 @@ class FlextInfraModReplacements:
             if plan.failure:
                 return r[bool].from_failure(plan)
             plans.append(plan.value)
+        if plans and report.scan_inputs is not None:
+            inputs = report.scan_inputs
+            first = plans[0]
+            plans[0] = first.model_copy(
+                update={
+                    "source_states": (
+                        *first.source_states,
+                        *inputs.source_states,
+                        *inputs.catalog_states,
+                    ),
+                },
+            )
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             plans,
             repository_root=root,
+            preflight=preflight,
+            validator=validator,
         )
         if published.failure:
             return r[bool].from_failure(published)

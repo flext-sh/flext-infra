@@ -896,3 +896,6 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         finally:
             rope_project.close()
         return target_map
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisImportState"]

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
 from flext_infra.codegen import FlextInfraCodegenFixerPassesMixin
-from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+from flext_infra.refactor import FlextInfraNamespaceEnforcer
 
 if TYPE_CHECKING:
     from pathlib import Path

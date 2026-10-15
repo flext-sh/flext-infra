@@ -23,7 +23,7 @@ from flext_infra.refactor import (
     FlextInfraRefactorCensusRemovalMixin,
     FlextInfraRefactorCensusRenderMixin,
 )
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraRefactorCensus(
@@ -163,6 +163,7 @@ class FlextInfraRefactorCensus(
                     f"bindings={sum(len(edit.changes) for edit in constant_edits)} "
                     f"applied={self.apply_changes and not self.effective_dry_run}",
                 )
+                rope.refresh()
             impact_report = self._collect_report(rope)
             report = impact_report
             if (
@@ -170,6 +171,7 @@ class FlextInfraRefactorCensus(
                 and not self.effective_dry_run
                 and self._apply_removal_candidates(rope, impact_report)
             ):
+                rope.refresh()
                 report = self._collect_report(rope)
         finalized = report.model_copy(
             update={

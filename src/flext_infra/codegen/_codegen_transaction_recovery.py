@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenFileLeases,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
@@ -19,7 +20,6 @@ from flext_infra.codegen import (
     FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -671,3 +671,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         if recovered.success:
             self._journal_receipts.pop(layout.journal_path, None)
         return recovered
+
+
+__all__: list[str] = ["FlextInfraCodegenTransactionRecovery"]

@@ -171,3 +171,6 @@ class FlextInfraModelsCodegenPipelineModels:
             t.SequenceOf[FlextInfraModelsCodegenFixModels.AutoFixResult],
             m.Field(description="Auto-fix stage results"),
         ] = ()
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenPipelineModels"]

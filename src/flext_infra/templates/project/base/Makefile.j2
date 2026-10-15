@@ -165,12 +165,6 @@ SETUP_BOOTSTRAP_ONLY := Y
 export SETUP_BOOTSTRAP_ONLY
 endif
 endif
-ifeq ($(filter command line override,$(origin GEN_INIT_ONLY)),)
-ifneq ($(filter initialize,$(MAKECMDGOALS)),)
-GEN_INIT_ONLY := Y
-export GEN_INIT_ONLY
-endif
-endif
 
 # One GitHub credential for every verb (operator 2026-10-03): the first
 # non-empty of the caller's GITHUB_TOKEN, GH_TOKEN, MISE_GITHUB_TOKEN, then the
@@ -296,13 +290,9 @@ export FLEXT_PYTEST_TARGET_RAW := {{ make.testmon_cache.target_directory }}
 # or member, uses the workspace runtime. A member resolves the Git superproject
 # that checks it out as a submodule; a checkout without one (a standalone clone,
 # a linked worktree) owns its runtime.
-ifneq ($(GEN_INIT_ONLY),)
-override REPOSITORY_ROOT := $(MAKEFILE_ROOT)
-else
 override REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && if root=$$(git rev-parse --show-superproject-working-tree); then if [ -n "$$root" ]; then cd "$$root" && pwd -P; else pwd -P; fi; else status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; pwd -P; fi)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
-endif
 endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
@@ -564,10 +554,8 @@ ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
 override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable
 endif
 
-ifeq ($(GEN_INIT_ONLY),)
 ifneq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
 {{ makefile_custom_include }}
-endif
 endif
 ifeq ($(APPROVAL_CONTEXT),{{ make.ci.value }})
 override {{ make.ci.variable }} := {{ make.ci.value }}
@@ -1172,8 +1160,8 @@ _builtin_release_publish: _builtin_require_environment
 # one fixed point. Only `upg` resolves and rewrites the locks; gen installs
 # nothing and never runs another writer before or after conform's journal.
 _builtin_gen_init:
-	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)"
-	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check-only
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --what lazy-init --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --what lazy-init --mode check
 
 _builtin_gen_all:
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope all --mode apply

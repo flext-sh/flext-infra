@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformExistingPlan
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_infra.deps import FlextInfraPyprojectModernizer
 
 
 class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):

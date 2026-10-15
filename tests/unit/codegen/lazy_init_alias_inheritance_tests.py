@@ -24,6 +24,49 @@ class TestsFlextInfraLazyInitAliasInheritance:
     """
 
     @staticmethod
+    @pytest.mark.parametrize("renamed_checkout", [False, True])
+    def test_declared_alias_identity_survives_checkout_rename(
+        tmp_path: Path,
+        *,
+        renamed_checkout: bool,
+    ) -> None:
+        """Physical checkout names never alter the declared namespace or provider."""
+        repository, child = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-layout-inheritance",
+            package_name="flext_layout_child",
+        )
+        namespace = child.name
+        class_name = f"{u.derive_class_stem(namespace.replace('_', '-'))}Constants"
+        child.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from flext_core import c\n"
+            f"class {class_name}(c):\n    VALUE = 'local-value'\n"
+            f"c = {class_name}\n__all__ = [{class_name!r}, 'c']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        expected = child.joinpath(c.Infra.INIT_PY).read_bytes()
+        if renamed_checkout:
+            relative = child.relative_to(repository)
+            repository = repository.rename(tmp_path / "manual-checkout")
+            child = repository / relative
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        tm.that(child.joinpath(c.Infra.INIT_PY).read_bytes(), eq=expected)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {namespace} import c, r\n"
+                "from flext_core import c as upstream, r as result\n"
+                "print(issubclass(c, upstream))\n"
+                "print(c.VALUE)\n"
+                "print(r is result)\n"
+                "print(r.ok('published-value').value)\n",
+                python_paths=(str(repository / c.Infra.DEFAULT_SRC_DIR), *sys.path),
+                cwd=repository,
+            ),
+            eq=["True", "local-value", "True", "published-value"],
+        )
+
+    @staticmethod
     def test_generated_parent_retains_operational_result_alias_in_child(
         tmp_path: Path,
     ) -> None:

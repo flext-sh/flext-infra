@@ -9,10 +9,15 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverBindings,
 )
 
 
@@ -98,6 +103,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         sources: t.MappingKV[Path, str],
         *,
         captured: m.Infra.CodemodBindingSnapshot | None = None,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Infra.RopeProject:
         """Capture a complete identity graph with proposed sources authoritative.
 
@@ -129,6 +135,33 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             }
         )
         root = Path(project.root.real_path).resolve()
+        declared: dict[Path, str] = {}
+        for plan in declared_files:
+            path = plan.path.resolve()
+            if not path.is_relative_to(root) or plan.desired_content is None:
+                msg = f"Rope virtual destination is not a declared source: {path}"
+                raise ValueError(msg)
+            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
+                directory_state = u.Cli.atomic_plan_directory_chain(
+                    plan.before.target,
+                ).unwrap()
+                if directory_state != plan.before:
+                    msg = f"Rope virtual destination parent changed: {path}"
+                    raise ValueError(msg)
+            else:
+                file_state = u.Cli.atomic_read_binary_file_state(
+                    path,
+                    required=False,
+                ).unwrap()
+                if file_state != plan.before or file_state.content is not None:
+                    msg = f"Rope virtual destination changed or already exists: {path}"
+                    raise ValueError(msg)
+            proposed = plan.desired_content.decode("utf-8")
+            if path in declared and declared[path] != proposed:
+                msg = f"Rope virtual destination declarations disagree: {path}"
+                raise ValueError(msg)
+            declared[path] = proposed
+            inventory[path] = proposed
         for path, source in sources.items():
             resolved = path.resolve()
             if resolved not in inventory:
@@ -148,6 +181,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
                     msg = f"Rope proposed source is outside its input inventory: {path}"
                     raise ValueError(msg)
                 inventory[resolved] = resource.read()
+            if resolved in declared and declared[resolved] != source:
+                msg = f"Rope virtual destination source disagrees with its plan: {path}"
+                raise ValueError(msg)
             inventory[resolved] = source
         owner = cls.runtime_type(
             "flext_infra._utilities._rope.project",
@@ -162,6 +198,10 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             inventory,
             [folder.path for folder in project.get_source_folders()],
             ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
+            python_path_folders=[
+                folder.real_path for folder in project.get_python_path_folders()
+                if folder.is_folder()
+            ],
         )
         if not isinstance(snapshot, p.Infra.RopeProject):
             msg = "Rope snapshot does not satisfy its project contract"
@@ -300,18 +340,194 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
 
         """
         primary = expression
+        attributes: list[str] = []
         while isinstance(primary, ast.Attribute):
+            attributes.append(primary.attr)
             primary = primary.value
         if not isinstance(primary, ast.Name):
             return None
         result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
             scope,
-            expression,
+            primary,
         )
         if result is not None and not isinstance(result, p.Infra.RopePyName):
             msg = "Rope identifier resolution returned an invalid name"
             raise TypeError(msg)
+        for attribute in reversed(attributes):
+            result = cls._class_assignment_alias(result)
+            if result is None:
+                return None
+            result = result.get_object().get_attributes().get(attribute)
+        return cls._class_assignment_alias(result)
+
+    @classmethod
+    def _class_assignment_alias(
+        cls,
+        binding: p.Infra.RopePyName | None,
+        *,
+        visited: frozenset[t.Pair[str, int]] = frozenset(),
+    ) -> p.Infra.RopePyName | None:
+        """Resolve a class alias through its native pre-assignment name view."""
+        if binding is None or not isinstance(binding, p.Infra.RopeAssignedName):
+            return binding
+        holder, line = binding.get_definition_location()
+        if holder is None or line is None:
+            return binding
+        source = holder.source_code
+        tree = holder.get_ast()
+        if not isinstance(tree, ast.AST):
+            msg = "native alias holder has no Python AST"
+            raise TypeError(msg)
+        if not binding.assignments:
+            return binding
+        rhs = binding.assignments[0].ast_node
+        rhs_offset = cls.source_offset(source, rhs)
+        scope = cls.scope_at(holder, rhs_offset)
+        if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
+            return binding
+        candidates = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Assign | ast.AnnAssign)
+            and node.value is not None
+            and cls.source_offset(source, node.value) == rhs_offset
+        ]
+        if not candidates:
+            # Native loop/context/pattern bindings are outside class alias policy.
+            return binding
+        if len(candidates) != 1:
+            msg = f"native class alias RHS has no unique statement: {holder.get_name()}:{rhs_offset}"
+            raise ValueError(msg)
+        declaration = candidates[0]
+        if declaration is None or not isinstance(
+            declaration.value, ast.Name | ast.Attribute
+        ):
+            return binding
+        offset = cls.source_offset(source, declaration)
+        scope = cls.scope_at(holder, offset)
+        if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
+            return binding
+        if len(binding.assignments) != 1:
+            return None
+        key = (holder.get_name(), offset)
+        if key in visited:
+            msg = f"cyclic class assignment identity: {key}"
+            raise ValueError(msg)
+        primary = declaration.value
+        while isinstance(primary, ast.Attribute):
+            primary = primary.value
+        selected: dict[str, p.Infra.RopePyName] = {}
+        prior = scope.get_defined_names().get(primary.id)
+        if prior is not None:
+            declarations = cls._scope_binding_nodes(tree, scope, primary.id)
+            if len(declarations) != 1:
+                return None
+            node, unconditional = declarations[0]
+            if not unconditional:
+                return None
+            annotation_only = any(
+                isinstance(candidate, ast.AnnAssign)
+                and candidate.value is None
+                and candidate.target is node
+                for candidate in ast.walk(tree)
+            )
+            if not annotation_only and cls.source_offset(source, node) < offset:
+                if isinstance(prior, p.Infra.RopeAssignedName) and len(prior.assignments) != 1:
+                    return None
+                selected[primary.id] = prior
+        lookup_parent = scope
+        if prior is not None and primary.id not in selected:
+            module_scope = holder.get_scope()
+            if module_scope is None:
+                msg = "class-local unbound lookup has no native module scope"
+                raise TypeError(msg)
+            lookup_parent = module_scope
+        if prior is None:
+            enclosing = scope.parent
+            execution_offset = offset
+            while enclosing is not None:
+                if enclosing.get_kind() == c.Infra.RopeScopeKind.FUNCTION:
+                    # FunctionScope owns lexical locals through its visitor;
+                    # PyFunction structural attributes contain no local names.
+                    if primary.id in enclosing.get_names():
+                        declarations = cls._scope_binding_nodes(tree, enclosing, primary.id)
+                        if len(declarations) != 1:
+                            return None
+                        node, unconditional = declarations[0]
+                        if not unconditional or cls.source_offset(source, node) >= execution_offset:
+                            return None
+                        break
+                    created = next(
+                        (
+                            node for node in ast.walk(tree)
+                            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                            and node.lineno == enclosing.get_start()
+                        ),
+                        None,
+                    )
+                    if created is None:
+                        return None
+                    # An outer binding must be available when this inner
+                    # function is created; later call timing is not inferred.
+                    execution_offset = cls.source_offset(source, created)
+                enclosing = enclosing.parent
+        temporary = cls.runtime_callable("rope.base.pyscopes", "TemporaryScope")(
+            scope.pycore, lookup_parent, selected,
+        )
+        if not isinstance(temporary, p.Infra.RopeScope):
+            msg = "native TemporaryScope does not satisfy the Rope scope contract"
+            raise TypeError(msg)
+        result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
+            temporary, primary,
+        )
+        if result is not None and not isinstance(result, p.Infra.RopePyName):
+            msg = "class RHS lookup returned an invalid native name"
+            raise TypeError(msg)
+        result = cls._class_assignment_alias(result, visited=visited | {key})
+        attributes: list[str] = []
+        value = declaration.value
+        while isinstance(value, ast.Attribute):
+            attributes.append(value.attr)
+            value = value.value
+        for attribute in reversed(attributes):
+            if result is None:
+                return None
+            result = result.get_object().get_attributes().get(attribute)
+            result = cls._class_assignment_alias(result, visited=visited | {key})
         return result
+
+    @staticmethod
+    def _scope_binding_nodes(
+        tree: ast.AST,
+        scope: p.Infra.RopeScope,
+        name: str,
+    ) -> list[t.Pair[ast.AST, bool]]:
+        """Elect structural lexical writes and their actual execution positions."""
+        parents = {
+            child: parent
+            for parent in ast.walk(tree)
+            for child in ast.iter_child_nodes(parent)
+        }
+        frames = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+        selected: list[t.Pair[ast.AST, bool]] = []
+        for node in ast.walk(tree):
+            if name not in FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(node):
+                continue
+            parent = parents.get(node)
+            unconditional = True
+            while parent is not None and not isinstance(parent, frames):
+                if isinstance(
+                    parent,
+                    ast.If | ast.Try | ast.For | ast.AsyncFor | ast.While
+                    | ast.With | ast.AsyncWith | ast.Match | ast.ExceptHandler,
+                ):
+                    unconditional = False
+                parent = parents.get(parent)
+            if parent is not None and not isinstance(parent, ast.Module) and (
+                parent.lineno == scope.get_start()
+            ):
+                selected.append((node, unconditional and not isinstance(node, ast.arg)))
+        return selected
 
     @classmethod
     def same_name(

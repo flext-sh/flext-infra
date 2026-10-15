@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):

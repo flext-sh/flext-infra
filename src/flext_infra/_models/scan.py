@@ -148,6 +148,29 @@ class FlextInfraModelsScan:
             m.Field(ge=0, strict=True, description="Exclusive end byte"),
         ]
 
+    class ModScanInputs(m.ArbitraryTypesModel):
+        """Authenticated sources and catalog inputs for one unchanged scan."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        root: Annotated[Path, m.Field(description="Absolute scanned workspace root")]
+        scope: Annotated[
+            t.StrSequence,
+            m.Field(min_length=1, description="Exact elected ast-grep target scope"),
+        ]
+        plan_digest: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Digest of the complete typed elected rule plan"),
+        ]
+        source_states: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(description="Every source captured before scanner execution"),
+        ]
+        catalog_states: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(min_length=1, description="Elected config, rule and utility inputs"),
+        ]
+
     class ModScanReport(m.ArbitraryTypesModel):
         """Verified structural findings and actionable rewrite targets."""
 
@@ -177,6 +200,12 @@ class FlextInfraModelsScan:
             t.VariadicTuple[FlextInfraModelsScan.ModScanFinding],
             m.Field(description="Every validated ast-grep finding in stable order"),
         ]
+        scan_inputs: Annotated[
+            FlextInfraModelsScan.ModScanInputs | None,
+            m.Field(
+                description="Scanner proof; absent analysis inventories cannot publish",
+            ),
+        ] = None
 
     class ModTextRule(m.ArbitraryTypesModel):
         """One declarative sed-by-list entry with its exact rewrite receipt."""

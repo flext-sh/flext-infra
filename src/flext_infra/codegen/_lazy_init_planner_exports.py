@@ -10,6 +10,7 @@ import operator
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
+from flext_cli import u
 from flext_infra import c, m
 
 if TYPE_CHECKING:
@@ -54,6 +55,10 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         """
         package_entry = self._package_entry(context.pkg_dir)
         module_entries = self._enumerated_module_entries(context, package_entry)
+        u.Cli.info(
+            f"lazy-init: export inventory package={context.current_pkg} "
+            f"modules={len(module_entries)}"
+        )
         index: t.MutableLazyAliasMap = {}
         for py_file, module_name in module_entries:
             if self._skipped_export_module(context, py_file):
@@ -181,6 +186,11 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             py_file,
             export_options=resolved_export_options,
         )
+        if not names:
+            u.Cli.info(f"lazy-init: empty module exports module={module_path}")
         exports = {name: (module_path, name) for name in names}
         self._module_exports_cache[cache_key] = exports
         return dict(exports)
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerExportsMixin"]

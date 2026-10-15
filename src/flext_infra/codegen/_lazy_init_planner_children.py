@@ -225,3 +225,6 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             len(relative_to_root) == 1
             and relative_to_root[0] in sys.stdlib_module_names
         )
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerChildrenMixin"]

@@ -15,6 +15,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
+    FlextInfraMiseArtifactsVerification,
 )
 
 if TYPE_CHECKING:
@@ -25,11 +26,39 @@ class FlextInfraSemanticPublication:
     """Publish semantic file plans through the recoverable codegen transaction."""
 
     @classmethod
+    def publish_semantic_artifact_plans(
+        cls,
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        *,
+        repository_root: Path,
+        validator: Callable[[], p.Result[bool]] | None = None,
+        projection_roots: t.VariadicTuple[Path] = (),
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Publish exact create/rewrite/remove effects through the shared journal."""
+        inputs = cls._semantic_input_snapshots(plans)
+        if inputs.failure:
+            return r[tuple[Path, ...]].from_failure(inputs)
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            files=tuple(plans),
+            inputs=inputs.value,
+        )
+        return cls._publish_joint_analysis(
+            analysis,
+            cls._semantic_phase_roots(plans, projection_roots),
+            repository_root=repository_root,
+            projection_roots=projection_roots,
+            preflight=None,
+            validator=validator,
+        )
+
+    @classmethod
     def publish_semantic_file_plans(
         cls,
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
         *,
         repository_root: Path,
+        preflight: Callable[[], p.Result[bool]] | None = None,
         validator: Callable[[], p.Result[bool]] | None = None,
         codegen: m.Infra.CodegenConfigSpec | None = None,
         projection_roots: t.VariadicTuple[Path] = (),
@@ -47,6 +76,12 @@ class FlextInfraSemanticPublication:
         if files.failure:
             return r[tuple[Path, ...]].from_failure(files)
         if not files.value and not projection_roots:
+            if preflight is not None:
+                checked = preflight()
+                if checked.failure:
+                    return r[tuple[Path, ...]].from_failure(checked)
+                if not checked.value:
+                    return r[tuple[Path, ...]].fail("semantic input preflight rejected")
             if validator is not None:
                 checked = validator()
                 if checked.failure:
@@ -68,6 +103,7 @@ class FlextInfraSemanticPublication:
             roots,
             repository_root=repository_root,
             projection_roots=projection_roots,
+            preflight=preflight,
             validator=validator,
         )
 
@@ -79,6 +115,7 @@ class FlextInfraSemanticPublication:
         *,
         repository_root: Path,
         projection_roots: t.VariadicTuple[Path],
+        preflight: Callable[[], p.Result[bool]] | None,
         validator: Callable[[], p.Result[bool]] | None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Keep semantic and generated phases in the same recoverable journal.
@@ -91,16 +128,26 @@ class FlextInfraSemanticPublication:
             FlextInfraCodegenMiseArtifacts(repository_root=repository_root),
         )
 
-        def validate_published() -> p.Result[bool]:
+        def validate_published(
+            session: m.Infra.CodegenTransactionSession,
+        ) -> p.Result[bool]:
             checked = cls._validate_phase_receipts(
                 (analysis, *projection_analyses),
-                transaction.validate_phase_analysis_locked,
+                lambda phase_analysis: transaction.validate_phase_analysis_locked(
+                    phase_analysis, session=session,
+                ),
             )
             if checked.failure or not checked.value or validator is None:
                 return checked
             return validator()
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
+            if preflight is not None:
+                checked = preflight()
+                if checked.failure:
+                    return r[tuple[Path, ...]].from_failure(checked)
+                if not checked.value:
+                    return r[tuple[Path, ...]].fail("semantic input preflight rejected")
             started = transaction.begin_files_locked(scope_root, roots, analysis.inputs)
             if started.failure:
                 return r[tuple[Path, ...]].from_failure(started)
@@ -108,6 +155,38 @@ class FlextInfraSemanticPublication:
             def apply(
                 session: m.Infra.CodegenTransactionSession,
             ) -> p.Result[t.VariadicTuple[Path]]:
+                witnesses = tuple(
+                    plan.before
+                    for plan in analysis.files
+                    if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+                )
+                for witness in witnesses:
+                    observed = u.Cli.atomic_plan_directory_chain(witness.target)
+                    if observed.failure:
+                        return r[tuple[Path, ...]].from_failure(observed)
+                    if observed.value != witness:
+                        return r[tuple[Path, ...]].fail(
+                            "semantic destination parent chain changed after planning: "
+                            f"{witness.target}",
+                        )
+                if witnesses:
+                    materialized = transaction.append_directories_locked(
+                        session,
+                        analysis.phase,
+                        tuple(dict.fromkeys(witness.target for witness in witnesses)),
+                    )
+                    if materialized.failure:
+                        return r[tuple[Path, ...]].from_failure(materialized)
+                    session = materialized.value
+                    for witness in witnesses:
+                        verified = (
+                            FlextInfraMiseArtifactsVerification.materialized_directory_chain(
+                                session.journal,
+                                witness,
+                            )
+                        )
+                        if verified.failure:
+                            return r[tuple[Path, ...]].from_failure(verified)
                 published = transaction.append_phase_locked(
                     session,
                     analysis.phase,
@@ -130,7 +209,10 @@ class FlextInfraSemanticPublication:
                     )
                     if published.failure:
                         return r[tuple[Path, ...]].from_failure(published)
-                return transaction.commit_locked(published.value, validate_published)
+                return transaction.commit_locked(
+                    published.value,
+                    lambda: validate_published(published.value),
+                )
 
             return transaction.publish_prepared_locked(started.value, apply)
 
@@ -156,7 +238,7 @@ class FlextInfraSemanticPublication:
     @classmethod
     def _semantic_input_snapshots(
         cls,
-        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+        plans: t.SequenceOf[m.Infra.SemanticFilePlan | m.Infra.CodegenFilePlan],
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Authenticate one snapshot per semantic input path.
 
@@ -166,7 +248,12 @@ class FlextInfraSemanticPublication:
         """
         snapshots: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for plan in plans:
-            for state in (plan.before, *plan.source_states):
+            before = (
+                (plan.before,)
+                if isinstance(plan.before, m.Cli.AtomicFileState)
+                else ()
+            )
+            for state in (*before, *plan.source_states):
                 if snapshots.setdefault(state.path, state) != state:
                     return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
                         f"semantic input snapshots disagree: {state.path}",
@@ -245,3 +332,4 @@ class FlextInfraSemanticPublication:
 
 
 __all__: list[str] = ["FlextInfraSemanticPublication"]
+

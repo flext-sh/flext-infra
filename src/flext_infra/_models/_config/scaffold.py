@@ -192,3 +192,6 @@ class FlextInfraConfigModelsScaffold:
             ],
             m.Field(min_length=1, description="Generated Git ignore sections"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsScaffold"]

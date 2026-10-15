@@ -102,3 +102,6 @@ class FlextInfraConfigModelsRender:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Excluded transitive dependency names"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsRender"]

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):

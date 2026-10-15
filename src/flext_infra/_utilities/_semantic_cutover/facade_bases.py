@@ -733,13 +733,21 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         obsolete: set[t.Pair[str, str]] = set()
         lineages: MutableMapping[
             t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]
-        ] = {}
+        ] = {
+            identity: lineage
+            for identity in identities
+            if (
+                lineage := cls._typing_behavior_lineage(
+                    modules, *identity, typing_directory
+                )
+            )
+        }
 
         def resolve(qualified: str) -> t.Triple[str, str, str] | None:
             imported = next(
                 (
                     identity
-                    for identity in identities
+                    for identity in lineages
                     if qualified.startswith(".".join(identity) + ".")
                     and qualified.removeprefix(".".join(identity) + ".").count(".") == 0
                 ),
@@ -748,10 +756,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if imported is None:
                 return None
             module, receiver = imported
-            if imported not in lineages:
-                lineages[imported] = cls._typing_behavior_lineage(
-                    modules, module, receiver, typing_directory
-                )
             lineage = lineages[imported]
             if cls._behavior_member_declared(
                 modules, lineage, qualified.rpartition(".")[2], ownership[0]
@@ -764,7 +768,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 obsolete.add(imported)
             return target
 
-        if not identities:
+        if not lineages:
             return source, ()
         indices = tuple(
             index
@@ -784,6 +788,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 context,
             )
         )
+        if not obsolete:
+            return source, ()
         cls._remove_obsolete_behavior_imports(context, tree, obsolete)
         updated = AddImportsVisitor(context).transform_module(updated)
         updated = RemoveImportsVisitor(context).transform_module(updated)

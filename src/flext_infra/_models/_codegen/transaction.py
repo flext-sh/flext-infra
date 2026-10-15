@@ -356,3 +356,6 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "codegen session layout and journal transaction ids differ"
                 raise ValueError(msg)
             return self
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenTransactionModels"]

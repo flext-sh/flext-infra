@@ -14,7 +14,7 @@ from typing import Literal
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from flext_infra.services import FlextInfraCodegenVscodeMixin
+from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
 
 

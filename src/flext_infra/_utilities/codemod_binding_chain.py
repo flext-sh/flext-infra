@@ -19,6 +19,8 @@ import ast
 from pathlib import Path
 from typing import ClassVar
 
+from flext_cli import cli
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
@@ -42,6 +44,208 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
         """Prove an occurrence's binding: one stable reaching declaration per link."""
 
         _RESOLVED_SYMBOL_OPERAND_COUNT: ClassVar[int] = 2
+
+        @classmethod
+        def codemod_source_import_demands(cls, content: bytes) -> frozenset[str]:
+            """Elect an operation's source reads and directly imported bindings.
+
+            The caller supplies the same authenticated bytes captured for its
+            real Rope operation. No rule or admission is synthesized.
+            """
+            tree = ast.parse(content.decode("utf-8"))
+            names = set(cls._expression_import_demands(tree))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import | ast.ImportFrom):
+                    names.update(
+                        alias.asname
+                        or (
+                            alias.name.partition(".")[0]
+                            if isinstance(node, ast.Import)
+                            else alias.name
+                        )
+                        for alias in node.names
+                    )
+            return cls._member_import_demands(tree, frozenset(names))
+
+        @classmethod
+        def _resolved_symbol_import_demands(
+            cls,
+            source: Path,
+            content: bytes,
+            admissions: tuple[m.Infra.CodemodAdmission, ...],
+        ) -> frozenset[str] | None:
+            """Elect consumer names from authenticated resolved-symbol captures.
+
+            Identity predicates observe captured paths and their dependencies.
+            Lexical predicates retain the source and the type/subscript receivers
+            their existing proof owners read. Shadowing remains proved by Rope.
+            """
+            occurrence_predicates = {
+                c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                c.Infra.CodemodContextPredicate.SAME_BINDING,
+                c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
+                c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
+            }
+            conditions = tuple(
+                (admission, condition)
+                for admission in admissions
+                for condition in admission.rule.context
+                if condition.predicate in occurrence_predicates
+            )
+            if not conditions:
+                return None
+            demanded: set[str] = set()
+            for admission, condition in conditions:
+                capture = m.Infra.AstGrepCapture.model_validate(
+                    admission.captures[condition.variable],
+                )
+                cls._validated_capture_span(source, capture, content)
+                if (
+                    condition.predicate
+                    is c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT
+                ):
+                    # Its owner returns from local AST load analysis before
+                    # requesting a Rope module or imported symbol.
+                    continue
+                expression = ast.parse(capture.text, mode="eval").body
+                demanded.update(cls._expression_import_demands(expression))
+                if condition.predicate is c.Infra.CodemodContextPredicate.SAME_BINDING:
+                    if len(condition.arg) != 1:
+                        msg = "same-binding requires one lexical expression"
+                        raise ValueError(msg)
+                    demanded.update(
+                        cls._expression_import_demands(
+                            ast.parse(condition.arg[0], mode="eval").body,
+                        ),
+                    )
+            tree = ast.parse(content.decode("utf-8"), filename=str(source))
+            if any(
+                condition.predicate
+                is not c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT
+                for _, condition in conditions
+            ):
+                # Type-payload classification resolves each subscript receiver;
+                # enclosing-subscript stability also reads its index bindings.
+                demanded.update(
+                    name
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.Subscript)
+                    for name in cls._expression_import_demands(node)
+                )
+            return cls._member_import_demands(tree, frozenset(demanded))
+
+        @classmethod
+        def _expression_import_demands(cls, expression: ast.AST) -> frozenset[str]:
+            """Retain qualified reads without widening each attribute to its root."""
+            if isinstance(expression, ast.Name):
+                return (
+                    frozenset({expression.id})
+                    if isinstance(expression.ctx, ast.Load)
+                    else frozenset()
+                )
+            if isinstance(expression, ast.Attribute):
+                receivers = cls._expression_import_demands(expression.value)
+                return frozenset(f"{receiver}.{expression.attr}" for receiver in receivers)
+            return frozenset(
+                name
+                for child in ast.iter_child_nodes(expression)
+                for name in cls._expression_import_demands(child)
+            )
+
+        @classmethod
+        def _member_import_demands(
+            cls,
+            tree: ast.Module,
+            names: frozenset[str],
+        ) -> frozenset[str]:
+            """Capture selected declarations, their aliases and inherited providers.
+
+            This elects source dependencies only. The closed Rope graph remains
+            responsible for lexical identity, shadowing and MRO verdicts.
+            """
+            declarations: dict[str, list[ast.AST]] = {}
+            parents = {
+                child: parent
+                for parent in ast.walk(tree)
+                for child in ast.iter_child_nodes(parent)
+            }
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import | ast.ImportFrom):
+                    continue
+                for name in FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
+                    node,
+                ):
+                    declarations.setdefault(name, []).append(node)
+            demanded = set(names)
+            pending = list(demanded)
+            while pending:
+                name = pending.pop()
+                head, _, tail = name.partition(".")
+                dependencies: set[str] = set()
+                for node in declarations.get(head, ()):
+                    selected: ast.AST = node
+                    remainder = tail
+                    while isinstance(selected, ast.ClassDef):
+                        dependencies.update(
+                            demand
+                            for expression in (
+                                *selected.decorator_list,
+                                *(keyword.value for keyword in selected.keywords),
+                            )
+                            for demand in cls._expression_import_demands(expression)
+                        )
+                        for base in selected.bases:
+                            expression = base.value if isinstance(base, ast.Subscript) else base
+                            dependencies.update(
+                                f"{provider}.{remainder}" if remainder else provider
+                                for provider in cls._expression_import_demands(expression)
+                            )
+                        if not remainder:
+                            break
+                        child_name, _, remainder = remainder.partition(".")
+                        children = [
+                            child
+                            for child in selected.body
+                            if child_name
+                            in FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
+                                child,
+                            )
+                        ]
+                        if len(children) != 1:
+                            break
+                        selected = children[0]
+                    if isinstance(selected, ast.ClassDef):
+                        continue
+                    if isinstance(selected, ast.FunctionDef | ast.AsyncFunctionDef):
+                        dependencies.update(
+                            demand
+                            for decorator in selected.decorator_list
+                            for demand in cls._expression_import_demands(decorator)
+                        )
+                        if remainder:
+                            dependencies.update(
+                                f"{provider}.{remainder}"
+                                for returned in ast.walk(selected)
+                                if isinstance(returned, ast.Return)
+                                and returned.value is not None
+                                for provider in cls._expression_import_demands(returned.value)
+                            )
+                        continue
+                    value, alias = (
+                        FlextInfraUtilitiesSemanticCutoverBindings.bound_value(
+                            selected, parents,
+                        )
+                    )
+                    if value is not None:
+                        dependencies.update(
+                            f"{provider}.{remainder}" if alias and remainder else provider
+                            for provider in cls._expression_import_demands(value)
+                        )
+                for dependency in dependencies:
+                    if dependency not in demanded:
+                        demanded.add(dependency)
+                        pending.append(dependency)
+            return frozenset(demanded)
 
         @classmethod
         def _occurrence_binding_holds(
@@ -248,16 +452,29 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 return False
             actual = runtime.resolve_symbol(scope, expression)
             if condition.predicate is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL:
-                return cls._resolved_symbol_matches(project, condition, actual)
+                matched = cls._resolved_symbol_matches(project, condition, actual)
+                if not matched:
+                    cli.display_text(
+                        "mod: binding native chain "
+                        + cls._binding_chain_identity(scope, expression),
+                    )
+                return matched
             if len(condition.arg) != 1:
                 msg = "same-binding requires one lexical expression"
                 raise ValueError(msg)
             target = condition.arg[0]
             target_expression = ast.parse(target, mode="eval").body
-            if not (
-                cls._stable_binding_chain(frame, expression, start, sources)
-                and cls._stable_binding_chain(frame, target_expression, start, sources)
-            ):
+            if not cls._stable_binding_chain(frame, expression, start, sources):
+                cli.display_text(
+                    f"mod: binding rejection unstable capture={capture_text} "
+                    + cls._binding_chain_identity(scope, expression),
+                )
+                return False
+            if not cls._stable_binding_chain(frame, target_expression, start, sources):
+                cli.display_text(
+                    f"mod: binding rejection unstable target={target} "
+                    + cls._binding_chain_identity(scope, target_expression),
+                )
                 return False
             primary = target_expression
             while isinstance(primary, ast.Attribute):
@@ -272,7 +489,15 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 # facade even when Rope infers its current value as a class.
                 return False
             expected = runtime.resolve_symbol(scope, target_expression)
-            return cls._binding_symbols_match(expected, actual)
+            holds = cls._binding_symbols_match(expected, actual)
+            if not holds:
+                cli.display_text(
+                    "mod: binding rejection same-binding "
+                    f"capture={capture_text} target={target} "
+                    f"actual={cls._binding_identity(actual)} "
+                    f"expected={cls._binding_identity(expected)}",
+                )
+            return holds
 
         @classmethod
         def _resolved_symbol_matches(
@@ -301,7 +526,45 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 scope,
                 ast.parse(target, mode="eval").body,
             )
-            return cls._binding_symbols_match(expected, actual)
+            holds = cls._binding_symbols_match(expected, actual)
+            if not holds:
+                cli.display_text(
+                    "mod: binding rejection resolved-symbol "
+                    f"target={target_module}.{target} "
+                    f"actual={cls._binding_identity(actual)} "
+                    f"expected={cls._binding_identity(expected)}",
+                )
+            return holds
+
+        @staticmethod
+        def _binding_identity(binding: p.Infra.RopePyName | None) -> str:
+            """Describe native identity without substituting an inferred value."""
+            if binding is None:
+                return "unresolved"
+            holder, line = binding.get_definition_location()
+            owner = holder.get_name() if holder is not None else "<no-owner>"
+            return (
+                f"{type(binding).__name__}@{owner}:{line} "
+                f"object={type(binding.get_object()).__name__}"
+            )
+
+        @classmethod
+        def _binding_chain_identity(
+            cls,
+            scope: p.Infra.RopeScope,
+            expression: ast.expr,
+        ) -> str:
+            """Report each actual native receiver in a rejected attribute chain."""
+            links = [expression]
+            while isinstance(expression, ast.Attribute):
+                expression = expression.value
+                links.append(expression)
+            return "; ".join(
+                f"{ast.unparse(link)}={cls._binding_identity(
+                    FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol(scope, link)
+                )}"
+                for link in reversed(links)
+            )
 
         @staticmethod
         def _binding_symbols_match(

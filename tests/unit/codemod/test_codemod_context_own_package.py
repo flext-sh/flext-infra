@@ -18,6 +18,123 @@ class TestsFlextInfraCodemodContextOwnPackage:
     """An import between a project's own namespaces never crosses an owner."""
 
     @pytest.mark.parametrize(
+        "dependencies",
+        [None, (), ("pydantic; python_version < '0'",)],
+    )
+    @pytest.mark.parametrize(
+        "predicate",
+        [
+            c.Infra.CodemodContextPredicate.RUNTIME_PACKAGE,
+            c.Infra.CodemodContextPredicate.FACADE_PACKAGE,
+        ],
+    )
+    def test_empty_declared_runtime_rejects_installed_external_packages(
+        self,
+        tmp_path: Path,
+        dependencies: t.StrSequence | None,
+        predicate: c.Infra.CodemodContextPredicate,
+    ) -> None:
+        """Omitted, empty and inapplicable requirements declare no providers."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "runtime-probe",
+            pyproject='[project]\nname = "runtime-probe"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
+        declaration: t.JsonDict = {
+            "project": {"name": "runtime-probe", "version": "0.1.0"},
+        }
+        if dependencies is not None:
+            declaration["project"] = {
+                "name": "runtime-probe",
+                "version": "0.1.0",
+                "dependencies": list(dependencies),
+            }
+        tm.ok(u.Cli.toml_write_mapping(project / c.PYPROJECT_FILENAME, declaration))
+        consumer = project / "consumer.py"
+        consumer.write_text(
+            "from pydantic import BaseModel\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        rule = self._private_import_rule().model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="MOD",
+                        predicate=predicate,
+                        holds=True,
+                    ),
+                ),
+            },
+        )
+        facts = u.Infra.codemod_project_facts(project, (rule,))
+        tm.that(facts.runtime_modules, empty=True)
+        with u.Infra.codemod_binding_project(
+            project,
+            m.Infra.CodemodBindingSnapshot(states=()),
+        ) as (rope_project, sources):
+            admitted = u.Infra.codemod_context_admits(
+                m.Infra.CodemodAdmission(
+                    root=project,
+                    rule=rule,
+                    file_path=consumer,
+                    captures={"MOD": {"text": "pydantic"}},
+                    facts=facts,
+                ),
+                project=rope_project,
+                sources=sources,
+            )
+        tm.that(admitted, eq=False)
+
+    def test_declared_installed_runtime_package_is_admitted(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A nonempty real requirement retains runtime-package admission."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "runtime-probe",
+            pyproject=(
+                '[project]\nname = "runtime-probe"\nversion = "0.1.0"\n'
+                'dependencies = ["pydantic"]\n'
+            ),
+            with_src=True,
+        )
+        consumer = project / "consumer.py"
+        consumer.write_text(
+            "from pydantic import BaseModel\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        rule = self._private_import_rule().model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="MOD",
+                        predicate=c.Infra.CodemodContextPredicate.RUNTIME_PACKAGE,
+                        holds=True,
+                    ),
+                ),
+            },
+        )
+        facts = u.Infra.codemod_project_facts(project, (rule,))
+        with u.Infra.codemod_binding_project(
+            project,
+            m.Infra.CodemodBindingSnapshot(states=()),
+        ) as (rope_project, sources):
+            admitted = u.Infra.codemod_context_admits(
+                m.Infra.CodemodAdmission(
+                    root=project,
+                    rule=rule,
+                    file_path=consumer,
+                    captures={"MOD": {"text": "pydantic"}},
+                    facts=facts,
+                ),
+                project=rope_project,
+                sources=sources,
+            )
+        tm.that(admitted, eq=True)
+
+    @pytest.mark.parametrize(
         ("relative", "admitted"),
         [("_utilities/base.py", True), ("_utilities/_behavior/base.py", False)],
     )

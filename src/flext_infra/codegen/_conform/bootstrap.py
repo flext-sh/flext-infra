@@ -91,8 +91,8 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         ]
         return tuple(discovered)
 
-    @staticmethod
     def _declared_environment_imports(
+        self,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
     ) -> t.VariadicTuple[t.Pair[str, Path]]:
@@ -102,7 +102,8 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             Package names and exact project roots, without guessing distribution names.
 
         Raises:
-            ValueError: If declared package namespace is unresolved.
+            ValueError: If the initial project declaration or a package namespace
+                is unresolved.
         """
         roots = (
             *((target.root,) if target.repository.package else ()),
@@ -113,11 +114,25 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 and member.package
             ),
         )
-        imports = tuple((u.Infra.project_package_name(root), root) for root in roots)
+        imports: t.MutableSequenceOf[t.Pair[str, Path]] = []
+        for root in roots:
+            if (
+                root == target.root
+                and self.initial_workspace is not None
+                and target.repository.name == self.initial_workspace.repository.name
+                and not (root / c.PYPROJECT_FILENAME).exists()
+            ):
+                if target.project is None:
+                    msg = f"scaffold environment has no project metadata: {root}"
+                    raise ValueError(msg)
+                package_name = target.project.package_name
+            else:
+                package_name = u.Infra.project_package_name(root)
+            imports.append((package_name, root))
         if any(not name for name, _root in imports):
             msg = f"declared package namespace is unresolved: {target.root}"
             raise ValueError(msg)
-        return imports
+        return tuple(imports)
 
     @staticmethod
     def _merge_extra_verbs(

@@ -34,7 +34,7 @@ from flext_infra.gates import (
 from flext_infra.gates.codemod import FlextInfraCodemodGate
 
 if TYPE_CHECKING:
-    from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates import FlextInfraGate
 
 
 class FlextInfraGateRegistry:

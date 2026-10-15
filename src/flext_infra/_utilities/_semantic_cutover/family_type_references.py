@@ -20,6 +20,22 @@ from flext_infra._utilities import (
 class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     """Select type positions structurally and bind every edit to Rope identity."""
 
+    @staticmethod
+    def _type_payload_symbols() -> t.Triple[str, str, str]:
+        """Name the immutable typing identities queried by payload classification."""
+        return "typing", "Literal", "Annotated"
+
+    @classmethod
+    def type_payload_import_demands(
+        cls,
+        source: str,
+    ) -> t.VariadicTuple[t.Pair[str, str]]:
+        """Declare inference providers even when source never imports typing."""
+        if not any(isinstance(node, ast.Subscript) for node in ast.walk(ast.parse(source))):
+            return ()
+        module, literal, annotated = cls._type_payload_symbols()
+        return (module, literal), (module, annotated)
+
     @classmethod
     def scoped_quoted_type_nodes(
         cls,
@@ -86,7 +102,8 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         )
         if not nodes:
             return frozenset()
-        typing = project.get_module("typing")
+        module_name, literal_name, annotated_name = cls._type_payload_symbols()
+        typing = project.get_module(module_name)
         for node in nodes:
             offset, _end = cls.expression_range(source, node)
             scope = runtime.scope_at(module, offset)
@@ -95,11 +112,11 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
             )
             binding = runtime.resolve_symbol(scope, node.value)
-            if runtime.same_name(typing.get_attribute("Literal"), binding):
+            if runtime.same_name(typing.get_attribute(literal_name), binding):
                 protected.update(
                     cls.expression_range(source, argument) for argument in arguments
                 )
-            elif runtime.same_name(typing.get_attribute("Annotated"), binding):
+            elif runtime.same_name(typing.get_attribute(annotated_name), binding):
                 protected.update(
                     cls.expression_range(source, argument)
                     for argument in arguments
@@ -337,13 +354,14 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             yield from cls._type_nodes(node.value, project, scope)
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             binding = runtime.resolve_symbol(scope, node.value)
-            typing = project.get_module("typing")
-            if runtime.same_name(typing.get_attribute("Literal"), binding):
+            module_name, literal_name, annotated_name = cls._type_payload_symbols()
+            typing = project.get_module(module_name)
+            if runtime.same_name(typing.get_attribute(literal_name), binding):
                 return
             arguments = (
                 node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
             )
-            if runtime.same_name(typing.get_attribute("Annotated"), binding):
+            if runtime.same_name(typing.get_attribute(annotated_name), binding):
                 arguments = arguments[:1]
             for argument in arguments:
                 yield from cls._type_nodes(argument, project, scope)

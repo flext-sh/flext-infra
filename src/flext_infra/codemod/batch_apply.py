@@ -11,12 +11,14 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
-from flext_infra.codemod import FlextInfraImportNormalizationPhase
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
-from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
-from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_infra.codemod import (
+    FlextInfraCodemodSemanticApply,
+    FlextInfraImportNormalizationPhase,
+    FlextInfraModGateEngine,
+    FlextInfraModReplacements,
+    FlextInfraModTextGateEngine,
+)
+from flext_infra.refactor import FlextInfraRefactorCensus
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -182,7 +184,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 raise RuntimeError(msg)
             seen.add(state)
             before_ast = after_ast
-            FlextInfraModGateEngine.scan(root, fix=True).unwrap()
+            FlextInfraModGateEngine.apply_report(root, before_ast).unwrap()
             rope_workspace.refresh()
             after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
             FlextInfraCodemodBatchApply.validate_fix_match(before_ast, after_ast)
@@ -557,9 +559,13 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         ]
         states: list[t.VariadicTuple[t.Pair[str, str]]] = []
         for callback in self.phase_callbacks:
+            self.progress.emit(f"mod: phase {callback.name} start")
             phase_changed = callback.apply(root, after_ast, rope_workspace)
             if phase_changed.failure:
                 return outcome.from_failure(phase_changed)
+            self.progress.emit(
+                f"mod: phase {callback.name} finish changed={phase_changed.value}",
+            )
             if not phase_changed.value:
                 continue
             self.progress.emit(f"mod: phase {callback.name} changed sources")

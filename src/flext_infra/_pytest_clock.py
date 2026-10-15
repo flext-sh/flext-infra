@@ -33,3 +33,6 @@ class FlextInfraPytestClock:
             cls.profiler = cProfile.Profile()
             cls.profiler.enable()
         return cls.profiler
+
+
+__all__: list[str] = ["FlextInfraPytestClock"]

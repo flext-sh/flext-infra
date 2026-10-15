@@ -74,14 +74,20 @@ class FlextInfraImportNormalizationRoutesMixin(
             The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
 
         """
-        if state.scope.direct_imports:
-            return ()
         edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
         for node in cls._iter_imports(state.tree):
             if not isinstance(node, ast.ImportFrom) or node.level or not node.module:
                 continue
             routed: MutableMapping[str, list[str]] = {}
             for alias in node.names:
+                if state.scope.direct_imports and (
+                    node.module == state.scope.namespace
+                    or node.module.startswith(f"{state.scope.namespace}.")
+                ):
+                    # The declaration relocation owner must move the dependency;
+                    # lazy routing cannot make an own-namespace edge legal.
+                    routed.setdefault(node.module, []).append(cls._clause(alias))
+                    continue
                 root = cls._root_alias_source(state, node.module, alias)
                 if root is not None:
                     # The root publishes the alias under its bound name, so the
@@ -125,8 +131,6 @@ class FlextInfraImportNormalizationRoutesMixin(
             The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
 
         """
-        if state.scope.direct_imports:
-            return ()
         scope = state.scope
         defined = frozenset(
             cls._module_bindings(
@@ -166,7 +170,11 @@ class FlextInfraImportNormalizationRoutesMixin(
                     else (),
                 ),
             )
-        missing = sorted(cls._unbound_root_aliases(state))
+        missing = (
+            ()
+            if scope.direct_imports
+            else tuple(sorted(cls._unbound_root_aliases(state)))
+        )
         if missing:
             anchor = cls._import_anchor(state.tree)
             edits.append(
@@ -178,9 +186,9 @@ class FlextInfraImportNormalizationRoutesMixin(
             )
         return edits
 
-    @staticmethod
-    def _unbound_root_aliases(state: m.Infra.ImportLawPass) -> frozenset[str]:
-        """Return root aliases read at module scope or below but bound nowhere.
+    @classmethod
+    def _unbound_root_aliases(cls, state: m.Infra.ImportLawPass) -> frozenset[str]:
+        """Return root aliases whose reads resolve beyond their lexical scope.
 
         Returns:
             The resulting ``frozenset[str]``.
@@ -188,32 +196,40 @@ class FlextInfraImportNormalizationRoutesMixin(
         """
         scope = state.scope
         loaded: set[str] = set()
-        bound: set[str] = set(state.bindings)
+        bound: dict[int, set[str]] = {}
+        globals_: dict[int, set[str]] = {}
         for node in ast.walk(state.tree):
-            match node:
-                case ast.Name(id=name, ctx=ast.Load()):
-                    loaded.add(name)
-                case ast.Name(id=name):
-                    bound.add(name)
-                case ast.arg(arg=name):
-                    bound.add(name)
-                case (
-                    ast.FunctionDef(name=name)
-                    | ast.AsyncFunctionDef(name=name)
-                    | ast.ClassDef(name=name)
-                ):
-                    bound.add(name)
-                case ast.Import(names=aliases) | ast.ImportFrom(names=aliases):
-                    bound.update(
-                        alias.asname or alias.name.partition(".")[0]
-                        for alias in aliases
-                    )
-                case _:
-                    pass
+            owner = cls._enclosing_scope(node, state.parents) or state.tree
+            if isinstance(node, ast.Global):
+                globals_.setdefault(id(owner), set()).update(node.names)
+            elif not isinstance(node, ast.Nonlocal):
+                bound.setdefault(id(owner), set()).update(
+                    u.Infra.bound_identifiers(node)
+                )
+        for node in ast.walk(state.tree):
+            if not isinstance(node, ast.Name) or not isinstance(node.ctx, ast.Load):
+                continue
+            owner = cls._enclosing_scope(node, state.parents)
+            while owner is not None:
+                if node.id in globals_.get(id(owner), ()):
+                    break
+                if node.id in bound.get(id(owner), ()):
+                    break
+                owner = cls._enclosing_scope(owner, state.parents)
+                # Class dictionaries do not enclose methods.
+                while isinstance(owner, ast.ClassDef):
+                    owner = cls._enclosing_scope(owner, state.parents)
+            else:
+                if node.id not in bound.get(id(state.tree), ()):
+                    loaded.add(node.id)
+                continue
+            if owner is not None and node.id in globals_.get(id(owner), ()):
+                if node.id not in bound.get(id(state.tree), ()):
+                    loaded.add(node.id)
         aliases = c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS
         return frozenset(
             name
-            for name in loaded - bound
+            for name in loaded
             if name in aliases
             and name in state.root_exports
             and name not in scope.own_exports
@@ -263,6 +279,8 @@ class FlextInfraImportNormalizationRoutesMixin(
 
         """
         scope = state.scope
+        if scope.direct_imports:
+            return None
         bound = alias.asname or alias.name
         aliases = c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS
         if bound != alias.name and (alias.name in aliases or bound not in aliases):
@@ -354,10 +372,19 @@ class FlextInfraImportNormalizationRoutesMixin(
         if directory is None:
             return None
         candidates: t.MutableMappingKV[str, str] = {}
+        due = 0.0
+        scanned = 0
         for source_path in sorted(
             directory.rglob("*.py"),
             key=lambda path: (len(path.parts), path),
         ):
+            due = u.Infra._codemod_progress(
+                f"import publication lookup project={scope.project_root} "
+                f"consumer={scope.file_path} symbol={module}.{name} "
+                f"scanned={scanned} provider={source_path}",
+                due,
+            )
+            scanned += 1
             if source_path.name == c.Infra.INIT_PY:
                 continue
             source = source_path.read_text(encoding=c.DEFAULT_ENCODING)
@@ -378,6 +405,12 @@ class FlextInfraImportNormalizationRoutesMixin(
                 frozenset(),
             )
             candidates.setdefault(identity, owner)
+        u.Infra._codemod_progress(
+            f"import publication ancestry project={scope.project_root} "
+            f"consumer={scope.file_path} symbol={module}.{name} "
+            f"scanned={scanned} candidates={len(candidates)}",
+            due,
+        )
         ancestors = cls._declared_ancestors(scope, tuple(candidates))
         candidates = {
             identity: owner

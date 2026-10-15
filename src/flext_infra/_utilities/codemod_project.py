@@ -24,9 +24,10 @@ from functools import cache, lru_cache
 from importlib.metadata import packages_distributions
 from importlib.util import find_spec
 from pathlib import Path
+from time import monotonic
 from types import MappingProxyType
 
-from flext_cli import u
+from flext_cli import settings, u
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
@@ -36,6 +37,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeCore,
@@ -55,12 +57,29 @@ from flext_infra._utilities._rope_analysis.importstate import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
 
 
 class FlextInfraUtilitiesCodemodProject(
     FlextInfraFlextUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
 ):
     """Evaluate rule context over project facts: packages, layers, graphs."""
+
+    @staticmethod
+    def _codemod_progress(message: str, due: float = 0) -> float:
+        """Report active source work at the configured heartbeat interval.
+
+        Returns:
+            The next monotonic deadline for an interval progress row.
+
+        """
+        now = monotonic()
+        if now < due:
+            return due
+        u.Cli.info(f"mod: {message}")
+        return now + settings.cli_process_heartbeat_seconds
 
     @classmethod
     def project_import_graph(
@@ -98,7 +117,13 @@ class FlextInfraUtilitiesCodemodProject(
         raw: MutableMapping[str, set[str]] = {}
         modules: MutableMapping[Path, str] = {}
         aliases: MutableMapping[str, str] = {}
+        cls._codemod_progress("import graph start")
+        due = 0.0
         for resource in FlextInfraUtilitiesRopeCore.python_resources(project):
+            due = cls._codemod_progress(
+                f"import graph modules={len(modules)} file={resource.path}",
+                due,
+            )
             pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             name = pymodule.get_name()
             if not name:
@@ -130,6 +155,7 @@ class FlextInfraUtilitiesCodemodProject(
                 for export, provider in provider_aliases.items()
             })
         known = frozenset(raw)
+        cls._codemod_progress(f"import graph finish modules={len(modules)}")
         graph = {
             name: frozenset(
                 target
@@ -486,6 +512,9 @@ class FlextInfraUtilitiesCodemodProject(
         root: Path,
         source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         modules: t.StrSequence = (),
+        *,
+        admissions: tuple[m.Infra.CodemodAdmission, ...] = (),
+        source_demands: t.MappingKV[Path, frozenset[str]] | None = None,
     ) -> m.Infra.CodemodBindingSnapshot:
         """Capture Python owners and their static import closure before inference.
 
@@ -496,10 +525,89 @@ class FlextInfraUtilitiesCodemodProject(
             ValueError: If binding source snapshots disagree.
         """
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        cls._codemod_progress(
+            f"binding snapshot start sources={len(source_states)} "
+            f"admissions={len(admissions)} providers={','.join(modules)}",
+        )
         for state in source_states:
             if states.setdefault(state.path.resolve(), state) != state:
                 msg = f"binding source snapshots disagree: {state.path}"
                 raise ValueError(msg)
+        admitted_sources: dict[Path, list[m.Infra.CodemodAdmission]] = {}
+        for admission in admissions:
+            path = admission.file_path
+            path = (path if path.is_absolute() else root / path).resolve()
+            if path not in states:
+                msg = f"binding consumer source is absent: {path}"
+                raise ValueError(msg)
+            admitted_sources.setdefault(path, []).append(admission)
+        demands: dict[Path, frozenset[str] | None] = {}
+        cls._codemod_progress(f"binding demands start files={len(admitted_sources)}")
+        due = 0.0
+        for index, (path, entries) in enumerate(admitted_sources.items(), start=1):
+            due = cls._codemod_progress(
+                f"binding demands file={index}/{len(admitted_sources)} "
+                f"path={path} admissions={len(entries)}",
+                due,
+            )
+            content = states[path].content
+            if content is None:
+                msg = f"binding source is absent: {path}"
+                raise ValueError(msg)
+            demands[path] = cls._resolved_symbol_import_demands(
+                path,
+                content,
+                tuple(entries),
+            )
+        if source_demands is not None:
+            supplied = {path.resolve(): names for path, names in source_demands.items()}
+            if set(supplied) != set(states):
+                msg = "binding operation demands differ from authenticated source scope"
+                raise ValueError(msg)
+            for path, names in supplied.items():
+                if path not in demands:
+                    demands[path] = names
+                elif demands[path] is not None:
+                    demands[path] = names | demands[path]
+        cls._codemod_progress(f"binding demands finish files={len(demands)}")
+        provider_demands: dict[str, set[str]] = {}
+        for admission in admissions:
+            for condition in admission.rule.context:
+                if (
+                    condition.predicate
+                    is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
+                    and len(condition.arg) == cls._RESOLVED_SYMBOL_OPERAND_COUNT
+                ):
+                    provider_demands.setdefault(condition.arg[0], set()).add(
+                        condition.arg[1],
+                    )
+        for path, entries in admitted_sources.items():
+            if not any(
+                condition.predicate
+                in {
+                    c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                    c.Infra.CodemodContextPredicate.SAME_BINDING,
+                    c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
+                }
+                for entry in entries
+                for condition in entry.rule.context
+            ):
+                continue
+            content = states[path].content
+            if content is None:
+                msg = f"binding source is absent: {path}"
+                raise ValueError(msg)
+            for provider, symbol in (
+                FlextInfraUtilitiesSemanticFamilyTypeReferences.type_payload_import_demands(
+                    content.decode("utf-8"),
+                )
+            ):
+                provider_demands.setdefault(provider, set()).add(symbol)
+        provider_modules = tuple(dict.fromkeys((*modules, *provider_demands)))
+        u.Cli.info(
+            f"mod: binding snapshot sources={len(states)} "
+            f"providers={','.join(modules)}",
+        )
         with (
             FlextInfraUtilitiesRopeCore.open_project(root) as project,
             project.frozen_layout(),
@@ -508,30 +616,63 @@ class FlextInfraUtilitiesCodemodProject(
                 t.Triple[str, str | None, int], t.Infra.RopeResource | None
             ] = {}
             pending = [
-                project.get_resource(path.relative_to(root.resolve()).as_posix())
+                (
+                    project.get_resource(path.relative_to(root.resolve()).as_posix()),
+                    demands.get(path),
+                )
                 for path in states
             ]
             pending.extend(
-                resource
-                for name in modules
+                (
+                    resource,
+                    frozenset(provider_demands[name])
+                    if name in provider_demands
+                    else None,
+                )
+                for name in provider_modules
                 if (resource := project.find_module(name)) is not None
             )
             visited: set[Path] = set()
+            traversed: dict[Path, frozenset[str]] = {}
+            cls._codemod_progress(f"binding closure start pending={len(pending)}")
+            due = 0.0
             while pending:
+                current, names = pending.pop()
+                due = cls._codemod_progress(
+                    f"binding closure captured={len(states)} "
+                    f"visited={len(visited)} pending={len(pending)} "
+                    f"file={current.path} "
+                    f"demands={'full' if names is None else len(names)}",
+                    due,
+                )
                 fetched = cls._snapshot_module_tree(
                     states,
                     visited,
-                    pending.pop(),
+                    current,
                 )
                 if fetched is None:
                     continue
                 path, resource, tree = fetched
-                visited.add(path)
-                pending.extend(
-                    cls._snapshot_import_resources(
-                        project, resource, tree, modules_by_name
+                if names is None:
+                    visited.add(path)
+                    pending.extend(
+                        (dependency, None)
+                        for dependency in cls._snapshot_import_resources(
+                            project, resource, tree, modules_by_name,
+                        )
                     )
+                    continue
+                previous = traversed.get(path, frozenset())
+                if names <= previous:
+                    continue
+                names = names | previous
+                traversed[path] = names
+                pending.extend(
+                    cls._snapshot_demanded_import_resources(
+                        project, resource, tree, modules_by_name, names=names,
+                    ),
                 )
+        u.Cli.info(f"mod: binding snapshot captured={len(states)}")
         return m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
 
     @staticmethod
@@ -580,6 +721,9 @@ class FlextInfraUtilitiesCodemodProject(
             return None
         state = states.get(path)
         if state is None:
+            u.Cli.info(
+                f"mod: binding capture sources={len(states)} path={path}",
+            )
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             states[path] = state
         if state.content is None:
@@ -592,6 +736,102 @@ class FlextInfraUtilitiesCodemodProject(
         )
 
     @classmethod
+    def _snapshot_demanded_import_resources(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        tree: ast.Module,
+        modules_by_name: t.MutableMappingKV[
+            t.Triple[str, str | None, int], t.Infra.RopeResource | None
+        ],
+        *,
+        names: frozenset[str],
+    ) -> list[t.Pair[t.Infra.RopeResource, frozenset[str] | None]]:
+        """Propagate selected member paths through the existing import resolver."""
+        demanded = cls._member_import_demands(tree, names)
+        found: list[t.Pair[t.Infra.RopeResource, frozenset[str] | None]] = []
+        module = project.get_pymodule(resource)
+        aliases = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+            module.get_name(),
+            Path(resource.real_path),
+            ast.unparse(tree),
+        )
+        for exported, provider in aliases.items():
+            requests = frozenset(
+                name for name in demanded
+                if name == exported or name.startswith(f"{exported}.")
+            )
+            if requests and (
+                target := cls._snapshot_imported_resource(
+                    project,
+                    resource,
+                    provider,
+                    level=0,
+                    modules_by_name=modules_by_name,
+                )
+            ) is not None:
+                found.append((target, requests))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Import | ast.ImportFrom):
+                continue
+            for alias in node.names:
+                bound = alias.asname or (
+                    alias.name.partition(".")[0]
+                    if isinstance(node, ast.Import)
+                    else alias.name
+                )
+                selected = {
+                    name for name in demanded
+                    if name == bound or name.startswith(f"{bound}.")
+                }
+                if not selected and alias.name != "*":
+                    continue
+                elected = (
+                    ast.Import(names=[alias])
+                    if isinstance(node, ast.Import)
+                    else ast.ImportFrom(
+                        module=node.module, names=[alias], level=node.level,
+                    )
+                )
+                targets = cls._snapshot_node_import_resources(
+                    project, resource, elected, modules_by_name,
+                )
+                parent = (
+                    cls._snapshot_imported_resource(
+                        project,
+                        resource,
+                        node.module or "",
+                        level=node.level,
+                        modules_by_name=modules_by_name,
+                    )
+                    if isinstance(node, ast.ImportFrom)
+                    else None
+                )
+                for target in targets:
+                    requests: set[str] = set()
+                    for name in selected:
+                        suffix = name.removeprefix(bound).removeprefix(".")
+                        if (
+                            isinstance(node, ast.ImportFrom)
+                            and parent is not None
+                            and target.real_path == parent.real_path
+                        ):
+                            requests.add(
+                                f"{alias.name}.{suffix}" if suffix else alias.name,
+                            )
+                        else:
+                            if isinstance(node, ast.Import) and alias.asname is None:
+                                suffix = name.removeprefix(alias.name).removeprefix(".")
+                            requests.add(suffix)
+                    found.append((
+                        target,
+                        frozenset(request for request in requests if request)
+                        if alias.name != "*"
+                        else None,
+                    ))
+        return found
+
+    @classmethod
     def _snapshot_import_resources(
         cls,
         project: p.Infra.RopeProject,
@@ -600,6 +840,8 @@ class FlextInfraUtilitiesCodemodProject(
         modules_by_name: t.MutableMappingKV[
             t.Triple[str, str | None, int], t.Infra.RopeResource | None
         ],
+        *,
+        names: frozenset[str] | None = None,
     ) -> list[t.Infra.RopeResource]:
         """Collect the Rope resources of every import inside one module tree.
 
@@ -612,11 +854,21 @@ class FlextInfraUtilitiesCodemodProject(
         while pending:
             node = pending.popleft()
             if isinstance(node, ast.Import | ast.ImportFrom):
-                found.extend(
-                    cls._snapshot_node_import_resources(
-                        project, resource, node, modules_by_name
-                    ),
-                )
+                bound_names = {
+                    alias.asname
+                    or (
+                        alias.name.split(".", 1)[0]
+                        if isinstance(node, ast.Import)
+                        else alias.name
+                    )
+                    for alias in node.names
+                }
+                if names is None or "*" in bound_names or names & bound_names:
+                    found.extend(
+                        cls._snapshot_node_import_resources(
+                            project, resource, node, modules_by_name
+                        ),
+                    )
             # Imports are statements. Exception handlers and match cases are
             # the two non-statement owners of statement suites; expression and
             # annotation trees cannot contain an import.
@@ -877,6 +1129,7 @@ class FlextInfraUtilitiesCodemodProject(
                 | c.Infra.CodemodContextPredicate.FILE_FAMILY
                 | c.Infra.CodemodContextPredicate.PACKAGE_EXPORT
                 | c.Infra.CodemodContextPredicate.FACADE_MODULE
+                | c.Infra.CodemodContextPredicate.DECLARATION_MODULE
                 | c.Infra.CodemodContextPredicate.LATER_LAYER
                 | c.Infra.CodemodContextPredicate.CLASS_STEM
             ):
@@ -1002,6 +1255,14 @@ class FlextInfraUtilitiesCodemodProject(
                     frozenset(config.Infra.tooling.lazy_init.import_layer_order)
                     & cls._module_exports(file_path),
                 )
+            case c.Infra.CodemodContextPredicate.DECLARATION_MODULE:
+                located = FlextInfraUtilitiesImportLaw.import_namespace(root, file_path)
+                return located is not None and (
+                    FlextInfraUtilitiesImportLaw.import_declaration_module(
+                        located[0],
+                        file_path,
+                    )
+                )
             case c.Infra.CodemodContextPredicate.LATER_LAYER:
                 return cls._later_layer(root, file_path, value, condition)
             case c.Infra.CodemodContextPredicate.CLASS_STEM:
@@ -1113,15 +1374,40 @@ class FlextInfraUtilitiesCodemodProject(
         project = FlextInfraUtilitiesCodemodRules.codemod_project_requirements(
             root,
         ).unwrap()
+        if not project[1]:
+            return frozenset()
+        cls._codemod_progress(
+            f"runtime distributions start requirements={len(project[1])} root={root}",
+        )
+        distributions = FlextInfraUtilitiesCodemodRules.codemod_distributions()
+        cls._codemod_progress(
+            f"runtime distributions finish distributions={len(distributions)}",
+        )
+        cls._codemod_progress("runtime dependency closure start")
         closure = FlextInfraUtilitiesCodemodRules.codemod_runtime_closure(
             project[1],
-            FlextInfraUtilitiesCodemodRules.codemod_distributions(),
+            distributions,
         )
-        return frozenset(
-            module
-            for module, providers in cls._installed_import_packages().items()
-            if providers & closure
+        cls._codemod_progress(
+            f"runtime dependency closure finish distributions={len(closure)}",
         )
+        cls._codemod_progress("runtime import package metadata start")
+        packages = cls._installed_import_packages()
+        cls._codemod_progress(
+            f"runtime import package metadata finish packages={len(packages)}",
+        )
+        selected: set[str] = set()
+        due = 0.0
+        for index, (module, providers) in enumerate(packages.items(), start=1):
+            due = cls._codemod_progress(
+                f"runtime imports package={index}/{len(packages)} "
+                f"module={module} selected={len(selected)}",
+                due,
+            )
+            if providers & closure:
+                selected.add(module)
+        cls._codemod_progress(f"runtime imports finish modules={len(selected)}")
+        return frozenset(selected)
 
     @staticmethod
     @cache

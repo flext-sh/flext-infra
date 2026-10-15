@@ -12,6 +12,39 @@ snapshots:
       start: 5
       end: 27
   ? |
+    from flext_infra._constants.config import FlextInfraConstantsConfig
+  : labels:
+    - source: from flext_infra._constants.config import FlextInfraConstantsConfig
+      style: primary
+      start: 0
+      end: 67
+    - source: flext_infra._constants.config
+      style: secondary
+      start: 5
+      end: 34
+  ? |
+    from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
+  : labels:
+    - source: from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
+      style: primary
+      start: 0
+      end: 73
+    - source: flext_infra._models._config.beads
+      style: secondary
+      start: 5
+      end: 38
+  ? |
+    from flext_infra._models.base import FlextInfraModelsBase
+  : labels:
+    - source: from flext_infra._models.base import FlextInfraModelsBase
+      style: primary
+      start: 0
+      end: 57
+    - source: flext_infra._models.base
+      style: secondary
+      start: 5
+      end: 29
+  ? |
     from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
   : labels:
     - source: from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
@@ -22,3 +55,26 @@ snapshots:
       style: secondary
       start: 5
       end: 41
+  ? |
+    from flext_infra._settings import FlextInfraSettings
+  : labels:
+    - source: from flext_infra._settings import FlextInfraSettings
+      style: primary
+      start: 0
+      end: 52
+    - source: flext_infra._settings
+      style: secondary
+      start: 5
+      end: 26
+  ? |
+    if TYPE_CHECKING:
+        from flext_infra._models import FlextInfraModelsBase
+  : labels:
+    - source: from flext_infra._models import FlextInfraModelsBase
+      style: primary
+      start: 22
+      end: 74
+    - source: flext_infra._models
+      style: secondary
+      start: 27
+      end: 46

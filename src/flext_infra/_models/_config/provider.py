@@ -242,3 +242,6 @@ class FlextInfraConfigModelsProvider:
                     )
                     raise ValueError(msg)
             return self
+
+
+__all__: list[str] = ["FlextInfraConfigModelsProvider"]

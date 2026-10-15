@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import io
+import os
 import pstats
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
@@ -154,10 +156,22 @@ class FlextInfraCProfileReport(s[bool]):
             return r[bool].fail(f"cProfile artifact does not exist: {self.profile}")
         try:
             stream = io.StringIO()
+            root = self.repository_root.resolve()
+            root_prefix = str(root) + os.sep
+            source_prefixes = tuple(
+                re.escape(str(root / name) + os.sep)
+                for name in config.Infra.source_scan.roots
+            )
+            root_module = (
+                re.escape(root_prefix) + rf"[^{re.escape(os.sep)}]+\.py:"
+            )
+            source_filter = "^(?:" + "|".join((*source_prefixes, root_module)) + ")"
             for profile in self._run_profiles():
                 stream.write(f"Profile: {profile}\n")
                 stats = pstats.Stats(str(profile), stream=stream)
-                stats.strip_dirs().sort_stats(self.sort).print_stats(self.limit)
+                stats.sort_stats(self.sort).print_stats(self.limit)
+                stream.write("Repository source functions:\n")
+                stats.print_stats(source_filter, self.limit)
             self.output.parent.mkdir(parents=True, exist_ok=True)
         except (OSError, ValueError, TypeError) as exc:
             return r[bool].fail(f"render cProfile report failed: {exc}", exception=exc)

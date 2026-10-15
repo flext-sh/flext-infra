@@ -216,6 +216,7 @@ class FlextInfraConstantsRefactor:
         PACKAGE_EXPORT = "package-export"
         FILE_FAMILY = "file-family"
         FACADE_MODULE = "facade-module"
+        DECLARATION_MODULE = "declaration-module"
         LATER_LAYER = "later-layer"
         IMPORT_CYCLE = "import-cycle"
         COMPOSES_FAMILY = "composes-family"
@@ -261,7 +262,6 @@ class FlextInfraConstantsRefactor:
         PRIVATE_IMPORT = "private-import"
         FACADE_BASE = "facade-base"
         MODEL_FIELDS = "model-fields"
-        SELF_FACADE_IMPORT = "self-facade-import"
         DYNAMIC_ENVIRONMENT = "dynamic-environment"
         MODULE_END = "module-end"
         NOTICE_LAST = "notice-last"
@@ -275,9 +275,6 @@ class FlextInfraConstantsRefactor:
         SemanticCutoverPhase.FACADE_BASE: "facade-base-by-class-name",
         SemanticCutoverPhase.MODEL_FIELDS: (
             "rewire-getattr-model-fields-to-direct-access"
-        ),
-        SemanticCutoverPhase.SELF_FACADE_IMPORT: (
-            "ban-infra-utility-module-self-facade-import"
         ),
         SemanticCutoverPhase.DYNAMIC_ENVIRONMENT: "ban-ambient-environ-read",
         SemanticCutoverPhase.MODULE_END: "require-all-last",

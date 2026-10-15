@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -207,6 +207,16 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 project_dir,
                 tuple(rules_by_id[finding.rule_id] for finding in report.root),
             )
+            admissions = tuple(
+                m.Infra.CodemodAdmission(
+                    root=project_dir,
+                    rule=rules_by_id[finding.rule_id],
+                    file_path=Path(finding.file),
+                    captures={**finding.captures, **finding.transformed},
+                    facts=facts,
+                )
+                for finding in report.root
+            )
             snapshot = u.Infra.codemod_binding_snapshot(
                 project_dir,
                 tuple(
@@ -223,6 +233,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     if condition.predicate
                     is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
                 ),
+                admissions=admissions,
             )
             with u.Infra.codemod_binding_project(project_dir, snapshot) as (
                 project,
@@ -237,16 +248,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
                         message=finding.message,
                         severity=finding.severity,
                     )
-                    for finding in report.root
+                    for finding, admission in zip(report.root, admissions, strict=True)
                     if u.Infra.codemod_context_admits(
-                        m.Infra.CodemodAdmission(
-                            root=project_dir,
-                            rule=rules_by_id[finding.rule_id],
-                            file_path=Path(finding.file),
-                            captures={**finding.captures, **finding.transformed},
-                            facts=facts,
-                            snapshot=snapshot,
-                        ),
+                        admission.model_copy(update={"snapshot": snapshot}),
                         project=project,
                         sources=sources,
                     )
@@ -357,3 +361,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
             cmd.extend([c.Infra.SG_GLOBS_FLAG, glob])
         cmd.extend(targets)
         return tuple(cmd)
+
+
+__all__: list[str] = ["FlextInfraCodemodGate"]

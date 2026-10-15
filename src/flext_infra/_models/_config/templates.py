@@ -179,3 +179,6 @@ class FlextInfraConfigModelsTemplates:
 
     class StaticTextRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Empty typed context for a variable-free governed text template."""
+
+
+__all__: list[str] = ["FlextInfraConfigModelsTemplates"]

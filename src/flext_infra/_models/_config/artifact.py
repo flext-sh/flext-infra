@@ -1043,3 +1043,6 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsArtifact.SedPatternSpec],
             m.Field(default=(), description="Ordered substitution patterns"),
         ] = ()
+
+
+__all__: list[str] = ["FlextInfraConfigModelsArtifact"]

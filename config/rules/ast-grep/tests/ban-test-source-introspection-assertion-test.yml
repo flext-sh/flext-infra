@@ -1,0 +1,38 @@
+id: ban-test-source-introspection-assertion
+valid:
+  - |
+    import inspect
+    source = inspect.getsource(handler)
+    result = handler()
+    assert result.success
+  - assert artifact.read_text(encoding="utf-8") == expected_output
+  - tm.that(generated_document, eq=expected_document)
+  - |
+    def getsource() -> str:
+        return "runtime output"
+    assert getsource() == "runtime output"
+invalid:
+  - |
+    import inspect
+    assert "await " in inspect.getsource(handler)
+  - |
+    import inspect as reflection
+    assert "try:" in reflection.getsource(handler)
+  - |
+    from inspect import getsource
+    assert "return" in getsource(handler)
+  - |
+    from inspect import getsource as source_of
+    tm.that(source_of(handler), has="return")
+  - |
+    from inspect import getsource as source_of, isfunction
+    assert "def" in source_of(isfunction)
+  - |
+    from inspect import getsource as source_of, isfunction
+    tm.that(source_of(isfunction), has="def")
+  - |
+    import inspect
+    tm.that(inspect.getsource(handler), has="return", lacks="raise")
+  - |
+    import inspect
+    assert any("await " in inspect.getsource(handler) for handler in handlers)

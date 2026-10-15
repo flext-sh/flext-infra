@@ -150,7 +150,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     self._linearize(self._resolve(namespace)),
                     *(self._linearize(identity) for identity in identities),
                 ),
-                message="Inconsistent declared facade owner precedence",
+                message=(
+                    "Inconsistent declared facade owner precedence: "
+                    f"namespace={namespace.target}:{'.'.join(namespace.attributes)}; "
+                    f"declarations={tuple(item.qualified_base for item in declarations)}"
+                ),
             )
             spellings = {
                 identity: item.qualified_base

@@ -940,12 +940,43 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _actual_tier(convention: m.Infra.RopeModuleConvention) -> str:
-        """Actual tier.
+        """Classify the containing package before the module filename.
+
+        ``relative_path`` is local to the indexed package and can contain only
+        the basename. The qualified package identity retains its family without
+        admitting unrelated ancestor directories of the checkout.
 
         Returns:
             The resulting ``str``.
 
         """
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families().values()
+        directory_families = {
+            family.suffix
+            for family in families
+            if family.directories.intersection(convention.package_name.split("."))
+        }
+        if len(directory_families) > 1:
+            msg = (
+                f"ambiguous facade family directories for {convention.relative_path}: "
+                f"{sorted(directory_families)}"
+            )
+            raise ValueError(msg)
+        if directory_families:
+            return next(iter(directory_families))
+        file_families = {
+            family.suffix
+            for family in families
+            if convention.file_path.name in family.file_names
+        }
+        if len(file_families) > 1:
+            msg = (
+                f"ambiguous facade family filename for {convention.relative_path}: "
+                f"{sorted(file_families)}"
+            )
+            raise ValueError(msg)
+        if file_families:
+            return next(iter(file_families))
         policy = convention.module_policy
         expected: str = policy.expected_family or ""
         if expected:
@@ -967,9 +998,6 @@ class FlextInfraUtilitiesRopeInventory:
             return FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                 c.Infra.CONSTANTS_PY,
             ).suffix
-        expected: str = convention.module_policy.expected_family or ""
-        if expected:
-            return expected
         return FlextInfraUtilitiesRopeInventory._actual_tier(convention)
 
     @staticmethod

@@ -38,3 +38,6 @@ class FlextInfraConfigVocabulary:
         MAKEFILE = "makefile"
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
+
+
+__all__: list[str] = ["FlextInfraConfigVocabulary"]

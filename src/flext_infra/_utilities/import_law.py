@@ -86,31 +86,30 @@ class FlextInfraUtilitiesImportLaw:
         return order.index(c.Infra.IMPORT_LAW_OTHER_LAYER)
 
     @staticmethod
-    def import_direct_module(namespace_dir: Path, file_path: Path) -> bool:
-        """Return whether one module keeps direct leaf imports.
+    def import_declaration_module(namespace_dir: Path, file_path: Path) -> bool:
+        """Identify authored declaration layers through the family catalog.
 
-        A settings/config module (any path segment starting with ``settings``
-        or ``config``, with or without leading underscores) and a family
-        ``base.py`` (a ``base.py`` inside a private ``_<family>/`` package)
-        import their own namespace only through direct leaf modules, so the
-        settings/config graph and the family bases never re-enter a lazy
-        package that is still initializing.
+        Generated facades compose their own declarations; authored declarations
+        never import their own namespace, including annotation-only imports.
 
         Returns:
-            Whether the module is exempt from root-alias and lazy routing.
-
+            Whether this file belongs to a declaration layer.
         """
+        if file_path.name == c.Infra.INIT_PY or (
+            file_path.is_file()
+            and file_path.read_text(
+                encoding=c.DEFAULT_ENCODING,
+            ).startswith(c.Infra.AUTOGEN_HEADERS)
+        ):
+            return False
         relative = file_path.resolve().relative_to(namespace_dir.resolve())
         stems = tuple(part.removesuffix(".py").lstrip("_") for part in relative.parts)
         if any(
             stem.startswith(tuple(c.Infra.IMPORT_LAW_ROOT_SINGLETONS)) for stem in stems
         ):
             return True
-        return (
-            len(relative.parts) > 1
-            and relative.name == c.Infra.IMPORT_LAW_FAMILY_BASE_FILE
-            and relative.parts[-2].startswith("_")
-        )
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families().values()
+        return bool(set(stems) & {family.module for family in families})
 
     @staticmethod
     def import_lazy_exports(project_root: Path, package: str) -> t.StrMapping | None:

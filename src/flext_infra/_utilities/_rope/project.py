@@ -18,7 +18,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Self, override
 
-from rope.base.project import Project
+from rope.base.exceptions import ResourceNotFoundError
+from rope.base.project import NoProject, Project
+from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder
 
 from flext_infra import c, t
@@ -30,6 +32,8 @@ class FlextInfraRopeProject(Project):
     # Import roots are declared by FLEXT; a read-only analysis pass also
     # freezes their resource identities and the external Python path.
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
+    _snapshot_files: SnapshotFiles | None = None
+    _snapshot_python_path_folders: list[File | Folder] | None = None
 
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
@@ -38,10 +42,26 @@ class FlextInfraRopeProject(Project):
         are errors, never an invitation to consult a newer disk version.
         """
 
-        def __init__(self, sources: Mapping[Path, str]) -> None:
+        def __init__(
+            self,
+            sources: Mapping[Path, str],
+            directories: t.SequenceOf[Path] = (),
+        ) -> None:
             self._sources = {
                 path.resolve(): source.encode("utf-8")
                 for path, source in sources.items()
+            }
+            self._directories = frozenset({
+                *(parent for path in self._sources for parent in path.parents),
+                *(directory.resolve() for directory in directories),
+            })
+            children: dict[Path, set[Path]] = {}
+            for path in (*self._sources, *self._directories):
+                if path != path.parent:
+                    children.setdefault(path.parent, set()).add(path)
+            self._children = {
+                path: tuple(sorted(entries))
+                for path, entries in children.items()
             }
 
         def read(self, path: str) -> bytes:
@@ -53,6 +73,109 @@ class FlextInfraRopeProject(Project):
             """
             return self._sources[Path(path).resolve()]
 
+        def contains_file(self, path: str) -> bool:
+            """Recognize a declared snapshot file, including absent destinations."""
+            return Path(path).resolve() in self._sources
+
+        def contains_directory(self, path: str) -> bool:
+            """Recognize directories implied by the closed source inventory."""
+            return Path(path).resolve() in self._directories
+
+        def children(self, path: str) -> tuple[Path, ...]:
+            """Read direct children from the same closed inventory."""
+            return self._children.get(Path(path).resolve(), ())
+
+    class SnapshotChangeIndicator(ChangeIndicator):
+        """Observe captured content and directory membership by native equality."""
+
+        def __init__(self, files: FlextInfraRopeProject.SnapshotFiles) -> None:
+            self._files = files
+
+        @override
+        def get_indicator(self, resource: File | Folder) -> bytes | tuple[Path, ...]:
+            """Return actual snapshot state instead of live filesystem metadata."""
+            path = resource.real_path
+            if self._files.contains_file(path):
+                return self._files.read(path)
+            if self._files.contains_directory(path):
+                return self._files.children(path)
+            raise ResourceNotFoundError(
+                f"Resource <{resource.path}> is absent from the closed snapshot",
+            )
+
+    class SnapshotFile(File):
+        """Native Rope file whose existence is the authenticated source inventory."""
+
+        def __init__(
+            self,
+            project: Project | NoProject,
+            path: str,
+            files: FlextInfraRopeProject.SnapshotFiles,
+        ) -> None:
+            super().__init__(project, path)
+            self._files = files
+
+        @override
+        def exists(self) -> bool:
+            return self._files.contains_file(self.real_path)
+
+    class SnapshotFolder(Folder):
+        """Native Rope folder backed by captured and declared directory identities."""
+
+        def __init__(
+            self,
+            project: Project | NoProject,
+            path: str,
+            files: FlextInfraRopeProject.SnapshotFiles,
+        ) -> None:
+            super().__init__(project, path)
+            self._files = files
+
+        @override
+        def exists(self) -> bool:
+            return self._files.contains_directory(self.real_path)
+
+        @override
+        def get_children(self) -> list[File | Folder]:
+            return [
+                child
+                for path in self._files.children(self.real_path)
+                if not self.project.is_ignored(
+                    child := self.get_child(path.name),
+                )
+            ]
+
+    class SnapshotExternalProject(NoProject):
+        """Native external resource identities backed by the same closed inputs."""
+
+        def __init__(self, files: FlextInfraRopeProject.SnapshotFiles) -> None:
+            super().__init__()
+            self.fscommands = files
+            self._files = files
+
+        @override
+        def get_resource(self, resource_name: str) -> File | Folder:
+            path = self._get_resource_path(resource_name)
+            if self._files.contains_file(path):
+                return self.get_file(path)
+            if self._files.contains_directory(path):
+                return self.get_folder(path)
+            raise ResourceNotFoundError(
+                f"Resource <{resource_name}> is absent from the closed snapshot",
+            )
+
+        @override
+        def get_file(self, path: str) -> File:
+            return FlextInfraRopeProject.SnapshotFile(
+                self, Path(path).resolve().as_posix(), self._files,
+            )
+
+        @override
+        def get_folder(self, path: str) -> Folder:
+            return FlextInfraRopeProject.SnapshotFolder(
+                self, Path(path).resolve().as_posix(), self._files,
+            )
+
     @classmethod
     def from_snapshot(
         cls,
@@ -60,6 +183,8 @@ class FlextInfraRopeProject(Project):
         sources: Mapping[Path, str],
         source_folders: t.SequenceOf[str],
         ignored_resources: t.SequenceOf[str] = (),
+        *,
+        python_path_folders: t.SequenceOf[str] = (),
     ) -> Self:
         """Construct a fresh Rope identity graph without persistent state.
 
@@ -71,6 +196,8 @@ class FlextInfraRopeProject(Project):
                 Rope enumerates real disk files the closed inventory does not
                 hold (tool hooks under ignored resources) and every such
                 read dies in the snapshot mapping.
+            python_path_folders: Authenticated native import roots whose resources
+                must read the same captured inventory as project modules.
 
         Returns:
             The resulting ``Self``.
@@ -82,15 +209,61 @@ class FlextInfraRopeProject(Project):
         if not Path(root).is_dir():
             msg = f"Rope snapshot root must already exist: {root}"
             raise ValueError(msg)
-        return cls(
+        files = cls.SnapshotFiles(
+            sources,
+            (
+                Path(root),
+                *(Path(root) / path for path in source_folders),
+                *(Path(path) for path in python_path_folders),
+            ),
+        )
+        project = cls(
             root,
-            fscommands=cls.SnapshotFiles(sources),
+            fscommands=files,
             ropefolder=None,
             save_objectdb=False,
             save_history=False,
             ignored_resources=list(ignored_resources),
             source_folders=source_folders,
         )
+        project._snapshot_files = files
+        project.pycore.observer.timekeeper = cls.SnapshotChangeIndicator(files)
+        external = cls.SnapshotExternalProject(files)
+        project._snapshot_python_path_folders = [
+            external.get_folder(path) for path in python_path_folders
+        ]
+        project._custom_source_folders = [
+            project.get_resource(path) for path in source_folders
+        ]
+        return project
+
+    @override
+    def get_resource(self, resource_name: str) -> File | Folder:
+        """Expose authenticated virtual resources without materializing files."""
+        if self._snapshot_files is not None:
+            path = self._get_resource_path(resource_name)
+            if self._snapshot_files.contains_file(path):
+                return self.get_file(resource_name)
+            if self._snapshot_files.contains_directory(path):
+                return self.get_folder(resource_name)
+            raise ResourceNotFoundError(
+                f"Resource <{resource_name}> is absent from the closed snapshot",
+            )
+        return super().get_resource(resource_name)
+
+    @override
+    def get_file(self, path: str) -> File:
+        """Keep file identities and existence consistent across native SDK lookups."""
+        if self._snapshot_files is not None:
+            return self.SnapshotFile(self, path, self._snapshot_files)
+        return super().get_file(path)
+
+    @override
+    def get_folder(self, path: str) -> Folder:
+        """Keep folder identities and children consistent with the closed inventory."""
+        if self._snapshot_files is not None:
+            return self.SnapshotFolder(self, path, self._snapshot_files)
+        return super().get_folder(path)
 
     @contextmanager
     def frozen_layout(self) -> Generator[Self]:
@@ -101,7 +274,7 @@ class FlextInfraRopeProject(Project):
 
         """
         source_folders = self.get_source_folders()
-        python_path_folders: list[File | Folder] = super().get_python_path_folders()
+        python_path_folders = self.get_python_path_folders()
         self._frozen_folders = (source_folders, python_path_folders)
         try:
             yield self
@@ -141,6 +314,8 @@ class FlextInfraRopeProject(Project):
 
         """
         if self._frozen_folders is None:
+            if self._snapshot_python_path_folders is not None:
+                return list(self._snapshot_python_path_folders)
             folders: list[File | Folder] = super().get_python_path_folders()
             return folders
         return list(self._frozen_folders[1])

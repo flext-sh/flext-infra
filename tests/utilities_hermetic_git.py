@@ -178,3 +178,6 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             )
             environment[f"GIT_CONFIG_VALUE_{index}"] = f"https://{host}/"
         return environment
+
+
+__all__: list[str] = ["TestsFlextInfraUtilitiesHermeticGitMixin"]

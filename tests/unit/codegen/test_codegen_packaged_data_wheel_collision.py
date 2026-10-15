@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 import tarfile
 import zipfile
 from typing import TYPE_CHECKING
@@ -171,7 +172,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             "targets",
             "sdist",
         )
-        return u.Tests.toml_list(sdist["include"])
+        return u.Tests.toml_list(sdist["only-include"])
 
     @staticmethod
     def _sdist_force_include(root: Path) -> t.JsonMapping:
@@ -230,8 +231,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             eq=False,
         )
         tm.that(
-            f"/{FIXTURE_DISTRIBUTION_DATA_DIR}/**"
-            in self._sdist_include(infra_git_repo),
+            FIXTURE_DISTRIBUTION_DATA_DIR in self._sdist_include(infra_git_repo),
             eq=False,
         )
 
@@ -258,7 +258,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             ),
             eq=f"{package_name}/infra",
         )
-        tm.that("/infra/**" in self._sdist_include(infra_git_repo), eq=True)
+        tm.that("infra" in self._sdist_include(infra_git_repo), eq=True)
 
     @pytest.mark.slow
     def test_repository_namespace_retains_its_import_path(
@@ -277,9 +277,9 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.that(self._conform_self(infra_git_repo), eq=0)
 
         wheel = self._wheel_target(infra_git_repo)
-        tm.that("/infra/**" in u.Tests.toml_list(wheel["include"]), eq=True)
+        tm.that("infra" in u.Tests.toml_list(wheel["only-include"]), eq=True)
         tm.that(u.Tests.toml_mapping(wheel["sources"]).get("infra"), eq="infra")
-        tm.that("/infra/**" in self._sdist_include(infra_git_repo), eq=True)
+        tm.that("infra" in self._sdist_include(infra_git_repo), eq=True)
         output = infra_git_repo.parent / "namespace-artifacts"
         wheel_dir = output / "wheel"
         sdist_dir = output / "sdist"
@@ -321,7 +321,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.that(self._conform_self(infra_git_repo), eq=0)
 
         tm.that("infra" in self._wheel_force_include(infra_git_repo), eq=False)
-        tm.that("/infra/**" in self._sdist_include(infra_git_repo), eq=False)
+        tm.that("infra" in self._sdist_include(infra_git_repo), eq=False)
 
     @pytest.mark.slow
     def test_in_package_data_dir_is_never_force_included(
@@ -343,16 +343,15 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         force_include = self._wheel_force_include(infra_git_repo)
         tm.that(FIXTURE_DISTRIBUTION_DATA_DIR in force_include, eq=False)
         tm.that(
-            f"/{FIXTURE_DISTRIBUTION_DATA_DIR}/**"
-            in self._sdist_include(infra_git_repo),
+            FIXTURE_DISTRIBUTION_DATA_DIR in self._sdist_include(infra_git_repo),
             eq=False,
         )
         # The package copy still ships through the packages entry.
         package_name = u.Tests.project_spec(FIXTURE_DISTRIBUTION).package_name
         wheel = self._wheel_target(infra_git_repo)
         tm.that(
-            f"/{c.Infra.DEFAULT_SRC_DIR}/{package_name}/**"
-            in u.Tests.toml_list(wheel["include"]),
+            f"{c.Infra.DEFAULT_SRC_DIR}/{package_name}"
+            in u.Tests.toml_list(wheel["only-include"]),
             eq=True,
         )
 
@@ -381,7 +380,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             self._sdist_force_include(infra_git_repo).get(catalog),
             eq=catalog,
         )
-        tm.that("/config/**" in self._sdist_include(infra_git_repo), eq=False)
+        tm.that("config" in self._sdist_include(infra_git_repo), eq=False)
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
@@ -567,8 +566,13 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             "scaffold-data",
             role=c.Infra.MakeProfile.STANDALONE,
         )
+        package_name = "declared_scaffold_package"
         project = u.Tests.project_spec(repository.name).model_copy(
-            update={"packaged_data_paths": ("config/workspace.yaml",)},
+            update={
+                "package_name": package_name,
+                "class_stem": u.derive_class_stem(package_name),
+                "packaged_data_paths": ("config/workspace.yaml",),
+            },
         )
         workspace = u.Tests.workspace_spec(repository, project=project)
         request = u.Tests.conform_request(
@@ -583,3 +587,39 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             self._wheel_force_include(root).get("config/workspace.yaml"),
             eq=f"{project.package_name}/config/workspace.yaml",
         )
+        wheel_dir = tmp_path / "scaffold-artifacts"
+        tm.ok(
+            u.Cli.run_checked(
+                ["uv", "build", "--wheel", "--out-dir", str(wheel_dir)],
+                cwd=root,
+            ),
+        )
+        wheel = next(wheel_dir.glob("*.whl"))
+        manifest = root / "config/workspace.yaml"
+        with zipfile.ZipFile(wheel) as archive:
+            tm.that(
+                archive.read(f"{project.package_name}/config/workspace.yaml"),
+                eq=manifest.read_bytes(),
+            )
+        consumer_root = tmp_path / "scaffold-consumer"
+        consumer_root.mkdir()
+        consumer = tm.ok(
+            u.Cli.run_checked(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import sys\n"
+                        "from pathlib import Path\n"
+                        "from importlib.resources import files\n"
+                        f"sys.path.insert(0, {str(wheel)!r})\n"
+                        f"import {project.package_name} as package\n"
+                        "payload = files(package).joinpath("
+                        "'config', 'workspace.yaml').read_bytes()\n"
+                        f"print(payload == Path({str(manifest)!r}).read_bytes())\n"
+                    ),
+                ],
+                cwd=consumer_root,
+            ),
+        )
+        tm.that(consumer.stdout.strip(), eq="True")
