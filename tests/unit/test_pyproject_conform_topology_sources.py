@@ -1019,7 +1019,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         tm.that(
             u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
-            eq=(f"{cli.distribution} @ git+{cli.url}@{candidate_commit}",),
+            eq=(
+                workspace.repository.distribution,
+                f"{cli.distribution} @ git+{cli.url}@{candidate_commit}",
+            ),
         )
         tm.that(
             tm.ok(
@@ -1149,8 +1152,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 ),
             ),
         )
-        uv_table = u.Tests.toml_table_at(rendered, "tool", "uv")
-        tm.that("override-dependencies" in uv_table, eq=False)
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
+            eq=(workspace.repository.distribution,),
+        )
 
     def _assert_direct_source(self, rendered: str, ref: m.Infra.RepositoryRef) -> None:
         """Assert the canonical standalone output: one direct Git requirement."""

@@ -1132,10 +1132,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
             if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        root_names = (
-            (workspace.repository.distribution,) if workspace.repository.package else ()
+        local_names = (
+            *((workspace.repository.distribution,) if workspace.repository.package else ()),
+            *(member.distribution for member in members),
         )
-        local_names = (*root_names, *(member.distribution for member in members))
         conflicting = set(local_names) & candidate_sources.keys()
         if conflicting:
             return r[bool].fail(

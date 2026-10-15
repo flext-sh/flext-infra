@@ -452,6 +452,19 @@ When the projection carries no line, a hand-written `project.flext_source` in th
 manifest declares it, and a commit in a hand-written source fails. Fix the setup or
 `upg` owner and regenerate through `make gen`; manual installs do not replace the cycle.
 
+A workspace root preserves declared Git requirements and binds its package members
+through `[tool.uv.sources]` entries containing their declared local `path` and
+`editable` values. No repository declares a native `[tool.uv.workspace]`: each
+repository owns its lock independently. Publishable members retain the same inline
+Git provenance whether attached or standalone; only the containing root owns the
+local source overlay and the shared runtime environment. Regenerate that root with
+`make gen` and reconcile its lock with `make upg` when the local binding changes.
+Every package checkout also overrides transitive requirements for its own
+distribution with its local project identity. A dependency that refers back to
+the checkout through Git must resolve to that checkout rather than introduce a
+second source for the same distribution. Generation derives this identity from
+the repository declaration in both workspace and standalone contexts.
+
 A package preserves its declared Git requirements and authored native UV policy.
 Generation places local package bindings in the configured resolution views.
 Each view has a distinct non-package identity; the real root's runtime requirements
@@ -485,6 +498,7 @@ distribution. Dependency-floor updates rewrite only the selected target's PEP 62
 requirements and dependency groups, retaining markers, extras, direct sources and
 comments. They never write the installed generator's configuration or another
 checkout's declarations.
+
 Deptry checking and dependency detection consume one capture owner. It records the
 exact settings, native process outcome, fresh report and physical production tree;
 a changed tree, reused report, missing tool or contradictory exit status fails.
@@ -498,6 +512,7 @@ strings retain their markers, extras and sources when promoted from development.
 The target's explicit contract also identifies development-only suppliers. Their
 metadata remains in the index and their native findings stay visible; an illegal
 production import requires a consumer rewire instead of a runtime declaration.
+
 Deptry's generated optional-group setting uses `optional_dependencies_dev_groups`;
 the deprecated key is removed by the declaration phase in the same projection.
 The fixer holds the repository mutation lease, revalidates every metadata, source,
