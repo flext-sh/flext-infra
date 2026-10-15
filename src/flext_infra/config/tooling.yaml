@@ -195,11 +195,6 @@ Infra:
         - too-many-statements
         - complex-structure
         - suspicious-subprocess-import
-        # The native reference engine loads its own attested code artifacts;
-        # marshal is the only stdlib CodeType codec and every load guards
-        # with an isinstance CodeType check at the boundary. Re-measure when
-        # the engine stores a replaceable form.
-        - suspicious-marshal-usage
         - subprocess-without-shell-equals-true
         line-length: 88
         preview: true

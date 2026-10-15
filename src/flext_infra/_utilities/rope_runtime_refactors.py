@@ -24,7 +24,19 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
     @classmethod
     def reindent_source(cls, source: str, amount: int) -> str:
-        """Move source indentation while retaining every multiline literal value."""
+        """Move source indentation while retaining every multiline literal value.
+
+        Args:
+            source: The source code whose indentation is to be adjusted.
+            amount: The number of spaces to add (positive) or remove (negative) from the indentation of each line.
+
+        Returns:
+            The source code with adjusted indentation.
+
+        Raises:
+            ValueError: If the source contains lines with indentation smaller than the amount to be removed.
+
+        """
         literals = tuple(
             (begin, end)
             for begin, end, _metadata in cls.ignored_regions(source)
@@ -377,7 +389,20 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         match: p.Infra.RopeContractMatch,
         variable: str,
     ) -> t.Pair[int, int]:
-        """Read a captured region through Rope's native match boundary."""
+        """Read a captured region through Rope's native match boundary.
+
+        Args:
+            match: The Rope match object containing captured variables.
+            variable: The name of the captured variable to retrieve the region for.
+
+        Returns:
+            A pair of integers representing the start and end character positions of the captured region.
+
+        Raises:
+            ValueError: If the specified variable is not captured in the match.
+            TypeError: If the captured region does not conform to the expected format.
+
+        """
         captured = match.get_ast(variable)
         if captured is None:
             message = f"Rope match has no captured variable: {variable}"
@@ -465,7 +490,19 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     def lexical_occurrence_finder(
         cls, project: p.Infra.RopeProject, name: str
     ) -> p.Infra.RopeOccurrenceFinder:
-        """Find native lexical occurrences without last-binding inference."""
+        """Find native lexical occurrences without last-binding inference.
+
+        Args:
+            project: The Rope project in which to search for occurrences.
+            name: The name of the variable or function to find occurrences for.
+
+        Returns:
+            An instance of RopeOccurrenceFinder that can be used to locate occurrences of the specified name.
+
+        Raises:
+            TypeError: If the created finder does not satisfy the expected RopeOccurrenceFinder interface.
+
+        """
         finder = cls.runtime_callable("rope.refactor.occurrences", "Finder")(
             project, name
         )

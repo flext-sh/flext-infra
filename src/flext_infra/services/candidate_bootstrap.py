@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 
 
 class FlextInfraCandidateBootstrapService:
@@ -141,7 +142,14 @@ class FlextInfraCandidateBootstrapService:
             planned = self._planned_target(root, target, inputs)
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            files.extend(planned.value)
+            for file in planned.value:
+                sources = FlextInfraCodegenPreconditions.unique_states((
+                    *file.source_states,
+                    *declaration_states,
+                ))
+                if sources.failure:
+                    return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
+                files.append(file.model_copy(update={"source_states": sources.value}))
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
@@ -252,7 +260,7 @@ class FlextInfraCandidateBootstrapService:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        planned = self._planner.plan(request)
+        planned = self._planner.plan_repositories(request, captured)
         if planned.failure:
             return result_type.from_failure(planned)
         if planned.value.exception is not None:

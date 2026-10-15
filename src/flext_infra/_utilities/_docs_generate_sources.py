@@ -39,7 +39,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         suffixes: frozenset[str],
         excluded_names: frozenset[str] = frozenset(),
     ) -> p.Result[t.VariadicTuple[Path]]:
-        """List regular source files through one authenticated tree inventory.
+        """List regular source files through the declared inventory depth.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
@@ -50,17 +50,27 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             return r[t.VariadicTuple[Path]].from_failure(planned)
         if planned.value.directories:
             return r[t.VariadicTuple[Path]].ok(())
-        inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
-        if inventory.failure:
-            return r[t.VariadicTuple[Path]].from_failure(inventory)
+        if recursive:
+            inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
+            if inventory.failure:
+                return r[t.VariadicTuple[Path]].from_failure(inventory)
+            paths = (
+                entry.path for entry in inventory.value.entries if entry.kind == "file"
+            )
+        else:
+            directory = cli_u.Cli.atomic_inventory_physical_directory(root)
+            if directory.failure:
+                return r[t.VariadicTuple[Path]].from_failure(directory)
+            paths = (
+                root / entry.name
+                for entry in directory.value.entries
+                if entry.kind == "file"
+            )
         return r[t.VariadicTuple[Path]].ok(
             tuple(
-                entry.path
-                for entry in inventory.value.entries
-                if entry.kind == "file"
-                and entry.path.suffix in suffixes
-                and entry.path.name not in excluded_names
-                and (recursive or entry.path.parent == root)
+                path
+                for path in paths
+                if path.suffix in suffixes and path.name not in excluded_names
             ),
         )
 

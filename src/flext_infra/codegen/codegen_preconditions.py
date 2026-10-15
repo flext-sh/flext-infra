@@ -25,8 +25,6 @@ from flext_infra.workspace.environment_provenance import (
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
 
-_ENGINE_DISTRIBUTION = config.Infra.codegen.infra_repository.distribution
-
 
 class FlextInfraCodegenPreconditions:
     """Validate source consistency and receipt ownership before publishing."""
@@ -49,7 +47,7 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[t.VariadicTuple[t.Pair[str, Path]]]
-        elected: dict[str, Path] = {}
+        elected: t.DictKV[str, Path] = {}
         pending = [item.target for item in nominated]
         visited: set[Path] = set()
         with u.Infra.open_import_project(repository_root) as project:
@@ -203,7 +201,7 @@ class FlextInfraCodegenPreconditions:
         names: t.VariadicTuple[m.Infra.SourceClassReference],
     ) -> p.Result[
         t.Pair[
-            dict[str, Path],
+            t.DictKV[str, Path],
             t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
         ]
     ]:
@@ -215,12 +213,12 @@ class FlextInfraCodegenPreconditions:
         """
         result_type = r[
             t.Pair[
-                dict[str, Path],
+                t.DictKV[str, Path],
                 t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
             ]
         ]
         if all(item.attributes for item in names):
-            roots: dict[str, Path] = {}
+            roots: t.DictKV[str, Path] = {}
             for item in names:
                 namespace = item.target.partition(".")[0]
                 selected = cls._elect_namespace(namespace)
@@ -665,7 +663,7 @@ class FlextInfraCodegenPreconditions:
         namespaces = {
             namespace for namespace, root in roots.items() if root in ownership_prefixes
         }
-        elected: dict[Path, m.Cli.AtomicFileState] = {}
+        elected: t.DictKV[Path, m.Cli.AtomicFileState] = {}
         for path in paths:
             if (
                 path.name != c.Infra.DISTRIBUTION_DIRECT_URL_FILE
@@ -744,18 +742,15 @@ class FlextInfraCodegenPreconditions:
             )
         )
         output_paths = {output.path for output in own_outputs}
-        authenticated = cls._authenticated_tree_files(by_path, producer.generator_trees)
+        authenticated = cls._authenticated_receipt_files(by_path, authority.inputs)
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
-        covered, representatives = authenticated.value
-        # Native inventory authenticates every covered file. Keep one complete
-        # file snapshot per tree and every input outside that proof, including
-        # optional absence and editable bindings captured outside package roots.
+        # The native authority physically reauthenticates every matching receipt.
+        # Extra planner inputs retain their own immediate snapshot proof.
         retained = tuple(
             state
             for state in states.value
-            if state.path not in output_paths
-            and (state.path not in covered or state.path in representatives)
+            if state.path not in output_paths and state.path not in authenticated.value
         )
         current = FlextInfraMiseArtifactsComparison.states_current(retained)
         if current.failure:
@@ -768,61 +763,42 @@ class FlextInfraCodegenPreconditions:
         )
 
     @staticmethod
-    def _authenticated_tree_files(
+    def _authenticated_receipt_files(
         by_path: t.MappingKV[Path, m.Cli.AtomicFileState],
-        trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-    ) -> p.Result[t.Pair[set[Path], set[Path]]]:
-        """Authenticate every tree entry against its captured file state.
+        receipts: t.VariadicTuple[m.Cli.AtomicFileReceipt],
+    ) -> p.Result[set[Path]]:
+        """Bind buffered inputs to receipts before their native physical proof.
 
         Args:
             by_path: Captured states indexed by their physical path.
-            trees: The captured physical tree manifests under authentication.
+            receipts: Original authority receipts, including owned output preimages.
 
         Returns:
-            The covered paths and one representative file path per tree.
+            Paths whose exact buffered state agrees with its original receipt.
 
         """
-        result_type = r[t.Pair[set[Path], set[Path]]]
+        result_type = r[set[Path]]
         covered: set[Path] = set()
-        representatives: set[Path] = set()
-        # State and entry share these physical identity fields; state carries
-        # the content pair (sha256, size) the entry stores directly.
-        identity_fields = (
-            "mode",
-            "device",
-            "inode",
-            "link_count",
-            "parent_device",
-            "parent_inode",
-            "file_attributes",
-            "reparse_tag",
-        )
-        for tree in trees:
-            representative: Path | None = None
-            for entry in tree.entries:
-                if entry.kind != "file" or c.Infra.DUNDER_PYCACHE in entry.path.parts:
-                    continue
-                state = by_path.get(entry.path)
-                if state is None or state.content is None:
-                    continue
-                if (
-                    u.Cli.sha256_bytes(state.content),
-                    len(state.content),
-                    *(getattr(state, field) for field in identity_fields),
-                ) != (
-                    entry.sha256,
-                    entry.size,
-                    *(getattr(entry, field) for field in identity_fields),
-                ):
-                    return result_type.fail(
-                        f"producer input differs from captured tree: {state.path}"
-                    )
-                covered.add(state.path)
-                if representative is None:
-                    representative = state.path
-            if representative is not None:
-                representatives.add(representative)
-        return result_type.ok((covered, representatives))
+        identity_fields = set(m.Cli.AtomicFileIdentity.model_fields)
+        for receipt in receipts:
+            state = by_path.get(receipt.path)
+            if state is None:
+                continue
+            content = state.content
+            if (
+                state.model_dump(include=identity_fields),
+                len(content) if content is not None else None,
+                u.Cli.sha256_bytes(content) if content is not None else None,
+            ) != (
+                receipt.model_dump(include=identity_fields),
+                receipt.size,
+                receipt.sha256,
+            ):
+                return result_type.fail(
+                    f"producer input differs from captured receipt: {state.path}"
+                )
+            covered.add(state.path)
+        return result_type.ok(covered)
 
     @staticmethod
     def producer_trees_current(
@@ -1021,11 +997,12 @@ class FlextInfraCodegenPreconditions:
         lock_path = context.value.lock_path
         if not lock_path.is_file():
             return result_type.ok(value=True)
-        matches = u.installed_distributions(name=_ENGINE_DISTRIBUTION)
+        distribution_name = config.Infra.codegen.infra_repository.distribution
+        matches = u.installed_distributions(name=distribution_name)
         if len(matches) != 1:
             return result_type.fail(
                 f"rendering engine distribution count mismatch: "
-                f"distribution={_ENGINE_DISTRIBUTION} expected=1 "
+                f"distribution={distribution_name} expected=1 "
                 f"actual={len(matches)}",
             )
         distribution = matches[0]
@@ -1057,6 +1034,7 @@ class FlextInfraCodegenPreconditions:
                     FlextInfraCodegenPreconditions._locked_engine_current,
                     distribution,
                     direct_url,
+                    distribution_name=distribution_name,
                 )
             )
         )
@@ -1066,6 +1044,8 @@ class FlextInfraCodegenPreconditions:
         distribution: Distribution,
         direct_url: str | None,
         locked: m.Infra.LockedEnvironment,
+        *,
+        distribution_name: str,
     ) -> p.Result[bool]:
         """Compare the installed engine to the unique typed committed pin.
 
@@ -1075,7 +1055,7 @@ class FlextInfraCodegenPreconditions:
         """
         result_type = r[bool]
         pinned = tuple(
-            item for item in locked.package if item.name == _ENGINE_DISTRIBUTION
+            item for item in locked.package if item.name == distribution_name
         )
         if not pinned:
             return result_type.ok(value=True)
@@ -1087,14 +1067,14 @@ class FlextInfraCodegenPreconditions:
         if item.source.editable is not None:
             return result_type.ok(value=True)
         origin = FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict(
-            _ENGINE_DISTRIBUTION, item, direct_url
+            distribution_name, item, direct_url
         )
         if origin.failure:
             return origin
         if item.source.registry is not None and distribution.version != item.version:
             return result_type.fail(
-                f"rendering engine {_ENGINE_DISTRIBUTION}@{distribution.version} "
-                f"is not the locked pin {_ENGINE_DISTRIBUTION}@{item.version}: "
+                f"rendering engine {distribution_name}@{distribution.version} "
+                f"is not the locked pin {distribution_name}@{item.version}: "
                 "the environment is stale — cure: make setup (stale environment) "
                 "or make upg (stale pin); never a hand-edited generated file",
             )

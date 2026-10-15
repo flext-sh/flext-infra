@@ -185,7 +185,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             if planned.failure:
                 return r[m.Infra.CodegenPlan].from_failure(planned)
             return r[m.Infra.CodegenPlan].ok(planned.value[0])
-        return self._plan_repositories(request, inputs.value)
+        return self.plan_repositories(request, inputs.value)
 
     def _required_producer(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return the current captured producer, capturing one when absent.
@@ -231,7 +231,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return self._plan_facade(request, inputs)
         return self._plan_lazy_init(request, inputs)
 
-    def _plan_repositories(
+    def plan_repositories(
         self,
         request: m.Infra.CodegenConformRequest,
         inputs: m.Infra.CodegenInputs,

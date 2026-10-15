@@ -162,7 +162,9 @@ filename change outside those mappings remains observable.
 
 Producer authentication compiles pinned physical declarations without executing
 their callbacks, then compares loaded bindings with an isolated native import from
-the elected physical roots. This read-only proof creates no source preview or
+the elected physical roots. Observation remains passive in the original process;
+the isolated child performs the real import and may produce its actual import
+effects, which are validated separately. This proof creates no source preview or
 publication journal. Source and runtime receipts are checked before observation
 and again before returning the authenticated reference; the cold import's executed
 code must also match those captured source bytes. Candidate publication still owns
@@ -207,11 +209,12 @@ executing either branch, decorators, or class bodies. The selected metaclass ret
 the same physical supplier/source/code authentication as an unconditional import.
 Native compiler inputs preserve the class's actual bases and its own declared
 descriptors. An inherited constructor is not an explicitly declared dataclass
-constructor. Authentication does not replay a class body, decorator, metaclass, or
-construction hook. Function compilation uses authenticated native suppliers and
-data-only attachment targets; alias operands and compiler constructor bindings
-require admission before invocation. Value comparison must not invoke authored
-equality, hashing, or attribute access.
+constructor. Observation and pinned-source compilation do not replay a class body,
+decorator, metaclass, or construction hook in the original process. The isolated
+child retains the effects of its real import. Function compilation uses
+authenticated native suppliers and data-only attachment targets. Alias operands
+and compiler constructor bindings require admission before invocation. Value
+comparison must not invoke authored equality, hashing, or attribute access.
 Compiler field defaults use the existing native operand-admission contract.
 Immutable scalar defaults are valid inputs; a default with a `__set_name__`
 callback remains inadmissible before native class assembly.
@@ -223,9 +226,9 @@ inherited subclass hook again.
 Source bindings retain null literals inside a typed value; a null annotation or
 default never becomes a successful null `FlextResult` payload or a substituted type.
 Native generated methods are compiled in batches whose starting lines depend on
-other generated methods. Their comparison uses the same fixed starting line on
-immutable copies of both code objects, preserving compiler filenames, executable
-code, metadata and closure checks. Authored functions retain exact source positions.
+other generated methods. Their evidence retains actual compiler filenames, source
+positions, executable metadata and closure checks against the same authenticated
+construction inputs. Authored functions retain exact source positions.
 
 Every phase binds that same captured context to its staged consumer inputs. Journal
 transitions preserve it instead of rediscovering loaded origins after publication.
@@ -267,8 +270,18 @@ mode, and retain structured JSON values until the transport boundary.
 Recursive JSON strings are prohibited: re-encoding their escapes amplifies memory
 with nesting depth. Compiler locations compare as a flat structure containing
 the root and every nested code unit's position in `co_consts`, without JSON
-conversion or repeated root checks. Executable equality and full operand evidence
-remain required.
+conversion or repeated root checks. Full operand evidence remains required.
+Code observations carry one Pydantic-validated JSON payload with the filename,
+unit identity, flat locations and complete native compiler witness bytes.
+CPython marshal format 2 encodes the witness without reference or string-interning
+flags; Pydantic owns its base64 transport. Witnesses are compared without code
+deserialization, hashes or inferred locals layouts. This compiler identity is
+stricter than `CodeType.__eq__`: it also retains stack size and locals kinds.
+Exact native constants are elected before relocation and encoding. NaN, mutable
+constants and buffers retain explicit nonportable markers and cannot compare
+equal, even to another rejected observation. Unknown constant types fail before
+authored iteration, hashing or buffer conversion. Physical source receipts and
+fresh compilation remain necessary to authenticate the witness.
 Import dependency discovery uses the shared import maps; class-lineage validation remains
 with the queries that request class information. Namespace packages contribute
 their physical portions to source authority without requiring an executable
