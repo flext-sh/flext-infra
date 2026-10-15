@@ -436,7 +436,6 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             return self._skip_result(project_dir, started)
         return self._build_gate_execution(
             project_dir,
-            verdict=passed and not issues,
             outcome=(
                 c.Infra.ToolOutcome.ERROR
                 if not passed

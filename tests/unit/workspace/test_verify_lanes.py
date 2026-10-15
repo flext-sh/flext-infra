@@ -51,12 +51,9 @@ class TestsVerifyLanes:
         policy = config.Infra.codegen.branch_policy
         remote_action = "set-url" if policy.lane_remote == c.Infra.GIT_ORIGIN else "add"
         u.Tests.git_run(repo, "remote", remote_action, policy.lane_remote, str(remote))
-        u.Tests.git_run(
-            repo,
-            "update-ref",
-            "-d",
-            f"refs/remotes/{c.Infra.GIT_ORIGIN}/{u.Tests.provider_branch()}",
-        )
+        # The fixture clone's tracking refs describe its former origin; prune
+        # them against the re-pointed remote, as a real re-pointed clone would.
+        u.Tests.git_run(repo, "remote", "prune", c.Infra.GIT_ORIGIN)
         u.Tests.git_run(repo, "push", "-u", policy.lane_remote, integration)
         u.Tests.git_run(remote, "symbolic-ref", "HEAD", f"refs/heads/{integration}")
         u.Tests.git_run(
