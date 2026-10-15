@@ -468,7 +468,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         self.logger.info(
             "mise_proof_inputs",
             lock_path=str(lock_path),
-            lock_sha256=u.Cli.sha256_bytes(source.value.encode(c.DEFAULT_ENCODING)),
+            lock_sha256=u.Cli.sha256_bytes(source.encode(c.DEFAULT_ENCODING)),
             config_sha256=u.Cli.sha256_bytes(
                 config.Infra.codegen.model_dump_json().encode(c.DEFAULT_ENCODING)
             ),
