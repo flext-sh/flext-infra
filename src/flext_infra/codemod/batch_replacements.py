@@ -214,6 +214,7 @@ class FlextInfraModReplacements:
 
         Returns:
             Exact syntax plans; final normalization and gates belong to convergence.
+
         """
         grouped: MutableMapping[Path, list[m.Infra.ModOccurrence]] = {}
         for finding in report.entries:
@@ -235,6 +236,7 @@ class FlextInfraModReplacements:
 
         Returns:
             Accepted plans or the first native admission failure.
+
         """
         accepted: list[m.Infra.SemanticFilePlan] = []
         for plan in plans:

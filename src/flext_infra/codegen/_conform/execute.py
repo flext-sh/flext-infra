@@ -364,6 +364,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         Returns:
             A complete migration receipt, retaining per-file failures and gains.
+
         """
         targets = u.Infra.repository_operation_targets(
             request.root,
@@ -495,6 +496,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         Returns:
             Typed residual issues retained with their original first cause.
+
         """
         metadata = published.error_data
         if metadata is None:
@@ -788,6 +790,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         Returns:
             The unchanged session or the exact declaration failure.
+
         """
         result_type = r[m.Infra.CodegenTransactionSession]
         if len(publications) != 1 or publications[0].replacement is None:
@@ -1165,6 +1168,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenResult]``.
+
         """
         if result.plan is None:
             return r[m.Infra.CodegenResult].fail(

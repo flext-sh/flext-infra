@@ -12,6 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import c, m, main
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
@@ -31,6 +32,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Returns:
             The plan entry electing the copied rule resource.
+
         """
         rule = self._catalog(tmp_path) / "rules" / name
         tm.ok(
@@ -120,7 +122,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 for finding in report.entries:
                     tm.that(finding.rule_id, eq=elected.id)
                     tm.that(finding.file, eq=sample.relative_to(tmp_path))
-                    mapping = u.type_adapter(t.JsonMapping)
+                    mapping = u.type_adapter(TypeForm(t.JsonMapping))
                     native = u.Infra.mod_native_payload(finding, readers)
                     captures = mapping.validate_python(native["metaVariables"])
                     single = mapping.validate_python(captures["single"])
@@ -402,6 +404,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Raises:
             TypeError: If the snapshot or fix is not of the expected type.
+
         """
         owner = Path(__file__).resolve().parents[3]
         original = (
@@ -735,6 +738,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Returns:
             The path to the live provider catalog.
+
         """
         plan = tm.ok(u.Infra.codemod_rule_plan(root))
         catalogs = tuple(
@@ -834,6 +838,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         Returns:
             The resulting ``tuple[Path, Path]``.
+
         """
         name = "snapshot-fixture-provider"
         package = site / name.replace("-", "_")
@@ -843,7 +848,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
         version = project["version"]
         assert isinstance(version, str)
-        dependencies = u.type_adapter(t.StrSequence).validate_python(
+        dependencies = u.type_adapter(TypeForm(t.StrSequence)).validate_python(
             project["dependencies"],
         )
         tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))

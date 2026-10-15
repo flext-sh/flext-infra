@@ -436,6 +436,7 @@ class FlextInfraMisePublication:
         Returns:
             The retirement failure issue with its causal exception, or
             ``(None, None)`` when no entry is captured or retirement holds.
+
         """
         if publication.index_before is None:
             return None, None
@@ -480,6 +481,7 @@ class FlextInfraMisePublication:
         Returns:
             The blocking prerequisite issue with its causal exception, or
             ``(None, None)`` when the target is ready to publish.
+
         """
         ready = FlextInfraMisePublication._tracking_prerequisites(
             publication,
@@ -541,6 +543,7 @@ class FlextInfraMisePublication:
         Returns:
             True when the admission carries an error, issues, an exception,
             or its phase and admitted states differ from the analysis.
+
         """
         analysis = batch_admission.analysis
         if analysis is None or batch_admission.error or batch_admission.issues:
@@ -693,6 +696,7 @@ class FlextInfraMisePublication:
 
         Returns:
             Exact dependency verification or its first native cause.
+
         """
         expected: list[m.Cli.AtomicFileState] = []
         for source in sources:
@@ -719,6 +723,7 @@ class FlextInfraMisePublication:
 
         Returns:
             Verified publication evidence for every required declaration.
+
         """
         for dependency in publication.tracking_dependencies:
             planned = next(

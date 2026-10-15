@@ -39,6 +39,7 @@ class FlextInfraPytestProfile:
         Raises:
             ValueError: If the profile destination escapes the runner's reports tree.
             RuntimeError: If the invocation publishes ambiguous run receipts.
+
         """
         # The entry has already started profiling before importing this adapter.
         runner = FlextInfraPytestRunner.from_environment(

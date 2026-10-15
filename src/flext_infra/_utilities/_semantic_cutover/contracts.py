@@ -58,6 +58,7 @@ class FlextInfraUtilitiesSemanticContracts(
         Raises:
             ValueError: If two rules share an identity or a rule names an
                 undeclared facade family.
+
         """
         rules = m.Infra.RopeContractRules.model_validate(
             u.Cli.yaml_safe_load(
@@ -89,6 +90,7 @@ class FlextInfraUtilitiesSemanticContracts(
 
         Returns:
             Content plans consumed by the existing semantic publication owner.
+
         """
         items = cls._editable_sources(sources)
         if not items:
@@ -159,6 +161,7 @@ class FlextInfraUtilitiesSemanticContracts(
 
         Raises:
             ValueError: When a destination name has a competing lexical identity.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         scope = runtime.scope_at(module, match.get_region()[0])
@@ -227,6 +230,7 @@ class FlextInfraUtilitiesSemanticContracts(
 
         Raises:
             ValueError: If a family-constrained occurrence has no source resource.
+
         """
         if rule.scope_kinds and scope.get_kind() not in rule.scope_kinds:
             return False

@@ -33,6 +33,7 @@ class TestsFlextInfraGithubGateAttestation:
 
         Returns:
             The resulting ``m.Infra.WorkspaceRuntimeContext``.
+
         """
         return tm.ok(
             FlextInfraWorkspaceDetector.resolution_context(
@@ -46,6 +47,7 @@ class TestsFlextInfraGithubGateAttestation:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         return FlextInfraGateRegistry.default().runtime_identity(
             gate_ids,
@@ -268,6 +270,7 @@ class TestsFlextInfraGithubGateAttestation:
 
         Raises:
             AssertionError: If a corruption variant is not parametrized.
+
         """
         signed_repository_factory(tmp_path)
         public = (tmp_path / "signing_key.pub").read_text(encoding="utf-8").strip()
@@ -562,6 +565,7 @@ class TestsFlextInfraGithubGateAttestation:
 
         Returns:
             The resulting ``m.Infra.GateAttestationCreateRequest``.
+
         """
         receipts = (
             root

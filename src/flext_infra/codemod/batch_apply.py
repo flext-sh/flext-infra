@@ -269,6 +269,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         Returns:
             The full-catalog report for this candidate's staged bytes.
+
         """
         candidate = FlextInfraStagedPackage.plan_sources(
             root,

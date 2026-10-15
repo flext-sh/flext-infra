@@ -10,13 +10,12 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra import c, m, p, r, t, u
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from flext_infra import p
 
 type _DocsScopeArtifacts = t.Pair[
     m.Infra.DocScope,
@@ -51,6 +50,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Yields:
             Results of the documentation generation bundle preparation for each batch.
+
         """
         roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
@@ -93,9 +93,8 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Yields:
             Results of the documentation generation bundle preparation for each batch.
-        """
-        from flext_infra.docs.generator import FlextInfraDocGenerator
 
+        """
         root_scope = next(
             (scope for scope in selected if scope.name == c.Infra.RK_ROOT),
             None,
@@ -105,7 +104,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 continue
             producer = FlextInfraCodegenPreconditions.capture_producer(
                 root,
-                entrypoint=FlextInfraDocGenerator.execute_request,
+                entrypoint=cls.execute_request,
             )
             if producer.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(producer)
@@ -182,7 +181,7 @@ class FlextInfraDocGeneratorBundleMixin:
         )
         if paths.failure:
             return result_type.from_failure(paths)
-        sources = u.Infra.required_file_states(paths.value)
+        sources = cls._captured_source_states(paths.value, source_roots)
         if sources.failure:
             return result_type.from_failure(sources)
         manifest = u.Cli.atomic_read_binary_file_state(
@@ -195,18 +194,13 @@ class FlextInfraDocGeneratorBundleMixin:
             return result_type.fail(
                 "docs scope inventory changed before batch admission",
             )
-        states = tuple(
-            sorted(
-                {
-                    item.path: item
-                    for item in (
-                        *sources.value,
-                        declaration,
-                    )
-                }.values(),
-                key=lambda item: item.path,
-            )
-        )
+        complete = FlextInfraCodegenPreconditions.unique_states((
+            *sources.value,
+            declaration,
+        ))
+        if complete.failure:
+            return result_type.from_failure(complete)
+        states = tuple(sorted(complete.value, key=lambda item: item.path))
         directories = u.Infra.docs_source_directories(
             source_roots,
             source_scope=source_scope,
@@ -270,11 +264,9 @@ class FlextInfraDocGeneratorBundleMixin:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
-        from flext_infra.docs.generator import FlextInfraDocGenerator
-
         producer = FlextInfraCodegenPreconditions.capture_producer(
             request.repository_root,
-            entrypoint=FlextInfraDocGenerator.execute_request,
+            entrypoint=cls.execute_request,
         )
         if producer.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(producer)
@@ -325,6 +317,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Returns:
             The rendered scope artifacts, or the first resolution failure.
+
         """
         output_dir = u.Cli.resolve_optional_path(
             request.output_dir,
@@ -408,6 +401,7 @@ class FlextInfraDocGeneratorBundleMixin:
         Returns:
             The authenticated source states with every declared absence
             witness retained.
+
         """
         result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
         captured = u.Infra.required_file_states(paths)
@@ -651,6 +645,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenBootstrapSource]``.
+
         """
         result_type = r[m.Infra.CodegenBootstrapSource]
         inputs = u.Infra.load_codegen_inputs(repository_root)
@@ -693,6 +688,7 @@ class FlextInfraDocGeneratorBundleMixin:
         Returns:
             The governance owner's Git reference, or the first resolution
             failure.
+
         """
         result_type = r[str]
         identity = u.Infra.git_identity(
@@ -700,15 +696,20 @@ class FlextInfraDocGeneratorBundleMixin:
         )
         if identity.failure:
             return result_type.from_failure(identity)
-        owned = cls._own_governance_branch(
-            repository_root,
-            identity.value.origin_remote,
-            inputs,
-        )
-        if owned.failure:
-            return result_type.from_failure(owned)
-        if owned.value is not None:
-            return result_type.ok(owned.value)
+        origin = identity.value.origin_remote
+        if origin is not None:
+            page = u.Infra.validate_git_remote_url(origin)
+            if page.failure:
+                return result_type.from_failure(page)
+            if page.value.rstrip("/").removesuffix(".git") == c.Infra.GITHUB_REPO_URL:
+                branch = u.Infra.resolve_integration_branch(
+                    repository_root,
+                    policy_branch=inputs.spec.branch_policy.integration_branch,
+                    inputs=inputs,
+                )
+                if branch.failure:
+                    return result_type.from_failure(branch)
+                return result_type.ok(branch.value)
         family = cls._family_governance_ref(repository_root, inputs)
         if family.failure:
             return result_type.from_failure(family)
@@ -724,6 +725,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Returns:
             The dependency family branch, or the first resolution failure.
+
         """
         result_type = r[str]
         line = u.Infra.flext_integration_line(
@@ -743,41 +745,6 @@ class FlextInfraDocGeneratorBundleMixin:
                 "governance owner differs from the captured dependency family",
             )
         return result_type.ok(line.value.branch)
-
-    @classmethod
-    def _own_governance_branch(
-        cls,
-        repository_root: Path,
-        origin: str | None,
-        inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[str | None]:
-        """Resolve the integration line when the origin owns the governance.
-
-        Args:
-            repository_root: Repository root whose governance is resolved.
-            origin: Origin remote URL, or ``None`` without one.
-            inputs: Loaded codegen inputs of the repository.
-
-        Returns:
-            The owned governance branch, or ``None`` when another owner's
-            family line governs, or the first resolution failure.
-        """
-        result_type = r[str | None]
-        if origin is None:
-            return result_type.ok(value=None)
-        page = u.Infra.validate_git_remote_url(origin)
-        if page.failure:
-            return result_type.from_failure(page)
-        if page.value.rstrip("/").removesuffix(".git") != c.Infra.GITHUB_REPO_URL:
-            return result_type.ok(value=None)
-        branch = u.Infra.resolve_integration_branch(
-            repository_root,
-            policy_branch=inputs.spec.branch_policy.integration_branch,
-            inputs=inputs,
-        )
-        if branch.failure:
-            return result_type.from_failure(branch)
-        return result_type.ok(value=branch.value)
 
 
 __all__: list[str] = ["FlextInfraDocGeneratorBundleMixin"]

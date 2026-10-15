@@ -32,7 +32,12 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.fixture
 def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
-    """Exercise public native authentication against real fixture source trees."""
+    """Exercise public native authentication against real fixture source trees.
+
+    Returns:
+        The resulting ``p.Tests.NativeConsumer``.
+
+    """
     runtime = tm.ok(
         FlextInfraWorkspaceDetector.resolution_context(_PROJECT_ROOT)
     ).runtime_root
@@ -40,19 +45,23 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
         "import importlib, pathlib, sys\n"
         "from pathlib import Path\n"
         "from flext_infra import m\n"
-        "from flext_infra.codegen import FlextInfraCodegenPreconditions as preconditions\n"
-        "from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport as fresh\n"
+        "from flext_infra.codegen import FlextInfraCodegenPreconditions as "
+        "preconditions\n"
+        "from flext_infra.workspace.native_reference import "
+        "FlextInfraWorkspaceNativeReference as native\n"
         f"runtime_root = Path({str(runtime)!r})\n"
         "def authenticate(name, *, source_root=None):\n"
         "    modules = (m.Infra.SourceClassReference(target=name),)\n"
-        "    authority = preconditions.capture_source_authority(runtime_root, nominated=modules)\n"
+        "    authority = preconditions.capture_source_authority(runtime_root, "
+        "nominated=modules)\n"
         "    if authority.failure: return authority\n"
         "    inputs = preconditions.authority_inputs(authority.value)\n"
         "    if inputs.failure: return inputs\n"
-        "    return fresh.capture_native_reference(m.Infra.NativeImportRequest(\n"
+        "    return native.authenticate(m.Infra.NativeImportRequest(\n"
         "        repository_root=Path.cwd() if source_root is None else source_root,\n"
         "        runtime_root=runtime_root, modules=modules,\n"
-        "        import_roots=tuple(dict.fromkeys(root.parent for _, root in authority.value.generator_modules)),\n"
+        "        import_roots=tuple(dict.fromkeys(root.parent for _, root in "
+        "authority.value.generator_modules)),\n"
         "        source_authority=authority.value, inputs=inputs.value))\n"
     )
 
@@ -69,7 +78,12 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
 
 @pytest.fixture
 def declaration_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
-    """Provide the standard FLEXT workspace fabric for native declarations."""
+    """Provide the standard FLEXT workspace fabric for native declarations.
+
+    Returns:
+        The resulting ``t.Pair[Path, Path]``.
+
+    """
     return u.Tests.create_lazy_init_workspace(tmp_path)
 
 
@@ -79,6 +93,7 @@ def binding_probe_rule() -> m.Infra.CodemodRule:
 
     Returns:
         The probe rule whose consumer supplies its context conditions.
+
     """
     return m.Infra.CodemodRule(
         id="binding-probe",
@@ -178,6 +193,7 @@ def _consumer_pyproject_source(distribution: str) -> str:
 
     Returns:
         The pyproject source declaring the governed consumer contract.
+
     """
     modules = c.Tests.CONSUMER_MODULES
     # A governed FLEXT consumer declares exactly one runtime upstream profile;
@@ -236,6 +252,7 @@ def _provision_consumer_template(
 
     Returns:
         The provisioned consumer with committed locks and a physical environment.
+
     """
     distribution = "flext-demo"
     root = u.Tests.mk_project(
@@ -678,6 +695,7 @@ def _ensure_provisioned(
 
     Raises:
         ValueError: If a Make profile is requested without its Git environment.
+
     """
     parent.mkdir(parents=True, exist_ok=True)
     with u.Infra.codegen_transaction_lease(parent / receipt):
@@ -734,6 +752,7 @@ def generated_make_template(
 
     Returns:
         The declared profile and its generated project checkout.
+
     """
     profile = c.Infra.MakeProfile(request.param)
     root, _ = u.Tests.render_make_environment(
@@ -814,6 +833,7 @@ def real_detector_project(
 
     Yields:
         The shared physical checkout restored after dependency mutation.
+
     """
     modules = t.Infra.STR_SEQ_ADAPTER.validate_python(request.param)
     with session_runtime.lease(
@@ -863,6 +883,7 @@ def installed_artifact_consumer(
 
     Yields:
         The leased consumer repository root.
+
     """
     with session_runtime.lease(
         _provision_consumer_template,
@@ -879,6 +900,7 @@ def duplicate_project(
 
     Yields:
         The stable editable checkout with case-local source, Git and report state.
+
     """
     with session_runtime.lease(_provision_consumer_template) as root:
         yield root

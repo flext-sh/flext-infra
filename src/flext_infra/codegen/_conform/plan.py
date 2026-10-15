@@ -33,6 +33,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         Returns:
             Whether the recaptured producer still owns the published receipts.
+
         """
         if self.producer is None or not receipts:
             return r[bool].fail(
@@ -62,6 +63,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         Returns:
             The expected generator sources keyed by path, or the first
             encoding failure.
+
         """
         expected_sources: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource] = {}
         for state in producer.inputs:
@@ -89,6 +91,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         Returns:
             Whether every receipt belongs to the captured producer, or the
             first mismatch failure.
+
         """
         expected_trees = {tree.root.path: tree for tree in producer.generator_trees}
         for receipt in receipts:
@@ -119,6 +122,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         Returns:
             Whether every receipt's states remain current, or the first
             verification failure.
+
         """
         for receipt in receipts:
             verified = FlextInfraMiseArtifactsVerification.publication_states_current(
@@ -140,6 +144,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         Returns:
             Whether the recaptured producer is current, or the first capture,
             verification or currency failure.
+
         """
         captured = FlextInfraCodegenPreconditions.capture_producer(
             self.repository_root,
@@ -188,6 +193,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         Returns:
             The current captured producer, or the first capture or currency
             failure.
+
         """
         if self.producer is None:
             captured = FlextInfraCodegenPreconditions.capture_producer(
@@ -315,6 +321,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         Returns:
             The native resolution views extending the planned files, or the
             first resolution failure.
+
         """
         views: list[m.Infra.CodegenFilePlan] = []
         for repository in selected:
@@ -365,6 +372,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         Returns:
             The plan and authenticated phase analysis, or the first failure.
+
         """
         result_type = r[t.Pair[m.Infra.CodegenPlan, m.Infra.CodegenPhaseAnalysis]]
         root = request.root.expanduser().resolve()
@@ -741,6 +749,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         Returns:
             Candidate and target evidence, or the original Git identity failure.
+
         """
         evidence: list[m.Infra.CodegenPlanningRepositoryEvidence] = []
         for outcome in outcomes:
@@ -932,6 +941,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         Returns:
             The outcome of the repository planning task, including any failure
             information.
+
         """
         started = time.monotonic()
         try:
@@ -1279,6 +1289,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         Returns:
             Valid file plans; source conflicts retain their target issue and cause.
+
         """
         complete: list[m.Infra.CodegenFilePlan] = []
         for file in files:

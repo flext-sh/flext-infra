@@ -381,6 +381,13 @@ class FlextInfraUtilitiesRopeInventory:
         diagnostic. Only the declaration identifier and proven external alias
         spellings are normalized. The implicit class/schema identity is
         deliberately not treated as permission to merge declarations.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If native payload declaration has no class identifier.
+
         """
         payloads = FlextInfraUtilitiesDeclarationPayload
         binding = payloads.payload_declaration(
@@ -505,7 +512,12 @@ class FlextInfraUtilitiesRopeInventory:
         offset: int,
         references: t.SequenceOf[t.Triple[int, int, str]],
     ) -> str:
-        """Keep literal bytes separate from normalized executable whitespace."""
+        """Keep literal bytes separate from normalized executable whitespace.
+
+        Returns:
+            The resulting ``str``.
+
+        """
         edits = []
         cursor = -1
         for begin, end, identity in sorted(
@@ -538,6 +550,7 @@ class FlextInfraUtilitiesRopeInventory:
 
         Returns:
             Definition line and name pairs proven by native Rope matches.
+
         """
         bindings: set[t.Pair[int, str]] = set()
         for pattern in (

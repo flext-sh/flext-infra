@@ -139,6 +139,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         Returns:
             The literal mapping source, or None when the occurrence is not a
             lazy-exports call carrying mapping data.
+
         """
         if not words.is_a_function_being_called(offset):
             return None
@@ -175,6 +176,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         Returns:
             The absolute module path, or None when the relative depth escapes
             the package root.
+
         """
         if not value.startswith("."):
             return value
@@ -192,6 +194,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
 
         Returns:
             Constant module routes, excluding attribute-valued export entries.
+
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         source = source.strip()

@@ -10,9 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, s, t, u
-from flext_infra._utilities.workspace_inventory import (
-    FlextInfraUtilitiesWorkspaceInventory,
-)
 from flext_infra.workspace import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
@@ -690,6 +687,7 @@ class FlextInfraWorkspaceDetector(
 
         Returns:
             Its observed identity, or its pending Git declaration for setup.
+
         """
         result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
         if not (subproject_root / c.Infra.GIT_DIR).exists():
@@ -841,11 +839,9 @@ class FlextInfraWorkspaceDetector(
         )
         if workspace.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(workspace)
-        external_consumers = (
-            FlextInfraUtilitiesWorkspaceInventory.discover_external_consumers(
-                resolved_root,
-                inputs_value,
-            )
+        external_consumers = u.Infra.discover_external_consumers(
+            resolved_root,
+            inputs_value,
         )
         if external_consumers.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(external_consumers)

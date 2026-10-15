@@ -13,11 +13,10 @@ from typing import Protocol
 from flext_cli import u as cli_u
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
-from flext_infra._models import FlextInfraModelsBase
 from flext_infra._utilities import FlextInfraUtilitiesDocsScope
 
 
-class _DocsTopologyOptions(FlextInfraModelsBase.FrozenArbitrary):
+class _DocsTopologyOptions(m.Infra.FrozenArbitrary):
     """One docs batch's source membership and directory ancestry inputs."""
 
     repository_root: Path = m.Field(

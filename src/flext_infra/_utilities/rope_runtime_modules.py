@@ -31,6 +31,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         Returns:
             The physical supplier source, or the authenticated native interpreter.
+
         """
         module = sys.modules[module_name]
         native = module.__spec__
@@ -329,6 +330,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         Returns:
             The resolved identity, or None when Rope cannot establish one.
+
         """
         lexical = cls.lexical_scope(scope, expression.partition(".")[0])
         if lexical is None:
@@ -347,6 +349,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         Raises:
             TypeError: When a native parent violates the scope contract.
+
         """
         first = True
         current: p.Infra.RopeScope | None = scope
@@ -378,6 +381,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         Raises:
             ValueError: When the identity does not name an attribute.
+
         """
         module, *attributes = expression.split(".")
         if not attributes:
@@ -584,6 +588,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         Raises:
             ValueError: If the declared import has no resolvable source resource.
+
         """
         imported = binding.imported_module
         resource = imported.resource
@@ -681,6 +686,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         Returns:
             Whether Rope's module import inventory proves runtime availability.
+
         """
         line = module.lines.get_line_number(offset)
         imports = cls.module_imports_for_pymodule(project, module)

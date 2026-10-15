@@ -35,6 +35,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If the specified module is unknown.
+
         """
         self._rope_project = rope_project
         self._root = Path(rope_project.root.real_path)
@@ -91,6 +92,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If the source is absent from the project inventory.
+
         """
         key = str(py_file)
         if key not in self._pymodules:
@@ -114,6 +116,7 @@ class FlextInfraAccessorOriginResolver:
         Raises:
             ValueError: If ancestry is cyclic, inconsistent or unresolved.
             TypeError: If the defining module has no syntax tree.
+
         """
         key = id(owner)
         if key in self._lineages:
@@ -204,6 +207,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If the accessor declaration has no binding.
+
         """
         if child.get_kind() != "Function":
             return None
@@ -237,6 +241,7 @@ class FlextInfraAccessorOriginResolver:
         Returns:
             Whether the binding renames or prefixes a forbidden accessor
             introduced by this owner.
+
         """
         if name.startswith("_"):
             return False
@@ -256,6 +261,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If a source, declaration or project owner is unresolved.
+
         """
         if str(py_file) in self._bindings:
             return
@@ -307,6 +313,7 @@ class FlextInfraAccessorOriginResolver:
 
         Returns:
             Existing canonical object records for selected direct introductions.
+
         """
         self._index(py_file)
         return tuple(
@@ -320,6 +327,7 @@ class FlextInfraAccessorOriginResolver:
 
         Returns:
             Whether the declaration belongs to the selected module/facade scope.
+
         """
         if self._target_module is not None and not (
             item.module_name == self._target_module
@@ -339,6 +347,7 @@ class FlextInfraAccessorOriginResolver:
 
         Returns:
             Whether this binding is eligible under the ownership selectors.
+
         """
         holder, _line = binding.get_definition_location()
         resource = holder.get_resource() if holder is not None else None
@@ -374,6 +383,7 @@ class FlextInfraAccessorOriginResolver:
 
         Returns:
             Bindings whose classes introduce the name rather than override it.
+
         """
         introduced: list[p.Infra.RopePyName] = []
         for base in self.class_lineage(owner):
@@ -396,6 +406,7 @@ class FlextInfraAccessorOriginResolver:
 
         Returns:
             The introducing source path, or None for an ambiguous/native contract.
+
         """
         owner = self._owners.get(id(binding))
         if owner is None:
@@ -450,6 +461,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If a selected facade/domain or its source is unknown.
+
         """
         alias, *domains = selector.split(".")
         if not alias or any(not part for part in domains):

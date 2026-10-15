@@ -244,6 +244,7 @@ class TestsFlextInfraUvNativeResolution:
 
         Returns:
             Mapping of member distribution name to its conformed TOML document.
+
         """
         documents: dict[str, t.Cli.TomlDocument] = {}
         runtime_root, checkout, lock_state, line, supplier, resolution = (
@@ -366,6 +367,7 @@ class TestsFlextInfraUvNativeResolution:
         Returns:
             A no-index qualification copy retaining internal requirements in
             their original categories, including extras and marker branches.
+
         """
         payload = cast(
             "dict[str, t.JsonValue]",

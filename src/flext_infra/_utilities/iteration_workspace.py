@@ -40,6 +40,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
 
         Raises:
             ValueError: If bootstrap report requires one elected scalar field.
+
         """
         report = m.Infra.WorkspaceOperationReport(
             root=Path(),
@@ -84,6 +85,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
 
         Returns:
             Original returned paths, or the first causal failure after reporting.
+
         """
         resolved = root.expanduser().resolve()
         discovered = FlextInfraUtilitiesProjectDiscovery.repository_operation_targets(

@@ -19,6 +19,7 @@ def docs_repository(tmp_path: Path) -> Path:
 
     Returns:
         The resulting ``Path``.
+
     """
     root = tmp_path / "docs-owner"
     root.mkdir()

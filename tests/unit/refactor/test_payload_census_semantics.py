@@ -80,7 +80,8 @@ class TestsFlextInfraPayloadCensusSemantics:
         source = (
             "from __future__ import annotations\n"
             "from pydantic import BaseModel as Model, Field, ConfigDict\n"
-            "from pydantic import BaseModel as AlternateModel, Field as AlternateField\n"
+            "from pydantic import BaseModel as AlternateModel, Field as "
+            "AlternateField\n"
             "from pydantic import field_validator, field_serializer\n"
             "class AlternativeBase(Model):\n"
             "    model_config = ConfigDict(strict=True)\n"
@@ -126,7 +127,8 @@ class TestsFlextInfraPayloadCensusSemantics:
                             "from payloads import InputHolder, OutputHolder; "
                             "left = InputHolder.Input; right = OutputHolder.Output; "
                             "assert left is not right; "
-                            "assert left.model_json_schema()['title'] != right.model_json_schema()['title']; "
+                            "assert left.model_json_schema()['title'] != "
+                            "right.model_json_schema()['title']; "
                             "assert left().model_dump() == right().model_dump()"
                         ),
                     ),

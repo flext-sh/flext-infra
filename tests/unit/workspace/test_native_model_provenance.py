@@ -10,11 +10,11 @@ from inspect import getfile
 from pathlib import Path
 
 import pytest
+from flext_core import m
 from pydantic import RootModel
 from ruamel.yaml.compat import check_namespace_char
 from typing_inspection.introspection import AnnotationSource, inspect_annotation
 
-from flext_core import m
 from flext_infra.codegen import FlextInfraCodegenPreconditions
 from tests import p, tm, u
 
@@ -50,9 +50,7 @@ class TestsFlextInfraNativeModelProvenance:
         package = tmp_path / "source_provider"
         u.Tests.write_package_init(
             package,
-            "from .helper import render\n"
-            "def operation():\n"
-            "    return render()\n",
+            "from .helper import render\ndef operation():\n    return render()\n",
         )
         helper = package / "helper.py"
         helper.write_text("def render():\n    return 'original'\n", encoding="utf-8")

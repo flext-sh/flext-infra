@@ -630,13 +630,15 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert before.sources\n"
             "mutation = sys.argv[2]\n"
             "if mutation == 'deleted':\n    source.unlink()\n"
-            "elif mutation == 'binding':\n    module.Payload.observed = module.Other.observed\n"
+            "elif mutation == 'binding':\n    module.Payload.observed = "
+            "module.Other.observed\n"
             "elif mutation == 'callable':\n    "
             "module.operation.__wrapped__ = module.Callable()\n"
             "elif mutation == 'syntax':\n    source.write_text('def invalid(:\\n')\n"
             "elif mutation != 'none':\n"
             "    old = 'value: str' if mutation == 'schema' else mutation + '-before'\n"
-            "    new = 'replacement: str' if mutation == 'schema' else mutation + '-after'\n"
+            "    new = 'replacement: str' if mutation == 'schema' else mutation + "
+            "'-after'\n"
             "    source.write_text(source.read_text().replace(old, new))\n"
             "try:\n"
             "    observed = authenticate(module.__name__)\n"
@@ -703,8 +705,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             ".unwrap().sources\n"
             "    assert observed\n"
             "    paths = {pathlib.Path(item[1]) for item in observed}\n"
-            "    assert {pathlib.Path(module.__file__), pathlib.Path(getfile(contextmanager)), "
-            "pathlib.Path(getfile(wraps)), pathlib.Path(sys.executable).resolve()} <= paths\n"
+            "    assert "
+            "{pathlib.Path(module.__file__), pathlib.Path(getfile(contextmanager)), "
+            "pathlib.Path(getfile(wraps)), pathlib.Path(sys.executable).resolve()} <= "
+            "paths\n"
             "else:\n"
             "    assert authenticate(module.__name__).failure\n"
         )
@@ -831,7 +835,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert set(before) == {'body', 'decorator', 'metaclass', 'subclass'}\n"
             "authenticate(module.__name__).unwrap()\n"
             "if sys.argv[2] == 'code':\n"
-            "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__.replace(co_name='replaced')\n"
+            "    module.Payload.__init__.__code__ = "
+            "module.Payload.__init__.__code__.replace(co_name='replaced')\n"
             "observed = authenticate(module.__name__)\n"
             "assert observed.success == (sys.argv[2] == 'none'), observed\n"
             "assert tuple(module.effects) == before\n"
@@ -867,7 +872,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    original = module.Payload\n"
             "    module.Payload = make_dataclass(\n"
             "        original.__name__,\n"
-            "        [(item.name, item.type, item.default) for item in fields(original)],\n"
+            "        [(item.name, item.type, item.default) for item in "
+            "fields(original)],\n"
             "        bases=original.__bases__, module=module.__name__, frozen=True,\n"
             "    )\n"
             "elif defect == 'supplier':\n"
@@ -927,7 +933,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "if defect == 'descriptor':\n"
             "    module.Payload.__repr__ = module.Other.__repr__\n"
             "elif defect == 'wrapped':\n"
-            "    module.Payload.__repr__.__wrapped__ = module.Other.__repr__.__wrapped__\n"
+            "    module.Payload.__repr__.__wrapped__ = "
+            "module.Other.__repr__.__wrapped__\n"
             "elif defect == 'code':\n"
             "    module.Payload.__init__.__code__ = module.Payload.__init__.__code__."
             "replace(co_name='foreign')\n"
@@ -1299,6 +1306,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
         Returns:
             The fingerprint emitted by the workspace provenance owner.
+
         """
         outcome = tm.ok(
             u.Cli.run_raw(

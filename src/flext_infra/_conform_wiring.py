@@ -35,6 +35,7 @@ class FlextInfraConformWiring:
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
+
         """
         return FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
@@ -48,6 +49,7 @@ class FlextInfraConformWiring:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),

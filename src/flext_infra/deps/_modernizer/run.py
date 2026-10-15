@@ -194,6 +194,7 @@ class FlextInfraPyprojectModernizerRun:
         Returns:
             The resolved migration, ``None`` when none is requested, or the
             first option validation failure.
+
         """
         result_type = r[m.Infra.GitSourceReferenceMigration | None]
         source_options = (
@@ -250,6 +251,7 @@ class FlextInfraPyprojectModernizerRun:
 
         Returns:
             The resulting process exit code.
+
         """
         if scanned.failure:
             u.Cli.error(scanned.error or "document scan failed")
@@ -414,6 +416,7 @@ class FlextInfraPyprojectModernizerRun:
                 isinstance(requirement, str)``.
             ValueError: If project declaration is absent; or if dependency owner changed
                 during read.
+
         """
         try:
             root_project_name = u.Infra.project_name_from_payload(
@@ -480,6 +483,7 @@ class FlextInfraPyprojectModernizerRun:
 
         Raises:
             TypeError: If a declared requirement group entry is not a string.
+
         """
         changes: list[str] = []
         for section, groups in sections:
@@ -525,6 +529,7 @@ class FlextInfraPyprojectModernizerRun:
         Raises:
             ValueError: If the dependency owner changed between the read and
                 the write.
+
         """
         if before.content != root_state.original_rendered.encode(c.DEFAULT_ENCODING):
             msg = f"dependency owner changed during read: {root_state.pyproject_path}"

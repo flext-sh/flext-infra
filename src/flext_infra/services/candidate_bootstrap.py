@@ -105,6 +105,7 @@ class FlextInfraCandidateBootstrapService:
         Returns:
             The elected worktree root keyed by candidate identity, or the
             first resolution failure.
+
         """
         roots: t.MutableMappingKV[str, Path] = {}
         for index, target in enumerate(targets):
@@ -164,6 +165,7 @@ class FlextInfraCandidateBootstrapService:
 
         Returns:
             The planned files of the target, or the first bootstrap failure.
+
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         captured = self._captured_target_states(root, inputs)
@@ -197,6 +199,7 @@ class FlextInfraCandidateBootstrapService:
         Returns:
             The target's captured codegen inputs, or the first admission
             failure.
+
         """
         captured = u.Infra.load_codegen_inputs(root)
         if captured.failure:
@@ -230,6 +233,7 @@ class FlextInfraCandidateBootstrapService:
         Returns:
             The target's surface contract with its planned files, or the
             first contract violation.
+
         """
         result_type = r[
             t.Pair[

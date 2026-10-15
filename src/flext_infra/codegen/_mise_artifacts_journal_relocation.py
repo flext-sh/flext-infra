@@ -28,6 +28,7 @@ class FlextInfraMiseArtifactsJournalRelocation:
 
         Returns:
             The authenticated source record or its original witness failure.
+
         """
         if isinstance(source, m.Cli.AtomicDirectoryChainPlan):
             if path is None or path.parent != source.target:

@@ -96,6 +96,7 @@ class FlextInfraUtilitiesImportLaw:
 
         Returns:
             The resulting ``Literal['layer0', 'family', 'consumer']``.
+
         """
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
         for part in module.split(".")[1:]:
@@ -210,6 +211,7 @@ class FlextInfraUtilitiesImportLaw:
 
         Returns:
             Whether routing the module through its root would re-enter bootstrap.
+
         """
         pending = list(import_graph.get(namespace, ()))
         visited: set[str] = set()

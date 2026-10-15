@@ -13,10 +13,6 @@ from types import UnionType
 from typing import TypeAliasType, Union, get_args, get_origin, override
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
 from flext_infra.codegen import FlextInfraCodegenProtocolModelRender
 
 
@@ -25,8 +21,13 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     @override
     def execute(self) -> p.Result[t.Cli.ResultValue]:
-        """Use the canonical self conformance transaction for publication."""
-        from flext_infra.api import FlextInfra
+        """Use the canonical self conformance transaction for publication.
+
+        Returns:
+            The resulting ``p.Result[t.Cli.ResultValue]``.
+
+        """
+        from flext_infra import FlextInfra
 
         outcome = FlextInfra(repository_root=self.repository_root).codegen_conform(
             m.Infra.CodegenConformRequest(
@@ -49,7 +50,15 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         project: p.Infra.ProjectSpec,
         workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[t.MappingKV[Path, str]]:
-        """Plan the elected project's protocol sources without writing files."""
+        """Plan the elected project's protocol sources without writing files.
+
+        Returns:
+            The resulting ``p.Result[t.MappingKV[Path, str]]``.
+
+        Raises:
+            ValueError: If indexed module unavailable.
+
+        """
         facades: dict[str, p.Infra.RopePyName] = {}
         runtime_facades: dict[str, p.ModuleOwned] = {}
         package_dir: Path | None = None
@@ -127,7 +136,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
                 if (
                     binding is None
                     or base
-                    not in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
+                    not in u.Infra.class_ancestry(
                         binding.get_object()
                     )
                 ):
@@ -162,7 +171,12 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         binding: p.Infra.RopePyName,
         name: str,
     ) -> p.Infra.RopePyName | None:
-        """Follow the exact declared route, including inherited nested namespaces."""
+        """Follow the exact declared route, including inherited nested namespaces.
+
+        Returns:
+            The resulting ``p.Infra.RopePyName | None``.
+
+        """
         for component in name.split("."):
             child = binding.get_object().get_attributes().get(component)
             if child is None:
@@ -177,9 +191,16 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         binding: p.Infra.RopePyName,
         directory: Path,
     ) -> set[str]:
-        """Read actual imported protocol primaries from every indexed Python root."""
+        """Read actual imported protocol primaries from every indexed Python root.
+
+        Returns:
+            The resulting ``set[str]``.
+
+        Raises:
+            ValueError: If indexed module unavailable.
+
+        """
         found: set[str] = set()
-        references = FlextInfraUtilitiesSemanticFamilyTypeReferences
         for entry in workspace.modules():
             if entry.file_path.is_relative_to(workspace.repository_root / directory):
                 continue
@@ -191,16 +212,16 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             source = module.source_code
             primaries = (
                 (source[begin:end], u.Infra.scope_at(module, begin))
-                for begin, end in references.reference_regions(source)
+                for begin, end in u.Infra.reference_regions(source)
             )
             quoted = (
                 (expression[begin:end], scope)
-                for expression, scope, _line in references.scoped_quoted_type_references(
+                for expression, scope, _line in u.Infra.scoped_quoted_type_references(
                     source,
                     workspace.rope_project,
                     module,
                 )
-                for begin, end in references.reference_regions(expression)
+                for begin, end in u.Infra.reference_regions(expression)
             )
             for primary, scope in chain(primaries, quoted):
                 name, separator, tail = primary.partition(".")

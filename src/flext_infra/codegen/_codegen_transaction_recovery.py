@@ -43,6 +43,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         Raises:
             ValueError: If reference staging and publication share one
                 authority.
+
         """
         super().__init__(participant_policy)
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
@@ -76,6 +77,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The session whose published paths and issues have been recorded.
+
         """
         derived = FlextInfraCodegenTransactionRecovery.publication_outcome(
             session,
@@ -110,6 +112,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
+
         """
         destinations: list[Path] = []
         for entry in session.journal.entries:
@@ -214,6 +217,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         if outcome.transaction_id is None or outcome.root != root:
             return r[bool].fail("publication receipt lacks its actual scope identity")
@@ -251,6 +255,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
+
         """
         root = request.root.expanduser().resolve()
         mismatched = operation is not None and (
@@ -300,8 +305,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
         with cls.mutation_lease(root):
             if completed:
-                current = FlextInfraMiseArtifactsVerification.publication_states_current(
-                    outcome,
+                current = (
+                    FlextInfraMiseArtifactsVerification.publication_states_current(
+                        outcome,
+                    )
                 )
                 if current.failure:
                     return r[m.Infra.CodegenPhaseOutcome].from_failure(current)
@@ -325,6 +332,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
+
         """
         outputs = {item.path: item for item in session.journal.outputs}
         if batch_admission is not None:
@@ -396,6 +404,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         Returns:
             The observed proof output state, or the first read, binding or
             preimage failure.
+
         """
         result_type = r[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
         observed = FlextInfraMiseArtifactsFiles.read_state(
@@ -447,6 +456,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The proof output state, or the first read or preimage failure.
+
         """
         result_type = r[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
         actual = admitted.get(plan.path)
@@ -475,6 +485,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
+
         """
         result_type = r[m.Infra.CodegenParticipantPolicy]
         layout = self._planner.layout(initial_workspace=initial_workspace)
@@ -501,6 +512,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenFootprint]``.
+
         """
         identity = self._planner.scope_identity()
         if identity.failure:
@@ -518,6 +530,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The current authenticated footprint, independent of earlier observations.
+
         """
         identity = self._coordinated_identity()
         if identity.failure:
@@ -669,6 +682,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         roots = (
             *(layout.scope_root / project.selector for project in journal.projects),
@@ -724,6 +738,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         if self._participant_policy is None:
             return r[bool].ok(value=True)
@@ -821,9 +836,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    r[bool].fail(
-                        created.error or f"cannot create directory {intent.path}"
-                    ),
+                    r[bool].from_failure(created),
                 ),
             )
         directories = tuple(
@@ -838,9 +851,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                r[bool].fail(
-                    recorded.error or f"cannot record directory {intent.path}"
-                ),
+                r[bool].from_failure(recorded),
                 journal_write=False,
             )
             return result_type.from_failure(failed)
@@ -853,9 +864,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                r[bool].fail(
-                    persisted.error or f"cannot persist directory {intent.path}"
-                ),
+                r[bool].from_failure(persisted),
                 journal_write=True,
             )
             return result_type.from_failure(failed)

@@ -154,6 +154,7 @@ class TestsFlextInfraUtilityFacadeProjection:
 
         Returns:
             The resulting source mapping.
+
         """
         directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
         return {
@@ -194,6 +195,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             The projected sources: the planned edits applied to a copy of
             ``sources`` when ``relocated``; otherwise ``sources`` itself, after
             proving the sources already plan no edit.
+
         """
         with infra.rope_workspace(root) as rope:
             edits = tm.ok(
@@ -232,6 +234,7 @@ class TestsFlextInfraUtilityFacadeProjection:
 
         Returns:
             The rendered facade source that was projected and executed.
+
         """
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
         cls._write(facade, rendered)

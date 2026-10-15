@@ -143,7 +143,12 @@ __all__ = ["DemoMemberTypes", "t"]
 
 @pytest.fixture
 def member_root(tmp_path: t.DirectoryPath) -> t.DirectoryPath:
-    """Populate the shared real-project fixture with this model contract."""
+    """Populate the shared real-project fixture with this model contract.
+
+    Returns:
+        The resulting ``t.DirectoryPath``.
+
+    """
     root, package = u.Tests.create_lazy_init_workspace(
         tmp_path,
         project_name="demo-member",
@@ -223,7 +228,8 @@ def test_apply_is_idempotent(member_root: t.DirectoryPath) -> None:
         member_root,
         "tm.ok(service.execute())\n"
         f'generated = root / "src" / {MEMBER!r} / "_protocols"\n'
-        'before = {path: path.read_bytes() for path in generated.glob("generated*.py")}\n'
+        'before = '
+        '{path: path.read_bytes() for path in generated.glob("generated*.py")}\n'
         "tm.ok(service.execute())\n"
         "assert {path: path.read_bytes() "
         'for path in generated.glob("generated*.py")} == before\n'
@@ -238,9 +244,12 @@ def test_check_only_reports_drift(member_root: t.DirectoryPath) -> None:
     models_path = member_root / "src" / MEMBER / "models.py"
     models_path.write_text(
         MODELS.replace(
-            '    sku: str = m.Field(description="Stock keeping unit of the ordered item.")',
-            '    sku: str = m.Field(description="Stock keeping unit of the ordered item.")'
-            '\n    weight: float = m.Field(default=1.0, description="Drift probe weight.")',
+            '    sku: str = m.Field(description="Stock keeping unit of the ordered '
+            'item.")',
+            '    sku: str = m.Field(description="Stock keeping unit of the ordered '
+            'item.")'
+            '\n    weight: float = m.Field(default=1.0, description="Drift probe '
+            'weight.")',
         ),
         encoding=c.DEFAULT_ENCODING,
     )

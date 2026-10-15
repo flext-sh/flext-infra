@@ -68,6 +68,7 @@ class FlextInfraUtilitiesCodegenFacades:
             ValueError: If the facade lacks module documentation, declares an
                 unsupported class, exports, or declarations, or does not resolve
                 to exactly one full exported type owner.
+
         """
         source = sources[facade_path]
         tree = ast.parse(source, filename=str(facade_path))
@@ -286,6 +287,7 @@ class FlextInfraUtilitiesCodegenFacades:
 
         Raises:
             ValueError: If a consumer requires competing provider declarations.
+
         """
         facade, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)),
@@ -438,6 +440,7 @@ class FlextInfraUtilitiesCodegenFacades:
         Returns:
             The final declarations, their qualified names, and whether the
             facade binds the namespace through assignment.
+
         """
         filtered = [
             item
@@ -486,6 +489,7 @@ class FlextInfraUtilitiesCodegenFacades:
 
         Returns:
             The ordered base names the facade namespace must compose.
+
         """
         with FlextInfraUtilitiesRopeCore.open_import_project(pkg_dir.parent) as project:
             return FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
@@ -546,6 +550,7 @@ class FlextInfraUtilitiesCodegenFacades:
         Raises:
             ValueError: If the namespace has no unique concrete source span.
             TypeError: If the projection does not preserve the source module.
+
         """
         wrapper = MetadataWrapper(parse_module(source))
         owners = tuple(
@@ -594,6 +599,7 @@ class FlextInfraUtilitiesCodegenFacades:
 
                 Returns:
                     The original import or its parenthesized equivalent.
+
                 """
                 if (
                     isinstance(updated_node.names, ImportStar)
@@ -661,6 +667,7 @@ class FlextInfraUtilitiesCodegenFacades:
 
         Raises:
             ValueError: If published owner spellings compete.
+
         """
         owners = {item.qualified_base: item.target for item in declarations}
         if len(owners) != len(declarations):
@@ -704,6 +711,7 @@ class FlextInfraUtilitiesCodegenFacades:
 
         Raises:
             ValueError: If distinct publishers compete for a parent facade name.
+
         """
         sources: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
         declarations: list[m.Infra.SourceClassReference] = []
@@ -767,6 +775,7 @@ class FlextInfraUtilitiesCodegenFacades:
 
         Returns:
             Original symbol names explicitly published outside family facades.
+
         """
         families = {
             f"{item.module}.py"
@@ -802,6 +811,7 @@ class FlextInfraUtilitiesCodegenFacades:
 
         Returns:
             The required public members; invalid source positions fail at Rope.
+
         """
         methods: set[str] = set()
         with FlextInfraUtilitiesRopeCore.open_import_project(pkg_dir.parent) as project:
@@ -968,6 +978,7 @@ class FlextInfraUtilitiesCodegenFacades:
 
         Raises:
             ValueError: If the facade or inherited namespace identity is ambiguous.
+
         """
         facades = tuple(node for node in tree.body if isinstance(node, ast.ClassDef))
         if len(facades) != 1:

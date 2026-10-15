@@ -32,14 +32,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class _DeclaredProofOptions(FlextInfraModelsBase.FrozenArbitrary):
+class _DeclaredProofOptions(m.Infra.FrozenArbitrary):
     """Frozen read-only inputs proving one declared tool against Mise.
 
     The frozen model is itself the structural read-only contract every proof
@@ -291,6 +290,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         Returns:
             The captured resource states in declaration order, or the first
             containment or capture failure.
+
         """
         result_type = r[list[m.Cli.AtomicFileState]]
         resources: list[m.Cli.AtomicFileState] = []
@@ -407,6 +407,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
 
         Returns:
             The probe entry, its optional install root, and the probe version.
+
         """
         result_type = r[t.Triple[m.Infra.MiseToolEntry, Path | None, str]]
         entry = options.entry
@@ -538,6 +539,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
 
         Returns:
             The raw lock text and its parsed mapping, or the first failure.
+
         """
         source = u.Cli.files_read_text(lock_path)
         if source.failure:
@@ -559,6 +561,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
 
         Returns:
             Success only for the authenticated physical UV executable.
+
         """
         uv = u.Infra.managed_mise_binary(c.Infra.UV, self.repository_root)
         if uv.failure:
@@ -593,6 +596,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
 
         Returns:
             Success only for the locked UV and Python-backed project venv.
+
         """
         uv = self._prove_uv_consumer(mise_binary)
         if uv.failure:

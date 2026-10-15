@@ -51,6 +51,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         Raises:
             ValueError: If unindexed publication source; or if declared publication
                 module is shadowed by a package.
+
         """
         package_entry = self._package_entry(context.pkg_dir)
         module_entries = self._enumerated_module_entries(context, package_entry)
@@ -159,6 +160,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
 
         Raises:
             ValueError: If unindexed publication resource.
+
         """
         resolved_export_options = export_options or m.Infra.ExportOptions(
             require_explicit_all=True,

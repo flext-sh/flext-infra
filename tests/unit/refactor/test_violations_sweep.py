@@ -58,6 +58,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             root: The sweep workspace root.
             victim: The unrelated scanned source path.
             quiet_before: The single-rule baseline scan report.
+
         """
         tm.that(
             any(
@@ -85,6 +86,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             sample: The admitted sample source path.
             victim: The unrelated scanned source path.
             drift: The declared drift scenario identifier.
+
         """
         if drift == "inode":
             replacement = sample.with_suffix(".replacement")
@@ -118,6 +120,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             before: The baseline scan report.
             chain: The published staged file chain.
             quiet_before: The single-rule baseline scan, when drift removal.
+
         """
         changed = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
         with pytest.raises(ValueError, match=r"identity drift|unexplained removal"):
@@ -508,6 +511,7 @@ class TestsFlextInfraRefactorViolationsSweep:
 
         Returns:
             An executable Makefile derived from the current canonical verb policy.
+
         """
         verbs = tuple(
             dict.fromkeys(config.Infra.codegen.make.violations_sweep_repair_verbs)
@@ -547,6 +551,7 @@ class TestsFlextInfraRefactorViolationsSweep:
 
         Returns:
             Fixture members with native project metadata and executable audits.
+
         """
         distribution, _dependencies = tm.ok(u.Infra.codemod_project_requirements(root))
         document = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")

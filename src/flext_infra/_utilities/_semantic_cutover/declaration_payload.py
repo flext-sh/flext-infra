@@ -58,6 +58,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         Returns:
             The header statement with its native worder and base-list span,
             or ``None`` when the header has no parenthesized base list.
+
         """
         headers = tuple(
             statement
@@ -92,6 +93,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Raises:
             TypeError: If a source class lacks its native project owner.
+
         """
         bases = list(value.get_superclasses())
         if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
@@ -180,6 +182,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Raises:
             TypeError: If the reader does not satisfy the declared Rope contract.
+
         """
         words = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
             "rope.base.worder",
@@ -204,6 +207,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             Every qualified class declaration matching the supplied short name.
+
         """
         resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
@@ -263,6 +267,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             The bound model declaration, or ``None`` for a different contract.
+
         """
         resolved = cls._class_binding(project, path, qualified_name)
         if resolved is None:
@@ -311,6 +316,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         Returns:
             The class logical statements when the scope leads with no
             statements and the body holds only declarations, else ``None``.
+
         """
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(
             module.source_code,
@@ -347,6 +353,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             The native module and class binding, or ``None`` for a non-class.
+
         """
         resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
@@ -383,6 +390,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             The native protocol binding, or ``None`` for a different contract.
+
         """
         resolved = cls._class_binding(project, path, qualified_name)
         if resolved is None:
@@ -410,6 +418,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             Whether the class body contains only declaration statements.
+
         """
         return all(
             statement.category == c.Infra.StatementCategory.FUNC_DEF
@@ -433,6 +442,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             Whether every semicolon-delimited statement remains declaration data.
+
         """
         regions = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
             source, 0, len(source), ";"
@@ -468,6 +478,7 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         Returns:
             Whether every decorator is allowed and one belongs to Pydantic.
+
         """
         scope = method.get_scope()
         if scope is None:

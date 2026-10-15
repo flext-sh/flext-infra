@@ -127,6 +127,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             TypeError: If Markdown evidence does not contain typed JSON text.
             ValueError: If Markdown origin differs from reported node; or if
                 Markdown attempt proof differs from reported node.
+
         """
         for name, value in event.user_properties:
             if name not in {"flext_markdown_origin", "flext_markdown_attempt"}:

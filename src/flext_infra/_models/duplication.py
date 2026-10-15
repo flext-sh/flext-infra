@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
 from flext_core import m
+
 from flext_infra import c, t
 
 

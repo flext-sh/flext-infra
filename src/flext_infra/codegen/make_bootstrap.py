@@ -32,6 +32,7 @@ class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
 
         Returns:
             A completed native publication receipt or the original failure.
+
         """
         requested = self.repository_root.expanduser().absolute()
         identity = u.Infra.exact_worktree_root(requested)

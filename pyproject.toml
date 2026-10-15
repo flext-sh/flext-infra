@@ -549,6 +549,7 @@ runtime-evaluated-base-classes = [
   "flext_infra.m.ArbitraryTypesModel",
   "flext_infra.m.FrozenModel",
   "flext_infra.m.ImmutableValueModel",
+  "flext_infra.m.Infra.FrozenArbitrary",
   "flext_infra.m.Infra.ViolationsSweepRequest",
   "flext_infra.m.Value",
   "flext_infra.maintenance.sonarcloud_client.FlextInfraSonarcloudClient",

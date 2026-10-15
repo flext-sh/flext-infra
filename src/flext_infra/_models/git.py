@@ -364,6 +364,7 @@ class FlextInfraModelsGit(
             Raises:
                 ValueError: If an ownership receipt competes with authorized
                     live sources.
+
             """
             if self.evidence_file is not None and (
                 self.read_pull_requests or self.read_beads

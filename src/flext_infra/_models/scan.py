@@ -515,6 +515,7 @@ class FlextInfraModelsScan:
             Raises:
                 ValueError: If mod scan classification inventory is incomplete; or if
                     mod scan.
+
             """
             if set(self.totals_by_class) != set(c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS):
                 msg = "mod scan classification inventory is incomplete"

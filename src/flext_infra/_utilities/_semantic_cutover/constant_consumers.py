@@ -45,6 +45,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             The complete edits against the original immutable source inventory.
+
         """
         declarations = cls._constant_declarations(rope_workspace, sources)
         if declarations.failure:
@@ -86,6 +87,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Declaration edits produced by the existing Rope ChangeSet owner.
+
         """
         contracts = FlextInfraUtilitiesSemanticContracts
         return contracts.plan_contract_rules(
@@ -108,6 +110,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             The complete identity-bound consumer edits.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         cli.display_text(f"census: resolve constants imports in {len(sources)} modules")
@@ -142,6 +145,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             Source with one shared import/publication result for admitted scalar
             returns, singleton Literal annotations and frozenset predicates.
+
         """
         convention = workspace.convention(path)
         layout = convention.project_layout
@@ -259,6 +263,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             The return regions and their admitted public references. Regions
             with competing public owners fail through the admission guard
             with ``ValueError``.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -298,6 +303,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Whether the member's owner declares the qualified enum ancestry.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding = cls._constant_terminal(project, candidate, "enum member")
@@ -328,6 +334,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Raises:
             ValueError: If the facade is shadowed or lacks a preceding
                 unconditional import at the occurrence offset.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         existing = runtime.scope_at(module, offset).lookup("c")
@@ -354,6 +361,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Raises:
             ValueError: If the region already maps to a different reference.
+
         """
         previous = matched.get(region)
         if previous is not None and previous != reference:
@@ -376,6 +384,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             The predicate regions and their admitted public references.
             Regions with competing public owners fail through the admission
             guard with ``ValueError``.
+
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         scope = f"frozenset predicate has ambiguous public owners in {path}"
@@ -426,6 +435,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             The annotation literal regions and their admitted enum references.
             Regions with competing enum owners fail through the admission
             guard with ``ValueError``.
+
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         scope = f"literal annotation has ambiguous enum owners in {path}"
@@ -474,6 +484,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             The literal source regions recorded for the annotation's enum
             owner, or an empty tuple when the annotation region is absent.
+
         """
         if not annotations:
             return ()
@@ -496,6 +507,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             Each defining module with its uniquely assigned constant bindings
             and definition lines.
+
         """
         declarations: t.MutableMappingKV[
             Path,
@@ -536,6 +548,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             Whether the statement's target resolves to the chased binding at
             its definition line.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         structure = FlextInfraUtilitiesRopeStructure
@@ -574,6 +587,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Raw source patterns and their identity-proven public references.
+
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         structure = FlextInfraUtilitiesRopeStructure
@@ -650,6 +664,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Proposed source and descriptions of its identity-proven edits.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -700,6 +715,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Whether the module declares or bootstraps the constants family.
+
         """
         path = convention.file_path
         policy = convention.module_policy
@@ -728,6 +744,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             From-imports participating in constants ownership resolution.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         found: list[t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]] = []
@@ -810,6 +827,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Raises:
             ValueError: If the chain is cyclic, ambiguous or lacks its target.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         visited: set[t.Pair[Path, str]] = set()
@@ -862,6 +880,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Raises:
             TypeError: If a package does not expose Rope's folder contract.
             ValueError: If the import is a namespace package without declarations.
+
         """
         if resource.is_folder():
             if not isinstance(resource, p.Infra.RopeRoot):
@@ -887,6 +906,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Raises:
             ValueError: If multiple equally close public owners exist.
+
         """
         references = tuple(
             reference
@@ -920,6 +940,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Raises:
             ValueError: If the source resource is absent or c has another identity.
+
         """
         name, binding = imported
         if cls._constant_composition_base(module, binding):
@@ -960,6 +981,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Raises:
             ValueError: If the consumer has no source resource.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         resource = module.get_resource()
@@ -1015,6 +1037,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Disjoint edits retaining the suite's documentation comments.
+
         """
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
         result = list(edits)
@@ -1054,6 +1077,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             The source with unused TYPE_CHECKING imports removed.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = runtime.build_string_module(project, source, resource=resource)
@@ -1091,6 +1115,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Public reference paths bound by the constants facade's Rope graph.
+
         """
         facade = (
             project
@@ -1128,6 +1153,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Whether the binding is published directly or through class ancestry.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         if runtime.same_name(candidate, binding):
@@ -1157,6 +1183,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         Returns:
             Whether the imported identity is a composing superclass.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         for scope in runtime.scope_at(module, 0).get_scopes():

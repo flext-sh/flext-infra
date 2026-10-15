@@ -39,6 +39,7 @@ class FlextInfraDepsGate(FlextInfraGate):
 
         Returns:
             The resulting ``bool``.
+
         """
         return (project_dir / c.PYPROJECT_FILENAME).is_file()
 
@@ -58,6 +59,7 @@ class FlextInfraDepsGate(FlextInfraGate):
 
         Returns:
             The complete scan receipt with every dependency issue.
+
         """
         return self._scan(project_dir, ctx)[0]
 
@@ -78,6 +80,7 @@ class FlextInfraDepsGate(FlextInfraGate):
             when nothing is repairable, an ERROR receipt when provenance from
             the selected interpreter is missing, or the post-repair rescan
             receipt.
+
         """
         if ctx.check_only or not ctx.apply_fixes:
             return self.check(project_dir, ctx)
@@ -145,6 +148,7 @@ class FlextInfraDepsGate(FlextInfraGate):
 
         Raises:
             FileExistsError: If the planned directory chain resolves empty.
+
         """
         report_dir = ctx.reports_dir.absolute() / (
             f"{project_dir.name}-{self.gate_id}-{uuid4().hex}"
@@ -172,6 +176,7 @@ class FlextInfraDepsGate(FlextInfraGate):
         Returns:
             The gate execution receipt plus the native scan when captured,
             or ``None`` after a guarded capture failure.
+
         """
         started = time.monotonic()
         raw_output = ""

@@ -18,6 +18,28 @@ class FlextInfraConfigVocabulary:
     """Canonical closed contracts required before project facades initialize."""
 
     @unique
+    class RepositoryState(StrEnum):
+        """Lifecycle state used by repository selection."""
+
+        ACTIVE = "active"
+        EXCLUDED = "excluded"
+
+    @unique
+    class CodegenKind(StrEnum):
+        """Code-generation policy applied to one repository."""
+
+        CONFORM = "conform"
+        PYTHON = "python"
+        NONE = "none"
+
+    @unique
+    class ProjectKind(StrEnum):
+        """Own governance profile; external forks retain upstream contracts."""
+
+        INTERNAL_FLEXT = "internal_flext"
+        INTERNAL = "internal"
+        THIRD_PARTY_FORK = "third_party_fork"
+    @unique
     class MakeProfile(StrEnum):
         """Generated Make profile proven by the repository checkout topology."""
 

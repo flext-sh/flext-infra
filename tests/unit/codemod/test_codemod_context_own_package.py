@@ -229,6 +229,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
 
         Returns:
             Consumer path, owner path, consumer source, and elected module name.
+
         """
         namespace = u.Infra.project_package_name(mod_workspace)
         package_root = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace

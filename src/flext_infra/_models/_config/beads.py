@@ -214,5 +214,6 @@ class FlextInfraConfigModelsBeads:
 
             Returns:
                 The resulting ``bool``.
+
             """
             return bool(self.changed_files)

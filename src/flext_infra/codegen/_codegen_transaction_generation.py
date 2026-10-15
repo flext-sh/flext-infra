@@ -50,6 +50,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         Raises:
             RuntimeError: When the self-served producer authority capture
                 fails.
+
         """
         if producer is None and source_authority is None:
             # Self-serve the pre-planning producer authority: every transaction
@@ -63,6 +64,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
                 raise RuntimeError(
                     "transaction producer authority capture failed: "
                     + str(captured.error)
+                    + f"; details={captured.error_data}"
                 )
             producer = captured.value
         super().__init__(
@@ -161,6 +163,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             The unique source states of the complete file plan, or a
             failure when the producer lacks authority or the configuration
             plans differ from the complete file plan.
+
         """
         if self._producer.failure:
             return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
@@ -350,9 +353,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    r[bool].fail(
-                        mise_staged.error or "cannot stage Mise artifacts",
-                    ),
+                    r[bool].from_failure(mise_staged),
                 ),
             )
         mise_files, mise_directories = mise_staged.value
@@ -476,9 +477,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             if validated.failure:
                 return self._recover_failure(
                     layout,
-                    r[bool].fail(
-                        validated.error or "Mise staged validation failed",
-                    ),
+                    r[bool].from_failure(validated),
                 )
         return r[bool].ok(value=True)
 
@@ -578,9 +577,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    r[bool].fail(
-                        prepared_journal.error or "cannot prepare generation journal",
-                    ),
+                    r[bool].from_failure(prepared_journal),
                 ),
             )
         manifested = journal_io.record_transaction_manifests(
@@ -591,9 +588,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    r[bool].fail(
-                        manifested.error or "cannot register generation staging tree",
-                    ),
+                    r[bool].from_failure(manifested),
                 ),
             )
         prepared_state = self._write_journal(
@@ -605,10 +600,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    r[bool].fail(
-                        prepared_state.error
-                        or "cannot publish prepared generation journal",
-                    ),
+                    r[bool].from_failure(prepared_state),
                 ),
             )
         return result_type.ok((manifested.value, prepared_state.value))
@@ -634,9 +626,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return r[m.Infra.CodegenPhaseOutcome].from_failure(
                 self._recover_failure(
                     layout,
-                    r[bool].fail(
-                        published.error or "generation publication failed",
-                    ),
+                    r[bool].from_failure(published),
                 ),
             )
         return published
@@ -713,6 +703,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         Returns:
             The journaled conform state and staged set bound to the journal, or
             the first validation failure.
+
         """
         result_type = r[
             t.Pair[
@@ -768,6 +759,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
 
         Returns:
             The bound session with its staged set, or the first failure.
+
         """
         result_type = r[
             t.Pair[

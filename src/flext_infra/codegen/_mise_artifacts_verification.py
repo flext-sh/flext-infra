@@ -24,7 +24,7 @@ from flext_infra.codegen._mise_artifacts_verification_manifest import (
 from flext_infra.codegen._mise_artifacts_verification_topology import (
     FlextInfraMiseArtifactsVerificationTopology,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra import codegen
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -201,7 +201,7 @@ class FlextInfraMiseArtifactsVerification(
             return r[bool].fail(
                 "generation batch lacks pre-planning producer closure; run make gen",
             )
-        producer = FlextInfraCodegenPreconditions.producer_trees_current(
+        producer = codegen.FlextInfraCodegenPreconditions.producer_trees_current(
             outcome.generator_trees,
             outcome.outputs,
             modules=outcome.generator_modules,

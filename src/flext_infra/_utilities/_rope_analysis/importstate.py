@@ -263,6 +263,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         Returns:
             The SDK class name, resolving inferred instances through their
             type.
+
         """
         return FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(superclass)
 

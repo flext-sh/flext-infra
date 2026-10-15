@@ -9,9 +9,9 @@ from __future__ import annotations
 from ast import Import, ImportFrom
 from collections.abc import Callable
 
+from flext_core import t
 from rope.refactor.restructure import _ChangeComputer
 
-from flext_core import t
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
 
 

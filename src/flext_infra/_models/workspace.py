@@ -316,7 +316,8 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Whether bootstrap reached its final stage."),
         ] = None
         applicability: Annotated[
-            str, m.Field(description="Declared reason preventing execution."),
+            str,
+            m.Field(description="Declared reason preventing execution."),
         ] = ""
         files: Annotated[
             t.VariadicTuple[Path],
@@ -352,7 +353,8 @@ class FlextInfraModelsWorkspace:
 
         root: Annotated[Path, m.Field(description="Invoking repository root.")]
         operation: Annotated[
-            t.NonEmptyStr, m.Field(description="Public operation name."),
+            t.NonEmptyStr,
+            m.Field(description="Public operation name."),
         ]
         scope: Annotated[
             t.VariadicTuple[Path],

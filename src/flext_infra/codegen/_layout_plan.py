@@ -52,6 +52,7 @@ class FlextInfraCodegenLayoutPlanMixin:
 
         Raises:
             ValueError: If ``member.failure``; or if unsafe layout project identity.
+
         """
         pyproject_path = project_dir / c.PYPROJECT_FILENAME
         project_name = u.Infra.project_name_from_payload(

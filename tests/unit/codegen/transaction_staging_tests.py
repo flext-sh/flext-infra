@@ -632,6 +632,7 @@ class TestsFlextInfraTransactionStaging:
 
             Returns:
                 The actual publication outcome.
+
             """
             return u.Cli.atomic_write_text_file(
                 scope_root / "unauthorized.txt",

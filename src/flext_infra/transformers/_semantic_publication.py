@@ -110,6 +110,7 @@ class FlextInfraSemanticPublication:
 
         Returns:
             Published paths, or the original pre-CAS identity failure.
+
         """
         if {
             plan.path: plan.desired_content
@@ -167,6 +168,7 @@ class FlextInfraSemanticPublication:
 
         Returns:
             The complete analysis or its first planning failure.
+
         """
         snapshots = FlextInfraCodegenPreconditions.unique_states((
             *inputs,
@@ -193,6 +195,7 @@ class FlextInfraSemanticPublication:
 
         Returns:
             The original failure or a successful applicable source guard.
+
         """
         if source_guard is None:
             return r[bool].ok(value=True)
@@ -282,6 +285,7 @@ class FlextInfraSemanticPublication:
 
             Returns:
                 The composed phase analysis, or its first planning failure.
+
             """
             combined = {
                 item.path: item.model_copy(
@@ -454,6 +458,7 @@ class FlextInfraSemanticPublication:
 
             Returns:
                 The committed published paths, or the first phase failure.
+
             """
             guarded = cls._guard_source_inputs(options.source_guard)
             if guarded.failure:
@@ -493,6 +498,7 @@ class FlextInfraSemanticPublication:
 
             Returns:
                 The committed published paths, or the first phase failure.
+
             """
             guarded = cls._guard_source_inputs(options.source_guard)
             if guarded.failure:
@@ -521,6 +527,7 @@ class FlextInfraSemanticPublication:
 
         Returns:
             Published paths after phase receipts and consumer acceptance.
+
         """
         prepared = cls._prepared_transaction(analysis, repository_root, options)
         if prepared.failure:

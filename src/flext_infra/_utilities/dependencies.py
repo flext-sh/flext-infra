@@ -46,6 +46,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             Complete native findings and the states authenticating their inputs.
+
         """
         result_type = r[m.Infra.DeptryScan]
         payload = FlextInfraUtilitiesDependencies._captured_deptry_inputs(
@@ -103,6 +104,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The single positive coverage count reported by native deptry.
+
         """
         result_type = r[int]
         if output.outcome.raw_return_code != int(bool(parsed.root)):
@@ -127,6 +129,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The exact tree manifest, or the first authentication failure.
+
         """
         result_type = r[m.Cli.AtomicPhysicalTreeManifest]
         source = u.Cli.atomic_inventory_physical_tree(
@@ -150,6 +153,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The configuration state and the authenticated source manifest.
+
         """
         result_type = r[t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicPhysicalTreeManifest]]
         settings = u.Cli.atomic_read_binary_file_state(config_path, required=True)
@@ -174,6 +178,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The validated native command output, or the first execution failure.
+
         """
         result_type = r[m.Cli.CommandOutput]
         before = u.Cli.atomic_read_binary_file_state(json_output_path, required=False)
@@ -220,6 +225,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The report file state and its validated native payload.
+
         """
         result_type = r[t.Pair[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]
         report_state = u.Cli.atomic_read_binary_file_state(
@@ -256,6 +262,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The validated command output, report state, and native report.
+
         """
         result_type = r[
             t.Triple[
@@ -290,6 +297,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             Whether every captured state survived the scan unchanged.
+
         """
         result_type = r[bool]
         verified = u.Cli.atomic_verify_binary_file_states((settings, report_state))
@@ -316,6 +324,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The target requirement changes and unresolved native import identities.
+
         """
         result_type = r[m.Infra.RuntimeDependencyPlan]
         payload = FlextInfraUtilitiesDependencies._locked_environment_and_document(
@@ -372,6 +381,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The validated locked environment and native pyproject mapping.
+
         """
         result_type = r[t.Pair[m.Infra.LockedEnvironment, t.JsonMapping]]
         target = inputs.target_root
@@ -417,6 +427,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The validated member requirements, or the declaration failure.
+
         """
         result_type = r[m.Infra.DepsToml.MemberRequirements]
         project = u.Cli.toml_mapping_child(document, c.Infra.PROJECT)
@@ -443,6 +454,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             Parsed provider requirement pairs, or the first provenance failure.
+
         """
         result_type = r[
             t.VariadicTuple[t.Pair[m.Infra.RuntimeDependencyProvider, Requirement]]
@@ -480,6 +492,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The retained requirement strings and the unresolved import modules.
+
         """
         runtime = declarations.dependencies
         development = tuple(
@@ -543,6 +556,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             Whether the original target declaration changed.
+
         """
         u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
         current_source = u.Cli.atomic_inventory_physical_tree(plan.source.root.path)
@@ -661,6 +675,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             Authored requirements followed by missing applicable suppliers.
+
         """
         own = canonicalize_name(distribution)
         authored = tuple(declared)
@@ -793,6 +808,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Raises:
             ValueError: If distributions collide or the runtime graph is cyclic.
+
         """
         by_name = {
             canonicalize_name(repository.distribution): repository
@@ -878,6 +894,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             Original resource and inventory snapshots, or the first causal failure.
+
         """
         result_type = r[m.Infra.InstalledResourceSnapshot]
         supplier = cls._elected_installed_supplier(distribution, resource_parts)
@@ -926,6 +943,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The single elected installed distribution, or the election failure.
+
         """
         result_type = r[Distribution]
         if not resource_parts or any(
@@ -964,6 +982,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The resource entry and its METADATA and RECORD inventory entries.
+
         """
         result_type = r[t.Pair[PackagePath, t.VariadicTuple[PackagePath]]]
         records = supplier.files
@@ -1013,6 +1032,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             The captured states in entry order, or the first capture failure.
+
         """
         result_type = r[list[m.Cli.AtomicFileState]]
         prefix = environment_root.expanduser().resolve(strict=True)
@@ -1042,6 +1062,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             Whether the captured content matches its RECORD digest and size.
+
         """
         return not (
             state.content is None
@@ -1069,6 +1090,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         Returns:
             Whether the inventory is native and survived capture unchanged.
+
         """
         result_type = r[bool]
         inventory = tuple(states[:-1])

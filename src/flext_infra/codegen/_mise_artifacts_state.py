@@ -40,6 +40,7 @@ class FlextInfraMiseArtifactsState:
 
         Returns:
             The session only when its complete native journal snapshot is current.
+
         """
         result_type = r[m.Infra.CodegenTransactionSession]
         observed = cls.journal_state(session.plan.layout)

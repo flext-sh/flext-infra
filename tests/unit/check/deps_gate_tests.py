@@ -44,6 +44,7 @@ class TestsFlextInfraDepsGate:
         Returns:
             Runtime dependency inputs binding the elected supplier to the
             target's own lock, metadata state and executed source.
+
         """
         artifact = distribution("requests")
         files = tm.not_none(artifact.files)
@@ -192,7 +193,7 @@ class TestsFlextInfraDepsGate:
             json_output_path=report_path,
         )
 
-        tm.that(scan.native.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(scan.native.outcome), eq=True)
         tm.that(scan.report.root, eq=())
         tm.that(scan.source.root.path, eq=root / c.Infra.DEFAULT_SRC_DIR)
         tm.that(scan.report_sha256, eq=u.Cli.sha256_bytes(before))

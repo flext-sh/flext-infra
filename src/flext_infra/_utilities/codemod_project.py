@@ -95,6 +95,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If rope could not name module.
+
         """
         raw: MutableMapping[str, set[str]] = {}
         modules: MutableMapping[Path, str] = {}
@@ -393,6 +394,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Returns:
             Rule identities requiring inference and their declared symbol owners.
+
         """
         predicates = {
             c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
@@ -537,6 +539,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the declaration context lacks its binding snapshot.
+
         """
         rule = admission.rule
         if condition.variable not in admission.captures:
@@ -597,6 +600,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the binding context lacks its snapshot or sources.
+
         """
         snapshot = admission.snapshot
         if snapshot is None or project is None or sources is None:
@@ -625,6 +629,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Returns:
             The immutable capture epoch shared by the complete pass.
+
         """
         contents = {
             state.path: state.content
@@ -649,6 +654,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Yields:
             The frozen Rope graph and its complete authenticated source closure.
+
         """
         sources = epoch.sources
         with (
@@ -681,6 +687,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Returns:
             The resulting ``m.Infra.CodemodBindingSnapshot``..
+
         """
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
             state.path.resolve(): state
@@ -942,6 +949,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the predicate is not one the engine declares.
+
         """
         predicate = condition.predicate
         own = FlextInfraUtilitiesPyproject.project_package_name(root)
@@ -1028,6 +1036,7 @@ class FlextInfraUtilitiesCodemodProject(
         Raises:
             ValueError: If the admission namespace or project owner is
                 unresolved.
+
         """
         own = facts.own_package
         if own is None:
@@ -1227,6 +1236,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the project's layout cannot be resolved.
+
         """
         owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
             root, file_path

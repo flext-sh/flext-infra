@@ -68,6 +68,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Existing typed publication plans and unvalidated per-file evidence.
+
         """
         result_type = r[
             t.Pair[
@@ -154,6 +155,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Measured per-file evidence or the original protected failure.
+
         """
         result_type = r[t.SequenceOf[m.Infra.AccessorMigrationFile]]
         planned = self._plan_files(rope_project, py_files, params=params, inputs=inputs)
@@ -198,6 +200,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Per-file reports retaining explicit not-executed empty snapshots.
+
         """
         before, after = evidence
         tools = tuple(u.Infra.selected_lint_tool_names(gates))
@@ -231,6 +234,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Original/candidate lint evidence, or a pre-publication rejection.
+
         """
         paths = tuple(
             state.path
