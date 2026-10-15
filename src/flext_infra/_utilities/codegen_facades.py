@@ -33,7 +33,7 @@ from libcst.codemod.commands.rename import RenameCommand
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeCore,
@@ -835,7 +835,7 @@ class FlextInfraUtilitiesCodegenFacades:
                     for alias in node.names
                 }
                 pymodule: t.Infra.RopePyModule | None = None
-                lines = source.splitlines(keepends=True)
+                module_paths: t.MutableMappingKV[p.Infra.RopeImportedModule, Path] = {}
                 for reference in (
                     node.func if isinstance(node, ast.Call) else node
                     for node in ast.walk(tree)
@@ -858,6 +858,10 @@ class FlextInfraUtilitiesCodegenFacades:
                     if (
                         not isinstance(receiver, ast.Name)
                         or receiver.id not in imported_receivers
+                        or (
+                            family != "u"
+                            and (not public_receiver or receiver.id != family)
+                        )
                     ):
                         continue
                     if pymodule is None:
@@ -869,17 +873,24 @@ class FlextInfraUtilitiesCodegenFacades:
                             source,
                             resource=resource,
                         )
-                    offset = sum(map(len, lines[: receiver.lineno - 1]))
+                    offset = pymodule.lines.get_line_start(receiver.lineno)
                     offset += len(
-                        lines[receiver.lineno - 1]
+                        pymodule.lines
+                        .get_line(receiver.lineno)
                         .encode(c.DEFAULT_ENCODING)[: receiver.col_offset]
                         .decode(c.DEFAULT_ENCODING),
                     )
-                    binding = FlextInfraUtilitiesRopeRuntime.imported_name_at(
+                    scope = FlextInfraUtilitiesRopeRuntime.scope_at(
                         pymodule,
                         offset,
                     )
-                    if binding is None:
+                    binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                        scope,
+                        receiver,
+                    )
+                    if not isinstance(
+                        binding, p.Infra.RopeImportedName
+                    ) or family not in {"u", binding.imported_name}:
                         continue
                     imported = binding.imported_module
                     if (
@@ -894,6 +905,7 @@ class FlextInfraUtilitiesCodegenFacades:
                     declared = FlextInfraUtilitiesRopeRuntime.imported_module_path(
                         project,
                         binding,
+                        resolved=module_paths,
                     )
                     owner_directory = (
                         pkg_dir

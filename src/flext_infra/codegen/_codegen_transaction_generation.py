@@ -37,6 +37,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
         producer: m.Infra.CodegenPhaseAnalysis | None = None,
         source_authority: m.Infra.CodegenSourceAuthority | None = None,
+        prior_publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome] = (),
     ) -> None:
         """Initialize the transaction with its configured Mise artifact owner.
 
@@ -46,6 +47,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             producer: The bound producer analysis, or ``None`` to self-serve
                 the pre-planning producer authority.
             source_authority: The cold source authority, when publishing.
+            prior_publications: Actual completed receipts preceding this participant.
 
         Raises:
             RuntimeError: When the self-served producer authority capture
@@ -71,6 +73,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             participant_policy=participant_policy,
             producer=producer,
             source_authority=source_authority,
+            prior_publications=prior_publications,
         )
         self._owner = owner
         self._mise_staging = FlextInfraMiseStaging()
@@ -117,22 +120,18 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         sources = self._validated_generation_inputs(config_plans, file_plans)
         if sources.failure:
             return result_type.from_failure(sources)
-        bound = FlextInfraCodegenPreconditions.bind_producer_analysis(
+        destinations = FlextInfraMisePublication.admit_batch(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
                 inputs=sources.value,
                 files=file_plans,
             ),
-            self._producer.value,
+            producer=self._producer.value,
         )
-        if bound.failure:
-            return result_type.from_failure(bound)
-        file_plans = bound.value.files
-        by_path = {item.path: item for item in file_plans}
-        config_plans = tuple(by_path[item.path] for item in config_plans)
-        destinations = FlextInfraMisePublication.admit_batch(bound.value)
         if destinations.failure:
             return result_type.from_failure(destinations)
+        by_path = {item.path: item for item in file_plans}
+        config_plans = tuple(by_path[item.path] for item in config_plans)
         settled = self._stage_generation_transaction(
             scope_root,
             config_plans,
@@ -630,7 +629,10 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
 
         """
         published = FlextInfraMisePublication.publish(
-            publications, batch_admission=admission, journal=journal
+            publications,
+            batch_admission=admission,
+            journal=journal,
+            prior_publications=self._prior_publications,
         )
         if published.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(

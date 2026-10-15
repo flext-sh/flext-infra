@@ -127,7 +127,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         for receipt in receipts:
             verified = FlextInfraMiseArtifactsVerification.publication_states_current(
                 receipt,
-                producer_verifier=FlextInfraCodegenPreconditions.producer_trees_current,
             )
             if verified.failure:
                 return verified

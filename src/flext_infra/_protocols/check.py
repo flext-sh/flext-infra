@@ -12,14 +12,30 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_cli import p, t
+    from flext_cli import p
 
-    from flext_infra import m
+    from flext_infra import m, t
 
 
 @runtime_checkable
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
+
+    class NativeStorageSlot[ValueT](Protocol):
+        """Read one interpreter-owned slot with its precise native result."""
+
+        def __get__(
+            self,
+            instance: t.Infra.NativeOperand,
+            owner: t.Infra.NativeType,
+            /,
+        ) -> ValueT: ...
+
+    class NativeFunctionBinding(Protocol):
+        """Exact classmethod or staticmethod storage before function admission."""
+
+        @property
+        def __func__(self) -> t.Infra.NativeOperand: ...
 
     @runtime_checkable
     class NativeModuleSpec(Protocol):
@@ -97,7 +113,7 @@ class FlextInfraProtocolsCheck(Protocol):
         """Read an elected native Python function through precise contracts."""
 
         @property
-        def __code__(self) -> FlextInfraProtocolsCheck.NativeCodeIdentity: ...
+        def __code__(self) -> t.Infra.NativeCode: ...
 
         @property
         def __defaults__(self) -> tuple[p.AttributeProbe | None, ...] | None: ...
@@ -105,10 +121,10 @@ class FlextInfraProtocolsCheck(Protocol):
         @property
         def __kwdefaults__(
             self,
-        ) -> t.MappingKV[str, p.AttributeProbe | None] | None: ...
+        ) -> t.DictKV[str, p.AttributeProbe | None] | None: ...
 
         @property
-        def __globals__(self) -> t.MappingKV[str, p.AttributeProbe | None]: ...
+        def __globals__(self) -> t.DictKV[str, p.AttributeProbe | None]: ...
 
         @property
         def __closure__(

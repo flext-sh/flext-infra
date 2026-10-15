@@ -8,14 +8,11 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, assert_never
+from typing import Annotated, assert_never
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, m, s, t, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
@@ -68,6 +65,16 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     )
     producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
         default=None, exclude=True, description="Producer captured before planning"
+    )
+    docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Actual docs planner retained before effects",
+    )
+    docs_producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Original docs producer captured before effects",
     )
 
     def _record_file_failure(

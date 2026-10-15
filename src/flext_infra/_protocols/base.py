@@ -233,19 +233,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class CodegenProducerVerifier(Protocol):
-        """Authenticate producer trees through a composed source authority."""
-
-        def __call__(
-            self,
-            trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-            outputs: t.VariadicTuple[m.Infra.CodegenJournalSource] = (),
-            *,
-            modules: t.VariadicTuple[t.Pair[str, Path]],
-            reference: m.Infra.NativeImportReference | None,
-        ) -> p.Result[bool]: ...
-
-    @runtime_checkable
     class CodegenParticipantPolicyFactory(Protocol):
         """Composition-root authorization for one generation request."""
 
@@ -298,8 +285,12 @@ class FlextInfraProtocolsBase(Protocol):
 
         def prepare_batches(
             self,
+            *,
+            producer: m.Infra.CodegenPhaseAnalysis | None = None,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
         ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-            """Capture the next scope after the preceding batch settles."""
+            """Pin the producer eagerly, then capture each settled scope."""
             ...
 
         def publish_batch(
@@ -312,8 +303,12 @@ class FlextInfraProtocolsBase(Protocol):
             """Admit, publish and settle one captured scope batch."""
             ...
 
-        def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
-            """Freeze the configured render and its authenticated inputs."""
+        def prepare_bundle(
+            self,
+            *,
+            producer: m.Infra.CodegenPhaseAnalysis | None = None,
+        ) -> p.Result[m.Infra.DocsGenerationBundle]:
+            """Freeze one configured inventory with its original producer epoch."""
             ...
 
         def required_directories(

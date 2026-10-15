@@ -23,6 +23,67 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
     """Durable transaction journal for Mise artifact generation."""
 
     @classmethod
+    def observed_outcome(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        admission: m.Infra.CodegenPhaseOutcome,
+        *,
+        producer: m.Infra.CodegenPhaseAnalysis | m.Infra.CodegenSourceAuthority,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Encode an admitted observation without materializing a transaction.
+
+        Returns:
+            The actual scope receipt carrying admitted outputs and producer inputs.
+
+        """
+        result_type = r[m.Infra.CodegenPhaseOutcome]
+        analysis = admission.analysis
+        if analysis is None or layout.transaction_id is None:
+            return result_type.fail("observed publication lacks its admitted identity")
+        if (
+            not analysis.files
+            or analysis.issues
+            or analysis.exception is not None
+            or any(
+                u.Infra.codegen_file_requires_effect(file) for file in analysis.files
+            )
+        ):
+            return result_type.fail(
+                "observed publication requires an unchanged complete batch",
+                exception=analysis.exception,
+            )
+        destinations = FlextInfraMiseArtifactsVerification.plans_current(analysis.files)
+        if destinations.failure:
+            return result_type.from_failure(destinations)
+        sources = cls._merge_sources(
+            (),
+            tuple((analysis.phase, source) for source in analysis.inputs),
+        )
+        if sources.failure:
+            return result_type.from_failure(sources)
+        generator = cls._generator_source_records(producer)
+        if generator.failure:
+            return result_type.from_failure(generator)
+        return result_type.ok(
+            admission.model_copy(
+                update={
+                    "analysis": None,
+                    "admitted_states": (),
+                    "root": layout.scope_root,
+                    "transaction_id": layout.transaction_id,
+                    "completed": True,
+                    "sources": sources.value,
+                    "generator_sources": generator.value,
+                    "generator_trees": analysis.generator_trees,
+                    "generator_modules": analysis.generator_modules,
+                    "generator_reference": analysis.generator_reference,
+                    "scope_roots": admission.scope_roots
+                    or tuple(dict.fromkeys(file.project for file in analysis.files)),
+                },
+            )
+        )
+
+    @classmethod
     def _generator_source_records(
         cls,
         producer: m.Infra.CodegenPhaseAnalysis | m.Infra.CodegenSourceAuthority | None,

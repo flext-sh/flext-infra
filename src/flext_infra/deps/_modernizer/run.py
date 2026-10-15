@@ -147,7 +147,7 @@ class FlextInfraPyprojectModernizerRun:
         if migration.failure:
             u.Cli.error(migration.error or "git source migration failed")
             return 2
-        source_migration = migration.value
+        source_migration = migration.value[0] if migration.value else None
         # Modernization writes only the requested repository root and its
         # declared subprojects, never siblings.
         include_root = not self.project_names or "." in self.project_names
@@ -188,22 +188,21 @@ class FlextInfraPyprojectModernizerRun:
 
     def _resolved_source_migration(
         self,
-    ) -> p.Result[m.Infra.GitSourceReferenceMigration | None]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]:
         """Resolve the requested Git reference migration options.
 
         Returns:
-            The resolved migration, ``None`` when none is requested, or the
-            first option validation failure.
+            Zero or one resolved migration, or the first option validation failure.
 
         """
-        result_type = r[m.Infra.GitSourceReferenceMigration | None]
+        result_type = r[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]
         source_options = (
             self.git_source_url_prefix,
             self.git_source_ref_from,
             self.git_source_ref_to,
         )
         if not any(value is not None for value in source_options):
-            return result_type.ok(value=None)
+            return result_type.ok(())
         prefix, old_ref, new_ref = source_options
         if prefix is None or old_ref is None or new_ref is None:
             return result_type.fail(
@@ -220,10 +219,12 @@ class FlextInfraPyprojectModernizerRun:
                 "separate operations",
             )
         return result_type.ok(
-            m.Infra.GitSourceReferenceMigration(
-                url_prefix=prefix,
-                source_ref=old_ref,
-                target_ref=new_ref,
+            (
+                m.Infra.GitSourceReferenceMigration(
+                    url_prefix=prefix,
+                    source_ref=old_ref,
+                    target_ref=new_ref,
+                ),
             ),
         )
 

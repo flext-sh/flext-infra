@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -24,6 +24,7 @@ from flext_infra.codegen._mise_artifacts_verification_manifest import (
 from flext_infra.codegen._mise_artifacts_verification_topology import (
     FlextInfraMiseArtifactsVerificationTopology,
 )
+from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -135,8 +136,9 @@ class FlextInfraMiseArtifactsVerification(
             return result.from_failure(current)
         return cls.states_current((captured.value,)).map(lambda _: outcome)
 
-    @staticmethod
+    @classmethod
     def _receipt_incomplete(
+        cls,
         outcome: m.Infra.CodegenPhaseOutcome,
         root: Path,
     ) -> bool:
@@ -146,11 +148,7 @@ class FlextInfraMiseArtifactsVerification(
             True when the receipt is incomplete or belongs to another root.
 
         """
-        if not outcome.completed or outcome.error or outcome.issues:
-            return True
-        if outcome.pending_files or not (outcome.outputs or outcome.batches):
-            return True
-        return outcome.root != root or outcome.transaction_id is None
+        return cls._frontier_incomplete(outcome) or outcome.root != root
 
     @classmethod
     def publication_states_current(
@@ -163,33 +161,112 @@ class FlextInfraMiseArtifactsVerification(
             The resulting ``p.Result[bool]``.
 
         """
-        if not outcome.completed or outcome.issues or outcome.pending_files:
-            return r[bool].fail("generation batch is incomplete; run make gen")
-        closure = cls._producer_closure_current(
-            outcome, producer_verifier=producer_verifier
-        )
-        if closure.failure:
-            return closure
-        membership = cls._docs_membership_current(outcome)
-        if membership.failure:
-            return membership
-        topology = cls._source_topology_current(outcome)
-        if topology.failure:
-            return topology
-        return cls._recorded_sources_current(outcome)
+        history = cls._publication_history_current((outcome,))
+        if history.failure:
+            return r[bool].from_failure(history)
+        outputs, outcomes = history.value
+        for batch in outcomes:
+            producer = cls._producer_closure_current(batch, outputs)
+            if producer.failure:
+                return producer
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def publication_outputs_current(
+        cls,
+        publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        *,
+        reference: m.Infra.NativeImportReference | None = None,
+        destinations: t.SequenceOf[Path] = (),
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]:
+        """Authenticate actual prior effects before using them as producer authority.
+
+        Returns:
+            Terminal outputs relevant to the original producer, or the first failure.
+
+        """
+        return cls._publication_history_current(
+            publications, reference=reference, destinations=destinations
+        ).map(lambda history: history[0])
+
+    @classmethod
+    def _publication_history_current(
+        cls,
+        publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        *,
+        reference: m.Infra.NativeImportReference | None = None,
+        destinations: t.SequenceOf[Path] = (),
+    ) -> p.Result[
+        t.Pair[
+            t.VariadicTuple[m.Infra.CodegenJournalSource],
+            t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        ]
+    ]:
+        """Prove actual effect lineage without executing historical producers again."""
+        result_type = r[
+            t.Pair[
+                t.VariadicTuple[m.Infra.CodegenJournalSource],
+                t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+            ]
+        ]
+        if not publications:
+            return result_type.ok(((), ()))
+        selection: Callable[[Path], bool] | None = None
+        if reference is not None:
+            files = frozenset((
+                *(state.path for state in reference.source_authority.inputs),
+                *destinations,
+            ))
+            directories = {
+                tree.root.path for tree in reference.source_authority.generator_trees
+            }
+            roots = tuple(
+                root
+                for root in sorted(directories)
+                if directories.isdisjoint(root.parents)
+            )
+
+            def relevant(path: Path) -> bool:
+                return path in files or any(path.is_relative_to(root) for root in roots)
+
+            selection = relevant
+        terminal: dict[Path, m.Infra.CodegenJournalSource] = {}
+        outcomes: list[m.Infra.CodegenPhaseOutcome] = []
+        frontier: dict[Path, m.Infra.CodegenJournalSource] = {}
+        for publication in publications:
+            history = cls._publication_frontier(
+                publication, frontier, terminal, outcomes, selection
+            )
+            if history.failure:
+                return result_type.from_failure(history)
+        outputs = tuple(terminal.values())
+        physical = cls._recorded_states_current(tuple(frontier.values()))
+        if physical.failure:
+            return result_type.from_failure(physical)
+        topology = {
+            witness.target: witness
+            for batch in outcomes
+            for witness in batch.source_topology
+        }
+        for batch in outcomes:
+            prerequisites = cls._frontier_prerequisites_current(
+                batch, outputs, topology
+            )
+            if prerequisites.failure:
+                return result_type.from_failure(prerequisites)
+        return result_type.ok((outputs, tuple(outcomes)))
 
     @classmethod
     def _producer_closure_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
-        *,
-        producer_verifier: p.Infra.CodegenProducerVerifier,
+        outputs: t.VariadicTuple[m.Infra.CodegenJournalSource],
     ) -> p.Result[bool]:
         """Prove pre-planning producer closure for a batchless outcome.
 
         Args:
             outcome: Published phase outcome to authenticate.
-            producer_verifier: Composed authority authenticating the complete epoch.
+            outputs: Physically authenticated terminal effects of the whole operation.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -197,57 +274,19 @@ class FlextInfraMiseArtifactsVerification(
         """
         if outcome.batches:
             return r[bool].ok(value=True)
-        if (
-            not outcome.generator_sources
-            or outcome.generator_reference is None
-            or not outcome.generator_reference.source_authority.inputs
-            or any(source.role is None for source in outcome.generator_sources)
-        ):
-            return r[bool].fail(
-                "generation batch lacks pre-planning producer closure; run make gen",
-            )
-        producer = FlextInfraCodegenPreconditions.producer_trees_current(
+        return FlextInfraCodegenPreconditions.producer_trees_current(
             outcome.generator_trees,
-            outcome.outputs,
+            outputs,
             modules=outcome.generator_modules,
             reference=outcome.generator_reference,
         )
-        if producer.failure:
-            return producer
-        return r[bool].ok(value=True)
-
-    @classmethod
-    def _docs_membership_current(
-        cls,
-        outcome: m.Infra.CodegenPhaseOutcome,
-    ) -> p.Result[bool]:
-        """Prove DOCS-phase source membership matches the live documentation tree.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if outcome.phase != c.Infra.CodegenStagedFilePhase.DOCS:
-            return r[bool].ok(value=True)
-        membership = u.Infra.docs_source_paths_for_roots(
-            outcome.scope_roots,
-            source_scope=outcome.source_scope,
-        )
-        if membership.failure:
-            return r[bool].from_failure(membership)
-        expected_paths = {
-            source.path for source in outcome.sources if source.sha256 is not None
-        }
-        if set(membership.value) != expected_paths:
-            return r[bool].fail(
-                "generation source membership changed; run make gen",
-            )
-        return r[bool].ok(value=True)
 
     @classmethod
     def _source_topology_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
+        outputs: t.VariadicTuple[m.Infra.CodegenJournalSource],
+        topology: t.MappingKV[Path, m.Cli.AtomicDirectoryChainPlan],
     ) -> p.Result[bool]:
         """Prove every planned source topology witness is still exact.
 
@@ -256,10 +295,35 @@ class FlextInfraMiseArtifactsVerification(
 
         """
         for witness in outcome.source_topology:
+            terminal = topology[witness.target]
+            if terminal != witness:
+                gained = witness.directories[
+                    : len(witness.directories) - len(terminal.directories)
+                ]
+                extension = (
+                    bool(gained)
+                    and terminal.anchor_path == gained[-1]
+                    and terminal.directories == witness.directories[len(gained) :]
+                    and terminal.anchor_ancestry[: len(witness.anchor_ancestry)]
+                    == witness.anchor_ancestry
+                    and all(
+                        any(
+                            output.sha256 is not None
+                            and output.path.is_relative_to(path)
+                            for output in outputs
+                        )
+                        for path in gained
+                    )
+                )
+                if not extension:
+                    return r[bool].fail(
+                        f"generation source topology has no owned extension: "
+                        f"{witness.target}; run make gen",
+                    )
             observed = u.Cli.atomic_plan_directory_chain(witness.target)
             if observed.failure:
                 return r[bool].from_failure(observed)
-            if observed.value != witness:
+            if observed.value != terminal:
                 return r[bool].fail(
                     f"generation source topology changed: {witness.target}; "
                     "run make gen",
@@ -267,21 +331,17 @@ class FlextInfraMiseArtifactsVerification(
         return r[bool].ok(value=True)
 
     @classmethod
-    def _recorded_sources_current(
+    def _recorded_states_current(
         cls,
-        outcome: m.Infra.CodegenPhaseOutcome,
+        states: t.VariadicTuple[m.Infra.CodegenJournalSource],
     ) -> p.Result[bool]:
-        """Prove every recorded source and output still matches its live state.
+        """Prove each terminal input or output state still matches its live identity.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        for expected in (
-            *outcome.sources,
-            *outcome.outputs,
-            *outcome.generator_sources,
-        ):
+        for expected in states:
             ancestry = cls._absent_parent_ancestry_current(expected)
             if ancestry.failure:
                 return ancestry
@@ -331,6 +391,9 @@ class FlextInfraMiseArtifactsVerification(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
         frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
+        terminal: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
+        outcomes: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
+        selection: Callable[[Path], bool] | None,
     ) -> p.Result[bool]:
         """Advance only through outputs authorized by their native effect journal.
 
@@ -339,15 +402,20 @@ class FlextInfraMiseArtifactsVerification(
 
         """
         if cls._frontier_incomplete(outcome):
-            return r[bool].fail("generation batch is incomplete; run make gen")
-        prerequisites = cls._frontier_prerequisites_current(outcome)
-        if prerequisites.failure:
-            return prerequisites
-        journal = cls._frontier_journal_current(outcome, frontier)
+            return r[bool].fail(
+                outcome.error or "generation batch is incomplete; run make gen",
+                exception=outcome.exception,
+            )
+        journal = cls._frontier_journal_current(outcome, frontier, selection)
         if journal.failure:
-            return journal
+            return r[bool].from_failure(journal)
+        terminal.update(journal.value)
+        if selection is None or journal.value:
+            outcomes.append(outcome)
         for batch in outcome.batches:
-            advanced = cls._publication_frontier(batch, frontier)
+            advanced = cls._publication_frontier(
+                batch, frontier, terminal, outcomes, selection
+            )
             if advanced.failure:
                 return advanced
         return r[bool].ok(value=True)
@@ -360,39 +428,68 @@ class FlextInfraMiseArtifactsVerification(
             True when the outcome is incomplete or lacks its journal identity.
 
         """
-        if not outcome.completed or outcome.error or outcome.issues:
+        if (
+            not outcome.completed
+            or outcome.error
+            or outcome.issues
+            or outcome.exception is not None
+        ):
             return True
         if outcome.pending_files or outcome.root is None:
             return True
         if outcome.transaction_id is None:
             return True
-        return not (outcome.outputs or outcome.batches)
+        if outcome.batches:
+            return bool(
+                outcome.outputs
+                or outcome.sources
+                or outcome.generator_sources
+                or outcome.generator_trees
+                or outcome.generator_modules
+                or outcome.generator_reference is not None
+                or outcome.source_topology
+                or outcome.source_scope is not None
+                or outcome.analysis is not None
+                or outcome.admitted_states
+                or outcome.published_files
+                or outcome.retained_files
+                or outcome.effect_targets
+                or outcome.attempted_files
+            )
+        reference = outcome.generator_reference
+        return bool(
+            not outcome.outputs
+            or not outcome.generator_sources
+            or reference is None
+            or not reference.source_authority.inputs
+            or any(source.role is None for source in outcome.generator_sources)
+            or outcome.generator_trees != reference.source_authority.generator_trees
+            or outcome.generator_modules != reference.source_authority.generator_modules
+        )
 
     @classmethod
     def _frontier_prerequisites_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
+        outputs: t.VariadicTuple[m.Infra.CodegenJournalSource],
+        topology: t.MappingKV[Path, m.Cli.AtomicDirectoryChainPlan],
     ) -> p.Result[bool]:
-        """Prove producer closure, DOCS membership, and source topology.
+        """Prove completed effects retain DOCS membership and source topology.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        closure = cls._producer_closure_current(
-            outcome, producer_verifier=producer_verifier
-        )
-        if closure.failure:
-            return closure
-        membership = cls._docs_frontier_membership_current(outcome)
+        membership = cls._docs_frontier_membership_current(outcome, outputs)
         if membership.failure:
             return membership
-        return cls._source_topology_current(outcome)
+        return cls._source_topology_current(outcome, outputs, topology)
 
     @classmethod
     def _docs_frontier_membership_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
+        outputs: t.VariadicTuple[m.Infra.CodegenJournalSource],
     ) -> p.Result[bool]:
         """Prove DOCS source membership for the frontier, including outputs.
 
@@ -409,11 +506,11 @@ class FlextInfraMiseArtifactsVerification(
         if membership.failure:
             return r[bool].from_failure(membership)
         sources = {source.path: source for source in outcome.sources}
-        destinations = {output.path for output in outcome.outputs}
+        destinations = {output.path for output in outputs}
         sources.update(
             {
                 output.path: output
-                for output in outcome.outputs
+                for output in outputs
                 if u.Infra.docs_source_path_is_input(
                     output.path,
                     outcome.scope_roots,
@@ -448,22 +545,33 @@ class FlextInfraMiseArtifactsVerification(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
         frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
-    ) -> p.Result[bool]:
+        selection: Callable[[Path], bool] | None,
+    ) -> p.Result[t.MappingKV[Path, m.Infra.CodegenJournalSource]]:
         """Prove written files and inputs against the advancing frontier.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            Relevant outputs after their historical preimages have been proven.
 
         """
+        result_type = r[t.MappingKV[Path, m.Infra.CodegenJournalSource]]
         outputs = {item.path: item for item in outcome.outputs}
+        if len(outputs) != len(outcome.outputs):
+            return result_type.fail("generation batch carries duplicate output paths")
         written = set(outcome.written_files)
         authority = cls._written_files_authority(outcome, written, outputs)
         if authority.failure:
-            return authority
-        inputs = cls._frontier_inputs_current(outcome, written, frontier)
+            return result_type.from_failure(authority)
+        selected = {
+            path: output
+            for path, output in outputs.items()
+            if selection is None or selection(path)
+        }
+        inputs = cls._frontier_inputs_current(outcome, written, frontier, selection)
         if inputs.failure:
-            return r[bool].from_failure(inputs)
-        return cls._frontier_outputs_current(outputs, written, inputs.value, frontier)
+            return result_type.from_failure(inputs)
+        return cls._frontier_outputs_current(
+            selected, written, inputs.value, frontier
+        ).map(lambda _current: selected)
 
     @staticmethod
     def _written_files_authority(
@@ -497,8 +605,12 @@ class FlextInfraMiseArtifactsVerification(
         outcome: m.Infra.CodegenPhaseOutcome,
         written: set[Path],
         frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
+        selection: Callable[[Path], bool] | None,
     ) -> p.Result[t.MutableMappingKV[Path, list[m.Infra.CodegenJournalSource]]]:
-        """Prove batch inputs agree with the frontier and each other.
+        """Prove consumed data snapshots agree with the frontier and each other.
+
+        Native producer inputs belong to the original code epoch and are
+        authenticated separately against its physically proven terminal effects.
 
         Returns:
             The resulting ``p.Result[t.MutableMappingKV[Path,
@@ -506,8 +618,9 @@ class FlextInfraMiseArtifactsVerification(
 
         """
         inputs: dict[Path, list[m.Infra.CodegenJournalSource]] = {}
-        for source in (*outcome.sources, *outcome.generator_sources):
-            inputs.setdefault(source.path, []).append(source)
+        for source in outcome.sources:
+            if selection is None or selection(source.path):
+                inputs.setdefault(source.path, []).append(source)
         for path, records in inputs.items():
             previous = frontier.get(path)
             if previous is not None and not any(

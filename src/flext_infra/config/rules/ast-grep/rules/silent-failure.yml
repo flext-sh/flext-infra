@@ -180,6 +180,25 @@ rule:
                       has:
                         stopBy: end
                         matches: skip-record
+        # A bare return ends an iterator after its caller received this guard's
+        # original typed failure; it is not a returned sentinel payload.
+        - not:
+            all:
+              - regex: "^return\\s*$"
+              - follows:
+                  pattern:
+                    context: yield $FACTORY.from_failure($RESULT)
+                    selector: expression_statement
+                  stopBy: neighbor
+              - inside:
+                  kind: block
+                  inside:
+                    kind: if_statement
+                    has:
+                      field: condition
+                      any:
+                        - pattern: $RESULT.failure
+                        - pattern: not $RESULT.success
         - not:
             inside:
               stopBy: end
