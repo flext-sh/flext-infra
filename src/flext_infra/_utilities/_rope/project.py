@@ -99,23 +99,16 @@ class FlextInfraRopeProject(Project):
             self._sources = MappingProxyType({
                 path.resolve(): content for path, content in sources.items()
             })
-            if any(not path.is_relative_to(self._root) for path in self._sources):
-                msg = "Rope snapshot source is outside its project root"
-                raise ValueError(msg)
-            directories = {self._root}
-            for path in (
-                *self._sources,
-                *(self._root / folder for folder in source_folders),
-            ):
+            directories = {self._root, *self._root.parents}
+            for path in self._sources:
+                directories.update(path.parents)
+            for folder in source_folders:
+                path = self._root / folder
                 resolved = path.resolve()
                 if not resolved.is_relative_to(self._root):
                     msg = "Rope snapshot folder is outside its project root"
                     raise ValueError(msg)
-                directories.update(
-                    parent
-                    for parent in (resolved, *resolved.parents)
-                    if parent.is_relative_to(self._root) and parent not in self._sources
-                )
+                directories.update((resolved, *resolved.parents))
             self._directories = frozenset(directories)
 
         @staticmethod
@@ -124,20 +117,43 @@ class FlextInfraRopeProject(Project):
             return str(Path(path).expanduser().resolve())
 
         def exists(self, path: str) -> bool:
-            """Report only files and folders captured by this snapshot."""
+            """Report only files and folders captured by this snapshot.
+
+            Returns:
+                The resulting ``bool``.
+
+            """
             resolved = Path(path).resolve()
             return resolved in self._sources or resolved in self._directories
 
         def isfile(self, path: str) -> bool:
-            """Recognize only captured source files."""
+            """Recognize only captured source files.
+
+            Returns:
+                The resulting ``bool``.
+
+            """
             return Path(path).resolve() in self._sources
 
         def isdir(self, path: str) -> bool:
-            """Recognize only declared or captured parent folders."""
+            """Recognize only declared or captured parent folders.
+
+            Returns:
+                The resulting ``bool``.
+
+            """
             return Path(path).resolve() in self._directories
 
         def listdir(self, path: str) -> list[str]:
-            """Enumerate captured direct children without consulting live disk."""
+            """Enumerate captured direct children without consulting live disk.
+
+            Returns:
+                The resulting ``list[str]``.
+
+            Raises:
+                FileNotFoundError: If Rope snapshot folder is absent.
+
+            """
             directory = Path(path).resolve()
             if directory not in self._directories:
                 msg = f"Rope snapshot folder is absent: {path}"

@@ -17,6 +17,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
     FlextInfraMiseArtifactsFiles,
 )
+from flext_infra.validate import FlextInfraValidateFreshImport
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -574,13 +575,7 @@ class FlextInfraCodegenPreconditions:
             The authenticated producer phase analysis snapshot.
 
         """
-        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-
         result_type = r[m.Infra.CodegenPhaseAnalysis]
-        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
-        if context.failure:
-            return result_type.from_failure(context)
-
         selection = FlextInfraWorkspaceNativeReference.producer_selections(
             entrypoint,
             collaborators,
@@ -588,8 +583,17 @@ class FlextInfraCodegenPreconditions:
         if selection.failure:
             return result_type.from_failure(selection)
         names = selection.value
+        environment = Path(sys.prefix).absolute()
+        if (
+            environment.name != c.Infra.ENVIRONMENT_DIRECTORY
+            or environment.is_symlink()
+        ):
+            return result_type.fail(
+                f"producer runtime is not a physical managed environment: {environment}"
+            )
+        runtime_root = environment.parent
         cold = cls.capture_source_authority(
-            context.value.runtime_root,
+            runtime_root,
             nominated=names,
         )
         if cold.failure:
@@ -599,8 +603,8 @@ class FlextInfraCodegenPreconditions:
             return result_type.from_failure(inputs)
         reference = FlextInfraValidateFreshImport.capture_native_reference(
             m.Infra.NativeImportRequest(
-                repository_root=context.value.runtime_root,
-                runtime_root=context.value.runtime_root,
+                repository_root=repository_root,
+                runtime_root=runtime_root,
                 modules=names,
                 inputs=inputs.value,
                 source_authority=cold.value,

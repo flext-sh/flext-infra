@@ -202,7 +202,14 @@ class FlextInfraMiseArtifactsVerification(
             t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         ]
     ]:
-        """Prove actual effect lineage without executing historical producers again."""
+        """Prove actual effect lineage without executing historical producers again.
+
+        Returns:
+            The resulting
+                ``p.Result[t.Pair[t.VariadicTuple[m.Infra.CodegenJournalSource],
+                t.VariadicTuple[m.Infra.CodegenPhaseOutcome]]]``.
+
+        """
         result_type = r[
             t.Pair[
                 t.VariadicTuple[m.Infra.CodegenJournalSource],
