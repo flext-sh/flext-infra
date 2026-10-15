@@ -237,7 +237,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             has=[
                 c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix(),
                 publication.as_posix(),
-                f"{publication.with_suffix('').as_posix()}/**/*.json",
+                f"{c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH.as_posix()}/**/*.json",
                 f"{c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY.as_posix()}/*.json",
             ],
         )

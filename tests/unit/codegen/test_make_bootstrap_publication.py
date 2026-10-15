@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
+from flext_infra.codegen import FlextInfraMiseArtifactsVerification
 from flext_infra.workspace import FlextInfraFlextBindingService
 from tests import c, m, p, tm, u
 
@@ -80,7 +81,12 @@ class TestsMakeBootstrapPublication:
     @staticmethod
     def _receipt(root: Path) -> m.Infra.CodegenPhaseOutcome:
         return m.Infra.CodegenPhaseOutcome.model_validate_json(
-            (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_bytes(),
+            (
+                root
+                / FlextInfraMiseArtifactsVerification.publication_receipt(
+                    c.Infra.CodegenConformSurface.MAKEFILE,
+                )
+            ).read_bytes(),
         )
 
     @staticmethod
@@ -271,7 +277,9 @@ class TestsMakeBootstrapPublication:
         """A failed member request cannot overwrite another target's receipt."""
         root, members = self._workspace(tmp_path)
         tm.that(u.Cli.process_succeeded(self._run(root).outcome), eq=True)
-        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.MAKEFILE,
+        )
         root_before = receipt_path.read_bytes()
         foreign = members[-1] / "unowned.mk"
         foreign.write_text("# authored fixture\n", encoding=c.DEFAULT_ENCODING)

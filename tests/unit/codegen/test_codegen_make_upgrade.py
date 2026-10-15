@@ -483,7 +483,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         projected = after(bumped, "$(call RUN_PUBLIC_PRODUCE,gen)")
         relocked = after(projected, "_upg_reconcile_locks")
         installed = after(relocked, "_builtin_setup_environment")
-        activated = after(installed, "$(call RUN_PUBLIC_ACTIVATE,gen)")
+        regenerated = after(installed, "$(SELF_MAKE) gen")
 
         tm.that(steps[upgraded], has="--upgrade")
         tm.that(steps[relocked], lacks="--upgrade")
@@ -491,7 +491,14 @@ class TestsFlextInfraCodegenMakeUpgrade:
             upgraded < bumped < projected < relocked < installed,
             eq=True,
         )
-        tm.that(installed < activated, eq=True)
+        tm.that(installed < regenerated, eq=True)
+        # Setup leaves a runtime-bindings receipt behind; a standalone gen
+        # activation would read it and never cover the gen request. Activation
+        # belongs only to the full gen verb, after it republishes its receipt.
+        tm.that(
+            [step for step in steps if "$(call RUN_PUBLIC_ACTIVATE,gen)" in step],
+            empty=True,
+        )
 
     @pytest.mark.parametrize(
         "generated_make_template",
@@ -545,7 +552,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 "install --locked --yes",
                 "deps modernize",
                 "$(call RUN_PUBLIC_PRODUCE,gen)",
-                "$(call RUN_PUBLIC_ACTIVATE,gen)",
                 "$(SELF_MAKE) gen",
                 "deps verify-locks",
             )

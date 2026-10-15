@@ -396,6 +396,11 @@ Infra:
       - "**/.scannerwork/**"
       cpd_exclusions:
       - "tests/**"
+      # Package __init__.py files are AUTO-GENERATED lazy-export projections:
+      # their TYPE_CHECKING import list mirrors the facade module that composes
+      # the same families, so duplication there measures the generator's
+      # contract, never governed source.
+      - "**/__init__.py"
       # Web API that `make sonarcloud-sync` writes the server-side issue
       # exclusions through. The project key is derived from
       # the checkout's origin identity as <organization>_<repository>.

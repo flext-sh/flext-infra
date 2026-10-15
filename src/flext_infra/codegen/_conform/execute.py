@@ -772,8 +772,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        # A converged surface stages nothing: the transaction still consults the
+        # validator for the unchanged phase, and there is nothing to parse.
         if not publications:
-            return result_type.fail("pyproject bootstrap requires staged replacements")
+            return result_type.ok(session)
         for publication in publications:
             if publication.replacement is None:
                 return result_type.fail(
@@ -800,6 +802,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        # A converged .mise.toml stages nothing: the unchanged phase still
+        # consults the validator, and upg must continue past it.
+        if not publications:
+            return result_type.ok(session)
         if len(publications) != 1 or publications[0].replacement is None:
             return result_type.fail("mise-config requires one staged replacement")
         checked = FlextInfraCodegenMiseArtifacts.validate_config_file(
