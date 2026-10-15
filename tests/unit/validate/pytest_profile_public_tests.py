@@ -109,6 +109,74 @@ class TestsFlextInfraPytestProfile:
 
     @staticmethod
     @pytest.mark.slow
+    def test_native_profiler_owns_workload_after_startup_handoff(
+        cached_runner_project: Path,
+    ) -> None:
+        """Native cProfile and automatic startup publish distinct real segments."""
+        cache = config.Infra.codegen.make.testmon_cache
+        policy = config.Infra.tooling.tools.pytest
+        workload = cached_runner_project / "native_profile_workload.py"
+        workload.write_text(
+            "import os\n"
+            "def workload():\n    return sum(range(4))\n"
+            "if __name__ == '__main__':\n"
+            "    print(os.getpid())\n    print(workload())\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        native = cached_runner_project / "native-workload.pstats"
+        target = Path(cache.target_directory) / "test_runtime.py"
+        (cached_runner_project / target).write_text(
+            "import os, pstats, subprocess, sys\n"
+            "from pathlib import Path\n"
+            "import pytest\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
+            "def test_runtime():\n"
+            f"    root = Path({str(cached_runner_project)!r})\n"
+            "    completed = subprocess.run((sys.executable, '-m', 'cProfile', "
+            f"'-o', {str(native)!r}, {str(workload)!r}), "
+            "cwd=root, capture_output=True, text=True)\n"
+            "    assert completed.returncode == 0, completed.stderr\n"
+            "    native_pid, value = completed.stdout.splitlines()\n"
+            "    assert value == '6'\n"
+            f"    assert 'workload' in pstats.Stats({str(native)!r})"
+            ".get_stats_profile().func_profiles\n"
+            "    malformed = subprocess.run((sys.executable, '-m', 'cProfile', "
+            "'--flext-invalid-profile-option'), cwd=root, capture_output=True)\n"
+            "    assert malformed.returncode == 2\n"
+            "    ordinary = subprocess.run((sys.executable, '-m', "
+            "'native_profile_workload', '-m', 'cProfile'), cwd=root, "
+            "capture_output=True, text=True)\n"
+            "    assert ordinary.returncode == 0, ordinary.stderr\n"
+            "    ordinary_pid, value = ordinary.stdout.splitlines()\n"
+            "    assert value == '6'\n"
+            f"    children = Path(os.environ[{c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
+            "    startup = children / f'{native_pid}.pstats'\n"
+            "    assert pstats.Stats(str(startup)).get_stats_profile().func_profiles\n"
+            "    automatic = children / f'{ordinary_pid}.pstats'\n"
+            "    assert 'workload' in pstats.Stats(str(automatic))"
+            ".get_stats_profile().func_profiles\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project,
+            target_file=target,
+        )
+        output = (
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / policy.profile_suite_filename
+        )
+        tm.that(
+            u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
+        )
+        tm.that(
+            "workload" in pstats.Stats(str(native)).get_stats_profile().func_profiles,
+            eq=True,
+        )
+
+    @staticmethod
+    @pytest.mark.slow
     def test_interrupted_profile_preserves_the_child_process_failure(
         cached_runner_project: Path,
     ) -> None:

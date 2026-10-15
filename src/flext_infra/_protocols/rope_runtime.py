@@ -24,6 +24,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def is_folder(self) -> bool: ...
 
+        def exists(self) -> bool: ...
+
         @property
         def path(self) -> str: ...
 
@@ -47,6 +49,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     @runtime_checkable
     class RopeFile(Protocol):
         """Rope file resource with content access."""
+
+        def exists(self) -> bool: ...
 
         @property
         def path(self) -> str: ...
@@ -201,6 +205,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         imported_name: str
 
     @runtime_checkable
+    class RopePyCore(Protocol):
+        """Native graph owner retaining the original project of scopes and sources."""
+
+        @property
+        def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
+
+    @runtime_checkable
     class RopeScope(Protocol):
         """Rope semantic scope shape."""
 
@@ -236,12 +247,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         @property
         def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
 
-    @runtime_checkable
-    class RopePyCore(Protocol):
-        """Native source graph owner; source objects keep their original project."""
-
         @property
-        def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
+        def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
     @runtime_checkable
     class RopePyModule(Protocol):
@@ -492,6 +499,15 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def sort_imports(self) -> None: ...
 
         def get_changed_source(self) -> str: ...
+
+    @runtime_checkable
+    class RopeImportTools(Protocol):
+        """Native import translation used by observational relocation plans."""
+
+        def relatives_to_absolutes(
+            self,
+            module: FlextInfraProtocolsRopeRuntime.RopePyModule,
+        ) -> str: ...
 
     @runtime_checkable
     class RopeImportOrganizer(Protocol):

@@ -267,33 +267,65 @@ class TestsFlextInfraModernizerPyrefly:
             encoding="utf-8",
         )
         scaffold_project = config.Infra.codegen.scaffold.project
-
-        tooling_runtime = tm.ok(
-            FlextInfraPyprojectModernizer(
-                repository_root=tmp_path,
-                skip_check=True,
-            ).resolve_tooling_context(
-                m.Infra.ToolingContextRequest(
-                    planned_sources={},
-                    project_name="flext-consumer",
-                    package_name="flext_consumer",
-                    path=project_dir / c.PYPROJECT_FILENAME,
-                    scaffold_project=scaffold_project,
-                    runtime_dependency_overlay=(),
-                    declared_project_dependencies=(),
-                    topology=m.Infra.PyprojectDeclaredTopology(
-                        declared_python_dirs=(source_dir,),
-                        declared_python_dirs_are_complete=True,
-                    ),
-                ),
-            ),
+        modernizer = FlextInfraPyprojectModernizer(
+            repository_root=tmp_path,
+            skip_check=True,
         )
+        topology = m.Infra.PyprojectDeclaredTopology(
+            declared_python_dirs=(source_dir,),
+            declared_python_dirs_are_complete=True,
+        )
+
+        request = m.Infra.ToolingContextRequest(
+            planned_sources={},
+            project_name=project_dir.name,
+            package_name=u.Tests.project_spec(project_dir.name).package_name,
+            path=project_dir / c.PYPROJECT_FILENAME,
+            scaffold_project=scaffold_project,
+            runtime_dependency_overlay=(),
+            declared_project_dependencies=(),
+            topology=topology,
+        )
+        tooling_runtime = tm.ok(modernizer.resolve_tooling_context(request))
 
         tm.that(
             tooling_runtime.pyrefly_project_includes,
             has=f"{undeclared_env_dir}/**/*.py*",
         )
         tm.that(tooling_runtime.pyrefly_project_includes, has=f"{source_dir}/**/*.py*")
+        rendered = tm.ok(
+            modernizer.conform_source(
+                u.Cli.toml_dumps(
+                    u.Cli.toml_document_from_mapping({
+                        c.Infra.PROJECT: {
+                            c.Infra.NAME: request.project_name,
+                            "version": "0.1.0",
+                        },
+                        c.Infra.TOOL: {
+                            "flext": {
+                                "docs": {"package_name": request.package_name},
+                            },
+                        },
+                    }),
+                ),
+                path=request.path,
+                format_source=False,
+                topology=request.topology,
+            ),
+        )
+        pyrefly = u.Tests.toml_table_at(rendered, c.Infra.TOOL, "pyrefly")
+        tm.that(
+            list(tooling_runtime.pyrefly_project_includes),
+            eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES])),
+        )
+        tm.that(
+            list(tooling_runtime.pyrefly_search_path),
+            eq=list(u.Tests.strings(pyrefly["search-path"])),
+        )
+        tm.that(
+            list(tooling_runtime.pyrefly_project_excludes),
+            eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES])),
+        )
 
     def test_pyright_include_feeds_project_includes(self, tmp_path: Path) -> None:
         """Existing Pyright roots feed project-scoped Pyrefly includes."""

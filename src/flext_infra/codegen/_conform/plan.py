@@ -1388,3 +1388,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         return u.Infra.repository_provider(repository)
+
+
+__all__: list[str] = ["FlextInfraCodegenConformPlan"]

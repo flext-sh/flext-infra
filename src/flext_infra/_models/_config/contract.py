@@ -87,3 +87,6 @@ class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
             for pattern in self.placeholder_patterns:
                 re.compile(pattern)
             return self
+
+
+__all__: list[str] = ["FlextInfraConfigModelsContract"]

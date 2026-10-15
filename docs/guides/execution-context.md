@@ -621,6 +621,13 @@ A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
 
+Dependency modernization and conformance both consume the project's typed
+`config/workspace.yaml` declaration for distribution roots and packaged data.
+Modernization must retain those declarations when rebuilding Hatch targets;
+an empty topology cannot replace a declared one. Wheel and source-distribution
+templates use the same bounded `only-include` selection as modernization, with
+the declared wheel source mappings and explicit file inclusions.
+
 ## SonarCloud exclusions
 
 The committed-lock contract also removes the former SonarCloud exclusion for a missing
@@ -716,6 +723,19 @@ Startup instrumentation, the pytest launcher and the profiling entrypoint share
 one process-local profiler. Nested profiling subprocesses retain their own profiles
 and still execute the original site customization.
 
+Profile reports select the nearest project manifest owning the profile artifact.
+This keeps member reports confined to their member when Make starts at the
+workspace root. Profiling imports the runner through its published validation
+package.
+
+Each authenticated parent, collection and worker profile retains its own full
+view and repository-source view. Source filtering uses the configured scan roots
+and direct repository Python modules, with full filenames preserved. The native
+filter runs before the row limit so startup and waiting functions cannot consume
+the source view's budget. These views expose the captured calls and timings;
+they do not combine independent processes or prove that a timed-out operation
+completed.
+
 Distributed stop requests validate the initialized native controller through
 `p.Infra.PytestStopController` at report time, not during session startup. The
 runner requests a stop through its real `shouldstop` field and leaves shutdown
@@ -771,6 +791,44 @@ catalogs once, then admits each occurrence against its nearest project's electio
 and semantic facts. A library owner's imports remain within its domain; the same
 imports in a consumer remain violations. Reports retain zero counts for every
 governed repository and elected rule.
+
+Generated facades compose declarations published by their current private family.
+Rope resolves existing bases before composition: upstream bases remain, while an
+own provider moved outside that family leaves its MRO and unused imports.
+Unresolved providers fail before publication. Class-move previews and immutable
+plans leave absent destination directories absent; only an authorized apply
+creates them after source and identifier validation.
+Snapshot resources derive existence, children and observer indicators from the
+authenticated source inventory. External providers keep their native Rope
+identity through a snapshot-owned external project and read the captured bytes.
+Physical file changes remain inputs to publication CAS, rather than changing
+the source graph while a plan is being computed.
+
+Import normalization treats exception targets and structural pattern captures
+as local bindings. These names do not load a package facade or reintroduce an
+unused import removed by `make fix`.
+Imports with the same bound name but different lexical providers cannot be
+hoisted into one global binding. Normalization rejects that collision before
+publishing the candidate.
+
+Layer-zero config/settings obey their own-namespace boundary in every lexical
+scope, including `TYPE_CHECKING`. Private family assembly retains its declared
+role and import-layer contract. Defaults, decorators and a comprehension's first
+iterable resolve in their enclosing scope; a local capture cannot hide a provider
+needed by another scope.
+
+Binding snapshots elect providers from rules actually found by the scan.
+Resolved-symbol and same-binding captures authenticate their complete consumer
+source and carry requested member paths through local dependencies, reexports,
+lazy publications and class ancestry. Module operations derive requested imports
+from their authenticated source bytes through the same capture owner.
+Unrestricted snapshot requests retain the complete closure, including inactive
+import suites. Both scan and check use the same typed admissions and
+authenticated snapshots.
+
+The census refreshes its Rope inventory after constant-consumer publication and
+declaration removal, before collecting the resulting report. Deleted or added
+initializer projections must be reflected in the source inventory it reads.
 
 Typing-alias relocation plans the declaration, destination and consumer changes
 before one protected publication. Explicit imports retain their lexical scopes
@@ -1044,6 +1102,13 @@ uses the primary location, while the SARIF artifact carries the comparison evide
 
 ## Census consumer evidence
 
+Family classification uses the facade catalog and the semantic module's owning
+package. An exported declaration's full class name does not replace its family
+suffix. A containing family directory takes precedence over a facade filename;
+the filename is considered only outside a family directory. Conflicting family
+directories fail before classification instead of selecting by catalog order.
+Package-relative filenames alone cannot identify a nested family.
+
 The public refactor census report retains `Object.all_reference_sites` separately
 from `runtime_reference_sites` and `script_reference_sites`. Each evidence site
 includes the Rope character offset, path, line and surface. Exact path/offset
@@ -1144,6 +1209,20 @@ node without tokenizing and parsing its text again. Local shadows and native
 import identity remain checked. The resolution map does not persist across source
 observations or replace source, producer, or publication proof.
 
+
+Rule `files` and `ignores` globs are relative to the elected `sgconfig.yml`,
+not the consumer's working directory. A source-only rule must therefore cover
+`**/src/**/*.py` for standalone and workspace members outside the provider's
+configuration directory. Single-class export repair derives publication from
+the declared project stem, source shape and governed scanner scope, including
+internal Python tiers; a different file stem does not
+justify renaming the class or adding exports by hand.
+
+An admitted AST report carries its source inventory, rule-plan digest and policy
+inputs. Reuse requires unchanged membership and authenticated states before
+publication; the transaction checks those inputs under its lock and validates
+membership again before accepting the published candidate. Parsing associates
+findings with captured states between complete physical verification barriers.
 AST replacements publish through the authenticated file-plan boundary, then reuse
 the import normalizer on only the rewritten files. Unused imports and formatting
 are normalized before the next mod check; normalization failures remain blocking.

@@ -33,8 +33,8 @@ class FlextInfraCodemodSnapshotReconciler:
         msg = f"ast-grep rule has no owning sgconfig.yml: {rule}"
         raise ValueError(msg)
 
-    @staticmethod
-    def fixture_directories(config_root: Path) -> m.Infra.ModFixtureDirectories:
+    @classmethod
+    def fixture_directories(cls, config_root: Path) -> m.Infra.ModFixtureDirectories:
         """Resolve only declared fixture directories without crossing symlinks.
 
         Returns:
@@ -46,16 +46,42 @@ class FlextInfraCodemodSnapshotReconciler:
                 symlink.
 
         """
+        return cls._configuration_directories(config_root, fixtures=True)
+
+    @classmethod
+    def scanner_directories(cls, config_root: Path) -> m.Infra.ModFixtureDirectories:
+        """Resolve the native scanner's declared rule and utility directories.
+
+        Returns:
+            Rule and utility directories; fixture directories are not scan inputs.
+
+        """
+        return cls._configuration_directories(config_root, fixtures=False)
+
+    @classmethod
+    def _configuration_directories(
+        cls,
+        config_root: Path,
+        *,
+        fixtures: bool,
+    ) -> m.Infra.ModFixtureDirectories:
+        """Read one configuration through the shared declared-directory owner.
+
+        Returns:
+            The directories the selected native operation consumes.
+
+        """
         config_path = config_root / c.Infra.CODEMOD_CONFIG_FILENAME
         if not stat.S_ISREG(config_path.lstat().st_mode):
             msg = f"ast-grep config must be a regular file: {config_path}"
             raise ValueError(msg)
         payload = u.Cli.yaml_safe_load(config_path).unwrap()
-        declared = FlextInfraCodemodSnapshotReconciler._declared_directories(
+        declared = cls._declared_directories(
             config_path,
             payload,
+            fixtures=fixtures,
         )
-        resolved = FlextInfraCodemodSnapshotReconciler._resolved_directories(
+        resolved = cls._resolved_directories(
             config_root,
             config_path,
             declared,
@@ -63,13 +89,15 @@ class FlextInfraCodemodSnapshotReconciler:
         return m.Infra.ModFixtureDirectories(
             rule_dirs=resolved[c.Infra.CODEMOD_RULE_DIRS_KEY],
             util_dirs=resolved[c.Infra.CODEMOD_UTIL_DIRS_KEY],
-            test_dirs=resolved[c.Infra.CODEMOD_TEST_DIR_KEY],
+            test_dirs=resolved[c.Infra.CODEMOD_TEST_DIR_KEY] if fixtures else (),
         )
 
     @staticmethod
     def _declared_directories(
         config_path: Path,
         payload: t.MappingKV[str, t.JsonValue],
+        *,
+        fixtures: bool,
     ) -> t.MappingKV[str, Sequence[t.JsonValue]]:
         """Read every declared fixture directory list from the ast-grep config.
 
@@ -91,6 +119,8 @@ class FlextInfraCodemodSnapshotReconciler:
                 msg = f"invalid ast-grep {key} contract: {config_path}"
                 raise TypeError(msg)
             declared[key] = raw_value
+        if not fixtures:
+            return declared
         raw_test_configs = payload.get(c.Infra.CODEMOD_TEST_CONFIGS_KEY)
         if not isinstance(raw_test_configs, Sequence) or isinstance(
             raw_test_configs,

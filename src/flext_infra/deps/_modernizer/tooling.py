@@ -81,22 +81,13 @@ class FlextInfraPyprojectModernizerTooling:
             One canonical pyproject using the same phases as workspace apply.
 
         """
-        state = self._read_document_state(path, source=source)
-        if state.failure:
-            return r[str].from_failure(state)
-        canonical_dev: p.Result[t.StrSequence] = u.validate_value(
-            t.Infra.STR_SEQ_ADAPTER,
-            u.Infra.canonical_dev_dependencies_from_payload(state.value.payload),
-        )
-        if canonical_dev.failure:
-            return r[str].fail_op("pyproject model validation", canonical_dev.error)
+        conformed = self._conformed_document_state(source, path=path, topology=topology)
+        if conformed.failure:
+            return r[str].from_failure(conformed)
+        state, changes = conformed.value
         rendered = self._render_document_state(
-            state.value,
-            self._apply_document_phases(
-                state.value,
-                canonical_dev=canonical_dev.value,
-                topology=topology,
-            ),
+            state,
+            changes,
             policy=RenderPolicy(
                 dry_run=True,
                 skip_comments=False,
@@ -105,7 +96,39 @@ class FlextInfraPyprojectModernizerTooling:
         )
         if rendered.failure:
             return r[str].from_failure(rendered)
-        return r[str].ok(state.value.rendered)
+        return r[str].ok(state.rendered)
+
+    def _conformed_document_state(
+        self,
+        source: str,
+        *,
+        path: Path,
+        topology: m.Infra.PyprojectDeclaredTopology,
+    ) -> p.Result[t.Pair[m.Infra.PyprojectDocumentState, t.StrSequence]]:
+        """Read and apply canonical phases before a consumer chooses rendering.
+
+        Returns:
+            The validated document state and its phase changes.
+
+        """
+        result_type = r[t.Pair[m.Infra.PyprojectDocumentState, t.StrSequence]]
+        state = self._read_document_state(path, source=source)
+        if state.failure:
+            return result_type.from_failure(state)
+        canonical_dev: p.Result[t.StrSequence] = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            u.Infra.canonical_dev_dependencies_from_payload(state.value.payload),
+        )
+        if canonical_dev.failure:
+            return result_type.fail_op(
+                "pyproject model validation", canonical_dev.error
+            )
+        changes = self._apply_document_phases(
+            state.value,
+            canonical_dev=canonical_dev.value,
+            topology=topology,
+        )
+        return result_type.ok((state.value, changes))
 
     def resolve_tooling_context(
         self,
@@ -343,17 +366,15 @@ class FlextInfraPyprojectModernizerTooling:
         }
         # Atomic scaffolds provide validated future roots;
         # existing repositories keep filesystem discovery through empty ones.
-        conformed = self.conform_source(
+        conformed = self._conformed_document_state(
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(seed)),
             path=path,
-            format_source=False,
             topology=topology,
         )
         if conformed.failure:
             return result_type.from_failure(conformed)
-        payload = u.Cli.toml_mapping_from_text(conformed.value)
-        if payload is None:
-            return result_type.fail(f"tooling resolution produced invalid TOML: {path}")
+        state, _ = conformed.value
+        payload = state.payload
         tools_result: p.Result[m.Infra.ToolingConformedTools] = u.validate_value(
             m.Infra.ToolingConformedTools,
             u.Cli.toml_mapping_child(payload, c.Infra.TOOL) or {},

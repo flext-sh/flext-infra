@@ -18,6 +18,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, Protocol
 
+from flext_cli import cli
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
@@ -489,7 +491,27 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             expected = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
                 scope, target
             )
-            return cls._binding_symbols_match(expected, actual)
+            holds = cls._binding_symbols_match(expected, actual)
+            if not holds:
+                cli.display_text(
+                    "mod: binding rejection resolved-symbol "
+                    f"target={target_module}.{target} "
+                    f"actual={cls._binding_identity(actual)} "
+                    f"expected={cls._binding_identity(expected)}",
+                )
+            return holds
+
+        @staticmethod
+        def _binding_identity(binding: p.Infra.RopePyName | None) -> str:
+            """Describe native identity without substituting an inferred value."""
+            if binding is None:
+                return "unresolved"
+            holder, line = binding.get_definition_location()
+            owner = holder.get_name() if holder is not None else "<no-owner>"
+            return (
+                f"{type(binding).__name__}@{owner}:{line} "
+                f"object={type(binding.get_object()).__name__}"
+            )
 
         @staticmethod
         def _binding_symbols_match(

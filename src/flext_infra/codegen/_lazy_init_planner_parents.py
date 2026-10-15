@@ -336,3 +336,6 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         if u.Infra.declared_package_dir(parts[0]) is not None:
             return parts[0]
         return ""
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerParentsMixin"]

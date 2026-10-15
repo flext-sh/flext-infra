@@ -763,7 +763,15 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         obsolete: set[t.Pair[str, str]] = set()
         lineages: MutableMapping[
             t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]
-        ] = {}
+        ] = {
+            identity: lineage
+            for identity in identities
+            if (
+                lineage := cls._typing_behavior_lineage(
+                    modules, *identity, typing_directory
+                )
+            )
+        }
 
         # Owner facts are immutable for this request; lexical checks still run
         # for every reference. A new source/candidate creates a fresh resolver.
@@ -772,7 +780,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             imported = next(
                 (
                     identity
-                    for identity in identities
+                    for identity in lineages
                     if qualified.startswith(".".join(identity) + ".")
                     and qualified.removeprefix(".".join(identity) + ".").count(".") == 0
                 ),
@@ -832,7 +840,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             cls._record_obsolete_target(obsolete, imported, target)
             return target
 
-        if not identities:
+        if not lineages:
             return source, ()
         module_name = cls._source_module_name(path)
         context = CodemodContext(full_module_name=module_name)
@@ -843,6 +851,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 context,
             )
         )
+        if not obsolete:
+            return source, ()
         cls._remove_obsolete_behavior_imports(context, tree, obsolete)
         updated = AddImportsVisitor(context).transform_module(updated)
         updated = RemoveImportsVisitor(context).transform_module(updated)
