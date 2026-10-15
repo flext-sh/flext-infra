@@ -489,7 +489,10 @@ class FlextInfraWorkspaceNativeReference:
                     f"generated export differs from its source binding: "
                     f"{supplier}::{attribute}"
                 )
-            declared = witness.module.get_scope().get_names().get(attribute)
+            scope = witness.module.get_scope()
+            if scope is None:
+                return result_type.fail("generated source has no native module scope")
+            declared = scope.get_names().get(attribute)
             if isinstance(declared, p.Infra.RopeImportedName):
                 provider, _line = declared.get_definition_location()
                 if provider is None:
@@ -560,7 +563,7 @@ class FlextInfraWorkspaceNativeReference:
         for attribute, descriptor in cls._class_namespace(owner).items():
             value = (
                 descriptor.__func__
-                if cls._native_type(descriptor, classmethod, staticmethod)
+                if cls._is_function_binding(descriptor)
                 else descriptor
             )
             if (
@@ -586,11 +589,10 @@ class FlextInfraWorkspaceNativeReference:
             for name, descriptor in cls._class_namespace(ancestor).items():
                 if (
                     (
-                        cls._native_type(
-                            descriptor,
-                            MethodDescriptorType,
-                            ClassMethodDescriptorType,
-                            WrapperDescriptorType,
+                        (
+                            cls._is_native(descriptor, MethodDescriptorType)
+                            or cls._is_native(descriptor, ClassMethodDescriptorType)
+                            or cls._is_native(descriptor, WrapperDescriptorType)
                         )
                         or (
                             type(descriptor) is GetSetDescriptorType
@@ -819,12 +821,9 @@ class FlextInfraWorkspaceNativeReference:
         native_descriptors = (
             descriptor
             for descriptor in cls._class_namespace(value).values()
-            if type(descriptor)
-            in {
-                MethodDescriptorType,
-                ClassMethodDescriptorType,
-                WrapperDescriptorType,
-            }
+            if cls._is_native(descriptor, MethodDescriptorType)
+            or cls._is_native(descriptor, ClassMethodDescriptorType)
+            or cls._is_native(descriptor, WrapperDescriptorType)
         )
         if not any(
             descriptor.__objclass__ is value for descriptor in native_descriptors
@@ -1218,6 +1217,7 @@ class FlextInfraWorkspaceNativeReference:
     def _extension_callback(
         cls,
         value: t.Infra.NativeOperand,
+        binding: str,
     ) -> p.Result[t.Triple[str, str, str]]:
         """Read registered native extension slots without authored accessors.
 
@@ -1280,6 +1280,7 @@ class FlextInfraWorkspaceNativeReference:
             native,
             cls._module_namespace(supplier),
             metadata,
+            binding,
         )
 
     @classmethod
@@ -1289,6 +1290,7 @@ class FlextInfraWorkspaceNativeReference:
         native: t.Infra.NativeType,
         namespace: t.MappingKV[str, t.Infra.NativeOperand],
         metadata: t.StrMapping,
+        binding: str,
     ) -> p.Result[t.Triple[str, str, str]]:
         """Authenticate an extension callback in its elected native namespace.
 
@@ -2116,20 +2118,7 @@ class FlextInfraWorkspaceNativeReference:
                     and descriptor.__objclass__ is CodeType
                 ],
             ]
-        if native in {
-            MemberDescriptorType,
-            GetSetDescriptorType,
-            ClassMethodDescriptorType,
-            MethodDescriptorType,
-            WrapperDescriptorType,
-        }:
-            return dumps((
-                "native_descriptor",
-                native.__name__,
-                cls._symbol(value.__objclass__),
-                value.__name__,
-            ))
-        if native is FunctionType:
+        if cls._is_native(value, FunctionType):
             return dumps((
                 "function",
                 cls._symbol(value),
@@ -2935,6 +2924,8 @@ class FlextInfraWorkspaceNativeReference:
                     WrapperDescriptorType,
                 )
             ):
+                owner = value.__objclass__
+                actual_supplier = cls._type_attr("__module__", owner, type(owner))
                 if type(actual_supplier) is not str:
                     return r[m.Infra.NativeImportObservation].fail(
                         f"native descriptor owner has no source supplier: {binding}",
@@ -3107,7 +3098,7 @@ class FlextInfraWorkspaceNativeReference:
                     ))
                     continue
                 if native_builtin is None:
-                    extension = cls._extension_callback(value)
+                    extension = cls._extension_callback(value, binding)
                     if extension.failure:
                         return r[m.Infra.NativeImportObservation].fail(
                             f"{extension.error}; binding={binding}; "
@@ -3216,6 +3207,10 @@ class FlextInfraWorkspaceNativeReference:
                         f"generated function has no physical source owner: {binding}",
                     )
                 source_supplier, source_attribute, receiver = generated_owner
+                if receiver is not None and not cls._is_class(receiver):
+                    return r[m.Infra.NativeImportObservation].fail(
+                        f"generated receiver is not a native class: {binding}",
+                    )
                 proved = cls._generated_proof(
                     value,
                     source_supplier,
@@ -3869,7 +3864,7 @@ class FlextInfraWorkspaceNativeReference:
                 return result_type.fail("generated receiver is not a native class")
         namespace = vars(module) if receiver is None else cls._class_namespace(receiver)
         value = namespace.get(attribute)
-        if cls._native_type(value, classmethod, staticmethod):
+        if cls._is_function_binding(value):
             value = value.__func__
         if type(value) is not FunctionType:
             return result_type.fail("generated receipt has no native function")
@@ -3892,6 +3887,10 @@ class FlextInfraWorkspaceNativeReference:
             if receipt is None:
                 return result_type.fail(
                     f"generated compiler input is not pinned: {state.path}"
+                )
+            if receipt.size is None:
+                return result_type.fail(
+                    f"generated compiler receipt has no byte count: {state.path}"
                 )
             measured = u.Cli.atomic_read_binary_file_receipt(state.path, required=True)
             if measured.failure:
