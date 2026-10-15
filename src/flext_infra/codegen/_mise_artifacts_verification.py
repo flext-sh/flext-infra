@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import operator
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -186,7 +187,7 @@ class FlextInfraMiseArtifactsVerification(
         """
         return cls._publication_history_current(
             publications, reference=reference, destinations=destinations
-        ).map(lambda history: history[0])
+        ).map(operator.itemgetter(0))
 
     @classmethod
     def _publication_history_current(

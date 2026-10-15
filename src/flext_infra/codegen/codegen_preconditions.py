@@ -22,7 +22,6 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
-from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution

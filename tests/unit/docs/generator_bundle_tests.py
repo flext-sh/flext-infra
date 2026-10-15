@@ -237,11 +237,11 @@ tm.that(published.error or "", has=str(local_layer))
         tm.that(published.error or "", has=str(local_layer))
 
     def test_publication_rejects_source_topology_addition_after_bundle(
-        native_consumer: p.Tests.NativeConsumer,
+        self: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
         """Reject a newly consumed source that was absent from the frozen inventory."""
-        native_consumer(
+        self(
             _DOCS_CONSUMER_SOURCE
             + r'''workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 generator = case._generator(workspace)

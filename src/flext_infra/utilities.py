@@ -198,6 +198,9 @@ from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInvento
 from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from flext_infra._utilities.rope_runtime_module_queries import (
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
+)
 from flext_infra._utilities.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -228,9 +231,6 @@ from flext_infra._utilities.workspace_manifest import (
 )
 from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
 from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
-from flext_infra._utilities.rope_runtime_module_queries import (
-    FlextInfraUtilitiesRopeRuntimeModuleQueries,
-)
 
 
 class FlextInfraUtilities(FlextCliUtilities):

@@ -18,9 +18,7 @@ from flext_infra.codegen import (
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.workspace.native_reference import (
-    FlextInfraWorkspaceNativeReference,
-)
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 # The surfaces a partial apply plan may publish; every other non-ALL surface is
 # prohibited outside the complete managed run.

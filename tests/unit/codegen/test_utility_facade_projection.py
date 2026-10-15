@@ -642,13 +642,15 @@ class TestsFlextInfraUtilityFacadeProjection:
                 (
                     sys.executable,
                     "-c",
-                    f"from {package.name} import u\n"
-                    f"from {package.name}.runtime import Local\n"
-                    "assert u.Domain.parse('7') == 7\n"
-                    "assert u.Domain.default_alias() == 'header'\n"
-                    "assert u.Domain.header_adapter().validate_python('header') == 'header'\n"
-                    "assert u.Domain.parameter_shadow(Local()) == 'local'\n"
-                    "assert u.Domain.local_shadow() == 'local'\n",
+                    (
+                        f"from {package.name} import u\n"
+                        f"from {package.name}.runtime import Local\n"
+                        "assert u.Domain.parse('7') == 7\n"
+                        "assert u.Domain.default_alias() == 'header'\n"
+                        "assert u.Domain.header_adapter().validate_python('header') == 'header'\n"
+                        "assert u.Domain.parameter_shadow(Local()) == 'local'\n"
+                        "assert u.Domain.local_shadow() == 'local'\n"
+                    ),
                 ),
                 cwd=root,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
