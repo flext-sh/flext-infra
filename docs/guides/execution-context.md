@@ -145,11 +145,14 @@ checks; they cannot substitute for callback-free source authentication. Source
 receipts are checked again after observation, before an authenticated reference is
 returned.
 
-Native dataclass and named-tuple methods require a physical field-layout witness, native
-construction metadata and descriptor identity, and correspondence with code emitted
-by the authenticated generator. A compiler filename or cached field table alone is
-not evidence. A missing physical/native construction witness fails explicitly rather
-than evaluating arbitrary declaration expressions or importing dormant providers.
+Generated module functions require a unique physical factory invocation with closed
+literal inputs. Named-tuple constructors require a physical field-layout witness.
+One source interpreter derives their templates and compiles them without executing
+the factory, generated source, class body or construction hooks. It compares code
+and positions, globals, builtins, annotations, defaults and closure values, and pins
+every consulted physical input before publication. A compiler filename or cached
+field table alone is not evidence. Unsupported grammar or an unproved construction
+recipe, including a dataclass compiler, fails explicitly.
 Source-declared descriptor aliases authenticate the receiver's physical lexical
 declaration and the exact imported supplier binding. Relative imports resolve from
 the declaring module's package; class attributes are read as raw descriptors through
@@ -164,28 +167,28 @@ calling descriptor hooks. Bound methods enter the same supplier/source/code chec
 matching functions with a different bound class are not equivalent. An alias mismatch
 retains its failure and reports bounded receiver/module/attribute, source identifier,
 supplier owner, and raw binding-kind metadata, never operand representations.
+Class and static method wrappers retain their kind and route their underlying target
+through the same class or function admission. Callable operands retain constructor
+state and dictionary insertion order. CPython operator intrinsics use their exact
+native reduction descriptors after supplier, importer and partial-constructor
+authentication; GC references alone cannot prove hidden C scalar state. Python
+callable instances require a source-authenticated effective call implementation and
+native storage observation. Unsupported native state, including an unproved bound
+builtin receiver, fails admission before authored callbacks run.
 An unresolved factory binding reports bounded, escaped identifier, module/package
 registration, receiver/declaration, physical source path, and supplier-kind context.
 Diagnostics never render the operand, its material values, or a source excerpt; they
 preserve the failed admission rather than authorizing an unknown factory.
-Native compiler inputs preserve the class's actual bases and its own declared
-descriptors. An inherited constructor is not an explicitly declared dataclass
-constructor. Authentication does not replay a class body, decorator, metaclass, or
-construction hook. Function compilation uses authenticated native suppliers and
-data-only attachment targets; alias operands and compiler constructor bindings
-require admission before invocation. Value comparison must not invoke authored
-equality, hashing, or attribute access.
-Dataclass ancestry is compared with its source-declared bindings and retained as
-supplier evidence, not replayed to construct compiler data. Native assembly uses an
-object-rooted data-only class with authenticated declarations and fields; neither
-ABC ancestry nor a supplier namespace authorizes executing a receiver metaclass or
-inherited subclass hook again.
+The source interpreter authenticates the emitted function's correspondence to
+physical source; it does not authorize later invocation of its live compiler
+helpers. Closed string operations are derived from their source declarations.
+Regex patterns and flags alone do not authenticate hidden native regex bytecode,
+and the interpreter never invokes a live regex cache. Module hooks are not used
+to normalize an absent member. Value comparison must not invoke authored equality,
+hashing, formatting or attribute access.
 Source bindings retain null literals inside a typed value; a null annotation or
 default never becomes a successful null `FlextResult` payload or a substituted type.
-Native generated methods are compiled in batches whose starting lines depend on
-other generated methods. Their comparison uses the same fixed starting line on
-immutable copies of both code objects, preserving compiler filenames, executable
-code, metadata and closure checks. Authored functions retain exact source positions.
+Generated functions and authored functions retain exact native source positions.
 
 Every phase binds that same captured context to its staged consumer inputs. Journal
 transitions preserve it instead of rediscovering loaded origins after publication.

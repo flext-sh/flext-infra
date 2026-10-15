@@ -16,7 +16,6 @@ from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsMixins,
-    FlextInfraModelsRope,
 )
 from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
@@ -44,14 +43,33 @@ class FlextInfraModelsWorkspace:
         code: p.Infra.NativeCodeIdentity = m.Field(
             description="CPython compiler result, never executed",
         )
-        scopes: t.MappingKV[str, p.Infra.RopeScope] = m.Field(
-            description="Native declaration scopes indexed by qualified identity",
-        )
-        statements: t.SequenceOf[FlextInfraModelsRope.LogicalStatement] = m.Field(
-            description="One native Rope logical-region pass over captured bytes",
-        )
         finder: p.Infra.RopeSimilarFinder = m.Field(
             description="Native semantic matcher shared across declarations",
+        )
+
+    class NativeGeneratedFunctionProof(m.ArbitraryTypesModel):
+        """Source-derived generated code and every consulted physical input."""
+
+        code: p.Infra.NativeCodeIdentity = m.Field(
+            description="Expected compiler code extracted without executing it",
+        )
+        globals: t.MappingKV[str, p.AttributeProbe] = m.Field(
+            description="Source-derived global bindings of the emitted function",
+        )
+        annotations: t.MappingKV[str, p.AttributeProbe] = m.Field(
+            description="Source-derived annotation storage, never evaluated output",
+        )
+        defaults: p.AttributeProbe | None = m.Field(
+            description="Source-derived positional defaults or their absence",
+        )
+        keyword_defaults: t.MappingKV[str, p.AttributeProbe] | None = m.Field(
+            description="Source-derived keyword defaults or their absence",
+        )
+        closure: t.VariadicTuple[p.AttributeProbe] = m.Field(
+            description="Source-derived closure values in native cell order",
+        )
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            description="Physical sources revalidated after closed interpretation",
         )
 
     class CodegenSourceAuthority(m.Value):

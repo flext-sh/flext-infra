@@ -9,9 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import mkdocs.commands.build
-import mkdocs.commands.serve
-import mkdocs.config
 from flext_cli import u
 
 from flext_infra import c, m, p
@@ -125,6 +122,9 @@ class FlextInfraUtilitiesDocsBuild:
     @staticmethod
     def _run_mkdocs_api(settings: Path, site_dir: Path) -> None:
         """Validate and build through the typed public MkDocs SDK."""
+        import mkdocs.commands.build
+        import mkdocs.config
+
         site_dir.parent.mkdir(parents=True, exist_ok=True)
         config_obj = FlextInfraUtilitiesDocsBuild._config_sdk(
             mkdocs.config,
@@ -149,6 +149,8 @@ class FlextInfraUtilitiesDocsBuild:
             The resulting ``m.Infra.DocsPhaseReport``.
 
         """
+        import mkdocs.commands.serve
+
         settings = scope.path / "mkdocs.yml"
         if not settings.exists():
             return m.Infra.DocsPhaseReport(
