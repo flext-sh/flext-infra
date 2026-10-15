@@ -105,17 +105,17 @@ class FlextInfraUtilitiesRopeStructure:
             enclosers.append((
                 indent,
                 c.Infra.RopeScopeKind.CLASS,
-                FlextInfraUtilitiesRopeStructure._header_name(text),
+                FlextInfraUtilitiesRopeStructure.header_name(text),
             ))
         elif category == c.Infra.StatementCategory.FUNC_DEF:
             enclosers.append((
                 indent,
                 c.Infra.RopeScopeKind.FUNCTION,
-                FlextInfraUtilitiesRopeStructure._header_name(text),
+                FlextInfraUtilitiesRopeStructure.header_name(text),
             ))
 
     @staticmethod
-    def _header_name(text: str) -> str:
+    def header_name(text: str) -> str:
         """Return the declared name from a ``class``/``def`` header line.
 
         Returns:

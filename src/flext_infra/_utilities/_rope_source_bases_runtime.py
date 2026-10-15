@@ -1020,35 +1020,38 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         _stdlib_backing_cache: ClassVar[dict[str, str] | None] = None
 
-    class FlextInfraUtilitiesRopeSourceBasesRuntime:
-        """Runtime-base resolution part of the source-bases composite."""
 
-        @classmethod
-        def runtime_bases(
-            cls,
-            project: t.Infra.RopeProject,
-            sources: t.MappingKV[str, t.Pair[Path, str]],
-            roots: t.StrSequence,
-            extra_module_aliases: t.MappingKV[str, str] | None = None,
-        ) -> t.StrTuple:
-            """Resolve owned classes in C3 order and external classes through Rope.
+_ResolverOwner = FlextInfraUtilitiesRopeSourceBasesRuntime
 
-            Only configured roots mark model evaluation boundaries. No first-party
-            module is imported or resolved from disk when its planned source exists.
-            Provider reexports follow Rope's declared import provenance. Their source
-            declarations, not Rope's possibly incomplete superclass inference, supply
-            the ordered bases. Missing references and invalid inheritance fail loudly.
+class FlextInfraUtilitiesRopeSourceBasesRuntime:
+    """Runtime-base resolution part of the source-bases composite."""
 
-            Returns:
-                Sorted configured roots and derived Ruff-qualified base expressions.
+    @classmethod
+    def runtime_bases(
+        cls,
+        project: t.Infra.RopeProject,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+        roots: t.StrSequence,
+        extra_module_aliases: t.MappingKV[str, str] | None = None,
+    ) -> t.StrTuple:
+        """Resolve owned classes in C3 order and external classes through Rope.
 
-            """
-            return FlextInfraUtilitiesRopeSourceBasesRuntime._RuntimeBaseResolver(
-                project,
-                sources,
-                roots,
-                extra_module_aliases,
-            ).run()
+        Only configured roots mark model evaluation boundaries. No first-party
+        module is imported or resolved from disk when its planned source exists.
+        Provider reexports follow Rope's declared import provenance. Their source
+        declarations, not Rope's possibly incomplete superclass inference, supply
+        the ordered bases. Missing references and invalid inheritance fail loudly.
+
+        Returns:
+            Sorted configured roots and derived Ruff-qualified base expressions.
+
+        """
+        return _ResolverOwner._RuntimeBaseResolver(
+            project,
+            sources,
+            roots,
+            extra_module_aliases,
+        ).run()
 
 
 
