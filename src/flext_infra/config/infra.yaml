@@ -8,9 +8,9 @@ Infra:
   release:
     publishable_prefixes: []
     # A consumer workspace that also publishes distributions outside this
-    # prefix declares the extra prefix in
-    # config/codegen-overrides.local.yaml (gitignored, merges after the
-    # tracked configs).
+    # prefix declares the extra prefix in its own config/infra.yaml, or in
+    # the gitignored config/infra.local.yaml when it is operator-private
+    # (merged after the tracked layer).
     # Hash-pinned build backend for the isolated release build
     # (`uv build --build-constraints … --require-hashes`), rendered at build
     # time by the release policy phase.

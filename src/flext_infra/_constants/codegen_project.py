@@ -241,7 +241,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     "Scaffold template for canonical test c/t/p/m/u facades."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
     INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"
-    CODEGEN_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.yaml"
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"
     CODEGEN_GEN_SUFFIX: ClassVar[str] = ".gen.yaml"
     "File suffix for generation requirements contract files managed by conform."
