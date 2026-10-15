@@ -135,7 +135,7 @@ Infra:
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
       # the pyright wrapper, qlty, jscpd, waza). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
-      # in its own config/codegen-org.yaml under Infra.codegen.toolchain.tools;
+      # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
       # lists its consumers' tools (DI).
       tools:
@@ -298,8 +298,8 @@ Infra:
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
     # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
     # with "Repository not found" before any code runs. Only projects that
-    # really exercise their subprojects in CI opt in through
-    # config/codegen-overrides.yaml.
+    # really exercise their subprojects in CI opt in through their own
+    # config/codegen.yaml.
     checkout_submodules: "false"
     # CI consumes installed locked providers, never member checkouts.
     checkout_submodules_overrides: {}
@@ -315,12 +315,12 @@ Infra:
     # Distributions whose CI gates resolve GitHub Packages (private GHCR OCI
     # dependencies). Least privilege: only these grant the generated ci job
     # packages: read; every other distribution and job stays contents-only.
-    # Org repositories declare themselves in their own config/codegen-org.yaml.
+    # Org repositories declare themselves in their own config/codegen.yaml.
     ci_package_registry_read: []
     # Per-distribution private composed-project auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; projects that need
-    # private submodules declare read-only deploy-key secrets via
-    # config/codegen-overrides.yaml, which the generated workflow materializes
+    # private submodules declare read-only deploy-key secrets in their own
+    # config/codegen.yaml, which the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
     ci_private_submodules: {}
     ci_private_dependency_auth: {}
@@ -648,7 +648,7 @@ Infra:
         stale_github_organizations:
         - organization
       # Private cross-repo doc-link entries (checkouts outside this public
-      # registry) belong in config/codegen-overrides.local.yaml; the
+      # registry) belong in the gitignored config/codegen.local.yaml; the
       # lookup appends local entries and resolves first match.
       verbs:
       - name: help
@@ -1146,8 +1146,9 @@ Infra:
       - external-docs
       # Per-project overrides: extra archives (with the matching .gitignore
       # additions), explicit nested moves, and empty-directory archives.
-      # Project-specific entries live in config/codegen-overrides.yaml so
-      # codegen.yaml stays an immutable fleet-wide rule set.
+      # Project-specific entries live in each project's own
+      # config/codegen.yaml so this file stays an immutable fleet-wide rule
+      # set that never lists its consumers.
       project_overrides: {}
 
     managed_files:
@@ -1647,9 +1648,11 @@ Infra:
         - ".claude/*.agents-governance.json"
         - ".gemini/*.agents-governance.json"
         - ".claude/settings.local.json"
-      - name: "Private local config overrides"
+      # The repository loader merges config/<file>.local.yaml after the
+      # tracked config/<file>.yaml; that layer carries operator-private data.
+      - name: "Private local config layers"
         patterns:
-        - "/config/codegen-overrides.local.yaml"
+        - "/config/*.local.yaml"
       - name: "Gas City skill projections (runtime state, never source)"
         patterns:
         - ".agents/skills/.gc-skill-ownership.json"
