@@ -7,5 +7,5 @@ Infra:
       # mise.lock resolves today; `make upg` advances them deliberately.
       # The pins dict deep-merges per tool name over the tools table.
       tool_version_pins:
-        qlty: "0.645.0"
-        jscpd: "5.3.2"
+        qlty: "0.651.0"
+        jscpd: "5.4.0"

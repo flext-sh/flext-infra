@@ -868,6 +868,34 @@ class FlextInfraUtilitiesCodemodRules:
         )
 
     @classmethod
+    def parse_yaml_documents(
+        cls,
+        text: str,
+    ) -> p.Result[t.SequenceOf[t.JsonMapping]]:
+        """Split one multi-document YAML stream into its mapping documents.
+
+        The rule corpus is a stream of ``---``-separated documents; the split
+        convention is the rule contract's own (``\\n---`` on the exact source
+        text), and each document parses through the canonical strict loader.
+
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[t.JsonMapping]]``.
+
+        """
+        documents: list[t.JsonMapping] = []
+        for raw_document in text.split("\n---"):
+            if not any(
+                line.strip() and not line.lstrip().startswith("#")
+                for line in raw_document.splitlines()
+            ):
+                continue
+            parsed = u.Cli.yaml_parse(raw_document)
+            if parsed.failure:
+                return r[t.SequenceOf[t.JsonMapping]].from_failure(parsed)
+            documents.append(parsed.value)
+        return r[t.SequenceOf[t.JsonMapping]].ok(tuple(documents))
+
+    @classmethod
     def _parse_rules(
         cls,
         provider: str,
@@ -881,7 +909,7 @@ class FlextInfraUtilitiesCodemodRules:
         """
         rules: list[m.Infra.CodemodRule] = []
         for resource, text in sources:
-            documents = u.Cli.yaml_parse_documents(text)
+            documents = cls.parse_yaml_documents(text)
             if documents.failure:
                 return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(documents)
             for payload in documents.value:

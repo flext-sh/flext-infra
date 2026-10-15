@@ -158,7 +158,12 @@ class FlextInfraUtilitiesPyprojectOverlay:
         group_table = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
         if group_table is None:
             return r[t.StrSequence].fail("dev provenance dependency groups are missing")
-        comments = u.Cli.toml_array_item_comments(group_table, group)
+        raw_array = u.Cli.toml_item_child(group_table, group)
+        if raw_array is None:
+            return r[t.StrSequence].fail("dev provenance group array is missing")
+        comments = tuple(
+            str(getattr(item, "trivia", None).comment or "") for item in raw_array
+        )
         if len(comments) != len(values.value):
             return r[t.StrSequence].fail("dev provenance occurrence counts differ")
         return r[t.StrSequence].ok(

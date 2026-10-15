@@ -91,6 +91,11 @@ metadata:
     MODULE:
       - is: own-package
       - is: family-base-file
+      # The family compose modules are the sanctioned static surface (bead
+      # flext-6e72w): a family base reaches the canonical public compose
+      # leaves (constants/models/protocols/typings/utilities) the way every
+      # consumer does, and only other own modules stay banned.
+      - not: compose-module
 rule:
   all:
     - kind: import_from_statement
@@ -102,4 +107,5 @@ rule:
           regex: "\\._[a-z]+\\._base_parts(\\.|$)"
 message: >-
   Family base.py imports `$MODULE` from its own namespace: a family base is a
-  leaf and imports neither other own modules nor settings/config.
+  leaf and imports neither other own modules nor settings/config (its family's
+  public compose module is the one sanctioned static surface).

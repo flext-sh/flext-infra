@@ -928,6 +928,7 @@ class FlextInfraUtilitiesCodemodProject(
                     captured,
                     own,
                     facts,
+                    file_path,
                 )
             case (
                 c.Infra.CodemodContextPredicate.MODULE_EXPORT
@@ -984,6 +985,7 @@ class FlextInfraUtilitiesCodemodProject(
         captured: t.Pair[str, str | None],
         own: str,
         facts: m.Infra.CodemodProjectFacts,
+        file_path: Path,
     ) -> bool:
         """Evaluate one package-scope predicate.
 
@@ -1022,9 +1024,50 @@ class FlextInfraUtilitiesCodemodProject(
                     msg = f"project layout is unresolved: {root}"
                     raise ValueError(msg)
                 return value in layout.runtime_aliases
+            case c.Infra.CodemodContextPredicate.COMPOSE_MODULE:
+                return cls._is_compose_module(value, module, own, root, facts, file_path)
             case _:
                 message = f"predicate is not package-scoped: {predicate}"
                 raise ValueError(message)
+
+    @classmethod
+    def _is_compose_module(
+        cls,
+        value: str,
+        module: str,
+        own: str,
+        root: Path,
+        facts: m.Infra.CodemodProjectFacts,
+        file_path: Path,
+    ) -> bool:
+        """Prove one captured module path is a canonical compose module.
+
+        The family-shape contract sanctions the public compose surface
+        ``<package>.<leaf>``: exactly one canonical leaf below a package root,
+        never a deeper path and never a private leaf. The own package admits
+        the leaf only when it declares the module file; a runtime package of
+        the dependency closure admits the canonical leaf name.
+
+        Returns:
+            The resulting ``bool``.
+
+        Raises:
+            ValueError: If the project layout is unresolved.
+
+        """
+        parts = value.split(".")
+        if len(parts) != 2 or parts[1] not in c.Infra.CODEMOD_COMPOSE_MODULE_LEAVES:
+            return False
+        if module != own:
+            return module in facts.runtime_modules
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            root, file_path
+        )
+        layout = FlextInfraUtilitiesCodegenNamespace.layout(owner) if owner else None
+        if layout is None:
+            msg = f"project layout is unresolved: {file_path}"
+            raise ValueError(msg)
+        return (layout.package_dir / f"{parts[1]}{c.Infra.EXT_PYTHON}").is_file()
 
     @classmethod
     def _context_module_holds(

@@ -203,6 +203,13 @@ class FlextInfraConstantsRefactor:
         ``family-base-file`` proves that the finding is the immediate base
         leaf of a private family with a declared sibling facade.
 
+        ``compose-module``: the captured module path is one canonical public
+        family compose module (``<package>.<leaf>`` with ``leaf`` in
+        ``CODEMOD_COMPOSE_MODULE_LEAVES``): the static compose surface the
+        family-shape contract sanctions (bead flext-6e72w). The own package
+        admits the leaf only when it declares the module file; a runtime
+        package of the dependency closure admits the canonical leaf name.
+
         ``layer-zero-file`` uses the import-law role classifier: the first
         architectural segment owns the role, so a family's nested config
         declarations are not settings/config singleton modules.
@@ -217,6 +224,7 @@ class FlextInfraConstantsRefactor:
         FACADE_PACKAGE = "facade-package"
         RUNTIME_ALIAS = "runtime-alias"
         LOCAL_ALIAS = "local-alias"
+        COMPOSE_MODULE = "compose-module"
         MODULE_EXPORT = "module-export"
         PACKAGE_EXPORT = "package-export"
         FILE_FAMILY = "file-family"
@@ -241,6 +249,7 @@ class FlextInfraConstantsRefactor:
         frozenset({
             CodemodContextPredicate.RUNTIME_PACKAGE,
             CodemodContextPredicate.FACADE_PACKAGE,
+            CodemodContextPredicate.COMPOSE_MODULE,
         })
     )
     "Predicates evaluated against the project's runtime dependency closure."
@@ -253,9 +262,19 @@ class FlextInfraConstantsRefactor:
             CodemodContextPredicate.FACADE_PACKAGE,
             CodemodContextPredicate.RUNTIME_ALIAS,
             CodemodContextPredicate.LOCAL_ALIAS,
+            CodemodContextPredicate.COMPOSE_MODULE,
         })
     )
     "Package predicates consume one declared namespace per admission pass."
+
+    CODEMOD_COMPOSE_MODULE_LEAVES: ClassVar[frozenset[str]] = frozenset({
+        "constants",
+        "models",
+        "protocols",
+        "typings",
+        "utilities",
+    })
+    "Canonical public family compose leaf names (the static compose surface)."
 
     @unique
     class SemanticCutoverPhase(StrEnum):

@@ -21,7 +21,6 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import FlextStrictYamlConfigSource
 from flext_infra import c, config, m, r, t, u
 
 if TYPE_CHECKING:
@@ -253,7 +252,7 @@ class FlextInfraCodegenVscodeMixin:
         spec: m.Infra.CodegenVscodeSpec,
         delta: m.Infra.CodegenVscodeDeclarationDelta,
     ) -> p.Result[m.Infra.CodegenVscodeSpec]:
-        """Compose a preview through the same merge primitive as strict YAML.
+        """Compose a preview through the canonical deep-merge utility.
 
         Returns:
             The effective declaration after ordered mapping/list composition.
@@ -261,10 +260,7 @@ class FlextInfraCodegenVscodeMixin:
         baseline = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             spec.model_dump(mode="json"),
         )
-        merged = FlextStrictYamlConfigSource.merge_values(
-            dict(baseline),
-            dict(delta.values),
-        )
+        merged = u.config_merge(dict(baseline), dict(delta.values))
         return r[m.Infra.CodegenVscodeSpec].create_from_callable(
             partial(m.Infra.CodegenVscodeSpec.model_validate, merged),
         )
