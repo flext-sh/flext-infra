@@ -209,11 +209,46 @@ class FlextInfraWorkspaceGeneratedFunction:
         return local
 
     @classmethod
-    def compile_named_tuple(
+    def compile_class_function(
         cls,
+        value: FunctionType,
         owner: p.AttributeProbe,
         attribute: str,
         witness: m.Infra.NativeSourceWitness,
+    ) -> p.Result[m.Infra.NativeGeneratedFunctionProof]:
+        """Prove one class emission without repeating authored construction.
+
+        Only authenticated SDK compilers may receive closed source data and a
+        fresh exact-type receiver. Authored class bodies, bases, metaclasses,
+        decorators, constructors and default factories are never invoked.
+
+        Returns:
+            The source-derived code, metadata and every consulted physical input.
+
+        """
+        engine = cls(witness)
+        namespace = vars(type)["__dict__"].__get__(owner, type(owner))
+        qualified = vars(type)["__qualname__"].__get__(owner, type(owner))
+        if type(qualified) is not str:
+            msg = "generated class has no native qualified source identity"
+            raise ValueError(msg)
+        invocation = engine._tuple_invocation(owner, witness)
+        declaration = engine._tuple_declaration(
+            qualified, namespace, attribute, invocation
+        )
+        factory = (
+            engine._dataclass_factory(declaration) if declaration is not None else None
+        )
+        if factory is not None and declaration is not None:
+            return engine._compile_dataclass(
+                value, owner, attribute, declaration, factory
+            )
+        return engine._compile_named_tuple(owner, attribute)
+
+    def _compile_named_tuple(
+        self,
+        owner: p.AttributeProbe,
+        attribute: str,
     ) -> p.Result[m.Infra.NativeGeneratedFunctionProof]:
         """Compile the physical native tuple lambda from its declared field layout.
 
@@ -231,16 +266,16 @@ class FlextInfraWorkspaceGeneratedFunction:
         if attribute != "__new__":
             msg = (
                 "native tuple source proof supports only its generated constructor; "
-                + cls._tuple_constructor_diagnostic(owner, attribute, witness)
+                + self._tuple_constructor_diagnostic(owner, attribute, self._witness)
             )
             raise ValueError(msg)
-        engine = cls(witness)
+        engine = self
         namespace = vars(type)["__dict__"].__get__(owner, type(owner))
         qualified = vars(type)["__qualname__"].__get__(owner, type(owner))
         if type(qualified) is not str:
             msg = "native tuple owner has no exact string qualified identity"
             raise ValueError(msg)
-        invocation = engine._tuple_invocation(owner, witness)
+        invocation = engine._tuple_invocation(owner, self._witness)
         declaration = engine._tuple_declaration(
             qualified, namespace, attribute, invocation
         )
@@ -271,6 +306,260 @@ class FlextInfraWorkspaceGeneratedFunction:
                 closure=(),
                 inputs=tuple(engine._inputs.values()),
             ),
+        )
+
+    def _dataclass_factory(
+        self,
+        declaration: ast.ClassDef,
+    ) -> t.Pair[FunctionType, t.DictKV[str, bool]] | None:
+        """Elect the physical SDK decorator without invoking any decorator.
+
+        Returns:
+            The source-bound SDK factory and closed boolean options, if elected.
+
+        Raises:
+            TypeError: If an SDK option is not an exact native boolean.
+            ValueError: If the factory or its source options are ambiguous.
+
+        """
+        scope = next(
+            (
+                scope
+                for scope in self._witness.scopes.values()
+                if scope.get_kind() == "Class"
+                and scope.get_start() == declaration.lineno
+            ),
+            None,
+        )
+        if scope is None or scope.parent is None:
+            msg = "generated dataclass has no physical defining scope"
+            raise ValueError(msg)
+        namespace = vars(self._module(self._witness.module.get_name()))
+        tree = self._trees[self._witness.source]
+        elected: t.Pair[FunctionType, t.DictKV[str, bool]] | None = None
+        for decorator in declaration.decorator_list:
+            expression = decorator.func if isinstance(decorator, ast.Call) else decorator
+            binding = u.Infra.resolve_symbol(scope.parent, expression)
+            if binding is None:
+                continue
+            provider = binding.get_object().get_module()
+            if provider is None or provider.get_name() != "dataclasses":
+                continue
+            factory = self._decorator_binding(expression, namespace, tree)
+            compiler = self._module("dataclasses")
+            if factory is not vars(compiler).get("dataclass"):
+                continue
+            if elected is not None:
+                msg = "native dataclass decorator is repeated"
+                raise ValueError(msg)
+            physical, compiler_tree, compiler_namespace = self._function(factory)
+            options: t.DictKV[str, bool] = {}
+            for parameter, default in zip(
+                physical.args.kwonlyargs, physical.args.kw_defaults, strict=True
+            ):
+                if default is None:
+                    msg = "native dataclass compiler has an unbound option"
+                    raise ValueError(msg)
+                value = self._default(default, compiler_namespace, compiler_tree)
+                if type(value) is not bool:
+                    msg = "native dataclass compiler options are not native booleans"
+                    raise TypeError(msg)
+                options[parameter.arg] = value
+            if isinstance(decorator, ast.Call):
+                self._dataclass_options(decorator, namespace, tree, options)
+            elected = factory, options
+        return elected
+
+    def _decorator_binding(
+        self,
+        expression: ast.expr,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> FunctionType:
+        if isinstance(expression, ast.Name):
+            value = self._global(expression.id, namespace, tree)
+        elif isinstance(expression, ast.Attribute) and isinstance(
+            expression.value, ast.Name
+        ):
+            provider = self._global(expression.value.id, namespace, tree)
+            if type(provider) is not ModuleType:
+                msg = "native compiler decorator has no exact module binding"
+                raise ValueError(msg)
+            value = vars(provider).get(expression.attr)
+        else:
+            msg = "native compiler decorator has no closed imported binding"
+            raise ValueError(msg)
+        if type(value) is not FunctionType:
+            msg = "native compiler decorator is not a physical Python function"
+            raise TypeError(msg)
+        return value
+
+    def _dataclass_options(
+        self,
+        decorator: ast.Call,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+        options: t.MutableMappingKV[str, bool],
+    ) -> None:
+        if decorator.args:
+            msg = "native dataclass decorator has positional options"
+            raise ValueError(msg)
+        selected: set[str] = set()
+        for keyword in decorator.keywords:
+            if (
+                keyword.arg is None
+                or keyword.arg not in options
+                or keyword.arg in selected
+            ):
+                msg = "native dataclass decorator options are not uniquely declared"
+                raise ValueError(msg)
+            value = self._source_scalar(keyword.value, namespace, tree)
+            if type(value) is not bool:
+                msg = "native dataclass decorator options are not native booleans"
+                raise TypeError(msg)
+            options[keyword.arg] = value
+            selected.add(keyword.arg)
+
+    def _source_scalar(
+        self,
+        expression: ast.expr,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe | None:
+        if isinstance(expression, ast.Name) and expression.id in namespace:
+            declarations = [
+                node.value
+                for node in tree.body
+                if isinstance(node, ast.Assign)
+                and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)
+                and node.targets[0].id == expression.id
+            ]
+            if len(declarations) != 1:
+                msg = "native compiler argument has no unique physical literal binding"
+                raise ValueError(msg)
+            expected = self._default(declarations[0], namespace, tree)
+            if not self._same_default(expected, namespace[expression.id]):
+                msg = "native compiler argument differs from its physical literal"
+                raise ValueError(msg)
+            return expected
+        return self._default(expression, namespace, tree)
+
+    def _dataclass_annotation(
+        self,
+        field: ast.AnnAssign,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> p.AttributeProbe:
+        """Read the annotation through its original native compilation semantics.
+
+        Returns:
+            The exact compiled future string or a closed native annotation value.
+
+        Raises:
+            TypeError: If the compiler did not produce native annotation text.
+
+        """
+        tree = self._trees[self._witness.source]
+        future = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            and node.module == "__future__"
+        ]
+        if not any(
+            alias.name == "annotations" for node in future for alias in node.names
+        ):
+            return self._expression(field.annotation, {}, namespace, tree)
+        isolated = ast.Module(
+            body=[
+                *future,
+                ast.copy_location(
+                    ast.AnnAssign(
+                        target=field.target,
+                        annotation=field.annotation,
+                        value=None,
+                        simple=field.simple,
+                    ),
+                    field,
+                ),
+            ],
+            type_ignores=[],
+        )
+        compiled = builtins.compile(
+            ast.fix_missing_locations(isolated),
+            str(self._witness.source),
+            "exec",
+            dont_inherit=True,
+            optimize=sys.flags.optimize,
+        )
+        annotation = next(
+            value for value in compiled.co_consts if type(value) is str
+        )
+        if type(annotation) is not str:
+            msg = "native compiler did not emit an exact annotation string"
+            raise TypeError(msg)
+        return annotation
+
+    def _dataclass_inputs(
+        self,
+        owner: p.AttributeProbe,
+        declaration: ast.ClassDef,
+    ) -> t.DictKV[str, p.AttributeProbe]:
+        """Build only physical declaration data for an exact-type SDK receiver.
+
+        Returns:
+            Its native module/qualified names, annotations and literal defaults.
+
+        Raises:
+            ValueError: If source and the loaded class do not share their identity.
+
+        """
+        namespace = vars(type)["__dict__"].__get__(owner, type(owner))
+        module_name = self._witness.module.get_name()
+        if namespace.get("__module__") != module_name:
+            msg = "native dataclass owner differs from its physical source module"
+            raise ValueError(msg)
+        source_globals = vars(self._module(module_name))
+        qualified = vars(type)["__qualname__"].__get__(owner, type(owner))
+        annotations: t.DictKV[str, p.AttributeProbe] = {}
+        result: t.DictKV[str, p.AttributeProbe] = {
+            "__module__": module_name,
+            "__qualname__": qualified,
+            "__annotations__": annotations,
+        }
+        for field in declaration.body:
+            if not isinstance(field, ast.AnnAssign) or not isinstance(
+                field.target, ast.Name
+            ):
+                continue
+            annotations[field.target.id] = self._dataclass_annotation(
+                field, source_globals
+            )
+            if field.value is not None:
+                result[field.target.id] = self._source_scalar(
+                    field.value, source_globals, self._trees[self._witness.source]
+                )
+        return result
+
+    def _compile_dataclass(
+        self,
+        value: FunctionType,
+        owner: p.AttributeProbe,
+        attribute: str,
+        declaration: ast.ClassDef,
+        factory: t.Pair[FunctionType, t.DictKV[str, bool]],
+    ) -> p.Result[m.Infra.NativeGeneratedFunctionProof]:
+        """Require admitted native SDK effects after closing source inputs.
+
+        Returns:
+            The compiler admission failure until every consumed SDK guard is closed.
+
+        """
+        self._dataclass_inputs(owner, declaration)
+        self._inputs_current("native dataclass compiler input changed")
+        return r[m.Infra.NativeGeneratedFunctionProof].fail(
+            "native dataclass SDK emission is not admitted: "
+            f"{self._tuple_constructor_diagnostic(owner, attribute, self._witness)}"
         )
 
     @staticmethod

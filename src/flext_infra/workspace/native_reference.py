@@ -510,8 +510,8 @@ class FlextInfraWorkspaceNativeReference:
                 return result_type.from_failure(captured)
             witness = captured.value
             if receiver is not None:
-                proof = FlextInfraWorkspaceGeneratedFunction.compile_named_tuple(
-                    receiver, attribute, witness
+                proof = cls._compile_generated_receiver(
+                    value, receiver, attribute, witness
                 )
                 break
             module = sys.modules[supplier]
@@ -537,6 +537,59 @@ class FlextInfraWorkspaceNativeReference:
         if proof.failure:
             return result_type.from_failure(proof)
         return result_type.ok((supplier, attribute, proof.value))
+
+    @classmethod
+    def _compile_generated_receiver(
+        cls,
+        value: FunctionType,
+        receiver: p.AttributeProbe,
+        attribute: str,
+        witness: m.Infra.NativeSourceWitness,
+    ) -> p.Result[m.Infra.NativeGeneratedFunctionProof]:
+        """Require the exact observed receiver slot before physical compilation.
+
+        Returns:
+            Its source-derived compiler proof or the first changed native slot.
+
+        """
+        registered = cls._class_namespace(receiver).get(attribute)
+        if cls._is_function_binding(registered):
+            registered = registered.__func__
+        if not any(
+            candidate is value
+            for candidate in cls._generated_receiver_functions(registered)
+        ):
+            return r[m.Infra.NativeGeneratedFunctionProof].fail(
+                "generated receiver binding differs from its observed function: "
+                f"{witness.source}::{attribute}",
+            )
+        return FlextInfraWorkspaceGeneratedFunction.compile_class_function(
+            value, receiver, attribute, witness
+        )
+
+    @staticmethod
+    def _generated_receiver_functions(
+        value: t.Infra.NativeOperand,
+    ) -> t.VariadicTuple[t.Infra.NativeFunction]:
+        """Read the exact function chain without invoking wrapper attributes.
+
+        Returns:
+            The actual slot function followed by its raw wrapped functions.
+
+        Raises:
+            ValueError: A raw function wrapper chain contains a cycle.
+
+        """
+        functions: list[FunctionType] = []
+        seen: set[int] = set()
+        while type(value) is FunctionType:
+            if id(value) in seen:
+                msg = "generated receiver function wrapper chain is cyclic"
+                raise ValueError(msg)
+            seen.add(id(value))
+            functions.append(value)
+            value = vars(value).get("__wrapped__")
+        return tuple(functions)
 
     @classmethod
     def _generated_storage_native(
@@ -645,12 +698,11 @@ class FlextInfraWorkspaceNativeReference:
                 if cls._is_function_binding(descriptor)
                 else descriptor
             )
-            if (
-                type(value) is FunctionType
-                and value.__code__.co_filename.startswith("<")
-                and not value.__code__.co_filename.startswith("<frozen ")
-            ):
-                owners[id(value)] = (supplier, attribute, owner)
+            for function in cls._generated_receiver_functions(value):
+                if function.__code__.co_filename.startswith(
+                    "<"
+                ) and not function.__code__.co_filename.startswith("<frozen "):
+                    owners[id(function)] = (supplier, attribute, owner)
 
     @classmethod
     def _python_storage_class(cls, native: t.Infra.NativeType) -> bool:
