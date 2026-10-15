@@ -11,7 +11,10 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification
+from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
+    FlextInfraMiseArtifactsVerification,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -163,6 +166,13 @@ class FlextInfraMisePublication:
             Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
         ] = {}
         exception: BaseException | None = None
+        batch_inputs: dict[str, list[m.Cli.AtomicFileState]] = {}
+        batch_checks: dict[str, p.Result[bool]] = {}
+        for publication in publications:
+            if publication.dependency_group is not None:
+                batch_inputs.setdefault(publication.dependency_group, []).extend(
+                    publication.source_states,
+                )
         total = len(publications)
         ordered = tuple(
             sorted(publications, key=lambda item: item.index_before is not None)
@@ -175,10 +185,27 @@ class FlextInfraMisePublication:
                 written,
             )
             if ready.success:
-                ready = FlextInfraMisePublication._source_prerequisites(
-                    publication.source_states,
-                    published_states,
-                )
+                group = publication.dependency_group
+                if group is None:
+                    ready = FlextInfraMisePublication._source_prerequisites(
+                        publication.source_states,
+                        published_states,
+                    )
+                else:
+                    if group not in batch_checks:
+                        batch_checks[group] = (
+                            FlextInfraCodegenPreconditions.unique_states(
+                                tuple(batch_inputs[group]),
+                            ).flat_map(
+                                lambda sources: (
+                                    FlextInfraMisePublication._source_prerequisites(
+                                        sources,
+                                        published_states,
+                                    )
+                                ),
+                            )
+                        )
+                    ready = batch_checks[group]
             if ready.failure:
                 issues.append(
                     m.Infra.Issue(

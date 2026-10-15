@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from flext_infra import p
 
 type _DocsScopeArtifacts = t.Pair[
@@ -23,6 +25,57 @@ type _DocsScopeArtifacts = t.Pair[
 
 class FlextInfraDocGeneratorBundleMixin:
     """Freeze one render and every authenticated input before planning."""
+
+    @classmethod
+    def _prepare_batches(
+        cls,
+        request: m.Infra.DocsGenerateRequest,
+    ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
+        """Capture and render the next scope only after the caller publishes its batch."""
+        roots = u.Infra.docs_repository_roots(request.repository_root)
+        if roots.failure:
+            yield r[m.Infra.DocsGenerationBundle].from_failure(roots)
+            return
+        repository_root = roots.value[0]
+        output_dir = u.Cli.resolve_optional_path(
+            request.output_dir,
+            default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+        )
+        scopes = cls._validated_scopes(repository_root, request, output_dir)
+        if scopes.failure:
+            yield r[m.Infra.DocsGenerationBundle].from_failure(scopes)
+            return
+        selected, aggregate = scopes.value
+        names = tuple(scope.name for scope in selected)
+        if len(set(names)) != len(names):
+            yield r[m.Infra.DocsGenerationBundle].fail(
+                "duplicate docs publication target",
+            )
+            return
+        root_scope = next(
+            (scope for scope in selected if scope.name == c.Infra.RK_ROOT),
+            None,
+        )
+        for scope in selected:
+            if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
+                continue
+            paths = u.Infra.docs_scope_source_paths(repository_root, scope)
+            if paths.failure:
+                yield r[m.Infra.DocsGenerationBundle].from_failure(paths)
+                return
+            sources = u.Infra.required_file_states(paths.value)
+            if sources.failure:
+                yield r[m.Infra.DocsGenerationBundle].from_failure(sources)
+                return
+            rendered = cls._rendered_scopes(
+                repository_root,
+                ((scope,), aggregate),
+                sources.value,
+            )
+            if rendered.failure:
+                yield r[m.Infra.DocsGenerationBundle].from_failure(rendered)
+                return
+            yield cls._validated_bundle(repository_root, rendered.value, sources.value)
 
     @staticmethod
     def _is_collocated_workspace_project(
@@ -73,8 +126,7 @@ class FlextInfraDocGeneratorBundleMixin:
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Render one canonical docs artifact inventory from the frozen snapshot.
 
-        Source-state race verification is owned by ``docs_file_plans``, the
-        single pre-publication barrier of the docs cycle.
+        Publication authenticates each batch through the existing guarded writer.
 
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.

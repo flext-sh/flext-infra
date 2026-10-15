@@ -11,10 +11,7 @@ from pathlib import Path
 from flext_cli import u as cli_u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenFilePlan,
-    FlextInfraUtilitiesDocsScope,
-)
+from flext_infra._utilities import FlextInfraUtilitiesDocsScope
 
 
 class FlextInfraUtilitiesDocsGenerateSourcesMixin:
@@ -85,8 +82,29 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         )
         if roots.failure:
             return r[t.VariadicTuple[Path]].from_failure(roots)
+        return FlextInfraUtilitiesDocsGenerateSourcesMixin._source_paths(roots.value)
+
+    @staticmethod
+    def docs_scope_source_paths(
+        repository_root: Path,
+        scope: m.Infra.DocScope,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Elect only the sources consumed by the next protected docs scope."""
+        if scope.name == c.Infra.RK_ROOT:
+            return FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(
+                repository_root,
+            )
+        return FlextInfraUtilitiesDocsGenerateSourcesMixin._source_paths(
+            tuple(dict.fromkeys((repository_root, scope.path))),
+        )
+
+    @staticmethod
+    def _source_paths(
+        roots: t.SequenceOf[Path],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Capture declared sources and templates for the elected roots."""
         paths: set[Path] = set()
-        for root in roots.value:
+        for root in roots:
             collected = (
                 FlextInfraUtilitiesDocsGenerateSourcesMixin._collected_root_paths(
                     root,
@@ -202,53 +220,5 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             return r[bool].from_failure(tree_paths)
         paths.update(tree_paths.value)
         return r[bool].ok(value=True)
-
-    @staticmethod
-    def docs_verify_sources(
-        repository_root: Path,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
-        *,
-        extra_roots: t.SequenceOf[Path] = (),
-    ) -> p.Result[bool]:
-        """Require exact source topology and physical states to remain unchanged.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        discovered = FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(
-            repository_root,
-            extra_roots,
-        )
-        if discovered.failure:
-            return r[bool].from_failure(discovered)
-        expected_paths = tuple(state.path for state in source_states)
-        if discovered.value != expected_paths:
-            added = sorted(set(discovered.value).difference(expected_paths))
-            removed = sorted(set(expected_paths).difference(discovered.value))
-            return r[bool].fail(
-                f"{c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER}: "
-                f"added={[path.as_posix() for path in added]}, "
-                f"removed={[path.as_posix() for path in removed]}",
-            )
-        current = FlextInfraUtilitiesCodegenFilePlan.required_file_states(
-            discovered.value,
-        )
-        if current.failure:
-            return r[bool].from_failure(current)
-        for expected, observed in zip(source_states, current.value, strict=True):
-            if observed != expected:
-                model_fields = type(expected).model_fields
-                differing = tuple(
-                    field
-                    for field in model_fields
-                    if getattr(expected, field) != getattr(observed, field)
-                )
-                return r[bool].fail(
-                    f"{c.Infra.DOCS_SOURCE_STATE_RACE_MARKER}: {expected.path}; "
-                    f"differing={list(differing)}",
-                )
-        return r[bool].ok(value=True)
-
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGenerateSourcesMixin"]

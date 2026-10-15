@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m
+from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import tm, u
 
@@ -43,11 +44,11 @@ class TestsFlextInfraDocsGeneratorBundle:
         for directory in required.value:
             directory.mkdir(parents=True, exist_ok=True)
 
-    def test_plan_files_rejects_source_change_after_directory_preflight(
+    def test_publication_rejects_changed_batch_source(
         self,
         tmp_path: Path,
     ) -> None:
-        """Reject changed bytes from the exact bundle instead of rerendering them."""
+        """Reject stale render inputs at the guarded publication boundary."""
         workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
         guide = workspace / "flext-a/docs/guides/operator.md"
         guide.parent.mkdir(parents=True, exist_ok=True)
@@ -60,26 +61,45 @@ class TestsFlextInfraDocsGeneratorBundle:
         guide.write_text("# Changed\n", encoding="utf-8")
         planned = generator.plan_files(prepared.value)
 
-        tm.fail(planned)
-        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
+        tm.ok(planned)
+        readme = next(
+            plan for plan in planned.value if plan.path == workspace / "flext-a/README.md"
+        )
+        before = readme.path.read_bytes()
+        published = FlextInfraMisePublication.publish_file_plan(readme, phase="docs")
+        tm.fail(published)
+        tm.that(readme.path.read_bytes(), eq=before)
+        tm.that(guide.read_text(encoding="utf-8"), eq="# Changed\n")
 
-    def test_plan_files_rejects_source_topology_addition_after_bundle(
+    def test_batches_capture_later_sources_after_previous_publication(
         self,
         tmp_path: Path,
     ) -> None:
-        """Reject a newly consumed source that was absent from the frozen inventory."""
-        workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
-        generator = self._generator(workspace)
-        prepared = generator.prepare_bundle()
-        tm.ok(prepared)
-        self._materialize_required_parents(generator, prepared.value)
-
-        added = workspace / "flext-a/src/flext_a/added.py"
-        added.write_text('"""Added after render."""\n', encoding="utf-8")
-        planned = generator.plan_files(prepared.value)
-
-        tm.fail(planned)
-        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER)
+        """A later scope's edits neither stale nor delay the preceding batch."""
+        workspace = u.Tests.create_docs_workspace(
+            tmp_path,
+            project_names=("flext-a", "flext-b"),
+        )
+        generator = FlextInfraDocGenerator(
+            repository_root=workspace,
+            selected_projects=["flext-a", "flext-b"],
+            include_root=False,
+        )
+        batches = generator.prepare_batches()
+        first = tm.ok(next(batches))
+        self._materialize_required_parents(generator, first)
+        source = workspace / "flext-b/src/flext_b/added.py"
+        source.write_text('"""Added before the next batch."""\n', encoding="utf-8")
+        plans = tm.ok(generator.plan_files(first))
+        readme = next(
+            plan for plan in plans if plan.path == workspace / "flext-a/README.md"
+        )
+        tm.ok(FlextInfraMisePublication.publish_file_plan(readme, phase="docs"))
+        tm.that(readme.path.read_bytes(), eq=readme.desired_content)
+        second = tm.ok(next(batches))
+        captured = next(state for state in second.source_states if state.path == source)
+        tm.that(captured.content, eq=source.read_bytes())
+        tm.that(tuple(batches), empty=True)
 
     def test_docs_target_leaf_symlink_to_in_project_file_is_rejected(
         self,
