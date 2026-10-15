@@ -916,7 +916,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         self,
         request: m.Infra.CodegenConformRequest,
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Run complete conformance inside the sole generation lock.
+        """Plan outside the lease and publish through locked generation phases.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenResult]``.
@@ -948,12 +948,23 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             participant_policy=policy.value,
             producer=producer,
         )
-        batches: list[m.Infra.CodegenPhaseOutcome] = []
-
-        published = transaction.run_locked(
+        prepared = transaction.run_locked(
             prepare=True,
             operation=lambda scope_root: self._execute_managed_locked(
                 request,
+                scope_root,
+            ),
+        )
+        if prepared.failure:
+            return r[m.Infra.CodegenResult].from_failure(prepared)
+        planned = self._prepare_managed_plan(request)
+        if planned.failure:
+            return r[m.Infra.CodegenResult].from_failure(planned)
+        batches: list[m.Infra.CodegenPhaseOutcome] = []
+        published = transaction.run_locked(
+            prepare=True,
+            operation=lambda scope_root: self._execute_managed_locked_prepared(
+                planned.value,
                 scope_root,
                 transaction,
                 batches,
@@ -971,26 +982,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         self,
         request: m.Infra.CodegenConformRequest,
         scope_root: Path,
-        transaction: FlextInfraCodegenTransaction,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Materialize scaffold parents, then run one locked generation cycle.
+    ) -> p.Result[Path]:
+        """Prepare scaffold parents after locked recovery, before source planning.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The reconciled scope root, or the original preparation failure.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            return self._observe_publication(request)
         prepared = self._prepare_scaffold_directories(request)
         if prepared.failure:
-            return r[m.Infra.CodegenResult].from_failure(prepared)
-        return self._execute_managed_locked_prepared(
-            request,
-            scope_root,
-            transaction,
-            publication_receipts,
-        )
+            return r[Path].from_failure(prepared)
+        return r[Path].ok(scope_root)
 
     @staticmethod
     def lazy_repository_task(root: Path) -> m.Infra.CodegenPhaseOutcome:
@@ -1089,29 +1091,24 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
         )
 
-    def _execute_managed_locked_prepared(
+    def _prepare_managed_plan(
         self,
         request: m.Infra.CodegenConformRequest,
-        scope_root: Path,
-        transaction: FlextInfraCodegenTransaction,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Plan, publish, and validate one prepared locked generation cycle.
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Plan sources and capture the actual Docs producer outside the lease.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The immutable plan, or the original planning or capture failure.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            return self._observe_publication(request)
         u.Cli.header("Codegen Conform")
         u.Cli.info(
             f"stage=plan mode={request.mode} scope={request.scope} "
-            f"what={request.what} root={request.root} lock_scope={scope_root}",
+            f"what={request.what} root={request.root} lease=unheld",
         )
         planned = self.plan(request)
         if planned.failure:
-            return r[m.Infra.CodegenResult].from_failure(planned)
+            return r[m.Infra.CodegenPlan].from_failure(planned)
         plan = planned.value
         owned = tuple(
             repository.name
@@ -1123,7 +1120,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if owned:
             ports = self.ports
             if ports is None:
-                return r[m.Infra.CodegenResult].fail(
+                return r[m.Infra.CodegenPlan].fail(
                     "docs planning requires the facade-wired planner before effects"
                 )
             planner = ports.docs_planner(
@@ -1137,9 +1134,25 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 collaborators=(planner.publish_batch, ports.docs_planner),
             )
             if captured.failure:
-                return r[m.Infra.CodegenResult].from_failure(captured)
+                return r[m.Infra.CodegenPlan].from_failure(captured)
             self.docs_planner = planner
             self.docs_producer = captured.value
+        return planned
+
+    def _execute_managed_locked_prepared(
+        self,
+        plan: m.Infra.CodegenPlan,
+        scope_root: Path,
+        transaction: FlextInfraCodegenTransaction,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Reauthenticate the captured plan and publish one locked generation cycle.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
+        request = plan.request
         config_plans = self.mise_config_plans(plan)
         if config_plans.failure:
             return r[m.Infra.CodegenResult].from_failure(config_plans)
