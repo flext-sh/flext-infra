@@ -258,6 +258,12 @@ class FlextInfraProtocolsBase(Protocol):
             """Freeze the configured render and its authenticated inputs."""
             ...
 
+        def prepare_batches(
+            self,
+        ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
+            """Render the next protected scope after publication of the previous one."""
+            ...
+
         def required_directories(
             self,
             bundle: m.Infra.DocsGenerationBundle,

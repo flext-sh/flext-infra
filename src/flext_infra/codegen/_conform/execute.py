@@ -1181,9 +1181,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             repository.name == plan.workspace.repository.name
             for repository in plan.repositories
         )
+        if not docs_include_root:
+            return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         docs_generator = ports.docs_planner(
             repository_root=request.root,
-            projects=tuple(repository.name for repository in plan.repositories),
+            projects=tuple(
+                repository.name
+                for repository in plan.repositories
+                if repository.path == Path()
+            ),
             include_root=docs_include_root,
         )
         docs_bundle = docs_generator.prepare_bundle()
@@ -1222,8 +1228,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         docs = self._append_docs_phase(request, plan, transaction, session, ports)
         if docs.failure:
             return r[m.Infra.CodegenResult].from_failure(docs)
-        with_docs, _docs_analysis = docs.value
-        published = transaction.commit_locked(with_docs)
+        published = transaction.commit_locked(docs.value)
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
         routes = self.conform_workspace_beads_routes(request)
@@ -1295,10 +1300,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         transaction: FlextInfraCodegenTransaction,
         session: m.Infra.CodegenTransactionSession,
         ports: m.Infra.CodegenConformPorts,
-    ) -> p.Result[
-        t.Pair[m.Infra.CodegenTransactionSession, m.Infra.CodegenPhaseAnalysis]
-    ]:
-        """Authorize docs directories, publish the docs files, and analyze them.
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Capture, render and publish each docs scope before planning the next.
 
         Why (X-47): DECLARED scope excludes the workspace root repository
         from ``plan.repositories``; docs generation must not render the root
@@ -1307,57 +1310,50 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         remain readable sources for members regardless of this flag.
 
         Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.CodegenTransactionSession,
-                m.Infra.CodegenPhaseAnalysis]]``.
+            The session containing the accepted scope batches.
 
         """
-        result_type = r[
-            t.Pair[m.Infra.CodegenTransactionSession, m.Infra.CodegenPhaseAnalysis]
-        ]
+        result_type = r[m.Infra.CodegenTransactionSession]
         docs_include_root = any(
             repository.name == plan.workspace.repository.name
             for repository in plan.repositories
         )
+        if not docs_include_root:
+            return result_type.ok(session)
         docs_generator = ports.docs_planner(
             repository_root=request.root,
-            projects=tuple(repository.name for repository in plan.repositories),
+            projects=tuple(
+                repository.name
+                for repository in plan.repositories
+                if repository.path == Path()
+            ),
             include_root=docs_include_root,
         )
-        docs_bundle = docs_generator.prepare_bundle()
-        if docs_bundle.failure:
-            return result_type.from_failure(docs_bundle)
-        docs_directories = docs_generator.required_directories(docs_bundle.value)
-        if docs_directories.failure:
-            return result_type.from_failure(docs_directories)
-        owned_docs_directories = self._owned_docs_directories(
-            request,
-            plan,
-            docs_directories.value,
-        )
-        with_directories = transaction.append_directories_locked(
-            session,
-            "docs",
-            owned_docs_directories,
-        )
-        if with_directories.failure:
-            return result_type.from_failure(with_directories)
-        docs_plans = docs_generator.plan_files(docs_bundle.value)
-        if docs_plans.failure:
-            return result_type.from_failure(docs_plans)
-        owned_docs_files = self.owned_docs_files(request, docs_plans.value)
-        docs_analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.DOCS,
-            files=owned_docs_files,
-            inputs=docs_bundle.value.source_states,
-        )
-        with_docs = transaction.append_phase_locked(
-            with_directories.value,
-            "docs",
-            owned_docs_files,
-        )
-        if with_docs.failure:
-            return result_type.from_failure(with_docs)
-        return result_type.ok((with_docs.value, docs_analysis))
+        for docs_bundle in docs_generator.prepare_batches():
+            if docs_bundle.failure:
+                return result_type.from_failure(docs_bundle)
+            docs_directories = docs_generator.required_directories(docs_bundle.value)
+            if docs_directories.failure:
+                return result_type.from_failure(docs_directories)
+            with_directories = transaction.append_directories_locked(
+                session,
+                "docs",
+                self._owned_docs_directories(request, plan, docs_directories.value),
+            )
+            if with_directories.failure:
+                return result_type.from_failure(with_directories)
+            docs_plans = docs_generator.plan_files(docs_bundle.value)
+            if docs_plans.failure:
+                return result_type.from_failure(docs_plans)
+            with_docs = transaction.append_phase_locked(
+                with_directories.value,
+                "docs",
+                self.owned_docs_files(request, docs_plans.value),
+            )
+            if with_docs.failure:
+                return result_type.from_failure(with_docs)
+            session = with_docs.value
+        return result_type.ok(session)
 
     @staticmethod
     def _allow_direnv_after_apply(
