@@ -1683,7 +1683,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             wheel["include"] = [f"/{declaration}/**" for declaration in declarations]
             wheel["sources"] = dict(zip(declarations, package_names, strict=True))
         else:
-            wheel["packages"] = t.JsonValueList(declarations)
+            boundary_packages: t.JsonValueList = list(declarations)
+            wheel["packages"] = boundary_packages
         tm.ok(u.Cli.toml_write_mapping(pyproject, payload))
 
     @pytest.mark.parametrize(

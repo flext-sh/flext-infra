@@ -76,8 +76,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         t.VariadicTuple[m.Infra.SemanticMigrationEdit],
         t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
     ]:
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        project = runtime.snapshot_project(workspace.rope_project, sources)
+        project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+            workspace.rope_project, sources
+        )
         working = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
         unresolved: set[t.Triple[Path, str, str]] = set()
@@ -88,7 +89,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             findings.extend(import_findings)
             if working != sources:
                 project.close()
-                project = runtime.snapshot_project(workspace.rope_project, working)
+                project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                    workspace.rope_project, working
+                )
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
                     continue
@@ -138,7 +141,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
-                    project = runtime.snapshot_project(workspace.rope_project, working)
+                    project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                        workspace.rope_project, working
+                    )
             cls._preflight_declaration_graph(workspace, sources, working)
             return (
                 tuple(
@@ -1164,6 +1169,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             imports: Required imports added to the destination module.
             transplanted: Payload text and indentation from the origin cut.
 
+        Raises:
+            TypeError: The destination owner lacks its native source scope.
+
         """
         transferred, indentation = transplanted
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1303,12 +1311,11 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project,
             module.source_code,
         )
+        finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+            project, "import"
+        )
         tokens = tuple(
-            occurrence.offset
-            for occurrence in FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-                project,
-                "import",
-            ).find_occurrences(pymodule=module)
+            occurrence.offset for occurrence in finder.find_occurrences(pymodule=module)
         )
         if len(tokens) != len(records):
             msg = "native import records differ from their lexical occurrences"
@@ -1355,8 +1362,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 if offset < statement.start_offset:
                     msg = "native import token has no enclosing logical statement"
                     raise ValueError(msg)
-                lexical = runtime.scope_at(module, offset)
-                if lexical.get_kind() == "Module" and all(
+                if runtime.scope_at(module, offset).get_kind() == "Module" and all(
                     condition for _indent, condition in conditions
                 ):
                     selected.append(record.import_info)
@@ -1463,6 +1469,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             Attribute replacements and required direct owner imports.
+
+        Raises:
+            TypeError: The dependency scope lacks its native source module.
 
         """
         dependencies: t.MutableMappingKV[t.Pair[int, int], str] = {}

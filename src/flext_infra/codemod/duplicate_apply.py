@@ -931,8 +931,10 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         return FlextInfraSemanticPublication.publish_semantic_file_plans(
             semantic_plans,
             repository_root=root,
-            validator=verify,
-            projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
+            options=m.Infra.SemanticPublicationOptions(
+                validator=verify,
+                projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
+            ),
         ).map(_published_true)
 
     @staticmethod

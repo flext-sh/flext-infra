@@ -7,7 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast as _ast
-from collections.abc import Callable, Container as _Container, MutableMapping
+from collections.abc import (
+    Callable,
+    Container as _Container,
+    MutableMapping,
+    MutableSet as _MutableSet,
+)
 from datetime import date, datetime
 from dis import Instruction as _Instruction
 from pathlib import Path as _Path
@@ -15,6 +20,7 @@ from types import (
     BuiltinFunctionType as _BuiltinFunctionType,
     ClassMethodDescriptorType as _ClassMethodDescriptorType,
     CodeType as _CodeType,
+    FunctionType as _FunctionType,
     GetSetDescriptorType as _GetSetDescriptorType,
     MemberDescriptorType as _MemberDescriptorType,
     MethodDescriptorType as _MethodDescriptorType,
@@ -43,6 +49,9 @@ type CliResultValue = t.Cli.ResultValue
 
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
+
+    type MutableSetOf[ItemT] = _MutableSet[ItemT]
+    "An explicitly mutable set contract for operation-owned native state."
 
     @staticmethod
     def _reject_blanket_mask(rule: str) -> str:
@@ -94,6 +103,8 @@ class FlextInfraTypesBase:
     "Jinja2 template object."
     type NativeCode = _CodeType
     "Exact interpreter code identity accepted by disassembly and native encoding."
+    type NativeFunction = _FunctionType
+    "Exact interpreter function identity retaining its actual executable storage."
     type NativeBuiltinCallable = _BuiltinFunctionType | _MethodWrapperType
     "The two interpreter callable types with native receiver metadata."
     type NativeDescriptor = (
@@ -106,6 +117,11 @@ class FlextInfraTypesBase:
     "Exact interpreter descriptor identities accepted by native observation."
     type NativeOperand = _cli_p.AttributeProbe | type | _UnionType | None
     "A passively observed value, including native class identities and nulls."
+    type NativeFunctionBinding = (
+        classmethod[NativeOperand, ..., NativeOperand]
+        | staticmethod[..., NativeOperand]
+    )
+    "Exact interpreter function wrappers with their native readable function slot."
     type NativeType = type | type[_UnionType]
     "Exact native type owners, including the interpreter's union type."
     type NativeClassDeclarations = t.MappingKV[

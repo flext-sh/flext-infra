@@ -503,7 +503,12 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
         @staticmethod
         def _binding_identity(binding: p.Infra.RopePyName | None) -> str:
-            """Describe native identity without substituting an inferred value."""
+            """Describe native identity without substituting an inferred value.
+
+            Returns:
+                The native binding kind, original owner and object kind.
+
+            """
             if binding is None:
                 return "unresolved"
             holder, line = binding.get_definition_location()
@@ -959,12 +964,18 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 Whether the import statement's module scope defines the
                 expression.
 
+            Raises:
+                TypeError: If the parsed module lacks its native source graph.
+
             """
             if row.category not in {
                 c.Infra.StatementCategory.IMPORT,
                 c.Infra.StatementCategory.FROM_IMPORT,
             }:
                 return False
+            if not isinstance(module, p.Infra.RopeSourceModule):
+                msg = "native import occurrence has no source-module graph"
+                raise TypeError(msg)
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             imported_module = runtime.build_string_module(
                 module.pycore.project, row.text.strip()

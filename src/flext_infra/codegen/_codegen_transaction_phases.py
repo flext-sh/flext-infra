@@ -36,15 +36,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
         issues: t.VariadicTuple[m.Infra.Issue] = (),
-        staged_validator: Callable[
-            [
-                m.Infra.CodegenTransactionSession,
-                t.VariadicTuple[m.Infra.CodegenStagedFile],
-            ],
-            p.Result[m.Infra.CodegenTransactionSession],
-        ]
-        | None = None,
-        batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
+        publication_policy: m.Infra.CodegenPhasePublicationPolicy | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Append, durably authorize, then publish one dependent generated phase.
 
@@ -53,6 +45,12 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        batch_admission = (
+            None if publication_policy is None else publication_policy.admission
+        )
+        staged_validator = (
+            None if publication_policy is None else publication_policy.staged_validator
+        )
         if batch_admission is not None and (
             batch_admission.analysis is None
             or batch_admission.analysis.phase != phase

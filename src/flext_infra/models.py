@@ -13,7 +13,6 @@ from flext_cli import FlextCliModels
 
 from flext_infra._models import (
     FlextInfraCodegen,
-    FlextInfraModelsDepsToolConfigProject,
     FlextInfraModelsDepsToolConfigProjectMise,
     FlextInfraModelsDepsToolConfigTypeCheckers,
 )

@@ -128,7 +128,7 @@ class TestsFlextInfraBatchReplacements:
         )
         original = consumer.read_bytes()
         if mutation == "missing-proof":
-            report = report.model_copy(update={"scan_inputs": None})
+            report = report.model_copy(update={"source_states": None})
         elif mutation == "source-change":
             consumer.write_bytes(original + b"\n# changed consumer\n")
         elif mutation == "source-add":

@@ -383,8 +383,11 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
             seen.add(fingerprint)
             cli.display_text(f"ast: apply iteration {iteration}")
-            applied = FlextInfraModGateEngine.scan(
-                root, fix=True, rule_ids=rule_ids, published_plans=published_plans
+            applied = FlextInfraModGateEngine.apply_report(
+                root,
+                current,
+                exact_replacements=rule_ids is not None,
+                published_plans=published_plans,
             )
             if rule_ids is None:
                 applied.unwrap()

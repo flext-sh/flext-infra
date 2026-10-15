@@ -204,9 +204,11 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         split = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments
         for begin, end in split(source, 1, len(source) - 1, ","):
             parts = split(source, begin, end, ":")
-            if len(parts) != 2:
-                return {}
-            (key_start, key_end), (value_start, value_end) = parts
+            match parts:
+                case [(key_start, key_end), (value_start, value_end)]:
+                    pass
+                case _:
+                    return {}
             key = refactors.literal_string(source[key_start:key_end])
             if key is None:
                 return {}

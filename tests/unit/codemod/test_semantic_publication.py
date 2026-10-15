@@ -377,9 +377,7 @@ class TestsFlextInfraSemanticPublication:
         ) -> p.Result[t.VariadicTuple[Path]]:
             nonlocal foreign_state
             published = transaction.append_phase_locked(
-                session,
-                analysis.phase,
-                plans,
+                session, analysis.phase, analysis.files
             )
             if published.failure:
                 return r[t.VariadicTuple[Path]].from_failure(published)
@@ -510,8 +508,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 plans,
                 repository_root=mod_workspace,
-                preflight=preflight,
-                validator=validate,
+                options=m.Infra.SemanticPublicationOptions(
+                    source_guard=preflight, validator=validate
+                ),
             ),
         )
 
@@ -572,8 +571,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 plans,
                 repository_root=mod_workspace,
-                preflight=preflight,
-                validator=validate,
+                options=m.Infra.SemanticPublicationOptions(
+                    source_guard=preflight, validator=validate
+                ),
             ),
         )
         if stage == "preflight":
@@ -606,14 +606,14 @@ class TestsFlextInfraSemanticPublication:
         rejected = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (),
             repository_root=mod_workspace,
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(validator=validate),
         )
         tm.that(calls, eq=1)
         accepted = True
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (),
             repository_root=mod_workspace,
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(validator=validate),
         )
         tm.that(calls, eq=2)
         tm.that(
@@ -660,14 +660,14 @@ class TestsFlextInfraSemanticPublication:
                 FlextInfraSemanticPublication.publish_semantic_file_plans(
                     (),
                     repository_root=mod_workspace,
-                    validator=reject,
+                    options=m.Infra.SemanticPublicationOptions(validator=reject),
                 )
             tm.that(raised.value is failure, eq=True)
         else:
             rejected = FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=mod_workspace,
-                validator=reject,
+                options=m.Infra.SemanticPublicationOptions(validator=reject),
             )
             tm.fail(rejected, has=str(failure))
             tm.that(rejected.exception is failure, eq=True)
@@ -767,7 +767,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,)
+                ),
             ),
         )
         original_source = (
@@ -865,8 +867,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 plans,
                 repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
-                validator=validate,
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,), validator=validate
+                ),
             ),
         )
         initializer = package / c.Infra.INIT_PY
@@ -875,8 +878,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
-                validator=validate,
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,), validator=validate
+                ),
             ),
         )
         tm.that(initializer.read_bytes(), eq=published)
@@ -930,8 +934,9 @@ class TestsFlextInfraSemanticPublication:
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (),
             repository_root=mod_workspace,
-            projection_roots=(mod_workspace,),
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(mod_workspace,), validator=validate
+            ),
         )
         if accepted:
             tm.ok(published)
@@ -1010,7 +1015,7 @@ class TestsFlextInfraSemanticPublication:
                 FlextInfraSemanticPublication.publish_semantic_file_plans(
                     plans,
                     repository_root=mod_workspace,
-                    validator=reject,
+                    options=m.Infra.SemanticPublicationOptions(validator=reject),
                 )
             tm.that(raised.value is failure, eq=True)
         else:
@@ -1018,7 +1023,7 @@ class TestsFlextInfraSemanticPublication:
                 FlextInfraSemanticPublication.publish_semantic_file_plans(
                     plans,
                     repository_root=mod_workspace,
-                    validator=reject,
+                    options=m.Infra.SemanticPublicationOptions(validator=reject),
                 ),
                 has=str(failure),
             )

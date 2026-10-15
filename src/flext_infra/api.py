@@ -99,7 +99,7 @@ class FlextInfra(
             source_root,
             entrypoint=planner.plan_repositories,
             collaborators=(
-                FlextInfraCandidateBootstrapService._plan,
+                FlextInfraCandidateBootstrapService.plan_candidates,
                 FlextInfraCandidateBootstrapService,
                 FlextInfraMiseArtifactsFiles.write_publication,
             ),

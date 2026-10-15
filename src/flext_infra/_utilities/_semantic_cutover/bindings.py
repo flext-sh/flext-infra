@@ -19,7 +19,12 @@ class FlextInfraUtilitiesSemanticCutoverBindings:
         node: ast.AST,
         parents: t.MappingKV[ast.AST, ast.AST],
     ) -> t.Pair[ast.expr | None, bool]:
-        """Elect a binding's value; only ordinary aliases propagate member paths."""
+        """Elect a binding's value; only ordinary aliases propagate member paths.
+
+        Returns:
+            The original expression and whether its member paths propagate.
+
+        """
         current: ast.AST | None = node
         while current is not None:
             match current:
@@ -27,26 +32,20 @@ class FlextInfraUtilitiesSemanticCutoverBindings:
                     ast.Assign(value=value)
                     | ast.AnnAssign(value=value)
                     | ast.NamedExpr(value=value)
+                    | ast.TypeAlias(value=value)
                 ):
                     return value, isinstance(value, ast.Name | ast.Attribute)
-                case ast.AugAssign(value=value):
-                    return value, False
-                case ast.ExceptHandler(type=value):
-                    return value, False
                 case (
-                    ast.For(iter=value)
+                    ast.AugAssign(value=value)
+                    | ast.ExceptHandler(type=value)
+                    | ast.For(iter=value)
                     | ast.AsyncFor(iter=value)
                     | ast.comprehension(iter=value)
+                    | ast.withitem(context_expr=value)
+                    | ast.Match(subject=value)
+                    | ast.arg(annotation=value)
                 ):
                     return value, False
-                case ast.withitem(context_expr=value):
-                    return value, False
-                case ast.Match(subject=value):
-                    return value, False
-                case ast.arg(annotation=value):
-                    return value, False
-                case ast.TypeAlias(value=value):
-                    return value, isinstance(value, ast.Name | ast.Attribute)
                 case (
                     ast.ClassDef()
                     | ast.FunctionDef()

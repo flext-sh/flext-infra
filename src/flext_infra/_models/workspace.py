@@ -183,38 +183,67 @@ class FlextInfraModelsWorkspace:
         paths: t.VariadicTuple[t.Pair[Path, Path]] = m.Field(
             description="Physical source relocation pairs for this observation",
         )
-        origins: t.DictKV[str, Path] = m.Field(
-            default_factory=dict,
+        origins: t.MutableMappingKV[str, Path] = m.Field(
+            default_factory=u.empty(TypeForm(t.MutableMappingKV[str, Path])),
             description="Native module source elections observed during this capture",
         )
-        module_anchors: t.DictKV[str, t.Infra.NativeOperand] = m.Field(
-            default_factory=dict,
+        module_anchors: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[str, t.Infra.NativeOperand])
+            ),
             description="Strong native identities of elected module anchors",
         )
-        sources: set[t.Triple[str, str, str]] = m.Field(
-            default_factory=set,
+        sources: t.Infra.MutableSetOf[t.Triple[str, str, str]] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.Infra.MutableSetOf[t.Triple[str, str, str]])
+            ),
             description="Observed suppliers and physical declaration sources",
         )
-        evidence: list[FlextInfraModelsWorkspace.NativeBindingEvidence] = m.Field(
-            default_factory=list,
+        evidence: t.MutableSequenceOf[
+            FlextInfraModelsWorkspace.NativeBindingEvidence
+        ] = m.Field(
+            default_factory=u.empty(
+                TypeForm(
+                    t.MutableSequenceOf[
+                        "FlextInfraModelsWorkspace.NativeBindingEvidence"
+                    ]
+                )
+            ),
             description="Ordered native binding and executable observations",
         )
-        generated_owners: t.DictKV[int, t.Triple[str, str, p.AttributeProbe | None]] = (
-            m.Field(
-                default_factory=dict,
-                description="Strongly retained generated function source receivers",
-            )
+        generated_owners: t.MutableMappingKV[
+            int, t.Triple[str, str, p.AttributeProbe | None]
+        ] = m.Field(
+            default_factory=u.empty(
+                TypeForm(
+                    t.MutableMappingKV[int, t.Triple[str, str, p.AttributeProbe | None]]
+                )
+            ),
+            description="Strongly retained generated function source receivers",
         )
-        references: list[t.Pair[str, t.Infra.NativeOperand]] = m.Field(
-            default_factory=list,
+        references: t.MutableSequenceOf[t.Pair[str, t.Infra.NativeOperand]] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.MutableSequenceOf[t.Pair[str, t.Infra.NativeOperand]])
+            ),
             description="Native operand registrations awaiting graph traversal",
         )
-        pending: list[t.Quad[str, t.Infra.NativeOperand, str, str]] = m.Field(
-            default_factory=list,
-            description="Ordered native graph work awaiting first-identity admission",
+        pending: t.MutableSequenceOf[t.Quad[str, t.Infra.NativeOperand, str, str]] = (
+            m.Field(
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf[
+                            t.Quad[str, t.Infra.NativeOperand, str, str]
+                        ]
+                    )
+                ),
+                description="Ordered native graph work awaiting "
+                "first-identity admission",
+            )
         )
-        compiled: t.DictKV[Path, t.Infra.NativeClassDeclarations] = m.Field(
-            default_factory=dict,
+        compiled: t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations])
+            ),
             description="Immutable class compiler facts within this observation",
         )
         lexical: bool = m.Field(
@@ -224,6 +253,76 @@ class FlextInfraModelsWorkspace:
         binding_context: str = m.Field(
             default="",
             description="Current native edge and identity labels for diagnostics",
+        )
+        incoming: str = m.Field(
+            default="",
+            description="Actual labeled native edge currently being observed",
+        )
+        binding: str = m.Field(
+            default="",
+            description="Actual first-visited identity node currently being observed",
+        )
+        supplier: str = m.Field(
+            default="",
+            description="Supplier carried by the actual pending native edge",
+        )
+        owner_source: str = m.Field(
+            default="",
+            description="Physical owner source carried by the actual pending edge",
+        )
+        visited: t.MutableMappingKV[int, t.Pair[t.Infra.NativeOperand, str]] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[int, t.Pair[t.Infra.NativeOperand, str]])
+            ),
+            description="Strong exact identities in original first-visit order",
+        )
+        edges: t.MutableMappingKV[str, str] = m.Field(
+            default_factory=u.empty(TypeForm(t.MutableMappingKV[str, str])),
+            description="Already observed edge-to-native-node identities",
+        )
+        absent_edges: t.Infra.MutableSetOf[str] = m.Field(
+            default_factory=u.empty(TypeForm(t.Infra.MutableSetOf[str])),
+            description="Actual lexical bindings observed as absent",
+        )
+        compiler_inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[Path, m.Cli.AtomicFileState])
+            ),
+            description="Source inputs consumed by actual generated compilers",
+        )
+
+    class NativeFunctionObservationContext(m.ArbitraryTypesModel):
+        """Source-elected function facts within one native graph observation."""
+
+        value: tuple[t.Infra.NativeFunction] = m.Field(
+            description="One exact native function retained without model binding",
+        )
+        code: t.Infra.NativeCode = m.Field(
+            description="Native executable code after the declared source relocation",
+        )
+        supplier: str = m.Field(description="The actual defining native module")
+        origin: Path = m.Field(description="The elected physical supplier source")
+        generated: bool = m.Field(
+            description="Whether actual code requires the closed source compiler",
+        )
+        generated_operands: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+            description="Actual source compiler evidence or its native absence",
+        )
+        nonlocals: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[str, t.Infra.NativeOperand])
+            ),
+            description="Actual closure cell values in native free-variable order",
+        )
+        global_bindings: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[str, t.Infra.NativeOperand])
+            ),
+            description="Actual globals selected by native LOAD_GLOBAL instructions",
+        )
+        operational_globals: frozenset[str] = m.Field(
+            default_factory=u.empty(TypeForm(frozenset[str])),
+            description="Global names written by the authenticated native code units",
         )
 
     class NativeImportObservation(m.Value):
@@ -287,16 +386,6 @@ class FlextInfraModelsWorkspace:
         sha256: Annotated[
             str | None,
             m.Field(description="Byte digest; absent for an absent leaf"),
-        ]
-        mode: Annotated[int | None, m.Field(description="Observed permission mode")]
-        size: Annotated[int, m.Field(ge=0, description="Observed byte count")]
-
-    class LifecycleFileObservation(m.ContractModel):
-        """Bounded physical file evidence without retaining source contents."""
-
-        path: Annotated[Path, m.Field(description="Observed physical leaf")]
-        sha256: Annotated[
-            str | None, m.Field(description="Byte digest; absent for an absent leaf")
         ]
         mode: Annotated[int | None, m.Field(description="Observed permission mode")]
         size: Annotated[int, m.Field(ge=0, description="Observed byte count")]

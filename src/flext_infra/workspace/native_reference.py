@@ -42,6 +42,9 @@ from typing import ClassVar, Literal, TypeGuard, overload
 
 from flext_infra import c, codegen, m, p, r, t, u
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+from flext_infra.workspace.generated_function import (
+    FlextInfraWorkspaceGeneratedFunction,
+)
 
 
 class FlextInfraWorkspaceNativeReference:
@@ -161,7 +164,7 @@ class FlextInfraWorkspaceNativeReference:
         path: Path,
         qualname: str,
         namespace: t.MappingKV[str, t.Infra.NativeOperand],
-        compiled: t.DictKV[Path, t.Infra.NativeClassDeclarations],
+        compiled: t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations],
     ) -> p.Result[t.VariadicTuple[frozenset[str]]]:
         """Separate authored class bindings from a metaclass's operational outputs.
 
@@ -481,25 +484,20 @@ class FlextInfraWorkspaceNativeReference:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _generated_proof(
+    def _generated_source(
         cls,
         value: FunctionType,
-        supplier: str,
-        attribute: str,
-        receiver: p.AttributeProbe | None,
+        source: t.Triple[str, str, p.AttributeProbe | None],
         project: p.Infra.RopeProject,
         witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
     ) -> p.Result[t.Triple[str, str, m.Infra.NativeGeneratedFunctionProof]]:
-        """Use one closed source compiler for observation and effective admission.
+        """Compile a generated binding through its exact source import lineage.
 
         Returns:
             The defining binding and its complete source-derived function proof.
 
         """
-        from flext_infra.workspace.generated_function import (
-            FlextInfraWorkspaceGeneratedFunction,
-        )
-
+        supplier, attribute, receiver = source
         result_type = r[t.Triple[str, str, m.Infra.NativeGeneratedFunctionProof]]
         seen: set[t.Pair[str, str]] = set()
         while True:
@@ -523,8 +521,6 @@ class FlextInfraWorkspaceNativeReference:
                     f"{supplier}::{attribute}"
                 )
             scope = witness.module.get_scope()
-            if scope is None:
-                return result_type.fail("generated source has no native module scope")
             declared = scope.get_names().get(attribute)
             if isinstance(declared, p.Infra.RopeImportedName):
                 provider, _line = declared.get_definition_location()
@@ -540,16 +536,40 @@ class FlextInfraWorkspaceNativeReference:
             break
         if proof.failure:
             return result_type.from_failure(proof)
-        expected = proof.value
+        return result_type.ok((supplier, attribute, proof.value))
+
+    @classmethod
+    def _generated_storage_native(
+        cls, expected: m.Infra.NativeGeneratedFunctionProof
+    ) -> bool:
+        """Check that a closed compiler emitted only the original native storage.
+
+        Returns:
+            Whether every emitted construction container has its exact native type.
+
+        """
         if (
             type(expected.code) is not CodeType
             or type(expected.globals) is not dict
             or type(expected.annotations) is not dict
-            or not cls._native_type(expected.defaults, tuple, type(None))
-            or not cls._native_type(expected.keyword_defaults, dict, type(None))
-            or type(expected.closure) is not tuple
         ):
-            return result_type.fail("generated compiler returned non-native storage")
+            return False
+        return (
+            cls._native_type(expected.defaults, tuple, type(None))
+            and cls._native_type(expected.keyword_defaults, dict, type(None))
+            and type(expected.closure) is tuple
+        )
+
+    @classmethod
+    def _generated_function_matches(
+        cls, value: FunctionType, expected: m.Infra.NativeGeneratedFunctionProof
+    ) -> bool:
+        """Compare all immutable executable construction inputs in native order.
+
+        Returns:
+            Whether code, defaults, closure, namespaces and annotations agree.
+
+        """
         if (
             not cls._code_matches(
                 cls._code_evidence(value.__code__),
@@ -559,18 +579,44 @@ class FlextInfraWorkspaceNativeReference:
             != cls._value(expected.defaults, construction=True)
             or cls._value(value.__kwdefaults__, construction=True)
             != cls._value(expected.keyword_defaults, construction=True)
-            or cls._value(
+        ):
+            return False
+        return (
+            cls._value(
                 tuple(cell.cell_contents for cell in value.__closure__ or ()),
                 construction=True,
             )
-            != cls._value(expected.closure, construction=True)
-            or cls._value(value.__globals__, construction=True)
-            != cls._value(expected.globals, construction=True)
-            or cls._value(value.__builtins__, construction=True)
-            != cls._value(expected.globals.get("__builtins__"), construction=True)
-            or cls._value(value.__annotations__, construction=True)
-            != cls._value(expected.annotations, construction=True)
-        ):
+            == cls._value(expected.closure, construction=True)
+            and cls._value(value.__globals__, construction=True)
+            == cls._value(expected.globals, construction=True)
+            and cls._value(value.__builtins__, construction=True)
+            == cls._value(expected.globals.get("__builtins__"), construction=True)
+            and cls._value(value.__annotations__, construction=True)
+            == cls._value(expected.annotations, construction=True)
+        )
+
+    @classmethod
+    def _generated_proof(
+        cls,
+        value: FunctionType,
+        source: t.Triple[str, str, p.AttributeProbe | None],
+        project: p.Infra.RopeProject,
+        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+    ) -> p.Result[t.Triple[str, str, m.Infra.NativeGeneratedFunctionProof]]:
+        """Authenticate source-generated code and every consulted physical input.
+
+        Returns:
+            The defining binding and its complete source-derived function proof.
+
+        """
+        result_type = r[t.Triple[str, str, m.Infra.NativeGeneratedFunctionProof]]
+        compiled = cls._generated_source(value, source, project, witnesses)
+        if compiled.failure:
+            return result_type.from_failure(compiled)
+        supplier, attribute, expected = compiled.value
+        if not cls._generated_storage_native(expected):
+            return result_type.fail("generated compiler returned non-native storage")
+        if not cls._generated_function_matches(value, expected):
             return result_type.fail(
                 f"generated executable differs from its physical compiler: "
                 f"{supplier}::{attribute}"
@@ -630,25 +676,34 @@ class FlextInfraWorkspaceNativeReference:
             if ancestor is object:
                 continue
             for name, descriptor in cls._class_namespace(ancestor).items():
-                if (
-                    (
-                        (
-                            cls._is_native(descriptor, MethodDescriptorType)
-                            or cls._is_native(descriptor, ClassMethodDescriptorType)
-                            or cls._is_native(descriptor, WrapperDescriptorType)
-                        )
-                        or (
-                            type(descriptor) is GetSetDescriptorType
-                            and name not in {"__dict__", "__weakref__"}
-                        )
-                    )
-                    and descriptor.__objclass__ is ancestor
-                ) or (
-                    type(descriptor) is BuiltinFunctionType
-                    and descriptor.__self__ is ancestor
-                ):
+                if cls._native_payload_descriptor(ancestor, name, descriptor):
                     return False
         return True
+
+    @classmethod
+    def _native_payload_descriptor(
+        cls,
+        ancestor: p.AttributeProbe,
+        name: str,
+        descriptor: t.Infra.NativeOperand,
+    ) -> bool:
+        """Elect a native owner slot that implies non-Python instance payload.
+
+        Returns:
+            Whether the original ancestry check rejects this exact native slot.
+
+        """
+        if cls._is_descriptor(descriptor):
+            if cls._is_native(descriptor, MemberDescriptorType):
+                return False
+            return descriptor.__objclass__ is ancestor and not (
+                cls._is_native(descriptor, GetSetDescriptorType)
+                and name in {"__dict__", "__weakref__"}
+            )
+        return (
+            cls._is_native(descriptor, BuiltinFunctionType)
+            and descriptor.__self__ is ancestor
+        )
 
     @classmethod
     def _native_mapping_proxy_backing(cls, value: p.AttributeProbe) -> p.AttributeProbe:
@@ -674,7 +729,11 @@ class FlextInfraWorkspaceNativeReference:
             or type(supplier) is not ModuleType
             or vars(supplier).get("get_referents") is not get_referents
             or type(get_referents) is not BuiltinFunctionType
-            or not cls._native_text(get_referents.__module__, "gc")
+        ):
+            msg = "mapping proxy storage has no admitted interpreter traversal"
+            raise ValueError(msg)
+        if (
+            not cls._native_text(get_referents.__module__, "gc")
             or not cls._native_text(get_referents.__name__, "get_referents")
             or get_referents.__self__ is not supplier
         ):
@@ -752,7 +811,11 @@ class FlextInfraWorkspaceNativeReference:
             or ancestry[index - 1] is not predecessor
             or name == "__class__"
             or type(descriptor) is not MemberDescriptorType
-            or descriptor.__objclass__ is not owner
+        ):
+            msg = "native optional slot has no exact inherited descriptor"
+            raise ValueError(msg)
+        if (
+            descriptor.__objclass__ is not owner
             or cls._class_namespace(owner).get(name) is not descriptor
         ):
             msg = "native optional slot has no exact inherited descriptor"
@@ -776,8 +839,10 @@ class FlextInfraWorkspaceNativeReference:
             or not cls._native_text(getter.__module__, "builtins")
             or not cls._native_text(getter.__name__, "getattr")
             or not cls._is_class(super_type)
-            or type(super_type) is not type
         ):
+            msg = "native optional slot lookup bindings differ"
+            raise ValueError(msg)
+        if type(super_type) is not type:
             msg = "native optional slot lookup bindings differ"
             raise ValueError(msg)
         namespace = cls._class_namespace(super_type)
@@ -792,7 +857,11 @@ class FlextInfraWorkspaceNativeReference:
             )
             or type(constructor) is not BuiltinFunctionType
             or constructor.__self__ is not super_type
-            or type(accessor) is not WrapperDescriptorType
+        ):
+            msg = "native optional slot lacks the interpreter super implementation"
+            raise ValueError(msg)
+        if (
+            type(accessor) is not WrapperDescriptorType
             or accessor.__objclass__ is not super_type
         ):
             msg = "native optional slot lacks the interpreter super implementation"
@@ -840,6 +909,86 @@ class FlextInfraWorkspaceNativeReference:
         return type(value) is str and value == expected
 
     @classmethod
+    def _native_class_import(
+        cls,
+        value: p.AttributeProbe,
+        qualified: str,
+        witness: m.Infra.NativeSourceWitness,
+    ) -> p.Result[p.Infra.RopeImportedName]:
+        """Resolve an imported class through the captured source scope graph.
+
+        Returns:
+            Its identity-matched native source import, or the first path failure.
+
+        """
+        components = qualified.split(".")
+        binding = witness.module.get_attributes().get(components[0])
+        if binding is None:
+            return r[p.Infra.RopeImportedName].fail(
+                f"native class has no source import binding: {qualified}",
+            )
+        for component in components[1:]:
+            binding = binding.get_object().get_attributes().get(component)
+            if binding is None:
+                return r[p.Infra.RopeImportedName].fail(
+                    f"native class import path is absent: {qualified}",
+                )
+        native = binding.get_object()
+        if (
+            not isinstance(native, p.Infra.RopeBuiltinClass)
+            or native.builtin is not value
+            or not isinstance(binding, p.Infra.RopeImportedName)
+        ):
+            return r[p.Infra.RopeImportedName].fail(
+                f"class has no identity-matched native source import: {qualified}",
+            )
+        return r[p.Infra.RopeImportedName].ok(binding)
+
+    @classmethod
+    def _native_class_contract(
+        cls,
+        value: p.AttributeProbe,
+        qualified: str,
+        supplier: str,
+        specification: p.Infra.NativeModuleSpec,
+    ) -> p.Result[bool]:
+        """Authenticate interpreter descriptors before admitting a native class.
+
+        Returns:
+            Whether the supplier and every observed native callable slot agree.
+
+        """
+        if (
+            specification.origin not in {"built-in", "frozen"}
+            and type(specification.loader).__module__ != "_frozen_importlib_external"
+        ):
+            return r[bool].fail(
+                f"native class supplier is not an interpreter extension: {supplier}",
+            )
+        native_descriptors = (
+            descriptor
+            for descriptor in cls._class_namespace(value).values()
+            if cls._is_native(descriptor, MethodDescriptorType)
+            or cls._is_native(descriptor, ClassMethodDescriptorType)
+            or cls._is_native(descriptor, WrapperDescriptorType)
+        )
+        if not any(
+            descriptor.__objclass__ is value for descriptor in native_descriptors
+        ):
+            return r[bool].fail(
+                "native class has no interpreter-owned callable descriptor: "
+                f"{qualified}",
+            )
+        if any(
+            type(descriptor) is FunctionType
+            for descriptor in cls._class_namespace(value).values()
+        ):
+            return r[bool].fail(
+                f"native class export carries an authored executable: {qualified}",
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
     def _native_class_alias(
         cls,
         value: p.AttributeProbe,
@@ -852,27 +1001,10 @@ class FlextInfraWorkspaceNativeReference:
             Its exact source import, physical native origin and authored witness.
 
         """
-        components = qualified.split(".")
-        binding = witness.module.get_attributes().get(components[0])
-        if binding is None:
-            return r[t.Triple[str, str, str]].fail(
-                f"native class has no source import binding: {qualified}",
-            )
-        for component in components[1:]:
-            binding = binding.get_object().get_attributes().get(component)
-            if binding is None:
-                return r[t.Triple[str, str, str]].fail(
-                    f"native class import path is absent: {qualified}",
-                )
-        native = binding.get_object()
-        if (
-            not isinstance(native, p.Infra.RopeBuiltinClass)
-            or native.builtin is not value
-            or not isinstance(binding, p.Infra.RopeImportedName)
-        ):
-            return r[t.Triple[str, str, str]].fail(
-                f"class has no identity-matched native source import: {qualified}",
-            )
+        imported = cls._native_class_import(value, qualified, witness)
+        if imported.failure:
+            return r[t.Triple[str, str, str]].from_failure(imported)
+        binding = imported.value
         supplier = binding.imported_module.module_name
         if supplier is None:
             return r[t.Triple[str, str, str]].fail(
@@ -890,34 +1022,9 @@ class FlextInfraWorkspaceNativeReference:
         if elected.failure:
             return r[t.Triple[str, str, str]].from_failure(elected)
         specification = vars(exported)["__spec__"]
-        if (
-            specification.origin not in {"built-in", "frozen"}
-            and type(specification.loader).__module__ != "_frozen_importlib_external"
-        ):
-            return r[t.Triple[str, str, str]].fail(
-                f"native class supplier is not an interpreter extension: {supplier}",
-            )
-        native_descriptors = (
-            descriptor
-            for descriptor in cls._class_namespace(value).values()
-            if cls._is_native(descriptor, MethodDescriptorType)
-            or cls._is_native(descriptor, ClassMethodDescriptorType)
-            or cls._is_native(descriptor, WrapperDescriptorType)
-        )
-        if not any(
-            descriptor.__objclass__ is value for descriptor in native_descriptors
-        ):
-            return r[t.Triple[str, str, str]].fail(
-                "native class has no interpreter-owned callable descriptor: "
-                f"{qualified}",
-            )
-        if any(
-            type(descriptor) is FunctionType
-            for descriptor in cls._class_namespace(value).values()
-        ):
-            return r[t.Triple[str, str, str]].fail(
-                f"native class export carries an authored executable: {qualified}",
-            )
+        contract = cls._native_class_contract(value, qualified, supplier, specification)
+        if contract.failure:
+            return r[t.Triple[str, str, str]].from_failure(contract)
         return r[t.Triple[str, str, str]].ok((
             f"{supplier}::{binding.imported_name}",
             str(elected.value),
@@ -940,7 +1047,7 @@ class FlextInfraWorkspaceNativeReference:
     @staticmethod
     def _is_function_binding(
         value: t.Infra.NativeOperand,
-    ) -> TypeGuard[p.Infra.NativeFunctionBinding]:
+    ) -> TypeGuard[t.Infra.NativeFunctionBinding]:
         """Admit the two interpreter-owned function wrapper slots.
 
         Returns:
@@ -1206,6 +1313,57 @@ class FlextInfraWorkspaceNativeReference:
         return descriptor.__get__(value, type(value))
 
     @classmethod
+    def _native_container_operands(
+        cls,
+        name: str,
+        item: p.AttributeProbe,
+    ) -> t.SequenceOf[t.Pair[str, p.AttributeProbe | None]] | None:
+        """Read ordered native container edges before executable classification.
+
+        Returns:
+            The exact container edges, or no matching native container.
+
+        """
+        if type(item) is frozenset or type(item) is set:
+            children = sorted(
+                item, key=lambda child: cls._value(child, construction=True)
+            )
+        elif type(item) is tuple or type(item) is list:
+            children = list(item)
+        else:
+            children = None
+        if children is not None:
+            return tuple(
+                (f"{name}.{index}", child) for index, child in enumerate(children)
+            )
+        if type(item) is dict:
+            entries: t.SequenceOf[t.Pair[p.AttributeProbe, p.AttributeProbe]] = tuple(
+                item.items()
+            )
+            return tuple(
+                (f"{name}.{index}.{part}", child)
+                for index, pair in enumerate(entries)
+                for part, child in enumerate(pair)
+            )
+        if type(item) is MappingProxyType:
+            return ((f"{name}.mapping", cls._native_mapping_proxy_backing(item)),)
+        if (slice_state := cls._slice_state(item)) is not None:
+            return tuple(
+                (f"{name}.{attribute}", stored)
+                for attribute, stored in zip(
+                    ("start", "stop", "step"), slice_state, strict=True
+                )
+            )
+        if (alias_state := cls._generic_alias_state(item)) is not None:
+            operands = [
+                (f"{name}.{attribute}", stored) for attribute, stored in alias_state
+            ]
+            if type(item) is not GenericAlias:
+                operands.append((f"{name}.type", type(item)))
+            return tuple(operands)
+        return None
+
+    @classmethod
     def _executable_operands(
         cls,
         binding: str,
@@ -1226,46 +1384,9 @@ class FlextInfraWorkspaceNativeReference:
             if item is None or id(item) in seen:
                 continue
             seen.add(id(item))
-            if type(item) is frozenset or type(item) is set:
-                children = sorted(
-                    item,
-                    key=lambda child: cls._value(child, construction=True),
-                )
-            elif type(item) is tuple or type(item) is list:
-                children = list(item)
-            else:
-                children = None
+            children = cls._native_container_operands(name, item)
             if children is not None:
-                pending.extend(
-                    (f"{name}.{index}", child) for index, child in enumerate(children)
-                )
-            elif type(item) is dict:
-                entries: t.SequenceOf[t.Pair[p.AttributeProbe, p.AttributeProbe]] = (
-                    tuple(item.items())
-                )
-                pending.extend(
-                    (f"{name}.{index}.{part}", child)
-                    for index, pair in enumerate(entries)
-                    for part, child in enumerate(pair)
-                )
-            elif type(item) is MappingProxyType:
-                pending.append((
-                    f"{name}.mapping",
-                    cls._native_mapping_proxy_backing(item),
-                ))
-            elif (slice_state := cls._slice_state(item)) is not None:
-                pending.extend(
-                    (f"{name}.{attribute}", stored)
-                    for attribute, stored in zip(
-                        ("start", "stop", "step"), slice_state, strict=True
-                    )
-                )
-            elif (alias_state := cls._generic_alias_state(item)) is not None:
-                pending.extend(
-                    (f"{name}.{attribute}", stored) for attribute, stored in alias_state
-                )
-                if type(item) is not GenericAlias:
-                    pending.append((f"{name}.type", type(item)))
+                pending.extend(children)
             elif cls._is_class(item) or cls._callable_storage(item):
                 result.append((name, item))
             elif cls._python_storage_class(type(item)):
@@ -1299,6 +1420,39 @@ class FlextInfraWorkspaceNativeReference:
         return None
 
     @classmethod
+    def _extension_metadata(
+        cls,
+        value: t.Infra.NativeOperand,
+        slots: t.MappingKV[str, t.Infra.NativeOperand],
+    ) -> p.Result[t.StrMapping]:
+        """Read exact native extension metadata slots without authored accessors.
+
+        Returns:
+            The native supplier, name and qualified name, or its first failure.
+
+        """
+        native = type(value)
+        metadata: t.DictKV[str, str] = {}
+        for attribute in ("__module__", "__name__", "__qualname__"):
+            descriptor = cls._native_metadata_slot(slots, attribute)
+            if descriptor is None:
+                return r[t.StrMapping].fail(
+                    f"extension callback lacks a native metadata slot: {attribute} "
+                    f"type={native.__module__}.{native.__qualname__}",
+                )
+            if descriptor.__objclass__ is not native:
+                return r[t.StrMapping].fail(
+                    "extension callback metadata belongs to another native type",
+                )
+            observed = descriptor.__get__(value, descriptor.__objclass__)
+            if type(observed) is not str:
+                return r[t.StrMapping].fail(
+                    f"extension callback metadata is not text: {attribute}",
+                )
+            metadata[attribute] = observed
+        return r[t.StrMapping].ok(metadata)
+
+    @classmethod
     def _extension_callback(
         cls,
         value: t.Infra.NativeOperand,
@@ -1312,24 +1466,10 @@ class FlextInfraWorkspaceNativeReference:
         """
         native = type(value)
         slots = cls._class_namespace(native)
-        metadata: t.DictKV[str, str] = {}
-        for attribute in ("__module__", "__name__", "__qualname__"):
-            descriptor = cls._native_metadata_slot(slots, attribute)
-            if descriptor is None:
-                return r[t.Triple[str, str, str]].fail(
-                    f"extension callback lacks a native metadata slot: {attribute} "
-                    f"type={native.__module__}.{native.__qualname__}",
-                )
-            if descriptor.__objclass__ is not native:
-                return r[t.Triple[str, str, str]].fail(
-                    "extension callback metadata belongs to another native type",
-                )
-            observed = descriptor.__get__(value, descriptor.__objclass__)
-            if type(observed) is not str:
-                return r[t.Triple[str, str, str]].fail(
-                    f"extension callback metadata is not text: {attribute}",
-                )
-            metadata[attribute] = observed
+        captured = cls._extension_metadata(value, slots)
+        if captured.failure:
+            return r[t.Triple[str, str, str]].from_failure(captured)
+        metadata = captured.value
         supplier = sys.modules.get(metadata["__module__"])
         if type(supplier) is not ModuleType or supplier.__spec__ is None:
             return r[t.Triple[str, str, str]].fail(
@@ -1343,23 +1483,7 @@ class FlextInfraWorkspaceNativeReference:
                 f"loader={type(supplier.__spec__.loader).__qualname__}",
             )
         if slots.get("__globals__") is not None:
-            globals_slot = cls._native_metadata_slot(slots, "__globals__")
-            if globals_slot is None or globals_slot.__objclass__ is not native:
-                return r[t.Triple[str, str, str]].fail(
-                    "extension callback globals are not native storage",
-                )
-            if globals_slot.__get__(value, globals_slot.__objclass__) is not vars(
-                supplier
-            ):
-                return r[t.Triple[str, str, str]].fail(
-                    "extension callback globals differ from its native supplier: "
-                    f"{metadata['__module__']}.{metadata['__qualname__']}",
-                )
-            return r[t.Triple[str, str, str]].ok((
-                metadata["__module__"],
-                metadata["__name__"],
-                metadata["__qualname__"],
-            ))
+            return cls._extension_globals_reference(value, metadata, slots, supplier)
         return cls._extension_lexical_reference(
             value,
             native,
@@ -1367,6 +1491,36 @@ class FlextInfraWorkspaceNativeReference:
             metadata,
             binding,
         )
+
+    @classmethod
+    def _extension_globals_reference(
+        cls,
+        value: t.Infra.NativeOperand,
+        metadata: t.StrMapping,
+        slots: t.MappingKV[str, t.Infra.NativeOperand],
+        supplier: ModuleType,
+    ) -> p.Result[t.Triple[str, str, str]]:
+        """Authenticate an extension's native globals against its actual supplier.
+
+        Returns:
+            The registered callback identity or its native globals failure.
+
+        """
+        globals_slot = cls._native_metadata_slot(slots, "__globals__")
+        if globals_slot is None or globals_slot.__objclass__ is not type(value):
+            return r[t.Triple[str, str, str]].fail(
+                "extension callback globals are not native storage",
+            )
+        if globals_slot.__get__(value, globals_slot.__objclass__) is not vars(supplier):
+            return r[t.Triple[str, str, str]].fail(
+                "extension callback globals differ from its native supplier: "
+                f"{metadata['__module__']}.{metadata['__qualname__']}",
+            )
+        return r[t.Triple[str, str, str]].ok((
+            metadata["__module__"],
+            metadata["__name__"],
+            metadata["__qualname__"],
+        ))
 
     @classmethod
     def _extension_lexical_reference(
@@ -1920,7 +2074,11 @@ class FlextInfraWorkspaceNativeReference:
             or vars(type)["__base__"].__get__(native, type(native)) is not object
             or type(constructor) is not BuiltinFunctionType
             or constructor.__self__ is not native
-            or not cls._native_text(constructor.__name__, "__new__")
+        ):
+            msg = "typing singleton differs from its static native type contract"
+            raise ValueError(msg)
+        if (
+            not cls._native_text(constructor.__name__, "__new__")
             or type(reduction) is not MethodDescriptorType
             or reduction.__objclass__ is not native
             or not cls._native_text(reduction.__name__, "__reduce__")
@@ -2048,12 +2206,13 @@ class FlextInfraWorkspaceNativeReference:
             or type(supplier) is not ModuleType
             or vars(supplier).get("GenericAlias") is not GenericAlias
             or type(GenericAlias) is not type
-            or not cls._native_text(
-                vars(type)["__name__"].__get__(GenericAlias, type), "GenericAlias"
-            )
-            or not cls._native_text(
-                vars(type)["__module__"].__get__(GenericAlias, type), "types"
-            )
+        ):
+            msg = "generic alias lacks its elected interpreter type"
+            raise ValueError(msg)
+        if not cls._native_text(
+            vars(type)["__name__"].__get__(GenericAlias, type), "GenericAlias"
+        ) or not cls._native_text(
+            vars(type)["__module__"].__get__(GenericAlias, type), "types"
         ):
             msg = "generic alias lacks its elected interpreter type"
             raise ValueError(msg)
@@ -2096,9 +2255,8 @@ class FlextInfraWorkspaceNativeReference:
         seen: frozenset[int] = frozenset(),
         *,
         construction: bool = False,
-        references: list[t.Pair[str, t.Infra.NativeOperand]] | None = None,
+        context: m.Infra.NativeObservationContext | None = None,
         binding: str = "",
-        paths: t.SequenceOf[t.Pair[Path, Path]] = (),
     ) -> str:
         """Serialize one structural observation without recursively escaping JSON.
 
@@ -2111,31 +2269,20 @@ class FlextInfraWorkspaceNativeReference:
                 value,
                 seen,
                 construction=construction,
-                references=references,
+                context=context,
                 binding=binding,
-                paths=paths,
             )
         )
 
     @classmethod
-    def _value_data(
+    def _scalar_value(
         cls,
         value: t.Infra.NativeOperand,
-        seen: frozenset[int],
-        *,
-        construction: bool,
-        references: list[t.Pair[str, t.Infra.NativeOperand]] | None = None,
-        binding: str = "",
-        paths: t.SequenceOf[t.Pair[Path, Path]] = (),
-    ) -> t.JsonValue:
-        """Observe native slots as JSON data without authored accessors.
+    ) -> t.JsonValue | None:
+        """Observe exact native scalar values before inspecting any descriptors.
 
         Returns:
-            Structural values read through admitted native storage.
-
-        Raises:
-            TypeError: A native descriptor differs from its registered owner.
-            ValueError: The operand has no admitted callback-free storage.
+            The structural scalar value, or no matching native scalar.
 
         """
         native = type(value)
@@ -2151,6 +2298,30 @@ class FlextInfraWorkspaceNativeReference:
             return ["bytes", b64encode(value).decode("ascii")]
         if value is Ellipsis:
             return ["ellipsis"]
+        return None
+
+    @classmethod
+    def _value_data(
+        cls,
+        value: t.Infra.NativeOperand,
+        seen: frozenset[int],
+        *,
+        construction: bool,
+        context: m.Infra.NativeObservationContext | None = None,
+        binding: str = "",
+    ) -> t.JsonValue:
+        """Observe native slots as JSON data without authored accessors.
+
+        Returns:
+            Structural values read through admitted native storage.
+
+        Raises:
+            TypeError: A native descriptor differs from its registered owner.
+
+        """
+        scalar = cls._scalar_value(value)
+        if scalar is not None:
+            return scalar
         if cls._is_descriptor(value):
             owner = value.__objclass__
             if cls._class_namespace(owner).get(value.__name__) is not value:
@@ -2160,86 +2331,205 @@ class FlextInfraWorkspaceNativeReference:
         if id(value) in seen:
             return ["cycle", cls._symbol(value)]
         seen |= {id(value)}
+        return cls._retained_value(
+            value, seen, context, binding, construction=construction
+        )
+
+    @classmethod
+    def _sequence_value(
+        cls,
+        value: t.IterableOf[t.Infra.NativeOperand],
+        seen: frozenset[int],
+        context: m.Infra.NativeObservationContext | None,
+        binding: str,
+        *,
+        construction: bool,
+    ) -> t.JsonValue:
+        """Observe exact native sequence elements and retained deque capacity.
+
+        Returns:
+            The original ordered or canonically sorted native sequence payload.
+
+        Raises:
+            TypeError: The deque's native capacity descriptor is not authenticated.
+
+        """
+        native = type(value)
         observe = partial(
             cls._value_data,
             seen=seen,
             construction=construction,
-            references=references,
+            context=context,
             binding=binding,
-            paths=paths,
         )
+        items = list(map(observe, value))
+        if native is deque:
+            descriptor = cls._native_metadata_slot(
+                cls._class_namespace(deque), "maxlen"
+            )
+            if (
+                not cls._is_native(descriptor, GetSetDescriptorType)
+                or descriptor.__objclass__ is not deque
+            ):
+                message = "native deque lacks its interpreter-owned maxlen slot"
+                raise TypeError(message)
+            if context is not None:
+                context.references.append((f"{binding}.sequence_type", deque))
+            return [
+                "deque",
+                observe(descriptor.__get__(value, deque)),
+                items,
+            ]
+        return [
+            native.__name__,
+            sorted(items, key=dumps) if native is set or native is frozenset else items,
+        ]
+
+    @classmethod
+    def _mapping_proxy_value(
+        cls,
+        value: t.Infra.NativeOperand,
+        seen: frozenset[int],
+        context: m.Infra.NativeObservationContext | None,
+        binding: str,
+        *,
+        construction: bool,
+    ) -> t.JsonValue:
+        """Observe the actual native proxy backing under construction policy.
+
+        Returns:
+            Mutable identity or its fully observed native dictionary backing.
+
+        Raises:
+            TypeError: The proxy does not retain one exact native dictionary.
+
+        """
+        if not construction:
+            return ["mutable", "mappingproxy"]
+        backing = cls._native_instance_referents(value)
+        if len(backing) != 1 or type(backing[0]) is not dict:
+            msg = "native mappingproxy does not contain an exact interpreter dict"
+            raise TypeError(msg)
+        return [
+            "mappingproxy",
+            cls._value_data(
+                backing[0],
+                seen,
+                construction=construction,
+                context=context,
+                binding=binding,
+            ),
+        ]
+
+    @classmethod
+    def _code_value(
+        cls,
+        value: t.Infra.NativeCode,
+        seen: frozenset[int],
+        context: m.Infra.NativeObservationContext | None,
+        binding: str,
+    ) -> t.JsonValue:
+        """Observe every admitted code slot after the original physical relocation.
+
+        Returns:
+            Complete native code-slot observations without executing the code.
+
+        """
+        if context is not None and context.paths:
+            value = cls._relocate_code(value, context.paths)
+        observe = partial(
+            cls._value_data,
+            seen=seen,
+            construction=False,
+            context=context,
+            binding=binding,
+        )
+        return [
+            "code",
+            [
+                [name, observe(descriptor.__get__(value, CodeType))]
+                for name, descriptor in sorted(vars(CodeType).items())
+                if (
+                    type(descriptor) is MemberDescriptorType
+                    or (
+                        type(descriptor) is GetSetDescriptorType
+                        and type(vars(p.Infra.NativeCodeIdentity).get(name)) is property
+                    )
+                )
+                and descriptor.__objclass__ is CodeType
+            ],
+        ]
+
+    @classmethod
+    def _container_value(
+        cls,
+        value: t.Infra.NativeOperand,
+        seen: frozenset[int],
+        context: m.Infra.NativeObservationContext | None,
+        binding: str,
+        *,
+        construction: bool,
+    ) -> t.JsonValue | None:
+        """Observe an admitted native container without changing construction policy.
+
+        Returns:
+            Its structural payload, or no matching native container.
+
+        """
+        native = type(value)
         if (
             any(native is kind for kind in (list, set, dict, deque))
             and not construction
         ):
             return ["mutable", native.__name__]
         if cls._is_operand_sequence(value):
-            items = list(map(observe, value))
-            if native is deque:
-                descriptor = cls._native_metadata_slot(
-                    cls._class_namespace(deque), "maxlen"
-                )
-                if (
-                    not cls._is_native(descriptor, GetSetDescriptorType)
-                    or descriptor.__objclass__ is not deque
-                ):
-                    message = "native deque lacks its interpreter-owned maxlen slot"
-                    raise TypeError(message)
-                if references is not None:
-                    references.append((f"{binding}.sequence_type", deque))
-                return [
-                    "deque",
-                    observe(descriptor.__get__(value, deque)),
-                    items,
-                ]
-            return [
-                native.__name__,
-                sorted(items, key=dumps)
-                if native is set or native is frozenset
-                else items,
-            ]
+            return cls._sequence_value(
+                value, seen, context, binding, construction=construction
+            )
         if cls._is_operand_mapping(value):
+            observe = partial(
+                cls._value_data,
+                seen=seen,
+                construction=construction,
+                context=context,
+                binding=binding,
+            )
             return [
                 "dict",
-                sorted(
-                    [list(map(observe, pair)) for pair in value.items()],
-                    key=dumps,
-                ),
+                sorted([list(map(observe, pair)) for pair in value.items()], key=dumps),
             ]
         if native is MappingProxyType:
-            if not construction:
-                return ["mutable", "mappingproxy"]
-            backing = cls._native_instance_referents(value)
-            if len(backing) != 1 or type(backing[0]) is not dict:
-                msg = "native mappingproxy does not contain an exact interpreter dict"
-                raise TypeError(
-                    msg,
-                )
-            return ["mappingproxy", observe(backing[0])]
+            return cls._mapping_proxy_value(
+                value, seen, context, binding, construction=construction
+            )
         if cls._is_native(value, CodeType):
-            if paths:
-                value = cls._relocate_code(value, paths)
-            return [
-                "code",
-                [
-                    [
-                        name,
-                        observe(
-                            descriptor.__get__(value, CodeType), construction=False
-                        ),
-                    ]
-                    for name, descriptor in sorted(vars(CodeType).items())
-                    if (
-                        type(descriptor) is MemberDescriptorType
-                        or (
-                            type(descriptor) is GetSetDescriptorType
-                            and type(vars(p.Infra.NativeCodeIdentity).get(name))
-                            is property
-                        )
-                    )
-                    and descriptor.__objclass__ is CodeType
-                ],
-            ]
+            return cls._code_value(value, seen, context, binding)
+        return None
+
+    @classmethod
+    def _executable_value(
+        cls,
+        value: t.Infra.NativeOperand,
+        seen: frozenset[int],
+        context: m.Infra.NativeObservationContext | None,
+        binding: str,
+        *,
+        construction: bool,
+    ) -> t.JsonValue | None:
+        """Observe native executable references after the container categories.
+
+        Returns:
+            The executable payload, or no matching native executable.
+
+        """
+        native = type(value)
+        observe = partial(
+            cls._value_data,
+            seen=seen,
+            construction=construction,
+            context=context,
+            binding=binding,
+        )
         if cls._is_native(value, FunctionType):
             return dumps((
                 "function",
@@ -2282,10 +2572,80 @@ class FlextInfraWorkspaceNativeReference:
             ]
         if cls._is_class(value) or cls._native_builtin(value) or native is ModuleType:
             return ["symbol", cls._symbol(value)]
+        return None
+
+    @classmethod
+    def _retained_value(
+        cls,
+        value: t.Infra.NativeOperand,
+        seen: frozenset[int],
+        context: m.Infra.NativeObservationContext | None,
+        binding: str,
+        *,
+        construction: bool,
+    ) -> t.JsonValue:
+        """Observe a cycle-guarded value through its original storage categories.
+
+        Returns:
+            The first matching native representation in its original category order.
+
+        """
+        container = cls._container_value(
+            value, seen, context, binding, construction=construction
+        )
+        if container is not None:
+            return container
+        executable = cls._executable_value(
+            value, seen, context, binding, construction=construction
+        )
+        if executable is not None:
+            return executable
         if not construction:
-            return ["instance", cls._symbol(native)]
-        observed: list[t.JsonValue] = []
-        ancestry = cls._native_mro(native)
+            return ["instance", cls._symbol(type(value))]
+        return cls._instance_value(value, seen, context, binding)
+
+    @classmethod
+    def _slot_storage(
+        cls,
+        value: t.Infra.NativeOperand,
+        name: str,
+        descriptor: t.Infra.NativeDescriptor,
+        elected: t.MappingKV[str, t.Infra.NativeOperand],
+        *,
+        native_lookup: bool,
+    ) -> t.Pair[Literal["shadowed", "uninitialized", "value"], t.Infra.NativeOperand]:
+        """Read one native slot while retaining shadowing and absence distinctly.
+
+        Returns:
+            The original native slot category and its retained value or type.
+
+        """
+        member = type(descriptor) is MemberDescriptorType
+        if member and elected[name] is not descriptor:
+            return "shadowed", type(elected[name])
+        absent = object()
+        stored = (
+            getattr(value, name, absent)
+            if member and native_lookup
+            else descriptor.__get__(value, type(value))
+        )
+        return ("uninitialized", None) if stored is absent else ("value", stored)
+
+    @classmethod
+    def _storage_values(
+        cls,
+        value: t.Infra.NativeOperand,
+        seen: frozenset[int],
+        context: m.Infra.NativeObservationContext | None,
+        binding: str,
+    ) -> list[t.JsonValue]:
+        """Observe interpreter-owned dictionaries and slots in native MRO order.
+
+        Returns:
+            The original ordered slot identities and structural payloads.
+
+        """
+        ancestry = cls._native_mro(type(value))
         elected = {
             name: descriptor
             for owner in reversed(ancestry)
@@ -2295,33 +2655,59 @@ class FlextInfraWorkspaceNativeReference:
             elected["__getattribute__"] is vars(object)["__getattribute__"]
             and "__getattr__" not in elected
         )
-        absent = object()
+        observe = partial(
+            cls._value_data,
+            seen=seen,
+            construction=True,
+            context=context,
+            binding=binding,
+        )
+        observed: list[t.JsonValue] = []
         for owner in ancestry:
-            namespace = cls._class_namespace(owner)
-            for name, descriptor in sorted(namespace.items()):
+            for name, descriptor in sorted(cls._class_namespace(owner).items()):
                 if (
                     type(descriptor) is MemberDescriptorType
                     or (name == "__dict__" and type(descriptor) is GetSetDescriptorType)
                 ) and descriptor.__objclass__ is owner:
-                    member = type(descriptor) is MemberDescriptorType
-                    if member and elected[name] is not descriptor:
-                        payload: t.JsonValue = [
-                            "shadowed",
-                            cls._symbol(type(elected[name])),
-                        ]
-                    else:
-                        stored = (
-                            getattr(value, name, absent)
-                            if member and native_lookup
-                            else descriptor.__get__(value, native)
-                        )
-                        payload = (
-                            ["uninitialized"] if stored is absent else observe(stored)
-                        )
+                    kind, stored = cls._slot_storage(
+                        value, name, descriptor, elected, native_lookup=native_lookup
+                    )
                     observed.append([
                         f"{cls._symbol(owner)}::{name}",
-                        payload,
+                        ["shadowed", cls._symbol(stored)]
+                        if kind == "shadowed"
+                        else ["uninitialized"]
+                        if kind == "uninitialized"
+                        else observe(stored),
                     ])
+        return observed
+
+    @classmethod
+    def _instance_value(
+        cls,
+        value: t.Infra.NativeOperand,
+        seen: frozenset[int],
+        context: m.Infra.NativeObservationContext | None,
+        binding: str,
+    ) -> t.JsonValue:
+        """Authenticate full instance storage or its registered native singleton.
+
+        Returns:
+            The original structural instance observation.
+
+        Raises:
+            ValueError: No callback-free storage or registered binding exists.
+
+        """
+        native = type(value)
+        observed = cls._storage_values(value, seen, context, binding)
+        observe = partial(
+            cls._value_data,
+            seen=seen,
+            construction=True,
+            context=context,
+            binding=binding,
+        )
         if cls._native_callable_instance(value):
             return [
                 "native_callable_storage",
@@ -2349,8 +2735,11 @@ class FlextInfraWorkspaceNativeReference:
                 FlextInfraWorkspaceEnvironmentProvenance.module_source(
                     supplier_name
                 ).unwrap()
-                if references is not None:
-                    references.append((f"{supplier_name}::{bindings[0]}", native))
+                if context is not None:
+                    context.references.append((
+                        f"{supplier_name}::{bindings[0]}",
+                        native,
+                    ))
                 return ["registered_instance", cls._symbol(native), list(bindings)]
         raise ValueError(
             "native import operand has no callback-free storage or registered binding: "
@@ -2686,9 +3075,7 @@ class FlextInfraWorkspaceNativeReference:
                 operands=(
                     (
                         "value",
-                        cls._value(
-                            value, references=context.references, paths=context.paths
-                        ),
+                        cls._value(value, context=context),
                     ),
                 ),
             )
@@ -2931,8 +3318,7 @@ class FlextInfraWorkspaceNativeReference:
         )
         observe_value = partial(
             cls._value,
-            references=context.references,
-            paths=context.paths,
+            context=context,
             binding=context.binding_context,
         )
         context.evidence.append(
@@ -3025,6 +3411,1141 @@ class FlextInfraWorkspaceNativeReference:
         )
 
     @classmethod
+    def _capture_function_binding(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: t.Infra.NativeFunctionBinding,
+    ) -> p.Result[bool]:
+        """Observe an exact classmethod or staticmethod and enqueue its function.
+
+        Returns:
+            The original category evidence or its first native failure.
+
+        """
+        function = value.__func__
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind=cls._type_attr("__name__", type(value), type(type(value))),
+                supplier=context.supplier,
+                name="",
+                qualname="",
+                operands=(("function", cls._symbol(function)),),
+            ),
+        )
+        context.pending.append((
+            f"{context.binding}.function",
+            function,
+            context.supplier,
+            context.owner_source,
+        ))
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _capture_bound_method(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: MethodType,
+    ) -> p.Result[bool]:
+        """Observe a bound method before its function and class receiver.
+
+        Returns:
+            The original category evidence or its first native failure.
+
+        """
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind="bound_method",
+                supplier=context.supplier,
+                name=value.__func__.__name__,
+                qualname=value.__func__.__qualname__,
+                operands=(("receiver", cls._symbol(value.__self__)),),
+            )
+        )
+        context.pending.append((
+            f"{context.binding}.function",
+            value.__func__,
+            context.supplier,
+            context.owner_source,
+        ))
+        if cls._is_class(value.__self__):
+            context.pending.append((
+                f"{context.binding}.receiver",
+                value.__self__,
+                context.supplier,
+                context.owner_source,
+            ))
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _capture_property(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: property,
+    ) -> p.Result[bool]:
+        """Observe property accessor presence before queuing actual accessors.
+
+        Returns:
+            The original category evidence or its first native failure.
+
+        """
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind="property",
+                supplier=context.supplier,
+                name="",
+                qualname="",
+                operands=tuple(
+                    (name, str(accessor is not None))
+                    for name, accessor in (
+                        ("get", value.fget),
+                        ("set", value.fset),
+                        ("delete", value.fdel),
+                    )
+                ),
+            ),
+        )
+        context.pending.extend(
+            (
+                f"{context.binding}.{name}",
+                accessor,
+                context.supplier,
+                context.owner_source,
+            )
+            for name, accessor in (
+                ("get", value.fget),
+                ("set", value.fset),
+                ("delete", value.fdel),
+            )
+            if accessor is not None
+        )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _capture_descriptor(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: t.Infra.NativeDescriptor,
+    ) -> p.Result[bool]:
+        """Authenticate a native descriptor supplier and enqueue its actual owner.
+
+        Returns:
+            The original category evidence or its first native failure.
+
+        """
+        owner = value.__objclass__
+        actual_supplier = cls._type_attr("__module__", owner, type(owner))
+        if type(actual_supplier) is not str:
+            return r[bool].fail(
+                f"native descriptor owner has no source supplier: {context.binding}",
+            )
+        elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(
+            actual_supplier,
+        )
+        if elected.failure:
+            return r[bool].from_failure(elected)
+        context.sources.add((
+            f"{actual_supplier}::{value.__qualname__}",
+            str(cls._source_path(elected.value, context.paths)),
+            "",
+        ))
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind=cls._type_attr("__name__", type(value), type(type(value))),
+                supplier=actual_supplier,
+                name=value.__name__,
+                qualname=value.__qualname__,
+                operands=(("receiver", cls._symbol(owner)),),
+            ),
+        )
+        context.pending.append((
+            f"{context.binding}.receiver",
+            owner,
+            actual_supplier,
+            context.owner_source,
+        ))
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _capture_generic_alias(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: t.Infra.NativeOperand,
+    ) -> p.Result[bool]:
+        """Observe native alias construction and its actual executable operands.
+
+        Returns:
+            The original category evidence or its first native failure.
+
+        """
+        observe_value = partial(
+            cls._value, context=context, binding=context.binding_context
+        )
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind="generic_alias",
+                supplier="types",
+                name="",
+                qualname="",
+                operands=(
+                    (
+                        "alias",
+                        observe_value(value, construction=True),
+                    ),
+                ),
+            ),
+        )
+        context.pending.extend(
+            (edge, item, context.supplier, context.owner_source)
+            for edge, item in cls._executable_operands(context.binding, value)
+        )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _capture_wrapper(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: t.Infra.NativeOperand,
+        kind: str,
+        wrapper_kind: str,
+    ) -> p.Result[bool]:
+        """Authenticate a native wrapper, its storage and its actual wrapped function.
+
+        Returns:
+            The original category evidence or its first native failure.
+
+        """
+        observe_value = partial(
+            cls._value, context=context, binding=context.binding_context
+        )
+        function = cls._native_wrapper_function(value, wrapper_kind)
+        if function.failure:
+            return r[bool].from_failure(function)
+        namespace = cls._class_namespace(type(value))
+        storage = namespace.get("__dict__")
+        if not cls._is_native(
+            storage, GetSetDescriptorType
+        ) or storage.__objclass__ is not type(value):
+            return r[bool].fail(
+                f"native wrapper has no interpreter-owned attributes: "
+                f"{context.binding}",
+            )
+        attributes: t.DictKV[str, t.Infra.NativeOperand] = storage.__get__(
+            value, storage.__objclass__
+        )
+        operands = [
+            ("function", observe_value(function.value, construction=True)),
+            ("attributes", observe_value(attributes, construction=True)),
+        ]
+        operational = ()
+        if wrapper_kind == "partial":
+            for attribute in ("args", "keywords"):
+                slot = namespace.get(attribute)
+                if not cls._is_native(
+                    slot, MemberDescriptorType
+                ) or slot.__objclass__ is not type(value):
+                    return r[bool].fail(
+                        f"native partial lacks its {attribute} slot: {context.binding}",
+                    )
+                slot.__get__(value, type(value))
+                operands.append((
+                    attribute,
+                    observe_value(
+                        slot.__get__(value, slot.__objclass__),
+                        construction=True,
+                        binding=(
+                            f"{context.incoming}.{attribute}; body={context.binding}; "
+                            f"supplier={context.supplier}; "
+                            f"callable={cls._symbol(function.value)}"
+                        ),
+                    ),
+                ))
+                stored = slot.__get__(value, slot.__objclass__)
+                context.pending.extend(
+                    (operand_binding, item, context.supplier, context.owner_source)
+                    for operand_binding, item in cls._executable_operands(
+                        f"{context.binding}.{attribute}",
+                        stored,
+                    )
+                )
+        else:
+            cache_state = cls._native_cache_state(value)
+            if cache_state.failure:
+                return r[bool].from_failure(cache_state)
+            operational = (("cache", cache_state.value),)
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence.model_validate({
+                "binding": context.binding,
+                "kind": f"{kind}:{wrapper_kind}",
+                "supplier": "_functools",
+                "name": attributes.get("__name__", ""),
+                "qualname": attributes.get("__qualname__", ""),
+                "operands": tuple(operands),
+                "operational": operational,
+            }),
+        )
+        context.pending.append((
+            f"{context.binding}.native_function",
+            function.value,
+            context.supplier,
+            context.owner_source,
+        ))
+        context.pending.extend(
+            (
+                f"{context.binding}.attributes.{key}",
+                item,
+                context.supplier,
+                context.owner_source,
+            )
+            for key, item in sorted(attributes.items())
+            if cls._is_class(item)
+            or type(item) is FunctionType
+            or cls._native_builtin(item)
+            or cls._native_wrapper_kind(item) is not None
+            if not context.lexical or key == "__wrapped__"
+        )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _capture_native_callable(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: t.Infra.NativeOperand,
+        kind: str,
+    ) -> p.Result[bool]:
+        """Observe native callable storage, registered callbacks and receiver inputs.
+
+        Returns:
+            The original category evidence or its first native failure.
+
+        """
+        observe_value = partial(
+            cls._value, context=context, binding=context.binding_context
+        )
+        native_builtin = value if cls._native_builtin(value) else None
+        if cls._native_callable_instance(value) or cls._python_callable_instance(value):
+            native = type(value)
+            context.evidence.append(
+                m.Infra.NativeBindingEvidence(
+                    binding=context.binding,
+                    kind="callable_instance",
+                    supplier=vars(type)["__module__"].__get__(native, type(native)),
+                    name=vars(type)["__name__"].__get__(native, type(native)),
+                    qualname=vars(type)["__qualname__"].__get__(native, type(native)),
+                    operands=(
+                        (
+                            "storage",
+                            observe_value(value, construction=True),
+                        ),
+                    ),
+                ),
+            )
+            context.pending.append((
+                f"{context.binding}.native_class",
+                native,
+                context.supplier,
+                context.owner_source,
+            ))
+            return r[bool].ok(value=True)
+        if native_builtin is None:
+            extension = cls._extension_callback(value, context.binding)
+            if extension.failure:
+                return r[bool].fail(
+                    f"{extension.error}; binding={context.binding}; "
+                    f"binding_supplier={context.supplier}; "
+                    f"native_type={cls._symbol(type(value))}; "
+                    f"native_ancestry={
+                        tuple(
+                            cls._symbol(owner) for owner in cls._native_mro(type(value))
+                        )
+                    }"
+                )
+            actual_supplier, native_name, qualified = extension.value
+            origin = FlextInfraWorkspaceEnvironmentProvenance.module_source(
+                actual_supplier,
+            )
+            if origin.failure:
+                return r[bool].from_failure(origin)
+            context.sources.add((
+                f"{actual_supplier}::{qualified}",
+                str(cls._source_path(origin.value, context.paths)),
+                "",
+            ))
+        else:
+            actual_supplier, _, qualified = cls._symbol(native_builtin).partition("::")
+            native_name = native_builtin.__name__
+            elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(
+                actual_supplier,
+            )
+            if elected.failure:
+                return r[bool].from_failure(elected)
+            context.sources.add((
+                f"{actual_supplier}::{qualified}",
+                str(cls._source_path(elected.value, context.paths)),
+                "",
+            ))
+        receiver_operands: t.VariadicTuple[t.Pair[str, str]] = ()
+        receiver_operational: t.VariadicTuple[t.Pair[str, str]] = ()
+        if native_builtin is not None:
+            receiver = native_builtin.__self__
+            if cls._native_iterator_receiver(native_builtin):
+                receiver_inputs = cls._native_instance_referents(receiver)
+                receiver_operands = (
+                    ("receiver_type", cls._symbol(type(receiver))),
+                    (
+                        "receiver_inputs",
+                        observe_value(receiver_inputs, construction=True),
+                    ),
+                )
+                receiver_operational = (
+                    (
+                        "receiver",
+                        dumps((cls._symbol(type(receiver)), id(receiver))),
+                    ),
+                )
+                context.pending.append((
+                    f"{context.binding}.receiver_type",
+                    type(receiver),
+                    actual_supplier,
+                    context.owner_source,
+                ))
+                context.pending.extend(
+                    (edge, item, actual_supplier, context.owner_source)
+                    for edge, item in cls._executable_operands(
+                        f"{context.binding}.receiver_inputs", receiver_inputs
+                    )
+                )
+            else:
+                receiver_operands = (
+                    (
+                        "receiver",
+                        observe_value(
+                            receiver,
+                            construction=True,
+                            binding=(
+                                f"{context.binding}; supplier={actual_supplier}; "
+                                f"method={native_name}"
+                            ),
+                        ),
+                    ),
+                )
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind=kind,
+                supplier=actual_supplier,
+                name=native_name,
+                qualname=qualified,
+                operands=receiver_operands,
+                operational=receiver_operational,
+            ),
+        )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _generated_function_source(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: FunctionType,
+        graph: t.Triple[
+            p.Infra.RopeProject,
+            t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+            t.Infra.NativeInstructionFacts,
+        ],
+    ) -> p.Result[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]]:
+        """Authenticate the actual generated compiler and every consulted source.
+
+        Returns:
+            The physical defining supplier and exact generated construction evidence.
+
+        """
+        generated_owner = context.generated_owners.get(id(value))
+        if generated_owner is None:
+            return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].fail(
+                f"generated function has no physical source owner: {context.binding}",
+            )
+        source_supplier, source_attribute, receiver = generated_owner
+        if receiver is not None and not cls._is_class(receiver):
+            return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].fail(
+                f"generated receiver is not a native class: {context.binding}",
+            )
+        proved = cls._generated_proof(
+            value,
+            (source_supplier, source_attribute, receiver),
+            graph[0],
+            graph[1],
+        )
+        if proved.failure:
+            return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].from_failure(
+                proved
+            )
+        actual_supplier, source_attribute, expected = proved.value
+        for state in expected.inputs:
+            previous = context.compiler_inputs.get(state.path)
+            if previous is not None and previous != state:
+                return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].fail(
+                    f"generated compiler input changed within observation: {state.path}"
+                )
+            context.compiler_inputs[state.path] = state
+            context.sources.add((
+                f"native_compiler::{state.path}",
+                str(cls._source_path(state.path, context.paths)),
+                "",
+            ))
+        generated_operands = (
+            ("generated_attribute", source_attribute),
+            (
+                "generated_receiver",
+                ""
+                if receiver is None
+                else cls._type_attr("__qualname__", receiver, type(receiver)),
+            ),
+            (
+                "generated_inputs",
+                dumps(tuple(str(state.path) for state in expected.inputs)),
+            ),
+        )
+        return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].ok((
+            actual_supplier,
+            generated_operands,
+        ))
+
+    @classmethod
+    def _capture_function_source(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: FunctionType,
+        graph: t.Triple[
+            p.Infra.RopeProject,
+            t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+            t.Infra.NativeInstructionFacts,
+        ],
+    ) -> p.Result[m.Infra.NativeFunctionObservationContext]:
+        """Elect the actual function source before inspecting executable operands.
+
+        Returns:
+            Complete native function/source facts, or the first source refusal.
+
+        """
+        code = cls._relocate_code(value.__code__, context.paths)
+        generated = code.co_filename.startswith(
+            "<"
+        ) and not code.co_filename.startswith("<frozen ")
+        generated_operands: t.VariadicTuple[t.Pair[str, str]] = ()
+        if generated:
+            compiled = cls._generated_function_source(context, value, graph)
+            if compiled.failure:
+                return r[m.Infra.NativeFunctionObservationContext].from_failure(
+                    compiled
+                )
+            actual_supplier, generated_operands = compiled.value
+        else:
+            actual_supplier = value.__globals__.get("__name__")
+            if type(actual_supplier) is not str:
+                return r[m.Infra.NativeFunctionObservationContext].fail(
+                    f"producer globals have no supplier identity: {context.binding}",
+                )
+            module = sys.modules.get(actual_supplier)
+            if module is None or (
+                not generated and value.__globals__ is not cls._module_namespace(module)
+            ):
+                return r[m.Infra.NativeFunctionObservationContext].fail(
+                    f"producer globals have no native supplier: {context.binding}",
+                )
+        origin = context.origins.get(actual_supplier)
+        if origin is None:
+            observed = FlextInfraWorkspaceEnvironmentProvenance.module_source(
+                actual_supplier,
+            )
+            if observed.failure:
+                return r[m.Infra.NativeFunctionObservationContext].from_failure(
+                    observed
+                )
+            origin = context.origins[actual_supplier] = observed.value
+        supplier_namespace = cls._module_namespace(sys.modules[actual_supplier])
+        supplier_spec = supplier_namespace["__spec__"]
+        if not cls._is_native(supplier_spec, ModuleSpec):
+            return r[m.Infra.NativeFunctionObservationContext].fail(
+                f"producer native supplier has no module spec: {actual_supplier}"
+            )
+        context.sources.add((
+            f"{actual_supplier}::{value.__qualname__}",
+            str(cls._source_path(origin, context.paths))
+            if generated or supplier_spec.origin == "frozen"
+            else code.co_filename,
+            context.owner_source if generated else "",
+        ))
+        return r[m.Infra.NativeFunctionObservationContext].ok(
+            m.Infra.NativeFunctionObservationContext(
+                value=(value,),
+                code=code,
+                supplier=actual_supplier,
+                origin=origin,
+                generated=generated,
+                generated_operands=generated_operands,
+            )
+        )
+
+    @classmethod
+    def _function_namespaces(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        facts: m.Infra.NativeFunctionObservationContext,
+        instructions: t.Infra.NativeInstructionFacts,
+    ) -> None:
+        """Observe actual closure, globals and builtins before lexical expansion."""
+        if facts.value[0].__closure__ is not None:
+            facts.nonlocals.update({
+                name: cell.cell_contents
+                for name, cell in zip(
+                    facts.code.co_freevars, facts.value[0].__closure__, strict=True
+                )
+            })
+        global_namespace = facts.value[0].__globals__
+        # The native function slot retains its actual builtins dictionary.
+        builtin_slot: p.Infra.NativeStorageSlot[
+            t.DictKV[str, t.Infra.NativeOperand]
+        ] = vars(FunctionType)["__builtins__"]
+        builtin_namespace = builtin_slot.__get__(facts.value[0], FunctionType)
+        for namespace_name, namespace in (
+            ("globals", global_namespace),
+            ("builtins", builtin_namespace),
+        ):
+            if type(namespace) is not dict:
+                context.pending.append((
+                    f"{context.binding}.{namespace_name}.type",
+                    type(namespace),
+                    facts.supplier,
+                    context.owner_source,
+                ))
+        global_names = {
+            instruction.argval
+            for instruction in cls._instructions(facts.code, instructions)
+            if instruction.opname == "LOAD_GLOBAL"
+            and isinstance(instruction.argval, str)
+        }
+        native_getitem: Callable[
+            [t.DictKV[str, t.Infra.NativeOperand], str], t.Infra.NativeOperand
+        ] = vars(dict)["__getitem__"]
+        native_contains: Callable[[t.DictKV[str, t.Infra.NativeOperand], str], bool] = (
+            vars(dict)["__contains__"]
+        )
+        facts.global_bindings.update({
+            name: (
+                native_getitem(global_namespace, name)
+                if native_contains(global_namespace, name)
+                else native_getitem(builtin_namespace, name)
+            )
+            for name in sorted(global_names)
+            if native_contains(global_namespace, name)
+            or native_contains(builtin_namespace, name)
+        })
+        facts.operational_globals = frozenset(
+            instruction.argval
+            for unit in cls._code_units(facts.code)
+            if not facts.global_bindings.keys().isdisjoint(unit.co_names)
+            for instruction in cls._instructions(unit, instructions)
+            if instruction.opname in {"STORE_GLOBAL", "DELETE_GLOBAL"}
+            and isinstance(instruction.argval, str)
+        )
+
+    @classmethod
+    def _function_class_roots(
+        cls,
+        facts: m.Infra.NativeFunctionObservationContext,
+    ) -> list[t.Infra.NativeType]:
+        """Elect lexical and globally retained classes in the original native order.
+
+        Returns:
+            The original ordered class roots for native descriptor traversal.
+
+        """
+        class_roots = [
+            item
+            for item in tuple(facts.global_bindings.values())
+            if cls._is_class(item)
+        ]
+        lexical = sys.modules.get(facts.supplier)
+        for component in facts.code.co_qualname.split(".")[:-1]:
+            namespace = (
+                cls._class_namespace(lexical)
+                if cls._is_class(lexical)
+                else vars(lexical)
+                if type(lexical) is ModuleType
+                else {}
+            )
+            lexical = namespace.get(component)
+            if cls._is_class(lexical):
+                class_roots.append(lexical)
+        return class_roots
+
+    @classmethod
+    def _function_descriptor_edges(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        facts: m.Infra.NativeFunctionObservationContext,
+    ) -> None:
+        """Queue native descriptor identities through actual lexical class ancestry."""
+        class_roots = cls._function_class_roots(facts)
+        inspected: set[int] = set()
+        while class_roots:
+            owner = class_roots.pop()
+            if id(owner) in inspected:
+                continue
+            inspected.add(id(owner))
+            resolved_names: set[str] = set()
+            for ancestor in cls._native_mro(owner):
+                namespace = cls._class_namespace(ancestor)
+                for name in facts.code.co_names:
+                    if name in resolved_names or name not in namespace:
+                        continue
+                    resolved_names.add(name)
+                    item = namespace.get(name)
+                    if cls._is_class(item):
+                        class_roots.append(item)
+                    elif (
+                        any(
+                            type(item) is kind
+                            for kind in (
+                                FunctionType,
+                                MethodType,
+                                property,
+                                classmethod,
+                                staticmethod,
+                            )
+                        )
+                        or cls._native_builtin(item)
+                        or cls._native_wrapper_kind(item) is not None
+                        or cls._callable_storage(item)
+                    ):
+                        context.pending.append((
+                            f"{context.binding}.descriptor.{cls._symbol(ancestor)}.{name}",
+                            item,
+                            facts.supplier,
+                            str(cls._source_path(facts.origin, context.paths)),
+                        ))
+
+    @classmethod
+    def _enqueue_function_operands(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        facts: m.Infra.NativeFunctionObservationContext,
+    ) -> None:
+        """Queue actual globals, defaults and closure operands in original order."""
+        context.pending.extend(
+            (
+                f"{context.binding}.global.{name}",
+                item,
+                facts.supplier,
+                context.owner_source,
+            )
+            for name, item in facts.global_bindings.items()
+            if item is not None
+            and (
+                cls._is_class(item)
+                or type(item) is FunctionType
+                or type(item) is MethodType
+                or cls._native_builtin(item)
+                or cls._callable_storage(item)
+            )
+        )
+        context.pending.extend(
+            (operand_binding, item, facts.supplier, context.owner_source)
+            for label, stored in (
+                ("defaults", facts.value[0].__defaults__),
+                ("keyword_defaults", facts.value[0].__kwdefaults__),
+                ("closure", facts.nonlocals),
+            )
+            for operand_binding, item in cls._executable_operands(
+                f"{context.binding}.{label}",
+                stored,
+            )
+        )
+
+    @classmethod
+    def _capture_function_evidence(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        facts: m.Infra.NativeFunctionObservationContext,
+        kind: str,
+    ) -> None:
+        """Record complete function evidence after expanding its native graph."""
+        observe_value = partial(
+            cls._value, context=context, binding=context.binding_context
+        )
+        wrapped = vars(facts.value[0]).get("__wrapped__")
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind=kind,
+                supplier=facts.supplier,
+                name=facts.value[0].__name__,
+                qualname=facts.value[0].__qualname__,
+                code=cls._code_evidence(facts.code).model_dump_json(),
+                operands=(
+                    *facts.generated_operands,
+                    ("module", observe_value(facts.value[0].__module__)),
+                    (
+                        "globals",
+                        dumps(
+                            tuple(
+                                (
+                                    name,
+                                    observe_value(
+                                        item,
+                                        construction=facts.generated,
+                                    ),
+                                )
+                                for name, item in sorted(facts.global_bindings.items())
+                                if name not in facts.operational_globals
+                            )
+                        ),
+                    ),
+                    ("defaults", observe_value(facts.value[0].__defaults__)),
+                    (
+                        "keyword_defaults",
+                        dumps(
+                            tuple(
+                                (name, observe_value(item))
+                                for name, item in sorted(
+                                    (facts.value[0].__kwdefaults__ or {}).items()
+                                )
+                            )
+                        ),
+                    ),
+                    (
+                        "closure",
+                        dumps(
+                            tuple(
+                                (name, observe_value(item))
+                                for name, item in sorted(facts.nonlocals.items())
+                            )
+                        ),
+                    ),
+                    ("wrapped", observe_value(wrapped)),
+                ),
+                operational=tuple(
+                    (
+                        f"global.{name}",
+                        observe_value(item, construction=facts.generated),
+                    )
+                    for name, item in facts.global_bindings.items()
+                    if name in facts.operational_globals
+                ),
+            ),
+        )
+
+    @classmethod
+    def _function_attribute_edges(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        facts: m.Infra.NativeFunctionObservationContext,
+        instructions: t.Infra.NativeInstructionFacts,
+    ) -> p.Result[bool]:
+        """Follow actual native LOAD_GLOBAL and LOAD_ATTR edges without descriptors.
+
+        Returns:
+            The original lexical attribute graph or its first absent-edge contradiction.
+
+        """
+        # Query actual native global/attribute edges, not every name in
+        # an ambient module's dictionary. No descriptor is executed.
+        receiver = None
+        edge = context.binding
+        for instruction in cls._instructions(facts.code, instructions):
+            if instruction.opname == "LOAD_GLOBAL":
+                receiver = facts.global_bindings.get(instruction.argval)
+                edge = f"{context.binding}.global.{instruction.argval}"
+            elif instruction.opname == "LOAD_ATTR" and receiver is not None:
+                namespaces = (
+                    tuple(
+                        cls._class_namespace(owner)
+                        for owner in cls._native_mro(receiver)
+                    )
+                    if cls._is_class(receiver)
+                    else (cls._module_namespace(receiver),)
+                    if isinstance(receiver, ModuleType)
+                    else ()
+                )
+                if not namespaces:
+                    receiver = None
+                    continue
+                found = next(
+                    (
+                        namespace
+                        for namespace in namespaces
+                        if instruction.argval in namespace
+                    ),
+                    None,
+                )
+                if found is None:
+                    missing = f"{edge}.{instruction.argval}"
+                    if missing in context.edges:
+                        return r[bool].fail(
+                            f"native edge became absent: {missing}; "
+                            f"supplier={facts.supplier}; "
+                            f"qualname={facts.value[0].__qualname__}",
+                        )
+                    if missing not in context.absent_edges:
+                        context.absent_edges.add(missing)
+                        context.evidence.append(
+                            m.Infra.NativeBindingEvidence(
+                                binding=missing,
+                                kind="absent",
+                                supplier=facts.supplier,
+                                name=instruction.argval,
+                                qualname=edge,
+                            )
+                        )
+                    receiver = None
+                    continue
+                receiver = found[instruction.argval]
+                edge += f".{instruction.argval}"
+                if (
+                    cls._is_class(receiver)
+                    or any(
+                        type(receiver) is kind
+                        for kind in (
+                            FunctionType,
+                            MethodType,
+                            property,
+                            classmethod,
+                            staticmethod,
+                        )
+                    )
+                    or cls._native_builtin(receiver)
+                    or cls._native_wrapper_kind(receiver) is not None
+                    or cls._callable_storage(receiver)
+                ):
+                    context.pending.append((
+                        edge,
+                        receiver,
+                        facts.supplier,
+                        str(cls._source_path(facts.origin, context.paths)),
+                    ))
+            else:
+                receiver = None
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _capture_function(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: FunctionType,
+        kind: str,
+        graph: t.Triple[
+            p.Infra.RopeProject,
+            t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+            t.Infra.NativeInstructionFacts,
+        ],
+    ) -> p.Result[bool]:
+        """Observe one actual function in original source, graph and evidence order.
+
+        Returns:
+            Complete native function evidence or its first authentication failure.
+
+        """
+        captured = cls._capture_function_source(context, value, graph)
+        if captured.failure:
+            return r[bool].from_failure(captured)
+        facts = captured.value
+        cls._function_namespaces(context, facts, graph[2])
+        if context.lexical:
+            attributes = cls._function_attribute_edges(context, facts, graph[2])
+            if attributes.failure:
+                return attributes
+            cls._function_descriptor_edges(context, facts)
+        cls._enqueue_function_operands(context, facts)
+        cls._capture_function_evidence(context, facts, kind)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _capture_executable(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: t.Infra.NativeOperand,
+        graph: t.Triple[
+            p.Infra.RopeProject,
+            t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+            t.Infra.NativeInstructionFacts,
+        ],
+    ) -> p.Result[bool]:
+        """Dispatch the remaining executable categories in their original order.
+
+        Returns:
+            The admitted executable observation or its first native failure.
+
+        """
+        kind = cls._type_attr("__name__", type(value), type(type(value)))
+        if any(owner is GenericAlias for owner in cls._native_mro(type(value))):
+            return cls._capture_generic_alias(context, value)
+        wrapper_kind = cls._native_wrapper_kind(value)
+        if wrapper_kind is not None:
+            return cls._capture_wrapper(context, value, kind, wrapper_kind)
+        if not cls._is_native(value, FunctionType):
+            return cls._capture_native_callable(context, value, kind)
+        return cls._capture_function(context, value, kind, graph)
+
+    @classmethod
+    def _capture_binding(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: t.Infra.NativeOperand,
+        graph: t.Triple[
+            p.Infra.RopeProject,
+            t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+            t.Infra.NativeInstructionFacts,
+        ],
+    ) -> p.Result[bool]:
+        """Dispatch each first-visited native identity without changing its queue.
+
+        Returns:
+            The original category result before advancing to another identity.
+
+        """
+        if cls._is_function_binding(value):
+            return cls._capture_function_binding(context, value)
+        if cls._is_class(value):
+            return cls._capture_class(context, value, context.binding, graph[2])
+        if cls._is_native(value, MethodType):
+            return cls._capture_bound_method(context, value)
+        if cls._is_native(value, property):
+            return cls._capture_property(context, value)
+        if cls._is_descriptor(value) and any(
+            cls._is_native(value, kind)
+            for kind in (
+                ClassMethodDescriptorType,
+                MethodDescriptorType,
+                WrapperDescriptorType,
+            )
+        ):
+            return cls._capture_descriptor(context, value)
+        return cls._capture_executable(context, value, graph)
+
+    @classmethod
+    def _capture_native_suppliers(
+        cls, context: m.Infra.NativeObservationContext
+    ) -> p.Result[bool]:
+        """Elect original interpreter suppliers before accepting any nomination.
+
+        Returns:
+            Every original supplier source, or its first physical election failure.
+
+        """
+        for supplier in (
+            "builtins",
+            "_operator",
+            "_functools",
+            "_typing",
+            "operator",
+            "functools",
+            "typing",
+            "types",
+            "gc",
+        ):
+            elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(supplier)
+            if elected.failure:
+                return r[bool].from_failure(elected)
+            context.sources.add((
+                supplier,
+                str(cls._source_path(elected.value, context.paths)),
+                "",
+            ))
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _capture_nominations(
+        cls, names: t.SequenceOf[str | m.Infra.SourceClassReference]
+    ) -> p.Result[t.VariadicTuple[m.Infra.SourceClassReference]]:
+        """Validate exactly one complete-module or lexical selection contract.
+
+        Returns:
+            Original ordered nominations, or the original contract refusal.
+
+        """
+        nominations = tuple(
+            m.Infra.SourceClassReference(target=item)
+            if cls._is_native(item, str)
+            else m.Infra.SourceClassReference.model_validate(item)
+            for item in names
+        )
+        if not nominations or any(
+            not item.target
+            or not all(part.isidentifier() for part in item.target.split("."))
+            or any(not part.isidentifier() for part in item.attributes)
+            or item.qualified_base
+            for item in nominations
+        ):
+            return r[t.VariadicTuple[m.Infra.SourceClassReference]].fail(
+                "invalid native source selection"
+            )
+        selected = all(item.attributes for item in nominations)
+        if any(item.attributes for item in nominations) and not selected:
+            return r[t.VariadicTuple[m.Infra.SourceClassReference]].fail(
+                "mixed native selection contracts"
+            )
+        return r[t.VariadicTuple[m.Infra.SourceClassReference]].ok(nominations)
+
+    @classmethod
+    def _capture_next(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        graph: t.Triple[
+            p.Infra.RopeProject,
+            t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+            t.Infra.NativeInstructionFacts,
+        ],
+    ) -> p.Result[bool]:
+        """Admit exactly the next native identity after draining registered edges.
+
+        Returns:
+            The original alias/body observation or its first graph contradiction.
+
+        """
+        for registered, owner in context.references:
+            supplier, _, _qualified = cls._symbol(owner).partition("::")
+            context.pending.append((f"{registered}.native_type", owner, supplier, ""))
+        context.references.clear()
+        incoming, value, supplier, owner_source = context.pending.pop()
+        captured = context.visited.get(id(value))
+        binding = f"@{len(context.visited)}" if captured is None else captured[1]
+        previous = context.edges.get(incoming)
+        if incoming in context.absent_edges or (
+            previous is not None and previous != binding
+        ):
+            return r[bool].fail(
+                f"native edge changed target: {incoming}; supplier={supplier}",
+            )
+        if previous is None:
+            context.edges[incoming] = binding
+            context.evidence.append(
+                m.Infra.NativeBindingEvidence(
+                    binding=incoming,
+                    kind="alias",
+                    supplier=supplier,
+                    name="",
+                    qualname="",
+                    operands=(("target", binding),),
+                )
+            )
+        if captured is not None:
+            return r[bool].ok(value=True)
+        context.visited[id(value)] = (value, binding)
+        context.binding_context = f"{incoming}; body={binding}; supplier={supplier}"
+        context.incoming = incoming
+        context.binding = binding
+        context.supplier = supplier
+        context.owner_source = owner_source
+        observed_binding = cls._capture_binding(context, value, graph)
+        if observed_binding.failure:
+            return r[bool].from_failure(observed_binding)
+        return r[bool].ok(value=True)
+
+    @classmethod
     def _capture(
         cls,
         names: t.SequenceOf[str | m.Infra.SourceClassReference],
@@ -3043,833 +4564,36 @@ class FlextInfraWorkspaceNativeReference:
 
         """
         context = m.Infra.NativeObservationContext(paths=tuple(paths))
-        origins = context.origins
-        sources = context.sources
-        for supplier in (
-            "builtins",
-            "_operator",
-            "_functools",
-            "_typing",
-            "operator",
-            "functools",
-            "typing",
-            "types",
-            "gc",
-        ):
-            elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(supplier)
-            if elected.failure:
-                return r[m.Infra.NativeImportObservation].from_failure(elected)
-            sources.add((supplier, str(cls._source_path(elected.value, paths)), ""))
-        evidence = context.evidence
-        generated_owners = context.generated_owners
-        compiler_inputs: dict[Path, m.Cli.AtomicFileState] = {}
+        suppliers = cls._capture_native_suppliers(context)
+        if suppliers.failure:
+            return r[m.Infra.NativeImportObservation].from_failure(suppliers)
         scope = ContextVar[t.Infra.NativeInvocationFacts | None].get(
             cls._compilation_facts
         )
         instructions: t.Infra.NativeInstructionFacts = (
             scope[1] if scope is not None else {}
         )
-        references = context.references
-        pending = context.pending
-        nominations = tuple(
-            m.Infra.SourceClassReference(target=item)
-            if cls._is_native(item, str)
-            else m.Infra.SourceClassReference.model_validate(item)
-            for item in names
-        )
-        if not nominations or any(
-            not item.target
-            or not all(part.isidentifier() for part in item.target.split("."))
-            or any(not part.isidentifier() for part in item.attributes)
-            or item.qualified_base
-            for item in nominations
-        ):
-            return r[m.Infra.NativeImportObservation].fail(
-                "invalid native source selection"
-            )
-        selected = all(item.attributes for item in nominations)
-        if any(item.attributes for item in nominations) and not selected:
-            return r[m.Infra.NativeImportObservation].fail(
-                "mixed native selection contracts"
-            )
-        context.lexical = selected
+        selected = cls._capture_nominations(names)
+        if selected.failure:
+            return r[m.Infra.NativeImportObservation].from_failure(selected)
+        nominations = selected.value
+        context.lexical = all(item.attributes for item in nominations)
         for nomination in nominations:
             nominated = cls._nominate_module(context, nomination, instructions)
             if nominated.failure:
                 return r[m.Infra.NativeImportObservation].from_failure(nominated)
-        visited: t.DictKV[int, t.Pair[t.Infra.NativeOperand, str]] = {}
-        edges: t.DictKV[str, str] = {}
-        absent_edges: set[str] = set()
-        while pending or references:
-            for registered, owner in references:
-                supplier, _, _qualified = cls._symbol(owner).partition("::")
-                pending.append((f"{registered}.native_type", owner, supplier, ""))
-            references.clear()
-            incoming, value, supplier, owner_source = pending.pop()
-            captured = visited.get(id(value))
-            binding = f"@{len(visited)}" if captured is None else captured[1]
-            previous = edges.get(incoming)
-            if incoming in absent_edges or (
-                previous is not None and previous != binding
-            ):
-                return r[m.Infra.NativeImportObservation].fail(
-                    f"native edge changed target: {incoming}; supplier={supplier}",
-                )
-            if previous is None:
-                edges[incoming] = binding
-                evidence.append(
-                    m.Infra.NativeBindingEvidence(
-                        binding=incoming,
-                        kind="alias",
-                        supplier=supplier,
-                        name="",
-                        qualname="",
-                        operands=(("target", binding),),
-                    )
-                )
-            if captured is not None:
-                continue
-            visited[id(value)] = (value, binding)
-            context.binding_context = f"{incoming}; body={binding}; supplier={supplier}"
-            observe_value = partial(
-                cls._value,
-                references=references,
-                paths=paths,
-                binding=context.binding_context,
-            )
-            if cls._is_function_binding(value):
-                function = value.__func__
-                evidence.append(
-                    m.Infra.NativeBindingEvidence(
-                        binding=binding,
-                        kind=cls._type_attr("__name__", type(value), type(type(value))),
-                        supplier=supplier,
-                        name="",
-                        qualname="",
-                        operands=(("function", cls._symbol(function)),),
-                    ),
-                )
-                pending.append((
-                    f"{binding}.function",
-                    function,
-                    supplier,
-                    owner_source,
-                ))
-                continue
-            if cls._is_class(value):
-                observed_class = cls._capture_class(
-                    context, value, binding, instructions
-                )
-                if observed_class.failure:
-                    return r[m.Infra.NativeImportObservation].from_failure(
-                        observed_class
-                    )
-                continue
-            if cls._is_native(value, MethodType):
-                evidence.append(
-                    m.Infra.NativeBindingEvidence(
-                        binding=binding,
-                        kind="bound_method",
-                        supplier=supplier,
-                        name=value.__func__.__name__,
-                        qualname=value.__func__.__qualname__,
-                        operands=(("receiver", cls._symbol(value.__self__)),),
-                    )
-                )
-                pending.append((
-                    f"{binding}.function",
-                    value.__func__,
-                    supplier,
-                    owner_source,
-                ))
-                if cls._is_class(value.__self__):
-                    pending.append((
-                        f"{binding}.receiver",
-                        value.__self__,
-                        supplier,
-                        owner_source,
-                    ))
-                continue
-            if cls._is_native(value, property):
-                evidence.append(
-                    m.Infra.NativeBindingEvidence(
-                        binding=binding,
-                        kind="property",
-                        supplier=supplier,
-                        name="",
-                        qualname="",
-                        operands=tuple(
-                            (name, str(accessor is not None))
-                            for name, accessor in (
-                                ("get", value.fget),
-                                ("set", value.fset),
-                                ("delete", value.fdel),
-                            )
-                        ),
-                    ),
-                )
-                pending.extend(
-                    (f"{binding}.{name}", accessor, supplier, owner_source)
-                    for name, accessor in (
-                        ("get", value.fget),
-                        ("set", value.fset),
-                        ("delete", value.fdel),
-                    )
-                    if accessor is not None
-                )
-                continue
-            if cls._is_descriptor(value) and any(
-                cls._is_native(value, kind)
-                for kind in (
-                    ClassMethodDescriptorType,
-                    MethodDescriptorType,
-                    WrapperDescriptorType,
-                )
-            ):
-                owner = value.__objclass__
-                actual_supplier = cls._type_attr("__module__", owner, type(owner))
-                if type(actual_supplier) is not str:
-                    return r[m.Infra.NativeImportObservation].fail(
-                        f"native descriptor owner has no source supplier: {binding}",
-                    )
-                elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(
-                    actual_supplier,
-                )
-                if elected.failure:
-                    return r[m.Infra.NativeImportObservation].from_failure(elected)
-                sources.add((
-                    f"{actual_supplier}::{value.__qualname__}",
-                    str(cls._source_path(elected.value, paths)),
-                    "",
-                ))
-                evidence.append(
-                    m.Infra.NativeBindingEvidence(
-                        binding=binding,
-                        kind=cls._type_attr("__name__", type(value), type(type(value))),
-                        supplier=actual_supplier,
-                        name=value.__name__,
-                        qualname=value.__qualname__,
-                        operands=(("receiver", cls._symbol(owner)),),
-                    ),
-                )
-                pending.append((
-                    f"{binding}.receiver",
-                    owner,
-                    actual_supplier,
-                    owner_source,
-                ))
-                continue
-            kind = cls._type_attr("__name__", type(value), type(type(value)))
-            if any(owner is GenericAlias for owner in cls._native_mro(type(value))):
-                evidence.append(
-                    m.Infra.NativeBindingEvidence(
-                        binding=binding,
-                        kind="generic_alias",
-                        supplier="types",
-                        name="",
-                        qualname="",
-                        operands=(
-                            (
-                                "alias",
-                                observe_value(value, construction=True),
-                            ),
-                        ),
-                    ),
-                )
-                pending.extend(
-                    (edge, item, supplier, owner_source)
-                    for edge, item in cls._executable_operands(binding, value)
-                )
-                continue
-            wrapper_kind = cls._native_wrapper_kind(value)
-            if wrapper_kind is not None:
-                function = cls._native_wrapper_function(value, wrapper_kind)
-                if function.failure:
-                    return r[m.Infra.NativeImportObservation].from_failure(function)
-                namespace = cls._class_namespace(type(value))
-                storage = namespace.get("__dict__")
-                if not cls._is_native(
-                    storage, GetSetDescriptorType
-                ) or storage.__objclass__ is not type(value):
-                    return r[m.Infra.NativeImportObservation].fail(
-                        f"native wrapper has no interpreter-owned attributes: "
-                        f"{binding}",
-                    )
-                attributes: t.DictKV[str, t.Infra.NativeOperand] = storage.__get__(
-                    value, storage.__objclass__
-                )
-                operands = [
-                    ("function", observe_value(function.value, construction=True)),
-                    ("attributes", observe_value(attributes, construction=True)),
-                ]
-                operational = ()
-                if wrapper_kind == "partial":
-                    for attribute in ("args", "keywords"):
-                        slot = namespace.get(attribute)
-                        if not cls._is_native(
-                            slot, MemberDescriptorType
-                        ) or slot.__objclass__ is not type(value):
-                            return r[m.Infra.NativeImportObservation].fail(
-                                f"native partial lacks its {attribute} slot: {binding}",
-                            )
-                        slot.__get__(value, type(value))
-                        operands.append((
-                            attribute,
-                            observe_value(
-                                slot.__get__(value, slot.__objclass__),
-                                construction=True,
-                                binding=(
-                                    f"{incoming}.{attribute}; body={binding}; "
-                                    f"supplier={supplier}; "
-                                    f"callable={cls._symbol(function.value)}"
-                                ),
-                            ),
-                        ))
-                        stored = slot.__get__(value, slot.__objclass__)
-                        pending.extend(
-                            (operand_binding, item, supplier, owner_source)
-                            for operand_binding, item in cls._executable_operands(
-                                f"{binding}.{attribute}",
-                                stored,
-                            )
-                        )
-                else:
-                    cache_state = cls._native_cache_state(value)
-                    if cache_state.failure:
-                        return r[m.Infra.NativeImportObservation].from_failure(
-                            cache_state
-                        )
-                    operational = (("cache", cache_state.value),)
-                evidence.append(
-                    m.Infra.NativeBindingEvidence.model_validate({
-                        "binding": binding,
-                        "kind": f"{kind}:{wrapper_kind}",
-                        "supplier": "_functools",
-                        "name": attributes.get("__name__", ""),
-                        "qualname": attributes.get("__qualname__", ""),
-                        "operands": tuple(operands),
-                        "operational": operational,
-                    }),
-                )
-                pending.append((
-                    f"{binding}.native_function",
-                    function.value,
-                    supplier,
-                    owner_source,
-                ))
-                pending.extend(
-                    (f"{binding}.attributes.{key}", item, supplier, owner_source)
-                    for key, item in sorted(attributes.items())
-                    if cls._is_class(item)
-                    or type(item) is FunctionType
-                    or cls._native_builtin(item)
-                    or cls._native_wrapper_kind(item) is not None
-                    if not selected or key == "__wrapped__"
-                )
-                continue
-            if not cls._is_native(value, FunctionType):
-                native_builtin = value if cls._native_builtin(value) else None
-                if cls._native_callable_instance(
-                    value
-                ) or cls._python_callable_instance(value):
-                    native = type(value)
-                    evidence.append(
-                        m.Infra.NativeBindingEvidence(
-                            binding=binding,
-                            kind="callable_instance",
-                            supplier=vars(type)["__module__"].__get__(
-                                native, type(native)
-                            ),
-                            name=vars(type)["__name__"].__get__(native, type(native)),
-                            qualname=vars(type)["__qualname__"].__get__(
-                                native, type(native)
-                            ),
-                            operands=(
-                                (
-                                    "storage",
-                                    observe_value(value, construction=True),
-                                ),
-                            ),
-                        ),
-                    )
-                    pending.append((
-                        f"{binding}.native_class",
-                        native,
-                        supplier,
-                        owner_source,
-                    ))
-                    continue
-                if native_builtin is None:
-                    extension = cls._extension_callback(value, binding)
-                    if extension.failure:
-                        return r[m.Infra.NativeImportObservation].fail(
-                            f"{extension.error}; binding={binding}; "
-                            f"binding_supplier={supplier}; "
-                            f"native_type={cls._symbol(type(value))}; "
-                            f"native_ancestry={
-                                tuple(
-                                    cls._symbol(owner)
-                                    for owner in cls._native_mro(type(value))
-                                )
-                            }"
-                        )
-                    actual_supplier, native_name, qualified = extension.value
-                    origin = FlextInfraWorkspaceEnvironmentProvenance.module_source(
-                        actual_supplier,
-                    )
-                    if origin.failure:
-                        return r[m.Infra.NativeImportObservation].from_failure(origin)
-                    sources.add((
-                        f"{actual_supplier}::{qualified}",
-                        str(cls._source_path(origin.value, paths)),
-                        "",
-                    ))
-                else:
-                    actual_supplier, _, qualified = cls._symbol(
-                        native_builtin
-                    ).partition("::")
-                    native_name = native_builtin.__name__
-                    elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(
-                        actual_supplier,
-                    )
-                    if elected.failure:
-                        return r[m.Infra.NativeImportObservation].from_failure(elected)
-                    sources.add((
-                        f"{actual_supplier}::{qualified}",
-                        str(cls._source_path(elected.value, paths)),
-                        "",
-                    ))
-                receiver_operands: t.VariadicTuple[t.Pair[str, str]] = ()
-                receiver_operational: t.VariadicTuple[t.Pair[str, str]] = ()
-                if native_builtin is not None:
-                    receiver = native_builtin.__self__
-                    if cls._native_iterator_receiver(native_builtin):
-                        receiver_inputs = cls._native_instance_referents(receiver)
-                        receiver_operands = (
-                            ("receiver_type", cls._symbol(type(receiver))),
-                            (
-                                "receiver_inputs",
-                                observe_value(receiver_inputs, construction=True),
-                            ),
-                        )
-                        receiver_operational = (
-                            (
-                                "receiver",
-                                dumps((cls._symbol(type(receiver)), id(receiver))),
-                            ),
-                        )
-                        pending.append((
-                            f"{binding}.receiver_type",
-                            type(receiver),
-                            actual_supplier,
-                            owner_source,
-                        ))
-                        pending.extend(
-                            (edge, item, actual_supplier, owner_source)
-                            for edge, item in cls._executable_operands(
-                                f"{binding}.receiver_inputs", receiver_inputs
-                            )
-                        )
-                    else:
-                        receiver_operands = (
-                            (
-                                "receiver",
-                                observe_value(
-                                    receiver,
-                                    construction=True,
-                                    binding=(
-                                        f"{binding}; supplier={actual_supplier}; "
-                                        f"method={native_name}"
-                                    ),
-                                ),
-                            ),
-                        )
-                evidence.append(
-                    m.Infra.NativeBindingEvidence(
-                        binding=binding,
-                        kind=kind,
-                        supplier=actual_supplier,
-                        name=native_name,
-                        qualname=qualified,
-                        operands=receiver_operands,
-                        operational=receiver_operational,
-                    ),
-                )
-                continue
-            raw_code = value.__code__
-            code = cls._relocate_code(raw_code, paths)
-            generated = code.co_filename.startswith(
-                "<"
-            ) and not code.co_filename.startswith("<frozen ")
-            generated_operands: t.VariadicTuple[t.Pair[str, str]] = ()
-            if generated:
-                generated_owner = generated_owners.get(id(value))
-                if generated_owner is None:
-                    return r[m.Infra.NativeImportObservation].fail(
-                        f"generated function has no physical source owner: {binding}",
-                    )
-                source_supplier, source_attribute, receiver = generated_owner
-                if receiver is not None and not cls._is_class(receiver):
-                    return r[m.Infra.NativeImportObservation].fail(
-                        f"generated receiver is not a native class: {binding}",
-                    )
-                proved = cls._generated_proof(
-                    value,
-                    source_supplier,
-                    source_attribute,
-                    receiver,
-                    project,
-                    witnesses,
-                )
-                if proved.failure:
-                    return r[m.Infra.NativeImportObservation].from_failure(proved)
-                actual_supplier, source_attribute, expected = proved.value
-                for state in expected.inputs:
-                    previous = compiler_inputs.get(state.path)
-                    if previous is not None and previous != state:
-                        return r[m.Infra.NativeImportObservation].fail(
-                            "generated compiler input changed within observation: "
-                            f"{state.path}"
-                        )
-                    compiler_inputs[state.path] = state
-                    sources.add((
-                        f"native_compiler::{state.path}",
-                        str(cls._source_path(state.path, paths)),
-                        "",
-                    ))
-                generated_operands = (
-                    ("generated_attribute", source_attribute),
-                    (
-                        "generated_receiver",
-                        ""
-                        if receiver is None
-                        else cls._type_attr("__qualname__", receiver, type(receiver)),
-                    ),
-                    (
-                        "generated_inputs",
-                        dumps(tuple(str(state.path) for state in expected.inputs)),
-                    ),
-                )
-            else:
-                actual_supplier = value.__globals__.get("__name__")
-                if type(actual_supplier) is not str:
-                    return r[m.Infra.NativeImportObservation].fail(
-                        f"producer globals have no supplier identity: {binding}",
-                    )
-                module = sys.modules.get(actual_supplier)
-                if module is None or (
-                    not generated
-                    and value.__globals__ is not cls._module_namespace(module)
-                ):
-                    return r[m.Infra.NativeImportObservation].fail(
-                        f"producer globals have no native supplier: {binding}",
-                    )
-            origin = origins.get(actual_supplier)
-            if origin is None:
-                observed = FlextInfraWorkspaceEnvironmentProvenance.module_source(
-                    actual_supplier,
-                )
-                if observed.failure:
-                    return r[m.Infra.NativeImportObservation].from_failure(observed)
-                origin = origins[actual_supplier] = observed.value
-            supplier_module = sys.modules[actual_supplier]
-            supplier_namespace = cls._module_namespace(supplier_module)
-            supplier_spec = supplier_namespace["__spec__"]
-            if not cls._is_native(supplier_spec, ModuleSpec):
-                return r[m.Infra.NativeImportObservation].fail(
-                    f"producer native supplier has no module spec: {actual_supplier}"
-                )
-            frozen_source = supplier_spec.origin == "frozen"
-            sources.add((
-                f"{actual_supplier}::{value.__qualname__}",
-                str(cls._source_path(origin, paths))
-                if generated or frozen_source
-                else code.co_filename,
-                owner_source if generated else "",
-            ))
-            nonlocals: t.DictKV[str, t.Infra.NativeOperand] = (
-                {
-                    name: cell.cell_contents
-                    for name, cell in zip(
-                        code.co_freevars, value.__closure__, strict=True
-                    )
-                }
-                if value.__closure__ is not None
-                else {}
-            )
-            global_namespace = value.__globals__
-            # This read-only native slot is the function's actual builtins
-            # namespace, even if its module later rebinds "__builtins__".
-            builtin_slot: p.Infra.NativeStorageSlot[
-                t.DictKV[str, t.Infra.NativeOperand]
-            ] = vars(FunctionType)["__builtins__"]
-            builtin_namespace = builtin_slot.__get__(value, FunctionType)
-            for namespace_name, namespace in (
-                ("globals", global_namespace),
-                ("builtins", builtin_namespace),
-            ):
-                if type(namespace) is not dict:
-                    pending.append((
-                        f"{binding}.{namespace_name}.type",
-                        type(namespace),
-                        actual_supplier,
-                        owner_source,
-                    ))
-            global_names = {
-                instruction.argval
-                for instruction in cls._instructions(code, instructions)
-                if instruction.opname == "LOAD_GLOBAL"
-                and isinstance(instruction.argval, str)
-            }
-            # Read dictionary storage directly, never subclass lookup overrides.
-            native_getitem: Callable[
-                [t.DictKV[str, t.Infra.NativeOperand], str], t.Infra.NativeOperand
-            ] = vars(dict)["__getitem__"]
-            native_contains: Callable[
-                [t.DictKV[str, t.Infra.NativeOperand], str], bool
-            ] = vars(dict)["__contains__"]
-            global_bindings: t.DictKV[str, t.Infra.NativeOperand] = {
-                name: (
-                    native_getitem(global_namespace, name)
-                    if native_contains(global_namespace, name)
-                    else native_getitem(builtin_namespace, name)
-                )
-                for name in sorted(global_names)
-                if native_contains(global_namespace, name)
-                or native_contains(builtin_namespace, name)
-            }
-            operational_globals = frozenset(
-                instruction.argval
-                for unit in cls._code_units(code)
-                if not global_bindings.keys().isdisjoint(unit.co_names)
-                for instruction in cls._instructions(unit, instructions)
-                if instruction.opname in {"STORE_GLOBAL", "DELETE_GLOBAL"}
-                and isinstance(instruction.argval, str)
-            )
-            globals_used = tuple(global_bindings.values())
-            if selected:
-                # Query actual native global/attribute edges, not every name in
-                # an ambient module's dictionary. No descriptor is executed.
-                receiver = None
-                edge = binding
-                for instruction in cls._instructions(code, instructions):
-                    if instruction.opname == "LOAD_GLOBAL":
-                        receiver = global_bindings.get(instruction.argval)
-                        edge = f"{binding}.global.{instruction.argval}"
-                    elif instruction.opname == "LOAD_ATTR" and receiver is not None:
-                        namespaces = (
-                            tuple(
-                                cls._class_namespace(owner)
-                                for owner in cls._native_mro(receiver)
-                            )
-                            if cls._is_class(receiver)
-                            else (cls._module_namespace(receiver),)
-                            if isinstance(receiver, ModuleType)
-                            else ()
-                        )
-                        if not namespaces:
-                            receiver = None
-                            continue
-                        found = next(
-                            (
-                                namespace
-                                for namespace in namespaces
-                                if instruction.argval in namespace
-                            ),
-                            None,
-                        )
-                        if found is None:
-                            missing = f"{edge}.{instruction.argval}"
-                            if missing in edges:
-                                return r[m.Infra.NativeImportObservation].fail(
-                                    f"native edge became absent: {missing}; "
-                                    f"supplier={actual_supplier}; "
-                                    f"qualname={value.__qualname__}",
-                                )
-                            if missing not in absent_edges:
-                                absent_edges.add(missing)
-                                evidence.append(
-                                    m.Infra.NativeBindingEvidence(
-                                        binding=missing,
-                                        kind="absent",
-                                        supplier=actual_supplier,
-                                        name=instruction.argval,
-                                        qualname=edge,
-                                    )
-                                )
-                            receiver = None
-                            continue
-                        receiver = found[instruction.argval]
-                        edge += f".{instruction.argval}"
-                        if (
-                            cls._is_class(receiver)
-                            or any(
-                                type(receiver) is kind
-                                for kind in (
-                                    FunctionType,
-                                    MethodType,
-                                    property,
-                                    classmethod,
-                                    staticmethod,
-                                )
-                            )
-                            or cls._native_builtin(receiver)
-                            or cls._native_wrapper_kind(receiver) is not None
-                            or cls._callable_storage(receiver)
-                        ):
-                            pending.append((
-                                edge,
-                                receiver,
-                                actual_supplier,
-                                str(cls._source_path(origin, paths)),
-                            ))
-                    else:
-                        receiver = None
-                # Native code names select static descriptor slots. Namespace
-                # storage authenticates the edge; unrelated members stay dormant.
-                class_roots = [item for item in globals_used if cls._is_class(item)]
-                lexical = sys.modules.get(actual_supplier)
-                for component in code.co_qualname.split(".")[:-1]:
-                    namespace = (
-                        cls._class_namespace(lexical)
-                        if cls._is_class(lexical)
-                        else vars(lexical)
-                        if type(lexical) is ModuleType
-                        else {}
-                    )
-                    lexical = namespace.get(component)
-                    if cls._is_class(lexical):
-                        class_roots.append(lexical)
-                inspected: set[int] = set()
-                while class_roots:
-                    owner = class_roots.pop()
-                    if id(owner) in inspected:
-                        continue
-                    inspected.add(id(owner))
-                    resolved_names: set[str] = set()
-                    for ancestor in cls._native_mro(owner):
-                        namespace = cls._class_namespace(ancestor)
-                        for name in code.co_names:
-                            if name in resolved_names or name not in namespace:
-                                continue
-                            resolved_names.add(name)
-                            item = namespace.get(name)
-                            if cls._is_class(item):
-                                class_roots.append(item)
-                            elif (
-                                any(
-                                    type(item) is kind
-                                    for kind in (
-                                        FunctionType,
-                                        MethodType,
-                                        property,
-                                        classmethod,
-                                        staticmethod,
-                                    )
-                                )
-                                or cls._native_builtin(item)
-                                or cls._native_wrapper_kind(item) is not None
-                                or cls._callable_storage(item)
-                            ):
-                                pending.append((
-                                    f"{binding}.descriptor.{cls._symbol(ancestor)}.{name}",
-                                    item,
-                                    actual_supplier,
-                                    str(cls._source_path(origin, paths)),
-                                ))
-            pending.extend(
-                (f"{binding}.global.{name}", item, actual_supplier, owner_source)
-                for name, item in global_bindings.items()
-                if item is not None
-                and (
-                    cls._is_class(item)
-                    or type(item) is FunctionType
-                    or type(item) is MethodType
-                    or cls._native_builtin(item)
-                    or cls._callable_storage(item)
-                )
-            )
-            pending.extend(
-                (operand_binding, item, actual_supplier, owner_source)
-                for label, stored in (
-                    ("defaults", value.__defaults__),
-                    ("keyword_defaults", value.__kwdefaults__),
-                    ("closure", nonlocals),
-                )
-                for operand_binding, item in cls._executable_operands(
-                    f"{binding}.{label}",
-                    stored,
-                )
-            )
-            wrapped = vars(value).get("__wrapped__")
-            evidence.append(
-                m.Infra.NativeBindingEvidence(
-                    binding=binding,
-                    kind=kind,
-                    supplier=actual_supplier,
-                    name=value.__name__,
-                    qualname=value.__qualname__,
-                    code=cls._code_evidence(code).model_dump_json(),
-                    operands=(
-                        *generated_operands,
-                        ("module", observe_value(value.__module__)),
-                        (
-                            "globals",
-                            dumps(
-                                tuple(
-                                    (
-                                        name,
-                                        observe_value(
-                                            item,
-                                            construction=generated,
-                                        ),
-                                    )
-                                    for name, item in sorted(global_bindings.items())
-                                    if name not in operational_globals
-                                )
-                            ),
-                        ),
-                        ("defaults", observe_value(value.__defaults__)),
-                        (
-                            "keyword_defaults",
-                            dumps(
-                                tuple(
-                                    (name, observe_value(item))
-                                    for name, item in sorted(
-                                        (value.__kwdefaults__ or {}).items()
-                                    )
-                                )
-                            ),
-                        ),
-                        (
-                            "closure",
-                            dumps(
-                                tuple(
-                                    (name, observe_value(item))
-                                    for name, item in sorted(nonlocals.items())
-                                )
-                            ),
-                        ),
-                        ("wrapped", observe_value(wrapped)),
-                    ),
-                    operational=tuple(
-                        (
-                            f"global.{name}",
-                            observe_value(item, construction=generated),
-                        )
-                        for name, item in global_bindings.items()
-                        if name in operational_globals
-                    ),
-                ),
-            )
+        while context.pending or context.references:
+            observed = cls._capture_next(context, (project, witnesses, instructions))
+            if observed.failure:
+                return r[m.Infra.NativeImportObservation].from_failure(observed)
         return r[m.Infra.NativeImportObservation].ok(
             m.Infra.NativeImportObservation(
                 runtime=Path(sys.executable).resolve(),
                 runtime_prefix=Path(sys.prefix).absolute(),
                 modules=nominations,
-                sources=tuple(sorted(sources)),
-                bindings=tuple(sorted(evidence, key=lambda item: item.binding)),
-            ),
+                sources=tuple(sorted(context.sources)),
+                bindings=tuple(sorted(context.evidence, key=lambda item: item.binding)),
+            )
         )
 
     @staticmethod
@@ -3914,14 +4638,14 @@ class FlextInfraWorkspaceNativeReference:
         return result_type.ok(indexed)
 
     @staticmethod
-    def compare(
+    def _compare_epoch(
         observed: m.Infra.NativeImportObservation,
         reference: m.Infra.NativeImportObservation,
     ) -> p.Result[bool]:
-        """Compare complete native compiler witnesses without code deserialization.
+        """Compare runtime, nominations and source elections before graph bodies.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The first epoch mismatch or the same native import epoch.
 
         """
         if (
@@ -3942,13 +4666,19 @@ class FlextInfraWorkspaceNativeReference:
                 "native reference source epoch differs: "
                 f"extra={extra[:1]} missing={missing[:1]}"
             )
-        indexes: list[t.DictKV[str, m.Infra.NativeBindingEvidence]] = []
-        for snapshot in (observed, reference):
-            indexed = FlextInfraWorkspaceNativeReference._binding_index(snapshot)
-            if indexed.failure:
-                return r[bool].from_failure(indexed)
-            indexes.append(indexed.value)
-        actual, expected = indexes
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _compare_inventory(
+        actual: t.MappingKV[str, m.Infra.NativeBindingEvidence],
+        expected: t.MappingKV[str, m.Infra.NativeBindingEvidence],
+    ) -> p.Result[bool]:
+        """Compare the exact elected native binding inventory.
+
+        Returns:
+            The first inventory mismatch with its original identity context.
+
+        """
         if expected.keys() != actual.keys():
             only_native = actual.keys() - expected.keys()
             only_imported = expected.keys() - actual.keys()
@@ -3987,87 +4717,180 @@ class FlextInfraWorkspaceNativeReference:
                 f"first={sorted(only_imported, key=len)[:3]}; "
                 f"identities={tuple(identities)}"
             )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _compare_binding_metadata(
+        item: m.Infra.NativeBindingEvidence,
+        native: m.Infra.NativeBindingEvidence,
+    ) -> p.Result[bool]:
+        """Compare every executable binding field before its code witness.
+
+        Returns:
+            The first binding mismatch or exactly matching native metadata.
+
+        """
+        live = item.model_dump(exclude={"code", "operational"})
+        cold = native.model_dump(exclude={"code", "operational"})
+        if live != cold:
+            operands = dict(item.operands)
+            imported = dict(native.operands)
+            return r[bool].fail(
+                f"producer native binding differs: {item.binding}; "
+                f"supplier={item.supplier}; qualname={item.qualname}; "
+                f"fields={
+                    tuple(
+                        key
+                        for key in live
+                        if key != 'operands' and live[key] != cold[key]
+                    )
+                }; "
+                f"operands={
+                    tuple(
+                        sorted(
+                            key
+                            for key in operands.keys() | imported.keys()
+                            if operands.get(key) != imported.get(key)
+                        )
+                    )
+                }; "
+                f"observed_kind={item.kind}; reference_kind={native.kind}; "
+                f"observed_target={operands.get('target')}; "
+                f"reference_target={imported.get('target')}"
+            )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _compare_binding_code(
+        observed: m.Infra.NativeImportObservation,
+        reference: m.Infra.NativeImportObservation,
+        item: m.Infra.NativeBindingEvidence,
+        native: m.Infra.NativeBindingEvidence,
+    ) -> p.Result[bool]:
+        """Compare complete native code witnesses and retain first-delta evidence.
+
+        Returns:
+            The first complete compiler mismatch or identical native code.
+
+        """
+        if item.code is None or native.code is None:
+            if item.code != native.code:
+                return r[bool].fail(
+                    "producer native code presence differs: "
+                    f"{item.binding}; "
+                    f"supplier={item.supplier}; qualname={item.qualname}",
+                )
+            return r[bool].ok(value=True)
+        actual_code = m.Infra.NativeCodeEvidence.model_validate_json(item.code)
+        expected_code = m.Infra.NativeCodeEvidence.model_validate_json(native.code)
+        if not FlextInfraWorkspaceNativeReference._code_matches(
+            actual_code, expected_code
+        ):
+            live = actual_code.model_dump()
+            cold = expected_code.model_dump()
+            field = next((key for key in live if live[key] != cold[key]), None)
+            witnesses = (actual_code.witness or b"", expected_code.witness or b"")
+            pairs = zip(*witnesses, strict=False)
+            offset = next(
+                (i for i, (a, b) in enumerate(pairs) if a != b),
+                min(map(len, witnesses)) if witnesses[0] != witnesses[1] else None,
+            )
+            return r[bool].fail(
+                "producer executed code differs from native import: "
+                f"{item.binding}; "
+                f"supplier={item.supplier}; qualname={item.qualname}; "
+                f"first_code_field={field}; "
+                f"witness_bytes={tuple(map(len, witnesses))}; "
+                f"first_witness_byte={offset}; "
+                f"observed_filename={actual_code.filename!r}; "
+                f"reference_filename={expected_code.filename!r}; "
+                f"observed_name={actual_code.name!r}; "
+                f"reference_name={expected_code.name!r}; "
+                f"observed_firstlineno={actual_code.firstlineno}; "
+                f"reference_firstlineno={expected_code.firstlineno}; "
+                f"observed_aliases={
+                    tuple(
+                        alias.binding
+                        for alias in observed.bindings
+                        if alias.kind == 'alias'
+                        and alias.operands == (('target', item.binding),)
+                    )
+                }; "
+                f"reference_aliases={
+                    tuple(
+                        alias.binding
+                        for alias in reference.bindings
+                        if alias.kind == 'alias'
+                        and alias.operands == (('target', native.binding),)
+                    )
+                }",
+            )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def compare(
+        observed: m.Infra.NativeImportObservation,
+        reference: m.Infra.NativeImportObservation,
+    ) -> p.Result[bool]:
+        """Compare complete native compiler witnesses without code deserialization.
+
+        Returns:
+            The first epoch, binding or compiler mismatch in the original order.
+
+        """
+        epoch = FlextInfraWorkspaceNativeReference._compare_epoch(observed, reference)
+        if epoch.failure:
+            return epoch
+        indexes: list[t.DictKV[str, m.Infra.NativeBindingEvidence]] = []
+        for snapshot in (observed, reference):
+            indexed = FlextInfraWorkspaceNativeReference._binding_index(snapshot)
+            if indexed.failure:
+                return r[bool].from_failure(indexed)
+            indexes.append(indexed.value)
+        actual, expected = indexes
+        inventory = FlextInfraWorkspaceNativeReference._compare_inventory(
+            actual, expected
+        )
+        if inventory.failure:
+            return inventory
         for item in observed.bindings:
             native = expected[item.binding]
-            live = item.model_dump(exclude={"code", "operational"})
-            cold = native.model_dump(exclude={"code", "operational"})
-            if live != cold:
-                operands = dict(item.operands)
-                imported = dict(native.operands)
+            metadata = FlextInfraWorkspaceNativeReference._compare_binding_metadata(
+                item, native
+            )
+            if metadata.failure:
+                return metadata
+            code = FlextInfraWorkspaceNativeReference._compare_binding_code(
+                observed, reference, item, native
+            )
+            if code.failure:
+                return code
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _authorized_outputs_current(
+        outputs: t.SequenceOf[m.Infra.CodegenJournalSource],
+    ) -> p.Result[bool]:
+        """Authenticate every actual publication effect before source substitution.
+
+        Returns:
+            The first physical output failure or the exact recorded effects.
+
+        """
+        for expected in outputs:
+            state = codegen.FlextInfraMiseArtifactsFiles.read_state(
+                expected.path, required=expected.sha256 is not None
+            )
+            if state.failure:
+                return r[bool].from_failure(state)
+            recorded = codegen.FlextInfraMiseArtifactsJournalRelocation.source_record(
+                expected.phase, state.value, previous=expected
+            )
+            if recorded.failure:
+                return r[bool].from_failure(recorded)
+            if recorded.value != expected:
                 return r[bool].fail(
-                    f"producer native binding differs: {item.binding}; "
-                    f"supplier={item.supplier}; qualname={item.qualname}; "
-                    f"fields={
-                        tuple(
-                            key
-                            for key in live
-                            if key != 'operands' and live[key] != cold[key]
-                        )
-                    }; "
-                    f"operands={
-                        tuple(
-                            sorted(
-                                key
-                                for key in operands.keys() | imported.keys()
-                                if operands.get(key) != imported.get(key)
-                            )
-                        )
-                    }; "
-                    f"observed_kind={item.kind}; reference_kind={native.kind}; "
-                    f"observed_target={operands.get('target')}; "
-                    f"reference_target={imported.get('target')}"
-                )
-            if item.code is None or native.code is None:
-                if item.code != native.code:
-                    return r[bool].fail(
-                        "producer native code presence differs: "
-                        f"{item.binding}; "
-                        f"supplier={item.supplier}; qualname={item.qualname}",
-                    )
-                continue
-            actual_code = m.Infra.NativeCodeEvidence.model_validate_json(item.code)
-            expected_code = m.Infra.NativeCodeEvidence.model_validate_json(native.code)
-            if not FlextInfraWorkspaceNativeReference._code_matches(
-                actual_code, expected_code
-            ):
-                live = actual_code.model_dump()
-                cold = expected_code.model_dump()
-                field = next((key for key in live if live[key] != cold[key]), None)
-                witnesses = (actual_code.witness or b"", expected_code.witness or b"")
-                pairs = zip(*witnesses, strict=False)
-                offset = next(
-                    (i for i, (a, b) in enumerate(pairs) if a != b),
-                    min(map(len, witnesses)) if witnesses[0] != witnesses[1] else None,
-                )
-                return r[bool].fail(
-                    "producer executed code differs from native import: "
-                    f"{item.binding}; "
-                    f"supplier={item.supplier}; qualname={item.qualname}; "
-                    f"first_code_field={field}; "
-                    f"witness_bytes={tuple(map(len, witnesses))}; "
-                    f"first_witness_byte={offset}; "
-                    f"observed_filename={actual_code.filename!r}; "
-                    f"reference_filename={expected_code.filename!r}; "
-                    f"observed_name={actual_code.name!r}; "
-                    f"reference_name={expected_code.name!r}; "
-                    f"observed_firstlineno={actual_code.firstlineno}; "
-                    f"reference_firstlineno={expected_code.firstlineno}; "
-                    f"observed_aliases={
-                        tuple(
-                            alias.binding
-                            for alias in observed.bindings
-                            if alias.kind == 'alias'
-                            and alias.operands == (('target', item.binding),)
-                        )
-                    }; "
-                    f"reference_aliases={
-                        tuple(
-                            alias.binding
-                            for alias in reference.bindings
-                            if alias.kind == 'alias'
-                            and alias.operands == (('target', native.binding),)
-                        )
-                    }",
+                    f"native authorized output changed: {expected.path}"
                 )
         return r[bool].ok(value=True)
 
@@ -4090,24 +4913,11 @@ class FlextInfraWorkspaceNativeReference:
                 "native source authority lacks its physical interpreter"
             )
         output_paths = {item.path for item in outputs}
-        if outputs:
-            for expected in outputs:
-                state = codegen.FlextInfraMiseArtifactsFiles.read_state(
-                    expected.path, required=expected.sha256 is not None
-                )
-                if state.failure:
-                    return r[bool].from_failure(state)
-                recorded = (
-                    codegen.FlextInfraMiseArtifactsJournalRelocation.source_record(
-                        expected.phase, state.value, previous=expected
-                    )
-                )
-                if recorded.failure:
-                    return r[bool].from_failure(recorded)
-                if recorded.value != expected:
-                    return r[bool].fail(
-                        f"native authorized output changed: {expected.path}"
-                    )
+        published = FlextInfraWorkspaceNativeReference._authorized_outputs_current(
+            outputs
+        )
+        if published.failure:
+            return published
         for receipt in authority.inputs:
             if receipt.path in output_paths and receipt.path != authority.runtime:
                 continue
@@ -4126,32 +4936,18 @@ class FlextInfraWorkspaceNativeReference:
         )
 
     @classmethod
-    def _generated_binding_current(
+    def _registered_generated_receiver(
         cls,
-        binding: m.Infra.NativeBindingEvidence,
-        executed: m.Infra.NativeCodeEvidence,
-        states: t.MappingKV[Path, m.Cli.AtomicFileReceipt],
-        project: p.Infra.RopeProject,
-        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
-    ) -> p.Result[bool]:
-        """Re-derive a generated witness against its pinned physical receipts.
+        module: ModuleType,
+        receiver_name: str,
+    ) -> p.Result[p.AttributeProbe | None]:
+        """Resolve a generated class receiver through its actual lexical namespace.
 
         Returns:
-            Whether the generated executable and its physical receipts agree.
+            The registered class receiver or the original module-level absence.
 
         """
-        result_type = r[bool]
-        metadata = dict(binding.operands)
-        attribute = metadata.get("generated_attribute")
-        receiver_name = metadata.get("generated_receiver")
-        if type(attribute) is not str or type(receiver_name) is not str:
-            return result_type.fail(
-                "generated binding lacks its physical compiler receipt: "
-                f"{binding.binding}"
-            )
-        module = sys.modules.get(binding.supplier)
-        if type(module) is not ModuleType:
-            return result_type.fail("generated compiler supplier is not loaded")
+        result_type = r[p.AttributeProbe | None]
         receiver = None
         if receiver_name:
             receiver = module
@@ -4170,14 +4966,67 @@ class FlextInfraWorkspaceNativeReference:
                 receiver = namespace[component]
             if not cls._is_class(receiver):
                 return result_type.fail("generated receiver is not a native class")
+        return result_type.ok(receiver)
+
+    @classmethod
+    def _registered_generated_function(
+        cls,
+        binding: m.Infra.NativeBindingEvidence,
+    ) -> p.Result[t.Pair[FunctionType, p.AttributeProbe | None]]:
+        """Read the actual generated function and its source-owned receiver.
+
+        Returns:
+            The exact native function/receiver pair or its first registration error.
+
+        """
+        result_type = r[t.Pair[FunctionType, p.AttributeProbe | None]]
+        metadata = dict(binding.operands)
+        attribute = metadata.get("generated_attribute")
+        receiver_name = metadata.get("generated_receiver")
+        if type(attribute) is not str or type(receiver_name) is not str:
+            return result_type.fail(
+                "generated binding lacks its physical compiler receipt: "
+                f"{binding.binding}"
+            )
+        module = sys.modules.get(binding.supplier)
+        if type(module) is not ModuleType:
+            return result_type.fail("generated compiler supplier is not loaded")
+        registered = cls._registered_generated_receiver(module, receiver_name)
+        if registered.failure:
+            return result_type.from_failure(registered)
+        receiver = registered.value
         namespace = vars(module) if receiver is None else cls._class_namespace(receiver)
         value = namespace.get(attribute)
         if cls._is_function_binding(value):
             value = value.__func__
         if type(value) is not FunctionType:
             return result_type.fail("generated receipt has no native function")
+        return result_type.ok((value, receiver))
+
+    @classmethod
+    def _generated_binding_current(
+        cls,
+        binding: m.Infra.NativeBindingEvidence,
+        executed: m.Infra.NativeCodeEvidence,
+        states: t.MappingKV[Path, m.Cli.AtomicFileReceipt],
+        project: p.Infra.RopeProject,
+        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+    ) -> p.Result[bool]:
+        """Re-derive a generated witness against its pinned physical receipts.
+
+        Returns:
+            Whether the generated executable and its physical receipts agree.
+
+        """
+        result_type = r[bool]
+        registered = cls._registered_generated_function(binding)
+        if registered.failure:
+            return result_type.from_failure(registered)
+        value, receiver = registered.value
+        metadata = dict(binding.operands)
+        attribute = metadata["generated_attribute"]
         proved = cls._generated_proof(
-            value, binding.supplier, attribute, receiver, project, witnesses
+            value, (binding.supplier, attribute, receiver), project, witnesses
         )
         if proved.failure:
             return result_type.from_failure(proved)
@@ -4191,6 +5040,20 @@ class FlextInfraWorkspaceNativeReference:
                 "generated receipt differs from its physical compiler: "
                 f"{binding.binding}"
             )
+        return cls._generated_inputs_current(expected, states)
+
+    @staticmethod
+    def _generated_inputs_current(
+        expected: m.Infra.NativeGeneratedFunctionProof,
+        states: t.MappingKV[Path, m.Cli.AtomicFileReceipt],
+    ) -> p.Result[bool]:
+        """Authenticate every source consumed by the closed generated compiler.
+
+        Returns:
+            Whether original receipt identity and descriptor-read contents agree.
+
+        """
+        result_type = r[bool]
         for state in expected.inputs:
             receipt = states.get(state.path)
             if receipt is None:
@@ -4237,6 +5100,53 @@ class FlextInfraWorkspaceNativeReference:
             return current if current.failure else proved
 
     @classmethod
+    def _authored_code_units(
+        cls,
+        binding: m.Infra.NativeBindingEvidence,
+        executed: m.Infra.NativeCodeEvidence,
+        states: t.MappingKV[Path, m.Cli.AtomicFileReceipt],
+        module_spec: ModuleSpec,
+    ) -> p.Result[t.VariadicTuple[t.Infra.NativeCode]]:
+        """Compile the elected source only after its physical receipt is proved.
+
+        Returns:
+            The native root and nested units or the first physical source failure.
+
+        """
+        result_type = r[t.VariadicTuple[t.Infra.NativeCode]]
+        if module_spec.origin == "frozen":
+            root = FrozenImporter.get_code(module_spec.name)
+            if root is None:
+                return result_type.fail(
+                    f"frozen native supplier has no code: {module_spec.name}"
+                )
+        else:
+            receipt = states.get(Path(executed.filename))
+            if receipt is None:
+                return result_type.fail(
+                    f"authored producer source is not pinned: {binding.binding}",
+                )
+            read = u.Cli.atomic_read_binary_file_state(receipt.path, required=True)
+            if read.failure:
+                return result_type.from_failure(read)
+            state = read.value
+            verified = u.Cli.atomic_read_binary_file_receipt(
+                receipt.path, required=True
+            )
+            if verified.failure:
+                return result_type.from_failure(verified)
+            if verified.value != receipt or state.content is None:
+                return result_type.fail(f"authored source changed: {receipt.path}")
+            root = compile(
+                state.content,
+                executed.filename,
+                "exec",
+                dont_inherit=True,
+                optimize=sys.flags.optimize,
+            )
+        return result_type.ok(cls._code_units(root))
+
+    @classmethod
     def _authored_sources_current(
         cls,
         observed: m.Infra.NativeImportObservation,
@@ -4281,40 +5191,10 @@ class FlextInfraWorkspaceNativeReference:
                 continue
             key = binding.supplier if frozen else executed.filename
             if key not in compiled:
-                if frozen:
-                    root = FrozenImporter.get_code(module_spec.name)
-                    if root is None:
-                        return r[bool].fail(
-                            f"frozen native supplier has no code: {module_spec.name}"
-                        )
-                else:
-                    receipt = states.get(Path(executed.filename))
-                    if receipt is None:
-                        return r[bool].fail(
-                            f"authored producer source is not pinned: "
-                            f"{binding.binding}",
-                        )
-                    read = u.Cli.atomic_read_binary_file_state(
-                        receipt.path, required=True
-                    )
-                    if read.failure:
-                        return r[bool].from_failure(read)
-                    state = read.value
-                    verified = u.Cli.atomic_read_binary_file_receipt(
-                        receipt.path, required=True
-                    )
-                    if verified.failure:
-                        return r[bool].from_failure(verified)
-                    if verified.value != receipt or state.content is None:
-                        return r[bool].fail(f"authored source changed: {receipt.path}")
-                    root = compile(
-                        state.content,
-                        executed.filename,
-                        "exec",
-                        dont_inherit=True,
-                        optimize=sys.flags.optimize,
-                    )
-                compiled[key] = FlextInfraWorkspaceNativeReference._code_units(root)
+                units = cls._authored_code_units(binding, executed, states, module_spec)
+                if units.failure:
+                    return r[bool].from_failure(units)
+                compiled[key] = units.value
             if executed.witness is None or not any(
                 code.co_name == executed.name
                 and code.co_firstlineno == executed.firstlineno

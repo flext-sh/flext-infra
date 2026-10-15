@@ -301,6 +301,49 @@ class FlextInfraUtilitiesCodegenFacades:
         )
         facade, namespace = cls._facade_classes(tree, pkg_dir)
         aliases = {declaration.qualified_base for declaration in declarations}
+        cls._facade_module_declarations(tree, facade, pkg_dir)
+        for owner in (facade, namespace) if namespace is not facade else (facade,):
+            cls._facade_owner_declarations(owner, facade, namespace, aliases, pkg_dir)
+        for node in tree.body:
+            if not isinstance(node, ast.ImportFrom) or not node.module:
+                continue
+            module = f"{pkg_dir.name}.{node.module}" if node.level else node.module
+            if not module.startswith(f"{pkg_dir.name}."):
+                continue
+            provider_state = sources.get(module)
+            if provider_state is None:
+                message = f"Generated facade has unresolved owned import: {module}"
+                raise ValueError(message)
+            leaf, provider = provider_state
+            if leaf.name == c.Infra.INIT_PY:
+                continue
+            exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                provider,
+            )
+            for alias in node.names:
+                if alias.name not in exports:
+                    message = (
+                        f"Generated facade imports unpublished owner: "
+                        f"{module}.{alias.name}"
+                    )
+                    raise ValueError(message)
+                source = (
+                    RenameCommand(
+                        CodemodContext(full_package_name=pkg_dir.name),
+                        old_name=f"{module}.{alias.name}",
+                        new_name=f"{module.rpartition('.')[0]}.{alias.name}",
+                    )
+                    .transform_module(parse_module(source))
+                    .code
+                )
+        if source.startswith(c.Infra.AUTOGEN_HEADERS):
+            return source
+        return f"{c.Infra.AUTOGEN_HEADER}\n{source}"
+
+    @staticmethod
+    def _facade_module_declarations(
+        tree: ast.Module, facade: ast.ClassDef, pkg_dir: Path
+    ) -> None:
         for statement in tree.body:
             if (
                 statement is facade
@@ -339,68 +382,43 @@ class FlextInfraUtilitiesCodegenFacades:
                 )
             ):
                 continue
-            message = f"Facade preserves authored module declaration: {pkg_dir}:{statement.lineno}"
-            raise ValueError(message)
-        for owner in (facade, namespace) if namespace is not facade else (facade,):
-            for statement in owner.body:
-                if (
-                    isinstance(statement, ast.Pass)
-                    or (statement is namespace and namespace is not facade)
-                    or (
-                        isinstance(statement, ast.Expr)
-                        and isinstance(statement.value, ast.Constant)
-                        and isinstance(statement.value.value, str)
-                    )
-                    or (
-                        isinstance(statement, ast.Assign)
-                        and isinstance(statement.value, ast.Name)
-                        and statement.value.id in aliases
-                        and all(
-                            isinstance(target, ast.Name) for target in statement.targets
-                        )
-                    )
-                ):
-                    continue
-                message = (
-                    f"Facade preserves authored declaration before generation: "
-                    f"{pkg_dir}:{owner.name}:{statement.lineno}"
-                )
-                raise ValueError(message)
-        for node in tree.body:
-            if not isinstance(node, ast.ImportFrom) or not node.module:
-                continue
-            module = f"{pkg_dir.name}.{node.module}" if node.level else node.module
-            if not module.startswith(f"{pkg_dir.name}."):
-                continue
-            provider_state = sources.get(module)
-            if provider_state is None:
-                message = f"Generated facade has unresolved owned import: {module}"
-                raise ValueError(message)
-            leaf, provider = provider_state
-            if leaf.name == c.Infra.INIT_PY:
-                continue
-            exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                provider,
+            message = (
+                "Facade preserves authored module declaration: "
+                f"{pkg_dir}:{statement.lineno}"
             )
-            for alias in node.names:
-                if alias.name not in exports:
-                    message = (
-                        f"Generated facade imports unpublished owner: "
-                        f"{module}.{alias.name}"
-                    )
-                    raise ValueError(message)
-                source = (
-                    RenameCommand(
-                        CodemodContext(full_package_name=pkg_dir.name),
-                        old_name=f"{module}.{alias.name}",
-                        new_name=f"{module.rpartition('.')[0]}.{alias.name}",
-                    )
-                    .transform_module(parse_module(source))
-                    .code
-                )
-        if source.startswith(c.Infra.AUTOGEN_HEADERS):
-            return source
-        return f"{c.Infra.AUTOGEN_HEADER}\n{source}"
+            raise ValueError(message)
+
+    @staticmethod
+    def _facade_owner_declarations(
+        owner: ast.ClassDef,
+        facade: ast.ClassDef,
+        namespace: ast.ClassDef,
+        aliases: set[str],
+        pkg_dir: Path,
+    ) -> None:
+        for statement in owner.body:
+            if isinstance(statement, ast.Pass) or (
+                statement is namespace and namespace is not facade
+            ):
+                continue
+            if (
+                isinstance(statement, ast.Expr)
+                and isinstance(statement.value, ast.Constant)
+                and isinstance(statement.value.value, str)
+            ):
+                continue
+            if (
+                isinstance(statement, ast.Assign)
+                and isinstance(statement.value, ast.Name)
+                and statement.value.id in aliases
+                and all(isinstance(target, ast.Name) for target in statement.targets)
+            ):
+                continue
+            message = (
+                f"Facade preserves authored declaration before generation: "
+                f"{pkg_dir}:{owner.name}:{statement.lineno}"
+            )
+            raise ValueError(message)
 
     @classmethod
     def _render_interface_facade(
@@ -538,42 +556,14 @@ class FlextInfraUtilitiesCodegenFacades:
             retired = cls._retired_owned_bases(
                 project,
                 sources,
-                pkg_dir,
-                owners_dir,
-                facade_path,
-                namespace,
+                (pkg_dir, owners_dir),
+                (facade_path, namespace),
                 {item.qualified_base for item in declarations},
             )
         if retired:
-            wrapper = MetadataWrapper(parse_module(source))
-            owner = cls._facade_namespace_cst(wrapper, namespace)
-            context = CodemodContext(
-                full_package_name=pkg_dir.name,
-                wrapper=wrapper,
+            source, context = cls._retired_facade_projection(
+                pkg_dir, source, namespace, retired
             )
-            retained_bases: list[Arg] = []
-            for base in owner.bases:
-                expression = ast.unparse(
-                    ast.parse(
-                        wrapper.module.code_for_node(base.value),
-                        mode="eval",
-                    ).body,
-                )
-                if expression in retired:
-                    RemoveImportsVisitor.remove_unused_import_by_node(
-                        context,
-                        base.value,
-                    )
-                else:
-                    retained_bases.append(base)
-            candidate = wrapper.module.deep_replace(
-                owner,
-                owner.with_changes(bases=tuple(retained_bases)),
-            )
-            if not isinstance(candidate, Module):
-                message = "Retired facade-base projection did not preserve the module"
-                raise TypeError(message)
-            source = candidate.code
             sources[f"{pkg_dir.name}.{facade_path.stem}"] = (facade_path, source)
             facade, namespace = cls._facade_classes(
                 ast.parse(source, filename=str(facade_path)),
@@ -601,6 +591,34 @@ class FlextInfraUtilitiesCodegenFacades:
             existing,
         )
         return cls._declared_facade_render(context, source, namespace, ordered)
+
+    @classmethod
+    def _retired_facade_projection(
+        cls,
+        pkg_dir: Path,
+        source: str,
+        namespace: ast.ClassDef,
+        retired: frozenset[str],
+    ) -> t.Pair[str, CodemodContext]:
+        wrapper = MetadataWrapper(parse_module(source))
+        owner = cls._facade_namespace_cst(wrapper, namespace)
+        context = CodemodContext(full_package_name=pkg_dir.name, wrapper=wrapper)
+        retained_bases: list[Arg] = []
+        for base in owner.bases:
+            expression = ast.unparse(
+                ast.parse(wrapper.module.code_for_node(base.value), mode="eval").body
+            )
+            if expression in retired:
+                RemoveImportsVisitor.remove_unused_import_by_node(context, base.value)
+            else:
+                retained_bases.append(base)
+        candidate = wrapper.module.deep_replace(
+            owner, owner.with_changes(bases=tuple(retained_bases))
+        )
+        if not isinstance(candidate, Module):
+            message = "Retired facade-base projection did not preserve the module"
+            raise TypeError(message)
+        return candidate.code, context
 
     @classmethod
     def _declared_facade_contract(
@@ -725,7 +743,6 @@ class FlextInfraUtilitiesCodegenFacades:
             The projected facade source.
 
         Raises:
-            ValueError: If the namespace has no unique concrete source span.
             TypeError: If the projection does not preserve the source module.
 
         """
@@ -850,10 +867,8 @@ class FlextInfraUtilitiesCodegenFacades:
     def _retired_owned_bases(
         project: t.Infra.RopeProject,
         sources: t.MappingKV[str, t.Pair[Path, str]],
-        pkg_dir: Path,
-        owners_dir: Path,
-        facade_path: Path,
-        namespace: ast.ClassDef,
+        roots: t.Pair[Path, Path],
+        facade: t.Pair[Path, ast.ClassDef],
         declared_names: set[str],
     ) -> frozenset[str]:
         """Retire own bases whose source no longer belongs to this family.
@@ -868,6 +883,8 @@ class FlextInfraUtilitiesCodegenFacades:
             ValueError: If an existing base has no resolved source identity.
 
         """
+        pkg_dir, owners_dir = roots
+        facade_path, namespace = facade
         snapshot = FlextInfraUtilitiesRopeRuntime.snapshot_project(
             project,
             dict(sources.values()),
@@ -876,8 +893,9 @@ class FlextInfraUtilitiesCodegenFacades:
             resource = snapshot.get_resource(
                 facade_path.relative_to(Path(snapshot.root.real_path)).as_posix(),
             )
-            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(snapshot, resource)
-            scope = module.get_scope()
+            scope = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                snapshot, resource
+            ).get_scope()
             retired: set[str] = set()
             for base in namespace.bases:
                 if FlextInfraUtilitiesCodegenFacades._base_name(base) in declared_names:
@@ -892,7 +910,7 @@ class FlextInfraUtilitiesCodegenFacades:
                         f"Unresolved facade base: {facade_path}:{ast.unparse(base)}"
                     )
                     raise ValueError(message)
-                holder, _line = binding.get_definition_location()
+                holder = binding.get_definition_location()[0]
                 provider = holder.get_resource() if holder is not None else None
                 if provider is None:
                     value = binding.get_object()
@@ -900,7 +918,10 @@ class FlextInfraUtilitiesCodegenFacades:
                         value
                     ) and not FlextInfraUtilitiesRopeRuntime.py_class(value):
                         continue
-                    message = f"Facade base has no source owner: {facade_path}:{ast.unparse(base)}"
+                    message = (
+                        f"Facade base has no source owner: "
+                        f"{facade_path}:{ast.unparse(base)}"
+                    )
                     raise ValueError(message)
                 path = Path(provider.real_path).resolve()
                 if path.is_relative_to(pkg_dir.resolve()) and not path.is_relative_to(
@@ -1138,12 +1159,8 @@ class FlextInfraUtilitiesCodegenFacades:
                         .encode(c.DEFAULT_ENCODING)[: receiver.col_offset]
                         .decode(c.DEFAULT_ENCODING),
                     )
-                    scope = FlextInfraUtilitiesRopeRuntime.scope_at(
-                        pymodule,
-                        offset,
-                    )
                     binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                        scope,
+                        FlextInfraUtilitiesRopeRuntime.scope_at(pymodule, offset),
                         receiver,
                     )
                     if not isinstance(

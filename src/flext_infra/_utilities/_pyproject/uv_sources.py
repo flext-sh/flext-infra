@@ -41,37 +41,37 @@ class _ResolutionViewState(m.ArbitraryTypesModel):
     policy: m.Infra.MakeUvResolutionSpec = m.Field(
         description="Declared resolution policy owning member naming.",
     )
-    native_uv: t.JsonDict = m.Field(
+    native_uv: t.MutableJsonMapping = m.Field(
         description="Detached root ``[tool.uv]`` table under projection.",
     )
-    view_project: t.JsonDict = m.Field(
+    view_project: t.MutableJsonMapping = m.Field(
         description="Generated virtual project table, empty when absent.",
     )
-    dependencies: t.JsonValueList = m.Field(
+    dependencies: t.MutableJsonList = m.Field(
         description="Root dependency requests in declaration order.",
     )
-    member_bindings: t.JsonValueList = m.Field(
+    member_bindings: t.MutableJsonList = m.Field(
         description="Member dependency requests in declaration order.",
     )
-    extras: t.JsonDict = m.Field(
+    extras: t.MutableJsonMapping = m.Field(
         description="View optional-dependency groups by target name.",
     )
-    groups: t.JsonDict = m.Field(
+    groups: t.MutableJsonMapping = m.Field(
         description="View dependency groups by target name.",
     )
-    group_metadata: t.JsonDict = m.Field(
+    group_metadata: t.MutableJsonMapping = m.Field(
         description="Renamed group metadata keyed by target name.",
     )
-    sources: t.JsonDict = m.Field(
+    sources: t.MutableJsonMapping = m.Field(
         description="Context-qualified source entries by dependency name.",
     )
-    index_entries: t.JsonDict = m.Field(
+    index_entries: t.MutableJsonMapping = m.Field(
         description="Conflict-checked index declarations by identity.",
     )
-    constraints: t.JsonValueList = m.Field(
+    constraints: t.MutableJsonList = m.Field(
         description="Constraints preserving replaced local sources.",
     )
-    retained_overrides: t.JsonValueList = m.Field(
+    retained_overrides: t.MutableJsonList = m.Field(
         description="Declared overrides with member requests appended.",
     )
     overridden: MutableSet[str] = m.Field(
@@ -128,20 +128,20 @@ class FlextInfraUtilitiesPyprojectUvSources(
         if bound.failure:
             return r[t.Cli.TomlDocument].from_failure(bound)
         native_uv = state.native_uv
-        native_uv["sources"] = state.sources
-        native_uv["override-dependencies"] = state.retained_overrides
+        native_uv["sources"] = dict(state.sources)
+        native_uv["override-dependencies"] = list(state.retained_overrides)
         if state.constraints:
-            native_uv["constraint-dependencies"] = state.constraints
+            native_uv["constraint-dependencies"] = list(state.constraints)
         if state.group_metadata:
-            native_uv["dependency-groups"] = state.group_metadata
+            native_uv["dependency-groups"] = dict(state.group_metadata)
         if state.index_entries:
             native_uv["index"] = list(state.index_entries.values())
         view: t.JsonDict = {
-            c.Infra.DEPENDENCY_GROUPS: state.groups,
-            c.Infra.TOOL: {"uv": native_uv},
+            c.Infra.DEPENDENCY_GROUPS: dict(state.groups),
+            c.Infra.TOOL: {"uv": dict(native_uv)},
         }
         if state.view_project:
-            view[c.Infra.PROJECT] = state.view_project
+            view[c.Infra.PROJECT] = dict(state.view_project)
         return r[t.Cli.TomlDocument].ok(u.Cli.toml_document_from_mapping(view))
 
     @staticmethod
@@ -156,10 +156,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         if state.view_project:
-            state.view_project["dependencies"] = state.dependencies
-            state.view_project["optional-dependencies"] = state.extras
+            state.view_project["dependencies"] = list(state.dependencies)
+            state.view_project["optional-dependencies"] = dict(state.extras)
         binding_requirements = (
-            state.member_bindings
+            list(state.member_bindings)
             if state.view_project
             else [*state.dependencies, *state.member_bindings]
         )
@@ -812,7 +812,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _resolution_add_source(
-        sources: t.JsonDict,
+        sources: t.MutableJsonMapping,
         dependency: str,
         entry: t.JsonDict,
     ) -> p.Result[bool]:
