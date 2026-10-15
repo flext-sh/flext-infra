@@ -136,8 +136,8 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         ]
         return tuple(discovered)
 
-    @staticmethod
     def _declared_environment_imports(
+        self,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
     ) -> t.VariadicTuple[t.Pair[str, Path]]:
@@ -152,11 +152,20 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             guessing distribution names.
 
         Raises:
-            ValueError: If declared package namespace is unresolved.
+            ValueError: If the initial project declaration or a package namespace
+                is unresolved.
 
         """
         roots: list[t.Pair[str, Path]] = []
         if target.repository.package:
+            if (
+                target.project is None
+                and self.initial_workspace is not None
+                and target.repository.name == self.initial_workspace.repository.name
+                and not (target.root / c.PYPROJECT_FILENAME).exists()
+            ):
+                msg = f"scaffold environment has no project metadata: {target.root}"
+                raise ValueError(msg)
             # The target root is the repository being conformed. At plan time a
             # scaffold's pyproject is planned, not yet on disk, so the declared
             # ProjectSpec owns the import name; reading the pyproject here failed
@@ -178,7 +187,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         if any(not name for name, _root in imports):
             msg = f"declared package namespace is unresolved: {target.root}"
             raise ValueError(msg)
-        return imports
+        return tuple(imports)
 
     @staticmethod
     def _merge_extra_verbs(

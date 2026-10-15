@@ -14,10 +14,7 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.workspace import (
-    FlextInfraFlextBindingService,
-    FlextInfraWorkspaceDetector,
-)
+from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspaceLockCompleteness:
@@ -191,7 +188,7 @@ class FlextInfraWorkspaceLockCompleteness:
         """
         result_type = r[t.Pair[t.SequenceOf[m.Infra.LockedPackage], t.StrMapping]]
         python = u.Infra.runtime_python(context.runtime_root)
-        environment = FlextInfraFlextBindingService.consumer_marker_environment(
+        environment = FlextInfraBindingService.consumer_marker_environment(
             consumer_root=owner,
             python=python,
         )

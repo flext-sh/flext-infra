@@ -223,3 +223,6 @@ class FlextInfraConfigVocabulary:
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
         RUNTIME_BINDINGS = "runtime-bindings"
+
+
+__all__: list[str] = ["FlextInfraConfigVocabulary"]

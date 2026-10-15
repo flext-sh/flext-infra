@@ -14,14 +14,34 @@ import time
 from collections.abc import Generator, Mapping, MutableMapping
 from contextlib import closing
 from pathlib import Path
+from time import monotonic
+
+import flext_cli
 
 from flext_infra import c, m, p, r, settings, t, u
-from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+from flext_infra.codemod import (
+    FlextInfraCodemodSnapshotReconciler,
+    FlextInfraModReplacements,
+)
 
 
 class FlextInfraModGateEngine:
     """Execute ast-grep rewrites and measure the catalog findings they leave."""
+
+    @staticmethod
+    def _progress(message: str, due: float = 0) -> float:
+        """Emit a causal progress row at the configured heartbeat interval.
+
+        Returns:
+            The next monotonic deadline for an interval progress row.
+
+        """
+        now = monotonic()
+        if now < due:
+            return due
+        sys.stderr.write(f"mod: {message}\n")
+        sys.stderr.flush()
+        return now + flext_cli.settings.cli_process_heartbeat_seconds
 
     @classmethod
     def validate_rule_fixtures(
@@ -675,7 +695,11 @@ class FlextInfraModGateEngine:
                     sources=sources,
                 )
             )
-        if entries == report.entries:
+        FlextInfraModGateEngine._progress(
+            f"admission finish accepted={len(entries)}/{len(report.entries)}",
+        )
+        admitted = tuple(entries)
+        if admitted == report.entries:
             return report
         return FlextInfraModGateEngine.recounted(
             entries, source_states=report.source_states
@@ -819,7 +843,10 @@ class FlextInfraModGateEngine:
         file: str,
         source_states: Mapping[Path, m.Cli.AtomicFileState],
     ) -> p.Result[t.Pair[Path, m.Cli.AtomicFileState]]:
-        """Resolve one finding's file against the authenticated scan snapshots.
+        """Associate a finding with the scan's already authenticated source state.
+
+        Complete input verification brackets parsing and admission; individual
+        findings retain the captured bytes without repeating physical reads.
 
         Returns:
             The resulting ``(file_path, snapshot)`` pair for the unchanged source.

@@ -536,6 +536,78 @@ tm.that(c.Infra.TEMPLATE_MKDOCS_ROOT in source_names, eq=True)
         )
 
     @staticmethod
+    def test_publication_rejects_changed_batch_source(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """Reject stale render inputs at the guarded publication boundary."""
+        native_consumer(
+            _DOCS_CONSUMER_SOURCE
+            + r"""workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+guide = workspace / "flext-a" / c.Infra.DIR_DOCS / "guides/operator.md"
+guide.parent.mkdir(parents=True, exist_ok=True)
+guide.write_text("# Original\n", encoding="utf-8")
+generator = case._generator(workspace)
+prepared = tm.ok(generator.prepare_bundle(
+    producer=producer_for(generator, generator.prepare_bundle)
+))
+case._materialize_required_parents(generator, prepared)
+guide.write_text("# Changed\n", encoding="utf-8")
+planned = generator.plan_files(prepared)
+tm.ok(planned)
+readme = next(
+    plan for plan in planned.value if plan.path == workspace / "flext-a/README.md"
+)
+before = readme.path.read_bytes()
+published = FlextInfraMisePublication.publish_file_plan(readme, phase="docs")
+tm.fail(published)
+tm.that(readme.path.read_bytes(), eq=before)
+tm.that(guide.read_text(encoding="utf-8"), eq="# Changed\n")
+""",
+            str(Path(__file__).resolve().parents[3]),
+            str(tmp_path),
+        )
+
+    @staticmethod
+    def test_batches_capture_later_sources_after_previous_publication(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A later scope's edits neither stale nor delay the preceding batch."""
+        native_consumer(
+            _DOCS_CONSUMER_SOURCE
+            + r'''workspace = u.Tests.create_docs_workspace(
+    tmp_path, project_names=("flext-a", "flext-b")
+)
+generator = FlextInfraDocGenerator(
+    repository_root=workspace,
+    selected_projects=["flext-a", "flext-b"],
+    include_root=False,
+)
+receipts: list[m.Infra.CodegenPhaseOutcome] = []
+batches = generator.prepare_batches(
+    producer=producer_for(generator, generator.prepare_batches),
+    publication_receipts=receipts,
+)
+first = tm.ok(next(batches))
+source = workspace / "flext-b/src/flext_b/added.py"
+source.write_text('"""Added before the next batch."""\n', encoding="utf-8")
+plans = tm.ok(generator.plan_files(first))
+readme = next(
+    plan for plan in plans if plan.path == workspace / "flext-a/README.md"
+)
+tm.ok(generator.publish_batch(first, publication_receipts=receipts))
+tm.that(readme.path.read_bytes(), eq=readme.desired_content)
+second = tm.ok(next(batches))
+captured = next(state for state in second.source_states if state.path == source)
+tm.that(captured.content, eq=source.read_bytes())
+tm.that(tuple(batches), empty=True)
+''',
+            str(Path(__file__).resolve().parents[3]),
+            str(tmp_path),
+        )
+
+    @staticmethod
     def test_cached_pyproject_cannot_diverge_from_bundle_source_bytes(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,

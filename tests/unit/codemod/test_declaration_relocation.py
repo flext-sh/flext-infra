@@ -19,8 +19,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
-from flext_infra.codemod import FlextInfraCodemodSemanticApply
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import c, m, t, tm, u
 
@@ -72,7 +71,7 @@ class TestsFlextInfraDeclarationRelocation:
                     sources=sources,
                 ),
             )
-            tm.that(len(planned), eq=1)
+            tm.that(planned, eq=())
             proposed = dict(sources)
             proposed.update({edit.file_path: edit.updated_source for edit in planned})
             tm.that(consumer.read_text(encoding="utf-8"), eq=sources[consumer])
@@ -82,6 +81,8 @@ class TestsFlextInfraDeclarationRelocation:
             )
             tm.that(proposed[consumer], has="._models import ConfigPayload as Payload")
             tm.that(proposed[consumer], has="._models.base import ModelsBase")
+            findings = u.Infra.declaration_relocation_findings(rope, proposed)
+            tm.that(len(findings), eq=2)
             repeated = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
@@ -110,6 +111,54 @@ class TestsFlextInfraDeclarationRelocation:
             ),
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
+    def test_own_reexport_rebinds_to_its_real_external_provider(
+        tmp_path: Path,
+    ) -> None:
+        """Rope proves the external identity before changing a declaration import."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = package / "_models"
+        family.mkdir()
+        consumer = package / "_config.py"
+        sources = {
+            family / "__init__.py": "from flext_core import m\n__all__ = ['m']\n",
+            consumer: (
+                f"from {package.name}._models import m\n"
+                "class Config(m.BaseModel):\n    value: str\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+            proposed = dict(sources)
+            proposed.update({edit.file_path: edit.updated_source for edit in edits})
+            tm.that(u.Infra.declaration_relocation_findings(rope, proposed), eq=())
+        for path, source in proposed.items():
+            path.write_text(source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.{consumer.stem} import Config; "
+                        "print(Config(value='real-value').value)"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.that(result.stdout.strip(), eq="real-value")
 
     @staticmethod
     def test_settings_imports_preserve_external_lazy_package(
@@ -162,6 +211,8 @@ class TestsFlextInfraDeclarationRelocation:
                 ),
             )
             tm.that(planned, eq=())
+            findings = u.Infra.declaration_relocation_findings(rope, sources)
+            tm.that(len(findings), eq=1)
 
     @staticmethod
     def _seed(
@@ -239,6 +290,13 @@ class TestsFlextInfraDeclarationRelocation:
         }
         for path, source in sources.items():
             path.write_text(source, encoding="utf-8")
+        if "uncomposed" not in variants:
+            facade_path = package / c.Infra.MODELS_PY
+            rendered = tm.not_none(
+                u.Infra.render_utility_facade(package, family="m"),
+            )
+            sources[facade_path] = rendered
+            facade_path.write_text(rendered, encoding="utf-8")
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         return root, sources
 
@@ -1011,10 +1069,20 @@ class TestsFlextInfraDeclarationRelocation:
             findings = u.Infra.declaration_relocation_findings(rope, sources)
         tm.ok(planned)
         tm.that(len(planned.value), eq=3)
-        tm.that(len(findings), eq=1)
-        tm.that(findings[0].declaration, eq=f"{stem}StrayHolder.Stray")
-        tm.that(findings[0].expected_owner, eq=f"{stem}UtilitiesPayload")
-        tm.that(findings[0].reason, has="unresolved source owner")
+        unresolved = tuple(
+            finding
+            for finding in findings
+            if finding.declaration == f"{stem}StrayHolder.Stray"
+        )
+        tm.that(len(unresolved), eq=1)
+        tm.that(unresolved[0].expected_owner, eq=f"{stem}UtilitiesPayload")
+        tm.that(bool(unresolved[0].reason), eq=True)
+        tm.that(
+            all(
+                finding.file_path in sources and finding.reason for finding in findings
+            ),
+            eq=True,
+        )
         for path, source in sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
@@ -1207,5 +1275,45 @@ class TestsFlextInfraDeclarationRelocation:
                     sources=sources,
                 )
             )
-        tm.that(len(findings), eq=1 if competing else 0)
+        payload_findings = tuple(
+            finding
+            for finding in findings
+            if finding.declaration == f"{stem}UtilitiesPayload.Payload"
+        )
+        tm.that(bool(payload_findings), eq=competing)
+        tm.that(
+            all(
+                finding.file_path in sources and finding.reason for finding in findings
+            ),
+            eq=True,
+        )
         tm.that(bool(planned), eq=not competing)
+        if competing:
+            return
+        proposed = dict(sources)
+        proposed.update({edit.file_path: edit.updated_source for edit in planned})
+        for path, source in proposed.items():
+            path.write_text(source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {target.parent.parent.name} import m; "
+                        "from pydantic import ValidationError; "
+                        "assert m.Payload.model_validate({'value': 'consumer'}).value "
+                        "== 'consumer'\n"
+                        "try:\n    m.Payload.model_validate({'value': []})\n"
+                        "except ValidationError:\n    print('rejected')\n"
+                        "else:\n    raise AssertionError('invalid payload accepted')\n"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(target.parent.parent.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout.strip(), eq="rejected")

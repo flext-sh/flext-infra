@@ -9,3 +9,6 @@ from __future__ import annotations
 
 class FlextInfraUtilitiesRopeSourceBases:
     """Source-bases composite facade over the inventory, aliases, and runtime parts."""
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeSourceBases"]

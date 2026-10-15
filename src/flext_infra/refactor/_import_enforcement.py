@@ -62,11 +62,24 @@ class FlextInfraImportNormalization(
 
         """
         changed = False
+        published = 0
+        u.Infra._codemod_progress(
+            f"import normalization start project={project_root} files={len(files)}",
+        )
         import_graph, _modules = u.Infra.project_import_graph(project_root)
-        for file_path in files:
+        due = 0.0
+        for ordinal, file_path in enumerate(files, start=1):
+            identity = (
+                f"project={project_root} file={file_path} "
+                f"position={ordinal}/{len(files)}"
+            )
             source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
+            due = u.Infra._codemod_progress(
+                f"import normalization semantic {identity}",
+                due,
+            )
             normalized = cls.normalize_source(
                 project_root=project_root,
                 file_path=file_path,
@@ -74,14 +87,27 @@ class FlextInfraImportNormalization(
                 import_graph=import_graph,
             )
             candidate = normalized if normalized is not None else source
+            due = u.Infra._codemod_progress(
+                f"import normalization format {identity}",
+                due,
+            )
             candidate = u.Infra.normalize_source(
                 project_root,
                 file_path,
                 candidate,
             ).unwrap()
             if candidate != source:
+                due = u.Infra._codemod_progress(
+                    f"import normalization publish {identity}",
+                    due,
+                )
                 file_path.write_text(candidate, encoding=c.DEFAULT_ENCODING)
                 changed = True
+                published += 1
+        u.Infra._codemod_progress(
+            f"import normalization finish project={project_root} "
+            f"files={len(files)} published={published}",
+        )
         return changed
 
     @classmethod

@@ -822,3 +822,6 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             attributes=(*binding.attributes, *attributes),
             qualified_base=".".join((binding.qualified_base, *attributes)),
         )
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeSourceBindingCollector"]

@@ -264,6 +264,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         sources: t.MappingKV[Path, str],
         *,
         captured: m.Infra.CodemodSourceEpoch | None = None,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Infra.RopeProject:
         """Capture a complete identity graph with proposed sources authoritative.
 
@@ -296,8 +297,39 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             else dict(captured.contents)
         )
         root = Path(project.root.real_path).resolve()
+        declared: dict[Path, str] = {}
+        for plan in declared_files:
+            path = plan.path.resolve()
+            if not path.is_relative_to(root) or plan.desired_content is None:
+                msg = f"Rope virtual destination is not a declared source: {path}"
+                raise ValueError(msg)
+            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
+                directory_state = u.Cli.atomic_plan_directory_chain(
+                    plan.before.target,
+                ).unwrap()
+                if directory_state != plan.before:
+                    msg = f"Rope virtual destination parent changed: {path}"
+                    raise ValueError(msg)
+            else:
+                file_state = u.Cli.atomic_read_binary_file_state(
+                    path,
+                    required=False,
+                ).unwrap()
+                if file_state != plan.before or file_state.content is not None:
+                    msg = f"Rope virtual destination changed or already exists: {path}"
+                    raise ValueError(msg)
+            proposed = plan.desired_content.decode("utf-8")
+            if path in declared and declared[path] != proposed:
+                msg = f"Rope virtual destination declarations disagree: {path}"
+                raise ValueError(msg)
+            declared[path] = proposed
+            inventory[path] = proposed
+            contents[path] = plan.desired_content
         for path, source in sources.items():
             resolved = path.resolve()
+            if resolved in declared and declared[resolved] != source:
+                msg = f"Rope virtual destination source disagrees with its plan: {path}"
+                raise ValueError(msg)
             if resolved not in inventory:
                 if captured is not None:
                     msg = f"Rope proposed source is outside its input inventory: {path}"
@@ -334,6 +366,11 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             contents,
             [folder.path for folder in project.get_source_folders()],
             ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
+            python_path_folders=[
+                folder.real_path
+                for folder in project.get_python_path_folders()
+                if folder.is_folder()
+            ],
         )
         if not isinstance(snapshot, p.Infra.RopeProject):
             msg = "Rope snapshot does not satisfy its project contract"

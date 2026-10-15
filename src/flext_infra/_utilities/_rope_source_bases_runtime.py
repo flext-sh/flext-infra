@@ -552,6 +552,18 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 message = f"Cyclic provider reexport: {target} (visiting: {chain})"
                 raise ValueError(message)
             if name not in module.get_attributes():
+                aliases = self._provider_lazy_aliases(module)
+                provider = aliases.get(name)
+                if provider is not None:
+                    return self._resolve(
+                        m.Infra.SourceClassReference(
+                            target=provider,
+                            attributes=attributes,
+                            qualified_base=target,
+                        ),
+                        visiting | {target},
+                        depth + 1,
+                    )
                 reexporter = self._star_reexporter(module, name)
                 if reexporter is not None:
                     return self._provider_reference(
@@ -586,6 +598,30 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             for attribute in remaining:
                 identity = self._member(identity, attribute, depth + 1, visiting)
             return identity
+
+        def _provider_lazy_aliases(
+            self,
+            module: t.Infra.RopePyModule,
+        ) -> t.StrDict:
+            """Read a provider's declared lazy aliases from its native source module.
+
+            Returns:
+                Declared provider modules keyed by their lazy aliases.
+
+            """
+            declaring = module.get_module()
+            if not isinstance(declaring, p.Infra.RopeSourceModule):
+                return {}
+            resource = declaring.get_resource()
+            if resource is None:
+                return {}
+            return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                module.get_name(),
+                Path(resource.real_path),
+                declaring.source_code,
+                project=self._project,
+                pymodule=declaring,
+            )
 
         def _star_reexporter(
             self,

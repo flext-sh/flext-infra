@@ -142,6 +142,35 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
+    @pytest.mark.parametrize("ci_context", [False, True])
+    def test_child_imports_respect_the_installed_ci_boundary(
+        cached_runner_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        ci_context: bool,
+    ) -> None:
+        """CI children cannot import code from a caller's source path."""
+        inherited = cached_runner_project.parent / "inherited-source"
+        inherited.mkdir()
+        (inherited / "inherited_marker.py").write_text("VALUE = 42\n", encoding="utf-8")
+        monkeypatch.setenv(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, str(inherited))
+        source = cached_runner_project / c.Infra.DEFAULT_SRC_DIR
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, ci_context=ci_context
+        )
+        (cached_runner_project / runner.target / "test_import_boundary.py").write_text(
+            "import importlib.util\n"
+            "import os\n\n"
+            "def test_import_boundary() -> None:\n"
+            "    paths = os.environ.get('PYTHONPATH', '').split(os.pathsep)\n"
+            f"    assert ({str(source)!r} in paths) is {not ci_context!r}\n"
+            "    available = importlib.util.find_spec('inherited_marker') is not None\n"
+            f"    assert available is {not ci_context!r}\n",
+            encoding="utf-8",
+        )
+        tm.that(tm.ok(runner.execute()), eq=0)
+
+    @staticmethod
     def test_testmon_commands_name_the_toolchain_environment(
         cached_runner_project: Path,
     ) -> None:

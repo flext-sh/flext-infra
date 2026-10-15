@@ -614,3 +614,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             Literal["gitmodules", "none"],
             m.Field(description="repository-local discovery authority"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsContexts"]

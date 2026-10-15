@@ -9,8 +9,7 @@ from __future__ import annotations
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenExecutionBase
 
 
 class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
