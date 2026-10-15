@@ -117,28 +117,10 @@ class FlextInfraCandidateBootstrapService:
                     f"candidate bootstrap has no declared destinations: {root}",
                 )
             for file in planned.value.files:
-                if file.project != root or not file.path.is_relative_to(root):
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"candidate bootstrap destination has a foreign owner: "
-                        f"{file.path}",
-                    )
-                if (
-                    contract.destinations is not None
-                    and file.path.relative_to(root).as_posix()
-                    not in contract.destinations
-                ):
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"candidate bootstrap destination is outside its surface: "
-                        f"{file.path}",
-                    )
+                admitted = self._admit(root, contract, file, inputs)
+                if admitted.failure:
+                    return r[m.Infra.CodegenPhaseAnalysis].from_failure(admitted)
                 files.append(file)
-                for state in file.source_states:
-                    previous = inputs.get(state.path)
-                    if previous is not None and previous != state:
-                        return r[m.Infra.CodegenPhaseAnalysis].fail(
-                            f"candidate bootstrap observed two states for {state.path}",
-                        )
-                    inputs[state.path] = state
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
@@ -146,6 +128,39 @@ class FlextInfraCandidateBootstrapService:
                 inputs=tuple(inputs.values()),
             ),
         )
+
+    @staticmethod
+    def _admit(
+        root: Path,
+        contract: m.Infra.CodegenConformSurfaceContract,
+        file: m.Infra.CodegenFilePlan,
+        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Admit one planned file into its target surface and record its inputs.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        if file.project != root or not file.path.is_relative_to(root):
+            return r[bool].fail(
+                f"candidate bootstrap destination has a foreign owner: {file.path}",
+            )
+        if (
+            contract.destinations is not None
+            and file.path.relative_to(root).as_posix() not in contract.destinations
+        ):
+            return r[bool].fail(
+                f"candidate bootstrap destination is outside its surface: {file.path}",
+            )
+        for state in file.source_states:
+            previous = inputs.get(state.path)
+            if previous is not None and previous != state:
+                return r[bool].fail(
+                    f"candidate bootstrap observed two states for {state.path}",
+                )
+            inputs[state.path] = state
+        return r[bool].ok(value=True)
 
     def _verify(
         self,
