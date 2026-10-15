@@ -36,6 +36,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         Raises:
             ValueError: If no consistent ordering exists.
+
         """
         sequences = [list(lineage) for lineage in lineages]
         result: list[TIdentity] = []
@@ -131,6 +132,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             Raises:
                 ValueError: If declared identities duplicate or C3 conflicts.
+
             """
             self._namespaces = {
                 ".".join(parts[:index])
@@ -1128,6 +1130,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         Returns:
             The declaration spellings in consistent precedence order.
+
         """
         return cls._RuntimeBaseResolver(project, sources, (), None).class_order(
             declarations

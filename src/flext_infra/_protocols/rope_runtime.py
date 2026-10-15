@@ -148,6 +148,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_line_end(self, lineno: int) -> int: ...
 
+        def get_line_number(self, offset: int) -> int: ...
+
     @runtime_checkable
     class RopeLogicalLineFinder(Protocol):
         """Native logical-line regions produced by Rope's source analyzer."""
@@ -163,6 +165,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope assignment shape."""
 
         ast_node: FlextInfraProtocolsRopeRuntime.RopeAstNode
+
+        def get_lineno(self) -> int | None: ...
 
     @runtime_checkable
     class RopePyName(Protocol):
@@ -244,6 +248,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope parsed module shape."""
 
         source_code: str
+
+        @property
+        def lines(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceLines: ...
 
         def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
 

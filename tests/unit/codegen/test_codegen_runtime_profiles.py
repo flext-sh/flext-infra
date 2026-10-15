@@ -170,12 +170,17 @@ class TestsFlextInfraCodegenRuntimeProfiles:
             ),
         )
         development = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
+        dev_names = [
+            n for item in development if (n := u.Infra.dep_name(item)) is not None
+        ]
+        required_names = [
+            n
+            for item in config.Infra.codegen.scaffold.project.required_flext_dev
+            if (n := u.Infra.dep_name(item)) is not None
+        ]
         tm.that(
-            {u.Infra.dep_name(item) for item in development},
-            has={
-                u.Infra.dep_name(item)
-                for item in config.Infra.codegen.scaffold.project.required_flext_dev
-            },
+            dev_names,
+            has=required_names,
         )
         return rendered
 

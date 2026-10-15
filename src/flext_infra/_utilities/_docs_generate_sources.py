@@ -39,7 +39,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         suffixes: frozenset[str],
         excluded_names: frozenset[str] = frozenset(),
     ) -> p.Result[t.VariadicTuple[Path]]:
-        """List regular source files through one authenticated tree inventory.
+        """List regular source files through the declared inventory depth.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
@@ -50,17 +50,27 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             return r[t.VariadicTuple[Path]].from_failure(planned)
         if planned.value.directories:
             return r[t.VariadicTuple[Path]].ok(())
-        inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
-        if inventory.failure:
-            return r[t.VariadicTuple[Path]].from_failure(inventory)
+        if recursive:
+            inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
+            if inventory.failure:
+                return r[t.VariadicTuple[Path]].from_failure(inventory)
+            paths = (
+                entry.path for entry in inventory.value.entries if entry.kind == "file"
+            )
+        else:
+            directory = cli_u.Cli.atomic_inventory_physical_directory(root)
+            if directory.failure:
+                return r[t.VariadicTuple[Path]].from_failure(directory)
+            paths = (
+                root / entry.name
+                for entry in directory.value.entries
+                if entry.kind == "file"
+            )
         return r[t.VariadicTuple[Path]].ok(
             tuple(
-                entry.path
-                for entry in inventory.value.entries
-                if entry.kind == "file"
-                and entry.path.suffix in suffixes
-                and entry.path.name not in excluded_names
-                and (recursive or entry.path.parent == root)
+                path
+                for path in paths
+                if path.suffix in suffixes and path.name not in excluded_names
             ),
         )
 
@@ -378,23 +388,24 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
 
     @staticmethod
     def docs_verify_source_topology(
-        repository_root: Path,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
+        bundle: m.Infra.DocsGenerationBundle,
         *,
         extra_roots: t.SequenceOf[Path] = (),
-        source_roots: t.SequenceOf[Path] = (),
-        source_directories: t.SequenceOf[m.Cli.AtomicDirectoryChainPlan] = (),
         created_directories: t.SequenceOf[m.Cli.AtomicDirectoryState] = (),
-        source_scope: Path | None = None,
     ) -> p.Result[bool]:
         """Admit only the current batch's source membership and directory ancestry.
+
+        Args:
+            bundle: Captured batch's source membership and directory ancestry.
+            extra_roots: Additional read-only roots for default discovery.
+            created_directories: Authenticated directories created by scaffolding.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
         created = {item.path: item for item in created_directories}
-        for expected in source_directories:
+        for expected in bundle.source_directories:
             observed = cli_u.Cli.atomic_plan_directory_chain(expected.target)
             if observed.failure:
                 return r[bool].from_failure(observed)
@@ -421,19 +432,19 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                     )
         discovered = (
             FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths_for_roots(
-                source_roots,
-                source_scope=source_scope,
+                bundle.source_roots,
+                source_scope=bundle.source_scope,
             )
-            if source_roots
+            if bundle.source_roots
             else FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(
-                repository_root,
+                bundle.repository_root,
                 extra_roots,
             )
         )
         if discovered.failure:
             return r[bool].from_failure(discovered)
         expected_paths = tuple(
-            state.path for state in source_states if state.content is not None
+            state.path for state in bundle.source_states if state.content is not None
         )
         if discovered.value != expected_paths:
             added = sorted(set(discovered.value).difference(expected_paths))

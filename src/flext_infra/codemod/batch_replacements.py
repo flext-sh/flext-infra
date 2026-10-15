@@ -69,10 +69,10 @@ class FlextInfraModReplacements:
         return r[bool].ok(value=True)
 
     @classmethod
-    def publish(
+    def publish[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        report: m.Infra.ModOccurrenceReport[FindingT],
         *,
         exact_replacements: bool = False,
         published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
@@ -214,6 +214,7 @@ class FlextInfraModReplacements:
 
         Returns:
             Exact syntax plans; final normalization and gates belong to convergence.
+
         """
         grouped: MutableMapping[Path, list[m.Infra.ModOccurrence]] = {}
         for finding in report.entries:
@@ -235,6 +236,7 @@ class FlextInfraModReplacements:
 
         Returns:
             Accepted plans or the first native admission failure.
+
         """
         accepted: list[m.Infra.SemanticFilePlan] = []
         for plan in plans:

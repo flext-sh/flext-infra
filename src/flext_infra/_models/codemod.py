@@ -11,10 +11,11 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
+from flext_core import u
 from typing_extensions import TypeForm
 
-from flext_core import u
 from flext_infra import c, t
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsCodemod:
@@ -41,10 +42,8 @@ class FlextInfraModelsCodemod:
             ),
         ]
 
-    class CodemodBindingSnapshot(m.ArbitraryTypesModel):
+    class CodemodBindingSnapshot(FlextInfraModelsBase.FrozenArbitrary):
         """Closed descriptor-authenticated sources used by occurrence admission."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         states: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
@@ -63,6 +62,7 @@ class FlextInfraModelsCodemod:
 
             Raises:
                 ValueError: If binding source snapshots disagree.
+
             """
             indexed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
             for state in states:
@@ -72,10 +72,9 @@ class FlextInfraModelsCodemod:
                     raise ValueError(msg)
             return tuple(indexed.values())
 
-    class CodemodSourceEpoch(m.ArbitraryTypesModel):
+    class CodemodSourceEpoch(FlextInfraModelsBase.FrozenArbitrary):
         """One shared authenticated text view for an immutable capture operation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
         snapshot: FlextInfraModelsCodemod.CodemodBindingSnapshot = m.Field(
             description="Authenticated binding snapshot defining this source epoch"
         )
@@ -93,7 +92,7 @@ class FlextInfraModelsCodemod:
                 for state in self.snapshot.states
                 if state.content is not None
             }
-            if self.sources.keys() != expected or self.contents.keys() != expected:
+            if set(self.sources) != expected or set(self.contents) != expected:
                 msg = "source epoch must contain every present captured input"
                 raise ValueError(msg)
             for state in self.snapshot.states:
@@ -235,8 +234,10 @@ class FlextInfraModelsCodemod:
         pattern: Annotated[t.NonEmptyStr, m.Field(description="Native Rope pattern")]
         goal: Annotated[t.NonEmptyStr, m.Field(description="Native Rope replacement")]
         arguments: Annotated[
-            t.MappingKV[str, str],
-            m.Field(description="Native Rope wildcard identity constraints"),
+            t.MappingKV[str, str | t.StrSequence],
+            m.Field(
+                description="Native Rope identity constraints or admitted alternatives"
+            ),
         ]
         imports: t.MappingKV[str, str] = u.Field(
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
@@ -253,6 +254,14 @@ class FlextInfraModelsCodemod:
         unshadowed_builtins: t.StrSequence = m.Field(
             default=(),
             description="Native lexical names required to be interpreter builtins",
+        )
+        repeats_annotation: bool = m.Field(
+            default=False,
+            description="Whether the replacement evaluates the annotation again",
+        )
+        reorders_annotation: bool = m.Field(
+            default=False,
+            description="Whether the replacement changes annotation evaluation order",
         )
         families: t.StrSequence = m.Field(
             default=(),
@@ -273,10 +282,8 @@ class FlextInfraModelsCodemod:
             m.Field(description="Ordered, identity-constrained Rope contract rules"),
         ]
 
-    class ModFixtureDirectories(m.ArbitraryTypesModel):
+    class ModFixtureDirectories(FlextInfraModelsBase.FrozenArbitrary):
         """Validated physical directories selected by one ast-grep owner."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         rule_dirs: t.VariadicTuple[Path] = m.Field(
             description="Validated rule directories declared by the ast-grep owner",
@@ -288,10 +295,8 @@ class FlextInfraModelsCodemod:
             description="Validated fixture directories declared by the ast-grep owner",
         )
 
-    class ModRuleBatch(m.ArbitraryTypesModel):
+    class ModRuleBatch(FlextInfraModelsBase.FrozenArbitrary):
         """Validated executable ast-grep documents prepared for one circuit."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         inline_rules: Annotated[
             t.NonEmptyStr,

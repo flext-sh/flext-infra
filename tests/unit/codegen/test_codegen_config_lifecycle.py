@@ -183,7 +183,10 @@ import sys
 from pathlib import Path
 
 from flext_infra import c, config, u
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 root = Path(sys.argv[1])
 context = FlextInfraWorkspaceDetector.resolution_context(root).unwrap()
@@ -205,14 +208,16 @@ repository = u.Infra.configured_repository_ref(
     codegen=config.Infra.codegen,
     repository_root=root,
 ).unwrap()
-state = u.Infra.member_project_declaration(root, repository).unwrap()
-explicit = u.Infra.member_project_declaration(
+state = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+    root, repository
+).unwrap()
+explicit = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
     root, repository, lock_state=lock_state,
 ).unwrap()
 assert explicit == state
 if obsolete != context.lock_path:
     foreign_lock = lock_state.model_copy(update={"path": obsolete})
-    refused = u.Infra.member_project_declaration(
+    refused = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
         root, repository, lock_state=foreign_lock,
     )
     assert refused.failure
@@ -253,7 +258,9 @@ u.Cli.atomic_write_binary_file_guarded(
     state.content + b"\\n",
     permission_mode=state.mode,
 ).unwrap()
-changed = u.Infra.member_project_declaration(root, repository)
+changed = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+    root, repository
+)
 assert changed.failure
 assert "RECORD" in changed.error
 print("installed Git declaration: complete groups, extras and RECORD authentication")

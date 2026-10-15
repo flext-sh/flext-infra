@@ -100,7 +100,7 @@ class FlextInfraConfigModelsWorkspace:
             return self
 
     class CandidateDependenciesSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Share exact candidate-source validation without changing declaration shape."""
+        """Share candidate-source validation without changing declaration shape."""
 
         candidate_dependencies: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec],
@@ -117,7 +117,15 @@ class FlextInfraConfigModelsWorkspace:
         ) -> t.VariadicTuple[
             FlextInfraConfigModelsWorkspace.DependencyCommitSourceSpec
         ]:
-            """Require one immutable candidate per distribution and repository."""
+            """Require one immutable candidate per distribution and repository.
+
+            Returns:
+                The validated candidate dependency tuple unchanged.
+
+            Raises:
+                ValueError: If any distribution or repository URL repeats.
+
+            """
             distributions = tuple(
                 canonicalize_name(item.distribution, validate=True) for item in values
             )

@@ -108,8 +108,8 @@ known_first_party = [
   {{ item | tojson }},
 {% endfor %}
 ]
-pep621_dev_dependency_groups = [
-{% for item in tooling.tools.deptry.pep621_dev_dependency_groups %}
+optional_dependencies_dev_groups = [
+{% for item in tooling.tools.deptry.optional_dependencies_dev_groups %}
   {{ item | tojson }},
 {% endfor %}
 ]

@@ -220,11 +220,17 @@ class TestsFlextInfraCodemodContextOwnPackage:
         tm.that(outcomes, eq=[False, True])
 
     @staticmethod
-    @pytest.mark.parametrize("reexport", [False, True])
-    def test_occurrence_identity_is_lexical_and_immutable(
-        mod_workspace: Path, binding_probe_rule: m.Infra.CodemodRule, *, reexport: bool
-    ) -> None:
-        """Identical spelling in another scope never borrows a module binding."""
+    def _write_occurrence_modules(
+        mod_workspace: Path,
+        *,
+        reexport: bool,
+    ) -> tuple[Path, Path, str, str]:
+        """Author definer and consumer modules for one occurrence identity case.
+
+        Returns:
+            Consumer path, owner path, consumer source, and elected module name.
+
+        """
         namespace = u.Infra.project_package_name(mod_workspace)
         package_root = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
         module_name = f"{namespace}.definer"
@@ -242,7 +248,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
         consumer = mod_workspace / "consumer.py"
         source = (
             f"from {namespace}.definer import Public, u\n"
-            "note = '\u00e9'\n"
+            "note = 'é'\n"
             "value = Public\n"
             "def independent(Public):\n"
             "    return Public\n"
@@ -252,6 +258,21 @@ class TestsFlextInfraCodemodContextOwnPackage:
             "    return conditional\n"
         )
         consumer.write_text(source, encoding="utf-8")
+        return consumer, owner, source, module_name
+
+    @pytest.mark.parametrize("reexport", [False, True])
+    def test_occurrence_identity_is_lexical_and_immutable(
+        self,
+        mod_workspace: Path,
+        binding_probe_rule: m.Infra.CodemodRule,
+        *,
+        reexport: bool,
+    ) -> None:
+        """Identical spelling in another scope never borrows a module binding."""
+        consumer, owner, source, module_name = self._write_occurrence_modules(
+            mod_workspace,
+            reexport=reexport,
+        )
         rule = binding_probe_rule.model_copy(
             update={
                 "context": (

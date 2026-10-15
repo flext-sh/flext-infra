@@ -57,6 +57,7 @@ class FlextInfraToolTablesPhase:
 
         Returns:
             Target-local live and planned production namespaces.
+
         """
         src_dir = path / c.Infra.DEFAULT_SRC_DIR
         planned_parts = (

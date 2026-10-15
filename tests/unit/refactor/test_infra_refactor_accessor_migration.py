@@ -44,6 +44,7 @@ def _materialize_fixture(tmp_path: Path) -> t.Triple[Path, Path, Path]:
 
     Returns:
         The resulting ``t.Triple[Path, Path, Path]``.
+
     """
     workspace, project, pkg = u.Tests.namespace_workspace(
         tmp_path,
@@ -383,6 +384,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         Args:
             tmp_path: Temporary path provided by pytest for isolated test files.
+
         """
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
         policy = m.MethodShapeParams.model_validate(

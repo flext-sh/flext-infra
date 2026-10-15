@@ -303,7 +303,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
     ) -> None:
         """A second run of one declared file executes it, never a cache hit.
 
-        The declared file always runs under noselect, so the restored cache
+        The declared file always runs under forceselect, so the restored cache
         selects nothing for it; that empty selection must not be read as a
         cache hit holding executed tests.
         """

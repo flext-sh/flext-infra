@@ -98,6 +98,7 @@ class TestsArtifactRuntime:
         Returns:
             The repository, its distribution, the excluded dev distributions
             and the facades the runtime probe must observe.
+
         """
         if subject == "infra":
             return (
@@ -183,6 +184,7 @@ class TestsArtifactRuntime:
 
         Returns:
             The isolated wheel artifact with the untouched build manifest.
+
         """
         direct = artifacts / "direct"
         source = artifacts / "source"
@@ -234,6 +236,7 @@ class TestsArtifactRuntime:
         Args:
             wheel: The built wheel artifact to inspect.
             excluded: Distributions that must never become runtime requirements.
+
         """
         with zipfile.ZipFile(wheel) as archive:
             metadata_files = tuple(
@@ -243,15 +246,18 @@ class TestsArtifactRuntime:
             )
             tm.that(len(metadata_files), eq=1)
             metadata = BytesParser().parsebytes(archive.read(metadata_files[0]))
-        requires_dist = tuple(metadata.get_all("Requires-Dist", ()))
+        requires_dist: t.SequenceOf[str] = tuple(
+            metadata.get_all("Requires-Dist", ()),
+        )
+        declared: set[str] = {
+            canonicalize_name(parsed.name)
+            for requirement in requires_dist
+            if (parsed := Requirement(requirement)).marker is None
+            or (parsed.marker is not None and parsed.marker.evaluate({"extra": ""}))
+        }
         tm.that(
-            set(excluded).intersection({
-                canonicalize_name(parsed.name)
-                for requirement in requires_dist
-                if (parsed := Requirement(requirement)).marker is None
-                or parsed.marker.evaluate({"extra": ""})
-            }),
-            eq=set(),
+            set(excluded).intersection(declared),
+            eq=set[str](),
         )
 
     @staticmethod
@@ -274,6 +280,7 @@ class TestsArtifactRuntime:
         Returns:
             The consumer project, its synced runtime interpreter and the
             consumer process options.
+
         """
         consumer = tmp_path / "consumer"
         consumer.mkdir()

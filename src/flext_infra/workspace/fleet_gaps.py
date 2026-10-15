@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c, config, m, p, r, s, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
@@ -277,6 +277,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
 
         Returns:
             Counts keyed by canonical checkout root and executed quality gate.
+
         """
         result = r[t.MappingKV[tuple[Path, str], int]]
         counts: t.MutableMappingKV[tuple[Path, str], int] = {}
@@ -309,6 +310,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
 
         Returns:
             The typed invocation summary, or the first violated receipt fact.
+
         """
         result = r[m.Infra.CheckReportSummary]
         try:
@@ -354,6 +356,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
 
         Returns:
             True once every executed quality gate of the receipt is counted.
+
         """
         result = r[bool]
         targets = {target.name: target.path for target in summary.targets}
@@ -398,6 +401,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
 
         Returns:
             True only when verdict, outcome, issues and raw receipt agree.
+
         """
         outcome = execution.outcome
         receipt = execution.raw_receipt

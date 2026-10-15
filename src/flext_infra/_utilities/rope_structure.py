@@ -119,17 +119,17 @@ class FlextInfraUtilitiesRopeStructure:
             enclosers.append((
                 indent,
                 c.Infra.RopeScopeKind.CLASS,
-                FlextInfraUtilitiesRopeStructure._header_name(text),
+                FlextInfraUtilitiesRopeStructure.header_name(text),
             ))
         elif category == c.Infra.StatementCategory.FUNC_DEF:
             enclosers.append((
                 indent,
                 c.Infra.RopeScopeKind.FUNCTION,
-                FlextInfraUtilitiesRopeStructure._header_name(text),
+                FlextInfraUtilitiesRopeStructure.header_name(text),
             ))
 
     @staticmethod
-    def _header_name(text: str) -> str:
+    def header_name(text: str) -> str:
         """Return the declared name from a ``class``/``def`` header line.
 
         Returns:
@@ -172,6 +172,9 @@ class FlextInfraUtilitiesRopeStructure:
         Returns:
             The resulting ``c.Infra.StatementCategory``.
 
+        Raises:
+            TypeError: If Rope Worder does not expose native annotation boundaries.
+
         """
         head = FlextInfraUtilitiesRopeStructure._assignment_head(stripped)
         if head is not None:
@@ -184,6 +187,20 @@ class FlextInfraUtilitiesRopeStructure:
             # Docstrings carry parentheses in their prose; they are inert
             # string-literal expressions, never executable calls.
             return c.Infra.StatementCategory.OTHER
+        if ":" in stripped:
+            words = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+                "rope.base.worder", "Worder"
+            )(stripped, handle_ignores=True)
+            if not isinstance(words, p.Infra.RopeWorder):
+                message = "Rope Worder does not expose native annotation boundaries"
+                raise TypeError(message)
+            begin, end = words.get_word_range(0)
+            if (
+                begin == 0
+                and stripped[begin:end].isidentifier()
+                and stripped[end:].lstrip().startswith(":")
+            ):
+                return c.Infra.StatementCategory.ANN_ASSIGN
         return (
             c.Infra.StatementCategory.CALL
             if "(" in stripped

@@ -20,7 +20,9 @@ class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
     kind: Annotated[
         c.Infra.ProjectKind | None,
         m.Field(
-            description="Explicit governance kind belonging only to the requested target"
+            description=(
+                "Explicit governance kind belonging only to the requested target"
+            ),
         ),
     ] = None
 
@@ -30,6 +32,7 @@ class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
 
         Returns:
             A completed native publication receipt or the original failure.
+
         """
         requested = self.repository_root.expanduser().absolute()
         identity = u.Infra.exact_worktree_root(requested)
@@ -52,11 +55,12 @@ class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
         )
         if conformed.failure:
             return r[bool].from_failure(conformed)
-        if mode is c.Infra.CodegenConformMode.APPLY:
-            if conformed.value.publication_receipt is None:
-                return r[bool].fail(
-                    f"Makefile bootstrap has no completed publication receipt: {requested}",
-                )
+        if mode is c.Infra.CodegenConformMode.APPLY and (
+            conformed.value.publication_receipt is None
+        ):
+            return r[bool].fail(
+                f"Makefile bootstrap has no completed publication receipt: {requested}",
+            )
         return r[bool].ok(value=True)
 
 

@@ -177,6 +177,7 @@ class FlextInfraUtilitiesGitStatePublicationMixin(
 
         Returns:
             Successful CAS creation or an unchanged-source refusal.
+
         """
         root = checkpoint.snapshot.repo_root
         try:

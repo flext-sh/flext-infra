@@ -21,8 +21,6 @@ class FlextInfraModelsWorktree:
     class LintSnapshot(m.ContractModel):
         """Captured diagnostics from one lint tool invocation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
         tool: Annotated[t.NonEmptyStr, m.Field(description="Canonical tool name")]
         exit_code: Annotated[int, m.Field(description="Tool process exit code")]
         errors: Annotated[
@@ -39,8 +37,6 @@ class FlextInfraModelsWorktree:
 
     class RepositoryDelta(m.ContractModel):
         """Operation-only patch for one repository in a workspace transaction."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         relative_path: Annotated[
             t.NonEmptyStr,
@@ -69,8 +65,6 @@ class FlextInfraModelsWorktree:
 
     class RepositoryWorktree(m.ContractModel):
         """One source repository paired with its isolated worktree checkpoint."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         relative_path: Annotated[
             t.NonEmptyStr,
@@ -142,16 +136,12 @@ class FlextInfraModelsWorktree:
     class WorktreeCandidate(m.ContractModel):
         """One registered worktree paired with its owning repository and branch."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
         path: Annotated[Path, m.Field(description="Worktree checkout root")]
         repo: Annotated[Path, m.Field(description="Owning repository root")]
         branch: Annotated[str, m.Field(description="HEAD-derived branch")] = ""
 
     class WorktreeFact(m.ContractModel):
         """One registered worktree measured for the facts report."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Worktree directory name")]
         path: Annotated[Path, m.Field(description="Worktree checkout root")]
@@ -189,8 +179,6 @@ class FlextInfraModelsWorktree:
     class PruneAction(m.ContractModel):
         """One planned mutation, fully described before any execution."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
         kind: Annotated[
             Literal[
                 "cache-expire",
@@ -221,8 +209,6 @@ class FlextInfraModelsWorktree:
     class PrunePlan(m.ContractModel):
         """The full action plan rendered before anything is written."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
         generated_at: Annotated[datetime, m.Field(description="UTC plan instant")]
         mode: Annotated[str, m.Field(description="Detected execution mode")]
         apply: Annotated[bool, m.Field(description="Whether this plan will execute")]
@@ -237,8 +223,6 @@ class FlextInfraModelsWorktree:
 
     class WorktreesReport(m.ContractModel):
         """The worktree facts report: measured facts plus the planned actions."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         facts: Annotated[
             t.VariadicTuple[FlextInfraModelsWorktree.WorktreeFact],

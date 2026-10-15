@@ -48,6 +48,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
         Raises:
             ValueError: If documentation Git declaration has no branch; or if GitHub
                 declaration must name one owner and repository.
+
         """
         root = (
             FlextInfraUtilitiesGit

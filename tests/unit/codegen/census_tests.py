@@ -13,8 +13,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-
 from flext_core import r
+
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import c, m, tm, u

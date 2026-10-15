@@ -77,6 +77,10 @@ class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
     """Packaged dependency-limit configuration resource."""
     DEPTRY_UNUSED_DEPENDENCY_CODE: ClassVar[str] = "DEP002"
     """Deptry rule code for a declared dependency the code never imports."""
+    DEPTRY_SCAN_COVERAGE_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^Scanning (?P<count>[0-9]+) files?\.\.\.$",
+    )
+    """Native deptry import extraction's executed file count."""
     MYPY_FOLLOW_UNTYPED_IMPORTS: ClassVar[str] = "follow_untyped_imports"
     """Mypy option that analyzes installed packages lacking stubs or py.typed."""
     MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT: ClassVar[bool] = False

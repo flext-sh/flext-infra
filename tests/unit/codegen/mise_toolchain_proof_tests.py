@@ -33,7 +33,7 @@ class TestsFlextInfraMiseToolchainProof:
     def test_setup_proof_requires_the_declared_runtime_lint_tools() -> None:
         """The real setup proof validates the lint inventory in its own runtime."""
         root = tm.ok(
-            u.Infra.git_runtime_root(
+            u.Infra.git_repository_root(
                 m.Infra.GitRepoRequest(repo_root=Path(__file__).parent)
             )
         ).repository_root

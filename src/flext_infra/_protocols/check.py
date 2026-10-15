@@ -14,34 +14,126 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import m
+    from flext_infra import m, t
 
 
 @runtime_checkable
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
 
+    class NativeStorageSlot[ValueT](Protocol):
+        """Read one interpreter-owned slot with its precise native result."""
+
+        def __get__(
+            self,
+            instance: t.Infra.NativeOperand,
+            owner: t.Infra.NativeType,
+            /,
+        ) -> ValueT: ...
+
+    class NativeFunctionBinding(Protocol):
+        """Exact classmethod or staticmethod storage before function admission."""
+
+        @property
+        def __func__(self) -> t.Infra.NativeOperand: ...
+
+    @runtime_checkable
+    class NativeModuleSpec(Protocol):
+        """Physical source fields supplied by the native import finder."""
+
+        @property
+        def origin(self) -> str | None: ...
+
+        @property
+        def submodule_search_locations(self) -> t.SequenceOf[str] | None: ...
+
     @runtime_checkable
     class NativeCodeIdentity(Protocol):
         """Immutable native code metadata consumed by source provenance."""
 
-        co_filename: str
-        co_qualname: str
-        co_firstlineno: int
-        co_consts: tuple[p.AttributeProbe | None, ...]
-        co_names: tuple[str, ...]
-        co_varnames: tuple[str, ...]
-        co_freevars: tuple[str, ...]
-        co_cellvars: tuple[str, ...]
-        co_code: bytes
-        co_linetable: bytes
-        co_exceptiontable: bytes
-        co_flags: int
+        @property
+        def co_argcount(self) -> int: ...
+
+        @property
+        def co_posonlyargcount(self) -> int: ...
+
+        @property
+        def co_kwonlyargcount(self) -> int: ...
+
+        @property
+        def co_filename(self) -> str: ...
+
+        @property
+        def co_qualname(self) -> str: ...
+
+        @property
+        def co_firstlineno(self) -> int: ...
+
+        @property
+        def co_consts(self) -> tuple[p.AttributeProbe | None, ...]: ...
+
+        @property
+        def co_names(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_varnames(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_freevars(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_cellvars(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_code(self) -> bytes: ...
+
+        @property
+        def co_linetable(self) -> bytes: ...
+
+        @property
+        def co_exceptiontable(self) -> bytes: ...
+
+        @property
+        def co_flags(self) -> int: ...
 
         def replace(
             self,
-            **changes: p.AttributeProbe | None,
+            *,
+            co_filename: str,
+            co_consts: tuple[p.AttributeProbe | None, ...],
         ) -> FlextInfraProtocolsCheck.NativeCodeIdentity: ...
+
+    class NativeClosureCell(Protocol):
+        """Expose the interpreter-owned contents of one closure cell."""
+
+        @property
+        def cell_contents(self) -> p.AttributeProbe | None: ...
+
+    class NativePythonFunction(Protocol):
+        """Read an elected native Python function through precise contracts."""
+
+        @property
+        def __code__(self) -> t.Infra.NativeCode: ...
+
+        @property
+        def __defaults__(self) -> tuple[p.AttributeProbe | None, ...] | None: ...
+
+        @property
+        def __kwdefaults__(
+            self,
+        ) -> t.DictKV[str, p.AttributeProbe | None] | None: ...
+
+        @property
+        def __globals__(self) -> t.DictKV[str, p.AttributeProbe | None]: ...
+
+        @property
+        def __closure__(
+            self,
+        ) -> tuple[FlextInfraProtocolsCheck.NativeClosureCell, ...] | None: ...
+
+        __name__: str
+        __module__: str
+        __qualname__: str
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):

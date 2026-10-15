@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
 from flext_core import m
+
 from flext_infra import c, t
 
 
@@ -109,8 +110,6 @@ class FlextInfraModelsDuplication:
 
     class JscpdLocation(m.ContractModel):
         """One required source coordinate in a jscpd report."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         column: Annotated[
             t.NonNegativeInt,
@@ -277,8 +276,6 @@ class FlextInfraModelsDuplication:
     class JscpdReport(m.ContractModel):
         """Validated complete jscpd JSON report."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
         duplicates: Annotated[
             t.SequenceOf[FlextInfraModelsDuplication.JscpdDuplicate],
             m.Field(description="Complete detected clone records"),
@@ -320,8 +317,6 @@ class FlextInfraModelsDuplication:
 
     class JscpdScan(m.ContractModel):
         """Fresh command evidence plus its validated report."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         exit_code: Annotated[
             t.NonNegativeInt,

@@ -113,6 +113,7 @@ class FlextInfraModelsCodegenFixModels:
 
             Returns:
                 The resulting ``str``.
+
             """
             return f"_{self.module}"
 
@@ -123,6 +124,7 @@ class FlextInfraModelsCodegenFixModels:
 
             Returns:
                 The resulting ``frozenset[str]``.
+
             """
             return frozenset({self.module, f"_{self.module}"})
 
@@ -133,6 +135,7 @@ class FlextInfraModelsCodegenFixModels:
 
             Returns:
                 The resulting ``frozenset[str]``.
+
             """
             return frozenset({f"{self.module}.py", f"_{self.module}.py"})
 
