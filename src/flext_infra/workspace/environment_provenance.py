@@ -11,6 +11,7 @@ import sys
 import sysconfig
 from functools import lru_cache
 from importlib.machinery import BuiltinImporter, FrozenImporter
+from inspect import getsourcefile
 from json import dumps
 from pathlib import Path
 from sys import modules

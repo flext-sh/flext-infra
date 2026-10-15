@@ -21,6 +21,7 @@ from types import (
     FunctionType,
     GenericAlias,
     GetSetDescriptorType,
+    MappingProxyType,
     MemberDescriptorType,
     MethodDescriptorType,
     MethodType,
@@ -877,7 +878,8 @@ class FlextInfraWorkspaceNativeReference:
             descriptor = slots.get(attribute)
             if type(descriptor) not in {GetSetDescriptorType, MemberDescriptorType}:
                 return r[t.Triple[str, str, str]].fail(
-                    f"extension callback lacks a native metadata slot: {attribute}",
+                    f"extension callback lacks a native metadata slot: {attribute} "
+                    f"type={native.__module__}.{native.__qualname__}",
                 )
             if descriptor.__objclass__ is not native:
                 return r[t.Triple[str, str, str]].fail(
@@ -896,8 +898,29 @@ class FlextInfraWorkspaceNativeReference:
             )
         if not isinstance(supplier.__spec__.loader, ExtensionFileLoader):
             return r[t.Triple[str, str, str]].fail(
-                "extension callback supplier is not a native extension",
+                "extension callback supplier is not a native extension: "
+                f"{metadata['__module__']}.{metadata['__qualname__']} "
+                f"type={native.__module__}.{native.__qualname__} "
+                f"loader={type(supplier.__spec__.loader).__qualname__}",
             )
+        globals_slot = slots.get("__globals__")
+        if globals_slot is not None:
+            if (
+                type(globals_slot) not in {GetSetDescriptorType, MemberDescriptorType}
+                or globals_slot.__objclass__ is not native
+            ):
+                return r[t.Triple[str, str, str]].fail(
+                    "extension callback globals are not native storage",
+                )
+            if globals_slot.__get__(value, native) is not vars(supplier):
+                return r[t.Triple[str, str, str]].fail(
+                    "extension callback globals differ from its native supplier",
+                )
+            return r[t.Triple[str, str, str]].ok((
+                metadata["__module__"],
+                metadata["__name__"],
+                metadata["__qualname__"],
+            ))
         namespace = vars(supplier)
         components = metadata["__qualname__"].split(".")
         for component in components[:-1]:
@@ -907,9 +930,16 @@ class FlextInfraWorkspaceNativeReference:
                     "extension callback has no registered lexical owner",
                 )
             namespace = cls._class_namespace(owner)
-        if namespace.get(components[-1]) is not value:
+        registered = namespace.get(components[-1])
+        if registered is not value:
             return r[t.Triple[str, str, str]].fail(
                 "extension callback differs from its registered descriptor",
+                error_data={
+                    "supplier": metadata["__module__"],
+                    "qualname": metadata["__qualname__"],
+                    "native_type": cls._symbol(native),
+                    "registered_kind": cls._symbol(type(registered)),
+                },
             )
         return r[t.Triple[str, str, str]].ok((
             metadata["__module__"],
@@ -1027,6 +1057,51 @@ class FlextInfraWorkspaceNativeReference:
         )
 
     @classmethod
+    def _native_callable_instance(cls, value: p.AttributeProbe) -> bool:
+        """Recognize an exact registered native callable type."""
+        native = type(value)
+        namespace = cls._class_namespace(native)
+        descriptor = namespace.get("__call__")
+        if (
+            type(descriptor) not in {MethodDescriptorType, WrapperDescriptorType}
+            or descriptor.__objclass__ is not native
+            or "__name__" in namespace
+        ):
+            return False
+        supplier_name = namespace.get("__module__")
+        supplier = (
+            sys.modules.get(supplier_name) if type(supplier_name) is str else None
+        )
+        return type(supplier) is ModuleType and any(
+            registered is native for registered in vars(supplier).values()
+        )
+
+    @classmethod
+    def _python_callable_instance(cls, value: p.AttributeProbe) -> bool:
+        """Recognize authored call behavior without invoking it."""
+        return any(
+            type(cls._class_namespace(owner).get("__call__")) is FunctionType
+            for owner in vars(type)["__mro__"].__get__(type(value), type(type(value)))
+        )
+
+    @staticmethod
+    def _native_instance_referents(
+        value: p.AttributeProbe,
+    ) -> t.VariadicTuple[p.AttributeProbe]:
+        """Read native callable storage through the registered CPython collector."""
+        supplier = sys.modules.get("gc")
+        if (
+            type(supplier) is not ModuleType
+            or vars(supplier).get("get_referents") is not get_referents
+            or type(get_referents) is not BuiltinFunctionType
+            or get_referents.__module__ != "gc"
+            or sys.implementation.name != "cpython"
+        ):
+            msg = "native callable storage has no admitted interpreter traversal"
+            raise ValueError(msg)
+        return tuple(item for item in get_referents(value) if item is not type(value))
+
+    @classmethod
     def _native_cache_state(cls, value: p.AttributeProbe) -> p.Result[str]:
         """Retain observable cache data; reject opaque native links before callbacks."""
         result_type = r[str]
@@ -1130,6 +1205,14 @@ class FlextInfraWorkspaceNativeReference:
                     for key, item in value.items()
                 ),
             ))
+        if native is MappingProxyType:
+            if not construction:
+                return dumps(("mutable", "mappingproxy"))
+            backing = cls._native_instance_referents(value)
+            if len(backing) != 1 or type(backing[0]) is not dict:
+                msg = "native mappingproxy does not contain an exact interpreter dict"
+                raise TypeError(msg)
+            return dumps(("mappingproxy", cls._value(backing[0], seen, construction=True)))
         if native is CodeType:
             return dumps((
                 "code",
@@ -1211,6 +1294,15 @@ class FlextInfraWorkspaceNativeReference:
                     ))
         if observed:
             return dumps(("storage", cls._symbol(native), observed))
+        if cls._native_callable_instance(value):
+            return dumps((
+                "native_callable_storage",
+                cls._symbol(native),
+                tuple(
+                    cls._value(item, seen, construction=True)
+                    for item in cls._native_instance_referents(value)
+                ),
+            ))
         raise ValueError(
             "native import operand has no callback-free storage or registered binding: "
             + cls._symbol(native),
@@ -1558,9 +1650,26 @@ class FlextInfraWorkspaceNativeReference:
                     owner_source,
                 ))
                 continue
-            kind = type(value).__name__
             if type(value) in {classmethod, staticmethod}:
-                value = value.__func__
+                function = value.__func__
+                evidence.append(
+                    m.Infra.NativeBindingEvidence(
+                        binding=binding,
+                        kind=type(value).__name__,
+                        supplier=supplier,
+                        name="",
+                        qualname="",
+                        operands=(("function", cls._symbol(function)),),
+                    ),
+                )
+                pending.append((
+                    f"{binding}.function",
+                    function,
+                    supplier,
+                    owner_source,
+                ))
+                continue
+            kind = type(value).__name__
             wrapper_kind = cls._native_wrapper_kind(value)
             if wrapper_kind is not None:
                 function = cls._native_wrapper_function(value, wrapper_kind)
@@ -1634,11 +1743,38 @@ class FlextInfraWorkspaceNativeReference:
                 )
                 continue
             if type(value) is not FunctionType:
+                if cls._native_callable_instance(
+                    value
+                ) or cls._python_callable_instance(value):
+                    native = type(value)
+                    evidence.append(
+                        m.Infra.NativeBindingEvidence(
+                            binding=binding,
+                            kind="callable_instance",
+                            supplier=vars(type)["__module__"].__get__(
+                                native, type(native)
+                            ),
+                            name=vars(type)["__name__"].__get__(native, type(native)),
+                            qualname=vars(type)["__qualname__"].__get__(
+                                native, type(native)
+                            ),
+                            operands=(("storage", cls._value(value, construction=True)),),
+                        ),
+                    )
+                    pending.append((
+                        f"{binding}.native_class",
+                        native,
+                        supplier,
+                        owner_source,
+                    ))
+                    continue
                 if type(value) is not BuiltinFunctionType:
                     extension = cls._extension_callback(value)
                     if extension.failure:
-                        return r[m.Infra.NativeImportObservation].from_failure(
-                            extension
+                        return r[m.Infra.NativeImportObservation].fail(
+                            f"{extension.error}; binding={binding}; "
+                            f"supplier={supplier}; "
+                            f"native_type={cls._symbol(type(value))}"
                         )
                     actual_supplier, native_name, qualified = extension.value
                     origin = FlextInfraWorkspaceEnvironmentProvenance._module_source(
