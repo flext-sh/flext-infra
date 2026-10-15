@@ -1146,7 +1146,6 @@ class FlextInfraWorkspaceGeneratedFunction:
         """Prove a literal hook ends at native AttributeError without running it.
 
         Raises:
-            TypeError: If a literal message operand has authored value semantics.
             ValueError: If the selected hook path has unproved execution semantics.
 
         """
@@ -1163,7 +1162,6 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "closed compiler module hook has unsupported argument storage"
             raise ValueError(msg)
         argument = arguments[0].arg
-        local = {argument: member}
         statements = list(declaration.body)
         while statements:
             statement = statements.pop(0)
@@ -1174,111 +1172,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             ):
                 continue
             if isinstance(statement, ast.If):
-                test = statement.test
-                if (
-                    not isinstance(test, ast.Compare)
-                    or len(test.ops) != 1
-                    or len(test.comparators) != 1
-                    or not isinstance(test.left, ast.Name)
-                    or test.left.id != argument
-                ):
-                    msg = "closed compiler hook condition is not a literal member test"
-                    raise ValueError(msg)
-                operand = test.comparators[0]
-                if isinstance(test.ops[0], ast.In) and isinstance(operand, ast.Set):
-                    if any(
-                        not isinstance(item, ast.Constant)
-                        or type(item.value) is not str
-                        for item in operand.elts
-                    ):
-                        msg = "closed compiler hook membership has nonliteral operands"
-                        raise ValueError(msg)
-                    condition = any(
-                        isinstance(item, ast.Constant) and member == item.value
-                        for item in operand.elts
-                    )
-                elif (
-                    isinstance(test.ops[0], ast.Eq)
-                    and isinstance(operand, ast.Constant)
-                    and type(operand.value) is str
-                ):
-                    condition = member == operand.value
-                else:
-                    msg = "closed compiler hook condition has unsupported semantics"
-                    raise ValueError(msg)
+                condition = self._hook_condition(statement.test, argument, member)
                 statements[:0] = statement.body if condition else statement.orelse
                 continue
             if isinstance(statement, ast.Raise):
-                raised = statement.exc
-                if (
-                    statement.cause is not None
-                    or not isinstance(raised, ast.Call)
-                    or not isinstance(raised.func, ast.Name)
-                    or raised.func.id != "AttributeError"
-                    or raised.keywords
-                    or len(raised.args) != 1
-                ):
-                    msg = "closed compiler hook does not raise native AttributeError"
-                    raise ValueError(msg)
-                error = namespace.get(
-                    "AttributeError", vars(builtins).get("AttributeError")
-                )
-                if type(error) is not type or error is not vars(builtins).get(
-                    "AttributeError"
-                ):
-                    msg = "closed compiler hook exception binding is not native"
-                    raise ValueError(msg)
-                storage = vars(type)["__dict__"].__get__(error, type(error))
-                initializer = storage.get("__init__")
-                if (
-                    vars(type)["__name__"].__get__(error, type(error))
-                    != "AttributeError"
-                    or vars(type)["__module__"].__get__(error, type(error))
-                    != "builtins"
-                    or not (
-                        type(initializer) is WrapperDescriptorType
-                        or type(initializer) is MethodDescriptorType
-                    )
-                    or initializer.__objclass__ is not error
-                ):
-                    msg = "closed compiler hook exception constructor is interposed"
-                    raise ValueError(msg)
-                message = raised.args[0]
-                if isinstance(message, ast.Constant) and type(message.value) is str:
-                    return
-                if not isinstance(message, ast.JoinedStr):
-                    msg = "closed compiler hook exception message is not literal text"
-                    raise ValueError(msg)
-                for part in message.values:
-                    if isinstance(part, ast.Constant) and type(part.value) is str:
-                        continue
-                    if (
-                        not isinstance(part, ast.FormattedValue)
-                        or not isinstance(part.value, ast.Name)
-                        or part.format_spec is not None
-                        or part.conversion not in {-1, ord("r")}
-                    ):
-                        msg = (
-                            "closed compiler hook exception message invokes formatting"
-                        )
-                        raise ValueError(msg)
-                    name = part.value.id
-                    if name == argument:
-                        value = local[name]
-                    elif name == "__name__":
-                        value = namespace.get(name)
-                    else:
-                        msg = (
-                            "closed compiler hook exception message "
-                            "has an opaque binding"
-                        )
-                        raise ValueError(msg)
-                    if type(value) is not str:
-                        msg = (
-                            "closed compiler hook exception message "
-                            "has an authored operand"
-                        )
-                        raise TypeError(msg)
+                self._hook_raise(statement, namespace, argument, member)
                 return
             msg = (
                 "closed compiler selected module-hook statement is unsupported: "
@@ -1287,6 +1185,133 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise ValueError(msg)
         msg = "closed compiler module hook has no proved missing-member outcome"
         raise ValueError(msg)
+
+    @staticmethod
+    def _hook_condition(test: ast.expr, argument: str, member: str) -> bool:
+        """Read the selected literal member predicate without invoking the hook.
+
+        Returns:
+            Whether the physical literal predicate selects its body.
+
+        Raises:
+            ValueError: If the source predicate is outside the closed grammar.
+
+        """
+        match test:
+            case ast.Compare(
+                left=ast.Name(id=name), ops=[operation], comparators=[operand]
+            ) if name == argument:
+                pass
+            case _:
+                msg = "closed compiler hook condition is not a literal member test"
+                raise ValueError(msg)
+        if isinstance(operation, ast.In) and isinstance(operand, ast.Set):
+            literals: list[str] = []
+            for item in operand.elts:
+                if not isinstance(item, ast.Constant) or type(item.value) is not str:
+                    msg = "closed compiler hook membership has nonliteral operands"
+                    raise ValueError(msg)
+                literals.append(item.value)
+            return member in literals
+        if (
+            isinstance(operation, ast.Eq)
+            and isinstance(operand, ast.Constant)
+            and type(operand.value) is str
+        ):
+            return member == operand.value
+        msg = "closed compiler hook condition has unsupported semantics"
+        raise ValueError(msg)
+
+    def _hook_raise(
+        self,
+        statement: ast.Raise,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        argument: str,
+        member: str,
+    ) -> None:
+        """Prove the selected raise uses the native exception and literal message.
+
+        Raises:
+            ValueError: If exception syntax, identity or constructor differs.
+
+        """
+        match statement:
+            case ast.Raise(
+                exc=ast.Call(
+                    func=ast.Name(id="AttributeError"), args=[message], keywords=[]
+                ),
+                cause=None,
+            ):
+                pass
+            case _:
+                msg = "closed compiler hook does not raise native AttributeError"
+                raise ValueError(msg)
+        error = namespace.get("AttributeError", vars(builtins).get("AttributeError"))
+        if type(error) is not type or error is not vars(builtins).get("AttributeError"):
+            msg = "closed compiler hook exception binding is not native"
+            raise ValueError(msg)
+        storage = vars(type)["__dict__"].__get__(error, type(error))
+        initializer = storage.get("__init__")
+        if (
+            (
+                vars(type)["__name__"].__get__(error, type(error)),
+                vars(type)["__module__"].__get__(error, type(error)),
+            )
+            != ("AttributeError", "builtins")
+            or not (
+                type(initializer) is WrapperDescriptorType
+                or type(initializer) is MethodDescriptorType
+            )
+            or initializer.__objclass__ is not error
+        ):
+            msg = "closed compiler hook exception constructor is interposed"
+            raise ValueError(msg)
+        self._hook_message(message, namespace, argument, member)
+
+    @staticmethod
+    def _hook_message(
+        message: ast.expr,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        argument: str,
+        member: str,
+    ) -> None:
+        """Validate literal exception text and its exact string substitutions.
+
+        Raises:
+            TypeError: If a substitution has authored string semantics.
+            ValueError: If message syntax or binding is outside the closed grammar.
+
+        """
+        match message:
+            case ast.Constant(value=value) if type(value) is str:
+                return
+            case ast.JoinedStr(values=parts):
+                pass
+            case _:
+                msg = "closed compiler hook exception message is not literal text"
+                raise ValueError(msg)
+        for part in parts:
+            if isinstance(part, ast.Constant) and type(part.value) is str:
+                continue
+            if (
+                not isinstance(part, ast.FormattedValue)
+                or not isinstance(part.value, ast.Name)
+                or part.format_spec is not None
+                or part.conversion not in {-1, ord("r")}
+            ):
+                msg = "closed compiler hook exception message invokes formatting"
+                raise ValueError(msg)
+            name = part.value.id
+            if name == argument:
+                value = member
+            elif name == "__name__":
+                value = namespace.get(name)
+            else:
+                msg = "closed compiler hook exception message has an opaque binding"
+                raise ValueError(msg)
+            if type(value) is not str:
+                msg = "closed compiler hook exception message has an authored operand"
+                raise TypeError(msg)
 
     def _expression(
         self,

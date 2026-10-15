@@ -1088,6 +1088,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         Returns:
             The dedented payload text and its original indentation.
 
+        Raises:
+            TypeError: A payload or its enclosing declaration lacks a source scope.
+
         """
         origin, node, _binding = declaration
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1098,14 +1101,23 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 origin.relative_to(Path(project.root.real_path)).as_posix(),
             ),
         )
+        if node.parent is None:
+            message = "payload declaration has no enclosing source scope"
+            raise TypeError(message)
         outer_name = node.parent.pyobject.get_name()
         outer = origin_module.get_attribute(outer_name).get_object().get_scope()
+        if outer is None:
+            message = "payload enclosing declaration has no native source scope"
+            raise TypeError(message)
         payload = (
             outer.pyobject
             .get_attribute(node.pyobject.get_name())
             .get_object()
             .get_scope()
         )
+        if payload is None:
+            message = "payload declaration has no native source scope"
+            raise TypeError(message)
         lines = cls._source_lines(updated[origin])
         start = lines.get_line_start(payload.get_start())
         end = min(lines.get_line_end(payload.get_end()) + 1, len(updated[origin]))
@@ -1162,6 +1174,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project, updated[target[0]], resource=resource
         )
         owner = destination.get_attribute(target[1]).get_object().get_scope()
+        if owner is None:
+            message = "payload destination owner has no native source scope"
+            raise TypeError(message)
         target_lines = cls._source_lines(updated[target[0]])
         first = target_lines.get_line_start(owner.get_body_start())
         last = min(
@@ -1453,6 +1468,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         dependencies: t.MutableMappingKV[t.Pair[int, int], str] = {}
         imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo] = {}
         module = context[1].pyobject.get_module()
+        if module is None:
+            message = "payload dependency scope has no native source module"
+            raise TypeError(message)
         source = module.source_code
         lines = cls._source_lines(source)
         first = lines.get_line_start(node.get_start())
