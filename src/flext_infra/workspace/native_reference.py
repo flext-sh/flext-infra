@@ -554,9 +554,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         owner: p.AttributeProbe,
         supplier: str,
-        owners: t.MutableMappingKV[
-            int, t.Triple[str, str, p.AttributeProbe | None]
-        ],
+        owners: t.MutableMappingKV[int, t.Triple[str, str, p.AttributeProbe | None]],
     ) -> None:
         """Keep the actual class receiver while traversing native wrappers."""
         for attribute, descriptor in cls._class_namespace(owner).items():
@@ -573,7 +571,7 @@ class FlextInfraWorkspaceNativeReference:
                 owners[id(value)] = (supplier, attribute, owner)
 
     @classmethod
-    def _python_storage_class(cls, native: type) -> bool:
+    def _python_storage_class(cls, native: t.Infra.NativeType) -> bool:
         """Require Python storage to cover every non-object ancestry payload."""
         return cls._python_storage_owners(
             vars(type)["__mro__"].__get__(native, type(native))
@@ -610,9 +608,8 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _native_mapping_proxy_backing(cls, value: p.AttributeProbe) -> p.AttributeProbe:
         """Read the sole exact-dict backing of the CPython mapping proxy."""
-        if (
-            type(value) is not MappingProxyType
-            or MappingProxyType is not type(vars(type))
+        if type(value) is not MappingProxyType or MappingProxyType is not type(
+            vars(type)
         ):
             msg = "mapping proxy has no admitted interpreter type"
             raise ValueError(msg)
@@ -648,10 +645,16 @@ class FlextInfraWorkspaceNativeReference:
         result = []
         for index, owner in enumerate(ancestry):
             for name, descriptor in sorted(cls._class_namespace(owner).items()):
-                if not (
-                    type(descriptor) is MemberDescriptorType
-                    or (name == "__dict__" and type(descriptor) is GetSetDescriptorType)
-                ) or descriptor.__objclass__ is not owner:
+                if (
+                    not (
+                        type(descriptor) is MemberDescriptorType
+                        or (
+                            name == "__dict__"
+                            and type(descriptor) is GetSetDescriptorType
+                        )
+                    )
+                    or descriptor.__objclass__ is not owner
+                ):
                     continue
                 if index and type(descriptor) is MemberDescriptorType:
                     present, stored = cls._inherited_member_state(
@@ -728,7 +731,7 @@ class FlextInfraWorkspaceNativeReference:
         ):
             msg = "native optional slot lacks the interpreter super implementation"
             raise ValueError(msg)
-        root = vars(type)["__base__"].__get__(type(0), type(type(0)))
+        root = vars(type)["__base__"].__get__(int, type(int))
         if ancestry[-1] is not root:
             msg = "native optional slot lacks the interpreter object root"
             raise ValueError(msg)
@@ -738,7 +741,9 @@ class FlextInfraWorkspaceNativeReference:
         if (
             type(value) is not native
             or len(current) != len(ancestry)
-            or any(left is not right for left, right in zip(current, ancestry, strict=True))
+            or any(
+                left is not right for left, right in zip(current, ancestry, strict=True)
+            )
             or cls._class_namespace(owner).get(name) is not descriptor
         ):
             msg = "native optional slot context changed during observation"
@@ -746,7 +751,9 @@ class FlextInfraWorkspaceNativeReference:
         return (False, None) if stored is absent else (True, stored)
 
     @staticmethod
-    def _native_type(value: p.AttributeProbe | None, *expected: type) -> bool:
+    def _native_type(
+        value: p.AttributeProbe | None, *expected: t.Infra.NativeType
+    ) -> bool:
         """Compare type identity without invoking an authored metaclass hash."""
         native = type(value)
         return any(native is candidate for candidate in expected)
@@ -1171,8 +1178,7 @@ class FlextInfraWorkspaceNativeReference:
                 )
             elif (alias_state := cls._generic_alias_state(item)) is not None:
                 pending.extend(
-                    (f"{name}.{attribute}", stored)
-                    for attribute, stored in alias_state
+                    (f"{name}.{attribute}", stored) for attribute, stored in alias_state
                 )
                 if type(item) is not GenericAlias:
                     pending.append((f"{name}.type", type(item)))
@@ -1598,12 +1604,53 @@ class FlextInfraWorkspaceNativeReference:
 
         """
         return any(
-            base is type
-            for base in vars(type)["__mro__"].__get__(
-                type(value),
-                type(type(value)),
-            )
+            owner is BuiltinFunctionType or owner is MethodWrapperType
+            for owner in cls._native_mro(type(value))
         )
+
+    @classmethod
+    def _bound_native_symbol(cls, value: t.Infra.NativeBuiltinCallable) -> str:
+        """Find an admitted native method's exact defining receiver descriptor.
+
+        Returns:
+            The receiver owner's symbolic method identity.
+
+        Raises:
+            TypeError: No native descriptor binds the admitted receiver.
+
+        """
+        receiver = value.__self__
+        class_receiver = cls._is_class(receiver)
+        receiver_owner = receiver if cls._is_class(receiver) else type(receiver)
+        for owner in cls._native_mro(receiver_owner):
+            descriptor = cls._class_namespace(owner).get(value.__name__)
+            if cls._is_function_binding(descriptor):
+                descriptor = descriptor.__func__
+            if descriptor is value:
+                return f"{cls._symbol(owner)}.{value.__name__}"
+            if (
+                cls._is_descriptor(descriptor)
+                and any(
+                    cls._is_native(descriptor, kind)
+                    for kind in (
+                        ClassMethodDescriptorType,
+                        MethodDescriptorType,
+                        WrapperDescriptorType,
+                    )
+                )
+                and descriptor.__objclass__ is owner
+            ):
+                bound = descriptor.__get__(
+                    None if class_receiver else receiver,
+                    receiver_owner,
+                )
+                if type(bound) is type(value) and bound == value:
+                    return f"{cls._symbol(owner)}.{value.__name__}"
+        msg = (
+            "native callable has no defining descriptor for its receiver: "
+            f"{cls._symbol(receiver_owner)}.{value.__name__}"
+        )
+        raise TypeError(msg)
 
     @classmethod
     def _symbol_metadata(
@@ -2468,9 +2515,7 @@ class FlextInfraWorkspaceNativeReference:
                 return r[m.Infra.NativeImportObservation].from_failure(elected)
             sources.add((supplier, str(cls._source_path(elected.value, paths)), ""))
         evidence: list[m.Infra.NativeBindingEvidence] = []
-        generated_owners: dict[
-            int, t.Triple[str, str, p.AttributeProbe | None]
-        ] = {}
+        generated_owners: dict[int, t.Triple[str, str, p.AttributeProbe | None]] = {}
         compiler_inputs: dict[Path, m.Cli.AtomicFileState] = {}
         compiled: t.DictKV[Path, t.Infra.NativeClassDeclarations] = {}
         scope = ContextVar[t.Infra.NativeInvocationFacts | None].get(
@@ -3834,10 +3879,10 @@ class FlextInfraWorkspaceNativeReference:
         if proved.failure:
             return result_type.from_failure(proved)
         _supplier, _attribute, expected = proved.value
-        if (
-            not cls._code_matches(executed, cls._code_evidence(expected.code))
-            or metadata.get("generated_inputs")
-            != dumps(tuple(str(state.path) for state in expected.inputs))
+        if not cls._code_matches(
+            executed, cls._code_evidence(expected.code)
+        ) or metadata.get("generated_inputs") != dumps(
+            tuple(str(state.path) for state in expected.inputs)
         ):
             return result_type.fail(
                 f"generated receipt differs from its physical compiler: {binding.binding}"
@@ -3876,9 +3921,7 @@ class FlextInfraWorkspaceNativeReference:
         """
         with u.Infra.open_import_project(Path.cwd()) as project:
             witnesses: dict[str, m.Infra.NativeSourceWitness] = {}
-            proved = cls._authored_sources_current(
-                observed, inputs, project, witnesses
-            )
+            proved = cls._authored_sources_current(observed, inputs, project, witnesses)
             if proved.failure:
                 return proved
             current = cls._witnesses_current(witnesses)

@@ -12,7 +12,7 @@ from importlib.machinery import PathFinder
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u, validate
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
     FlextInfraMiseArtifactsFiles,
@@ -574,8 +574,6 @@ class FlextInfraCodegenPreconditions:
             The authenticated producer phase analysis snapshot.
 
         """
-        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
         if context.failure:
@@ -597,7 +595,7 @@ class FlextInfraCodegenPreconditions:
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        reference = FlextInfraValidateFreshImport.capture_native_reference(
+        reference = validate.FlextInfraValidateFreshImport.capture_native_reference(
             m.Infra.NativeImportRequest(
                 repository_root=context.value.runtime_root,
                 runtime_root=context.value.runtime_root,
