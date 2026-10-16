@@ -98,6 +98,12 @@ class TestsFlextInfraGithubGateAttestation:
         u.Tests.WorktreeFixture.write_python_project(root, "fixture")
         source = root / c.Infra.DEFAULT_SRC_DIR
         (source / "consumer.py").write_text("import os\n", encoding="utf-8")
+        # The attested toolchain digest reads the resolver inputs the runtime
+        # context elects from the uv resolution policy; commit them there.
+        context = TestsFlextInfraGithubGateAttestation._context(root)
+        context.resolution_root.mkdir(parents=True, exist_ok=True)
+        context.pyproject_path.write_bytes((root / "pyproject.toml").read_bytes())
+        context.lock_path.write_text("version = 1\n", encoding="utf-8")
         tm.ok(
             u.Infra.git_add_paths(
                 m.Infra.GitPathsRequest(
@@ -107,6 +113,8 @@ class TestsFlextInfraGithubGateAttestation:
                         "pyproject.toml",
                         "tracked.txt",
                         c.Infra.DEFAULT_SRC_DIR,
+                        context.pyproject_path.relative_to(root).as_posix(),
+                        context.lock_path.relative_to(root).as_posix(),
                     ),
                 ),
             ),
@@ -202,7 +210,6 @@ class TestsFlextInfraGithubGateAttestation:
             digest = cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
             assert report.digest == f"sha256:{digest}"
 
-    @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])
     @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])
     def test_signing_identity_reads_only_native_public_references(
         self,

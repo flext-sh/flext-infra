@@ -1015,17 +1015,22 @@ class FlextInfraUtilitiesGitAttestationMixin(
         )
         for path in (context.pyproject_path, context.lock_path):
             relative = path.relative_to(context.runtime_root).as_posix()
-            if relative not in runtime_commit.tree:
-                msg = (
-                    "selected resolver input is absent from the runtime commit: "
-                    f"{relative}"
-                )
-                raise FileNotFoundError(
-                    msg,
-                )
-            tracked.append(
-                f"runtime:{relative}:{(runtime_commit.tree / relative).hexsha}"
-            )
+            # GitPython's ``Tree.__contains__`` matches only the direct entries'
+            # repo-relative paths, so a nested resolver input
+            # (``.flext/uv/local/pyproject.toml``) is located one tree level at
+            # a time by its cumulative path.
+            node = runtime_commit.tree
+            prefix: list[str] = []
+            for part in relative.split("/"):
+                prefix.append(part)
+                if "/".join(prefix) not in node:
+                    msg = (
+                        "selected resolver input is absent from the runtime commit: "
+                        f"{relative}"
+                    )
+                    raise FileNotFoundError(msg)
+                node = node / part
+            tracked.append(f"runtime:{relative}:{node.hexsha}")
         content = "\n".join(tracked)
         return f"sha256:{u.Cli.sha256_content(content)}"
 
@@ -1100,9 +1105,16 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 if existing.failure:
                     return r[m.Infra.GateAttestationReport].from_failure(existing)
                 if existing.value != predicate:
+                    stored = existing.value.model_dump(mode="json")
+                    current = predicate.model_dump(mode="json")
+                    fields = sorted(
+                        name
+                        for name in stored.keys() | current.keys()
+                        if stored.get(name) != current.get(name)
+                    )
                     return r[m.Infra.GateAttestationReport].fail(
                         f"existing immutable stage proof differs from original "
-                        f"evidence: {tag}",
+                        f"evidence: {tag}; fields={','.join(fields)}",
                     )
                 return r[m.Infra.GateAttestationReport].ok(
                     cls._attestation_report(tag, predicate, reused=True),
