@@ -103,13 +103,25 @@ metadata:
     # consumer does, and only other own modules stay banned.
     - not: compose-module
 rule:
-  all:
+  any:
   - kind: import_from_statement
-  - has:
+    has:
       field: module_name
       kind: dotted_name
       pattern: $MODULE
       not:
         regex: "\\._[a-z]+\\._base_parts(\\.|$)"
+  - kind: dotted_name
+    pattern: $MODULE
+    not:
+      regex: "\\._[a-z]+\\._base_parts(\\.|$)"
+    any:
+    - inside:
+        kind: import_statement
+    - inside:
+        kind: aliased_import
+        field: name
+        inside:
+          kind: import_statement
 message: >-
   Family base.py imports `$MODULE` from its own namespace: a family base is a leaf and imports neither other own modules nor settings/config (its family's public compose module is the one sanctioned static surface).

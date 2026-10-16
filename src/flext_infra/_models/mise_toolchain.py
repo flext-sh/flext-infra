@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
@@ -340,6 +341,38 @@ class FlextInfraModelsMiseToolchain:
                     "the setup reality proof; every tool declares one"
                 ),
             ),
+        ]
+
+    class MiseToolchainProofOptions(m.FrozenModel):
+        """Validated immutable inputs for one native toolchain proof."""
+
+        entry: Annotated[
+            FlextInfraModelsMiseToolchain.MiseToolEntry,
+            m.Field(description="Declared tool entry currently under proof."),
+        ]
+        lock: Annotated[
+            t.JsonMapping,
+            m.Field(description="Authenticated Mise lock mapping."),
+        ]
+        platform_name: Annotated[
+            str,
+            m.Field(description="Resolved platform identity of the running host."),
+        ]
+        mise_binary: Annotated[
+            Path,
+            m.Field(
+                description="Managed Mise executable answering read-only queries.",
+            ),
+        ]
+        declared: Annotated[
+            t.SequenceOf[FlextInfraModelsMiseToolchain.MiseToolEntry],
+            m.Field(
+                description="All declared tool entries electable as probe owners.",
+            ),
+        ]
+        proven: Annotated[
+            frozenset[str],
+            m.Field(description="Selectors already proven before this entry."),
         ]
 
     class ToolchainSpec(_ConfigContract):

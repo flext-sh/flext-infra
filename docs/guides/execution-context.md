@@ -60,6 +60,21 @@ declaration/dependency owner, not through local-import demotion, fallback,
 compatibility exports or suppressions. Generated surfaces change only through
 their source and canonical regeneration.
 
+Family-base import enforcement covers both `from` imports and module imports,
+including aliases and imports inside `TYPE_CHECKING`. The semantic import owner
+still elects the package, family base and sanctioned compose modules; native
+matching preserves the family's declared split-parts imports.
+
+Rule catalogs, fixture staging and snapshot reconciliation consume YAML streams
+through `u.Cli.yaml_parse_documents`. Document separators and literal-block
+chomping belong to that shared parser; Infra does not split or normalize their
+source text before parsing.
+
+Captured library, project and local configuration layers use the strict YAML
+source's list-aware merge. Project tool additions retain the base toolchain.
+A projected edit replaces its selected values inside one layer before those
+layers are composed, so a replacement does not retain the previous declaration.
+
 Before accepting a phase, retain evidence of complete consumer rewiring and
 superseded-path removal, domain-correct reuse and net-negative simplification
 without functional reduction. Global make-check/verification-loop own runtime,

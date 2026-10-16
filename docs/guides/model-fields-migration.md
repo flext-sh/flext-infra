@@ -91,3 +91,12 @@ staging cleanup against the real upgrade implementation.
 Rule snapshot changes are projected with `make mod-snapshots`. Run `make mod`,
 `make gen`, and the native validation lifecycle after updating the automation
 dependency. Do not repair the consumer by editing the rewritten call site.
+
+Census consumers pass the canonical `m.Infra.CensusInput` to `infra.census`.
+That composition owns the Rope workspace, authenticated source preview and
+request defaults for both CLI callers and behavioral test fixtures.
+
+Mise reality proofs carry their validated inputs in
+`m.Infra.MiseToolchainProofOptions`, using the shared frozen preset. These inputs
+contain declared models, JSON, paths and collections; they require no arbitrary
+type allowance.

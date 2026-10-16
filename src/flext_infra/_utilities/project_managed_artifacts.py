@@ -14,7 +14,7 @@ from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import FlextStrictYamlConfigSource
+from flext_core.config_sources import FlextStrictYamlConfigSource
 
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
@@ -358,7 +358,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 if projected is not None
                 else dict(payload)
             )
-            merged = u.config_merge(merged, values)
+            merged = FlextStrictYamlConfigSource.merge_values(merged, values)
         return merged
 
     @staticmethod

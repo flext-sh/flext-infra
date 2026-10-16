@@ -6,14 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 import pytest
-from flext_core import e
 
-from flext_infra import FlextInfraConfig, c
-from tests import tm, u
+from flext_infra import FlextInfraConfig
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:
@@ -80,70 +78,69 @@ class TestsFlextInfraConfigLocalOverrides:
             )
 
     @staticmethod
-    def _copy_tracked_configs(target: Path) -> None:
-        """Seed one config directory with the real tracked fleet config."""
-        for tracked in FlextInfraConfig.ssot_config_dir().glob("*.yaml"):
-            shutil.copy(tracked, target / tracked.name)
-
     def test_tracked_configs_keep_fleet_defaults(
-        self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Without a local file the tracked scalar survives untouched.
 
         The expectation is the tracked SSOT read itself (P0): any legitimate
         config change keeps both loads equal, and only a broken merge diverges.
         """
-        self._copy_tracked_configs(tmp_path)
         baseline = FlextInfraConfig.fetch_global()
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        FlextInfraConfig.reset_for_testing()
-        try:
-            fresh = FlextInfraConfig.fetch_global()
-            tm.that(
-                fresh.Infra.codegen.loc_cap.max_lines,
-                eq=baseline.Infra.codegen.loc_cap.max_lines,
-            )
-        finally:
-            FlextInfraConfig.reset_for_testing()
+        inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
+        tm.that(
+            inputs.spec.loc_cap.max_lines,
+            eq=baseline.Infra.codegen.loc_cap.max_lines,
+        )
 
+    @staticmethod
     def test_empty_mypy_overlay_keeps_selected_global_policy(
-        self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Empty local lists cannot remove policy supplied by the YAML owner."""
-        baseline = FlextInfraConfig.fetch_global().Infra.tooling.tools.mypy
-        self._copy_tracked_configs(tmp_path)
-        (tmp_path / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
+        baseline = FlextInfraConfig.fetch_global().Infra.tooling
+        _, _, local = FlextInfraConfig.config_layer_paths_for_repository(
+            tmp_path,
+            filename="tooling.yaml",
+        )
+        local.parent.mkdir(parents=True)
+        local.write_text(
             "Infra:\n  tooling:\n    tools:\n      mypy:\n"
             "        plugins: []\n        disable-error-code: []\n",
             encoding="utf-8",
         )
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        FlextInfraConfig.reset_for_testing()
-        try:
-            policy = FlextInfraConfig.fetch_global().Infra.tooling.tools.mypy
-            tm.that(tuple(policy.plugins), eq=tuple(baseline.plugins))
-            tm.that(
-                tuple(policy.disable_error_code),
-                eq=tuple(baseline.disable_error_code),
-            )
-        finally:
-            FlextInfraConfig.reset_for_testing()
+        document = tm.ok(
+            u.Infra.load_config_document_inputs(
+                tmp_path,
+                filename="tooling.yaml",
+            ),
+        )
+        tooling = type(baseline).model_validate(
+            u.Cli.json_walk_path(document.values, ("Infra", "tooling")),
+        )
+        tm.that(
+            tuple(tooling.tools.mypy.plugins),
+            eq=tuple(baseline.tools.mypy.plugins),
+        )
+        tm.that(
+            tuple(tooling.tools.mypy.disable_error_code),
+            eq=tuple(baseline.tools.mypy.disable_error_code),
+        )
 
+    @staticmethod
     def test_local_file_dict_entries_add_beside_tracked_ones(
-        self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A dict-typed registry gains the local entry and keeps tracked ones."""
         baseline = (
             FlextInfraConfig.fetch_global().Infra.codegen.layout.project_overrides
         )
-        self._copy_tracked_configs(tmp_path)
-        (tmp_path / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
+        _, _, local = FlextInfraConfig.config_layer_paths_for_repository(
+            tmp_path,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        local.parent.mkdir()
+        local.write_text(
             "Infra:\n"
             "  codegen:\n"
             "    layout:\n"
@@ -153,18 +150,13 @@ class TestsFlextInfraConfigLocalOverrides:
             "            - example\n",
             encoding="utf-8",
         )
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        FlextInfraConfig.reset_for_testing()
-        try:
-            fresh = FlextInfraConfig.fetch_global()
-            overrides = fresh.Infra.codegen.layout.project_overrides
-            tm.that("example-project" in overrides, eq=True)
-            tm.that(set(overrides), eq={*baseline, "example-project"})
-        finally:
-            FlextInfraConfig.reset_for_testing()
+        inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
+        overrides = inputs.spec.layout.project_overrides
+        tm.that("example-project" in overrides, eq=True)
+        tm.that(set(overrides), eq={*baseline, "example-project"})
 
+    @staticmethod
     def test_target_and_local_layers_use_explicit_repository_root(
-        self,
         tmp_path: Path,
     ) -> None:
         """Explicit target layers merge independently of the ambient directory."""
@@ -188,14 +180,93 @@ class TestsFlextInfraConfigLocalOverrides:
             eq=(directory / "codegen.yaml", directory / "codegen.local.yaml"),
         )
 
-    def test_provider_registry_declaration_fails_validation(
-        self,
+    @staticmethod
+    def test_captured_tool_layers_preserve_additions_and_projected_replacement(
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Captured layers share the strict source's additive list contract."""
+        baseline = FlextInfraConfig.fetch_global().Infra.codegen.toolchain.tools
+        seed = next(iter(baseline))
+        project_tool, local_tool, replacement_tool = (
+            m.Infra.MiseToolEntry.model_validate(
+                seed.model_dump(round_trip=True)
+                | {"name": f"{seed.name}-{suffix}", "selector": None},
+            )
+            for suffix in ("project", "local", "replacement")
+        )
+        _, project_path, local_path = (
+            FlextInfraConfig.config_layer_paths_for_repository(
+                tmp_path,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            )
+        )
+        project_path.parent.mkdir()
+        for path, tool in (
+            (project_path, project_tool),
+            (local_path, local_tool),
+        ):
+            tm.ok(
+                u.Cli.yaml_dump(
+                    path,
+                    {
+                        "Infra": {
+                            "codegen": {
+                                "toolchain": {
+                                    "tools": [
+                                        tool.model_dump(mode="json", round_trip=True),
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                ),
+            )
+        captured = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
+        tm.that(
+            captured.spec.toolchain.tools,
+            eq=(*baseline, project_tool, local_tool),
+        )
+        projected = tm.ok(
+            u.Infra.project_codegen_inputs(
+                tmp_path,
+                captured,
+                projections=(
+                    m.Infra.CodegenLayerProjection(
+                        path=project_path,
+                        values={
+                            "Infra": {
+                                "codegen": {
+                                    "toolchain": {
+                                        "tools": [
+                                            replacement_tool.model_dump(
+                                                mode="json",
+                                                round_trip=True,
+                                            ),
+                                        ],
+                                    },
+                                },
+                            },
+                        },
+                    ),
+                ),
+            ),
+        )
+        tm.that(
+            projected.spec.toolchain.tools,
+            eq=(*baseline, replacement_tool, local_tool),
+        )
+
+    @staticmethod
+    def test_provider_registry_declaration_fails_validation(
+        tmp_path: Path,
     ) -> None:
         """The exterminated provider registry cannot come back through a merge."""
-        self._copy_tracked_configs(tmp_path)
-        (tmp_path / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
+        _, _, local = FlextInfraConfig.config_layer_paths_for_repository(
+            tmp_path,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        local.parent.mkdir()
+        local.write_text(
             "Infra:\n"
             "  codegen:\n"
             "    providers:\n"
@@ -205,13 +276,6 @@ class TestsFlextInfraConfigLocalOverrides:
             "        branch: main\n",
             encoding="utf-8",
         )
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        FlextInfraConfig.reset_for_testing()
-        try:
-            # The settings boundary surfaces pydantic's own ValidationError
-            # (public alias e.PydanticValidationError); the exterminated
-            # providers registry is rejected as a forbidden extra field.
-            with pytest.raises(e.PydanticValidationError, match="providers"):
-                FlextInfraConfig.fetch_global()
-        finally:
-            FlextInfraConfig.reset_for_testing()
+        inputs = u.Infra.load_codegen_inputs(tmp_path)
+        tm.fail(inputs)
+        tm.that(inputs.error, has="providers")
