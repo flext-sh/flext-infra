@@ -401,7 +401,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If a compiler option has no physical default.
 
         """
-        physical, tree, namespace = self._function(factory)
+        physical, tree, namespace = self._function(
+            factory,
+            source_name="dataclass",
+            source_namespace=vars(self._module("dataclasses")),
+        )
         options: t.DictKV[str, bool] = {}
         for parameter, default in zip(
             physical.args.kwonlyargs, physical.args.kw_defaults, strict=True
@@ -736,17 +740,16 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If inherited fields or abstract state need unproved inputs.
 
         """
-        # ABCMeta stores the computed abstract set on every class it builds. It
-        # never enters an emitted function: the SDK only recomputes it through
-        # ``update_abstractmethods`` from the receiver's own members, whose
-        # ``@abstractmethod`` declarations are proved below like any method.
+        # ABCMeta derives ``__abstractmethods__`` from the authored markers; the
+        # SDK never reads it from the plain ``type`` receiver, so it is only
+        # checked for native storage and never copied into the receiver.
         abstract = namespace.get("__abstractmethods__", frozenset())
         if type(abstract) is not frozenset or any(
             type(name) is not str for name in abstract
         ):
             msg = (
-                "native dataclass receiver has foreign abstract-state storage: "
-                f"{declaration.name}"
+                "native dataclass abstract state has foreign storage: "
+                f"{declaration.name}; source={self._witness.source}"
             )
             raise TypeError(msg)
         for ancestor in vars(type)["__mro__"].__get__(owner, type(owner))[1:]:
@@ -796,6 +799,17 @@ class FlextInfraWorkspaceGeneratedFunction:
                 f"{type(value).__module__}.{type(value).__qualname__}"
             )
             raise TypeError(msg)
+        # ``abc.abstractmethod`` returns the same function after storing an
+        # exact ``True`` marker; the declaration must carry that decorator.
+        marker = self._function_attributes(value).get("__isabstractmethod__")
+        if marker is True and decorator is None:
+            decorator = "abstractmethod"
+        elif marker is not None:
+            msg = (
+                "native dataclass method has a foreign abstract marker: "
+                f"{value.__qualname__}"
+            )
+            raise TypeError(msg)
         self._dataclass_accessor(value, decorator)
 
     def _dataclass_accessor(
@@ -819,16 +833,13 @@ class FlextInfraWorkspaceGeneratedFunction:
         if type(value) is not FunctionType:
             msg = "native dataclass accessor is not an exact Python function"
             raise TypeError(msg)
-        if decorator is None and vars(value).get("__isabstractmethod__") is True:
-            # ``abc.abstractmethod`` marks the function in place and returns it.
-            decorator = "abstractmethod"
         seen: set[int] = set()
         while type(value) is FunctionType:
             if id(value) in seen:
                 msg = "native dataclass method has a cyclic raw wrapper"
                 raise ValueError(msg)
             seen.add(id(value))
-            wrapped = vars(value).get("__wrapped__")
+            wrapped = self._function_attributes(value).get("__wrapped__")
             if wrapped is None:
                 self._physical_function(value, decorator=decorator)
                 decorator = None
@@ -1112,7 +1123,9 @@ class FlextInfraWorkspaceGeneratedFunction:
                 # The action reaches its collaborators (``_tuple_str``,
                 # ``_FuncBuilder``) through globals already proved by the SDK
                 # check; the 3.13 compiler has no separate hash builder.
-                self._function(action)
+                self._function(
+                    action, source_name=name, source_namespace=namespace
+                )
             case _:
                 msg = "native dataclass selected hash action is interposed"
                 raise ValueError(msg)
@@ -1282,7 +1295,9 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = "native dataclass generated wrapper has a cycle"
                 raise ValueError(msg)
             result.append(value)
-            inner = vars(value).get("__wrapped__")
+            inner = FlextInfraWorkspaceGeneratedFunction._function_attributes(
+                value
+            ).get("__wrapped__")
             if inner is None:
                 return tuple(result)
             cells = dict(
@@ -1310,7 +1325,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If the selected entry or processor has a foreign namespace.
 
         """
-        _declaration, _tree, namespace = self._function(factory)
+        _declaration, _tree, namespace = self._function(
+            factory,
+            source_name="dataclass",
+            source_namespace=vars(self._module("dataclasses")),
+        )
         compiler = self._module("dataclasses")
         if namespace is not vars(compiler) or namespace.get("dataclass") is not factory:
             msg = "native dataclass SDK entry has a foreign execution namespace"
@@ -1322,7 +1341,9 @@ class FlextInfraWorkspaceGeneratedFunction:
         if processor.__globals__ is not namespace:
             msg = "native dataclass class processor has foreign globals"
             raise ValueError(msg)
-        self._function(processor)
+        self._function(
+            processor, source_name="_process_class", source_namespace=namespace
+        )
         _source, tree = self._source(compiler)
         for name in ("Field", "_DataclassParams", "_FuncBuilder"):
             self._sdk_class(namespace.get(name), namespace, tree)
@@ -1345,8 +1366,13 @@ class FlextInfraWorkspaceGeneratedFunction:
             "_add_slots",
             "_get_slots",
             "_update_func_cell_for__class__",
+            "_replace",
+            "_dataclass_getstate",
+            "_dataclass_setstate",
         ):
-            self._function(namespace.get(name))
+            self._function(
+                namespace.get(name), source_name=name, source_namespace=namespace
+            )
         for name in ("_FIELDS", "_PARAMS", "_POST_INIT_NAME"):
             self._source_scalar(ast.Name(id=name, ctx=ast.Load()), namespace, tree)
         pattern = namespace.get("_MODULE_IDENTIFIER_RE")
@@ -1363,8 +1389,16 @@ class FlextInfraWorkspaceGeneratedFunction:
             if type(module) is not ModuleType:
                 msg = "native dataclass collaborator is not its physical module"
                 raise TypeError(msg)
-            self._function(vars(module).get(operation))
-        self._function(self._global("recursive_repr", namespace, tree))
+            self._function(
+                vars(module).get(operation),
+                source_name=operation,
+                source_namespace=vars(module),
+            )
+        self._function(
+            self._global("recursive_repr", namespace, tree),
+            source_name="recursive_repr",
+            source_namespace=vars(self._module("reprlib")),
+        )
 
     def _sdk_class(
         self,
@@ -1416,7 +1450,11 @@ class FlextInfraWorkspaceGeneratedFunction:
         slots: t.VariadicTuple[str] = ()
         for member in declaration.body:
             if isinstance(member, ast.FunctionDef) and not member.decorator_list:
-                self._function(storage.get(member.name))
+                self._function(
+                    storage.get(member.name),
+                    source_name=f"{declaration.name}.{member.name}",
+                    source_namespace=namespace,
+                )
             elif (
                 isinstance(member, ast.Assign)
                 and len(member.targets) == 1
@@ -2261,9 +2299,23 @@ class FlextInfraWorkspaceGeneratedFunction:
         ):
             msg = "closed compiler function has foreign globals"
             raise ValueError(msg)
-        spellings = self._decorator_spellings(decorator, namespace)
         path, tree = self._source(self._module(module_name))
-        candidates = self._function_declarations(function, tree, spellings=spellings)
+        if decorator == "abstractmethod":
+            # The abstract marker is not a builtin: the module's own import
+            # binding must resolve to the exact ``abc.abstractmethod``.
+            if self._global(decorator, namespace, tree) is not vars(
+                self._module("abc")
+            ).get(decorator):
+                msg = (
+                    "closed compiler abstract marker is not abc.abstractmethod: "
+                    f"{module_name}.{function.__code__.co_qualname}"
+                )
+                raise ValueError(msg)
+        elif decorator is not None and "." not in decorator:
+            # The source decorator must be the native descriptor type itself;
+            # ``<name>.setter``/``.deleter`` are the property's own methods.
+            self._builtin(decorator, namespace)
+        candidates = self._function_declarations(function, tree, decorator=decorator)
         pending = [self._codes[path]]
         matched = False
         while pending:
@@ -2287,11 +2339,19 @@ class FlextInfraWorkspaceGeneratedFunction:
     def _function(
         self,
         function: p.AttributeProbe | None,
+        *,
+        source_name: str | None = None,
+        source_namespace: t.MappingKV[str, p.AttributeProbe] | None = None,
     ) -> t.Triple[ast.FunctionDef, ast.Module, t.MappingKV[str, p.AttributeProbe]]:
         declaration, tree, namespace = self._physical_function(function)
         if type(function) is not FunctionType:
             msg = "closed compiler callback is not an exact Python function"
             raise TypeError(msg)
+        if source_name is not None:
+            if source_namespace is None:
+                msg = "closed compiler SDK binding has no elected namespace"
+                raise ValueError(msg)
+            self._function_binding(function, source_name, source_namespace)
         if (
             function.__closure__ is not None
             or function.__builtins__ is not vars(builtins)
@@ -2337,6 +2397,52 @@ class FlextInfraWorkspaceGeneratedFunction:
         self._native_globals(function)
         return declaration, tree, namespace
 
+    @staticmethod
+    def _function_attributes(
+        function: FunctionType,
+    ) -> t.MappingKV[str, p.AttributeProbe]:
+        """Read exact function metadata storage before any named key lookup.
+
+        Returns:
+            The native string-keyed function dictionary.
+
+        Raises:
+            TypeError: If function metadata can invoke a mapping callback.
+
+        """
+        attributes = vars(function)
+        if type(attributes) is not dict or any(
+            type(name) is not str for name in attributes
+        ):
+            msg = "closed compiler function metadata has foreign dictionary storage"
+            raise TypeError(msg)
+        return attributes
+
+    def _function_binding(
+        self,
+        function: FunctionType,
+        name: str,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> None:
+        """Bind a consumed SDK name to its exact physical function declaration.
+
+        Raises:
+            ValueError: If a helper is rebound or gains an unproved raw wrapper.
+
+        """
+        if (
+            function.__globals__ is not namespace
+            or not self._same_default(name, function.__code__.co_qualname)
+            or not self._same_default(name, function.__qualname__)
+            or not self._same_default(name.rsplit(".", 1)[-1], function.__name__)
+            or not self._same_default(
+                namespace["__name__"], function.__module__
+            )
+            or "__wrapped__" in self._function_attributes(function)
+        ):
+            msg = f"closed compiler SDK binding differs from its physical name: {name}"
+            raise ValueError(msg)
+
     def _native_globals(self, function: FunctionType) -> None:
         """Prove native builtin lookups without invoking any selected operation.
 
@@ -2352,11 +2458,17 @@ class FlextInfraWorkspaceGeneratedFunction:
                 module identity lookup does not name the function's own module.
 
         """
-        names = {
-            instruction.argval
-            for instruction in get_instructions(function.__code__)
-            if instruction.opname == "LOAD_GLOBAL" and type(instruction.argval) is str
-        }
+        names: set[str] = set()
+        pending = [function.__code__]
+        while pending:
+            code = pending.pop()
+            names.update(
+                instruction.argval
+                for instruction in get_instructions(code)
+                if instruction.opname == "LOAD_GLOBAL"
+                and type(instruction.argval) is str
+            )
+            pending.extend(item for item in code.co_consts if type(item) is CodeType)
         identity = vars(ModuleType(function.__module__)).keys()
         if (
             "__name__" in names
