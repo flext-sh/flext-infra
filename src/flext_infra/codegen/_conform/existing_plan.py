@@ -353,13 +353,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             if contract.custom
             else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
         )
-        lazy_result = custom_result.flat_map(
-            lambda _: (
-                self._planned_lazy_init_files(root)
-                if contract.custom
-                else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
-            ),
-        )
+        if custom_result.failure:
+            return result_type.from_failure(custom_result)
+        lazy_result = self._planned_lazy_init_files(root)
         if lazy_result.failure:
             return result_type.from_failure(lazy_result)
         tooling_context = self._existing_tooling_context(
@@ -408,14 +404,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     def _planned_lazy_init_files(
         root: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan the lazy-init projection this generation will publish, read-only.
+        """Plan the lazy-init projection the declarations determine, read-only.
 
-        Facade plans import family owners in package form, which resolves
-        only through the package initializer the same transaction publishes.
-        Tooling derivations therefore read the planned initializers, never the
-        previous projection on disk: a stale initializer otherwise blocks its
-        own regeneration. ADR-014: these plans are derivation inputs only; the
-        post-begin lazy-init phase remains their single publication owner.
+        Facades import family owners in package form, which resolves only
+        through the package initializer the declaring modules' ``__all__``
+        project. Tooling derivations therefore read the planned initializers,
+        never the previous projection on disk: a stale initializer otherwise
+        blocks its own regeneration, on every conform surface (a partial
+        surface such as ``dependencies`` derives tooling too). ADR-014: these
+        plans are derivation inputs only; the post-begin lazy-init phase of a
+        full generation remains their single publication owner.
 
         Returns:
             The repository's planned lazy-init file plans, or the planning failure.

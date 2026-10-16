@@ -25,7 +25,7 @@ from types import (
     NoneType,
     WrapperDescriptorType,
 )
-from typing import TypeIs
+from typing import TypeGuard, TypeIs
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.workspace.environment_provenance import (
@@ -1666,18 +1666,10 @@ class FlextInfraWorkspaceGeneratedFunction:
         tree = self._trees[self._witness.source]
         elected: t.Pair[FunctionType, t.DictKV[str, bool]] | None = None
         for decorator in declaration.decorator_list:
-            expression = (
-                decorator.func if isinstance(decorator, ast.Call) else decorator
+            factory = self._dataclass_decorator(
+                decorator, scope.parent, namespace, tree
             )
-            binding = u.Infra.resolve_symbol(scope.parent, expression)
-            if binding is None:
-                continue
-            provider = binding.get_object().get_module()
-            if provider is None or provider.get_name() != "dataclasses":
-                continue
-            factory = self._decorator_binding(expression, namespace, tree)
-            compiler = self._module("dataclasses")
-            if factory is not vars(compiler).get("dataclass"):
+            if factory is None:
                 continue
             if elected is not None:
                 msg = "native dataclass decorator is repeated"
@@ -1687,6 +1679,32 @@ class FlextInfraWorkspaceGeneratedFunction:
                 self._dataclass_options(decorator, namespace, tree, options)
             elected = factory, options
         return elected
+
+    def _dataclass_decorator(
+        self,
+        decorator: ast.expr,
+        scope: p.Infra.RopeScope,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> FunctionType | None:
+        """Resolve one decorator to the physical SDK factory without invoking it.
+
+        Returns:
+            The physical SDK dataclass factory, or None for any other decorator.
+
+        """
+        expression = decorator.func if isinstance(decorator, ast.Call) else decorator
+        binding = u.Infra.resolve_symbol(scope, expression)
+        if binding is None:
+            return None
+        provider = binding.get_object().get_module()
+        if provider is None or provider.get_name() != "dataclasses":
+            return None
+        factory = self._decorator_binding(expression, namespace, tree)
+        compiler = self._module("dataclasses")
+        if factory is not vars(compiler).get("dataclass"):
+            return None
+        return factory
 
     def _dataclass_default_options(self, factory: FunctionType) -> t.DictKV[str, bool]:
         """Authenticate the SDK's declared boolean option defaults.
@@ -2862,6 +2880,36 @@ class FlextInfraWorkspaceGeneratedFunction:
             and code.co_name == name
             and code.co_firstlineno == declaration.lineno
         ]
+        slots = self._sdk_members(owner, declaration, storage, namespace, tree)
+        if len(bodies) != 1 or (
+            set(storage)
+            - set(bodies[0].co_names)
+            - set(slots)
+            - {"__dict__", "__weakref__", "__doc__"}
+        ):
+            msg = "native compiler class has undeclared runtime storage or hooks"
+            raise ValueError(msg)
+        if not self._same_default(
+            ast.get_docstring(declaration), storage.get("__doc__")
+        ):
+            msg = "native compiler class documentation differs from its declaration"
+            raise ValueError(msg)
+        return storage
+
+    def _sdk_members(
+        self,
+        owner: type,
+        declaration: ast.ClassDef,
+        storage: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> t.VariadicTuple[str]:
+        """Prove each undecorated SDK method and the declared slot storage.
+
+        Returns:
+            Slot names of the last physical ``__slots__`` declaration, if any.
+
+        """
         slots: t.VariadicTuple[str] = ()
         for member in declaration.body:
             if isinstance(member, ast.FunctionDef) and not member.decorator_list:
@@ -2877,20 +2925,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                 and member.targets[0].id == "__slots__"
             ):
                 slots = self._sdk_slots(owner, storage, member.value, namespace, tree)
-        if len(bodies) != 1 or (
-            set(storage)
-            - set(bodies[0].co_names)
-            - set(slots)
-            - {"__dict__", "__weakref__", "__doc__"}
-        ):
-            msg = "native compiler class has undeclared runtime storage or hooks"
-            raise ValueError(msg)
-        if not self._same_default(
-            ast.get_docstring(declaration), storage.get("__doc__")
-        ):
-            msg = "native compiler class documentation differs from its declaration"
-            raise ValueError(msg)
-        return storage
+        return slots
 
     def _sdk_slots(
         self,
@@ -3037,7 +3072,6 @@ class FlextInfraWorkspaceGeneratedFunction:
             if declaration is not None
             else []
         )
-        names = tuple(name for name, _field in fields)
         module_name = namespace.get("__module__")
         if type(module_name) is not str:
             msg = "native tuple declaration has no registered module"
@@ -3061,7 +3095,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         if declaration is None:
             msg = "native tuple has no physical declaration"
             raise ValueError(msg)
-        return declaration.name, list(names), tuple(defaults)
+        return declaration.name, [name for name, _field in fields], tuple(defaults)
 
     @staticmethod
     def _tuple_emission(
@@ -3325,27 +3359,10 @@ class FlextInfraWorkspaceGeneratedFunction:
                 and len(call.keywords) <= 1
                 and all(keyword.arg == "defaults" for keyword in call.keywords)
             ):
-                pass
+                self._tuple_factory(call, namespace, tree)
             case _:
                 msg = "native tuple constructor has unsupported invocation inputs"
                 raise ValueError(msg)
-        collections = self._module("collections")
-        if isinstance(call.func, ast.Name):
-            factory = self._global(call.func.id, namespace, tree)
-        elif (
-            isinstance(call.func, ast.Attribute)
-            and isinstance(call.func.value, ast.Name)
-            and call.func.attr == "namedtuple"
-            and self._global(call.func.value.id, namespace, tree) is collections
-        ):
-            factory = vars(collections).get(call.func.attr)
-        else:
-            msg = "native tuple constructor has no exact physical imported binding"
-            raise ValueError(msg)
-        if factory is not vars(self._module("collections")).get("namedtuple"):
-            msg = "native tuple constructor differs from its physical imported owner"
-            raise ValueError(msg)
-        self._function(factory)
         typename, fields = (
             self._tuple_operand(argument, namespace) for argument in call.args
         )
@@ -3371,6 +3388,36 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "native tuple constructor arguments are not closed string data"
             raise ValueError(msg)
         return typename, fields, defaults
+
+    def _tuple_factory(
+        self,
+        call: ast.Call,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> None:
+        """Authenticate the constructor's physical ``collections.namedtuple`` binding.
+
+        Raises:
+            ValueError: If the callee is not the exact imported native factory.
+
+        """
+        collections = self._module("collections")
+        if isinstance(call.func, ast.Name):
+            factory = self._global(call.func.id, namespace, tree)
+        elif (
+            isinstance(call.func, ast.Attribute)
+            and isinstance(call.func.value, ast.Name)
+            and call.func.attr == "namedtuple"
+            and self._global(call.func.value.id, namespace, tree) is collections
+        ):
+            factory = vars(collections).get(call.func.attr)
+        else:
+            msg = "native tuple constructor has no exact physical imported binding"
+            raise ValueError(msg)
+        if factory is not vars(self._module("collections")).get("namedtuple"):
+            msg = "native tuple constructor differs from its physical imported owner"
+            raise ValueError(msg)
+        self._function(factory)
 
     @staticmethod
     def _tuple_base_call(
@@ -3454,7 +3501,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                     ):
                         return fields
             case _:
-                pass
+                return self._tuple_literal(node)
         return self._tuple_literal(node)
 
     @staticmethod
@@ -3542,22 +3589,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "native tuple compiler has no physical default input"
             raise ValueError(msg)
         local["defaults"] = defaults
-        selected: list[ast.stmt] = []
-        for statement in definition.body[: definition.body.index(emission)]:
-            written = {
-                node.id
-                for node in ast.walk(statement)
-                if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
-            }
-            written.update(
-                node.value.id
-                for node in ast.walk(statement)
-                if isinstance(node, ast.Subscript)
-                and isinstance(node.ctx, ast.Store)
-                and isinstance(node.value, ast.Name)
-            )
-            if first in written or second in written:
-                selected.append(statement)
+        selected = self._tuple_input_writes(definition, emission, (first, second))
         if self._statements(selected, local, namespace, tree) is not None:
             msg = "native tuple normalization returns before physical emission"
             raise ValueError(msg)
@@ -3591,6 +3623,35 @@ class FlextInfraWorkspaceGeneratedFunction:
         return local
 
     @staticmethod
+    def _tuple_input_writes(
+        definition: ast.FunctionDef, emission: ast.Assign, inputs: t.Pair[str, str]
+    ) -> list[ast.stmt]:
+        """Select statements before the emission that write either tuple input.
+
+        Returns:
+            The physical statements storing either input name or its subscript.
+
+        """
+        first, second = inputs
+        selected: list[ast.stmt] = []
+        for statement in definition.body[: definition.body.index(emission)]:
+            written = {
+                node.id
+                for node in ast.walk(statement)
+                if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
+            }
+            written.update(
+                node.value.id
+                for node in ast.walk(statement)
+                if isinstance(node, ast.Subscript)
+                and isinstance(node.ctx, ast.Store)
+                and isinstance(node.value, ast.Name)
+            )
+            if first in written or second in written:
+                selected.append(statement)
+        return selected
+
+    @staticmethod
     def _tuple_default_bindings(
         definition: ast.FunctionDef, emission: ast.Assign, target_name: str
     ) -> t.Pair[ast.Assign, ast.Assign]:
@@ -3607,18 +3668,8 @@ class FlextInfraWorkspaceGeneratedFunction:
         attachments: list[ast.Assign] = []
         emission_index = definition.body.index(emission)
         for statement in definition.body:
-            match statement:
-                case ast.If(
-                    test=ast.Compare(
-                        left=ast.Name(id="defaults"),
-                        ops=[ast.IsNot()],
-                        comparators=[ast.Constant(value=None)],
-                    ),
-                    orelse=[],
-                ):
-                    pass
-                case _:
-                    continue
+            if not FlextInfraWorkspaceGeneratedFunction._defaults_guard(statement):
+                continue
             for item in statement.body:
                 match item:
                     case ast.Assign(
@@ -3646,6 +3697,27 @@ class FlextInfraWorkspaceGeneratedFunction:
             )
             raise ValueError(msg)
         return conversions[0], attachments[0]
+
+    @staticmethod
+    def _defaults_guard(statement: ast.stmt) -> TypeGuard[ast.If]:
+        """Recognize the physical ``if defaults is not None:`` guard without else.
+
+        Returns:
+            Whether the statement is exactly that default-normalization guard.
+
+        """
+        match statement:
+            case ast.If(
+                test=ast.Compare(
+                    left=ast.Name(id="defaults"),
+                    ops=[ast.IsNot()],
+                    comparators=[ast.Constant(value=None)],
+                ),
+                orelse=[],
+            ):
+                return True
+            case _:
+                return False
 
     @staticmethod
     def _module(name: str) -> ModuleType:
@@ -4258,18 +4330,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         if len(bindings) != 1:
             return self._constructed_global(name, value, namespace, tree)
         statement, alias = bindings[0]
-        if isinstance(statement, ast.Import):
-            expected = self._module(
-                alias.name if alias.asname else alias.name.split(".")[0]
-            )
-        else:
-            if statement.level or statement.module is None:
-                msg = "closed compiler import requires an absolute physical supplier"
-                raise ValueError(msg)
-            provider = self._module(statement.module)
-            self._source(provider)
-            expected = vars(provider).get(alias.name)
-        if value is not expected:
+        if value is not self._import_binding(statement, alias):
             msg = f"closed compiler import differs from its registered supplier: {name}"
             raise ValueError(msg)
         if type(value) is ModuleType:
@@ -4278,6 +4339,31 @@ class FlextInfraWorkspaceGeneratedFunction:
             else:
                 self._source(value)
         return value
+
+    def _import_binding(
+        self,
+        statement: ast.Import | ast.ImportFrom,
+        alias: ast.alias,
+    ) -> p.AttributeProbe | None:
+        """Read the registered value one physical import statement binds.
+
+        Returns:
+            The imported module, or the supplier's current member for the alias.
+
+        Raises:
+            ValueError: If a ``from`` import has no absolute physical supplier.
+
+        """
+        if isinstance(statement, ast.Import):
+            return self._module(
+                alias.name if alias.asname else alias.name.split(".")[0]
+            )
+        if statement.level or statement.module is None:
+            msg = "closed compiler import requires an absolute physical supplier"
+            raise ValueError(msg)
+        provider = self._module(statement.module)
+        self._source(provider)
+        return vars(provider).get(alias.name)
 
     def _constructed_global(
         self,
@@ -4371,11 +4457,10 @@ class FlextInfraWorkspaceGeneratedFunction:
                 args=[operation_node, values_node],
                 keywords=[],
             ) if "map" not in local:
-                pass
+                self._builtin("map", namespace)
             case _:
                 msg = "closed compiler string map has unsupported construction"
                 raise ValueError(msg)
-        self._builtin("map", namespace)
         operation = self._expression(operation_node, local, namespace, tree)
         if (
             operation is not self._builtin("str", namespace)
@@ -4497,10 +4582,24 @@ class FlextInfraWorkspaceGeneratedFunction:
             case ast.Compare(
                 left=ast.Name(id=name), ops=[operation], comparators=[operand]
             ) if name == argument:
-                pass
+                return FlextInfraWorkspaceGeneratedFunction._hook_predicate(
+                    operation, operand, member
+                )
             case _:
                 msg = "closed compiler hook condition is not a literal member test"
                 raise ValueError(msg)
+
+    @staticmethod
+    def _hook_predicate(operation: ast.cmpop, operand: ast.expr, member: str) -> bool:
+        """Evaluate one literal member comparison against the missing member.
+
+        Returns:
+            Whether the literal membership or equality test selects its body.
+
+        Raises:
+            ValueError: If the comparison operands are outside the closed grammar.
+
+        """
         if isinstance(operation, ast.In) and isinstance(operand, ast.Set):
             literals: list[str] = []
             for item in operand.elts:
@@ -4538,11 +4637,12 @@ class FlextInfraWorkspaceGeneratedFunction:
                 ),
                 cause=None,
             ):
-                pass
+                error = namespace.get(
+                    "AttributeError", vars(builtins).get("AttributeError")
+                )
             case _:
                 msg = "closed compiler hook does not raise native AttributeError"
                 raise ValueError(msg)
-        error = namespace.get("AttributeError", vars(builtins).get("AttributeError"))
         if type(error) is not type or error is not vars(builtins).get("AttributeError"):
             msg = "closed compiler hook exception binding is not native"
             raise ValueError(msg)
@@ -4574,40 +4674,54 @@ class FlextInfraWorkspaceGeneratedFunction:
         """Validate literal exception text and its exact string substitutions.
 
         Raises:
-            TypeError: If a substitution has authored string semantics.
-            ValueError: If message syntax or binding is outside the closed grammar.
+            ValueError: If the message is neither literal nor interpolated text.
 
         """
-        match message:
-            case ast.Constant(value=value) if type(value) is str:
-                return
-            case ast.JoinedStr(values=parts):
-                pass
-            case _:
-                msg = "closed compiler hook exception message is not literal text"
-                raise ValueError(msg)
-        for part in parts:
-            if isinstance(part, ast.Constant) and type(part.value) is str:
-                continue
-            if (
-                not isinstance(part, ast.FormattedValue)
-                or not isinstance(part.value, ast.Name)
-                or part.format_spec is not None
-                or part.conversion not in {-1, ord("r")}
-            ):
-                msg = "closed compiler hook exception message invokes formatting"
-                raise ValueError(msg)
-            name = part.value.id
-            if name == argument:
-                value = member
-            elif name == "__name__":
-                value = namespace.get(name)
-            else:
-                msg = "closed compiler hook exception message has an opaque binding"
-                raise ValueError(msg)
-            if type(value) is not str:
-                msg = "closed compiler hook exception message has an authored operand"
-                raise TypeError(msg)
+        if isinstance(message, ast.Constant) and type(message.value) is str:
+            return
+        if not isinstance(message, ast.JoinedStr):
+            msg = "closed compiler hook exception message is not literal text"
+            raise ValueError(msg)
+        for part in message.values:
+            FlextInfraWorkspaceGeneratedFunction._hook_message_part(
+                part, namespace, argument, member
+            )
+
+    @staticmethod
+    def _hook_message_part(
+        part: ast.expr,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        argument: str,
+        member: str,
+    ) -> None:
+        """Validate one literal or exact string substitution of exception text.
+
+        Raises:
+            TypeError: If a substitution has authored string semantics.
+            ValueError: If part syntax or binding is outside the closed grammar.
+
+        """
+        if isinstance(part, ast.Constant) and type(part.value) is str:
+            return
+        if (
+            not isinstance(part, ast.FormattedValue)
+            or not isinstance(part.value, ast.Name)
+            or part.format_spec is not None
+            or part.conversion not in {-1, ord("r")}
+        ):
+            msg = "closed compiler hook exception message invokes formatting"
+            raise ValueError(msg)
+        name = part.value.id
+        if name == argument:
+            value = member
+        elif name == "__name__":
+            value = namespace.get(name)
+        else:
+            msg = "closed compiler hook exception message has an opaque binding"
+            raise ValueError(msg)
+        if type(value) is not str:
+            msg = "closed compiler hook exception message has an authored operand"
+            raise TypeError(msg)
 
     def _expression(
         self,
@@ -4821,20 +4935,7 @@ class FlextInfraWorkspaceGeneratedFunction:
     ) -> p.AttributeProbe:
         mapping = self._expression(node.value, local, namespace, tree)
         if isinstance(node.slice, ast.Slice):
-            raw_bounds = tuple(
-                None if item is None else self._expression(item, local, namespace, tree)
-                for item in (node.slice.lower, node.slice.upper, node.slice.step)
-            )
-            bounds: t.MutableSequenceOf[int | None] = []
-            for bound in raw_bounds:
-                if bound is not None and type(bound) is not int:
-                    msg = "closed compiler slice has authored operands"
-                    raise ValueError(msg)
-                bounds.append(bound)
-            if type(mapping) is str or type(mapping) is tuple or type(mapping) is list:
-                return mapping[slice(*bounds)]
-            msg = "closed compiler slice has authored operands"
-            raise ValueError(msg)
+            return self._slice(mapping, node.slice, local, namespace, tree)
         key = self._expression(node.slice, local, namespace, tree)
         if type(mapping) is dict and type(key) is str:
             item: p.AttributeProbe = mapping[key]
@@ -4844,6 +4945,38 @@ class FlextInfraWorkspaceGeneratedFunction:
         ):
             return mapping[key]
         msg = f"closed compiler expression is unsupported: {type(node).__name__}"
+        raise ValueError(msg)
+
+    def _slice(
+        self,
+        mapping: p.AttributeProbe,
+        node: ast.Slice,
+        local: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> p.AttributeProbe:
+        """Slice native sequence data by exact integer or absent literal bounds.
+
+        Returns:
+            The native slice of the string, tuple or list operand.
+
+        Raises:
+            ValueError: If a bound or the sliced operand is authored data.
+
+        """
+        raw_bounds = tuple(
+            None if item is None else self._expression(item, local, namespace, tree)
+            for item in (node.lower, node.upper, node.step)
+        )
+        bounds: t.MutableSequenceOf[int | None] = []
+        for bound in raw_bounds:
+            if bound is not None and type(bound) is not int:
+                msg = "closed compiler slice has authored operands"
+                raise ValueError(msg)
+            bounds.append(bound)
+        if type(mapping) is str or type(mapping) is tuple or type(mapping) is list:
+            return mapping[slice(*bounds)]
+        msg = "closed compiler slice has authored operands"
         raise ValueError(msg)
 
     def _call_expression(
@@ -5243,11 +5376,10 @@ class FlextInfraWorkspaceGeneratedFunction:
                 args=[source, global_scope, local_scope],
                 keywords=[],
             ):
-                pass
+                self._builtin("exec", namespace)
             case _:
                 msg = "closed compiler effect is not a native compilation"
                 raise ValueError(msg)
-        self._builtin("exec", namespace)
         text, globals_, locals_ = (
             self._expression(item, local, namespace, tree)
             for item in (source, global_scope, local_scope)
@@ -5458,19 +5590,13 @@ class FlextInfraWorkspaceGeneratedFunction:
 
         """
         match arguments:
-            case (pattern, replacement, text):
-                pass
+            case (pattern, replacement, text) if (
+                type(pattern) is str and type(replacement) is str and type(text) is str
+            ):
+                declaration, _tree, namespace = self._function(vars(module).get("sub"))
             case _:
                 msg = "closed compiler regex substitution requires exact string data"
                 raise ValueError(msg)
-        if (
-            type(pattern) is not str
-            or type(replacement) is not str
-            or type(text) is not str
-        ):
-            msg = "closed compiler regex substitution requires exact string data"
-            raise ValueError(msg)
-        declaration, _tree, namespace = self._function(vars(module).get("sub"))
         self._function(namespace.get(self._regex_delegation(declaration)))
         if (
             replacement
@@ -5503,16 +5629,16 @@ class FlextInfraWorkspaceGeneratedFunction:
                 declaration.args.vararg is not None
                 and extra == declaration.args.vararg.arg
             ):
-                pass
+                delegation = (
+                    result.func,
+                    result.args,
+                    declaration.args.args,
+                    declaration.args.kwonlyargs,
+                )
             case _:
                 msg = "closed compiler regex wrapper has unsupported source semantics"
                 raise ValueError(msg)
-        match (
-            result.func,
-            result.args,
-            declaration.args.args,
-            declaration.args.kwonlyargs,
-        ):
+        match delegation:
             case (
                 ast.Attribute(
                     attr="sub",
@@ -5526,17 +5652,16 @@ class FlextInfraWorkspaceGeneratedFunction:
                 [_, _, _] as positional,
                 [_, _] as keywords,
             ):
-                pass
+                expected = (
+                    positional[0].arg,
+                    keywords[1].arg,
+                    positional[1].arg,
+                    positional[2].arg,
+                    keywords[0].arg,
+                )
             case _:
                 msg = "closed compiler regex wrapper is not its native delegation"
                 raise ValueError(msg)
-        expected = (
-            positional[0].arg,
-            keywords[1].arg,
-            positional[1].arg,
-            positional[2].arg,
-            keywords[0].arg,
-        )
         if any(
             not isinstance(node, ast.Name) or node.id != name
             for node, name in zip(
@@ -5577,26 +5702,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "dedent regex is not its registered native pattern type"
             raise ValueError(msg)
         self._function(vars(supplier)["compile"])
-        native = type(pattern)
-        storage = vars(type)["__dict__"].__get__(native, type(native))
-        for operation in ("sub", "findall", "match"):
-            descriptor = storage.get(operation)
-            if (
-                type(descriptor) is not MethodDescriptorType
-                or descriptor.__objclass__ is not native
-            ):
-                msg = "dedent pattern has no interpreter-owned regex operations"
-                raise ValueError(msg)
-        observed = {}
-        for attribute in ("pattern", "flags"):
-            descriptor = storage.get(attribute)
-            if not (
-                type(descriptor) is MemberDescriptorType
-                or type(descriptor) is GetSetDescriptorType
-            ) or descriptor.__objclass__ is not type(pattern):
-                msg = "dedent regex has no native read-only state"
-                raise ValueError(msg)
-            observed[attribute] = descriptor.__get__(pattern, type(pattern))
+        observed = self._regex_state(pattern)
         flag = vars(supplier).get(flag_name) if flag_name is not None else 0
         unicode = vars(supplier).get("UNICODE")
         if not self._native_integer(flag) or not self._native_integer(unicode):
@@ -5611,6 +5717,39 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "dedent regex state differs from its physical constructor"
             raise ValueError(msg)
         self._patterns[id(pattern)] = literal
+
+    @staticmethod
+    def _regex_state(pattern: p.AttributeProbe) -> t.DictKV[str, p.AttributeProbe]:
+        """Read regex state only through interpreter-owned native descriptors.
+
+        Returns:
+            The observed ``pattern`` and ``flags`` storage of the native regex.
+
+        Raises:
+            ValueError: If an operation or state descriptor is not interpreter-owned.
+
+        """
+        native = type(pattern)
+        storage = vars(type)["__dict__"].__get__(native, type(native))
+        for operation in ("sub", "findall", "match"):
+            descriptor = storage.get(operation)
+            if (
+                type(descriptor) is not MethodDescriptorType
+                or descriptor.__objclass__ is not native
+            ):
+                msg = "dedent pattern has no interpreter-owned regex operations"
+                raise ValueError(msg)
+        observed: t.DictKV[str, p.AttributeProbe] = {}
+        for attribute in ("pattern", "flags"):
+            descriptor = storage.get(attribute)
+            if not (
+                type(descriptor) is MemberDescriptorType
+                or type(descriptor) is GetSetDescriptorType
+            ) or descriptor.__objclass__ is not type(pattern):
+                msg = "dedent regex has no native read-only state"
+                raise ValueError(msg)
+            observed[attribute] = descriptor.__get__(pattern, type(pattern))
+        return observed
 
     @staticmethod
     def _regex_constructor(
