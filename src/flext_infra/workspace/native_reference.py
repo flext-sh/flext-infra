@@ -227,9 +227,14 @@ class FlextInfraWorkspaceNativeReference:
         """
         writers: list[t.Triple[str, p.AttributeProbe, frozenset[str]]] = []
         for name, member in sorted(namespace.items()):
-            if not FlextInfraWorkspaceNativeReference._is_function_binding(member):
+            # A plain method writes class state only through the global class
+            # name; a class or static method may also write through ``cls``.
+            if FlextInfraWorkspaceNativeReference._is_function_binding(member):
+                function = member.__func__
+            elif FlextInfraWorkspaceNativeReference._is_native(member, FunctionType):
+                function = member
+            else:
                 continue
-            function = member.__func__
             if not FlextInfraWorkspaceNativeReference._is_native(
                 function, FunctionType
             ):
@@ -301,8 +306,32 @@ class FlextInfraWorkspaceNativeReference:
                     )
                 )
             )
-            if fields:
-                writers.append((name, member, fields))
+            # ``Owner.field += value`` loads the global receiver, copies it to
+            # read the field, and swaps it back under the result before storing.
+            augmented = frozenset(
+                instruction.argval
+                for index, instruction in enumerate(instructions)
+                if instruction.opname == "STORE_ATTR"
+                and isinstance(instruction.argval, str)
+                and instruction.argval in declarations
+                and index > 0
+                and instructions[index - 1].opname == "SWAP"
+                and any(
+                    load.opname == "LOAD_GLOBAL"
+                    and load.argval in global_receivers - rebound_globals
+                    and copy.opname == "COPY"
+                    and read.opname == "LOAD_ATTR"
+                    and read.argval == instruction.argval
+                    for load, copy, read in zip(
+                        instructions[:index],
+                        instructions[1:index],
+                        instructions[2:index],
+                        strict=False,
+                    )
+                )
+            )
+            if fields | augmented:
+                writers.append((name, member, fields | augmented))
         return tuple(writers)
 
     @classmethod
