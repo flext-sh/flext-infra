@@ -51,9 +51,10 @@ class TestsFlextInfraPytestTimeoutConfig:
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["loadscope-reorder"] = "false"
+        policy_model = type(policy)
 
         with pytest.raises(c.ValidationError, match="valid boolean"):
-            type(policy).model_validate(payload)
+            policy_model.model_validate(payload)
 
     @staticmethod
     def test_policy_round_trips_through_its_production_model() -> None:
