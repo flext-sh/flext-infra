@@ -500,7 +500,7 @@ class FlextInfraUtilitiesRopeInventory:
             scope = value.get_scope()
             if module is None or scope is None:
                 return ""
-            names = []
+            names: list[str] = []
             while scope.parent is not None:
                 names.append(scope.pyobject.get_name())
                 scope = scope.parent
@@ -539,7 +539,7 @@ class FlextInfraUtilitiesRopeInventory:
             normalized executable whitespace.
 
         """
-        edits = []
+        edits: list[t.Triple[int, int, str]] = []
         cursor = -1
         for begin, end, identity in sorted(
             references, key=lambda item: (item[0], -item[1])
@@ -547,7 +547,7 @@ class FlextInfraUtilitiesRopeInventory:
             if offset <= begin < end <= offset + len(source) and begin >= cursor:
                 edits.append((begin - offset, end - offset, identity))
                 cursor = end
-        pieces = []
+        pieces: list[str] = []
         previous = 0
         literals = FlextInfraUtilitiesRopeRuntime.ignored_regions(source)
         spans = [

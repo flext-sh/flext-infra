@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast as _ast
+from collections import abc
 from collections.abc import Callable, MutableMapping, MutableSet
 from datetime import date, datetime
 from dis import Instruction
@@ -144,7 +145,7 @@ class FlextInfraTypesBase:
     # Why: upstream flext_core.FlextTypingContainers is an empty stub (no
     # `Container` alias shipped in the pinned release); flext-infra's own
     # LibCST residue-matching consumer needs a membership-testable generic.
-    type Container[ItemT] = Container[ItemT]
+    type Container[ItemT] = abc.Container[ItemT]
     "Generic membership-testable collection (supports ``in``)."
     type PipelineHandler = Callable[
         [p.Cli.PipelineStageContext],

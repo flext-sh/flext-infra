@@ -73,7 +73,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             The source with the admitted edits applied once.
 
         """
-        selected = []
+        selected: list[t.Triple[int, int, str]] = []
         previous = -1
         for begin, end, changed in sorted(edits, key=lambda item: (item[0], -item[1])):
             if begin >= previous:
@@ -311,7 +311,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         """Return only string constants occupying native annotation type positions."""
         protected = cls.type_payload_ranges(source, module)
         literals = FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
-        selected = []
+        selected: list[tuple[int, int, str, p.Infra.RopeScope]] = []
         for begin, end, line in cls.annotation_regions(source, module):
             scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
                 module,
@@ -473,7 +473,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             start: stop for start, stop, _metadata in refactors.ignored_regions(source)
         }
         closings = {"(": ")", "[": "]", "{": "}"}
-        regions = []
+        regions: list[t.Pair[int, int]] = []
         cursor = part = begin
         while cursor < end:
             ignored_end = opaque.get(cursor)
@@ -557,7 +557,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
         module = flatten.project.get_pymodule(resource)
-        edits = []
+        edits: list[m.Infra.SourceRewrite] = []
         for begin, end, literal, scope in cls.quoted_type_regions(
             source, flatten.project, module
         ):

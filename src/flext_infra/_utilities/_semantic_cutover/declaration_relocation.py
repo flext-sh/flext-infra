@@ -815,7 +815,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         if not orphaned:
             return proposed
-        rewrites = []
+        rewrites: list[m.Infra.SourceRewrite] = []
         lines = cls._source_lines(proposed)
         for statement in runtime.module_imports_for_pymodule(project, after).imports:
             information = statement.import_info
@@ -860,7 +860,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             for information in imports
             for name, alias in information.names_and_aliases
         }
-        used = set()
+        used: set[str] = set()
         for name in names:
             binding = module.get_scope().get_names().get(name)
             if binding is None:
@@ -948,7 +948,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 m.Infra.SourceRewrite(
                     start=start,
                     end=end,
-                    text=cls._checked_type_reference(
+                    text=cls._checked_relocation_reference(
                         runtime.scope_at(module, start),
                         expression,
                     ),
@@ -971,7 +971,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
 
     @classmethod
-    def _checked_type_reference(cls, scope: p.Infra.RopeScope, expression: str) -> str:
+    def _checked_relocation_reference(
+        cls, scope: p.Infra.RopeScope, expression: str
+    ) -> str:
         root = expression.partition(".")[0]
         if not all(part.isidentifier() for part in expression.split(".")):
             msg = f"quoted type destination is not an identifier chain: {expression}"
@@ -998,12 +1000,12 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         types = FlextInfraUtilitiesSemanticFamilyTypeReferences
         module = project.get_pymodule(resource)
         lines = cls._source_lines(source)
-        edits = []
+        edits: list[m.Infra.SourceRewrite] = []
 
         def replace(lexical: p.Infra.RopeScope, value: str) -> str | None:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             return (
-                cls._checked_type_reference(lexical, expression)
+                cls._checked_relocation_reference(lexical, expression)
                 if runtime.same_name(binding, runtime.expression_name(lexical, value))
                 else None
             )
@@ -1322,7 +1324,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             raise ValueError(msg)
         guard = project.get_module("typing").get_attribute("TYPE_CHECKING")
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(module.source_code)
-        selected = []
+        selected: list[p.Infra.RopeImportInfo] = []
         conditions: list[t.Pair[int, bool]] = []
         position = 0
         for statement in facts:

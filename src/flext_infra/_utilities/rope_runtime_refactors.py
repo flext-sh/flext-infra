@@ -41,7 +41,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             for begin, end, _metadata in cls.ignored_regions(source)
             if source[begin] != "#"
         )
-        result = []
+        result: list[str] = []
         offset = 0
         for line in source.splitlines(keepends=True):
             inside_literal = any(begin < offset < end for begin, end in literals)
