@@ -5,6 +5,14 @@
 id: declare-single-class-export
 language: python
 severity: error
+# Test-suite modules publish nothing (ban-test-suite-module-all owns that
+# scope); requiring __all__ there would contradict it.
+ignores:
+  - "tests/unit/**/*.py"
+  - "tests/integration/**/*.py"
+  - "tests/e2e/**/*.py"
+  - "tests/performance/**/*.py"
+  - "tests/benchmark/**/*.py"
 metadata:
   context:
     NAME:
