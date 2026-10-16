@@ -11,7 +11,7 @@ from collections.abc import Callable, Mapping, MutableMapping
 from functools import partial
 from importlib.metadata import Distribution, PackagePath
 from json import dumps
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from types import MappingProxyType
 
 from flext_cli import u
@@ -40,9 +40,10 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         config_path: Path,
         json_output_path: Path,
     ) -> p.Result[m.Infra.DeptryScan]:
-        """Capture one native deptry report against an unchanged production tree.
+        """Capture one native deptry report against unchanged production trees.
 
-        Callers elect the interpreter, configuration and fresh report destination.
+        Callers elect the interpreter, configuration and fresh report destination;
+        the wheel target the configuration declares elects the scanned roots.
 
         Returns:
             Complete native findings and the states authenticating their inputs.
@@ -55,10 +56,11 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         )
         if payload.failure:
             return result_type.from_failure(payload)
-        settings, source = payload.value
+        settings, roots, sources = payload.value
         native = FlextInfraUtilitiesDependencies._captured_deptry_native(
             venv_bin,
             project_path,
+            roots=roots,
             config_path=config_path,
             json_output_path=json_output_path,
         )
@@ -68,13 +70,14 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         rechecked = FlextInfraUtilitiesDependencies._rechecked_deptry_states(
             settings,
             report_state,
-            source,
+            sources,
         )
         if rechecked.failure:
             return result_type.from_failure(rechecked)
         coverage = FlextInfraUtilitiesDependencies._validated_deptry_coverage(
             output,
             parsed,
+            roots,
         )
         if coverage.failure:
             return result_type.from_failure(coverage)
@@ -86,7 +89,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             m.Infra.DeptryScan(
                 scanned_files=coverage.value,
                 venv_bin=venv_bin,
-                source=source,
+                sources=sources,
                 native=output,
                 settings=settings,
                 report_state=report_state,
@@ -99,8 +102,11 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
     def _validated_deptry_coverage(
         output: m.Cli.CommandOutput,
         parsed: m.Infra.DeptryNativeReport,
+        roots: t.StrTuple,
     ) -> p.Result[int]:
         """Authenticate the native exit status and its scan coverage line.
+
+        Native deptry reports one coverage count over every root it scanned.
 
         Returns:
             The single positive coverage count reported by native deptry.
@@ -116,65 +122,212 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         )
         if len(coverage) != 1 or coverage[0] < 1:
             return result_type.fail(
-                "deptry lacks positive unambiguous native scan coverage\n"
+                "deptry lacks positive unambiguous native scan coverage over roots "
+                f"{', '.join(roots)}\n"
                 f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}",
             )
         return result_type.ok(coverage[0])
 
     @staticmethod
-    def _authenticated_deptry_source(
-        project_path: Path,
-    ) -> p.Result[m.Cli.AtomicPhysicalTreeManifest]:
-        """Inventory the production tree and authenticate its physical shape.
+    def _declared_wheel_target(
+        settings: m.Cli.AtomicFileState,
+    ) -> p.Result[t.JsonMapping]:
+        """Read the wheel target table from the captured settings bytes.
 
         Returns:
-            The exact tree manifest, or the first authentication failure.
+            The declared wheel target, empty when the settings declare none.
 
         """
-        result_type = r[m.Cli.AtomicPhysicalTreeManifest]
-        source = u.Cli.atomic_inventory_physical_tree(
-            project_path / c.Infra.DEFAULT_SRC_DIR,
+        result_type = r[t.JsonMapping]
+        if settings.content is None:
+            return result_type.fail(f"deptry configuration is absent: {settings.path}")
+        document = u.Cli.toml_parse_text(settings.content.decode(c.DEFAULT_ENCODING))
+        if document is None:
+            return result_type.fail(f"invalid deptry configuration: {settings.path}")
+        wheel: t.JsonMapping | None = (
+            FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         )
-        if source.failure:
-            return result_type.from_failure(source)
-        if any(entry.kind == "symlink" for entry in source.value.entries):
-            return result_type.fail(
-                "deptry production source contains unauthenticated symbolic links"
+        for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
+            wheel = None if wheel is None else u.Cli.toml_mapping_child(wheel, key)
+        return result_type.ok(dict[str, t.JsonValue]() if wheel is None else wheel)
+
+    @staticmethod
+    def _shipped_import_base(
+        shipped: PurePosixPath,
+        target: PurePosixPath,
+    ) -> PurePosixPath:
+        """Return the directory whose children a shipped directory's imports are.
+
+        A source remapped to its own trailing components (``src/pkg`` shipped as
+        ``pkg``) roots at the remaining prefix; a directory shipped verbatim or
+        relocated under the package roots at itself.
+
+        Returns:
+            The deptry root covering exactly the shipped directory.
+
+        """
+        cut = len(shipped.parts) - len(target.parts)
+        if cut > 0 and shipped.parts[cut:] == target.parts:
+            return PurePosixPath(*shipped.parts[:cut])
+        return shipped
+
+    @staticmethod
+    def _declared_deptry_roots(
+        settings: m.Cli.AtomicFileState,
+    ) -> p.Result[t.StrTuple]:
+        """Elect deptry's roots from the wheel target the settings declare.
+
+        Every directory the wheel ships, through its ``only-include`` entries or
+        its ``sources`` prefixes, contributes its import base; a root nested in
+        another root is already covered. A wheel target declaring neither keeps
+        the native src layout root.
+
+        Returns:
+            The sorted roots, or the first declaration failure.
+
+        """
+        result_type = r[t.StrTuple]
+        wheel = FlextInfraUtilitiesDependencies._declared_wheel_target(settings)
+        if wheel.failure:
+            return result_type.from_failure(wheel)
+        shipped: p.Result[t.StrSequence] = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            wheel.value.get("only-include", ()),
+            strict=True,
+        )
+        if shipped.failure:
+            return result_type.from_failure(shipped)
+        sources: p.Result[t.StrMapping] = u.validate_value(
+            t.Infra.STR_MAPPING_ADAPTER,
+            wheel.value.get("sources", dict[str, str]()),
+            strict=True,
+        )
+        if sources.failure:
+            return result_type.from_failure(sources)
+        roots: set[PurePosixPath] = set()
+        for declaration in (*shipped.value, *sources.value):
+            path = PurePosixPath(declaration)
+            if path.is_absolute() or not path.parts or ".." in path.parts:
+                return result_type.fail(
+                    "deptry root is outside the declared wheel boundary: "
+                    f"{declaration!r} in {settings.path}",
+                )
+            roots.add(
+                FlextInfraUtilitiesDependencies._shipped_import_base(
+                    path,
+                    PurePosixPath(sources.value.get(declaration, declaration)),
+                ),
             )
-        return result_type.ok(source.value)
+        return result_type.ok(
+            tuple(
+                sorted(
+                    root.as_posix()
+                    for root in roots
+                    if not any(
+                        root != other and root.is_relative_to(other) for other in roots
+                    )
+                )
+            )
+            or (c.Infra.DEFAULT_SRC_DIR,),
+        )
+
+    @staticmethod
+    def _authenticated_deptry_sources(
+        project_path: Path,
+        roots: t.StrTuple,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest]]:
+        """Inventory every production root and authenticate its physical shape.
+
+        Returns:
+            One exact tree manifest per root, or the first authentication failure.
+
+        """
+        result_type = r[t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest]]
+        manifests: list[m.Cli.AtomicPhysicalTreeManifest] = []
+        for root in roots:
+            source = u.Cli.atomic_inventory_physical_tree(project_path / root)
+            if source.failure:
+                return result_type.from_failure(source)
+            if any(entry.kind == "symlink" for entry in source.value.entries):
+                return result_type.fail(
+                    "deptry production source contains unauthenticated symbolic "
+                    f"links: {source.value.root.path}"
+                )
+            manifests.append(source.value)
+        return result_type.ok(tuple(manifests))
+
+    @staticmethod
+    def _verified_deptry_sources(
+        sources: t.SequenceOf[m.Cli.AtomicPhysicalTreeManifest],
+        *,
+        moment: str,
+    ) -> p.Result[bool]:
+        """Re-inventory every production root against its captured manifest.
+
+        Returns:
+            Whether every root survived unchanged, or the first changed root.
+
+        """
+        result_type = r[bool]
+        for source in sources:
+            current = u.Cli.atomic_inventory_physical_tree(source.root.path)
+            if current.failure:
+                return result_type.from_failure(current)
+            if current.value != source:
+                return result_type.fail(
+                    f"deptry production source changed {moment}: {source.root.path}"
+                )
+        return result_type.ok(value=True)
 
     @staticmethod
     def _captured_deptry_inputs(
         project_path: Path,
         *,
         config_path: Path,
-    ) -> p.Result[t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicPhysicalTreeManifest]]:
-        """Read the deptry configuration and authenticate the production tree.
+    ) -> p.Result[
+        t.Triple[
+            m.Cli.AtomicFileState,
+            t.StrTuple,
+            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+        ]
+    ]:
+        """Read the deptry configuration and authenticate its declared roots.
 
         Returns:
-            The configuration state and the authenticated source manifest.
+            The configuration state, its roots and their authenticated manifests.
 
         """
-        result_type = r[t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicPhysicalTreeManifest]]
+        result_type = r[
+            t.Triple[
+                m.Cli.AtomicFileState,
+                t.StrTuple,
+                t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            ]
+        ]
         settings = u.Cli.atomic_read_binary_file_state(config_path, required=True)
         if settings.failure:
             return result_type.from_failure(settings)
-        source = FlextInfraUtilitiesDependencies._authenticated_deptry_source(
+        roots = FlextInfraUtilitiesDependencies._declared_deptry_roots(settings.value)
+        if roots.failure:
+            return result_type.from_failure(roots)
+        sources = FlextInfraUtilitiesDependencies._authenticated_deptry_sources(
             project_path,
+            roots.value,
         )
-        if source.failure:
-            return result_type.from_failure(source)
-        return result_type.ok((settings.value, source.value))
+        if sources.failure:
+            return result_type.from_failure(sources)
+        return result_type.ok((settings.value, roots.value, sources.value))
 
     @staticmethod
     def _run_deptry(
         venv_bin: Path,
         project_path: Path,
         *,
+        roots: t.StrTuple,
         config_path: Path,
         json_output_path: Path,
     ) -> p.Result[m.Cli.CommandOutput]:
-        """Run native deptry once against a fresh report destination.
+        """Run native deptry once over the elected roots into a fresh report.
 
         Returns:
             The validated native command output, or the first execution failure.
@@ -191,12 +344,13 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         completed = u.Cli.run_raw(
             (
                 str(venv_bin / c.Infra.DEPTRY),
-                c.Infra.DEFAULT_SRC_DIR,
                 "--config",
                 str(config_path),
                 "--json-output",
                 str(json_output_path),
                 "--no-ansi",
+                "--",
+                *roots,
             ),
             cwd=project_path,
             timeout=c.Infra.TIMEOUT_MEDIUM,
@@ -253,6 +407,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         venv_bin: Path,
         project_path: Path,
         *,
+        roots: t.StrTuple,
         config_path: Path,
         json_output_path: Path,
     ) -> p.Result[
@@ -274,6 +429,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         native = FlextInfraUtilitiesDependencies._run_deptry(
             venv_bin,
             project_path,
+            roots=roots,
             config_path=config_path,
             json_output_path=json_output_path,
         )
@@ -291,26 +447,21 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
     def _rechecked_deptry_states(
         settings: m.Cli.AtomicFileState,
         report_state: m.Cli.AtomicFileState,
-        source: m.Cli.AtomicPhysicalTreeManifest,
+        sources: t.SequenceOf[m.Cli.AtomicPhysicalTreeManifest],
     ) -> p.Result[bool]:
-        """Re-verify the captured states and the unchanged production tree.
+        """Re-verify the captured states and the unchanged production trees.
 
         Returns:
             Whether every captured state survived the scan unchanged.
 
         """
-        result_type = r[bool]
         verified = u.Cli.atomic_verify_binary_file_states((settings, report_state))
         if verified.failure:
-            return result_type.from_failure(verified)
-        current_source = u.Cli.atomic_inventory_physical_tree(source.root.path)
-        if current_source.failure:
-            return result_type.from_failure(current_source)
-        if current_source.value != source:
-            return result_type.fail(
-                f"deptry production source changed during scanning: {source.root.path}"
-            )
-        return result_type.ok(value=True)
+            return r[bool].from_failure(verified)
+        return FlextInfraUtilitiesDependencies._verified_deptry_sources(
+            sources,
+            moment="during scanning",
+        )
 
     @staticmethod
     def runtime_dependency_plan(
@@ -354,7 +505,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         )
         return result_type.ok(
             m.Infra.RuntimeDependencyPlan(
-                source=scan.source,
+                sources=scan.sources,
                 before=scan.settings,
                 dependencies=tuple(selected),
                 unresolved_modules=tuple(dict.fromkeys(unresolved)),
@@ -559,14 +710,12 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
 
         """
         u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
-        current_source = u.Cli.atomic_inventory_physical_tree(plan.source.root.path)
-        if current_source.failure:
-            return r[bool].from_failure(current_source)
-        if current_source.value != plan.source:
-            return r[bool].fail(
-                "deptry production source changed before publication: "
-                f"{plan.source.root.path}"
-            )
+        unchanged = FlextInfraUtilitiesDependencies._verified_deptry_sources(
+            plan.sources,
+            moment="before publication",
+        )
+        if unchanged.failure:
+            return r[bool].from_failure(unchanged)
         if plan.before.content is None:
             return r[bool].fail(f"dependency declaration is absent: {plan.before.path}")
         document = u.Cli.toml_parse_text(plan.before.content.decode(c.DEFAULT_ENCODING))
