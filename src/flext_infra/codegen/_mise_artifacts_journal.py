@@ -293,7 +293,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 return r[m.Infra.CodegenTransactionJournal].fail(
                     "prepared journal differs from its original producer reference",
                 )
-            return codegen.FlextInfraCodegenPreconditions.reference_current(
+            return codegen.FlextInfraCodegenPreconditions.reference_birth_current(
                 reference
             ).map(
                 lambda _: prepared.model_copy(
