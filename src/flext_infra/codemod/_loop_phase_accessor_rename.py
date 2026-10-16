@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import m, p, r, u
+from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationReportMixin,
     FlextInfraAccessorMigrationRewriteMixin,
@@ -50,22 +51,33 @@ class FlextInfraAccessorRenamePhase(
         )
         if iter_result.failure:
             return r[bool].from_failure(iter_result)
-        planned = self._process_files(
-            rope_workspace.rope_project,
-            iter_result.value,
-            params=m.Infra.AccessorMigrationInput(
-                repository_root=root,
-                apply=True,
-                gates=tuple(u.Infra.snapshot_lint_gates()),
-            ),
-            source_preview=self.source_preview,
-            inputs=u.Infra.mod_scan_inputs(preflight).states,
-        )
-        if planned.failure:
-            return r[bool].from_failure(planned)
-        return r[bool].ok(
-            value=any(report.automated_changes for report in planned.value)
-        )
+        original: dict[Path, str] = {}
+        for py_file in iter_result.value:
+            read = u.Cli.files_read_text(py_file)
+            if read.failure:
+                return r[bool].from_failure(read)
+            original[py_file] = read.value
+        snapshot = u.Infra.snapshot_project(rope_workspace.rope_project, original)
+        edits: list[m.Infra.SemanticMigrationEdit] = []
+        for py_file, source in original.items():
+            updated_source, rewrite_changes = self._apply_automated_rewrites(
+                snapshot,
+                py_file,
+                source,
+            )
+            if not any(change.automated for change in rewrite_changes):
+                continue
+            edits.append(
+                m.Infra.SemanticMigrationEdit(
+                    file_path=py_file,
+                    original_source=source,
+                    updated_source=updated_source,
+                    changes=tuple(
+                        change.reason for change in rewrite_changes if change.automated
+                    ),
+                ),
+            )
+        return FlextInfraCodemodSemanticApply.publish_planned_edits(root, edits)
 
 
 __all__: list[str] = ["FlextInfraAccessorRenamePhase"]

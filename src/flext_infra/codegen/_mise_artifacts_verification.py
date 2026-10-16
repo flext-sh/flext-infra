@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import operator
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -299,9 +298,18 @@ class FlextInfraMiseArtifactsVerification(
                     ].from_failure(
                         born,
                     )
-        return cls._publication_history_current(
+        history = cls._publication_history_current(
             publications, reference=reference, destinations=destinations
-        ).map(operator.itemgetter(0))
+        )
+        result_type = r[t.VariadicTuple[m.Infra.CodegenJournalSource]]
+        if history.failure:
+            return result_type.from_failure(history)
+        outputs, outcomes = history.value
+        for outcome in outcomes:
+            current = cls._producer_closure_current(outcome, outputs)
+            if current.failure:
+                return result_type.from_failure(current)
+        return result_type.ok(outputs)
 
     @staticmethod
     def publication_birth_current(

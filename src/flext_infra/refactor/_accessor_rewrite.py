@@ -1,4 +1,4 @@
-"""Accessor token rewriting + manual-warning detection — extracted concern.
+"""Origin-proven token rewriting for declared accessor migrations.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT.
@@ -12,7 +12,13 @@ from tokenize import NAME, generate_tokens
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m
+from flext_infra.refactor._accessor_expression import (
+    FlextInfraAccessorMigrationExpressionMixin,
+)
 from flext_infra.refactor import FlextInfraAccessorOriginResolver
+from flext_infra.refactor._accessor_warnings import (
+    FlextInfraAccessorMigrationWarningsMixin,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,16 +26,12 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraAccessorMigrationRewriteMixin:
-    """Origin-aware get_/set_/is_ rewriting plus public-accessor warning scan.
+class FlextInfraAccessorMigrationRewriteMixin(
+    FlextInfraAccessorMigrationExpressionMixin,
+    FlextInfraAccessorMigrationWarningsMixin,
+):
+    """Compose token renames, expression planning, and manual review detection."""
 
-    Composed into FlextInfraAccessorMigrationOrchestrator via inheritance; owns
-    the automated-rename catalog, the Rope-proven token rewrite, and the manual
-    review-warning detection over loose public accessors.
-    """
-
-    # Legacy replacement decisions remain owned by the Core catalog. Candidate
-    # discovery is independently governed by Core's introducing-method policy.
     _AUTOMATED_RULES: ClassVar[t.VariadicTuple[m.Infra.AccessorMigrationRule]] = tuple(
         m.Infra.AccessorMigrationRule(
             source_name=src,
@@ -52,28 +54,44 @@ class FlextInfraAccessorMigrationRewriteMixin:
         *,
         resolver: FlextInfraAccessorOriginResolver,
     ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
-        """Apply automated rewrites.
+        """Apply the declared semantic migrations.
 
         Returns:
-            The resulting ``t.Pair[str,
-                t.SequenceOf[m.Infra.AccessorMigrationChange]]``.
-
-        Raises:
-            ValueError: If the source/project differs from the original Rope snapshot.
-
+            The proposed source and its migration receipts.
         """
-        if (
-            resolver.rope_project is not rope_project
-            or source != resolver.module(py_file).source_code
-        ):
-            msg = f"accessor rewrite source differs from Rope snapshot: {py_file}"
-            raise ValueError(msg)
-        return self._rename_symbol_tokens(
-            source,
-            rules=self._AUTOMATED_RULES,
-            file_path=py_file,
-            resolver=resolver,
+        resource = u.Infra.resolve_resource_from_path(rope_project, py_file)
+        if resource is None:
+            return source, ()
+        resolver = FlextInfraAccessorOriginResolver(rope_project)
+        updated_source = source
+        changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
+        declared = self._expression_catalog()
+        for rule in (*self._AUTOMATED_RULES, *declared):
+            if rule.operation != "rename":
+                continue
+            updated_source, rule_changes = self._rename_symbol_tokens(
+                updated_source,
+                rule=rule,
+                file_path=py_file,
+                resolver=resolver,
+            )
+            changes.extend(rule_changes)
+        expression_rules = tuple(
+            rule for rule in declared if rule.operation == "normalize-field"
         )
+        if expression_rules:
+            snapshot = u.Infra.snapshot_project(
+                rope_project,
+                {py_file: updated_source},
+            )
+            updated_source, expression_changes = self._normalize_field_accessors(
+                snapshot,
+                py_file,
+                updated_source,
+                expression_rules,
+            )
+            changes.extend(expression_changes)
+        return updated_source, tuple(changes)
 
     @classmethod
     def _rename_symbol_tokens(
@@ -87,9 +105,7 @@ class FlextInfraAccessorMigrationRewriteMixin:
         """Resolve every catalog occurrence against the unchanged Rope source.
 
         Returns:
-            The resulting ``t.Pair[str,
-                t.SequenceOf[m.Infra.AccessorMigrationChange]]``.
-
+            The proposed source and actual rename or review receipts.
         """
         token_changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
         rewrite_ranges: t.MutableSequenceOf[t.Triple[int, int, str]] = []
@@ -155,11 +171,10 @@ class FlextInfraAccessorMigrationRewriteMixin:
 
     @staticmethod
     def _offset_from_position(source: str, line: int, column: int) -> int:
-        """Offset from position.
+        """Resolve a token's character offset.
 
         Returns:
-            The resulting ``int``.
-
+            The source offset corresponding to the token position.
         """
         source_lines = source.splitlines(keepends=True)
         line_offset = sum(len(item) for item in source_lines[: line - 1])

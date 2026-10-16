@@ -130,9 +130,11 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         )
         if ahead.failure:
             return r[bool].from_failure(ahead)
-        if ahead.value.strip() == "0":
-            return cls._git_discard_empty_lane(request)
-        return cls._git_open_pull_request(request)
+        return (
+            cls._git_discard_empty_lane(request)
+            if ahead.value.strip() == "0"
+            else cls._git_open_pull_request(request)
+        )
 
     @classmethod
     def _git_discard_empty_lane(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:

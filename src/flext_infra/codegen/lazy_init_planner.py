@@ -13,6 +13,8 @@ from typing import Annotated, override
 
 from flext_infra import c, m, p, t, u
 from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
+from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
+from flext_infra._models.rope import FlextInfraModelsRope
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
 )
@@ -69,9 +71,15 @@ class FlextInfraCodegenLazyInitPlanner(
     )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
+        default_factory=dict[str, t.StrSequence],
     )
     _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
         default_factory=dict[str, Path],
+    )
+    _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
+        u.PrivateAttr(
+            default_factory=dict[Path, FlextInfraModelsRope.RopeProjectLayout],
+        )
     )
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",

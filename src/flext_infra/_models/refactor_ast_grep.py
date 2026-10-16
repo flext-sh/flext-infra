@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
@@ -317,7 +317,7 @@ class FlextInfraModelsRefactorGrep:
         )
 
     class AccessorMigrationRule(m.ContractModel):
-        """Declarative symbol-rename rule for accessor migration."""
+        """Declarative origin-bound accessor transformation."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
@@ -337,6 +337,35 @@ class FlextInfraModelsRefactorGrep:
             str,
             m.Field(description="Canonical API origin this rewrite is tied to"),
         ] = ""
+        operation: Annotated[
+            Literal["rename", "normalize-field"],
+            m.Field(description="Transformation applied to proven owned references"),
+        ] = "rename"
+        declaring_class: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Qualified class that declares the accessor and field"),
+        ] = None
+        field: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Backing field passed to the public normalizer"),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _require_expression_owner(self) -> Self:
+            """Reject expression rules without complete declaration identity.
+
+            Returns:
+                The complete typed migration rule.
+
+            Raises:
+                ValueError: If a field-normalization rule lacks its owner or field.
+            """
+            if self.operation == "normalize-field" and (
+                self.declaring_class is None or self.field is None
+            ):
+                msg = "Field normalization requires declaring_class and field"
+                raise ValueError(msg)
+            return self
 
     class AccessorMigrationChange(FlextInfraModelsBase.FrozenArbitrary):
         """Single automated rename or manual warning emitted by accessor migration."""

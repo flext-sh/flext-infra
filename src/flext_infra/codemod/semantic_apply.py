@@ -458,17 +458,36 @@ class FlextInfraCodemodSemanticApply:
         source_preview: p.Infra.SourcePreview,
     ) -> None:
         """Publish the exact callback included in the existing progress fingerprint."""
-        original = {edit.file_path: edit.original_source for edit in edits}
+        cls.publish_planned_edits(root, edits).unwrap()
+        cli.display_text(f"mod: Rope transaction paths changed_files={len(edits)}")
+
+    @classmethod
+    def publish_planned_edits(
+        cls,
+        root: Path,
+        edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
+        *,
+        validator: Callable[[], p.Result[bool]] | None = None,
+    ) -> p.Result[bool]:
+        """Compose a complete edit batch and publish through the semantic owner.
+
+        Returns:
+            Whether the accepted batch contains source changes.
+        """
+        original: dict[Path, str] = {}
+        for edit in edits:
+            if edit.file_path not in original:
+                original[edit.file_path] = edit.original_source
         working = dict(original)
         changed: set[Path] = set()
         cls._apply_plan(working, edits, changed)
-        cls._publish(
+        return cls._publish(
             root,
             original,
-            {path: working[path] for path in changed},
-            source_preview=source_preview,
-        ).unwrap()
-        cli.display_text(f"mod: Rope transaction paths changed_files={len(changed)}")
+            working,
+            changed,
+            validator=validator,
+        ).map(lambda accepted: bool(changed) and accepted)
 
     @classmethod
     def apply[FindingT: m.Infra.ModOccurrence](
