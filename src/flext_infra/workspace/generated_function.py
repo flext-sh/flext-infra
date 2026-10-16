@@ -266,6 +266,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise ValueError(msg)
         if "__attrs_attrs__" in namespace and "__attrs_props__" in namespace:
             return engine._compile_attrs(value, owner, attribute, namespace, qualified)
+        helper = engine._attrs_helper(owner, attribute, namespace)
+        if helper is not None:
+            return engine._compile_attrs_helper(
+                (value, owner), attribute, namespace, qualified, helper
+            )
         invocation = engine._tuple_invocation(owner, witness)
         declaration = engine._tuple_declaration(
             qualified, namespace, attribute, invocation
@@ -338,6 +343,158 @@ class FlextInfraWorkspaceGeneratedFunction:
             m.Infra.NativeGeneratedFunctionProof(
                 code=expected.__code__,
                 globals=expected.__globals__,
+                annotations=expected.__annotations__,
+                defaults=expected.__defaults__,
+                keyword_defaults=expected.__kwdefaults__,
+                closure=(),
+                inputs=tuple(self._inputs.values()),
+            )
+        )
+
+    def _attrs_helper(
+        self,
+        owner: p.AttributeProbe,
+        attribute: str,
+        storage: t.MappingKV[str, p.AttributeProbe],
+    ) -> t.Pair[FunctionType, ast.Call] | None:
+        """Elect the attrs class helper whose physical application wrote a slot.
+
+        attrs completes its own record classes with module statements such as
+        ``Factory = _add_hash(_add_eq(_add_repr(Factory, attrs=_f), ...))``.
+
+        Returns:
+            The helper and its physical call, or None outside that statement form.
+
+        """
+        sdk = sys.modules.get("attr._make")
+        supplier = storage.get("__module__")
+        if type(sdk) is not ModuleType or type(supplier) is not str:
+            return None
+        namespace = vars(self._module(supplier))
+        matches = self._physical_invocations(
+            "${export} = ${invocation}",
+            ("export", "invocation"),
+            tuple(
+                name
+                for name, item in namespace.items()
+                if type(name) is str and item is owner
+            ),
+        )
+        if len(matches) != 1:
+            return None
+        call = ast.parse(matches[0]["invocation"], mode="eval").body
+        while isinstance(call, ast.Call) and isinstance(call.func, ast.Name):
+            helper = namespace.get(call.func.id)
+            if helper is not vars(sdk).get(call.func.id) or type(helper) is not FunctionType:
+                return None
+            if attribute in self._attrs_helper_slots(helper, call.func.id, vars(sdk)):
+                return helper, call
+            match call.args:
+                case [inner]:
+                    call = inner
+                case _:
+                    return None
+        return None
+
+    def _attrs_helper_slots(
+        self,
+        helper: FunctionType,
+        name: str,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> frozenset[str]:
+        """Derive the class slots a helper fills from its compiled globals.
+
+        Returns:
+            Every ``cls.<slot> = globs["<slot>"]`` target of the physical helper.
+
+        """
+        declaration, _tree, _namespace = self._function(
+            helper, source_name=name, source_namespace=namespace
+        )
+        slots: set[str] = set()
+        for node in ast.walk(declaration):
+            match node:
+                case ast.Assign(
+                    targets=[ast.Attribute(value=ast.Name(id="cls"), attr=slot)],
+                    value=ast.Subscript(slice=ast.Constant(value=key)),
+                ) if key == slot:
+                    slots.add(slot)
+                case _:
+                    pass
+        return frozenset(slots)
+
+    def _compile_attrs_helper(
+        self,
+        observed: t.Pair[FunctionType, p.AttributeProbe],
+        attribute: str,
+        storage: t.MappingKV[str, p.AttributeProbe],
+        qualified: str,
+        helper: t.Pair[FunctionType, ast.Call],
+    ) -> p.Result[m.Infra.NativeGeneratedFunctionProof]:
+        """Re-run an authenticated attrs class helper on a fresh plain receiver.
+
+        Returns:
+            The independent emission of the observed helper-written method.
+
+        Raises:
+            TypeError: If a helper operand has foreign storage.
+            ValueError: If the call form, slot or emitted method differs.
+
+        """
+        value, _owner = observed
+        function, call = helper
+        sdk = vars(self._module("attr._make"))
+        self._attrs_sdk(sdk)
+        module = self._witness.module.get_name()
+        supplier = vars(self._module(module))
+        arguments: t.DictKV[str, p.AttributeProbe] = {}
+        for keyword in call.keywords:
+            match keyword:
+                case ast.keyword(arg="attrs", value=ast.Name(id=name)) if (
+                    name in supplier
+                ):
+                    arguments["attrs"] = supplier[name]
+                case ast.keyword(arg="ns", value=ast.Constant(value=None)):
+                    arguments["ns"] = None
+                case _:
+                    msg = f"native attrs helper call has unproved operands: {module}"
+                    raise ValueError(msg)
+        records = arguments.get("attrs", storage.get("__attrs_attrs__"))
+        if type(records) is not list and type(records) is not tuple:
+            msg = "native attrs helper records have foreign storage"
+            raise TypeError(msg)
+        for record in records:
+            self._attrs_record(record, sdk["Attribute"], sdk)
+        body: t.DictKV[str, p.AttributeProbe] = {
+            "__module__": module,
+            "__qualname__": qualified,
+        }
+        if "attrs" not in arguments:
+            body["__attrs_attrs__"] = records
+        receiver = type(qualified.rsplit(".", 1)[-1], (object,), body)
+        function(receiver, **arguments)
+        expected = vars(type)["__dict__"].__get__(receiver, type).get(attribute)
+        if (
+            type(expected) is not FunctionType
+            or storage.get(attribute) is not value
+            or not self._same_default(
+                (expected.__module__, expected.__qualname__, expected.__name__),
+                (value.__module__, value.__qualname__, value.__name__),
+            )
+        ):
+            msg = f"native attrs helper did not emit the class slot: {attribute}"
+            raise ValueError(msg)
+        self._inputs_current("native attrs helper input changed")
+        return r[m.Infra.NativeGeneratedFunctionProof].ok(
+            m.Infra.NativeGeneratedFunctionProof(
+                code=expected.__code__,
+                # The helper evaluates the method into its own globals; that
+                # self-binding is the observed slot, as a closure cell of a
+                # recreated class is its observed owner.
+                globals={
+                    key: value if item is expected else item
+                    for key, item in expected.__globals__.items()
+                },
                 annotations=expected.__annotations__,
                 defaults=expected.__defaults__,
                 keyword_defaults=expected.__kwdefaults__,
@@ -519,6 +676,10 @@ class FlextInfraWorkspaceGeneratedFunction:
                 raise ValueError(msg)
         for item in vars(tuple)["__getitem__"](records, slice(None)):
             self._attrs_record(item, kind, namespace)
+            # The class initializer spells each parameter by its alias.
+            if type(self._attrs_slot(item, kind, "alias")) is not str:
+                msg = "native attrs record alias is not a string"
+                raise TypeError(msg)
         return records
 
     def _attrs_record(
@@ -540,7 +701,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         if any(
             type(self._attrs_slot(record, kind, name)) not in {bool, NoneType}
             for name in flags
-        ) or type(self._attrs_slot(record, kind, "alias")) is not str:
+        ):
             msg = "native attrs record has foreign flag storage"
             raise TypeError(msg)
         if self._attrs_slot(record, kind, "inherited") is not False:
