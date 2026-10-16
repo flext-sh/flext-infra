@@ -664,8 +664,9 @@ class FlextInfraWorkspaceNativeReference:
             )
         if type(observed) is tuple and type(expected) is tuple:
             return len(observed) == len(expected) and all(
-                cls._same_construction(item, other)
-                for item, other in zip(observed, expected, strict=True)
+                itertools.starmap(
+                    cls._same_construction, zip(observed, expected, strict=True)
+                )
             )
         return cls._value(observed, construction=True) == cls._value(
             expected, construction=True
@@ -3197,7 +3198,7 @@ class FlextInfraWorkspaceNativeReference:
         value = module
         qualified = ".".join(nomination.attributes)
         for component in nomination.attributes:
-            namespace = (
+            namespace: t.MappingKV[str, t.Infra.NativeOperand] = (
                 cls._class_namespace(value)
                 if cls._is_class(value)
                 else cls._module_namespace(value)
@@ -3956,10 +3957,12 @@ class FlextInfraWorkspaceNativeReference:
         module = sys.modules.get(supplier)
         if type(module) is not ModuleType:
             return r[str].fail(f"generated receiver supplier is not loaded: {supplier}")
+        if not cls._is_class(receiver):
+            return r[str].fail(f"generated receiver is not a native class: {supplier}")
         namespace = cls._module_namespace(module)
         qualified = cls._type_attr("__qualname__", receiver, type(receiver))
         resolved: p.AttributeProbe | None = module
-        for component in qualified.split(".") if type(qualified) is str else ():
+        for component in qualified.split("."):
             scope = (
                 cls._module_namespace(resolved)
                 if type(resolved) is ModuleType
@@ -3968,7 +3971,7 @@ class FlextInfraWorkspaceNativeReference:
                 else {}
             )
             resolved = scope.get(component)
-        if type(qualified) is str and resolved is receiver:
+        if resolved is receiver:
             return r[str].ok(qualified)
         aliases = sorted(
             name for name, value in namespace.items() if value is receiver
@@ -3982,8 +3985,7 @@ class FlextInfraWorkspaceNativeReference:
         if len(aliases) != 1:
             return r[str].fail(
                 f"generated receiver has no unique lexical path: {supplier}::"
-                f"{qualified if type(qualified) is str else '<non-string>'}; "
-                f"aliases={aliases[:8]}"
+                f"{qualified}; aliases={aliases[:8]}"
             )
         return r[str].ok(aliases[0])
 
@@ -4042,10 +4044,6 @@ class FlextInfraWorkspaceNativeReference:
                 f"code_qualname={value.__code__.co_qualname[:160]}",
             )
         source_supplier, source_attribute, receiver = generated_owner
-        if receiver is not None and not cls._is_class(receiver):
-            return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].fail(
-                f"generated receiver is not a native class: {context.binding}",
-            )
         proved = cls._generated_proof(
             value,
             (source_supplier, source_attribute, receiver),
@@ -4253,7 +4251,7 @@ class FlextInfraWorkspaceNativeReference:
         ]
         lexical = sys.modules.get(facts.supplier)
         for component in facts.code.co_qualname.split(".")[:-1]:
-            namespace = (
+            namespace: t.MappingKV[str, t.Infra.NativeOperand] = (
                 cls._class_namespace(lexical)
                 if cls._is_class(lexical)
                 else vars(lexical)
@@ -4422,6 +4420,25 @@ class FlextInfraWorkspaceNativeReference:
         )
 
     @classmethod
+    def _receiver_namespaces(
+        cls,
+        receiver: t.Infra.NativeOperand,
+    ) -> t.VariadicTuple[t.MappingKV[str, t.Infra.NativeOperand]]:
+        """Read a LOAD_ATTR receiver's raw storage in native lookup order.
+
+        Returns:
+            Class storage along the native MRO, the module storage, or none.
+
+        """
+        if cls._is_class(receiver):
+            return tuple(
+                cls._class_namespace(owner) for owner in cls._native_mro(receiver)
+            )
+        if isinstance(receiver, ModuleType):
+            return (cls._module_namespace(receiver),)
+        return ()
+
+    @classmethod
     def _function_attribute_edges(
         cls,
         context: m.Infra.NativeObservationContext,
@@ -4443,16 +4460,7 @@ class FlextInfraWorkspaceNativeReference:
                 receiver = facts.global_bindings.get(instruction.argval)
                 edge = f"{context.binding}.global.{instruction.argval}"
             elif instruction.opname == "LOAD_ATTR" and receiver is not None:
-                namespaces = (
-                    tuple(
-                        cls._class_namespace(owner)
-                        for owner in cls._native_mro(receiver)
-                    )
-                    if cls._is_class(receiver)
-                    else (cls._module_namespace(receiver),)
-                    if isinstance(receiver, ModuleType)
-                    else ()
-                )
+                namespaces = cls._receiver_namespaces(receiver)
                 if not namespaces:
                     receiver = None
                     continue
@@ -5200,10 +5208,11 @@ class FlextInfraWorkspaceNativeReference:
         if cls._is_function_binding(value):
             value = value.__func__
         if type(value) is not FunctionType:
+            kind = type(value)
             return result_type.fail(
                 "generated receipt has no native function: "
                 f"{binding.supplier}::{receiver_name}.{attribute}; "
-                f"slot_type={cls._type_attr('__name__', type(value), type(type(value)))}"
+                f"slot_type={vars(type)['__name__'].__get__(kind, type(kind))}"
             )
         return result_type.ok((value, receiver))
 
