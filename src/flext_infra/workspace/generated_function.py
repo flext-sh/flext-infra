@@ -38,21 +38,21 @@ class FlextInfraWorkspaceGeneratedFunction:
     def __init__(self, witness: m.Infra.NativeSourceWitness) -> None:
         """Keep all observations local to the current immutable source witness."""
         self._witness = witness
-        self._inputs: dict[Path, m.Cli.AtomicFileState] = {
+        self._inputs: t.DictKV[Path, m.Cli.AtomicFileState] = {
             witness.source: witness.state,
         }
-        self._trees: dict[Path, ast.Module] = {
+        self._trees: t.DictKV[Path, ast.Module] = {
             witness.source: ast.parse(
                 witness.module.source_code,
                 filename=str(witness.source),
             ),
         }
-        self._codes: dict[Path, p.Infra.NativeCodeIdentity] = {
+        self._codes: t.DictKV[Path, p.Infra.NativeCodeIdentity] = {
             witness.source: witness.code,
         }
-        self._emitted: dict[int, m.Infra.NativeGeneratedFunctionProof] = {}
+        self._emitted: t.DictKV[int, m.Infra.NativeGeneratedFunctionProof] = {}
         self._dictionaries: set[int] = set()
-        self._patterns: dict[int, str] = {}
+        self._patterns: t.DictKV[int, str] = {}
 
     @classmethod
     def compile(
@@ -393,8 +393,9 @@ class FlextInfraWorkspaceGeneratedFunction:
             decorator="staticmethod",
         )
 
+    @staticmethod
     def _attrs_slot(
-        self, record: p.AttributeProbe, kind: type, name: str
+        record: p.AttributeProbe, kind: p.AttributeProbe, name: str
     ) -> p.AttributeProbe:
         """Read one attrs record slot through its native member descriptor.
 
@@ -405,14 +406,43 @@ class FlextInfraWorkspaceGeneratedFunction:
             TypeError: If the record or the slot is not native attrs storage.
 
         """
+        if type(kind) is not type or type(record) is not kind:
+            msg = f"native attrs record has a foreign native type: {name}"
+            raise TypeError(msg)
         descriptor = vars(type)["__dict__"].__get__(kind, type).get(name)
-        if type(record) is not kind or type(descriptor) is not MemberDescriptorType:
+        if type(descriptor) is not MemberDescriptorType:
             msg = f"native attrs record slot is not native storage: {name}"
             raise TypeError(msg)
         slot: p.AttributeProbe = descriptor.__get__(record, kind)
         return slot
 
-    def _attrs_plain(self, value: p.AttributeProbe, hooks: frozenset[str]) -> bool:
+    @staticmethod
+    def _attrs_names(
+        records: p.AttributeProbe, kind: p.AttributeProbe
+    ) -> t.VariadicTuple[str]:
+        """Read the field names of the stored records in their stored order.
+
+        Returns:
+            Each record's native ``name`` slot.
+
+        Raises:
+            TypeError: If the records are no tuple or a name is not a string.
+
+        """
+        if not isinstance(records, tuple):
+            msg = "native attrs records are not tuple storage"
+            raise TypeError(msg)
+        names: list[str] = []
+        for item in vars(tuple)["__getitem__"](records, slice(None)):
+            name = FlextInfraWorkspaceGeneratedFunction._attrs_slot(item, kind, "name")
+            if type(name) is not str:
+                msg = "native attrs record name is not a string"
+                raise TypeError(msg)
+            names.append(name)
+        return tuple(names)
+
+    @staticmethod
+    def _attrs_plain(value: p.AttributeProbe, hooks: frozenset[str]) -> bool:
         """Prove that native type checks of a value run no authored hook.
 
         Returns:
@@ -463,18 +493,14 @@ class FlextInfraWorkspaceGeneratedFunction:
             None,
         )
         body = vars(type)["__dict__"].__get__(holder, type)
-        items: t.VariadicTuple[p.AttributeProbe] = vars(tuple)["__getitem__"](
-            records, slice(None)
-        )
         kind = namespace["Attribute"]
-        names = tuple(self._attrs_slot(item, kind, "name") for item in items)
+        names = self._attrs_names(records, kind)
         name = vars(type)["__name__"].__get__(holder, type)
         if getter is None or name != f"{qualified.rsplit('.', 1)[-1]}Attributes":
             msg = "native attrs record tuple is not the attrs accessor class"
             raise ValueError(msg)
         for key, accessor in body.items():
-            index = names.index(key) if key in names else None
-            if index is None:
+            if key not in names:
                 if type(accessor) is GetSetDescriptorType or key in {
                     "__module__",
                     "__doc__",
@@ -482,24 +508,23 @@ class FlextInfraWorkspaceGeneratedFunction:
                     continue
                 msg = f"native attrs record tuple has authored storage: {key}"
                 raise ValueError(msg)
+            getter_function = accessor.fget if type(accessor) is property else None
             if (
-                type(accessor) is not property
-                or type(accessor.fget) is not FunctionType
-                or accessor.fget.__code__ is not getter
-                or accessor.fget.__defaults__ != (index,)
-                or accessor.fset is not None
-                or accessor.fdel is not None
+                type(getter_function) is not FunctionType
+                or getter_function.__code__ is not getter
+                or getter_function.__defaults__ != (names.index(key),)
+                or (accessor.fset, accessor.fdel) != (None, None)
             ):
                 msg = f"native attrs record accessor differs from attrs: {key}"
                 raise ValueError(msg)
-        for item in items:
+        for item in vars(tuple)["__getitem__"](records, slice(None)):
             self._attrs_record(item, kind, namespace)
         return records
 
     def _attrs_record(
         self,
         record: p.AttributeProbe,
-        kind: type,
+        kind: p.AttributeProbe,
         namespace: t.MappingKV[str, p.AttributeProbe],
     ) -> None:
         """Admit only record operands whose builder checks run no authored hook.
@@ -511,27 +536,25 @@ class FlextInfraWorkspaceGeneratedFunction:
         """
         lookup = frozenset({"__class__", "__getattribute__", "__getattr__"})
         truth = frozenset({"__bool__", "__len__"})
-        flags = ("repr", "eq", "order", "hash", "init", "kw_only", "inherited")
+        flags = ("eq", "order", "hash", "init", "kw_only", "inherited")
         if any(
             type(self._attrs_slot(record, kind, name)) not in {bool, NoneType}
             for name in flags
-        ) or any(
-            type(self._attrs_slot(record, kind, name)) is not str
-            for name in ("name", "alias")
-        ):
+        ) or type(self._attrs_slot(record, kind, "alias")) is not str:
             msg = "native attrs record has foreign flag storage"
             raise TypeError(msg)
         if self._attrs_slot(record, kind, "inherited") is not False:
             msg = "native attrs inherited fields need their ancestor proof"
             raise ValueError(msg)
-        default = self._attrs_slot(record, kind, "default")
         converter = self._attrs_slot(record, kind, "converter")
-        if (
-            not self._attrs_plain(default, lookup)
-            or not self._attrs_plain(self._attrs_slot(record, kind, "validator"), truth)
-            or not self._attrs_plain(self._attrs_slot(record, kind, "eq_key"), truth)
-            or not self._attrs_plain(converter, lookup)
-            or not self._attrs_callable(self._attrs_slot(record, kind, "repr"))
+        operands = (
+            (self._attrs_slot(record, kind, "default"), lookup),
+            (self._attrs_slot(record, kind, "validator"), truth),
+            (self._attrs_slot(record, kind, "eq_key"), truth),
+            (converter, lookup),
+        )
+        if not all(self._attrs_plain(item, hooks) for item, hooks in operands) or (
+            not self._attrs_callable(self._attrs_slot(record, kind, "repr"))
         ):
             msg = "native attrs record operand can run an authored hook"
             raise TypeError(msg)
@@ -639,11 +662,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = "native attrs class declares slots its options do not"
                 raise ValueError(msg)
             return
-        kind = namespace["Attribute"]
-        names = [
-            self._attrs_slot(item, kind, "name")
-            for item in vars(tuple)["__getitem__"](records, slice(None))
-        ]
+        names = list(self._attrs_names(records, namespace["Attribute"]))
         ancestry = vars(type)["__mro__"].__get__(owner, type(owner))[1:-1]
         inherited = any(
             vars(type)["__dict__"].__get__(base, type(base)).get("__weakref__")
@@ -656,8 +675,9 @@ class FlextInfraWorkspaceGeneratedFunction:
             and not inherited
         ):
             names.append("__weakref__")
-        if self._attrs_hashability(props)[1]:
-            names.append(namespace["_HASH_CACHE_FIELD"])
+        cache_field = namespace.get("_HASH_CACHE_FIELD")
+        if self._attrs_hashability(props)[1] and type(cache_field) is str:
+            names.append(cache_field)
         if type(slots) is not tuple or slots != tuple(names):
             msg = "native attrs slot layout differs from its records"
             raise ValueError(msg)
@@ -937,10 +957,11 @@ class FlextInfraWorkspaceGeneratedFunction:
                             msg = "native attrs module binds names by star import"
                             raise ValueError(msg)
                         names.add(alias.asname or alias.name.split(".", 1)[0])
-                case ast.Name(id=name, ctx=ast.Store()) | ast.MatchAs(
-                    name=str() as name
-                ):
+                case ast.Name(id=name, ctx=ast.Store()):
                     names.add(name)
+                case ast.MatchAs(name=str() as captured):
+                    names.add(captured)
+                    pending.extend(ast.iter_child_nodes(node))
                 case (
                     ast.Lambda()
                     | ast.ListComp()
