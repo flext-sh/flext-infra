@@ -1117,9 +1117,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                 # The action reaches its collaborators (``_tuple_str``,
                 # ``_FuncBuilder``) through globals already proved by the SDK
                 # check; the 3.13 compiler has no separate hash builder.
-                self._function(
-                    action, source_name=name, source_namespace=namespace
-                )
+                self._function(action, source_name=name, source_namespace=namespace)
             case _:
                 msg = "native dataclass selected hash action is interposed"
                 raise ValueError(msg)
@@ -2532,9 +2530,7 @@ class FlextInfraWorkspaceGeneratedFunction:
 
         """
         components = function.__code__.co_qualname.split(".")
-        nodes = FlextInfraWorkspaceGeneratedFunction._qualified_scope(
-            components, tree
-        )
+        nodes = FlextInfraWorkspaceGeneratedFunction._qualified_scope(components, tree)
         return tuple(
             node
             for node in nodes
@@ -2635,9 +2631,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         match expression:
             case ast.Call(func=ast.Name(id=name)):
                 return function.__globals__.get(name) is wraps
-            case ast.Call(
-                func=ast.Attribute(value=ast.Name(id=owner), attr="wraps")
-            ):
+            case ast.Call(func=ast.Attribute(value=ast.Name(id=owner), attr="wraps")):
                 return function.__globals__.get(owner) is module
             case _:
                 return False

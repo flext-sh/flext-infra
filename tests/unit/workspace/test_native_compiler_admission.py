@@ -485,9 +485,7 @@ class TestsNativeCompilerAdmission:
         shadow = "object = int\n" if defect == "shadow" else ""
         u.Tests.write_package_init(
             tmp_path / "slot_provider",
-            "from dataclasses import dataclass\n"
-            + shadow
-            + "@dataclass\n"
+            "from dataclasses import dataclass\n" + shadow + "@dataclass\n"
             "class Reference:\n"
             "    name: str\n"
             "    __hash__ = object.__hash__\n",

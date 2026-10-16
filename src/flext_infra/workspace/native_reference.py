@@ -660,8 +660,7 @@ class FlextInfraWorkspaceNativeReference:
             and all(type(key) is str for key in (*observed, *expected))
         ):
             return set(observed) == set(expected) and all(
-                cls._same_construction(observed[key], expected[key])
-                for key in expected
+                cls._same_construction(observed[key], expected[key]) for key in expected
             )
         if type(observed) is tuple and type(expected) is tuple:
             return len(observed) == len(expected) and all(
@@ -3943,9 +3942,7 @@ class FlextInfraWorkspaceNativeReference:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _receiver_path(
-        cls, supplier: str, receiver: p.AttributeProbe
-    ) -> p.Result[str]:
+    def _receiver_path(cls, supplier: str, receiver: p.AttributeProbe) -> p.Result[str]:
         """Name a generated receiver by the lexical path that resolves to it.
 
         The qualified name is the path when it resolves to this exact class;
@@ -3979,9 +3976,7 @@ class FlextInfraWorkspaceNativeReference:
             f"{name}.<base:{index}>"
             for name, value in namespace.items()
             if type(value) is type
-            for index, base in enumerate(
-                vars(type)["__bases__"].__get__(value, type)
-            )
+            for index, base in enumerate(vars(type)["__bases__"].__get__(value, type))
             if base is receiver
         )
         if len(aliases) != 1:

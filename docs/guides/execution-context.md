@@ -1243,7 +1243,6 @@ node without tokenizing and parsing its text again. Local shadows and native
 import identity remain checked. The resolution map does not persist across source
 observations or replace source, producer, or publication proof.
 
-
 Rule `files` and `ignores` globs are relative to the elected `sgconfig.yml`,
 not the consumer's working directory. A source-only rule must therefore cover
 `**/src/**/*.py` for standalone and workspace members outside the provider's
