@@ -15,6 +15,7 @@ from importlib.machinery import (
     SourceFileLoader,
 )
 from importlib.metadata import packages_distributions
+from operator import itemgetter
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
@@ -178,8 +179,27 @@ class FlextInfraCodegenPreconditions:
             The authenticated immutable producer closure.
 
         """
-        result_type = r[m.Infra.CodegenSourceAuthority]
-        names = tuple(nominated)
+        return cls._observed_source_authority(repository_root, tuple(nominated)).map(
+            itemgetter(0)
+        )
+
+    @classmethod
+    def _observed_source_authority(
+        cls,
+        repository_root: Path,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
+    ) -> p.Result[
+        t.Pair[m.Infra.CodegenSourceAuthority, m.Infra.NativeImportObservation]
+    ]:
+        """Seal the producer authority together with the observation it elected.
+
+        Returns:
+            The sealed authority and the loaded-producer observation it rests on.
+
+        """
+        result_type = r[
+            t.Pair[m.Infra.CodegenSourceAuthority, m.Infra.NativeImportObservation]
+        ]
         rooted = cls._elected_source_roots(repository_root, names)
         if rooted.failure:
             return result_type.from_failure(rooted)
@@ -208,7 +228,9 @@ class FlextInfraCodegenPreconditions:
         ).flat_map(lambda _: cls._loaded_provider_sources(roots, states))
         if owned.failure:
             return result_type.from_failure(owned)
-        return cls._sealed_source_authority(names, roots, trees, states)
+        return cls._sealed_source_authority(names, roots, trees, states).map(
+            lambda authority: (authority, observed.value)
+        )
 
     @classmethod
     def _runtime_dependency_roots(
@@ -271,8 +293,7 @@ class FlextInfraCodegenPreconditions:
             return r[bool].from_failure(selected)
         if project_root is not None and not selected.value.is_relative_to(project_root):
             return r[bool].fail(
-                "runtime dependency is outside declared editable root: "
-                f"{namespace}"
+                f"runtime dependency is outside declared editable root: {namespace}"
             )
         previous = roots.setdefault(namespace, selected.value)
         if previous != selected.value:
@@ -781,13 +802,30 @@ class FlextInfraCodegenPreconditions:
         current = cls._native_inputs_current(request)
         if current.failure:
             return result_type.from_failure(current)
-        observed = FlextInfraWorkspaceNativeReference.capture(request.modules).flat_map(
-            lambda snapshot: (
-                FlextInfraWorkspaceNativeReference.authored_sources_current(
-                    snapshot, request.source_authority.inputs
-                ).map(lambda _: snapshot)
-            )
-        )
+        observed = FlextInfraWorkspaceNativeReference.capture(request.modules)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        return cls._observed_native_reference(request, observed.value)
+
+    @classmethod
+    def _observed_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+        snapshot: m.Infra.NativeImportObservation,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Prove one loaded-producer observation against the cold native import.
+
+        The observation must still match the sealed authority inputs; the cold
+        child then supplies the independent reference it is compared with.
+
+        Returns:
+            The sealed reference, or the first source or runtime failure.
+
+        """
+        result_type = r[m.Infra.NativeImportReference]
+        observed = FlextInfraWorkspaceNativeReference.authored_sources_current(
+            snapshot, request.source_authority.inputs
+        ).map(lambda _: snapshot)
         if observed.failure:
             return result_type.from_failure(observed)
         cold = cls._cold_native_observation(request)
@@ -945,7 +983,7 @@ class FlextInfraCodegenPreconditions:
         )
         roots = tuple(root for _, root in authority.generator_modules)
         pinned = {receipt.path: receipt for receipt in authority.inputs}
-        executed: dict[Path, m.Cli.AtomicFileReceipt] = {}
+        executed: t.MutableMappingKV[Path, m.Cli.AtomicFileReceipt] = {}
         for receipt in receipts:
             path = receipt.path
             physical = path.resolve()
@@ -1100,34 +1138,36 @@ class FlextInfraCodegenPreconditions:
             f"stage=native-source-authority selections={len(names)} "
             f"runtime={runtime_root}",
         )
-        cold = cls.capture_source_authority(
-            runtime_root,
-            nominated=names,
-        )
-        if cold.failure:
-            return result_type.from_failure(cold)
+        sealed = cls._observed_source_authority(runtime_root, names)
+        if sealed.failure:
+            return result_type.from_failure(sealed)
+        authority, observation = sealed.value
         u.Cli.info(
             f"stage=native-source-authority-complete "
-            f"providers={len(cold.value.generator_modules)} "
-            f"inputs={len(cold.value.inputs)}",
+            f"providers={len(authority.generator_modules)} "
+            f"inputs={len(authority.inputs)}",
         )
-        inputs = cls.authority_inputs(cold.value)
+        inputs = cls.authority_inputs(authority)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        return cls.capture_native_reference(
-            m.Infra.NativeImportRequest(
-                repository_root=repository_root,
-                runtime_root=runtime_root,
-                modules=names,
-                inputs=inputs.value,
-                source_authority=cold.value,
-                import_roots=tuple(
-                    dict.fromkeys(
-                        root.parent for _name, root in cold.value.generator_modules
-                    )
-                ),
+        request = m.Infra.NativeImportRequest(
+            repository_root=repository_root,
+            runtime_root=runtime_root,
+            modules=names,
+            inputs=inputs.value,
+            source_authority=authority,
+            import_roots=tuple(
+                dict.fromkeys(
+                    root.parent for _name, root in authority.generator_modules
+                )
             ),
         )
+        # The authority already observed these exact selections; once the
+        # inputs are proven current, a second capture could only repeat it.
+        current = cls._native_inputs_current(request)
+        if current.failure:
+            return result_type.from_failure(current)
+        return cls._observed_native_reference(request, observation)
 
     @classmethod
     def _distribution_providers(
