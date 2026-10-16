@@ -77,6 +77,9 @@ class FlextInfraConstantsRope:
     ROPE_IMPORTUTILS_MODULE: ClassVar[str] = "rope.refactor.importutils"
     "Public Rope import planning and organization module."
 
+    ROPE_PYOBJECTS_MODULE: ClassVar[str] = "rope.base.pyobjects"
+    "Rope module owning the native semantic object classes."
+
     ROPE_IGNORED_RESOURCES: ClassVar[t.VariadicTuple[str]] = (
         ".venv",
         "venv",

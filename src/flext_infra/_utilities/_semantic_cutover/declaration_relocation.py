@@ -448,6 +448,34 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         return lines
 
     @staticmethod
+    def _provider_file(
+        provider_resource: p.Infra.RopeResource,
+    ) -> t.Pair[Path, t.Infra.RopeFile]:
+        """Resolve a provider resource to its physical module file.
+
+        A package resolves to its initializer.
+
+        Returns:
+            The provider module path and its file resource.
+
+        Raises:
+            TypeError: If a folder resource is not a Rope root.
+
+        """
+        provider_path = Path(provider_resource.real_path).resolve()
+        file_resource: p.Infra.RopeResource = provider_resource
+        if provider_resource.is_folder():
+            if not isinstance(provider_resource, p.Infra.RopeRoot):
+                msg = f"declaration-relocation: invalid folder resource {provider_path}"
+                raise TypeError(msg)
+            file_resource = provider_resource.get_child(c.Infra.INIT_PY)
+            provider_path /= c.Infra.INIT_PY
+        return provider_path, FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            file_resource,
+            provider_path,
+        )
+
+    @staticmethod
     def _resolve_binding(
         project: p.Infra.RopeProject,
         module_name: str,
@@ -466,20 +494,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 msg = f"declaration-relocation: cyclic lazy export {provider_name}"
                 raise ValueError(msg)
             visited.add(provider_name)
-            provider_path = Path(provider_resource.real_path).resolve()
-            file_resource: p.Infra.RopeResource = provider_resource
-            if provider_resource.is_folder():
-                if not isinstance(provider_resource, p.Infra.RopeRoot):
-                    msg = (
-                        "declaration-relocation: invalid folder resource "
-                        f"{provider_path}"
-                    )
-                    raise TypeError(msg)
-                file_resource = provider_resource.get_child(c.Infra.INIT_PY)
-                provider_path /= c.Infra.INIT_PY
-            provider_file = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-                file_resource,
-                provider_path,
+            provider_path, provider_file = (
+                FlextInfraUtilitiesSemanticDeclarationRelocation._provider_file(
+                    provider_resource,
+                )
             )
             source = (
                 sources[provider_path]

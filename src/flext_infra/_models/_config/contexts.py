@@ -84,6 +84,15 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             bool,
             m.Field(description="Repository publishes a Python package"),
         ]
+        analyzer_roots: Annotated[
+            t.StrTuple,
+            m.Field(
+                description=(
+                    "Configured analyzer directories; the Makefile keeps "
+                    "only those present in the checkout"
+                ),
+            ),
+        ]
         repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Relative workspace root path"),

@@ -51,8 +51,11 @@ class FlextInfraUtilitiesCodegenNamespace:
             The type group and the case-folded name.
 
         """
-        category = 0 if name.isupper() else 1 if name[:1].isupper() else 2
-        return category, name.casefold()
+        if name.isupper():
+            return 0, name.casefold()
+        if name[:1].isupper():
+            return 1, name.casefold()
+        return 2, name.casefold()
 
     @staticmethod
     @cache

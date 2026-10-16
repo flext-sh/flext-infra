@@ -868,8 +868,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             holder, line = binding.get_definition_location()
-            if holder is not None:
-                holder = holder.get_module()
+            if holder is None:
+                return None
+            holder = holder.get_module()
             if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
                 return None
             holder_resource = holder.get_resource()

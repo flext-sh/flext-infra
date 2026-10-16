@@ -921,6 +921,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 examples_module=target.repository.examples_module,
                 make_profile=target.make_profile,
                 package=target.repository.package,
+                analyzer_roots=tuple(
+                    config.Infra.tooling.tools.pyright.path_rules.env_dirs,
+                ),
                 workspace_repositories=(
                     tuple(
                         sorted(

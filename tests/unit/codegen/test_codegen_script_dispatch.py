@@ -407,68 +407,35 @@ class TestsFlextInfraScriptDispatchMakefile:
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
     # declares extra_verbs/script_dispatch in its own typed repository input. The
     # generic capability stays covered by the fixture-driven cases below.
-    def test_script_dispatch_adds_scripts_to_lint_and_type_paths(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Opted-in repos scan scripts alongside src and tests."""
-        rendered = self._render_root_makefile(
-            tmp_path,
-            extra_verbs=(
-                m.Infra.MakeVerbSpec(
-                    name="charts",
-                    description="Dispatch charts through the dispatcher.",
-                ),
-                m.Infra.MakeVerbSpec(
-                    name="chart-release",
-                    description="Dispatch chart-release through the dispatcher.",
-                ),
-                m.Infra.MakeVerbSpec(
-                    name="bead",
-                    description="Dispatch bead through the declared script dispatcher.",
-                ),
-            ),
-            script_dispatch=m.Infra.ScriptDispatchSpec(
+    @pytest.mark.parametrize(
+        "script_dispatch",
+        [
+            None,
+            m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py",
                 roots=("scripts",),
             ),
-        )
-        tm.that(
-            "RUFF_PATHS := $(strip $(foreach d,src tests examples scripts,"
-            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
-            in rendered,
-            eq=True,
-        )
-        tm.that(
-            "MYPY_PATHS := $(strip $(foreach d,src tests examples scripts,"
-            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
-            in rendered,
-            eq=True,
-        )
-
-    def test_repo_without_script_dispatch_retains_canonical_lint_and_type_paths(
+        ],
+    )
+    def test_lint_and_type_paths_scan_every_configured_analyzer_dir(
         self,
         tmp_path: Path,
+        script_dispatch: m.Infra.ScriptDispatchSpec | None,
     ) -> None:
-        """A repo without script dispatch keeps canonical paths; scripts excluded."""
+        """Every repo scans the configured analyzer dirs present in its checkout.
+
+        examples/ and scripts/ are first-class code under the same gates as
+        src/, so the scanned set is the tooling SSOT, independent of script
+        dispatch; the Makefile keeps only the directories that exist.
+        """
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(),
-            script_dispatch=None,
+            script_dispatch=script_dispatch,
         )
-        tm.that(
-            "RUFF_PATHS := $(strip $(foreach d,src tests examples,"
-            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
-            in rendered,
-            eq=True,
-        )
-        tm.that(
-            "MYPY_PATHS := $(strip $(foreach d,src tests examples,"
-            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
-            in rendered,
-            eq=True,
-        )
-        tm.that("$(PROJECT_ROOT)/scripts" in rendered, eq=False)
+        env_dirs = " ".join(config.Infra.tooling.tools.pyright.path_rules.env_dirs)
+        tm.that(f"for directory in {env_dirs}; do" in rendered, eq=True)
+        tm.that("MYPY_PATHS := $(RUFF_PATHS)" in rendered, eq=True)
 
     def test_every_pytest_verb_declares_the_project_scratch_root(
         self,
