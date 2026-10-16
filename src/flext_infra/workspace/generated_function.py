@@ -791,17 +791,61 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If source assigns class state through non-name targets.
 
         """
+        namespace = vars(self._module(self._witness.module.get_name()))
         for target in assignment.targets:
             match target:
+                case ast.Name(id=name) if isinstance(assignment.value, ast.Attribute):
+                    result[name] = self._native_type_member(
+                        assignment.value, namespace
+                    )
                 case ast.Name(id=name):
                     result[name] = self._source_scalar(
                         assignment.value,
-                        vars(self._module(self._witness.module.get_name())),
+                        namespace,
                         self._trees[self._witness.source],
                     )
                 case _:
                     msg = "native dataclass class value has no closed source name"
                     raise ValueError(msg)
+
+    def _native_type_member(
+        self,
+        expression: ast.Attribute,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> p.AttributeProbe:
+        """Bind ``<builtin type>.<member>`` to its exact native slot descriptor.
+
+        ``__hash__ = object.__hash__`` names interpreter storage: the owner
+        must be the authenticated builtin type and the member its own wrapper or
+        method descriptor, read through native type storage, never invoked.
+
+        Returns:
+            The native descriptor the class body bound.
+
+        Raises:
+            ValueError: If the owner or member is not native interpreter storage.
+
+        """
+        match expression:
+            case ast.Attribute(value=ast.Name(id=owner_name), attr=member):
+                owner = self._builtin(owner_name, namespace)
+                descriptor = (
+                    vars(type)["__dict__"].__get__(owner, type).get(member)
+                    if type(owner) is type
+                    else None
+                )
+                if (
+                    type(descriptor) is WrapperDescriptorType
+                    or type(descriptor) is MethodDescriptorType
+                ) and descriptor.__objclass__ is owner:
+                    return descriptor
+            case _:
+                pass
+        msg = (
+            "native dataclass class value is not a native type member: "
+            f"{ast.unparse(expression)[:160]}"
+        )
+        raise ValueError(msg)
 
     def _compile_dataclass(
         self,
