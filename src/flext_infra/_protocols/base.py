@@ -108,6 +108,7 @@ class FlextInfraProtocolsBase(Protocol):
             params: m.Infra.ApplyRenamesInput,
         ) -> p.Result[m.Infra.ApplyRenamesReport]: ...
 
+    @runtime_checkable
     class SemanticRenameCandidateProvider(Protocol):
         """Select meaningful names from actual declarations, never token counts."""
 
@@ -115,6 +116,76 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             declaration: m.Infra.Object,
         ) -> m.Infra.SemanticRenameDecision | None: ...
+
+    @runtime_checkable
+    class GateAttestationRuntimeContext(Protocol):
+        """Read-only elected resolution inputs the toolchain trust anchor hashes.
+
+        The attestation layer never resolves the workspace itself: the caller
+        elects the current runtime context once at the workspace boundary and
+        provides it explicitly, keeping the dependency direction downward.
+        """
+
+        @property
+        def runtime_root(self) -> Path:
+            """Physical runtime owner of the elected resolution input."""
+            ...
+
+        @property
+        def pyproject_path(self) -> Path:
+            """Declaration file the resolver elected."""
+            ...
+
+        @property
+        def lock_path(self) -> Path:
+            """Lock file the resolver elected."""
+            ...
+
+    @runtime_checkable
+    class RuleDeltaSpec(Protocol):
+        """Read-only structural contract for rule delta comparison options."""
+
+        @property
+        def inventory(self) -> t.VariadicTuple[t.Pair[str, str]]: ...
+
+        @property
+        def repository_root(self) -> Path | None: ...
+
+        @property
+        def projects(self) -> t.SequenceOf[Path]: ...
+
+        @property
+        def publication_chain(
+            self,
+        ) -> t.VariadicTuple[m.Infra.CodegenStagedFile] | None: ...
+
+    @runtime_checkable
+    class ChainDeclarationSpec(Protocol):
+        """Read-only structural contract for binding-chain declaration inputs."""
+
+        @property
+        def project(self) -> p.Infra.RopeProject: ...
+
+        @property
+        def holder(self) -> p.Infra.RopePyModule: ...
+
+        @property
+        def holder_text(self) -> str: ...
+
+        @property
+        def declaration(self) -> m.Infra.LogicalStatement: ...
+
+        @property
+        def holder_offset(self) -> int: ...
+
+        @property
+        def holder_scope(self) -> p.Infra.RopeScope: ...
+
+        @property
+        def expression(self) -> str: ...
+
+        @property
+        def sources(self) -> t.MappingKV[Path, str]: ...
 
     @runtime_checkable
     class ModProgress(Protocol):

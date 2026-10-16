@@ -32,6 +32,12 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
 
     CODEGEN_CLI_MODULE_FILENAME: ClassVar[str] = "cli.py"
     GITHUB_WORKFLOWS_RELATIVE_PATH: ClassVar[str] = ".github/workflows"
+    CUSTOM_MAKE_FILENAME: ClassVar[str] = "custom.mk"
+    """Operator-owned Make include rendered beside the generated Makefile."""
+    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
+    """Directory name for flext-infra config files relative to the package root."""
+    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
+    """Local operator override file name, excluded from the tracked baseline."""
 
     # These enums define the
     # one public conform contract shared by new and existing repositories. The

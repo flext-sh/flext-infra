@@ -14,7 +14,7 @@ from __future__ import annotations
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Annotated, ClassVar, override
+from typing import Annotated, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
 from flext_infra.codegen import (
@@ -47,41 +47,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         ),
     ] = m.Field(
         default_factory=lambda: type(settings).fetch_global().Infra.runtime_root
-    )
-
-    PRELUDE: ClassVar[str] = (
-        "import importlib, sys\n"
-        "from importlib.metadata import EntryPoint\n"
-        "from pathlib import Path\n"
-    )
-    _EXPORT_IMPORT_CODE: ClassVar[str] = (
-        "module = importlib.import_module({package!r})\n"
-    )
-    # The origin gate runs between the import and the name resolution: a
-    # module loaded from outside this checkout must fail with the origin
-    # error naming the foreign path, never with a phantom-attribute error
-    # raised while resolving a stale export name.
-    _EXPORT_RESOLVE_CODE: ClassVar[str] = (
-        "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
-        "    getattr(module, name)\n"
-    )
-    # Synthetic concat keeps the placeholder out of one plain literal: the
-    # marker is template text substituted at render time, never an f-string.
-    ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
-    # The origin gate runs inside the same probe namespace as the export
-    # resolution, so its loop names must never rebind the probed ``module``.
-    ORIGIN_CODE: ClassVar[str] = (
-        "from flext_infra.workspace.environment_provenance import "
-        "FlextInfraWorkspaceEnvironmentProvenance as native_origins\n"
-        "for loaded_name in tuple(sys.modules):\n"
-        "    for package, directory in {origins!r}:\n"
-        "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
-        "            origin = native_origins.module_source(loaded_name).unwrap()\n"
-        "            if not origin.resolve().is_relative_to(Path(directory)):\n"
-        "                raise ImportError(\n"
-        "                    f'{loaded_name}: origin {origin!r} '\n"
-        "                    f'is outside {directory}'\n"
-        "                )\n"
     )
     _NATIVE_REFERENCE_LOADER: ClassVar[str] = """
 from importlib.machinery import (
@@ -440,7 +405,9 @@ _native_atomic = (
             "m.Infra.SourceClassReference.model_validate_json(item)"
             f" for item in {selections!r})\n"
             "for item in selections: importlib.import_module(item.target)\n"
-            + self.ORIGIN_CODE.replace(self.ORIGINS_PLACEHOLDER, repr(origins))
+            + c.Infra.FRESH_IMPORT_ORIGIN_CODE.replace(
+                c.Infra.FRESH_IMPORT_ORIGINS_PLACEHOLDER, repr(origins)
+            )
             + "reference = native.capture(selections).unwrap()\n"
             "reference = reference.model_copy(update={'executed_sources': tuple("
             "m.Cli.AtomicFileReceipt.model_validate_json(receipt) "
@@ -658,7 +625,7 @@ _native_atomic = (
         view = authenticated.value
         plan = view.plan
         code = (
-            self.PRELUDE
+            c.Infra.FRESH_IMPORT_PRELUDE
             + (
                 "from hashlib import sha256\n"
                 f"if {plan.package!r} in sys.modules "
@@ -849,8 +816,8 @@ _native_atomic = (
             (layout.package_name, str(layout.package_dir.resolve()))
             for layout in layouts
         )
-        return FlextInfraValidateFreshImport.ORIGIN_CODE.replace(
-            FlextInfraValidateFreshImport.ORIGINS_PLACEHOLDER,
+        return c.Infra.FRESH_IMPORT_ORIGIN_CODE.replace(
+            c.Infra.FRESH_IMPORT_ORIGINS_PLACEHOLDER,
             repr(origins),
         )
 
@@ -908,7 +875,7 @@ _native_atomic = (
                     m.Infra.FreshImportProbe(
                         subject=f"{layout.package_name}: {group}/{name}={value}",
                         code=(
-                            self.PRELUDE + f"EntryPoint(name={name!r}, "
+                            c.Infra.FRESH_IMPORT_PRELUDE + f"EntryPoint(name={name!r}, "
                             f"value={value!r}, group={group!r}).load()\n" + origin_code
                         ),
                     ),
@@ -956,21 +923,27 @@ _native_atomic = (
                     f"missing public export contract for {layout.package_name}",
                 )
             body = "".join(
-                self._EXPORT_IMPORT_CODE.format(package=plan.context.current_pkg)
+                c.Infra.FRESH_IMPORT_EXPORT_IMPORT_CODE.format(
+                    package=plan.context.current_pkg
+                )
                 + origin_code
-                + self._EXPORT_RESOLVE_CODE.format(exports=tuple(plan.exports))
+                + c.Infra.FRESH_IMPORT_EXPORT_RESOLVE_CODE.format(
+                    exports=tuple(plan.exports)
+                )
                 for plan in owned
             )
         else:
             body = (
-                self._EXPORT_IMPORT_CODE.format(package=layout.package_name)
+                c.Infra.FRESH_IMPORT_EXPORT_IMPORT_CODE.format(
+                    package=layout.package_name
+                )
                 + origin_code
-                + self._EXPORT_RESOLVE_CODE.format(exports=())
+                + c.Infra.FRESH_IMPORT_EXPORT_RESOLVE_CODE.format(exports=())
             )
         return r[m.Infra.FreshImportProbe].ok(
             m.Infra.FreshImportProbe(
                 subject=layout.package_name,
-                code=self.PRELUDE + body + origin_code,
+                code=c.Infra.FRESH_IMPORT_PRELUDE + body + origin_code,
             ),
         )
 
@@ -994,10 +967,10 @@ _native_atomic = (
             probes.append(
                 m.Infra.FreshImportProbe(
                     subject=package,
-                    code=self.PRELUDE
-                    + self._EXPORT_IMPORT_CODE.format(package=package)
+                    code=c.Infra.FRESH_IMPORT_PRELUDE
+                    + c.Infra.FRESH_IMPORT_EXPORT_IMPORT_CODE.format(package=package)
                     + origin_code
-                    + self._EXPORT_RESOLVE_CODE.format(exports=()),
+                    + c.Infra.FRESH_IMPORT_EXPORT_RESOLVE_CODE.format(exports=()),
                 ),
             )
         return r[t.MutableSequenceOf[m.Infra.FreshImportProbe]].ok(probes)
