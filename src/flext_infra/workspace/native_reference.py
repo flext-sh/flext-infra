@@ -4266,8 +4266,12 @@ class FlextInfraWorkspaceNativeReference:
             return r[m.Infra.NativeFunctionObservationContext].fail(
                 f"producer native supplier has no module spec: {actual_supplier}"
             )
+        # A physical function is named by its compiled qualified name: library
+        # code may rewrite ``__qualname__`` (attrs re-labels ``evolve`` for each
+        # class it serves), which would make the source epoch process-local.
         context.sources.add((
-            f"{actual_supplier}::{value.__qualname__}",
+            f"{actual_supplier}::"
+            f"{value.__qualname__ if generated else code.co_qualname}",
             str(cls._source_path(origin, context.paths))
             if generated or supplier_spec.origin == "frozen"
             else code.co_filename,
@@ -5380,17 +5384,28 @@ class FlextInfraWorkspaceNativeReference:
         if proved.failure:
             return result_type.from_failure(proved)
         _supplier, _attribute, expected = proved.value
-        if (
-            not cls._code_matches(
-                executed, cls._code_evidence(expected.code, hashed=expected.hashed)
+        derived = cls._code_evidence(expected.code, hashed=expected.hashed)
+        differing = tuple(
+            name
+            for name, agrees in (
+                ("code", cls._code_matches(executed, derived)),
+                (
+                    "inputs",
+                    metadata.get("generated_inputs")
+                    == dumps(tuple(str(state.path) for state in expected.inputs)),
+                ),
+                ("hashed", metadata.get("generated_hashed") == dumps(expected.hashed)),
             )
-            or metadata.get("generated_inputs")
-            != dumps(tuple(str(state.path) for state in expected.inputs))
-            or metadata.get("generated_hashed") != dumps(expected.hashed)
-        ):
+            if not agrees
+        )
+        if differing:
             return result_type.fail(
                 "generated receipt differs from its physical compiler: "
-                f"{binding.binding}"
+                f"{binding.binding}; differs={differing}; "
+                f"receipt_inputs={metadata.get('generated_inputs')}; "
+                f"derived_inputs={
+                    dumps(tuple(str(state.path) for state in expected.inputs))
+                }"
             )
         return cls._generated_inputs_current(expected, states)
 
