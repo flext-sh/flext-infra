@@ -39,6 +39,7 @@ from types import (
     WrapperDescriptorType,
 )
 from typing import ClassVar, Literal, TypeGuard, overload
+from weakref import ReferenceType
 
 from flext_infra import c, codegen, m, p, r, t, u
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
@@ -423,11 +424,61 @@ class FlextInfraWorkspaceNativeReference:
             state=captured.value,
             module=native,
             code=compiled,
+            scopes=cls._source_scopes(root),
             statements=u.Infra.logical_statements(native.source_code),
             finder=u.Infra.semantic_finder(native),
         )
         witnesses[name] = witness
         return r[m.Infra.NativeSourceWitness].ok(witness)
+
+    @staticmethod
+    def _source_scopes(
+        root: p.Infra.RopeScope,
+    ) -> t.MappingKV[str, p.Infra.RopeScope]:
+        """Index the uniquely declared native scopes in traversal order.
+
+        A qualified name declared more than once (version-conditional
+        definitions) is left out together with its nested scopes, so a consumer
+        that needs it fails at its own lookup instead of the whole module.
+
+        Returns:
+            Source-qualified scope identities belonging to the captured module.
+
+        Raises:
+            ValueError: A declaration has no source identity.
+
+        """
+        scopes: dict[str, p.Infra.RopeScope] = {"": root}
+        ambiguous: set[str] = set()
+        pending = [("", root)]
+        while pending:
+            prefix, scope = pending.pop()
+            for child in scope.get_scopes():
+                if child.get_kind() not in {"Class", "Function"}:
+                    continue
+                name = child.pyobject.get_name()
+                if type(name) is not str or not name:
+                    msg = "Native declaration scope has no source identity"
+                    raise ValueError(msg)
+                separator = ".<locals>." if scope.get_kind() == "Function" else "."
+                qualified = f"{prefix}{separator}{name}" if prefix else name
+                if qualified in ambiguous or prefix in ambiguous:
+                    ambiguous.add(qualified)
+                    continue
+                if qualified in scopes:
+                    ambiguous.add(qualified)
+                    del scopes[qualified]
+                    continue
+                scopes[qualified] = child
+                pending.append((qualified, child))
+        return {
+            qualified: scope
+            for qualified, scope in scopes.items()
+            if not any(
+                qualified == item or qualified.startswith(f"{item}.")
+                for item in ambiguous
+            )
+        }
 
     @staticmethod
     def _witnesses_current(
@@ -645,7 +696,7 @@ class FlextInfraWorkspaceNativeReference:
         if not cls._generated_function_matches(value, expected):
             return result_type.fail(
                 f"generated executable differs from its physical compiler: "
-                f"{supplier}::{attribute}"
+                f"{supplier}::{attribute}; qualname={value.__qualname__[:160]}"
             )
         for state in expected.inputs:
             current = u.Cli.atomic_read_binary_file_state(state.path, required=True)
@@ -3748,6 +3799,29 @@ class FlextInfraWorkspaceNativeReference:
         observe_value = partial(
             cls._value, context=context, binding=context.binding_context
         )
+        if type(value) is ReferenceType:
+            # Calling an exact interpreter weak reference only dereferences it
+            # natively; a live executable referent continues the graph as its own
+            # edge, while data referents (registries, self references) end here.
+            referent = value()
+            context.evidence.append(
+                m.Infra.NativeBindingEvidence(
+                    binding=context.binding,
+                    kind="weak_reference",
+                    supplier="weakref",
+                    name="ref",
+                    qualname="ReferenceType",
+                    operands=(("referent", "dead" if referent is None else "live"),),
+                ),
+            )
+            if referent is not None and cls._executable_binding(referent):
+                context.pending.append((
+                    f"{context.binding}.referent",
+                    referent,
+                    context.supplier,
+                    context.owner_source,
+                ))
+            return r[bool].ok(value=True)
         native_builtin = value if cls._native_builtin(value) else None
         if cls._native_callable_instance(value) or cls._python_callable_instance(value):
             native = type(value)
