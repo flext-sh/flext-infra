@@ -830,6 +830,9 @@ class FlextInfraWorkspaceGeneratedFunction:
         if type(value) is not FunctionType:
             msg = "native dataclass accessor is not an exact Python function"
             raise TypeError(msg)
+        if decorator is None and vars(value).get("__isabstractmethod__") is True:
+            # ``abc.abstractmethod`` marks the function in place and returns it.
+            decorator = "abstractmethod"
         seen: set[int] = set()
         while type(value) is FunctionType:
             if id(value) in seen:
@@ -2396,22 +2399,58 @@ class FlextInfraWorkspaceGeneratedFunction:
                 raise ValueError(msg)
             self._builtin(name, function.__globals__)
 
+    def _decorator_spellings(
+        self,
+        decorator: str | None,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> frozenset[str] | None:
+        """Return the source spellings that bind the expected sole decorator.
+
+        A native descriptor type (``classmethod``, ``staticmethod``,
+        ``property``) must be the builtin itself; a property's own
+        ``<name>.setter``/``.deleter`` is spelled as such; ``abstractmethod``
+        is every module binding of ``abc.abstractmethod`` or of ``abc``.
+
+        Returns:
+            The accepted decorator spellings, or ``None`` for an undecorated body.
+
+        Raises:
+            TypeError: If ``abc.abstractmethod`` is not its physical function.
+
+        """
+        if decorator is None:
+            return None
+        if decorator == "abstractmethod":
+            abc = self._module("abc")
+            marker = vars(abc).get("abstractmethod")
+            if type(marker) is not FunctionType:
+                msg = "native abstract method marker is not a Python function"
+                raise TypeError(msg)
+            self._function(marker)
+            return frozenset(
+                name if value is marker else f"{name}.abstractmethod"
+                for name, value in namespace.items()
+                if value is marker or value is abc
+            )
+        if "." not in decorator:
+            self._builtin(decorator, namespace)
+        return frozenset((decorator,))
+
     @staticmethod
     def _function_declarations(
         function: FunctionType,
         tree: ast.Module,
         *,
-        decorator: str | None = None,
+        spellings: frozenset[str] | None = None,
     ) -> t.VariadicTuple[ast.FunctionDef]:
         """Locate the physical module or class method without running its body.
 
-        ``decorator`` names the sole native method descriptor (``classmethod``
-        or ``staticmethod``) the declaration may carry; the code's first line
-        is then the decorator line, as CPython records it.
+        ``spellings`` names the sole decorator the declaration may carry; the
+        code's first line is then the decorator line, as CPython records it.
 
         Returns:
             Declarations matching the native qualified code identity and carrying
-            exactly the expected decorator, or none.
+            exactly an accepted decorator, or none.
 
         """
         nodes: t.SequenceOf[ast.stmt] = tree.body
@@ -2429,11 +2468,11 @@ class FlextInfraWorkspaceGeneratedFunction:
         def decorated(node: ast.FunctionDef) -> bool:
             match node.decorator_list:
                 case []:
-                    return decorator is None
+                    return spellings is None
                 case [ast.Name(id=name)]:
-                    return name == decorator
+                    return spellings is not None and name in spellings
                 case [ast.Attribute(value=ast.Name(id=owner), attr=member)]:
-                    return f"{owner}.{member}" == decorator
+                    return spellings is not None and f"{owner}.{member}" in spellings
                 case _:
                     return False
 
