@@ -18,7 +18,6 @@ from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
 from flext_infra.codegen import (
-    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
@@ -380,9 +379,6 @@ _native_atomic = (
             The real native import output, preserving its original failure.
 
         """
-        admitted = FlextInfraCodegenPreconditions.native_inputs_current(request)
-        if admitted.failure:
-            return r[p.Cli.CommandOutput].from_failure(admitted)
         roots = tuple(dict.fromkeys(request.import_roots))
         imports = tuple(map(str, roots))
         selections = tuple(item.model_dump_json() for item in request.modules)

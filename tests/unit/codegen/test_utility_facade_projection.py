@@ -1291,9 +1291,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             facade,
             expected_stdout="child",
         )
+        repeated = u.Infra.render_utility_facade(package, family="c")
         tm.that(
-            u.Infra.render_utility_facade(package, family="c"),
+            repeated,
             eq=rendered,
+            msg=f"Initial projection: {rendered!r}\nRepeated projection: {repeated!r}",
         )
 
     @pytest.mark.parametrize("generated", [True, False])
