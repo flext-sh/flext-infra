@@ -1354,5 +1354,8 @@ Infra:
         year: 2026
       namespace_scan_dirs:
       - src
+      candidate_bootstrap_targets:
+      - path: ../../devops-oud-iac-worktrees/hml-oud-20261014
+        what: runtime-bindings
     branch_policy:
       integration_branch: 0.12.0-dev
