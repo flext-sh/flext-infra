@@ -91,11 +91,11 @@ class FlextInfraCandidateBootstrapService:
 
         return self._transaction.run_files_locked(roots.value, publish)
 
-    @staticmethod
     def _resolved_roots(
+        self,
         source_root: Path,
         targets: m.Infra.CandidateBootstrapTargets,
-    ) -> p.Result[t.MutableMappingKV[str, Path]]:
+    ) -> p.Result[t.MappingKV[str, Path]]:
         """Resolve each declared target to its exact elected worktree root.
 
         Args:
@@ -107,19 +107,20 @@ class FlextInfraCandidateBootstrapService:
             first resolution failure.
 
         """
-        roots: t.MutableMappingKV[str, Path] = {}
-        for index, target in enumerate(targets):
+        result_type = r[t.MappingKV[str, Path]]
+        elected: list[Path] = []
+        for target in targets:
             identity = u.Infra.exact_worktree_root(
                 (source_root / target.path).resolve(strict=True),
             )
             if identity.failure:
-                return r[t.MutableMappingKV[str, Path]].from_failure(identity)
-            roots[f"@candidate-{index}"] = identity.value.repo_root
-        if len(set(roots.values())) != len(roots):
-            return r[t.MutableMappingKV[str, Path]].fail(
+                return result_type.from_failure(identity)
+            elected.append(identity.value.repo_root)
+        if len(set(elected)) != len(elected):
+            return result_type.fail(
                 "candidate bootstrap targets resolve to duplicate worktrees",
             )
-        return r[t.MutableMappingKV[str, Path]].ok(roots)
+        return result_type.ok(self._transaction.capability_roots("candidate", elected))
 
     def plan_candidates(
         self,

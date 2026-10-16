@@ -1058,12 +1058,10 @@ class FlextInfraModTextGateEngine:
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
-        roots = {
-            f"@mod-text-{index}": project
-            for index, project in enumerate(
-                sorted({plan.project for plan in analysis.files})
-            )
-        }
+        roots = transaction.capability_roots(
+            "mod-text",
+            sorted({plan.project for plan in analysis.files}),
+        )
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
             published = transaction.publish_file_phase_locked(

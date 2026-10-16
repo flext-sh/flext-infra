@@ -172,11 +172,14 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         selected = self._select_repositories(request, workspace, repository)
         if selected.failure:
             return r[t.MappingKV[str, Path]].from_failure(selected)
-        roots = {
-            f"@{request.what}-{index}": (root / participant.path).resolve()
-            for index, participant in enumerate(selected.value)
-            if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
-        }
+        roots = FlextInfraCodegenTransaction.capability_roots(
+            request.what,
+            tuple(
+                (root / participant.path).resolve()
+                for participant in selected.value
+                if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+            ),
+        )
         if request.what == c.Infra.CodegenConformSurface.FACADES:
             stage_workspace = FlextInfraStagedPackage.workspace_root(request.root)
             if stage_workspace.failure:

@@ -26,28 +26,28 @@ if TYPE_CHECKING:
     from flext_infra.workspace.fleet_gaps import FlextInfraWorkspaceFleetGaps
     from flext_infra.workspace.fleet_verbs import FlextInfraWorkspaceFleetVerbs
     from flext_infra.workspace.flext_binding import FlextInfraBindingService
-    from flext_infra.workspace.generated_function import (
-        FlextInfraWorkspaceGeneratedFunction,
-    )
     from flext_infra.workspace.lifecycle import FlextInfraWorkspaceLifecycle
     from flext_infra.workspace.lock_completeness import (
         FlextInfraWorkspaceLockCompleteness,
     )
     from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+    from flext_infra.workspace.runtime_dependencies import (
+        FlextInfraRuntimeDependencyCollector,
+    )
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraBindingService",
     "FlextInfraRopeQueryMixin",
     "FlextInfraRopeWorkspace",
+    "FlextInfraRuntimeDependencyCollector",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceEnvironmentContracts",
     "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceFleetGaps",
     "FlextInfraWorkspaceFleetVerbs",
-    "FlextInfraWorkspaceGeneratedFunction",
     "FlextInfraWorkspaceGovernanceMixin",
     "FlextInfraWorkspaceLifecycle",
     "FlextInfraWorkspaceLockCompleteness",
@@ -61,13 +61,13 @@ install_lazy_exports(
         "FlextInfraBindingService": ".flext_binding",
         "FlextInfraRopeQueryMixin": "._rope_query",
         "FlextInfraRopeWorkspace": ".rope",
+        "FlextInfraRuntimeDependencyCollector": ".runtime_dependencies",
         "FlextInfraWorkspaceDetector": ".detector",
         "FlextInfraWorkspaceEnvironmentContracts": ".environment_contracts",
         "FlextInfraWorkspaceEnvironmentMixin": ".environment",
         "FlextInfraWorkspaceEnvironmentProvenance": ".environment_provenance",
         "FlextInfraWorkspaceFleetGaps": ".fleet_gaps",
         "FlextInfraWorkspaceFleetVerbs": ".fleet_verbs",
-        "FlextInfraWorkspaceGeneratedFunction": ".generated_function",
         "FlextInfraWorkspaceGovernanceMixin": "._governance",
         "FlextInfraWorkspaceLifecycle": ".lifecycle",
         "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",

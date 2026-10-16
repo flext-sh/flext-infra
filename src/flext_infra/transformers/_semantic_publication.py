@@ -693,12 +693,10 @@ class FlextInfraSemanticPublication:
             The deterministic pseudo-root mapping of the publication.
 
         """
-        return {
-            f"@semantic-{index}": project
-            for index, project in enumerate(
-                sorted({plan.project for plan in files} | set(projection_roots)),
-            )
-        }
+        return FlextInfraCodegenTransaction.capability_roots(
+            "semantic",
+            sorted({plan.project for plan in files} | set(projection_roots)),
+        )
 
     @staticmethod
     def _concrete_file_plans(

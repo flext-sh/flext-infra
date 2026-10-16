@@ -21,6 +21,12 @@ if TYPE_CHECKING:
         _rope_analysis,
         _semantic_cutover,
     )
+    from flext_infra._utilities._codemod_rules_distributions import (
+        FlextInfraUtilitiesCodemodRulesDistributionsMixin,
+    )
+    from flext_infra._utilities._dependency_deptry import (
+        FlextInfraUtilitiesDependencyDeptryMixin,
+    )
     from flext_infra._utilities._docs_audit_detectors import (
         FlextInfraUtilitiesDocsAuditDetectorsMixin,
     )
@@ -63,6 +69,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._git.attestation import (
         FlextInfraUtilitiesGitAttestationMixin,
+    )
+    from flext_infra._utilities._git.attestation_evidence import (
+        FlextInfraUtilitiesGitAttestationEvidenceMixin,
     )
     from flext_infra._utilities._git.lane_hygiene import (
         FlextInfraUtilitiesGitLaneHygieneMixin,
@@ -212,6 +221,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._rope_core_resources import (
         FlextInfraUtilitiesRopeCoreResourcesMixin,
     )
+    from flext_infra._utilities._rope_inventory_sites import (
+        FlextInfraUtilitiesRopeInventorySitesMixin,
+    )
     from flext_infra._utilities._rope_method_order import (
         FlextInfraUtilitiesRopeMethodOrderMixin,
     )
@@ -320,6 +332,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+    from flext_infra._utilities.codegen_facade_syntax import (
+        FlextInfraUtilitiesCodegenFacadeSyntax,
+    )
     from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
     from flext_infra._utilities.codegen_file_plan import (
         FlextInfraUtilitiesCodegenFilePlan,
@@ -495,6 +510,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRopeRestructure",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
+    "FlextInfraUtilitiesCodegenFacadeSyntax",
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
@@ -502,10 +518,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
+    "FlextInfraUtilitiesCodemodRulesDistributionsMixin",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
     "FlextInfraUtilitiesDeclarationPayload",
     "FlextInfraUtilitiesDeferredSelfReferenceRewrite",
     "FlextInfraUtilitiesDependencies",
+    "FlextInfraUtilitiesDependencyDeptryMixin",
     "FlextInfraUtilitiesDependencyRequirements",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -536,6 +554,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGit",
+    "FlextInfraUtilitiesGitAttestationEvidenceMixin",
     "FlextInfraUtilitiesGitAttestationMixin",
     "FlextInfraUtilitiesGitLaneHygieneMixin",
     "FlextInfraUtilitiesGitMutationScopeMixin",
@@ -632,6 +651,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
+    "FlextInfraUtilitiesRopeInventorySitesMixin",
     "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeRuntime",
@@ -700,6 +720,7 @@ install_lazy_exports(
         "FlextInfraRopeRestructure": "._rope.restructure",
         "FlextInfraUtilitiesBase": ".base",
         "FlextInfraUtilitiesCodegen": ".codegen",
+        "FlextInfraUtilitiesCodegenFacadeSyntax": ".codegen_facade_syntax",
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
@@ -707,6 +728,9 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
+        "FlextInfraUtilitiesCodemodRulesDistributionsMixin": (
+            "._codemod_rules_distributions"
+        ),
         "FlextInfraUtilitiesCompatibilityAliasValidation": (
             ".compatibility_alias_validation"
         ),
@@ -717,6 +741,7 @@ install_lazy_exports(
             ".deferred_self_reference_rewrite"
         ),
         "FlextInfraUtilitiesDependencies": ".dependencies",
+        "FlextInfraUtilitiesDependencyDeptryMixin": "._dependency_deptry",
         "FlextInfraUtilitiesDependencyRequirements": ".dependency_requirements",
         "FlextInfraUtilitiesDiscovery": ".discovery",
         "FlextInfraUtilitiesDocs": ".docs",
@@ -747,6 +772,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsScopeStateMixin": "._docs_scope_state",
         "FlextInfraUtilitiesDocsValidate": ".docs_validate",
         "FlextInfraUtilitiesGit": ".git",
+        "FlextInfraUtilitiesGitAttestationEvidenceMixin": "._git.attestation_evidence",
         "FlextInfraUtilitiesGitAttestationMixin": "._git.attestation",
         "FlextInfraUtilitiesGitLaneHygieneMixin": "._git.lane_hygiene",
         "FlextInfraUtilitiesGitMutationScopeMixin": "._git.mutation_scope",
@@ -847,6 +873,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeHelpers": ".rope_helpers",
         "FlextInfraUtilitiesRopeImports": ".rope_imports",
         "FlextInfraUtilitiesRopeInventory": ".rope_inventory",
+        "FlextInfraUtilitiesRopeInventorySitesMixin": "._rope_inventory_sites",
         "FlextInfraUtilitiesRopeMethodOrderMixin": "._rope_method_order",
         "FlextInfraUtilitiesRopeModulePatch": ".rope_module_patch",
         "FlextInfraUtilitiesRopeRuntime": ".rope_runtime",

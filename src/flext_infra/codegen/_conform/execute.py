@@ -391,10 +391,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         if not selected:
             return r[bool].ok(value=True)
-        roots = {
-            f"@repository-declaration-{index}": target.root
-            for index, target in enumerate(selected)
-        }
+        roots = FlextInfraCodegenTransaction.capability_roots(
+            "repository-declaration",
+            tuple(target.root for target in selected),
+        )
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
         )
@@ -578,10 +578,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
         transaction = FlextInfraCodegenTransaction(mise_owner)
         root = request.root.expanduser().resolve()
-        roots = {
-            f"@bootstrap-{index}": (root / repository.path).resolve()
-            for index, repository in enumerate(plan.repositories)
-        }
+        roots = FlextInfraCodegenTransaction.capability_roots(
+            "bootstrap",
+            tuple(
+                (root / repository.path).resolve() for repository in plan.repositories
+            ),
+        )
         receipts: list[m.Infra.CodegenPhaseOutcome] = []
 
         def publish(scope_root: Path) -> p.Result[m.Infra.CodegenResult]:
@@ -1029,14 +1031,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             participant_policy=policy,
             prior_publications=tuple(batches),
         )
-        roots = {
-            repository.name: (plan.request.root / repository.path).resolve()
-            for repository in plan.repositories
-            if any(
-                file.project == (plan.request.root / repository.path).resolve()
-                for file in files
-            )
-        }
+        projects = frozenset(file.project for file in files)
+        roots = transaction.capability_roots(
+            "lazy-init",
+            tuple(
+                project
+                for project in (
+                    (plan.request.root / repository.path).resolve()
+                    for repository in plan.repositories
+                )
+                if project in projects
+            ),
+        )
         return transaction.run_files_locked(
             roots,
             lambda scope_root: transaction.publish_file_phase_locked(
