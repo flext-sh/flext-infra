@@ -3482,9 +3482,8 @@ class FlextInfraWorkspaceNativeReference:
             )
         context.sources.add((f"{supplier}::{qualname}", source, ""))
         if FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(supplier):
-            return cls._capture_runtime_binding(
-                context, supplier, cls._type_attr("__name__", value, type(value)), qualname
-            )
+            name = cls._type_attr("__name__", value, type(value))
+            return cls._capture_runtime_binding(context, supplier, name, qualname)
         return cls._capture_class_body(
             context,
             value,
@@ -4599,8 +4598,11 @@ class FlextInfraWorkspaceNativeReference:
         if captured.failure:
             return r[bool].from_failure(captured)
         facts = captured.value
-        if not facts.generated and FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(
-            facts.supplier
+        if (
+            not facts.generated
+            and FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(
+                facts.supplier
+            )
         ):
             return cls._capture_runtime_binding(
                 context, facts.supplier, value.__name__, value.__qualname__
