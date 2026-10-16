@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Literal
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -355,6 +356,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         )
         if custom_result.failure:
             return result_type.from_failure(custom_result)
+        lazy_result = (
+            self._planned_lazy_init_files(root)
+            if contract.custom
+            else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+        )
+        if lazy_result.failure:
+            return result_type.from_failure(lazy_result)
         tooling_runtime: m.Infra.ToolingRuntimeContext | None = None
         if contract.tooling:
             tooling_context = self._existing_tooling_context(
@@ -362,7 +370,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 identity,
                 codegen,
                 managed_artifacts.value.resolution,
-                custom_result.value,
+                (*lazy_result.value, *custom_result.value),
             )
             if tooling_context.failure:
                 return result_type.from_failure(tooling_context)
@@ -387,7 +395,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         planned = list(managed_result.value)
         planned.extend(custom_result.value)
         final_inputs = (
-            self.planned_source_render_inputs(render_inputs, planned)
+            self.planned_source_render_inputs(
+                render_inputs,
+                [*lazy_result.value, *planned],
+            )
             if contract.pyproject
             else render_inputs
         )
@@ -400,6 +411,31 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 return result_type.from_failure(final_templates)
             planned = [*final_templates.value, *planned[len(managed_result.value) :]]
         return result_type.ok(tuple(planned))
+
+    @staticmethod
+    def _planned_lazy_init_files(
+        root: Path,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Plan the lazy-init projection this generation will publish, read-only.
+
+        Facade plans import family owners in package form, which resolves
+        only through the package initializer the same transaction publishes.
+        Tooling derivations therefore read the planned initializers, never the
+        previous projection on disk: a stale initializer otherwise blocks its
+        own regeneration. ADR-014: these plans are derivation inputs only; the
+        post-begin lazy-init phase remains their single publication owner.
+
+        Returns:
+            The repository's planned lazy-init file plans, or the planning failure.
+
+        """
+        planned = FlextInfraCodegenLazyInit(
+            repository_root=root,
+            project_scope_roots=(root,),
+        ).plan_files()
+        if planned.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(planned.value.files)
 
     def _existing_tooling_context(
         self,

@@ -367,7 +367,9 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         )
         tm.that(bool(saves), eq=spec.make.testmon_cache_policy.save_enabled)
         if saves:
-            resolver = next(step for step in steps if step.get("id") == "testmon_path")
+            resolver = next(
+                step for step in steps if step.get("id") == "testmon_path"
+            )
             resolver_environment = u.Cli.json_as_mapping(resolver["env"])
             tm.that(
                 saves[0]["if"],
@@ -385,10 +387,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                     "github.event_name == 'push'",
                     "startsWith(github.ref, 'refs/heads/')",
                     "github.event_name == 'pull_request'",
-                    (
-                        "github.event.pull_request.head.repo.full_name "
-                        "== github.repository"
-                    ),
+                    "github.event.pull_request.head.repo.full_name == github.repository",
                 ],
             )
             tm.that(
@@ -403,8 +402,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 step
                 for step in steps
                 if step.get("run")
-                == f"{spec.make.ci.variable}={spec.make.ci.value} make "
-                f"{c.Infra.VERB_TEST}"
+                == f"{spec.make.ci.variable}={spec.make.ci.value} make {c.Infra.VERB_TEST}"
             )
             tm.that(
                 cache_input["path"],
@@ -418,11 +416,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             tm.that(
                 str(restore_inputs["restore-keys"]).splitlines(),
                 eq=[
-                    (
-                        "${{ steps.testmon_path.outputs.namespace }}"
-                        "${{ hashFiles('uv.lock', 'mise.lock', "
-                        "'pyproject.toml', 'config/**') }}-"
-                    ),
+                    "${{ steps.testmon_path.outputs.namespace }}"
+                    "${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}-",
                     "${{ steps.testmon_path.outputs.namespace }}",
                     "${{ steps.testmon_path.outputs.seed_namespace }}",
                 ],
@@ -433,11 +428,17 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tmp_path: Path,
     ) -> None:
         """Run the rendered cache resolver with distinct inputs and branches."""
-        spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="cache-consumer",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="integration/cache-consumer",
             ci_trigger_branches=(),
+        )
+        rendered = tm.ok(
+            u.Cli.template_render(
+                TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
+                spec,
+            ),
         )
         resolver = next(
             step
