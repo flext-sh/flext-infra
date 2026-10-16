@@ -747,6 +747,9 @@ Infra:
         produces_activation: true
       - name: initialize
         description: Bootstrap this target's own declaration and canonical Makefile.
+      - name: project-new
+        arguments: [ NAME, KIND, OUTPUT_ROOT, PROVIDER, REPOSITORY_URL, REPOSITORY_BRANCH, FLEXT_REPOSITORY_URL, FLEXT_REPOSITORY_REF, LICENSE, AUTHOR_NAME, AUTHOR_EMAIL, UPSTREAM, FLEXT_SOURCE, YEAR ]
+        description: Create a new project through the canonical scaffold service using explicitly declared identity inputs.
       - name: mod
         description: Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
       - name: mod-rules

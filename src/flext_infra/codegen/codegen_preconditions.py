@@ -225,6 +225,7 @@ class FlextInfraCodegenPreconditions:
         packages = (
             FlextInfraWorkspaceEnvironmentProvenance.standard_library_package_roots()
         )
+        u.Cli.info("stage=native-loader-bootstrap sources=loaded-provider-inputs")
         for name, module in tuple(sys.modules.items()):
             namespace = name.partition(".")[0]
             if name == "__main__":
@@ -972,12 +973,21 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.NativeImportReference]
+        u.Cli.info(
+            f"stage=native-source-authority selections={len(names)} "
+            f"runtime={runtime_root}",
+        )
         cold = cls.capture_source_authority(
             runtime_root,
             nominated=names,
         )
         if cold.failure:
             return result_type.from_failure(cold)
+        u.Cli.info(
+            f"stage=native-source-authority-complete "
+            f"providers={len(cold.value.generator_modules)} "
+            f"inputs={len(cold.value.inputs)}",
+        )
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
             return result_type.from_failure(inputs)

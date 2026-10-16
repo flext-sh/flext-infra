@@ -1,9 +1,9 @@
 
       - name: Save tool caches
         # Native cache action access mode remains authoritative before upload.
-        # Fork requests are restore-only; an interrupted run cannot publish.
+        # Only declared events may publish; fork requests remain restore-only.
         if: >-
-          {% raw %}${{ always() && !cancelled() && steps.tool-cache.outcome == 'success' && steps.tool-cache.outputs.cache-primary-key != '' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) }}{% endraw %}
+          {% raw %}${{ always() && !cancelled() && steps.tool-cache.outcome == 'success' && steps.tool-cache.outputs.cache-primary-key != '' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || github.event_name == 'workflow_dispatch'{% endraw %}{% if toolchain_cache_pull_request %}{% raw %} || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository){% endraw %}{% endif %}{% raw %}) }}{% endraw %}
         uses: {{ github_actions["cache"].repository }}/save@{{ github_actions["cache"].version }}
         with:
           path: |

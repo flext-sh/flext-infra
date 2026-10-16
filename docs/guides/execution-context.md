@@ -74,6 +74,22 @@ Native checker caches remain owned by their existing runtime/cache owners. Nativ
 execution and malformed-report failures stay separate from diagnostic occurrences;
 neither a repeated failure nor an unchanged finding count proves validation success.
 
+## New projects
+
+`make project-new` delegates to the same typed `codegen new` service exposed by
+the public Infra facade. It consumes explicit `NAME`, `KIND`, `OUTPUT_ROOT`,
+`PROVIDER`, `REPOSITORY_URL`, `REPOSITORY_BRANCH`, `FLEXT_REPOSITORY_URL`,
+`FLEXT_REPOSITORY_REF`, `LICENSE`, `AUTHOR_NAME`, `AUTHOR_EMAIL`, `UPSTREAM`,
+`FLEXT_SOURCE`, and `YEAR` inputs. These are identity declarations for a repository
+that does not exist yet; missing or invalid values fail the service's validation.
+Make transports their literal values through the environment, preserving spaces
+without evaluating the values as shell code.
+
+The generated project owns its declaration, Makefile, CI workflows, package,
+examples, and tests. Provision and validate it through its own `make setup`,
+`make gen`, `make check`, `make test`, and `make build`. Its physical environment
+belongs to the generated repository.
+
 ## Environment activation
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.
@@ -181,6 +197,12 @@ closure values, descriptors and dataclass or attrs metadata. Dynamic factory inp
 remain valid when the authenticated import produces the same native behavior and
 bindings. A generated filename, advertised module name, serialized model or cached
 field table alone supplies no authority.
+
+Bootstrap pins capture resident standard-library files whose physical origin
+agrees with their native loader. That file election supplies bytes for the atomic
+reader bootstrap; it does not nominate a module as an executable producer.
+Producer observation still requires the native module registration and the
+complete independent import comparison to authenticate executable bindings.
 
 The original reference remains an immutable expectation throughout the operation.
 Its in-process birth is recorded only after full authentication. JSON round-trips,
@@ -1051,6 +1073,10 @@ request publication; fork requests and cancelled runs do not. The native cache
 action's effective access mode still governs whether upload occurs. A successful
 save step alone proves no generation was stored: acceptance requires the actual
 saved key or cache record, including when a reserve collision was reported.
+Each workflow declares whether the shared save fragment may emit PR payload
+accesses. Docs accepts push and dispatch only, so its save conditions contain no
+PR payload references. The dispatch-only matrix groups runs by workflow, event
+and ref without accessing a PR number.
 
 CI uploads the reports that the original operations produced on every job outcome,
 including successful checks, completed failures and interrupted runs. The upload also
