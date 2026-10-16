@@ -220,6 +220,17 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     Documented mise setting since 2026.9.5 (tracker memory
     operator-ruling-2026-10-09-mise-update-notice-probes).
     """
+    CONFIG_KEYED_SEQUENCES: ClassVar[
+        t.MappingKV[t.VariadicTuple[str], str]
+    ] = MappingProxyType({
+        ("Infra", "codegen", "toolchain", "tools"): "name",
+    })
+    """Config sequences whose layers merge by entry key instead of replacing.
+
+    A repository layer declares only its own entries: an entry whose key
+    already exists deep-merges into it, a new key appends, and every packaged
+    entry stays. Every other sequence keeps whole-value replacement.
+    """
     MISE_LOCK_PLATFORM_KEY: ClassVar[str] = "platforms.{platform}"
     "mise.lock per-platform table key of one locked tool version."
     MISE_PLATFORM_BY_HOST: ClassVar[t.MappingKV[t.StrPair, str]] = MappingProxyType({

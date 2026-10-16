@@ -1,4 +1,4 @@
-"""Contract for the gitignored per-clone local config override file.
+"""Contract for a repository's own config layers over the packaged policy.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,18 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 import pytest
-from flext_core import e
 
 from flext_infra import FlextInfraConfig, c
 from tests import tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:
-    """Prove the local override file merges last through the public surface."""
+    """Prove repository and local layers merge over packaged defaults."""
 
     @staticmethod
     def test_make_election_preserves_selection_contract() -> None:
@@ -80,70 +78,39 @@ class TestsFlextInfraConfigLocalOverrides:
             )
 
     @staticmethod
-    def _copy_tracked_configs(target: Path) -> None:
-        """Seed one config directory with the real tracked fleet config."""
-        for tracked in FlextInfraConfig.ssot_config_dir().glob("*.yaml"):
-            shutil.copy(tracked, target / tracked.name)
+    def _consumer_config(root: Path) -> Path:
+        """Create one consumer repository's own config directory."""
+        directory = root / c.Infra.CODEGEN_CONFIG_DIR
+        directory.mkdir(parents=True)
+        return directory
 
-    def test_tracked_configs_keep_fleet_defaults(
+    def test_absent_repository_layers_keep_the_packaged_policy(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Without a local file the tracked scalar survives untouched.
+        """A repository that declares no layer reads exactly the packaged policy.
 
-        The expectation is the tracked SSOT read itself (P0): any legitimate
-        config change keeps both loads equal, and only a broken merge diverges.
+        The expectation is the packaged SSOT read itself (P0): any legitimate
+        config change keeps both reads equal, and only a broken merge diverges.
         """
-        self._copy_tracked_configs(tmp_path)
-        baseline = FlextInfraConfig.fetch_global()
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        FlextInfraConfig.reset_for_testing()
-        try:
-            fresh = FlextInfraConfig.fetch_global()
-            tm.that(
-                fresh.Infra.codegen.loc_cap.max_lines,
-                eq=baseline.Infra.codegen.loc_cap.max_lines,
-            )
-        finally:
-            FlextInfraConfig.reset_for_testing()
-
-    def test_empty_mypy_overlay_keeps_selected_global_policy(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Empty local lists cannot remove policy supplied by the YAML owner."""
-        baseline = FlextInfraConfig.fetch_global().Infra.tooling.tools.mypy
-        self._copy_tracked_configs(tmp_path)
-        (tmp_path / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
-            "Infra:\n  tooling:\n    tools:\n      mypy:\n"
-            "        plugins: []\n        disable-error-code: []\n",
-            encoding="utf-8",
+        root = tmp_path / "consumer"
+        self._consumer_config(root)
+        spec = tm.ok(u.Infra.load_codegen_inputs(root)).spec
+        tm.that(
+            spec.loc_cap.max_lines,
+            eq=FlextInfraConfig.fetch_global().Infra.codegen.loc_cap.max_lines,
         )
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        FlextInfraConfig.reset_for_testing()
-        try:
-            policy = FlextInfraConfig.fetch_global().Infra.tooling.tools.mypy
-            tm.that(tuple(policy.plugins), eq=tuple(baseline.plugins))
-            tm.that(
-                tuple(policy.disable_error_code),
-                eq=tuple(baseline.disable_error_code),
-            )
-        finally:
-            FlextInfraConfig.reset_for_testing()
 
-    def test_local_file_dict_entries_add_beside_tracked_ones(
+    def test_local_layer_dict_entries_add_beside_packaged_ones(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """A dict-typed registry gains the local entry and keeps tracked ones."""
+        """A dict-typed registry gains the local entry and keeps packaged ones."""
         baseline = (
             FlextInfraConfig.fetch_global().Infra.codegen.layout.project_overrides
         )
-        self._copy_tracked_configs(tmp_path)
-        (tmp_path / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
+        root = tmp_path / "consumer"
+        (self._consumer_config(root) / "codegen.local.yaml").write_text(
             "Infra:\n"
             "  codegen:\n"
             "    layout:\n"
@@ -153,15 +120,10 @@ class TestsFlextInfraConfigLocalOverrides:
             "            - example\n",
             encoding="utf-8",
         )
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        FlextInfraConfig.reset_for_testing()
-        try:
-            fresh = FlextInfraConfig.fetch_global()
-            overrides = fresh.Infra.codegen.layout.project_overrides
-            tm.that("example-project" in overrides, eq=True)
-            tm.that(set(overrides), eq={*baseline, "example-project"})
-        finally:
-            FlextInfraConfig.reset_for_testing()
+        overrides = tm.ok(
+            u.Infra.load_codegen_inputs(root)
+        ).spec.layout.project_overrides
+        tm.that(set(overrides), eq={*baseline, "example-project"})
 
     def test_target_and_local_layers_use_explicit_repository_root(
         self,
@@ -188,14 +150,50 @@ class TestsFlextInfraConfigLocalOverrides:
             eq=(directory / "codegen.yaml", directory / "codegen.local.yaml"),
         )
 
+    def test_project_toolchain_tools_extend_the_fleet_table_by_name(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A layer adds its own tools and refines one by name; fleet tools stay."""
+        root = tmp_path / "consumer"
+        directory = root / c.Infra.CODEGEN_CONFIG_DIR
+        directory.mkdir(parents=True)
+        fleet = tuple(
+            tool.name
+            for tool in FlextInfraConfig.fetch_global().Infra.codegen.toolchain.tools
+        )
+        refined = fleet[0]
+        (directory / "codegen.yaml").write_text(
+            "Infra:\n  codegen:\n    toolchain:\n      tools:\n"
+            "      - name: demo-tool\n"
+            "        selector: pypi:demo-tool\n"
+            "        version: 1.2.3\n"
+            "        version_probe:\n"
+            "          binary: demo-tool\n"
+            "          arguments: [ --version ]\n"
+            "          pattern: '^{version}$'\n",
+            encoding="utf-8",
+        )
+        (directory / "codegen.local.yaml").write_text(
+            "Infra:\n  codegen:\n    toolchain:\n      tools:\n"
+            f"      - name: {refined}\n"
+            "        version: 9.9.9\n",
+            encoding="utf-8",
+        )
+        tools = tm.ok(u.Infra.load_codegen_inputs(root)).spec.toolchain.tools
+        tm.that(tuple(tool.name for tool in tools), eq=(*fleet, "demo-tool"))
+        tm.that(
+            next(tool.version for tool in tools if tool.name == refined),
+            eq="9.9.9",
+        )
+
     def test_provider_registry_declaration_fails_validation(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """The exterminated provider registry cannot come back through a merge."""
-        self._copy_tracked_configs(tmp_path)
-        (tmp_path / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
+        """The exterminated provider registry cannot come back through a layer."""
+        root = tmp_path / "consumer"
+        (self._consumer_config(root) / "codegen.local.yaml").write_text(
             "Infra:\n"
             "  codegen:\n"
             "    providers:\n"
@@ -205,13 +203,4 @@ class TestsFlextInfraConfigLocalOverrides:
             "        branch: main\n",
             encoding="utf-8",
         )
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        FlextInfraConfig.reset_for_testing()
-        try:
-            # The settings boundary surfaces pydantic's own ValidationError
-            # (public alias e.PydanticValidationError); the exterminated
-            # providers registry is rejected as a forbidden extra field.
-            with pytest.raises(e.PydanticValidationError, match="providers"):
-                FlextInfraConfig.fetch_global()
-        finally:
-            FlextInfraConfig.reset_for_testing()
+        tm.fail(u.Infra.load_codegen_inputs(root), has="providers")
