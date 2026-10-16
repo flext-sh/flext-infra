@@ -320,7 +320,9 @@ class TestsFlextInfraPytestProfile:
             eq=True,
         )
         if publication_error != "stderr":
-            tm.that(result.stderr, has=[f"raw_return_code={-signal.SIGKILL}", "Traceback"])
+            tm.that(
+                result.stderr, has=[f"raw_return_code={-signal.SIGKILL}", "Traceback"]
+            )
         if publication_error == "context":
             tm.that(output.with_suffix(".pstats.json").exists(), eq=False)
         processes = output.parent / policy.profile_process_directory

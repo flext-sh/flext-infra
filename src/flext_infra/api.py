@@ -47,9 +47,7 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentMixin,
 )
-from flext_infra.workspace.native_reference import (
-    FlextInfraWorkspaceNativeReference,
-)
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 if TYPE_CHECKING:
     from flext_infra import p

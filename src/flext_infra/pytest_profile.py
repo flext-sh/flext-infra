@@ -139,7 +139,9 @@ class FlextInfraPytestProfile:
         receipt_json: str | None = None
         if self.context is not None:
             receipt = self.context.model_copy(
-                update={"profile_sha256": u.Cli.sha256_bytes(process_profile.read_bytes())},
+                update={
+                    "profile_sha256": u.Cli.sha256_bytes(process_profile.read_bytes())
+                },
             )
             receipt_json = receipt.model_dump_json(indent=2) + "\n"
             u.Cli.atomic_write_text_file(
