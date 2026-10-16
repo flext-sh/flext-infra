@@ -126,9 +126,6 @@ from flext_infra._utilities import (
     FlextInfraWorktreeLifecycle,
     FlextInfraWorktreeProvisioning,
 )
-from flext_infra._utilities._rope_source_bases_inventory_collector import (
-    FlextInfraUtilitiesRopeSourceBindingCollector,
-)
 
 
 class FlextInfraUtilities(FlextCliUtilities):
@@ -257,7 +254,6 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraWorktreeLifecycle,
         FlextInfraWorktreeProvisioning,
         FlextInfraUtilitiesGitRemote,
-        FlextInfraUtilitiesRopeSourceBindingCollector,
         FlextInfraUtilitiesGitWorktreeIO,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
