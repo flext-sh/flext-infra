@@ -24,6 +24,21 @@ from flext_infra._utilities import FlextInfraUtilitiesGit
 class FlextInfraUtilitiesProjectManagedArtifacts:
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
 
+    @staticmethod
+    def production_python_roots(project: m.Infra.ProjectSpec | None) -> t.StrTuple:
+        """Project the source layout and shipped repository namespace packages.
+
+        Returns:
+            Production roots in declaration order, without repeating a root.
+
+        """
+        return tuple(
+            dict.fromkeys((
+                c.Infra.DEFAULT_SRC_DIR,
+                *(project.repository_namespace_packages if project is not None else ()),
+            ))
+        )
+
     @classmethod
     def load_codegen_inputs(
         cls,

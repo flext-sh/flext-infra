@@ -401,8 +401,8 @@ DOCS_ACTIONS :={% for action in make.docs.actions %} {{ action }}{% endfor %}
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
-# Source: tooling.yaml pyright path-rules env-dirs (present directories only)
-RUFF_PATHS := $(shell for directory in {{ analyzer_roots | join(' ') }}; do if [ -e "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
+# Source: template + computed (script_dispatch conditional)
+RUFF_PATHS := $(shell for directory in {{ tooling_runtime.pyright_include | join(' ') }}; do if [ -e "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
 MYPY_PATHS := $(RUFF_PATHS)
 # End SECTION: lint/type paths
 
