@@ -109,16 +109,16 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         return result_type.ok(coverage[0])
 
     @staticmethod
-    def _declared_deptry_roots(
+    def _declared_wheel_target(
         settings: m.Cli.AtomicFileState,
-    ) -> p.Result[t.StrTuple]:
-        """Elect import roots from the exact wheel declarations being scanned.
+    ) -> p.Result[t.JsonMapping]:
+        """Read the native wheel table from the captured configuration bytes.
 
         Returns:
-            The wheel's import roots, or its original declaration failure.
+            The declared wheel table, or its original parsing failure.
 
         """
-        result_type = r[t.StrTuple]
+        result_type = r[t.JsonMapping]
         if settings.content is None:
             return result_type.fail(f"deptry configuration is absent: {settings.path}")
         document = u.Cli.toml_parse_text(settings.content.decode(c.DEFAULT_ENCODING))
@@ -129,7 +129,43 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         )
         for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
             wheel = None if wheel is None else u.Cli.toml_mapping_child(wheel, key)
-        target = dict[str, t.JsonValue]() if wheel is None else wheel
+        return result_type.ok(dict[str, t.JsonValue]() if wheel is None else wheel)
+
+    @staticmethod
+    def _shipped_import_base(
+        source: PurePosixPath,
+        destination: PurePosixPath,
+    ) -> PurePosixPath:
+        """Project an import root from the wheel's native source remapping.
+
+        Returns:
+            The source prefix that owns the shipped import, or its data root.
+
+        """
+        cut = len(source.parts) - len(destination.parts)
+        return (
+            PurePosixPath(*source.parts[:cut])
+            if cut > 0 and source.parts[cut:] == destination.parts
+            else source
+        )
+
+    @staticmethod
+    def _declared_deptry_roots(
+        settings: m.Cli.AtomicFileState,
+    ) -> p.Result[t.StrTuple]:
+        """Elect import roots from the exact wheel declarations being scanned.
+
+        Returns:
+            The wheel's import roots, or its original declaration failure.
+
+        """
+        result_type = r[t.StrTuple]
+        wheel = FlextInfraUtilitiesDependencyDeptryMixin._declared_wheel_target(
+            settings
+        )
+        if wheel.failure:
+            return result_type.from_failure(wheel)
+        target = wheel.value
         shipped: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             target.get("only-include", ()),
@@ -153,11 +189,10 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
                     f"{declaration!r} in {settings.path}"
                 )
             destination = PurePosixPath(sources.value.get(declaration, declaration))
-            cut = len(path.parts) - len(destination.parts)
             roots.add(
-                PurePosixPath(*path.parts[:cut])
-                if cut > 0 and path.parts[cut:] == destination.parts
-                else path
+                FlextInfraUtilitiesDependencyDeptryMixin._shipped_import_base(
+                    path, destination
+                )
             )
         return result_type.ok(
             tuple(
