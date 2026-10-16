@@ -145,12 +145,7 @@ class FlextInfraPytestProfile:
         failure: BaseException | None,
         outcome: int | None,
     ) -> None:
-        """Raise a publication failure of a clean run; attach it to a failed one.
-
-        Raises:
-            BaseException: The publication failure when the run itself passed.
-
-        """
+        """Raise a publication failure of a clean run; attach it to a failed one."""
         if failure is None and outcome in {None, 0}:
             raise publication_failure
         if failure is not None:

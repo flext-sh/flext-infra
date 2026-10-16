@@ -120,7 +120,7 @@ class FlextInfraRuntimeDependencyCollector:
         """Elect suppliers in one native pass against this operation's inputs.
 
         Returns:
-            Exactly one authored and authenticated supplier per required import.
+            All matching authored suppliers, preserving ambiguity for the planner.
 
         """
         result = r[t.VariadicTuple[m.Infra.RuntimeDependencyProvider]]
@@ -137,114 +137,74 @@ class FlextInfraRuntimeDependencyCollector:
             for repository in (workspace.repository, *workspace.subprojects)
         }
 
-        providers: list[m.Infra.RuntimeDependencyProvider] = []
-        for distribution in u.installed_distributions(
-            path=tuple(str(path) for path in metadata_paths),
-        ):
-            selected = self._provider(
-                distribution,
-                context=context,
-                needed=needed,
-                locked=locked,
-                authored=authored,
-                repositories=repositories,
+        def provider(
+            distribution: Distribution,
+        ) -> p.Result[m.Infra.RuntimeDependencyProvider | None]:
+            """Elect and authenticate one native distribution without another scan.
+
+            Returns:
+                The required supplier, its failure, or no provider for unused modules.
+
+            """
+            selected = r[m.Infra.RuntimeDependencyProvider | None]
+            states = self._metadata_states(distribution, context.environment_path)
+            name = distribution.metadata.get("Name")
+            if name is None:
+                return selected.fail("installed dependency metadata lacks its Name")
+            identity = canonicalize_name(name)
+            if identity not in authored:
+                return selected.ok(None)
+            receipt = (
+                m.Infra.DirectUrlReceipt.model_validate_json(states[-1].content)
+                if states[-1].content is not None
+                else None
             )
-            if selected.failure:
-                return result.from_failure(selected)
-            if selected.value is not None:
-                providers.append(selected.value)
-        for module in needed:
-            if sum(module in item.modules for item in providers) != 1:
-                return result.fail(
-                    "runtime import requires one authored, installed, locked "
-                    f"supplier: {module}",
-                )
-        return result.ok(tuple(providers))
-
-    def _provider(
-        self,
-        distribution: Distribution,
-        *,
-        context: m.Infra.WorkspaceRuntimeContext,
-        needed: t.Infra.StrSet,
-        locked: m.Infra.LockedEnvironment,
-        authored: t.MappingKV[str, str],
-        repositories: t.MappingKV[str, m.Infra.RepositoryRef],
-    ) -> p.Result[m.Infra.RuntimeDependencyProvider | None]:
-        """Elect and authenticate one native distribution without another scan.
-
-        Returns:
-            The required supplier, its failure, or no provider for unused modules.
-
-        """
-        selected = r[m.Infra.RuntimeDependencyProvider | None]
-        states = self._metadata_states(distribution, context.environment_path)
-        name = distribution.metadata.get("Name")
-        if name is None:
-            return selected.fail("installed dependency metadata lacks its Name")
-        identity = canonicalize_name(name)
-        if identity not in authored:
-            return selected.ok(None)
-        receipt = (
-            m.Infra.DirectUrlReceipt.model_validate_json(states[-1].content)
-            if states[-1].content is not None
-            else None
-        )
-        supplied = tuple(
-            sorted(
-                needed.intersection(
-                    self._distribution_modules(
-                        distribution,
-                        name,
-                        repositories.get(identity),
-                        context.runtime_root,
-                        receipt,
+            supplied = tuple(
+                sorted(
+                    needed.intersection(
+                        self._distribution_modules(
+                            distribution,
+                            name,
+                            repositories.get(identity),
+                            context.runtime_root,
+                            receipt,
+                        ),
                     ),
                 ),
-            ),
-        )
-        if not supplied:
-            return selected.ok(None)
-        package = self._locked_package(distribution, name, locked)
-        extra_inputs: p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]
-        if (
-            receipt is not None
-            and receipt.dir_info is not None
-            and receipt.dir_info.editable
-        ):
+            )
+            if not supplied:
+                return selected.ok(None)
+            package = self._locked_package(distribution, name, locked)
             extra_inputs = package.flat_map(
-                lambda locked_package: self._editable_inputs(
+                lambda locked_package: self._provider_inputs(
                     context,
                     distribution,
                     locked_package,
                     repositories.get(identity),
-                    receipt,
+                    states[-1],
                 ),
             )
-        else:
-            extra_inputs = package.map(lambda _: ())
-            if package.success:
-                if package.value.source.registry is not None and receipt is not None:
-                    return selected.fail(
-                        f"registry dependency has a foreign direct origin: {name}"
-                    )
-                FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict(
-                    name,
-                    package.value,
-                    states[-1].content.decode(c.DEFAULT_ENCODING)
-                    if states[-1].content is not None
-                    else None,
-                ).unwrap()
-        if extra_inputs.failure:
-            return selected.from_failure(extra_inputs)
-        return selected.ok(
-            m.Infra.RuntimeDependencyProvider(
-                modules=supplied,
-                package=package.value,
-                requirement=authored[identity],
-                inputs=(*states, *extra_inputs.value),
+            if extra_inputs.failure:
+                return selected.from_failure(extra_inputs)
+            return selected.ok(
+                m.Infra.RuntimeDependencyProvider(
+                    modules=supplied,
+                    package=package.value,
+                    requirement=authored[identity],
+                    inputs=(*states, *extra_inputs.value),
+                )
             )
-        )
+
+        providers: list[m.Infra.RuntimeDependencyProvider] = []
+        for distribution in u.installed_distributions(
+            path=tuple(str(path) for path in metadata_paths),
+        ):
+            selected = provider(distribution)
+            if selected.failure:
+                return result.from_failure(selected)
+            if selected.value is not None:
+                providers.append(selected.value)
+        return result.ok(tuple(providers))
 
     @classmethod
     def _distribution_modules(
@@ -305,21 +265,39 @@ class FlextInfraRuntimeDependencyCollector:
         return r[m.Infra.LockedPackage].ok(matches[0])
 
     @staticmethod
-    def _editable_inputs(
+    def _provider_inputs(
         context: m.Infra.WorkspaceRuntimeContext,
         distribution: Distribution,
         package: m.Infra.LockedPackage,
         repository: m.Infra.RepositoryRef | None,
-        receipt: m.Infra.DirectUrlReceipt,
+        receipt_state: m.Cli.AtomicFileState,
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-        """Authenticate an editable supplier's declared root and captured metadata.
+        """Authenticate the installed supplier's locked origin and editable inputs.
 
         Returns:
-            The extra declaration input for the same provider's provenance.
+            Additional declaration inputs, or the original provenance failure.
 
         """
         result = r[t.VariadicTuple[m.Cli.AtomicFileState]]
         name = package.name
+        receipt = (
+            m.Infra.DirectUrlReceipt.model_validate_json(receipt_state.content)
+            if receipt_state.content is not None
+            else None
+        )
+        if receipt is None or receipt.dir_info is None or not receipt.dir_info.editable:
+            if package.source.registry is not None and receipt is not None:
+                return result.fail(
+                    f"registry dependency has a foreign direct origin: {name}"
+                )
+            FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict(
+                name,
+                package,
+                receipt_state.content.decode(c.DEFAULT_ENCODING)
+                if receipt_state.content is not None
+                else None,
+            ).unwrap()
+            return result.ok(())
         if (
             repository is None
             or package.source.editable is None

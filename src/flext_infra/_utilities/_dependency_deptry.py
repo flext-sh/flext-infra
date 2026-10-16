@@ -18,31 +18,33 @@ from flext_infra._utilities import FlextInfraUtilitiesPyproject
 class FlextInfraUtilitiesDependencyDeptryMixin:
     """Run native deptry once and authenticate every state it consumed."""
 
-    @staticmethod
+    @classmethod
     def capture_deptry_scan(
+        cls,
         project_path: Path,
         venv_bin: Path,
         *,
         config_path: Path,
         json_output_path: Path,
     ) -> p.Result[m.Infra.DeptryScan]:
-        """Capture one native deptry report against an unchanged production tree.
+        """Capture one native deptry report against unchanged production trees.
 
-        Callers elect the interpreter, configuration and fresh report destination.
+        Callers elect the interpreter, configuration and fresh report destination;
+        the wheel target the configuration declares elects the scanned roots.
 
         Returns:
             Complete native findings and the states authenticating their inputs.
 
         """
         result_type = r[m.Infra.DeptryScan]
-        payload = FlextInfraUtilitiesDependencyDeptryMixin._captured_deptry_inputs(
+        payload = cls._captured_deptry_inputs(
             project_path,
             config_path=config_path,
         )
         if payload.failure:
             return result_type.from_failure(payload)
-        settings, roots, source = payload.value
-        native = FlextInfraUtilitiesDependencyDeptryMixin._captured_deptry_native(
+        settings, roots, sources = payload.value
+        native = cls._captured_deptry_native(
             venv_bin,
             project_path,
             roots=roots,
@@ -52,16 +54,17 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         if native.failure:
             return result_type.from_failure(native)
         output, report_state, parsed = native.value
-        rechecked = FlextInfraUtilitiesDependencyDeptryMixin._rechecked_deptry_states(
+        rechecked = cls._rechecked_deptry_states(
             settings,
             report_state,
-            source,
+            sources,
         )
         if rechecked.failure:
             return result_type.from_failure(rechecked)
-        coverage = FlextInfraUtilitiesDependencyDeptryMixin._validated_deptry_coverage(
+        coverage = cls._validated_deptry_coverage(
             output,
             parsed,
+            roots,
         )
         if coverage.failure:
             return result_type.from_failure(coverage)
@@ -73,7 +76,7 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
             m.Infra.DeptryScan(
                 scanned_files=coverage.value,
                 venv_bin=venv_bin,
-                source=source,
+                source=sources,
                 native=output,
                 settings=settings,
                 report_state=report_state,
@@ -86,8 +89,11 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
     def _validated_deptry_coverage(
         output: m.Cli.CommandOutput,
         parsed: m.Infra.DeptryNativeReport,
+        roots: t.StrTuple,
     ) -> p.Result[int]:
         """Authenticate the native exit status and its scan coverage line.
+
+        Native deptry reports one coverage count over every root it scanned.
 
         Returns:
             The single positive coverage count reported by native deptry.
@@ -103,7 +109,8 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         )
         if len(coverage) != 1 or coverage[0] < 1:
             return result_type.fail(
-                "deptry lacks positive unambiguous native scan coverage\n"
+                "deptry lacks positive unambiguous native scan coverage over roots "
+                f"{', '.join(roots)}\n"
                 f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}",
             )
         return result_type.ok(coverage[0])
@@ -112,10 +119,10 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
     def _declared_wheel_target(
         settings: m.Cli.AtomicFileState,
     ) -> p.Result[t.JsonMapping]:
-        """Read the native wheel table from the captured configuration bytes.
+        """Read the wheel target table from the captured settings bytes.
 
         Returns:
-            The declared wheel table, or its original parsing failure.
+            The declared wheel target, empty when the settings declare none.
 
         """
         result_type = r[t.JsonMapping]
@@ -133,49 +140,54 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
 
     @staticmethod
     def _shipped_import_base(
-        source: PurePosixPath,
-        destination: PurePosixPath,
+        shipped: PurePosixPath,
+        target: PurePosixPath,
     ) -> PurePosixPath:
-        """Project an import root from the wheel's native source remapping.
+        """Return the directory whose children a shipped directory's imports are.
+
+        A source remapped to its own trailing components (``src/pkg`` shipped as
+        ``pkg``) roots at the remaining prefix; a directory shipped verbatim or
+        relocated under the package roots at itself.
 
         Returns:
-            The source prefix that owns the shipped import, or its data root.
+            The deptry root covering exactly the shipped directory.
 
         """
-        cut = len(source.parts) - len(destination.parts)
-        return (
-            PurePosixPath(*source.parts[:cut])
-            if cut > 0 and source.parts[cut:] == destination.parts
-            else source
-        )
+        cut = len(shipped.parts) - len(target.parts)
+        if cut > 0 and shipped.parts[cut:] == target.parts:
+            return PurePosixPath(*shipped.parts[:cut])
+        return shipped
 
-    @staticmethod
+    @classmethod
     def _declared_deptry_roots(
+        cls,
         settings: m.Cli.AtomicFileState,
     ) -> p.Result[t.StrTuple]:
-        """Elect import roots from the exact wheel declarations being scanned.
+        """Elect deptry's roots from the wheel target the settings declare.
+
+        Every directory the wheel ships, through its ``only-include`` entries or
+        its ``sources`` prefixes, contributes its import base; a root nested in
+        another root is already covered. A wheel target declaring neither keeps
+        the native src layout root.
 
         Returns:
-            The wheel's import roots, or its original declaration failure.
+            The sorted roots, or the first declaration failure.
 
         """
         result_type = r[t.StrTuple]
-        wheel = FlextInfraUtilitiesDependencyDeptryMixin._declared_wheel_target(
-            settings
-        )
+        wheel = cls._declared_wheel_target(settings)
         if wheel.failure:
             return result_type.from_failure(wheel)
-        target = wheel.value
         shipped: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
-            target.get("only-include", ()),
+            wheel.value.get("only-include", ()),
             strict=True,
         )
         if shipped.failure:
             return result_type.from_failure(shipped)
         sources: p.Result[t.StrMapping] = u.validate_value(
             t.Infra.STR_MAPPING_ADAPTER,
-            target.get("sources", dict[str, str]()),
+            wheel.value.get("sources", dict[str, str]()),
             strict=True,
         )
         if sources.failure:
@@ -185,14 +197,14 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
             path = PurePosixPath(declaration)
             if path.is_absolute() or not path.parts or ".." in path.parts:
                 return result_type.fail(
-                    f"deptry root is outside the declared wheel boundary: "
-                    f"{declaration!r} in {settings.path}"
+                    "deptry root is outside the declared wheel boundary: "
+                    f"{declaration!r} in {settings.path}",
                 )
-            destination = PurePosixPath(sources.value.get(declaration, declaration))
             roots.add(
-                FlextInfraUtilitiesDependencyDeptryMixin._shipped_import_base(
-                    path, destination
-                )
+                cls._shipped_import_base(
+                    path,
+                    PurePosixPath(sources.value.get(declaration, declaration)),
+                ),
             )
         return result_type.ok(
             tuple(
@@ -204,18 +216,18 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
                     )
                 )
             )
-            or (c.Infra.DEFAULT_SRC_DIR,)
+            or (c.Infra.DEFAULT_SRC_DIR,),
         )
 
     @staticmethod
-    def _authenticated_deptry_source(
+    def _authenticated_deptry_sources(
         project_path: Path,
         roots: t.StrTuple,
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest]]:
-        """Authenticate every tree the wheel declares before invoking deptry.
+        """Inventory every production root and authenticate its physical shape.
 
         Returns:
-            The exact tree manifests, or the first authentication failure.
+            One exact tree manifest per root, or the first authentication failure.
 
         """
         result_type = r[t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest]]
@@ -233,7 +245,31 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         return result_type.ok(tuple(manifests))
 
     @staticmethod
+    def _verified_deptry_sources(
+        sources: t.SequenceOf[m.Cli.AtomicPhysicalTreeManifest],
+        *,
+        moment: str,
+    ) -> p.Result[bool]:
+        """Re-inventory every production root against its captured manifest.
+
+        Returns:
+            Whether every root survived unchanged, or the first changed root.
+
+        """
+        result_type = r[bool]
+        for source in sources:
+            current = u.Cli.atomic_inventory_physical_tree(source.root.path)
+            if current.failure:
+                return result_type.from_failure(current)
+            if current.value != source:
+                return result_type.fail(
+                    f"deptry production source changed {moment}: {source.root.path}"
+                )
+        return result_type.ok(value=True)
+
+    @classmethod
     def _captured_deptry_inputs(
+        cls,
         project_path: Path,
         *,
         config_path: Path,
@@ -244,10 +280,10 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
             t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
         ]
     ]:
-        """Read the deptry configuration and authenticate the production tree.
+        """Read the deptry configuration and authenticate its declared roots.
 
         Returns:
-            The configuration state and the authenticated source manifest.
+            The configuration state, its roots and their authenticated manifests.
 
         """
         result_type = r[
@@ -260,17 +296,16 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         settings = u.Cli.atomic_read_binary_file_state(config_path, required=True)
         if settings.failure:
             return result_type.from_failure(settings)
-        roots = FlextInfraUtilitiesDependencyDeptryMixin._declared_deptry_roots(
-            settings.value
-        )
+        roots = cls._declared_deptry_roots(settings.value)
         if roots.failure:
             return result_type.from_failure(roots)
-        source = FlextInfraUtilitiesDependencyDeptryMixin._authenticated_deptry_source(
-            project_path, roots.value
+        sources = cls._authenticated_deptry_sources(
+            project_path,
+            roots.value,
         )
-        if source.failure:
-            return result_type.from_failure(source)
-        return result_type.ok((settings.value, roots.value, source.value))
+        if sources.failure:
+            return result_type.from_failure(sources)
+        return result_type.ok((settings.value, roots.value, sources.value))
 
     @staticmethod
     def _run_deptry(
@@ -281,7 +316,7 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         config_path: Path,
         json_output_path: Path,
     ) -> p.Result[m.Cli.CommandOutput]:
-        """Run native deptry once against a fresh report destination.
+        """Run native deptry once over the elected roots into a fresh report.
 
         Returns:
             The validated native command output, or the first execution failure.
@@ -356,8 +391,9 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
             return result_type.from_failure(parsed)
         return result_type.ok((report_state.value, parsed.value))
 
-    @staticmethod
+    @classmethod
     def _captured_deptry_native(
+        cls,
         venv_bin: Path,
         project_path: Path,
         *,
@@ -380,7 +416,7 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
                 m.Infra.DeptryNativeReport,
             ]
         ]
-        native = FlextInfraUtilitiesDependencyDeptryMixin._run_deptry(
+        native = cls._run_deptry(
             venv_bin,
             project_path,
             roots=roots,
@@ -389,7 +425,7 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         )
         if native.failure:
             return result_type.from_failure(native)
-        report = FlextInfraUtilitiesDependencyDeptryMixin._parsed_deptry_report(
+        report = cls._parsed_deptry_report(
             json_output_path,
         )
         if report.failure:
@@ -397,31 +433,26 @@ class FlextInfraUtilitiesDependencyDeptryMixin:
         report_state, parsed = report.value
         return result_type.ok((native.value, report_state, parsed))
 
-    @staticmethod
+    @classmethod
     def _rechecked_deptry_states(
+        cls,
         settings: m.Cli.AtomicFileState,
         report_state: m.Cli.AtomicFileState,
-        source: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+        sources: t.SequenceOf[m.Cli.AtomicPhysicalTreeManifest],
     ) -> p.Result[bool]:
-        """Re-verify the captured states and the unchanged production tree.
+        """Re-verify the captured states and the unchanged production trees.
 
         Returns:
             Whether every captured state survived the scan unchanged.
 
         """
-        result_type = r[bool]
         verified = u.Cli.atomic_verify_binary_file_states((settings, report_state))
         if verified.failure:
-            return result_type.from_failure(verified)
-        for tree in source:
-            current_source = u.Cli.atomic_inventory_physical_tree(tree.root.path)
-            if current_source.failure:
-                return result_type.from_failure(current_source)
-            if current_source.value != tree:
-                return result_type.fail(
-                    f"deptry production source changed during scanning: {tree.root.path}"
-                )
-        return result_type.ok(value=True)
+            return r[bool].from_failure(verified)
+        return cls._verified_deptry_sources(
+            sources,
+            moment="during scanning",
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDependencyDeptryMixin"]

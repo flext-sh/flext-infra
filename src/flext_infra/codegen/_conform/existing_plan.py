@@ -1226,7 +1226,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 if item.runtime_binding
             },
             codegen_inputs=codegen_inputs,
-            migrate_tracking=True,
+            migrate_tracking=not self.generation_only,
         )
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)

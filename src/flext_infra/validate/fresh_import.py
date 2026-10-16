@@ -271,12 +271,11 @@ _native_atomic = (
         )
 
     @classmethod
-    def _observed_native_reference(
+    def capture_native_reference(
         cls,
         request: m.Infra.NativeImportRequest,
-        snapshot: m.Infra.NativeImportObservation,
     ) -> p.Result[m.Infra.NativeImportReference]:
-        """Prove one loaded-producer observation against a cold native import.
+        """Authenticate the loaded producer against a cold native import.
 
         Returns:
             The sealed reference, or the first source or runtime failure.
@@ -359,6 +358,13 @@ _native_atomic = (
             The real native import output, preserving its original failure.
 
         """
+        if (
+            self.repository_root != request.repository_root
+            or self.runtime_root != request.runtime_root
+        ):
+            return r[p.Cli.CommandOutput].fail(
+                "native import consumer differs from its declared request roots"
+            )
         admitted = FlextInfraCodegenPreconditions.native_inputs_current(request)
         if admitted.failure:
             return r[p.Cli.CommandOutput].from_failure(admitted)
@@ -853,8 +859,8 @@ _native_atomic = (
         probes.append(export.value)
         return r[t.MutableSequenceOf[m.Infra.FreshImportProbe]].ok(probes)
 
+    @staticmethod
     def _entry_point_probes(
-        self,
         layout: m.Infra.RopeProjectLayout,
         metadata: m.Infra.FreshImportEntryPoints,
         origin_code: str,
@@ -886,8 +892,8 @@ _native_atomic = (
                 )
         return probes
 
+    @staticmethod
     def _export_probe(
-        self,
         layout: m.Infra.RopeProjectLayout,
         origin_code: str,
         publications: t.SequenceOf[m.Infra.LazyInitPlan],
@@ -951,8 +957,8 @@ _native_atomic = (
             ),
         )
 
+    @staticmethod
     def _package_probes(
-        self,
         packages: t.StrSequence,
         origin_code: str,
     ) -> p.Result[t.MutableSequenceOf[m.Infra.FreshImportProbe]]:

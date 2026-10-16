@@ -25,6 +25,9 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitSemanticIdentityMixin,
 )
+from flext_infra._utilities._git.attestation_evidence import (
+    FlextInfraUtilitiesGitAttestationEvidenceMixin,
+)
 
 
 class GateAttestationRuntimeContext(Protocol):
@@ -52,6 +55,7 @@ class GateAttestationRuntimeContext(Protocol):
 
 
 class FlextInfraUtilitiesGitAttestationMixin(
+    FlextInfraUtilitiesGitAttestationEvidenceMixin,
     FlextInfraUtilitiesGitSemanticIdentityMixin,
 ):
     """Create and verify immutable SSH-signed gate tags."""
@@ -650,162 +654,6 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 "gate attestation requires a clean committed worktree",
             )
         return identity
-
-    @staticmethod
-    def _check_report_outcome(
-        report: m.Infra.SarifReport,
-    ) -> p.Result[c.Infra.ToolOutcome]:
-        summary = report.properties
-        if summary is None or not summary.targets or not summary.results:
-            return r[c.Infra.ToolOutcome].fail(
-                "check report has no completed target inventory"
-            )
-        if (
-            len(summary.targets) != len(summary.results)
-            or tuple(target.name for target in summary.targets)
-            != tuple(result.project for result in summary.results)
-            or not summary.requested_gates
-            or any(
-                set(result.gates) != set(summary.requested_gates)
-                for result in summary.results
-            )
-        ):
-            return r[c.Infra.ToolOutcome].fail(
-                "check report target accounting is incomplete"
-            )
-        executions = tuple(
-            execution
-            for result in summary.results
-            for execution in result.gates.values()
-        )
-        if any(
-            execution.outcome == c.Infra.ToolOutcome.ERROR
-            or any(
-                issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues
-            )
-            for execution in executions
-        ):
-            return r[c.Infra.ToolOutcome].fail(
-                "check report contains an operational failure"
-            )
-        return r[c.Infra.ToolOutcome].ok(
-            c.Infra.ToolOutcome.FINDINGS
-            if any(
-                execution.outcome == c.Infra.ToolOutcome.FINDINGS or execution.issues
-                for execution in executions
-            )
-            else c.Infra.ToolOutcome.CLEAN,
-        )
-
-    @classmethod
-    def _pytest_report_outcome(
-        cls,
-        repo_root: Path,
-        reports: t.SequenceOf[m.Infra.GateReportEvidence],
-        expected_process: m.Cli.ProcessOutcome,
-    ) -> p.Result[c.Infra.ToolOutcome]:
-        result_type = r[c.Infra.ToolOutcome]
-        process_source = cls._report_contract_bytes(
-            repo_root,
-            reports,
-            c.Infra.GateEvidenceReportKind.PYTEST_PROCESS,
-        )
-        accounting_source = cls._report_contract_bytes(
-            repo_root,
-            reports,
-            c.Infra.GateEvidenceReportKind.PYTEST_ACCOUNTING,
-        )
-        diagnostics_source = cls._report_contract_bytes(
-            repo_root,
-            reports,
-            c.Infra.GateEvidenceReportKind.PYTEST_DIAGNOSTICS,
-        )
-        for source in (process_source, accounting_source, diagnostics_source):
-            if source.failure:
-                return result_type.from_failure(source)
-        process = m.Cli.ProcessOutcome.model_validate_json(process_source.value)
-        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            accounting_source.value
-        )
-        diagnostics = m.Infra.PytestDiagnostics.model_validate_json(
-            diagnostics_source.value
-        )
-        process_valid = (
-            process == expected_process
-            and not process.timed_out
-            and process.forwarded_signal is None
-            and process.raw_return_code in {0, 1}
-        )
-        accounting_valid = (
-            accounting.inventory_count is not None
-            and bool(accounting.executed_count)
-            and accounting.executed_count == accounting.reported_count
-            and accounting.executed_count + accounting.deselected_count
-            == accounting.inventory_count
-        )
-        diagnostics_valid = (
-            len(diagnostics.reported_node_ids) == accounting.reported_count
-            and not diagnostics.error_count
-            and not diagnostics.collection_failed_count
-            and not diagnostics.collection_skipped_count
-            and diagnostics.skipped_count <= len(diagnostics.connectivity_skip_cases)
-        )
-        if not (process_valid and accounting_valid and diagnostics_valid):
-            return result_type.fail(
-                "test reports contain incomplete or operational execution"
-            )
-        return result_type.ok(
-            c.Infra.ToolOutcome.FINDINGS
-            if diagnostics.failed_count
-            or diagnostics.warning_count
-            or diagnostics.skipped_count
-            else c.Infra.ToolOutcome.CLEAN,
-        )
-
-    @classmethod
-    def _report_contract_bytes(
-        cls,
-        repo_root: Path,
-        reports: t.SequenceOf[m.Infra.GateReportEvidence],
-        kind: c.Infra.GateEvidenceReportKind,
-    ) -> p.Result[bytes]:
-        selected = tuple(report for report in reports if report.kind == kind)
-        if len(selected) != 1:
-            return r[bytes].fail(f"one original {kind} report is required")
-        return cls._report_bytes(repo_root, selected[0])
-
-    @staticmethod
-    def _report_bytes(
-        repo_root: Path,
-        report: m.Infra.GateReportEvidence,
-    ) -> p.Result[bytes]:
-        original = u.Cli.atomic_read_binary_file_state(
-            repo_root / report.path, required=True
-        )
-        if original.failure:
-            return r[bytes].from_failure(original)
-        content = original.value.content
-        if content is None:
-            return r[bytes].fail(
-                f"required report has no captured bytes: {report.path}"
-            )
-        if f"sha256:{u.Cli.sha256_bytes(content)}" != report.digest:
-            return r[bytes].fail(
-                f"original report digest does not match: {report.path}"
-            )
-        return r[bytes].ok(content)
-
-    @classmethod
-    def _verified_report_evidence(
-        cls,
-        repo_root: Path,
-        reports: t.SequenceOf[m.Infra.GateReportEvidence],
-    ) -> p.Result[bool]:
-        for report in reports:
-            original = cls._report_bytes(repo_root, report)
-            if original.failure:
-                return r[bool].from_failure(original)
-        return r[bool].ok(value=True)
 
     @classmethod
     def _toolchain_digest(

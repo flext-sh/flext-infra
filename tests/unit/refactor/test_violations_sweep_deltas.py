@@ -16,7 +16,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, main
-from flext_infra._utilities.refactor import _RuleDeltaOptions
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 from tests import c, m, tm, u
@@ -152,7 +151,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         text_rows = u.Infra.rule_deltas(
             before_text,
             after_text,
-            options=_RuleDeltaOptions(
+            options=m.Infra.RuleDeltaOptions(
                 repository_root=root,
                 projects=(root.resolve(),),
             ),

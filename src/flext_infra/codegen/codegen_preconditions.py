@@ -921,6 +921,10 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.NativeImportReference]
+        if imported.modules != request.modules:
+            return result_type.fail(
+                "native observation differs from its requested producer selections"
+            )
         private = imported.__pydantic_private__
         if type(imported) is not m.Infra.NativeImportObservation or (
             private is None
