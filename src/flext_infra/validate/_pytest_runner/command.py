@@ -316,6 +316,13 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         pytest = config.Infra.tooling.tools.pytest
         selected_node_ids = selection_plan.node_ids if selection_plan else None
         selection = selected_node_ids or None
+        # The collection pass resolved testmon's selection once. A worker
+        # re-deciding it under forceselect races the database its siblings
+        # write, drops an item the manifest selected, and the collection plugin
+        # aborts the session. A non-empty manifest therefore executes under
+        # noselect: testmon still records dependencies, but never deselects.
+        # An empty selection keeps forceselect, the typed cache-hit path.
+        resolved = selection_plan is not None and selection is not None
         # An empty selection needs no workers, and a selection smaller than the
         # worker budget never needs more workers than items: every extra worker
         # only pays startup cost for an empty queue. Explicit serial execution
@@ -360,7 +367,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 "--testmon",
                 *(
                     ("--testmon-noselect",)
-                    if execution_mode == c.Infra.PytestExecutionMode.FULL
+                    if execution_mode == c.Infra.PytestExecutionMode.FULL or resolved
                     else ("--testmon-forceselect",)
                 ),
                 "--testmon-env",
