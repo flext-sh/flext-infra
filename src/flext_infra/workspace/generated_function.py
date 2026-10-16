@@ -617,7 +617,55 @@ class FlextInfraWorkspaceGeneratedFunction:
                 result[field.target.id] = self._rebuilt_field(
                     field.target.id, namespace
                 )
+        self._dataclass_inherited_fields(namespace, observed_fields, result)
         return result
+
+    def _dataclass_inherited_fields(
+        self,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        observed_fields: t.MappingKV[str, p.AttributeProbe],
+        result: t.MutableMappingKV[str, p.AttributeProbe],
+    ) -> None:
+        """Lay out inherited fields in the SDK's own stored order.
+
+        The stored ``__dataclass_fields__`` already holds the final order (base
+        fields first, redefinitions in place). Declared fields keep their
+        physical data; inherited ones are rebuilt from their stored SDK
+        ``Field``, never invoked.
+
+        Raises:
+            ValueError: If an own annotation is not a stored field beside inherited
+                fields, so the stored order cannot place it.
+
+        """
+        annotations = result["__annotations__"]
+        if type(annotations) is not dict or all(
+            name in annotations for name in observed_fields
+        ):
+            return
+        unstored = [name for name in annotations if name not in observed_fields]
+        if unstored:
+            msg = (
+                "native dataclass annotation has no stored field beside inherited "
+                f"fields: {unstored[:8]}"
+            )
+            raise ValueError(msg)
+        sdk = vars(self._module("dataclasses"))
+        ordered: t.DictKV[str, p.AttributeProbe] = {}
+        for name in observed_fields:
+            if name in annotations:
+                ordered[name] = annotations[name]
+                continue
+            stored = self._stored_field(name, namespace)
+            ordered[name] = stored.type
+            if stored._field_type is not sdk.get("_FIELD"):
+                # ClassVar/InitVar pseudo-fields are plain class values to the SDK.
+                if stored.default is not sdk.get("MISSING"):
+                    result[name] = stored.default
+                continue
+            result[name] = self._rebuilt_field(name, namespace)
+        annotations.clear()
+        annotations.update(ordered)
 
     def _dataclass_field(
         self,
@@ -670,6 +718,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise ValueError(msg)
         self._physical_function(factory)
         observed = self._stored_field(name, namespace)
+        empty = vars(self._module("dataclasses")).get("_EMPTY_METADATA")
         return factory(
             default=observed.default,
             default_factory=observed.default_factory,
@@ -677,6 +726,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             repr=observed.repr,
             hash=observed.hash,
             compare=observed.compare,
+            metadata=None if observed.metadata is empty else observed.metadata,
             kw_only=observed.kw_only,
         )
 
@@ -754,9 +804,6 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise TypeError(msg)
         for ancestor in vars(type)["__mro__"].__get__(owner, type(owner))[1:]:
             inherited = vars(type)["__dict__"].__get__(ancestor, type(ancestor))
-            if "__dataclass_fields__" in inherited:
-                msg = "native dataclass inherited fields need physical declarations"
-                raise ValueError(msg)
             if "__post_init__" in inherited and "__post_init__" not in result:
                 self._dataclass_method(inherited["__post_init__"])
                 result["__post_init__"] = inherited["__post_init__"]
@@ -834,13 +881,15 @@ class FlextInfraWorkspaceGeneratedFunction:
             # ``abc.abstractmethod`` marks the function in place and returns it.
             decorator = "abstractmethod"
         seen: set[int] = set()
+        wrapper: FunctionType | None = None
         while type(value) is FunctionType:
             if id(value) in seen:
                 msg = "native dataclass method has a cyclic raw wrapper"
                 raise ValueError(msg)
             seen.add(id(value))
-            self._physical_function(value, decorator=decorator)
+            self._physical_function(value, decorator=decorator, wrapper=wrapper)
             decorator = None
+            wrapper = value
             value = self._function_attributes(value).get("__wrapped__")
         if value is not None:
             msg = "native dataclass method has callback-bearing descriptor storage"
@@ -2202,6 +2251,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         function: p.AttributeProbe | None,
         *,
         decorator: str | None = None,
+        wrapper: FunctionType | None = None,
     ) -> t.Triple[ast.FunctionDef, ast.Module, t.MappingKV[str, p.AttributeProbe]]:
         if type(function) is not FunctionType:
             msg = "closed compiler callback is not an exact Python function"
@@ -2214,22 +2264,14 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "closed compiler function has foreign globals"
             raise ValueError(msg)
         path, tree = self._source(self._module(module_name))
-        if decorator == "abstractmethod":
-            # The abstract marker is not a builtin: the module's own import
-            # binding must resolve to the exact ``abc.abstractmethod``.
-            if self._global(decorator, namespace, tree) is not vars(
-                self._module("abc")
-            ).get(decorator):
-                msg = (
-                    "closed compiler abstract marker is not abc.abstractmethod: "
-                    f"{module_name}.{function.__code__.co_qualname}"
-                )
-                raise ValueError(msg)
-        elif decorator is not None and "." not in decorator:
-            # The source decorator must be the native descriptor type itself;
-            # ``<name>.setter``/``.deleter`` are the property's own methods.
-            self._builtin(decorator, namespace)
-        candidates = self._function_declarations(function, tree, decorator=decorator)
+        # _decorator_spellings is the single owner that authenticates the
+        # expected decorator (native descriptor type or abc.abstractmethod).
+        candidates = self._function_declarations(
+            function,
+            tree,
+            spellings=self._decorator_spellings(decorator, namespace),
+            wrapper=wrapper,
+        )
         pending = [self._codes[path]]
         matched = False
         while pending:
@@ -2442,11 +2484,15 @@ class FlextInfraWorkspaceGeneratedFunction:
         tree: ast.Module,
         *,
         spellings: frozenset[str] | None = None,
+        wrapper: FunctionType | None = None,
     ) -> t.VariadicTuple[ast.FunctionDef]:
         """Locate the physical module or class method without running its body.
 
         ``spellings`` names the sole decorator the declaration may carry; the
         code's first line is then the decorator line, as CPython records it.
+        ``wrapper`` is the outer function of a raw ``__wrapped__`` chain: the
+        innermost decorator may then be the factory whose own code nests the
+        wrapper's code object.
 
         Returns:
             Declarations matching the native qualified code identity and carrying
@@ -2455,18 +2501,68 @@ class FlextInfraWorkspaceGeneratedFunction:
         """
         nodes: t.SequenceOf[ast.stmt] = tree.body
         components = function.__code__.co_qualname.split(".")
-        for component in components[:-1]:
+        for index, component in enumerate(components[:-1]):
+            if component == "<locals>":
+                continue
+            # A function parent owns the next scope only through ``<locals>``.
+            local = components[index + 1] == "<locals>"
             parents = [
                 node
                 for node in nodes
-                if isinstance(node, ast.ClassDef) and node.name == component
+                if (
+                    isinstance(node, ast.FunctionDef)
+                    if local
+                    else isinstance(node, ast.ClassDef)
+                )
+                and node.name == component
             ]
             if len(parents) != 1:
                 return ()
             nodes = parents[0].body
 
+        # functools.wraps(...) returns the same function after recording
+        # __wrapped__; with that native record present, the innermost decorator
+        # may be exactly a call of that binding in the function's own globals.
+        functools_module = sys.modules.get("functools")
+        wraps = vars(functools_module).get("wraps") if functools_module else None
+        wrapped = wraps is not None and "__wrapped__" in vars(function)
+
+        def wraps_marker(expression: ast.expr) -> bool:
+            match expression:
+                case ast.Call(func=ast.Name(id=name)):
+                    return function.__globals__.get(name) is wraps
+                case ast.Call(func=ast.Attribute(value=ast.Name(id=owner), attr="wraps")):
+                    return function.__globals__.get(owner) is functools_module
+                case _:
+                    return False
+
+        def factory_marker(expression: ast.expr) -> bool:
+            match expression:
+                case ast.Name(id=name):
+                    factory = function.__globals__.get(name)
+                case ast.Attribute(value=ast.Name(id=owner), attr=member) if (
+                    type(function.__globals__.get(owner)) is ModuleType
+                ):
+                    factory = vars(function.__globals__[owner]).get(member)
+                case _:
+                    return False
+            if wrapper is None or type(factory) is not FunctionType:
+                return False
+            pending = [factory.__code__]
+            while pending:
+                code = pending.pop()
+                if code is wrapper.__code__:
+                    return True
+                pending.extend(item for item in code.co_consts if type(item) is CodeType)
+            return False
+
         def decorated(node: ast.FunctionDef) -> bool:
-            match node.decorator_list:
+            decorators = node.decorator_list
+            if wrapper is not None and decorators and factory_marker(decorators[-1]):
+                decorators = decorators[:-1]
+            if wrapped and decorators and wraps_marker(decorators[-1]):
+                decorators = decorators[:-1]
+            match decorators:
                 case []:
                     return spellings is None
                 case [ast.Name(id=name)]:
