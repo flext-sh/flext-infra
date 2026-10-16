@@ -383,7 +383,7 @@ class FlextInfraUtilitiesCodegenFacades:
         """
         module = parse_module(source)
         mergeable = FlextInfraUtilitiesCodegenFacades._mergeable_import
-        members: dict[str, dict[str, ImportAlias]] = {}
+        members: t.MutableMappingKV[str, t.MutableMappingKV[str, ImportAlias]] = {}
         for statement in module.body:
             found = mergeable(module, statement)
             if found is None or isinstance(found[1].names, ImportStar):
@@ -539,7 +539,7 @@ class FlextInfraUtilitiesCodegenFacades:
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
         )
-        owners, ancestors = cls._utility_owners(owners_dir, family=family)
+        owners, ancestors = cls._facade_protocol_owners(owners_dir)
         reachable = cls._reachable_bases(
             tuple(cls._base_name(base) for base in namespace.bases),
             ancestors,
@@ -565,12 +565,11 @@ class FlextInfraUtilitiesCodegenFacades:
             if isinstance(target, ast.Name)
         )
         for method in sorted(
-            cls._required_methods(
+            cls._required_protocol_members(
                 pkg_dir,
                 facade_path,
                 nested_namespace=namespace is not facade,
                 namespace=namespace.name,
-                family=family,
             ),
         ):
             if method in declared:
@@ -595,11 +594,10 @@ class FlextInfraUtilitiesCodegenFacades:
             reachable.update(cls._reachable_bases((class_name,), ancestors))
         if not additions:
             return source
-        source = cls._insert_imports(
+        source = cls._insert_protocol_imports(
             source,
             additions,
             package=pkg_dir.name,
-            family=family,
         )
         _, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)),
@@ -1218,13 +1216,12 @@ class FlextInfraUtilitiesCodegenFacades:
         return frozenset(published)
 
     @staticmethod
-    def _required_methods(
+    def _required_protocol_members(
         pkg_dir: Path,
         facade_path: Path,
         *,
         nested_namespace: bool,
         namespace: str,
-        family: Literal["u", "p", "m"],
     ) -> frozenset[str]:
         """Collect consumed members through their actual imported Rope identities.
 
@@ -1232,6 +1229,7 @@ class FlextInfraUtilitiesCodegenFacades:
             The required public members; invalid source positions fail at Rope.
 
         """
+        family = c.Infra.FacadeFamily.P
         methods: set[str] = set()
         with FlextInfraUtilitiesRopeCore.open_import_project(pkg_dir.parent) as project:
             for path in (
@@ -1255,11 +1253,7 @@ class FlextInfraUtilitiesCodegenFacades:
                 }
                 pymodule: t.Infra.RopePyModule | None = None
                 module_paths: t.MutableMappingKV[p.Infra.RopeImportedModule, Path] = {}
-                for reference in (
-                    node.func if isinstance(node, ast.Call) else node
-                    for node in ast.walk(tree)
-                    if family != "u" or isinstance(node, ast.Call)
-                ):
+                for reference in ast.walk(tree):
                     if not isinstance(reference, ast.Attribute):
                         continue
                     receiver = reference.value
@@ -1277,10 +1271,8 @@ class FlextInfraUtilitiesCodegenFacades:
                     if (
                         not isinstance(receiver, ast.Name)
                         or receiver.id not in imported_receivers
-                        or (
-                            family != "u"
-                            and (not public_receiver or receiver.id != family)
-                        )
+                        or not public_receiver
+                        or receiver.id != family
                     ):
                         continue
                     if pymodule is None:
@@ -1303,9 +1295,10 @@ class FlextInfraUtilitiesCodegenFacades:
                         FlextInfraUtilitiesRopeRuntime.scope_at(pymodule, offset),
                         receiver,
                     )
-                    if not isinstance(
-                        binding, p.Infra.RopeImportedName
-                    ) or family not in {"u", binding.imported_name}:
+                    if (
+                        not isinstance(binding, p.Infra.RopeImportedName)
+                        or binding.imported_name != family
+                    ):
                         continue
                     imported = binding.imported_module
                     if (
@@ -1322,37 +1315,18 @@ class FlextInfraUtilitiesCodegenFacades:
                         binding,
                         resolved=module_paths,
                     )
-                    owner_directory = (
-                        pkg_dir
-                        / FlextInfraUtilitiesCodegenNamespace.facade_families()[
-                            family
-                        ].directory
-                    )
-                    lower_owner = (
-                        family == "u"
-                        and declared.is_relative_to(owner_directory)
-                        and not path.is_relative_to(owner_directory)
-                    )
-                    if not lower_owner and (
-                        not public_receiver
-                        or receiver.id != family
-                        or binding.imported_name != family
-                        or declared
-                        not in {
-                            pkg_dir,
-                            pkg_dir / c.Infra.INIT_PY,
-                            facade_path,
-                        }
-                    ):
+                    if declared not in {
+                        pkg_dir,
+                        pkg_dir / c.Infra.INIT_PY,
+                        facade_path,
+                    }:
                         continue
                     methods.add(reference.attr)
         return frozenset(method for method in methods if not method.startswith("_"))
 
     @staticmethod
-    def _utility_owners(
+    def _facade_protocol_owners(
         owners_dir: Path,
-        *,
-        family: Literal["u", "p", "m"],
     ) -> t.Pair[
         t.VariadicTuple[t.Triple[str, str, frozenset[str]]],
         t.MappingKV[str, frozenset[str]],
@@ -1369,18 +1343,9 @@ class FlextInfraUtilitiesCodegenFacades:
             for node in tree.body:
                 if not isinstance(node, ast.ClassDef) or node.name.startswith("_"):
                     continue
-                if family == "u":
-                    members = tuple(
-                        member
-                        for member in node.body
-                        if isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
-                    )
-                else:
-                    members = tuple(
-                        member
-                        for member in node.body
-                        if isinstance(member, ast.ClassDef)
-                    )
+                members = tuple(
+                    member for member in node.body if isinstance(member, ast.ClassDef)
+                )
                 methods = frozenset(
                     member.name for member in members if not member.name.startswith("_")
                 )
@@ -1467,19 +1432,18 @@ class FlextInfraUtilitiesCodegenFacades:
         return reachable
 
     @staticmethod
-    def _insert_imports(
+    def _insert_protocol_imports(
         source: str,
         additions: t.SequenceOf[t.Pair[str, str]],
         *,
         package: str,
-        family: Literal["u", "p", "m"],
     ) -> str:
         # The owner lives in the package being rendered. Naming this project
         # instead made every generated consumer facade import from flext-infra,
         # a module that does not exist in the consumer's own distribution.
 
         directory = FlextInfraUtilitiesCodegenNamespace.facade_families()[
-            family
+            c.Infra.FacadeFamily.P
         ].directory
         context = CodemodContext()
         for module, class_name in additions:

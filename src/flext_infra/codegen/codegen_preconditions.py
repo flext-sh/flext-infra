@@ -229,7 +229,7 @@ class FlextInfraCodegenPreconditions:
         if owned.failure:
             return result_type.from_failure(owned)
         return cls._sealed_source_authority(
-            names, roots, trees, states, bootstrap_sources=owned.value
+            names, roots, trees, states, bootstrap_inputs=owned.value
         ).map(lambda authority: (authority, observed.value))
 
     @classmethod
@@ -360,7 +360,9 @@ class FlextInfraCodegenPreconditions:
         cls,
         roots: t.MappingKV[str, Path],
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+    ) -> p.Result[
+        t.VariadicTuple[t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileReceipt]]
+    ]:
         """Pin already loaded elected-provider inputs for the atomic reader bootstrap.
 
         This observes registered modules without importing a provider. A source
@@ -371,8 +373,10 @@ class FlextInfraCodegenPreconditions:
             The first provenance/read failure or the complete bootstrap pins.
 
         """
-        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
-        bootstrap: list[m.Cli.AtomicFileState] = []
+        result_type = r[
+            t.VariadicTuple[t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileReceipt]]
+        ]
+        bootstrap: list[t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileReceipt]] = []
         standard = FlextInfraWorkspaceEnvironmentProvenance.standard_library_root()
         packages = (
             FlextInfraWorkspaceEnvironmentProvenance.standard_library_package_roots()
@@ -398,8 +402,30 @@ class FlextInfraCodegenPreconditions:
                 return result_type.from_failure(captured)
             states[source] = captured.value
             if source.suffix == c.Infra.EXT_PYTHON:
-                bootstrap.append(captured.value)
+                receipt = cls._bootstrap_source_receipt(captured.value)
+                if receipt.failure:
+                    return result_type.from_failure(receipt)
+                bootstrap.append((captured.value, receipt.value))
         return result_type.ok(tuple(bootstrap))
+
+    @classmethod
+    def _bootstrap_source_receipt(
+        cls,
+        source: m.Cli.AtomicFileState,
+    ) -> p.Result[m.Cli.AtomicFileReceipt]:
+        """Bind a newly collected bootstrap buffer to its original native receipt.
+
+        Returns:
+            The receipt matching the exact original bytes and physical identity.
+
+        """
+        return u.Cli.atomic_read_binary_file_receipt(
+            source.path, required=True
+        ).flat_map(
+            lambda receipt: cls._authenticated_receipt_files(
+                {source.path: source}, (receipt,)
+            ).map(lambda _: receipt)
+        )
 
     @staticmethod
     def _runtime_bootstrap_file(
@@ -640,7 +666,9 @@ class FlextInfraCodegenPreconditions:
         trees: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
         states: t.MappingKV[Path, m.Cli.AtomicFileState],
         *,
-        bootstrap_sources: t.VariadicTuple[m.Cli.AtomicFileState],
+        bootstrap_inputs: t.VariadicTuple[
+            t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileReceipt]
+        ],
     ) -> p.Result[m.Infra.CodegenSourceAuthority]:
         """Seal receipts into the cold authority and re-prove it current.
 
@@ -649,8 +677,8 @@ class FlextInfraCodegenPreconditions:
             roots: Elected namespace roots sealed into the authority.
             trees: Captured physical tree manifests.
             states: Captured atomic file states awaiting their receipts.
-            bootstrap_sources: Buffered source candidates added by bootstrap
-                collection, pending actual import consumption.
+            bootstrap_inputs: Original buffered source candidates and receipts,
+                pending actual import consumption.
 
         Returns:
             The authenticated immutable producer closure.
@@ -658,8 +686,12 @@ class FlextInfraCodegenPreconditions:
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
 
+        bootstrap_receipts = {receipt.path: receipt for _, receipt in bootstrap_inputs}
         receipts: list[m.Cli.AtomicFileReceipt] = []
         for state in states.values():
+            if state.path in bootstrap_receipts:
+                receipts.append(bootstrap_receipts[state.path])
+                continue
             measured = u.Cli.atomic_read_binary_file_receipt(
                 state.path,
                 required=state.device is not None,
@@ -674,10 +706,17 @@ class FlextInfraCodegenPreconditions:
             runtime=Path(sys.executable).resolve(),
             optimize=sys.flags.optimize,
             inputs=tuple(receipts),
-            bootstrap_sources=bootstrap_sources,
+            bootstrap_sources=tuple(state for state, _ in bootstrap_inputs),
             generator_trees=tuple(trees.values()),
             generator_modules=tuple(sorted(roots.items())),
             selections=names,
+        )
+        private = authority.__pydantic_private__
+        if private is None:
+            return result_type.fail("source authority has no Pydantic private storage")
+        private["_source_birth"] = (
+            id(authority),
+            u.Cli.sha256_bytes(authority.model_dump_json().encode(c.DEFAULT_ENCODING)),
         )
         return cls.source_authority_current(authority).map(lambda _current: authority)
 
@@ -693,6 +732,22 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[frozenset[Path]]
+        if authority.bootstrap_sources:
+            private = authority.__pydantic_private__
+            if type(authority) is not m.Infra.CodegenSourceAuthority or (
+                private is None
+                or private.get("_source_birth")
+                != (
+                    id(authority),
+                    u.Cli.sha256_bytes(
+                        authority.model_dump_json().encode(c.DEFAULT_ENCODING)
+                    ),
+                )
+            ):
+                return result_type.fail(
+                    "bootstrap source authority lacks its original capture "
+                    "identity and payload"
+                )
         sources = cls.unique_states(authority.bootstrap_sources)
         if sources.failure:
             return result_type.from_failure(sources)
@@ -758,10 +813,11 @@ class FlextInfraCodegenPreconditions:
         cls,
         authority: m.Infra.CodegenSourceAuthority,
     ) -> p.Result[bool]:
-        """Re-prove every pinned receipt and captured resource tree.
+        """Re-prove producer receipts and every captured resource tree.
 
         Returns:
-            Success only for unchanged pinned inputs and resource trees.
+            Success for unchanged producer inputs and inventories; bootstrap
+            candidates retain their original buffered identities until consumed.
 
         """
         result_type = r[bool]
@@ -805,10 +861,11 @@ class FlextInfraCodegenPreconditions:
         cls,
         authority: m.Infra.CodegenSourceAuthority,
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-        """Read pinned payloads through the CLI receipt's authenticated descriptor.
+        """Read producer payloads and retain original bootstrap candidate buffers.
 
         Returns:
-            The pinned atomic file states carrying their re-read payloads.
+            Protected inputs read through their authenticated descriptors and
+            candidate inputs carrying their original authenticated bytes.
 
         """
         result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
@@ -863,9 +920,6 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.NativeImportReference]
-        current = cls._native_inputs_current(request)
-        if current.failure:
-            return result_type.from_failure(current)
         observed = FlextInfraWorkspaceNativeReference.capture(request.modules)
         if observed.failure:
             return result_type.from_failure(observed)
@@ -914,17 +968,22 @@ class FlextInfraCodegenPreconditions:
             lambda _: cls._seal_native_reference(reference, consumed.value)
         )
 
-    @staticmethod
+    @classmethod
     def _cold_native_observation(
+        cls,
         request: m.Infra.NativeImportRequest,
     ) -> p.Result[m.Infra.NativeImportObservation]:
-        """Read the complete original child outcome before decoding its evidence.
+        """Admit the pinned inputs, then read the complete cold child outcome.
 
         Returns:
-            The original native import observation or process failure.
+            The original native import observation, or the first admission or
+            process failure.
 
         """
         result_type = r[m.Infra.NativeImportObservation]
+        admitted = cls._native_inputs_current(request)
+        if admitted.failure:
+            return result_type.from_failure(admitted)
         consumer = FlextInfraValidateFreshImport(
             repository_root=request.repository_root,
             runtime_root=request.runtime_root,
@@ -1122,18 +1181,35 @@ class FlextInfraCodegenPreconditions:
         bootstrap = cls._bootstrap_source_paths(request.source_authority)
         if bootstrap.failure:
             return r[bool].from_failure(bootstrap)
-        current = cls.source_authority_current(request.source_authority).flat_map(
-            lambda _: FlextInfraMiseArtifactsVerification.states_current(
-                tuple(
-                    state
-                    for state in request.inputs
-                    if state.path not in bootstrap.value
+        states = cls.unique_states(request.inputs)
+        if states.failure:
+            return r[bool].from_failure(states)
+        by_path = {state.path: state for state in states.value}
+        matched = cls._authenticated_receipt_files(
+            by_path, request.source_authority.inputs
+        )
+        if matched.failure:
+            return r[bool].from_failure(matched)
+        if matched.value != set(by_path) or matched.value != {
+            receipt.path for receipt in request.source_authority.inputs
+        }:
+            return r[bool].fail(
+                "native import inputs differ from their complete captured receipts"
+            )
+        return (
+            cls
+            .source_authority_current(request.source_authority)
+            .flat_map(
+                lambda _: FlextInfraMiseArtifactsVerification.states_current(
+                    tuple(
+                        state
+                        for state in request.inputs
+                        if state.path not in bootstrap.value
+                    )
                 )
             )
+            .flat_map(lambda _: cls._native_runtime_current(request))
         )
-        if current.failure:
-            return current
-        return cls._native_runtime_current(request)
 
     @staticmethod
     def _native_runtime_current(
@@ -1266,11 +1342,8 @@ class FlextInfraCodegenPreconditions:
                 )
             ),
         )
-        # The authority already observed these exact selections; once the
-        # inputs are proven current, a second capture could only repeat it.
-        current = cls._native_inputs_current(request)
-        if current.failure:
-            return result_type.from_failure(current)
+        # The authority already observed these exact selections; a second
+        # capture could only repeat it.
         return cls._observed_native_reference(request, observation)
 
     @classmethod

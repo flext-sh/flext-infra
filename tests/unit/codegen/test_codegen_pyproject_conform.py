@@ -51,7 +51,13 @@ class TestsFlextInfraCodegenPyprojectConform:
                 'dev = [{include-group = "base"}, "fixture-checker>=4"]\n',
             ),
         )
-        options = u.Infra.PyprojectConformOptions(repository_root=tmp_path)
+        captured = tm.ok(
+            u.Cli.atomic_read_binary_file_state(path, required=True),
+        )
+        options = u.Infra.PyprojectConformOptions(
+            repository_root=tmp_path,
+            member_declarations=(captured,),
+        )
         rendered = tm.ok(
             u.Infra.pyproject_conform(
                 '[project]\nname = "workspace"\ndependencies = []\n',

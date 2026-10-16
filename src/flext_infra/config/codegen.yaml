@@ -654,7 +654,7 @@ Infra:
       - name: help
         description: Show the complete selector-free public interface.
       - name: setup
-        description: Provision the declared environment and hooks.
+        description: Install the declared locks, publish local runtime bindings, and provision hooks.
       - name: pre-commit
         description: Approve a commit through the CI check partition and incremental tests with the persistent testmon database.
       - name: upg
@@ -674,7 +674,7 @@ Infra:
       - name: examples
         description: Run this repository's explicitly declared public runtime examples module.
       - name: check
-        description: Run the configured non-test gates except the dedicated smells audit.
+        description: Check the configured quality gates and projection conformance without writes.
       - name: census
         description: Inventory constants, duplicate declarations and placement across every declared first-party project.
       - name: census-constants
@@ -712,13 +712,13 @@ Infra:
       - name: fmt
         description: Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.
       - name: fix
-        description: Apply the safe fixes of ruff check --fix --preview plus every other configured safe correction; never deletes information. Ruff is the rule; change code, never ruff.
+        description: Apply conformance repairs and the configured fixable gates.
       - name: fix-namespace
         description: Apply the canonical namespace enforcer to the selected workspace; the same relocation cascade runs as a callback phase of make mod.
       - name: fix-accessors
         description: Migrate accessor names owned by the rename catalog's origin package and every resolved consumer; homonyms are skipped with a warning; the same origin-aware rewrite runs as a callback phase of make mod.
       - name: audit
-        description: Inspect ownership, dependency, and generated-state health.
+        description: Inspect environment, dependency, and workspace ownership health.
       - name: status
         description: Report the resolved runtime and repository state.
       - name: verify-clean
@@ -740,11 +740,11 @@ Infra:
       - name: publication
         description: Publish only receipt-attested release artifacts.
       - name: gen
-        description: Regenerate every managed projection atomically.
-        produces_activation: true
+        description: Regenerate declared projections with guarded publication per participant, without repairing authored inputs or resolving locks.
+        requires_activation: false
       - name: gen-footprint
         description: Inspect the pending generation journal and declared physical effect footprint without leases, recovery, or publication.
-        produces_activation: true
+        requires_activation: false
       - name: initialize
         description: Bootstrap this target's own declaration and canonical Makefile.
       - name: project-new

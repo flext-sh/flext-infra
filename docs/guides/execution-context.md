@@ -74,6 +74,15 @@ Native checker caches remain owned by their existing runtime/cache owners. Nativ
 execution and malformed-report failures stay separate from diagnostic occurrences;
 neither a repeated failure nor an unchanged finding count proves validation success.
 
+Facade projection composes constants, utilities and models from the exports and
+base order declared in their configured private family. Protocol projection keeps
+its consumer-based ownership resolution. The utility path delegates directly to
+the declaration planner; it does not calculate and discard a competing consumer
+plan. Static and runtime consumer checks retain their own import-failure verdicts.
+Rendering a facade returns source only. Package-form imports require publishing
+the owning family's initializer through the existing lazy-init planner before a
+fresh consumer loads the generated facade.
+
 ## New projects
 
 `make project-new` delegates to the same typed `codegen new` service exposed by
