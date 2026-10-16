@@ -223,17 +223,20 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If the raw wrapper chain is cyclic.
 
         """
-        if type(value) is classmethod or type(value) is staticmethod:
-            value = value.__func__
+        current: p.AttributeProbe | None = value
+        holder = type(current)
+        if holder is classmethod or holder is staticmethod:
+            # The builtin descriptor's own C member, never an authored hook.
+            current = vars(holder)["__func__"].__get__(current, holder)
         functions: list[FunctionType] = []
         seen: set[int] = set()
-        while type(value) is FunctionType:
-            if id(value) in seen:
+        while type(current) is FunctionType:
+            if id(current) in seen:
                 msg = "generated receiver function wrapper chain is cyclic"
                 raise ValueError(msg)
-            seen.add(id(value))
-            functions.append(value)
-            value = vars(value).get("__wrapped__")
+            seen.add(id(current))
+            functions.append(current)
+            current = vars(current).get("__wrapped__")
         return tuple(functions)
 
     @classmethod
@@ -1604,7 +1607,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If source ownership or ordered field defaults differ.
 
         """
-        fields = (
+        fields: list[t.Pair[str, ast.AnnAssign]] = (
             [
                 (node.target.id, node)
                 for node in declaration.body
