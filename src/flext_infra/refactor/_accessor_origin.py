@@ -129,7 +129,7 @@ class FlextInfraAccessorOriginResolver:
         scope = owner.get_scope() if u.Infra.py_class(owner) else None
         if scope is not None:
             module = owner.get_module()
-            if module is None:
+            if not u.Infra.source_module(module):
                 msg = f"accessor class has no defining module: {owner.get_name()}"
                 raise ValueError(msg)
             tree = module.get_ast()

@@ -338,7 +338,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module = value.get_module()
             scope = value.get_scope()
             resource = module.get_resource() if module is not None else None
-            if module is None or scope is None or resource is None:
+            if (
+                not FlextInfraUtilitiesRopeRuntime.source_module(module)
+                or scope is None
+                or resource is None
+            ):
                 message = (
                     f"External class has no source declaration: {value.get_name()}"
                 )
@@ -476,8 +480,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if not imported.level:
                 return imported.module_name
             declaring = imported.importing_module.get_module()
-            source = declaring.get_resource() if declaring is not None else None
-            if declaring is None or source is None:
+            source = declaring.get_resource()
+            if source is None:
                 message = "Import has no declared module location"
                 raise ValueError(message)
             name = imported.module_name
@@ -503,11 +507,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _provider_module(
             self,
             imported: p.Infra.RopeImportedModule,
-        ) -> t.Infra.RopePyModule:
+        ) -> t.Infra.RopeSemanticModule:
             """Return the Rope module object one import points at.
 
             Returns:
                 The resolved Rope module object.
+
+            Raises:
+                TypeError: The import provider lacks the native module capability.
 
             """
             name = self._provider_module_name(imported)
@@ -521,11 +528,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     self._project,
                     resource,
                 )
+            if not FlextInfraUtilitiesRopeRuntime.semantic_module(module):
+                message = "Rope import provider has no semantic module"
+                raise TypeError(message)
             return module
 
         def _provider_reference(
             self,
-            module: t.Infra.RopePyModule,
+            module: t.Infra.RopeSemanticModule,
             attributes: t.StrTuple,
             visiting: frozenset[str] = frozenset(),
             depth: int = 0,
@@ -621,7 +631,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def _provider_lazy_aliases(
             self,
-            module: t.Infra.RopePyModule,
+            module: t.Infra.RopeSemanticModule,
         ) -> t.StrDict:
             """Read a provider's declared lazy aliases from its native source module.
 
@@ -630,7 +640,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             declaring = module.get_module()
-            if not isinstance(declaring, p.Infra.RopeSourceModule):
+            if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
                 return {}
             resource = declaring.get_resource()
             if resource is None:
@@ -645,9 +655,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def _star_reexporter(
             self,
-            module: t.Infra.RopePyModule,
+            module: t.Infra.RopeSemanticModule,
             name: str,
-        ) -> t.Infra.RopePyModule | None:
+        ) -> t.Infra.RopeSemanticModule | None:
             """Return the module a provider star re-export binds ``name`` from.
 
             ``from .reader import *`` binds every public name of ``.reader`` in
@@ -661,11 +671,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The first star-imported module that binds ``name``, or ``None``
                 when no star re-export of the provider binds it.
 
+            Raises:
+                TypeError: A source provider has no native parsed module.
+
             """
             # A native module (no source resource) has no star re-export.
             resource = module.get_resource()
             if resource is None or name.startswith("_"):
                 return None
+            if not FlextInfraUtilitiesRopeRuntime.pymodule(module):
+                message = "Rope source provider has no parsed module"
+                raise TypeError(message)
             tree = module.get_ast()
             if not isinstance(tree, ast.Module):
                 return None
@@ -686,6 +702,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     package,
                 )
                 provider = self._project.get_module(target)
+                if not FlextInfraUtilitiesRopeRuntime.semantic_module(provider):
+                    message = "Rope star-import provider has no semantic module"
+                    raise TypeError(message)
                 if name in provider.get_attributes():
                     return provider
             return None
@@ -775,6 +794,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 The resolved declaration identity.
 
+            Raises:
+                TypeError: The external provider lacks the native module capability.
+
             """
             errors: t.VariadicTuple[type[BaseException]] = (
                 *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
@@ -796,6 +818,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     self._project,
                     resource,
                 )
+            if not FlextInfraUtilitiesRopeRuntime.semantic_module(module):
+                message = "Rope external provider has no semantic module"
+                raise TypeError(message)
             return self._provider_reference(module, attributes, visiting, depth)
 
         def _resolve(

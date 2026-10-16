@@ -107,11 +107,6 @@ class FlextInfraTypesBase:
     "Exact interpreter descriptor identities accepted by native observation."
     type NativeOperand = p.AttributeProbe | type[p.AttributeProbe] | UnionType | None
     "A passively observed value, including native class identities and nulls."
-    type NativeFunctionBinding = (
-        classmethod[NativeOperand, ..., NativeOperand]
-        | staticmethod[..., NativeOperand]
-    )
-    "Exact interpreter function wrappers with their native readable function slot."
     type NativeType = type[p.AttributeProbe | UnionType]
     "Exact native type owners, including the interpreter's union type."
     type NativeClassDeclarations = t.MappingKV[

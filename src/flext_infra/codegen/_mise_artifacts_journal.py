@@ -279,7 +279,23 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 "validate prepared codegen journal",
                 validated.error,
             )
-        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
+        reference = journal.generator_reference
+        if reference is not None:
+            birth = codegen.FlextInfraCodegenPreconditions.reference_birth_current(
+                reference,
+            )
+            if birth.failure:
+                return r[m.Infra.CodegenTransactionJournal].from_failure(birth)
+            if validated.value.generator_reference is None or (
+                validated.value.generator_reference.model_dump()
+                != reference.model_dump()
+            ):
+                return r[m.Infra.CodegenTransactionJournal].fail(
+                    "prepared journal differs from its original producer reference",
+                )
+        return r[m.Infra.CodegenTransactionJournal].ok(
+            validated.value.model_copy(update={"generator_reference": reference}),
+        )
 
     @classmethod
     def _prepared_phase_entries(

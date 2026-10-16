@@ -51,8 +51,6 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
         """
         root_scope = pymodule.get_scope()
-        if root_scope is None:
-            return ()
         definitions: t.MutableSequenceOf[m.Infra.ScopeDefinition] = []
         FlextInfraUtilitiesRopeAnalysisExports._collect_scope_definitions(
             scope=root_scope,
@@ -126,6 +124,9 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         Returns:
             Module-local export names from Rope metadata.
 
+        Raises:
+            TypeError: The parsed module has no native source text.
+
         """
         resolved_export_options = export_options or m.Infra.ExportOptions()
         cache_key = (
@@ -154,7 +155,10 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                 rope_project,
                 resource,
-            )
+            ).get_module()
+            if not FlextInfraUtilitiesRopeRuntime.source_module(pymodule):
+                message = "Rope export source requires a native source module"
+                raise TypeError(message)
             export_names = FlextInfraUtilitiesRopeAnalysisExports._module_export_names(
                 export_options=resolved_export_options,
                 pymodule=pymodule,

@@ -23,6 +23,7 @@ from flext_cli import cli
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -134,10 +135,11 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
             content = sources[source].encode("utf-8")
             text, start, end = cls._validated_capture_span(source, capture, content)
-            resource = project.get_resource(
-                source.relative_to(root.resolve()).as_posix()
+            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                project.get_resource(source.relative_to(root.resolve()).as_posix()),
+                source,
             )
-            module = project.get_pymodule(resource)
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             if (
                 condition.predicate
                 is c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT
@@ -323,8 +325,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 project, capture_text
             )
             scope = isolated.get_scope()
-            if scope is None:
-                return False
             lexical = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
             names = scope.get_defined_names()
             if not names:
@@ -485,11 +485,8 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 msg = "resolved-symbol requires a module and an expression"
                 raise ValueError(msg)
             target_module, target = condition.arg
-            scope = project.get_module(target_module).get_scope()
-            if scope is None:
-                return False
-            expected = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
-                scope, target
+            expected = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                project, target, module_name=target_module
             )
             holds = cls._binding_symbols_match(expected, actual)
             if not holds:
@@ -716,7 +713,8 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             imported = binding.imported_module.get_object()
-            if not FlextInfraUtilitiesRopeRuntimeTypes.pymodule(imported):
+            imported = imported.get_module()
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(imported):
                 return False
             key = (
                 binding.imported_module.importing_module.get_name(),
@@ -726,7 +724,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return False
             imported_scope = imported.get_scope()
             imported_resource = imported.get_resource()
-            if imported_scope is None or imported_resource is None:
+            if imported_resource is None:
                 return False
             imported_path = Path(imported_resource.real_path).resolve()
             if imported_path.is_dir():
@@ -870,8 +868,12 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             holder, line = binding.get_definition_location()
-            holder_resource = None if holder is None else holder.get_resource()
-            if holder_resource is None or holder is None:
+            if holder is not None:
+                holder = holder.get_module()
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
+                return None
+            holder_resource = holder.get_resource()
+            if holder_resource is None:
                 return None
             holder_path = Path(holder_resource.real_path).resolve()
             if holder_path.is_dir():
@@ -973,7 +975,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 c.Infra.StatementCategory.FROM_IMPORT,
             }:
                 return False
-            if not isinstance(module, p.Infra.RopeSourceModule):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
                 msg = "native import occurrence has no source-module graph"
                 raise TypeError(msg)
             runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -981,10 +983,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 module.pycore.project, row.text.strip()
             )
             imported_scope = imported_module.get_scope()
-            return (
-                imported_scope is not None
-                and expression in imported_scope.get_defined_names()
-            )
+            return expression in imported_scope.get_defined_names()
 
         @classmethod
         def _single_reaching_declarations(
@@ -999,7 +998,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 The declarations of the expression's spelling at the scope frame.
 
             """
-            if not isinstance(module, p.Infra.RopeSourceModule):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
                 return ()
             source = module.source_code
             runtime = FlextInfraUtilitiesRopeRuntimeModules

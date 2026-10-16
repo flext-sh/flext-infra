@@ -389,7 +389,26 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[Path].ok(root)
 
     @staticmethod
+    def standard_library_root() -> Path:
+        """Return the standard library owned by the current base interpreter.
+
+        Returns:
+            The resolved native standard-library directory.
+
+        """
+        return Path(
+            sysconfig.get_path(
+                "stdlib",
+                vars={
+                    "base": sys.base_prefix,
+                    "platbase": sys.base_exec_prefix,
+                },
+            )
+        ).resolve()
+
+    @classmethod
     def _file_module_source(
+        cls,
         module_name: str,
         native_name: str,
         native_origin: str,
@@ -409,15 +428,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         origin = Path(native_origin).absolute()
         if native_name.partition(".")[0] in sys.stdlib_module_names:
             base = Path(sys.base_prefix).resolve()
-            standard = Path(
-                sysconfig.get_path(
-                    "stdlib",
-                    vars={
-                        "base": sys.base_prefix,
-                        "platbase": sys.base_exec_prefix,
-                    },
-                )
-            ).resolve()
+            standard = cls.standard_library_root()
             if not interpreter.is_relative_to(
                 base
             ) or not origin.resolve().is_relative_to(standard):

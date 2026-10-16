@@ -10,6 +10,7 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, p, t
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeTypes
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
 )
@@ -73,7 +74,10 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
     @staticmethod
     def qualified_name(
-        project: p.Infra.RopeProject, expression: str
+        project: p.Infra.RopeProject,
+        expression: str,
+        *,
+        module_name: str | None = None,
     ) -> p.Infra.RopePyName:
         """Resolve the same qualified identity grammar as Rope wildcards.
 
@@ -84,7 +88,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             ValueError: When the identity does not name an attribute.
 
         """
-        module, *attributes = expression.split(".")
+        attributes = expression.split(".")
+        module = attributes.pop(0) if module_name is None else module_name
         if not attributes:
             message = f"Rope identity requires an attribute: {expression}"
             raise ValueError(message)
@@ -97,7 +102,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     @classmethod
     def name_definition_resource_path(
         cls,
-        pymodule: t.Infra.RopePyModule,
+        pymodule: t.Infra.RopeParsedModule,
         offset: int,
         *,
         expected_binding: p.Infra.RopePyName | None = None,
@@ -158,7 +163,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
     @staticmethod
     def scope_at(
-        pymodule: p.Infra.RopePyModule,
+        pymodule: p.Infra.RopeParsedModule,
         offset: int,
         *,
         declaration_line: int | None = None,
@@ -247,7 +252,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             ValueError: If the class assignment identity is cyclic.
 
         """
-        if binding is None or not isinstance(binding, p.Infra.RopeAssignedName):
+        if not isinstance(binding, p.Infra.RopeAssignedName):
             return binding
         holder, line = binding.get_definition_location()
         if holder is not None and line is not None:
@@ -257,7 +262,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 raise TypeError(msg)
             statement = cls._class_alias_statement(holder, binding, tree)
             if statement is not None:
-                declaration, scope, offset, primary = statement
+                holder, declaration, scope, offset, primary = statement
                 if len(binding.assignments) != 1:
                     return None
                 key = (holder.get_name(), offset)
@@ -288,12 +293,24 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     @classmethod
     def _class_alias_statement(
         cls,
-        holder: p.Infra.RopePyModule,
+        holder: p.Infra.RopeParsedModule,
         binding: p.Infra.RopeAssignedName,
         tree: ast.AST,
-    ) -> tuple[ast.Assign | ast.AnnAssign, p.Infra.RopeScope, int, ast.expr] | None:
+    ) -> (
+        tuple[
+            p.Infra.RopeSourceModule,
+            ast.Assign | ast.AnnAssign,
+            p.Infra.RopeScope,
+            int,
+            ast.expr,
+        ]
+        | None
+    ):
         if not binding.assignments:
             return None
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
+            message = "native class assignment has no source module"
+            raise TypeError(message)
         source = holder.source_code
         rhs = binding.assignments[0].ast_node
         rhs_offset = cls.source_offset(source, rhs)
@@ -317,9 +334,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             )
             raise ValueError(msg)
         declaration = candidates[0]
-        if declaration is None or not isinstance(
-            declaration.value, ast.Name | ast.Attribute
-        ):
+        if not isinstance(declaration.value, ast.Name | ast.Attribute):
             return None
         offset = cls.source_offset(source, declaration)
         scope = cls.scope_at(holder, offset)
@@ -328,12 +343,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         primary = declaration.value
         while isinstance(primary, ast.Attribute):
             primary = primary.value
-        return declaration, scope, offset, primary
+        return holder, declaration, scope, offset, primary
 
     @classmethod
     def _class_alias_namespace(
         cls,
-        holder: p.Infra.RopePyModule,
+        holder: p.Infra.RopeSourceModule,
         tree: ast.AST,
         scope: p.Infra.RopeScope,
         primary: ast.Name,
@@ -365,9 +380,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         lookup_parent = scope
         if prior is not None and primary.id not in selected:
             module_scope = holder.get_scope()
-            if module_scope is None:
-                msg = "class-local unbound lookup has no native module scope"
-                raise TypeError(msg)
             lookup_parent = module_scope
         if prior is None and not cls._enclosing_alias_available(
             holder, tree, scope, primary, offset
@@ -378,7 +390,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     @classmethod
     def _enclosing_alias_available(
         cls,
-        holder: p.Infra.RopePyModule,
+        holder: p.Infra.RopeSourceModule,
         tree: ast.AST,
         scope: p.Infra.RopeScope,
         primary: ast.Name,
@@ -574,7 +586,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if resource is None:
             name = imported.module_name
             module = imported.importing_module.get_module()
-            source = module.get_resource() if module is not None else None
+            source = module.get_resource()
             if source is None or (name is None and imported.level == 0):
                 message = (
                     f"import has no declared module location: {binding.imported_name}"
@@ -641,13 +653,17 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     def module_imports_for_pymodule(
         cls,
         rope_project: t.Infra.RopeProject,
-        pymodule: t.Infra.RopePyModule,
+        pymodule: t.Infra.RopeParsedModule,
     ) -> t.Infra.RopeModuleImports:
+        source_module = pymodule.get_module()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(source_module):
+            message = "Rope import operations require a source module"
+            raise TypeError(message)
         loader = cls.runtime_callable(
             c.Infra.ROPE_IMPORTUTILS_MODULE,
             "get_module_imports",
         )
-        result = loader(rope_project, pymodule)
+        result = loader(rope_project, source_module)
         if not isinstance(result, p.Infra.RopeModuleImports):
             msg = "rope get_module_imports returned invalid module imports"
             raise TypeError(msg)
@@ -690,7 +706,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     def import_binding(
         cls,
         project: p.Infra.RopeProject,
-        module: p.Infra.RopePyModule,
+        module: p.Infra.RopeParsedModule,
         module_name: str,
         name: str,
     ) -> t.Pair[str, str]:
@@ -704,9 +720,13 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 or if Rope add_import returned non-text source or binding.
 
         """
+        source_module = module.get_module()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(source_module):
+            message = "Rope import insertion requires a source module"
+            raise TypeError(message)
         result = cls.runtime_callable(c.Infra.ROPE_IMPORTUTILS_MODULE, "add_import")(
             project,
-            module,
+            source_module,
             module_name,
             name,
         )
@@ -732,7 +752,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         source: str,
         *,
         resource: t.Infra.RopeResource | None = None,
-    ) -> t.Infra.RopePyModule:
+    ) -> t.Infra.RopeSourceModule:
         loader = cls.runtime_callable("rope.base.libutils", "get_string_module")
         project = (
             rope_project
@@ -740,7 +760,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             else cls.runtime_callable("rope.base.project", "get_no_project")()
         )
         pymodule = loader(project, source, resource=resource, force_errors=True)
-        if not isinstance(pymodule, p.Infra.RopePyModule):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(pymodule):
             msg = "rope get_string_module returned non-PyModule"
             raise TypeError(msg)
         return pymodule

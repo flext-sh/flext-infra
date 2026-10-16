@@ -78,9 +78,9 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             if manual is not None:
                 module = manual.get_object().get_module()
                 resource = module.get_resource() if module is not None else None
-                if resource is not None and not resource.read().startswith(
-                    c.Infra.AUTOGEN_HEADERS
-                ):
+                if resource is not None and not u.Infra.require_file_resource(
+                    resource, name
+                ).read().startswith(c.Infra.AUTOGEN_HEADERS):
                     continue
             if cls._member(facades["m"], name) is None:
                 return r[t.MappingKV[Path, str]].fail(

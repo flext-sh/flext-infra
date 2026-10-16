@@ -160,24 +160,38 @@ changes to ordinary constants remain violations. Declared staging-path mappings 
 to wrapper storage and nested code units as well as direct function evidence; a
 filename change outside those mappings remains observable.
 
-Producer authentication compiles pinned physical declarations without executing
-their callbacks, then compares loaded bindings with an isolated native import from
-the elected physical roots. Observation remains passive in the original process;
-the isolated child performs the real import and may produce its actual import
-effects, which are validated separately. This proof creates no source preview or
-publication journal. Source and runtime receipts are checked before observation
-and again before returning the authenticated reference; the cold import's executed
-code must also match those captured source bytes. Candidate publication still owns
-its staged source view, journal, and fresh consumer checks.
+Producer authentication starts with a passive observation of the original process.
+Source preflight elects providers and pins their physical source, resource, metadata
+and runtime inputs. It accepts source-backed generated functions without interpreting
+their factory grammar or replaying imports, decorators, class bodies or callbacks in
+that process. An authored-code mismatch proved directly from pinned source can fail
+before the child import.
 
-Generated module functions require a unique physical factory invocation with closed
-literal inputs. Named-tuple constructors require a physical field-layout witness.
-One source interpreter derives their templates and compiles them without executing
-the factory, generated source, class body or construction hooks. It compares code
-and positions, globals, builtins, annotations, defaults and closure values, and pins
-every consulted physical input before publication. A compiler filename or cached
-field table alone is not evidence. Unsupported grammar or an unproved construction
-recipe, including a dataclass compiler, fails explicitly.
+Full authentication imports the elected sources in an isolated native interpreter.
+The child records the physical source receipts used by that import and passively
+observes the resulting code and bindings. The owner verifies the executed receipts,
+compares the original and cold observations, and rechecks source and runtime inputs
+before returning the authenticated reference. This proof creates no source preview
+or publication journal. The child retains the real effects of its import; the
+original process retains its pre-observation state.
+
+Generated functions use that real import as their independent construction proof.
+Comparison retains code, source positions, globals, builtins, annotations, defaults,
+closure values, descriptors and dataclass or attrs metadata. Dynamic factory inputs
+remain valid when the authenticated import produces the same native behavior and
+bindings. A generated filename, advertised module name, serialized model or cached
+field table alone supplies no authority.
+
+The original reference remains an immutable expectation throughout the operation.
+Its in-process birth is recorded only after full authentication. JSON round-trips,
+model validation and copied references preserve a data shape; they do not establish
+that birth or grant publication authority. Every effect reobserves the loaded code,
+physical inputs, module election and declared tree membership. Authenticated receipts
+from the operation's actual earlier publications account for its own source changes.
+These barriers compare the running original epoch with its original expectation;
+they do not cold-import already updated generator files as a replacement epoch.
+Candidate publication still owns its staged source view, journal and real consumer
+checks.
 Source-declared descriptor aliases authenticate the receiver's physical lexical
 declaration and the exact imported supplier binding. Relative imports resolve from
 the declaring module's package; class attributes are read as raw descriptors through
@@ -218,36 +232,20 @@ flag must match its freshly read physical declaration. Unknown conditions, compe
 active declarations, alias cycles, or replaced runtime/supplier bindings fail without
 executing either branch, decorators, or class bodies. The selected metaclass retains
 the same physical supplier/source/code authentication as an unconditional import.
-Native compiler inputs preserve the class's actual bases and its own declared
-descriptors. An inherited constructor is not an explicitly declared dataclass
-constructor. Observation and pinned-source compilation do not replay a class body,
-decorator, metaclass, or construction hook in the original process. The isolated
-child retains the effects of its real import. Function compilation uses
-authenticated native suppliers and data-only attachment targets. Alias operands
-and compiler constructor bindings require admission before invocation. Value
-comparison must not invoke authored equality, hashing, or attribute access.
-Compiler field defaults use the existing native operand-admission contract.
-Immutable scalar defaults are valid inputs; a default with a `__set_name__`
-callback remains inadmissible before native class assembly.
-Dataclass ancestry is compared with its source-declared bindings and retained as
-supplier evidence, not replayed to construct compiler data. Native assembly uses an
-object-rooted data-only class with authenticated declarations and fields; neither
-ABC ancestry nor a supplier namespace authorizes executing a receiver metaclass or
-inherited subclass hook again.
-The source interpreter authenticates the emitted function's correspondence to
-physical source; it does not authorize later invocation of its live compiler
-helpers. Closed string operations are derived from their source declarations.
-Regex patterns and flags alone do not authenticate hidden native regex bytecode,
-and the interpreter never invokes a live regex cache. Module hooks are not used
-to normalize an absent member. Value comparison must not invoke authored equality,
-hashing, formatting or attribute access.
+Native observations preserve the class's actual bases and declared descriptors.
+Inherited and explicitly declared constructors remain distinct. Full authentication
+compares these identities with the isolated import while passive capture preserves
+the original class body, decorator, metaclass and construction-hook effects.
+Defaults, annotation operands and dataclass ancestry retain their native storage and
+supplier identities. Value comparison uses native storage without invoking authored
+equality, hashing, formatting or attribute access. Module hooks do not supply absent
+members. Native regex receivers retain the pattern, flags and actual callable
+topology in both observations.
 Source bindings retain null literals inside a typed value; a null annotation or
 default never becomes a successful null `FlextResult` payload or a substituted type.
-Native generated methods are compiled in batches whose starting lines depend on
-other generated methods. Their evidence retains actual compiler filenames, source
-positions, executable metadata and closure checks against the same authenticated
-construction inputs. Authored functions retain exact source positions.
-Generated functions and authored functions retain exact native source positions.
+Generated methods retain the native filenames and source positions produced by the
+real import, including batch positions and closure bindings. Authored functions
+retain exact native source positions.
 
 Every phase binds that same captured context to its staged consumer inputs. Journal
 transitions preserve it instead of rediscovering loaded origins after publication.
@@ -300,7 +298,7 @@ Exact native constants are elected before relocation and encoding. NaN, mutable
 constants and buffers retain explicit nonportable markers and cannot compare
 equal, even to another rejected observation. Unknown constant types fail before
 authored iteration, hashing or buffer conversion. Physical source receipts and
-fresh compilation remain necessary to authenticate the witness.
+authenticated cold import remain necessary to establish the witness's birth.
 Import dependency discovery uses the shared import maps; class-lineage validation remains
 with the queries that request class information. Namespace packages contribute
 their physical portions to source authority without requiring an executable
@@ -1242,7 +1240,6 @@ module supplies its lexical scope at that offset, and Rope resolves the existing
 node without tokenizing and parsing its text again. Local shadows and native
 import identity remain checked. The resolution map does not persist across source
 observations or replace source, producer, or publication proof.
-
 
 Rule `files` and `ignores` globs are relative to the elected `sgconfig.yml`,
 not the consumer's working directory. A source-only rule must therefore cover

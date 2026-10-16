@@ -14,8 +14,10 @@ from flext_cli import u
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -106,18 +108,15 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             The resulting scope pair, or ``None`` when this part holds no
             flattenable inline wrapper.
 
-        Raises:
-            ValueError: If family part has no Rope scope.
-
         """
         root = Path(project.root.real_path)
-        module = project.get_pymodule(
-            project.get_resource(path.relative_to(root).as_posix()),
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                project.get_resource(path.relative_to(root).as_posix()), path
+            ),
         )
         scope = module.get_scope()
-        if scope is None:
-            msg = f"family part has no Rope scope: {path}"
-            raise ValueError(msg)
         owner_name = workspace.convention(path).module_policy.expected_family
         if owner_name is None:
             return None
@@ -351,7 +350,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
             resource = project.get_resource(path.relative_to(root).as_posix())
-            module = project.get_pymodule(resource)
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             covered = rewrites.get(path, ())
             for start, end in cls.reference_regions(source):
                 prefix, separator, name = source[start:end].rpartition(".")
