@@ -14,6 +14,7 @@ from flext_cli import cli, u
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
@@ -40,31 +41,46 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             sources,
             tuple(
                 rule
-                for rule in cls.declared_contract_rules()
+                for rule in cls.declared_contract_rules(
+                    Path(workspace.rope_project.root.real_path)
+                )
                 if rule.phase == c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
             ),
         )
 
     @staticmethod
-    def declared_contract_rules() -> t.SequenceOf[m.Infra.RopeContractRule]:
+    def declared_contract_rules(
+        repository_root: Path,
+    ) -> t.SequenceOf[m.Infra.RopeContractRule]:
         """Load typed policy; reject duplicate identities and undeclared families.
 
+        The packaged catalogue holds only universal rules. A governed repository
+        declares rules about its own symbols in the same relative path under its
+        root; that overlay is optional, and its absence declares no rule.
+
         Returns:
-            Declared Rope contract rules in configuration order.
+            Packaged rules, then the repository's own rules, in file order.
 
         Raises:
             ValueError: If two rules share an identity or a rule names an
                 undeclared facade family.
 
-
         """
-        rules = m.Infra.RopeContractRules.model_validate(
-            u.Cli.yaml_safe_load(
-                type(config).ssot_config_dir().parent
-                / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                / "contracts.yaml"
-            ).unwrap()
-        ).rules
+        packaged = (
+            type(config).ssot_config_dir().parent
+            / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        )
+        overlay = repository_root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        catalogues = (packaged,) + (
+            (overlay,) if overlay != packaged and overlay.exists() else ()
+        )
+        rules = tuple(
+            rule
+            for catalogue in catalogues
+            for rule in m.Infra.RopeContractRules.model_validate(
+                u.Cli.yaml_safe_load(catalogue).unwrap()
+            ).rules
+        )
         ids = [rule.id for rule in rules]
         if len(ids) != len(set(ids)):
             message = "duplicate Rope contract rule identities"
@@ -95,9 +111,10 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
         working = dict(items)
         applied: dict[Path, list[str]] = {}
+        epoch = cls._contract_epoch(workspace, working, rules)
         for rule in rules:
             project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                workspace.rope_project, working
+                workspace.rope_project, working, captured=epoch
             )
             try:
                 resources = tuple(
@@ -141,6 +158,57 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 )
                 for path, source in items
                 if source != working[path]
+            )
+        )
+
+    @staticmethod
+    def _contract_epoch(
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        rules: t.SequenceOf[m.Infra.RopeContractRule],
+    ) -> m.Infra.CodemodSourceEpoch:
+        """Capture the edited sources and every module a rule identity names, once.
+
+        The planning snapshot is a closed inventory: a constrained identity such
+        as ``pydantic.Field`` resolves only when its module closure was captured
+        before planning. Every dotted prefix is offered; names that are not
+        modules resolve to nothing and capture nothing.
+
+        Returns:
+            The immutable source epoch shared by every rule of this plan.
+
+        """
+        prefix = c.Infra.ROPE_NAME_CONSTRAINT_PREFIX
+        identities = (
+            *(
+                value.removeprefix(prefix)
+                for rule in rules
+                for constraint in rule.arguments.values()
+                for value in (
+                    (constraint,) if isinstance(constraint, str) else constraint
+                )
+                if value.startswith(prefix)
+            ),
+            *(identity for rule in rules for identity in rule.bindings.values()),
+            *(base for rule in rules for base in rule.model_bases),
+        )
+        modules = tuple(
+            dict.fromkeys(
+                ".".join(parts[:end])
+                for parts in (identity.split(".") for identity in identities)
+                for end in range(1, len(parts) + 1)
+            )
+        )
+        root = Path(workspace.rope_project.root.real_path)
+        owner = FlextInfraUtilitiesCodemodProject
+        return owner.codemod_source_epoch(
+            owner.codemod_binding_snapshot(
+                root,
+                projects=(
+                    m.Infra.CodemodBindingProject(
+                        root=root, source_paths=tuple(sources), modules=modules
+                    ),
+                ),
             )
         )
 

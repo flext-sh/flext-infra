@@ -363,6 +363,13 @@ class FlextInfraConstantsRefactor:
         CODEMOD_RULES_RELPATH / "ast-grep" / CODEMOD_CONFIG_FILENAME
     )
     CODEMOD_ROPE_RULES_RELPATH: ClassVar[Path] = CODEMOD_RULES_RELPATH / "rope"
+    # Rope contract catalogue: the packaged universal rules, then the optional
+    # same-path overlay a governed repository declares for its own symbols.
+    CODEMOD_ROPE_CONTRACTS_RELPATH: ClassVar[Path] = (
+        CODEMOD_ROPE_RULES_RELPATH / "contracts.yaml"
+    )
+    # Rope restructure argument that binds a capture to one qualified identity.
+    ROPE_NAME_CONSTRAINT_PREFIX: ClassVar[str] = "name="
     CODEMOD_RULE_DIRS_KEY: ClassVar[str] = "ruleDirs"
     CODEMOD_UTIL_DIRS_KEY: ClassVar[str] = "utilDirs"
     CODEMOD_TEST_CONFIGS_KEY: ClassVar[str] = "testConfigs"
