@@ -215,6 +215,16 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             scope_roots=session.journal.scope_roots,
             source_scope=session.journal.source_scope,
         )
+        private = outcome.__pydantic_private__
+        if private is None:
+            return r[m.Infra.CodegenPhaseOutcome].fail(
+                "publication receipt has no Pydantic private storage",
+            )
+        private["_publication_birth"] = (
+            id(outcome),
+            id(reference),
+            u.Cli.sha256_content(outcome.model_dump_json()),
+        )
         return r[m.Infra.CodegenPhaseOutcome].ok(outcome)
 
     def _publication_journal_current(
@@ -1124,7 +1134,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         reference = self._producer.value.generator_reference
         if reference is None or journal.generator_reference is None:
             return result_type.fail("journal lacks its original native producer")
-        born = FlextInfraCodegenPreconditions.reference_current(reference)
+        born = FlextInfraCodegenPreconditions.reference_birth_current(reference)
         if born.failure:
             return result_type.from_failure(born)
         if journal.generator_reference.model_dump() != reference.model_dump():

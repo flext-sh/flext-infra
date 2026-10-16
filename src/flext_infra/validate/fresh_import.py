@@ -18,6 +18,7 @@ from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
@@ -274,33 +275,34 @@ _native_atomic = (
             f"stage=native-source-authority selections={len(names)} "
             f"runtime={runtime_root}",
         )
-        cold = FlextInfraCodegenPreconditions.capture_source_authority(
-            runtime_root,
-            nominated=names,
+        sealed = FlextInfraCodegenPreconditions.capture_observed_source_authority(
+            runtime_root, names
         )
-        if cold.failure:
-            return result_type.from_failure(cold)
+        if sealed.failure:
+            return result_type.from_failure(sealed)
+        authority, observation = sealed.value
         u.Cli.info(
             f"stage=native-source-authority-complete "
-            f"providers={len(cold.value.generator_modules)} "
-            f"inputs={len(cold.value.inputs)}",
+            f"providers={len(authority.generator_modules)} "
+            f"inputs={len(authority.inputs)}",
         )
-        inputs = FlextInfraCodegenPreconditions.authority_inputs(cold.value)
+        inputs = FlextInfraCodegenPreconditions.authority_inputs(authority)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        return cls.capture_native_reference(
+        return cls._observed_native_reference(
             m.Infra.NativeImportRequest(
                 repository_root=repository_root,
                 runtime_root=runtime_root,
                 modules=names,
                 inputs=inputs.value,
-                source_authority=cold.value,
+                source_authority=authority,
                 import_roots=tuple(
                     dict.fromkeys(
-                        root.parent for _name, root in cold.value.generator_modules
+                        root.parent for _name, root in authority.generator_modules
                     )
                 ),
             ),
+            observation,
         )
 
     @classmethod
@@ -314,14 +316,26 @@ _native_atomic = (
             The sealed reference, or the first source or runtime failure.
 
         """
-        result_type = r[m.Infra.NativeImportReference]
-        observed = FlextInfraWorkspaceNativeReference.capture(request.modules).flat_map(
-            lambda snapshot: (
-                FlextInfraWorkspaceNativeReference.authored_sources_current(
-                    snapshot, request.source_authority.inputs
-                ).map(lambda _: snapshot)
-            )
+        return FlextInfraWorkspaceNativeReference.capture(request.modules).flat_map(
+            lambda observed: cls._observed_native_reference(request, observed)
         )
+
+    @classmethod
+    def _observed_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+        snapshot: m.Infra.NativeImportObservation,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Compare one loaded observation with its independently imported producer.
+
+        Returns:
+            The live reference after the original source and cold import proofs.
+
+        """
+        result_type = r[m.Infra.NativeImportReference]
+        observed = FlextInfraWorkspaceNativeReference.authored_sources_current(
+            snapshot, request.source_authority.inputs
+        ).map(lambda _: snapshot)
         if observed.failure:
             return result_type.from_failure(observed)
         cold = cls._cold_native_observation(request)
