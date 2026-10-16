@@ -37,14 +37,16 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         """
         verifier = FlextInfraValidateFreshImport.capture_producer(
             request.root,
-            entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
+            entrypoint=FlextInfraMiseArtifactsVerification.publication_current,
         )
         if verifier.failure:
             return r[m.Infra.CodegenResult].from_failure(verifier)
         with FlextInfraCodegenFileLeases.mutation_lease(request.root):
+            current = FlextInfraCodegenPreconditions.producer_current(verifier.value)
+            if current.failure:
+                return r[m.Infra.CodegenResult].from_failure(current)
             observed = FlextInfraMiseArtifactsVerification.publication_current(
                 request,
-                verifier=verifier.value,
             )
             if observed.failure:
                 return r[m.Infra.CodegenResult].from_failure(observed)

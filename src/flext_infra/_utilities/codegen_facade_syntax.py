@@ -1,4 +1,4 @@
-"""Concrete syntax and declaration checks for generated facades.
+"""Concrete syntax preservation for generated facades.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from pathlib import Path
 from typing import override
 
 from libcst import (
@@ -36,7 +35,7 @@ from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 
 
 class FlextInfraUtilitiesCodegenFacadeSyntax:
-    """Preserve facade syntax and enforce pure declaration boundaries."""
+    """Preserve facade syntax while composing declared owners."""
 
     @staticmethod
     def _mergeable_import(
@@ -130,96 +129,6 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
                 ),
             )
         return module.with_changes(body=tuple(body)).code
-
-    @staticmethod
-    def _facade_module_declarations(
-        tree: ast.Module, facade: ast.ClassDef, pkg_dir: Path
-    ) -> None:
-        for statement in tree.body:
-            if (
-                statement is facade
-                or isinstance(statement, ast.Import | ast.ImportFrom)
-                or (
-                    isinstance(statement, ast.Expr)
-                    and isinstance(statement.value, ast.Constant)
-                    and isinstance(statement.value.value, str)
-                )
-                or (
-                    isinstance(statement, ast.If)
-                    and isinstance(statement.test, ast.Name)
-                    and statement.test.id == "TYPE_CHECKING"
-                )
-            ):
-                continue
-            value = (
-                statement.value
-                if isinstance(
-                    statement,
-                    ast.Assign | ast.AnnAssign,
-                )
-                else None
-            )
-            targets = (
-                statement.targets
-                if isinstance(statement, ast.Assign)
-                else (statement.target,)
-                if isinstance(statement, ast.AnnAssign)
-                else ()
-            )
-            if (
-                targets
-                and all(isinstance(target, ast.Name) for target in targets)
-                and (
-                    all(
-                        isinstance(target, ast.Name) and target.id == "__all__"
-                        for target in targets
-                    )
-                    or (isinstance(value, ast.Name) and value.id == facade.name)
-                )
-            ):
-                continue
-            message = (
-                "Facade preserves authored module declaration: "
-                f"{pkg_dir}:{statement.lineno}"
-            )
-            raise ValueError(message)
-
-    @staticmethod
-    def _facade_owner_declarations(
-        owner: ast.ClassDef,
-        facade: ast.ClassDef,
-        namespace: ast.ClassDef,
-        aliases: set[str],
-        pkg_dir: Path,
-    ) -> None:
-        for statement in owner.body:
-            if isinstance(statement, ast.Pass) or (
-                isinstance(statement, ast.Expr)
-                and isinstance(statement.value, ast.Constant)
-                and isinstance(statement.value.value, str)
-            ):
-                continue
-            if isinstance(statement, ast.Assign) and all(
-                isinstance(target, ast.Name) for target in statement.targets
-            ) and (
-                isinstance(statement.value, ast.Name)
-                and statement.value.id in aliases
-                or (
-                    isinstance(statement.value, ast.Attribute)
-                    and isinstance(statement.value.value, ast.Name)
-                    and statement.value.value.id in aliases
-                )
-            ):
-                continue
-            if isinstance(statement, ast.Pass) or (
-                statement is namespace and namespace is not facade
-            ):
-                continue
-            message = (
-                f"Facade preserves authored declaration before generation: "
-                f"{pkg_dir}:{owner.name}:{statement.lineno}"
-            )
-            raise ValueError(message)
 
     @staticmethod
     def _wrap_facade_imports(source: str) -> str:

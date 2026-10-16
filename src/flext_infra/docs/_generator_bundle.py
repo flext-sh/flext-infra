@@ -276,21 +276,12 @@ class FlextInfraDocGeneratorBundleMixin:
         cls,
         request: m.Infra.DocsGenerateRequest,
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
-        """Render one canonical docs artifact inventory from the frozen snapshot.
-
-        Publication admits sources and topology once per owning scope batch.
+        """Render one inventory from its consumed source and topology snapshot.
 
         Returns:
-            The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
+            The captured render bundle, or its original input or rendering failure.
 
         """
-        return cls._captured_request_bundle(request)
-
-    @classmethod
-    def _captured_request_bundle(
-        cls,
-        request: m.Infra.DocsGenerateRequest,
-    ) -> p.Result[m.Infra.DocsGenerationBundle]:
         started_at = perf_counter()
         sources = cls._discovered_sources(request, started_at)
         if sources.failure:

@@ -338,6 +338,12 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         """
         root = request.root.expanduser().resolve()
+        if operation is not None:
+            original = FlextInfraMiseArtifactsVerification.publication_birth_current(
+                operation,
+            )
+            if original.failure:
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(original)
         mismatched = operation is not None and (
             operation.root != root
             or operation.surface != request.what
@@ -348,6 +354,20 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return r[m.Infra.CodegenPhaseOutcome].fail(
                 "operation receipt differs from its actual request",
             )
+        pending = list(batches)
+        while pending:
+            batch = pending.pop()
+            pending.extend(batch.batches)
+            outside = tuple(
+                output.path
+                for output in batch.outputs
+                if not any(output.path.is_relative_to(scope) for scope in scope_roots)
+            )
+            if outside:
+                return r[m.Infra.CodegenPhaseOutcome].fail(
+                    "batch output is outside the operation participants: "
+                    + ", ".join(map(str, outside)),
+                )
         if completed and (
             not batches
             or any(
@@ -395,7 +415,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             written = cls.publish_outcome(root, outcome)
         if written.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(written)
-        return r[m.Infra.CodegenPhaseOutcome].ok(outcome)
+        return cls._owned_publication_outcome(outcome)
 
     def bind_publication_proof(
         self,
@@ -406,7 +426,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         phase: c.Infra.CodegenStagedFilePhase | None = None,
         batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Persist the complete native output set without rendering or byte copies.
+        """Bind physical output proof to this writer's original journal.
 
         ``topology`` names the receipt whose source topology, scope roots and
         source scope the journal adopts; without it the journal keeps its own.
@@ -415,6 +435,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
 
         """
+        owned = self._publication_journal_current(session)
+        if owned.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(owned)
         outputs = {item.path: item for item in session.journal.outputs}
         if batch_admission is not None:
             if (
@@ -442,10 +465,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             if record.failure:
                 return r[m.Infra.CodegenTransactionSession].from_failure(record)
             outputs[plan.path] = record.value
-        if not session.journal.generator_sources or not session.journal.generator_trees:
-            return r[m.Infra.CodegenTransactionSession].fail(
-                "publication has no pre-planning producer authority"
-            )
         adopted = topology or session.journal
         journal = session.journal.model_copy(
             update={

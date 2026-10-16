@@ -278,6 +278,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
                         f"{rel}#block{index}.py",
                         "-",
                     ],
+                    cwd=scope.path,
                     options=m.Cli.ProcessOptions(
                         input_data=match.group("body").encode(),
                     ),

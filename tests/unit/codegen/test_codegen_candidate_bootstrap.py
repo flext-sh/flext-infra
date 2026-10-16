@@ -18,7 +18,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, p, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -171,20 +170,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         state = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
         destination = root / "publication-output.txt"
         before = tm.ok(u.Infra.codegen_target_snapshot(destination))
-        producer = tm.ok(
-            FlextInfraValidateFreshImport.capture_producer(
-                Path.cwd(),
-                entrypoint=FlextInfraValidateFreshImport.capture_producer,
-            )
-        )
         planner = FlextInfraCodegenConform(
             repository_root=root,
             ports=None,
-            producer=producer,
         )
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
-            producer=producer,
         )
         analysis = m.Infra.CodegenPhaseAnalysis(
             phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,

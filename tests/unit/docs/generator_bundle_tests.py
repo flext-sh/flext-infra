@@ -28,19 +28,6 @@ from tests import p, tm, u
 from tests.unit.docs.generator_bundle_tests import TestsFlextInfraDocsGeneratorBundle
 tmp_path = Path(sys.argv[2])
 case = TestsFlextInfraDocsGeneratorBundle()
-
-def producer_for(
-    generator: p.Infra.DocsArtifactPlanner,
-    operation: p.AttributeProbe,
-) -> m.Infra.CodegenPhaseAnalysis:
-    return tm.ok(
-        FlextInfraValidateFreshImport.capture_producer(
-            runtime_root,
-            entrypoint=operation,
-            collaborators=(generator.publish_batch,),
-        )
-    )
-
 """
 
 
@@ -88,9 +75,7 @@ guide.write_text("# Original\n", encoding="utf-8")
 target = workspace / "flext-a/README.md"
 original_target = target.read_bytes()
 generator = case._generator(workspace)
-prepared = generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-)
+prepared = generator.prepare_bundle()
 tm.ok(prepared)
 guide.write_text("# Changed\n", encoding="utf-8")
 published = generator.publish_batch(prepared.value)
@@ -118,15 +103,7 @@ tm.that(
     tmp_path, project_names=("flext-a",)
 )
 generator = case._generator(workspace)
-verifier = tm.ok(
-    FlextInfraValidateFreshImport.capture_producer(
-        runtime_root,
-        entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
-    )
-)
-prepared = tm.ok(generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-))
+prepared = tm.ok(generator.prepare_bundle())
 resources = tuple(
     state.path
     for state in prepared.source_states
@@ -141,25 +118,6 @@ tm.that(bool(resources), eq=True)
 receipts: list[m.Infra.CodegenPhaseOutcome] = []
 tm.ok(generator.publish_batch(prepared, publication_receipts=receipts))
 tm.that(len(receipts), eq=1)
-published_generator_sources = {
-    source.path: source for source in receipts[0].generator_sources
-}
-captured_generator_sources = tuple(
-    tm.ok(
-        FlextInfraMiseArtifactsJournal.source_record(
-            prepared.producer.phase, source
-        )
-    )
-    for source in prepared.producer.inputs
-)
-tm.that(
-    all(
-        source.path in published_generator_sources
-        and published_generator_sources[source.path].sha256 == source.sha256
-        for source in captured_generator_sources
-    ),
-    eq=True,
-)
 published_sources = {source.path: source for source in receipts[0].sources}
 captured_sources = tuple(
     tm.ok(
@@ -177,17 +135,15 @@ tm.that(
     ),
     eq=True,
 )
-tm.that(receipts[0].generator_trees, eq=prepared.producer.generator_trees)
-tm.that(receipts[0].generator_modules, eq=prepared.producer.generator_modules)
 tm.ok(
     FlextInfraMiseArtifactsVerification.publication_states_current(
-        receipts[0], verifier=verifier
+        receipts[0]
     ),
 )
 added = workspace / "flext-a/src/flext_a/new_source.py"
 added.write_text('"""Source added after publication."""\n', encoding="utf-8")
 changed = FlextInfraMiseArtifactsVerification.publication_states_current(
-    receipts[0], verifier=verifier
+    receipts[0]
 )
 tm.fail(changed)
 tm.that(changed.error or "", has=str(added))
@@ -213,9 +169,7 @@ _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
 )
 tm.that(local_layer.exists(), eq=False)
 generator = case._generator(workspace)
-prepared = tm.ok(generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-))
+prepared = tm.ok(generator.prepare_bundle())
 captured = next(state for state in prepared.source_states if state.path == local_layer)
 tm.that(captured.content, eq=None)
 local_layer.parent.mkdir(parents=True, exist_ok=True)
@@ -264,9 +218,7 @@ tm.that(published.error or "", has=str(local_layer))
     tmp_path, project_names=("flext-a",)
 )
 generator = case._generator(workspace)
-prepared = generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-)
+prepared = generator.prepare_bundle()
 tm.ok(prepared)
 added = workspace / "flext-a/src/flext_a/added.py"
 added.write_text('"""Added after render."""\n', encoding="utf-8")
@@ -294,9 +246,7 @@ generator = FlextInfraDocGenerator(
     selected_projects=["flext-a"],
     include_root=False,
 )
-prepared = next(generator.prepare_batches(
-    producer=producer_for(generator, generator.prepare_batches)
-))
+prepared = next(generator.prepare_batches())
 tm.ok(prepared)
 package = workspace / "flext-a/src/flext_a"
 relocated = workspace / "flext-a/retained_package"
@@ -365,17 +315,8 @@ analysis = m.Infra.CodegenPhaseAnalysis(
         ),
     ),
 )
-producer = tm.ok(
-    FlextInfraValidateFreshImport.capture_producer(
-        runtime_root, entrypoint=FlextInfraCodegenTransaction
-    )
-)
 transaction = FlextInfraCodegenTransaction(
     FlextInfraCodegenMiseArtifacts(repository_root=root),
-    producer=producer,
-)
-analysis = tm.ok(
-    FlextInfraCodegenPreconditions.bind_producer_analysis(analysis, producer)
 )
 admission = tm.ok(FlextInfraMisePublication.admit_batch(analysis))
 source.write_bytes(b"value = 2\n")
@@ -418,9 +359,7 @@ generator = FlextInfraDocGenerator(
     selected_projects=["flext-a", "flext-b"],
     include_root=False,
 )
-batches = generator.prepare_batches(
-    producer=producer_for(generator, generator.prepare_batches)
-)
+batches = generator.prepare_batches()
 first = next(batches)
 tm.ok(first)
 later = workspace / "flext-b/src/flext_b/later.py"
@@ -456,9 +395,7 @@ target = project / "README.md"
 target.unlink()
 target.symlink_to(unmanaged.name)
 generator = case._generator(workspace)
-prepared = generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-)
+prepared = generator.prepare_bundle()
 tm.ok(prepared)
 case._materialize_required_parents(generator, prepared.value)
 planned = generator.plan_files(prepared.value)
@@ -490,9 +427,7 @@ generated = project / c.Infra.DIR_DOCS / "api-reference/generated"
 generated.parent.mkdir(parents=True, exist_ok=True)
 generated.symlink_to(curated, target_is_directory=True)
 generator = case._generator(workspace)
-prepared = generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-)
+prepared = generator.prepare_bundle()
 tm.fail(prepared)
 tm.that(prepared.error or "", has="atomic")
 tm.that(keep.read_text(encoding="utf-8"), eq="keep\n")
@@ -523,9 +458,7 @@ generator = FlextInfraDocGenerator(
     repository_root=workspace,
     selected_projects=["escaped"],
 )
-prepared = generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-)
+prepared = generator.prepare_bundle()
 tm.fail(prepared)
 tm.that(prepared.error or "", has="atomic")
 """,
@@ -548,9 +481,7 @@ guide = workspace / "flext-a" / c.Infra.DIR_DOCS / "guides/operator.md"
 guide.parent.mkdir(parents=True, exist_ok=True)
 guide.write_text("# Operator\n", encoding="utf-8")
 generator = case._generator(workspace)
-prepared = generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-)
+prepared = generator.prepare_bundle()
 tm.ok(prepared)
 source_paths = {state.path for state in prepared.value.source_states}
 source_names = {path.name for path in source_paths}
@@ -577,9 +508,7 @@ guide = workspace / "flext-a" / c.Infra.DIR_DOCS / "guides/operator.md"
 guide.parent.mkdir(parents=True, exist_ok=True)
 guide.write_text("# Original\n", encoding="utf-8")
 generator = case._generator(workspace)
-prepared = tm.ok(generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-))
+prepared = tm.ok(generator.prepare_bundle())
 case._materialize_required_parents(generator, prepared)
 guide.write_text("# Changed\n", encoding="utf-8")
 planned = generator.plan_files(prepared)
@@ -615,7 +544,6 @@ generator = FlextInfraDocGenerator(
 )
 receipts: list[m.Infra.CodegenPhaseOutcome] = []
 batches = generator.prepare_batches(
-    producer=producer_for(generator, generator.prepare_batches),
     publication_receipts=receipts,
 )
 first = tm.ok(next(batches))
@@ -648,9 +576,7 @@ tm.that(tuple(batches), empty=True)
     tmp_path, project_names=("flext-a",)
 )
 generator = case._generator(workspace)
-first = generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-)
+first = generator.prepare_bundle()
 tm.ok(first)
 pyproject = workspace / "flext-a/pyproject.toml"
 pyproject.write_text(
@@ -658,9 +584,7 @@ pyproject.write_text(
     'description = "Fresh metadata"\n',
     encoding="utf-8",
 )
-second = generator.prepare_bundle(
-    producer=producer_for(generator, generator.prepare_bundle)
-)
+second = generator.prepare_bundle()
 tm.ok(second)
 readme = next(
     artifact

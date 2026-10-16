@@ -9,11 +9,16 @@ from __future__ import annotations
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, u
-from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenExecutionBase
+from flext_infra.codegen import (
+    FlextInfraCodegenConform,
+    FlextInfraCodegenExecutionBase,
+    FlextInfraCodegenFileLeases,
+    FlextInfraMiseArtifactsVerification,
+)
 
 
 class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
-    """Delegate declared Make bootstrap surface exclusively to codegen conform."""
+    """Compose the existing Make planner, publisher and receipt verifier."""
 
     model_config = m.ConfigDict(use_enum_values=False)
     kind: Annotated[
@@ -42,21 +47,25 @@ class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
             if self.effective_dry_run
             else c.Infra.CodegenConformMode.APPLY
         )
+        request = m.Infra.CodegenConformRequest(
+            root=requested,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=mode,
+            declaration_kind=self.kind,
+        )
+        if mode is c.Infra.CodegenConformMode.CHECK:
+            with FlextInfraCodegenFileLeases.mutation_lease(requested):
+                return FlextInfraMiseArtifactsVerification.publication_current(
+                    request,
+                ).map(lambda _: True)
         conformed = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=requested,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=mode,
-                declaration_kind=self.kind,
-            ),
+            request,
             ports=None,
         )
         if conformed.failure:
             return r[bool].from_failure(conformed)
-        if mode is c.Infra.CodegenConformMode.APPLY and (
-            conformed.value.publication_receipt is None
-        ):
+        if conformed.value.publication_receipt is None:
             return r[bool].fail(
                 f"Makefile bootstrap has no completed publication receipt: {requested}",
             )

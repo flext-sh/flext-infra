@@ -46,11 +46,6 @@ tm.ok(u.Cli.atomic_write_text_file(target, payload))
 before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
 owner = FlextInfraCodegenTransaction(
     FlextInfraCodegenMiseArtifacts(repository_root=root),
-    producer=tm.ok(
-        FlextInfraValidateFreshImport.capture_producer(
-            runtime_root, entrypoint=FlextInfraCodegenTransaction
-        )
-    ),
 )
 roots = {"@unchanged": root}
 validated: p.Result[m.Infra.GitRepoRequest] | None = None
@@ -143,24 +138,11 @@ generator = FlextInfraDocGenerator(
     selected_projects=["flext-a"],
     include_root=False,
 )
-verifier = tm.ok(
-    FlextInfraValidateFreshImport.capture_producer(
-        runtime_root,
-        entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
-    )
-)
-producer = tm.ok(
-    FlextInfraValidateFreshImport.capture_producer(
-        runtime_root,
-        entrypoint=generator.prepare_batches,
-        collaborators=(generator.publish_batch,),
-    )
-)
 receipts: list[m.Infra.CodegenPhaseOutcome] = []
 bundle = tm.ok(
     next(
         generator.prepare_batches(
-            producer=producer, publication_receipts=receipts
+            publication_receipts=receipts
         )
     )
 )
@@ -191,7 +173,7 @@ published = tm.ok(
 if mutation == "input-only":
     guide.write_text("# Changed guide\n", encoding="utf-8")
     observed = FlextInfraMiseArtifactsVerification.publication_states_current(
-        published, verifier=verifier
+        published
     )
     tm.fail(observed)
     tm.that(guide.read_text(encoding="utf-8"), eq="# Changed guide\n")
@@ -204,7 +186,7 @@ else:
     )
     injected = published.model_copy(update={"outputs": (output,)})
     observed = FlextInfraMiseArtifactsVerification.publication_states_current(
-        injected, verifier=verifier
+        injected
     )
     tm.fail(observed)
     tm.that(unowned.read_bytes(), eq=b"No publishing batch\n")
@@ -254,11 +236,6 @@ target = root / c.Infra.MAKEFILE_FILENAME
 tm.ok(u.Cli.atomic_write_text_file(target, "VALUE := initial\n"))
 owner = FlextInfraCodegenTransaction(
     FlextInfraCodegenMiseArtifacts(repository_root=root),
-    producer=tm.ok(
-        FlextInfraValidateFreshImport.capture_producer(
-            runtime_root, entrypoint=FlextInfraCodegenTransaction
-        )
-    ),
 )
 roots = {"@bootstrap-0": root}
 receipts: list[m.Infra.CodegenPhaseOutcome] = []

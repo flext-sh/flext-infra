@@ -139,21 +139,21 @@ class FlextInfraRuntimeDependencyCollector:
 
         def provider(
             distribution: Distribution,
-        ) -> p.Result[m.Infra.RuntimeDependencyProvider | None]:
+        ) -> p.Result[t.VariadicTuple[m.Infra.RuntimeDependencyProvider]]:
             """Elect and authenticate one native distribution without another scan.
 
             Returns:
-                The required supplier, its failure, or no provider for unused modules.
+                The required supplier collection, or its original failure.
 
             """
-            selected = r[m.Infra.RuntimeDependencyProvider | None]
+            selected = r[t.VariadicTuple[m.Infra.RuntimeDependencyProvider]]
             states = self._metadata_states(distribution, context.environment_path)
             name = distribution.metadata.get("Name")
             if name is None:
                 return selected.fail("installed dependency metadata lacks its Name")
             identity = canonicalize_name(name)
             if identity not in authored:
-                return selected.ok(None)
+                return selected.ok(())
             receipt = (
                 m.Infra.DirectUrlReceipt.model_validate_json(states[-1].content)
                 if states[-1].content is not None
@@ -173,7 +173,7 @@ class FlextInfraRuntimeDependencyCollector:
                 ),
             )
             if not supplied:
-                return selected.ok(None)
+                return selected.ok(())
             package = self._locked_package(distribution, name, locked)
             extra_inputs = package.flat_map(
                 lambda locked_package: self._provider_inputs(
@@ -186,14 +186,14 @@ class FlextInfraRuntimeDependencyCollector:
             )
             if extra_inputs.failure:
                 return selected.from_failure(extra_inputs)
-            return selected.ok(
+            return selected.ok((
                 m.Infra.RuntimeDependencyProvider(
                     modules=supplied,
                     package=package.value,
                     requirement=authored[identity],
                     inputs=(*states, *extra_inputs.value),
-                )
-            )
+                ),
+            ))
 
         providers: list[m.Infra.RuntimeDependencyProvider] = []
         for distribution in u.installed_distributions(
@@ -202,8 +202,7 @@ class FlextInfraRuntimeDependencyCollector:
             selected = provider(distribution)
             if selected.failure:
                 return result.from_failure(selected)
-            if selected.value is not None:
-                providers.append(selected.value)
+            providers.extend(selected.value)
         return result.ok(tuple(providers))
 
     @classmethod

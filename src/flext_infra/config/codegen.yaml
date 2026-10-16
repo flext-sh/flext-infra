@@ -146,6 +146,7 @@ Infra:
           arguments: [ --version ]
           pattern: "^uv {version} "
       - name: direnv
+        selector: github:direnv/direnv
         version: latest
         version_probe:
           binary: direnv
