@@ -450,10 +450,10 @@ class FlextInfraWorkspaceGeneratedFunction:
         arguments: t.DictKV[str, p.AttributeProbe] = {}
         for keyword in call.keywords:
             match keyword:
-                case ast.keyword(arg="attrs", value=ast.Name(id=name)) if (
-                    name in supplier
-                ):
-                    arguments["attrs"] = supplier[name]
+                case ast.keyword(arg="attrs", value=expression):
+                    arguments["attrs"] = self._attrs_helper_records(
+                        expression, supplier, sdk["Attribute"]
+                    )
                 case ast.keyword(arg="ns", value=ast.Constant(value=None)):
                     arguments["ns"] = None
                 case _:
@@ -502,6 +502,93 @@ class FlextInfraWorkspaceGeneratedFunction:
                 inputs=tuple(self._inputs.values()),
             )
         )
+
+    def _attrs_helper_records(
+        self,
+        expression: ast.expr,
+        supplier: t.MappingKV[str, p.AttributeProbe],
+        kind: p.AttributeProbe,
+    ) -> p.AttributeProbe:
+        """Evaluate a helper's ``attrs`` operand over native record slots.
+
+        The operand is a module record list, or one comprehension filtering it
+        by comparisons of record slots with literals.
+
+        Returns:
+            The record sequence the physical statement passed to the helper.
+
+        Raises:
+            ValueError: If the operand is outside that closed form.
+
+        """
+        match expression:
+            case ast.Name(id=name) if name in supplier:
+                return supplier[name]
+            case ast.ListComp(
+                elt=ast.Name(id=element),
+                generators=[
+                    ast.comprehension(
+                        target=ast.Name(id=target),
+                        iter=ast.Name(id=source),
+                        ifs=conditions,
+                        is_async=0,
+                    )
+                ],
+            ) if element == target and source in supplier:
+                records = supplier[source]
+                if type(records) is not list:
+                    msg = "native attrs helper record source is not a list"
+                    raise ValueError(msg)
+                return [
+                    record
+                    for record in records
+                    if all(
+                        self._attrs_condition(condition, target, record, kind)
+                        for condition in conditions
+                    )
+                ]
+            case _:
+                msg = "native attrs helper records are outside the closed form"
+                raise ValueError(msg)
+
+    def _attrs_condition(
+        self,
+        condition: ast.expr,
+        target: str,
+        record: p.AttributeProbe,
+        kind: p.AttributeProbe,
+    ) -> bool:
+        """Evaluate one closed record filter over native slot values.
+
+        Returns:
+            Whether the record satisfies the physical filter.
+
+        Raises:
+            ValueError: If the filter is outside slot truth and literal equality.
+
+        """
+        match condition:
+            case ast.BoolOp(op=ast.And(), values=operands):
+                return all(
+                    self._attrs_condition(operand, target, record, kind)
+                    for operand in operands
+                )
+            case ast.Attribute(value=ast.Name(id=name), attr=slot) if name == target:
+                truth = self._attrs_slot(record, kind, slot)
+                if type(truth) not in {bool, NoneType, str}:
+                    msg = f"native attrs filter slot is not a native scalar: {slot}"
+                    raise ValueError(msg)
+                return bool(truth)
+            case ast.Compare(
+                left=ast.Attribute(value=ast.Name(id=name), attr=slot),
+                ops=[ast.Eq() | ast.NotEq() as operator],
+                comparators=[ast.Constant(value=literal)],
+            ) if name == target and type(literal) in {bool, NoneType, str}:
+                equal = self._same_default(literal, self._attrs_slot(record, kind, slot))
+                return equal if isinstance(operator, ast.Eq) else not equal
+            case _:
+                msg = "native attrs helper filter is outside the closed form"
+                raise ValueError(msg)
 
     def _attrs_sdk(self, namespace: t.MappingKV[str, p.AttributeProbe]) -> None:
         """Authenticate the attrs builders and record classes before any call.
