@@ -74,6 +74,22 @@ Native checker caches remain owned by their existing runtime/cache owners. Nativ
 execution and malformed-report failures stay separate from diagnostic occurrences;
 neither a repeated failure nor an unchanged finding count proves validation success.
 
+## New projects
+
+`make project-new` delegates to the same typed `codegen new` service exposed by
+the public Infra facade. It consumes explicit `NAME`, `KIND`, `OUTPUT_ROOT`,
+`PROVIDER`, `REPOSITORY_URL`, `REPOSITORY_BRANCH`, `FLEXT_REPOSITORY_URL`,
+`FLEXT_REPOSITORY_REF`, `LICENSE`, `AUTHOR_NAME`, `AUTHOR_EMAIL`, `UPSTREAM`,
+`FLEXT_SOURCE`, and `YEAR` inputs. These are identity declarations for a repository
+that does not exist yet; missing or invalid values fail the service's validation.
+Make transports their literal values through the environment, preserving spaces
+without evaluating the values as shell code.
+
+The generated project owns its declaration, Makefile, CI workflows, package,
+examples, and tests. Provision and validate it through its own `make setup`,
+`make gen`, `make check`, `make test`, and `make build`. Its physical environment
+belongs to the generated repository.
+
 ## Environment activation
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.

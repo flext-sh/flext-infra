@@ -1235,6 +1235,37 @@ _builtin_gen_init:
 	$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" "$$@"
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check-only
 
+# Identity inputs are environment data, never interpolated into shell code.
+export FLEXT_NEW_NAME := $(value NAME)
+export FLEXT_NEW_KIND := $(value KIND)
+export FLEXT_NEW_OUTPUT_ROOT := $(value OUTPUT_ROOT)
+export FLEXT_NEW_PROVIDER := $(value PROVIDER)
+export FLEXT_NEW_REPOSITORY_URL := $(value REPOSITORY_URL)
+export FLEXT_NEW_REPOSITORY_BRANCH := $(value REPOSITORY_BRANCH)
+export FLEXT_NEW_REPOSITORY_URL_INFRA := $(value FLEXT_REPOSITORY_URL)
+export FLEXT_NEW_REPOSITORY_REF_INFRA := $(value FLEXT_REPOSITORY_REF)
+export FLEXT_NEW_LICENSE := $(value LICENSE)
+export FLEXT_NEW_AUTHOR_NAME := $(value AUTHOR_NAME)
+export FLEXT_NEW_AUTHOR_EMAIL := $(value AUTHOR_EMAIL)
+export FLEXT_NEW_UPSTREAM := $(value UPSTREAM)
+export FLEXT_NEW_SOURCE := $(value FLEXT_SOURCE)
+export FLEXT_NEW_YEAR := $(value YEAR)
+
+_builtin-project-new: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) codegen new --apply \
+		--name "$$FLEXT_NEW_NAME" --kind "$$FLEXT_NEW_KIND" \
+		--output-root "$$FLEXT_NEW_OUTPUT_ROOT" \
+		--provider "$$FLEXT_NEW_PROVIDER" \
+		--repository-url "$$FLEXT_NEW_REPOSITORY_URL" \
+		--repository-branch "$$FLEXT_NEW_REPOSITORY_BRANCH" \
+		--flext-repository-url "$$FLEXT_NEW_REPOSITORY_URL_INFRA" \
+		--flext-repository-ref "$$FLEXT_NEW_REPOSITORY_REF_INFRA" \
+		--license "$$FLEXT_NEW_LICENSE" \
+		--author-name "$$FLEXT_NEW_AUTHOR_NAME" \
+		--author-email "$$FLEXT_NEW_AUTHOR_EMAIL" \
+		--upstream "$$FLEXT_NEW_UPSTREAM" \
+		--flext-source "$$FLEXT_NEW_SOURCE" --year "$$FLEXT_NEW_YEAR"
+
 _builtin_gen_all:
 	@set -eu; \
 	scope=all; \
