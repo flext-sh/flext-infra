@@ -39,6 +39,13 @@ class FlextInfraModelsWorkspace:
         inputs: t.VariadicTuple[m.Cli.AtomicFileReceipt] = m.Field(
             description="Pinned source/resource/distribution/runtime byte identities"
         )
+        bootstrap_sources: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(),
+            description=(
+                "Original buffered source candidates for atomic-reader bootstrap; "
+                "only consumed candidates enter the sealed native reference"
+            ),
+        )
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             description="Authenticated physical producer membership"
         )

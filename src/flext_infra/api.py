@@ -203,6 +203,21 @@ class FlextInfra(
             conform_collaborators=self.codegen_conform_collaborators(),
         ).execute()
 
+    def codegen_generate(
+        self,
+        request: m.Infra.CodegenGenerateRequest,
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Generate managed projections through the shared transactional owner.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
+        return FlextInfraCodegenConform.generate_request(
+            request,
+            ports=self.codegen_conform_collaborators(),
+        )
+
     def codegen_conform(
         self,
         request: m.Infra.CodegenConformRequest,

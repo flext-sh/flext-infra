@@ -1501,7 +1501,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 "editable provenance pth is empty: "
                 f"distribution={distribution} path={pth_file}",
             )
-        declared = cls._editable_declared_packages(distribution, expected_root)
+        declared = cls.editable_declared_packages(distribution, expected_root)
         if declared.failure:
             return r[bool].from_failure(declared)
         exposed: set[t.Pair[str, Path | None]] = set()
@@ -1520,7 +1520,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _editable_declared_packages(
+    def editable_declared_packages(
         cls,
         distribution: str,
         expected_root: Path,

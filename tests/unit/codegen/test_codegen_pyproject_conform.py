@@ -386,6 +386,64 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
         tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
 
+    @pytest.mark.parametrize("declare_optional", [False, True])
+    def test_deptry_dev_groups_follow_declared_optional_groups(
+        self,
+        declare_optional: bool,
+    ) -> None:
+        """PEP 735 groups never create references to absent PEP 621 extras."""
+        policy = config.Infra.tooling.tools.deptry.optional_dependencies_dev_groups
+        optional: t.JsonDict = {
+            group: ["requests"] for group in policy if declare_optional
+        }
+        source = u.Cli.toml_dumps(
+            u.Cli.toml_document_from_mapping({
+                "project": {
+                    "name": "workspace",
+                    "dependencies": [],
+                    "optional-dependencies": optional,
+                },
+                "dependency-groups": {str(c.Infra.DEV): ["pytest"]},
+                "tool": {
+                    "deptry": {
+                        "optional_dependencies_dev_groups": ["absent-fixture-extra"],
+                    },
+                },
+            }),
+        )
+        workspace = self._workspace()
+        resolution = self._uv_resolution(config.Infra.codegen.toolchain)
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=resolution,
+            ),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(
+                conformed,
+                "tool",
+                "deptry",
+                "optional_dependencies_dev_groups",
+            ),
+            eq=tuple(group for group in policy if group in optional),
+        )
+        tm.that(
+            u.Tests.toml_table_at(conformed, "project", "optional-dependencies"),
+            eq=optional,
+        )
+        repeated = tm.ok(
+            u.Infra.pyproject_conform(
+                conformed,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=resolution,
+            ),
+        )
+        tm.that(repeated, eq=conformed)
+
     def test_custom_typing_and_feature_extras_survive_conformance(self) -> None:
         """CUSTOM PEP 621 extras survive projection and dependency normalization."""
         live = (

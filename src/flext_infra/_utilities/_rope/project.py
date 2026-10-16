@@ -304,7 +304,7 @@ class FlextInfraRopeProject(Project):
         ignored_resources: t.SequenceOf[str] = (),
         *,
         python_path_folders: t.SequenceOf[str] = (),
-    ) -> p.Infra.RopeProject:
+    ) -> Self:
         """Construct a fresh Rope identity graph without persistent state.
 
         Args:
@@ -319,7 +319,7 @@ class FlextInfraRopeProject(Project):
                 must read the same captured inventory as project modules.
 
         Returns:
-            The native project through its typed semantic boundary.
+            A native project of the requested snapshot owner.
 
         Raises:
             ValueError: If Rope snapshot root must already exist.

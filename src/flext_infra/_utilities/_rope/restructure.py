@@ -44,8 +44,7 @@ class FlextInfraRopeRestructure(Restructure):
             else ("identity_choices", tuple(value))
             for name, value in request.arguments.items()
         }
-        native: p.Infra.RopeRestructure = super()
-        native.__init__(
+        super().__init__(
             project,
             request.pattern,
             request.goal,

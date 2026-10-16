@@ -108,11 +108,6 @@ known_first_party = [
   {{ item | tojson }},
 {% endfor %}
 ]
-optional_dependencies_dev_groups = [
-{% for item in tooling.tools.deptry.optional_dependencies_dev_groups %}
-  {{ item | tojson }},
-{% endfor %}
-]
 
 [tool.flext.docs]
 package_name = {{ package_name | tojson }}

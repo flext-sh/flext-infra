@@ -871,6 +871,19 @@ Infra:
     - { name: .mcp.json, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: CLAUDE.local.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
     vscode:
+      # Portable defaults shared by attached and standalone repositories.
+      # The editor owner binds environment tokens to the checkout runtime.
+      additional_settings:
+        python-envs.workspaceSearchPaths:
+        - ./.venv
+        - ./*/.venv
+        terminal.integrated.env.linux:
+          PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
+          VIRTUAL_ENV: ${workspaceFolder}/.venv
+        ruff.interpreter:
+        - ${workspaceFolder}/.venv/bin/python
+        ruff.path:
+        - ${workspaceFolder}/.venv/bin/ruff
       # Canonical .vscode/settings.json content injected with owner semantics:
       # scalar/list keys and artifact maps are exact; explicitly declared
       # non-artifact maps retain project extensions. Recursive "**" venv search

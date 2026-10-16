@@ -222,13 +222,10 @@ class FlextInfraUtilitiesCodegenFacades:
     ) -> str | None:
         """Render uniquely discovered utility, protocol or model owners.
 
-        Package consumers select called utility methods or referenced protocol
-        and model members through imports resolved to this package's facade.
-        Discovery scans Python modules recursively in the configured private
-        family and follows owner base chains. Existing namespace runtime bindings,
-        including simple assignment aliases, are retained rather than replaced.
-        Missing owners contribute imports and bases only; a namespace without
-        bases is updated through its unique concrete-syntax class span.
+        Constants, utilities and models compose the declarations published by
+        their configured private family. Protocol consumers select missing
+        protocol owners through resolved imports. Existing namespace runtime
+        bindings and owner base chains retain their declared identities.
         Rendering returns source without publishing it.
 
         Returns:
@@ -264,19 +261,18 @@ class FlextInfraUtilitiesCodegenFacades:
             raise ValueError(message)
         source: str = facade_path.read_text(encoding=c.DEFAULT_ENCODING)
         match family:
-            case "c" | "m":
+            case "c" | "m" | "u":
                 rendered = cls._render_declared_facade(
                     pkg_dir,
                     facade_path,
                     source,
                     family=family,
                 )
-            case "u" | "p":
-                rendered = cls._render_interface_facade(
+            case "p":
+                rendered = cls._render_protocol_facade(
                     pkg_dir,
                     facade_path,
                     source,
-                    family=family,
                 )
         return cls._generated_facade(pkg_dir, rendered, family=family)
 
@@ -519,15 +515,13 @@ class FlextInfraUtilitiesCodegenFacades:
             raise ValueError(message)
 
     @classmethod
-    def _render_interface_facade(
+    def _render_protocol_facade(
         cls,
         pkg_dir: Path,
         facade_path: Path,
         source: str,
-        *,
-        family: Literal["u", "p"],
     ) -> str:
-        """Validate consumer ownership before composing an interface facade.
+        """Compose protocol owners selected by their resolved consumers.
 
         Returns:
             The projected source with its existing namespace bindings preserved.
@@ -540,6 +534,7 @@ class FlextInfraUtilitiesCodegenFacades:
             ast.parse(source, filename=str(facade_path)),
             facade_path,
         )
+        family = c.Infra.FacadeFamily.P
         owners_dir = (
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
@@ -598,13 +593,6 @@ class FlextInfraUtilitiesCodegenFacades:
             module, class_name = candidates[0]
             additions.append((module, class_name))
             reachable.update(cls._reachable_bases((class_name,), ancestors))
-        if family == "u":
-            return cls._render_declared_facade(
-                pkg_dir,
-                facade_path,
-                source,
-                family=family,
-            )
         if not additions:
             return source
         source = cls._insert_imports(
@@ -1018,10 +1006,13 @@ class FlextInfraUtilitiesCodegenFacades:
                         f"Unresolved facade base: {facade_path}:{ast.unparse(base)}"
                     )
                     raise ValueError(message)
+                value = binding.get_object()
+                if FlextInfraUtilitiesRopeRuntime.semantic_module(value):
+                    message = f"Module used as a class base: {ast.unparse(base)}"
+                    raise ValueError(message)
                 holder = binding.get_definition_location()[0]
                 provider = holder.get_resource() if holder is not None else None
                 if provider is None:
-                    value = binding.get_object()
                     if (
                         FlextInfraUtilitiesRopeRuntime.abstract_class(value)
                         and not FlextInfraUtilitiesRopeRuntime.py_class(value)

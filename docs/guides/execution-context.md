@@ -183,6 +183,13 @@ their factory grammar or replaying imports, decorators, class bodies or callback
 that process. An authored-code mismatch proved directly from pinned source can fail
 before the child import.
 
+Provider election includes the installed runtime dependency closure of the
+observer SDK and the selected producers. Active installed requirements determine
+that closure. Native distribution metadata supplies import names; editable
+providers retain their PEP 610 and project-declaration proof. The same physical
+ownership and source checks apply to these providers before the isolated import
+loads their package initializers.
+
 Full authentication imports the elected sources in an isolated native interpreter.
 The child records the physical source receipts used by that import and passively
 observes the resulting code and bindings. The owner verifies the executed receipts,

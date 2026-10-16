@@ -481,7 +481,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return stub_paths
 
     @classmethod
-    def _python_and_stub_file_paths(
+    def python_and_stub_file_paths(
         cls,
         rope_project: t.Infra.RopeProject,
         resolved_root: Path,
@@ -548,7 +548,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # every derived structure (index, lazy maps, generated facades) is
         # byte-identical across environments regardless of fs enumeration.
         for file_path in sorted(
-            cls._python_and_stub_file_paths(rope_project, resolved_root),
+            cls.python_and_stub_file_paths(rope_project, resolved_root),
             key=str,
         ):
             resolved_file_path = file_path.resolve()

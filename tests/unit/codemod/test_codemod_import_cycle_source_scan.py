@@ -41,6 +41,76 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             ),
         )
 
+    def test_import_graph_uses_governed_workspace_sources(self, tmp_path: Path) -> None:
+        """Keep live roots and member cycles, never historical or foreign trees."""
+        root, member, package = u.Tests.namespace_workspace(
+            tmp_path,
+            project_name="fleet-member",
+            package_name="fleet_member",
+        )
+        entry = root / "entry.py"
+        entry.write_text("import fleet_member.live\n", encoding="utf-8")
+        live = package / "live.py"
+        live.write_text("import entry\n", encoding="utf-8")
+        expected = {entry.resolve(), live.resolve()}
+        for index, directory in enumerate(config.Infra.source_scan.roots):
+            surface = root / directory / f"surface_{index}.py"
+            surface.parent.mkdir(parents=True, exist_ok=True)
+            surface.write_text("import entry\n", encoding="utf-8")
+            expected.add(surface.resolve())
+        foreign = u.Tests.git_repository(
+            root / config.Infra.source_scan.roots[0],
+            "foreign",
+        )
+        outsiders = (
+            root / ".gc" / "worktrees" / "historical" / "retired.py",
+            root / ".agents-sync-home" / "provider" / "hook.py",
+            foreign / "retired.py",
+        )
+        for path in outsiders:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("import entry\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(member)
+
+        facts = u.Infra.codemod_project_facts(root, (self._cycle_rule(),))
+
+        tm.that(expected <= facts.import_modules.keys(), eq=True)
+        tm.that(
+            set(outsiders).isdisjoint(facts.import_modules),
+            eq=True,
+        )
+        tm.that(facts.import_modules[live.resolve()], eq="fleet_member.live")
+        tm.that(facts.import_graph["entry"], has="fleet_member.live")
+        tm.that(facts.import_cycles["entry"], has="fleet_member.live")
+
+    @staticmethod
+    def test_snapshot_graph_keeps_its_proposed_source_inventory(tmp_path: Path) -> None:
+        """Live scan bounds never remove captured modules from semantic snapshots."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "demo",
+            pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
+        dependency = project / "captured_dependency" / "provider.py"
+        dependency.parent.mkdir()
+        (dependency.parent / "__init__.py").write_text("", encoding="utf-8")
+        dependency.write_text("value = 1\n", encoding="utf-8")
+        entry = project / "entry.py"
+        entry.write_text("value = 1\n", encoding="utf-8")
+        with u.Infra.open_project(project) as rope:
+            snapshot = u.Infra.snapshot_project(
+                rope,
+                {entry: "import captured_dependency.provider\n"},
+            )
+            try:
+                graph, modules = u.Infra.snapshot_import_graph(snapshot)
+            finally:
+                snapshot.close()
+
+        tm.that(modules, has=dependency.resolve())
+        tm.that(graph[modules[entry.resolve()]], has=modules[dependency.resolve()])
+
     def test_legado_is_outside_the_scanned_import_graph(
         self,
         tmp_path: Path,

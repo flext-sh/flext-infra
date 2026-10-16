@@ -11,6 +11,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
@@ -99,7 +101,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 t.MappingKV[str, m.Infra.SourceClassReference | None],
             ] = {}
             self._namespaces: set[str] = set()
-            self._module_aliases: t.MutableMappingKV[str, str] = {}
+            self._module_aliases: t.MutableMappingKV[
+                str, m.Infra.SourceClassReference
+            ] = {}
             self._external: t.MutableMappingKV[str, t.Infra.RopePyObject] = {}
             self._linearizations: t.MutableMappingKV[str, t.StrTuple] = {}
             self._active: set[str] = set()
@@ -188,8 +192,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             for alias_module, captured in self._sources.items():
                 alias_path, alias_source = captured
-                for alias, absolute in (
-                    FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                for alias, binding in (
+                    FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
                         alias_module,
                         alias_path,
                         alias_source,
@@ -201,11 +205,18 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         or qualified_alias in self._namespaces
                     ):
                         continue
-                    self._module_aliases.setdefault(qualified_alias, absolute)
+                    self._module_aliases.setdefault(qualified_alias, binding)
             for alias, absolute in (self._extra_module_aliases or {}).items():
                 if alias in self._modules or alias in self._namespaces:
                     continue
-                self._module_aliases.setdefault(alias, absolute)
+                self._module_aliases.setdefault(
+                    alias,
+                    m.Infra.SourceClassReference(
+                        target=absolute,
+                        attributes=(alias.rpartition(".")[2],),
+                        qualified_base=alias,
+                    ),
+                )
 
         def _derived_roots(self) -> t.StrTuple:
             """Linearize every owned definition and collect the derived bases.
@@ -565,13 +576,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 message = f"Cyclic provider reexport: {target} (visiting: {chain})"
                 raise ValueError(message)
             if name not in module.get_attributes():
-                aliases = self._provider_lazy_aliases(module)
+                aliases = self._provider_lazy_bindings(module)
                 provider = aliases.get(name)
                 if provider is not None:
                     return self._resolve(
                         m.Infra.SourceClassReference(
-                            target=provider,
-                            attributes=attributes,
+                            target=provider.target,
+                            attributes=(*provider.attributes, *remaining),
                             qualified_base=target,
                         ),
                         visiting | {target},
@@ -585,6 +596,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         visiting | {target},
                         depth + 1,
                     )
+                u.Cli.info(
+                    f"stage=unresolved-provider module={module.get_name()} "
+                    f"attribute={name} lazy-bindings={len(aliases)}"
+                )
             binding = module.get_attribute(name)
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._provider_imported_name_reference(
@@ -629,10 +644,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 identity = self._member(identity, attribute, depth + 1, visiting)
             return identity
 
-        def _provider_lazy_aliases(
+        def _provider_lazy_bindings(
             self,
             module: t.Infra.RopeSemanticModule,
-        ) -> t.StrDict:
+        ) -> t.MappingKV[str, m.Infra.SourceClassReference]:
             """Read a provider's declared lazy aliases from its native source module.
 
             Returns:
@@ -640,12 +655,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             declaring = module.get_module()
-            if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
-                return {}
             resource = declaring.get_resource()
+            if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
+                u.Cli.info(
+                    f"stage=provider-source module={module.get_name()} "
+                    f"kind={type(declaring).__name__} "
+                    f"path={resource.real_path if resource is not None else None}"
+                )
+                return {}
             if resource is None:
                 return {}
-            return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+            return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
                 module.get_name(),
                 Path(resource.real_path),
                 declaring.source_code,
@@ -885,14 +905,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             target = reference.target
             attributes = reference.attributes
             if target in self._module_aliases:
+                binding = self._module_aliases[target]
                 return (
-                    self._module_aliases[target],
-                    (target.rpartition(".")[2], *attributes),
+                    binding.target,
+                    (*binding.attributes, *attributes),
                 )
             if attributes:
                 qualified_head = f"{target}.{attributes[0]}"
                 if qualified_head in self._module_aliases:
-                    return self._module_aliases[qualified_head], attributes
+                    binding = self._module_aliases[qualified_head]
+                    return binding.target, (*binding.attributes, *attributes[1:])
             return target, attributes
 
         def _unresolved_target(
