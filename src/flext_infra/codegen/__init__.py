@@ -42,6 +42,9 @@ if TYPE_CHECKING:
     from flext_infra.codegen._codegen_transaction_phases import (
         FlextInfraCodegenTransactionPhases,
     )
+    from flext_infra.codegen._codegen_transaction_recovery import (
+        FlextInfraCodegenTransactionRecovery,
+    )
     from flext_infra.codegen._conform.artifact_render import (
         FlextInfraCodegenConformArtifactRender,
     )
@@ -69,6 +72,7 @@ if TYPE_CHECKING:
         FlextInfraCodegenConformFilePlans,
     )
     from flext_infra.codegen._conform.gitignore import FlextInfraCodegenConformGitignore
+    from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
     from flext_infra.codegen._conform.pyproject_policy import (
         FlextInfraCodegenConformPyprojectPolicy,
     )
@@ -98,6 +102,24 @@ if TYPE_CHECKING:
     )
     from flext_infra.codegen._lazy_init_generation_registry import (
         FlextInfraCodegenLazyInitGenerationRegistryMixin,
+    )
+    from flext_infra.codegen._lazy_init_planner_aliases import (
+        FlextInfraCodegenLazyInitPlannerAliasesMixin,
+    )
+    from flext_infra.codegen._lazy_init_planner_cache import (
+        FlextInfraCodegenLazyInitPlannerCacheMixin,
+    )
+    from flext_infra.codegen._lazy_init_planner_children import (
+        FlextInfraCodegenLazyInitPlannerChildrenMixin,
+    )
+    from flext_infra.codegen._lazy_init_planner_collision import (
+        FlextInfraCodegenLazyInitPlannerCollisionMixin,
+    )
+    from flext_infra.codegen._lazy_init_planner_exports import (
+        FlextInfraCodegenLazyInitPlannerExportsMixin,
+    )
+    from flext_infra.codegen._lazy_init_planner_parents import (
+        FlextInfraCodegenLazyInitPlannerParentsMixin,
     )
     from flext_infra.codegen._lazy_init_planner_public_root import (
         FlextInfraCodegenLazyInitPlannerPublicRootMixin,
@@ -188,6 +210,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformExistingPlan",
     "FlextInfraCodegenConformFilePlans",
     "FlextInfraCodegenConformGitignore",
+    "FlextInfraCodegenConformPlan",
     "FlextInfraCodegenConformPyprojectPolicy",
     "FlextInfraCodegenConformScaffoldPlan",
     "FlextInfraCodegenConsolidator",
@@ -216,6 +239,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitGenerationRegistryMixin",
     "FlextInfraCodegenLazyInitPlanner",
+    "FlextInfraCodegenLazyInitPlannerAliasesMixin",
+    "FlextInfraCodegenLazyInitPlannerCacheMixin",
+    "FlextInfraCodegenLazyInitPlannerChildrenMixin",
+    "FlextInfraCodegenLazyInitPlannerCollisionMixin",
+    "FlextInfraCodegenLazyInitPlannerExportsMixin",
+    "FlextInfraCodegenLazyInitPlannerParentsMixin",
     "FlextInfraCodegenLazyInitPlannerPublicRootMixin",
     "FlextInfraCodegenLazyInitProjectionManifest",
     "FlextInfraCodegenMakeBootstrap",
@@ -235,6 +264,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenTransaction",
     "FlextInfraCodegenTransactionGeneration",
     "FlextInfraCodegenTransactionPhases",
+    "FlextInfraCodegenTransactionRecovery",
     "FlextInfraCodegenVersionFile",
     "FlextInfraMiseArtifactsCandidates",
     "FlextInfraMiseArtifactsComparison",
@@ -271,6 +301,7 @@ install_lazy_exports(
         "FlextInfraCodegenConformExistingPlan": "._conform.existing_plan",
         "FlextInfraCodegenConformFilePlans": "._conform.file_plans",
         "FlextInfraCodegenConformGitignore": "._conform.gitignore",
+        "FlextInfraCodegenConformPlan": "._conform.plan",
         "FlextInfraCodegenConformPyprojectPolicy": "._conform.pyproject_policy",
         "FlextInfraCodegenConformScaffoldPlan": "._conform.scaffold_plan",
         "FlextInfraCodegenConsolidator": ".consolidator",
@@ -307,6 +338,14 @@ install_lazy_exports(
             "._lazy_init_generation_registry"
         ),
         "FlextInfraCodegenLazyInitPlanner": ".lazy_init_planner",
+        "FlextInfraCodegenLazyInitPlannerAliasesMixin": "._lazy_init_planner_aliases",
+        "FlextInfraCodegenLazyInitPlannerCacheMixin": "._lazy_init_planner_cache",
+        "FlextInfraCodegenLazyInitPlannerChildrenMixin": "._lazy_init_planner_children",
+        "FlextInfraCodegenLazyInitPlannerCollisionMixin": (
+            "._lazy_init_planner_collision"
+        ),
+        "FlextInfraCodegenLazyInitPlannerExportsMixin": "._lazy_init_planner_exports",
+        "FlextInfraCodegenLazyInitPlannerParentsMixin": "._lazy_init_planner_parents",
         "FlextInfraCodegenLazyInitPlannerPublicRootMixin": (
             "._lazy_init_planner_public_root"
         ),
@@ -330,6 +369,7 @@ install_lazy_exports(
         "FlextInfraCodegenTransaction": ".codegen_transaction",
         "FlextInfraCodegenTransactionGeneration": "._codegen_transaction_generation",
         "FlextInfraCodegenTransactionPhases": "._codegen_transaction_phases",
+        "FlextInfraCodegenTransactionRecovery": "._codegen_transaction_recovery",
         "FlextInfraCodegenVersionFile": ".version_file",
         "FlextInfraMiseArtifactsCandidates": "._mise_artifacts_candidates",
         "FlextInfraMiseArtifactsComparison": "._mise_artifacts_comparison",

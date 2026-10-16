@@ -101,7 +101,9 @@ class FlextInfraPytestProfile:
                 if failure is None and outcome in {None, 0}:
                     raise
                 if failure is not None:
-                    failure.add_note(f"profile publication failed: {publication_failure}")
+                    failure.add_note(
+                        f"profile publication failed: {publication_failure}"
+                    )
                 # Publication diagnostics remain visible without replacing the
                 # first runner exception or native child failure status.
                 traceback.print_exception(publication_failure)

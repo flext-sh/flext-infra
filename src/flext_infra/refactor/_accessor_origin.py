@@ -266,9 +266,6 @@ class FlextInfraAccessorOriginResolver:
         if str(py_file) in self._bindings:
             return
         scope = self.module(py_file).get_scope()
-        if scope is None:
-            msg = f"accessor module has no declaration scope: {py_file}"
-            raise ValueError(msg)
         project_root = u.Infra.nearest_project_root(self._root, py_file)
         if project_root is None:
             msg = f"accessor source has no project owner: {py_file}"

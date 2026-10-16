@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import m, tm
+from tests import c, m, tm
 
 
 class TestsWorkspaceOperationReceipts:
@@ -33,9 +33,9 @@ class TestsWorkspaceOperationReceipts:
         )
         serialized = report.model_dump_json()
         restored = m.Infra.WorkspaceOperationReport.model_validate_json(serialized)
-        projected = m.Cli.ProcessNativeQualificationReport.model_validate_json(
-            serialized
-        )
+        projected = m.Cli.ProcessNativeQualificationReport[
+            m.Infra.WorkspaceRuntimeContext, m.Infra.Issue, c.Infra.ToolOutcome
+        ].model_validate_json(serialized)
         tm.that(restored, eq=report)
         tm.that(restored.receipts[0].executed, eq=False)
         tm.that(restored.receipts[0].outcome, eq=None)

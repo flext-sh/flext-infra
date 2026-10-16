@@ -53,7 +53,8 @@ class FlextInfraUtilitiesSemanticCutoverBindings:
                     | ast.Module()
                 ):
                     return None, False
-            current = parents.get(current)
+                case _:
+                    current = parents.get(current)
         return None, False
 
     @staticmethod

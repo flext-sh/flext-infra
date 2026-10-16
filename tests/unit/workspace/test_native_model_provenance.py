@@ -30,9 +30,7 @@ class TestsFlextInfraNativeModelProvenance:
     def test_real_namespace_provider_retains_authenticated_native_sources() -> None:
         """An installed namespace is not duplicated by the cold import roots."""
         admission = tm.ok(
-            FlextInfraCodegenPreconditions.capture_producer(
-                Path.cwd(), entrypoint=YAML
-            )
+            FlextInfraCodegenPreconditions.capture_producer(Path.cwd(), entrypoint=YAML)
         )
         sources = tm.not_none(admission.generator_reference).sources
         expected_source = Path(getfile(YAML)).resolve()

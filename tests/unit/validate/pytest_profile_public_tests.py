@@ -219,7 +219,10 @@ class TestsFlextInfraPytestProfile:
         policy = config.Infra.tooling.tools.pytest
         target = Path(cache.target_directory) / "test_runtime.py"
         output = (
-            cached_runner_project / ".reports" / "profiles" / policy.profile_suite_filename
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / policy.profile_suite_filename
         )
         (cached_runner_project / target).write_text(
             "import os, signal\nfrom pathlib import Path\n"
@@ -318,7 +321,9 @@ class TestsFlextInfraPytestProfile:
         )
         tm.that(
             receipt,
-            eq=output.with_suffix(".pstats.json").read_text(encoding=c.DEFAULT_ENCODING),
+            eq=output.with_suffix(".pstats.json").read_text(
+                encoding=c.DEFAULT_ENCODING
+            ),
         )
         # Replacing the public destination must leave the per-process evidence intact.
         replacement = output.with_suffix(".replacement")

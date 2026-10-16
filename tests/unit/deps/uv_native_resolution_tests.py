@@ -518,10 +518,8 @@ class TestsFlextInfraUvNativeResolution:
                 (directory / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
                 "package",
             )
-            tm.that(
-                all(name in tuple(package["name"] for package in locked) for name in packages),
-                eq=True,
-            )
+            locked_names = tuple(package["name"] for package in locked)
+            tm.that(all(name in locked_names for name in packages), eq=True)
         tm.that(
             {name: u.Cli.toml_dumps(document) for name, document in complete.items()},
             eq=original,
@@ -1464,6 +1462,8 @@ class TestsFlextInfraUvNativeResolution:
                 )
                 if identity == "scoped-self":
                     policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
+            case "virtual-root":
+                pass
             case _:
                 msg = f"Unknown native resolution fixture identity: {identity}"
                 raise ValueError(msg)

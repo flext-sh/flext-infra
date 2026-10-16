@@ -239,11 +239,14 @@ class FlextInfraWorkspaceNativeReference:
                 continue
             if not declarations.intersection(function.__code__.co_names):
                 continue
-            if type(member) is classmethod and not function.__code__.co_argcount:
+            if (
+                FlextInfraWorkspaceNativeReference._native_type(member, classmethod)
+                and not function.__code__.co_argcount
+            ):
                 continue
             receiver = (
                 function.__code__.co_varnames[0]
-                if type(member) is classmethod
+                if FlextInfraWorkspaceNativeReference._native_type(member, classmethod)
                 else None
             )
             instructions = FlextInfraWorkspaceNativeReference._instructions(
@@ -407,14 +410,14 @@ class FlextInfraWorkspaceNativeReference:
             value = value.__func__
         functions: list[FunctionType] = []
         seen: set[int] = set()
-        while type(value) is FunctionType:
+        while cls._is_native(value, FunctionType):
             if id(value) in seen:
                 msg = "generated receiver function wrapper chain is cyclic"
                 raise ValueError(msg)
             seen.add(id(value))
             functions.append(value)
             attributes = vars(value)
-            if type(attributes) is not dict or any(
+            if not cls._is_operand_mapping(attributes) or any(
                 type(key) is not str for key in attributes
             ):
                 msg = (
@@ -424,7 +427,7 @@ class FlextInfraWorkspaceNativeReference:
             inner = attributes.get("__wrapped__")
             if inner is None:
                 break
-            if type(inner) is not FunctionType:
+            if not cls._is_native(inner, FunctionType):
                 msg = "generated receiver wrapper has foreign callable storage"
                 raise TypeError(msg)
             cells = cls._function_cells(value)

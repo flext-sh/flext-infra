@@ -23,7 +23,7 @@ class TestsLiveEditableProvenance:
 
     @staticmethod
     def _workspace(root: Path) -> tuple[Path, tuple[Path, ...]]:
-        workspace, members = _BootstrapWorkspace._workspace(root)
+        workspace, members = _BootstrapWorkspace.workspace(root)
         u.Tests.git_run(workspace, "submodule", "absorbgitdirs")
         manifest = workspace / c.PYPROJECT_FILENAME
         document = u.Tests.toml_doc(manifest.read_text(encoding=c.DEFAULT_ENCODING))

@@ -14,16 +14,20 @@ from typing import Literal, override
 
 from libcst import (
     Arg,
+    BaseStatement,
     ClassDef,
     Comma,
     CSTTransformer,
+    ImportAlias,
     ImportFrom,
     ImportStar,
     LeftParen,
+    MaybeSentinel,
     Module,
     Name,
     ParenthesizedWhitespace,
     RightParen,
+    SimpleStatementLine,
     SimpleWhitespace,
     parse_expression,
     parse_module,
@@ -336,9 +340,103 @@ class FlextInfraUtilitiesCodegenFacades:
                     .transform_module(parse_module(source))
                     .code
                 )
+        source = cls._wrap_facade_imports(cls._merged_facade_imports(source))
         if source.startswith(c.Infra.AUTOGEN_HEADERS):
             return source
         return f"{c.Infra.AUTOGEN_HEADER}\n{source}"
+
+    @staticmethod
+    def _mergeable_import(
+        module: Module,
+        statement: BaseStatement,
+    ) -> t.Pair[str, ImportFrom] | None:
+        """Return the module name and node of one absolute member import.
+
+        Returns:
+            The imported module spelling and its node, or None for any other
+            statement (relative, star and module imports keep their form).
+
+        """
+        if not isinstance(statement, SimpleStatementLine) or len(statement.body) != 1:
+            return None
+        node = statement.body[0]
+        if (
+            not isinstance(node, ImportFrom)
+            or isinstance(node.names, ImportStar)
+            or node.relative
+            or node.module is None
+        ):
+            return None
+        return module.code_for_node(node.module), node
+
+    @staticmethod
+    def _merged_facade_imports(source: str) -> str:
+        """Normalize absolute from-imports into one Ruff isort block per module.
+
+        The package-form rewrite leaves one statement per owner bound from the
+        same package, sometimes inside a reflowed parenthesized block. Ruff
+        isort merges them and orders members by type, so an unmerged
+        projection makes ``make fix`` rewrite generated output and breaks the
+        generation fixed point. Every absolute member import is rebuilt once
+        per module, at its first position, with members in isort order; the
+        line budget is applied afterwards by ``_wrap_facade_imports``.
+
+        Returns:
+            Source whose absolute from-imports appear once per module.
+
+        """
+        module = parse_module(source)
+        mergeable = FlextInfraUtilitiesCodegenFacades._mergeable_import
+        members: dict[str, dict[str, ImportAlias]] = {}
+        for statement in module.body:
+            found = mergeable(module, statement)
+            if found is None or isinstance(found[1].names, ImportStar):
+                continue
+            bucket = members.setdefault(found[0], {})
+            for item in tuple(found[1].names):
+                plain = item.with_changes(comma=MaybeSentinel.DEFAULT)
+                bucket.setdefault(module.code_for_node(plain), plain)
+        body: list[BaseStatement] = []
+        emitted: set[str] = set()
+        for statement in module.body:
+            found = mergeable(module, statement)
+            if found is None:
+                body.append(statement)
+                continue
+            name, node = found
+            if name in emitted:
+                continue
+            emitted.add(name)
+            ordered = sorted(
+                members[name].values(),
+                key=lambda item: (
+                    FlextInfraUtilitiesCodegenNamespace.isort_member_key(
+                        module.code_for_node(item.name),
+                    ),
+                    item.asname is not None,
+                ),
+            )
+            names = (
+                *tuple(
+                    item.with_changes(
+                        comma=Comma(whitespace_after=SimpleWhitespace(" "))
+                    )
+                    for item in ordered[:-1]
+                ),
+                ordered[-1],
+            )
+            body.append(
+                statement.with_changes(
+                    body=(
+                        node.with_changes(
+                            names=names,
+                            lpar=MaybeSentinel.DEFAULT,
+                            rpar=MaybeSentinel.DEFAULT,
+                        ),
+                    ),
+                ),
+            )
+        return module.with_changes(body=tuple(body)).code
 
     @staticmethod
     def _facade_module_declarations(
@@ -901,6 +999,17 @@ class FlextInfraUtilitiesCodegenFacades:
                 if FlextInfraUtilitiesCodegenFacades._base_name(base) in declared_names:
                     continue
                 expression = base.value if isinstance(base, ast.Subscript) else base
+                head = expression
+                while isinstance(head, ast.Attribute):
+                    head = head.value
+                if head is not expression and (
+                    FlextInfraUtilitiesCodegenFacades._upstream_binding(
+                        project,
+                        snapshot,
+                        FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, head),
+                    )
+                ):
+                    continue
                 binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
                     scope,
                     expression,
@@ -914,9 +1023,14 @@ class FlextInfraUtilitiesCodegenFacades:
                 provider = holder.get_resource() if holder is not None else None
                 if provider is None:
                     value = binding.get_object()
-                    if FlextInfraUtilitiesRopeRuntime.abstract_class(
-                        value
-                    ) and not FlextInfraUtilitiesRopeRuntime.py_class(value):
+                    if (
+                        FlextInfraUtilitiesRopeRuntime.abstract_class(value)
+                        and not FlextInfraUtilitiesRopeRuntime.py_class(value)
+                    ) or FlextInfraUtilitiesCodegenFacades._upstream_binding(
+                        project,
+                        snapshot,
+                        binding,
+                    ):
                         continue
                     message = (
                         f"Facade base has no source owner: "
@@ -931,6 +1045,42 @@ class FlextInfraUtilitiesCodegenFacades:
             return frozenset(retired)
         finally:
             snapshot.close()
+
+    @staticmethod
+    def _upstream_binding(
+        project: t.Infra.RopeProject,
+        snapshot: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName | None,
+    ) -> bool:
+        """Return whether a facade base binding is upstream inheritance.
+
+        The facade snapshot captures only the project's own sources, so a
+        name imported from an installed upstream package has no source holder
+        there and its module is absent from the snapshot. Its import
+        provenance still resolves through the full import project; such a
+        base, and any attribute reached through it (``Upstream.Nested``), is
+        inherited and never retired. An import whose module the import project
+        cannot resolve raises.
+
+        Returns:
+            Whether the binding is an absolute import of a module the snapshot
+            does not capture.
+
+        """
+        if (
+            not isinstance(binding, p.Infra.RopeImportedName)
+            or binding.get_definition_location()[0] is not None
+        ):
+            return False
+        imported = binding.imported_module
+        if (
+            imported.level
+            or imported.module_name is None
+            or snapshot.find_module(imported.module_name) is not None
+        ):
+            return False
+        FlextInfraUtilitiesRopeRuntime.imported_module_path(project, binding)
+        return True
 
     @staticmethod
     def _rebind_declared_imports(

@@ -450,6 +450,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                 )
                 if constant.success:
                     return type(constant.value).__name__
+            case _:
+                return None
         return None
 
 

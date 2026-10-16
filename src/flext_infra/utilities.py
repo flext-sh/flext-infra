@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Utilities facade for flext-infra.
 
 Re-exports flext_core utilities and adds infrastructure-specific
@@ -115,6 +116,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesInventory,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
+    FlextInfraUtilitiesRopeSourceBindingCollector,
     FlextInfraUtilitiesRopeStructure,
     FlextInfraUtilitiesSemanticCutover,
     FlextInfraUtilitiesTransformerHeader,
@@ -145,6 +147,7 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesDocsGithubLinks,
         FlextInfraUtilitiesRopeSourceBasesAliases,
         FlextInfraUtilitiesRopeSourceBasesInventory,
+        FlextInfraUtilitiesRopeSourceBindingCollector,
         FlextInfraUtilitiesRopeSourceBasesRuntime,
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesRefactorCensus,
