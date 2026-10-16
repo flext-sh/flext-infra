@@ -762,8 +762,10 @@ class FlextInfraWorkspaceGeneratedFunction:
             case ast.Constant(value=None) if action is None:
                 return
             case ast.Name(id=name) if namespace.get(name) is action:
+                # The action reaches its collaborators (``_tuple_str``,
+                # ``_FuncBuilder``) through globals already proved by the SDK
+                # check; the 3.13 compiler has no separate hash builder.
                 self._function(action)
-                self._function(namespace.get("_hash_fn"))
             case _:
                 msg = "native dataclass selected hash action is interposed"
                 raise ValueError(msg)
@@ -1316,7 +1318,10 @@ class FlextInfraWorkspaceGeneratedFunction:
             or len(set(names)) != len(names)
             or any(name.startswith("_") for name in names)
         ):
-            msg = "native tuple field layout differs from physical constructor data"
+            msg = (
+                "native tuple field layout differs from physical constructor data: "
+                f"normalized={names!r} observed={observed_fields!r}"
+            )
             raise ValueError(msg)
 
     def _tuple_code_inputs(
@@ -1869,8 +1874,16 @@ class FlextInfraWorkspaceGeneratedFunction:
     def _native_globals(self, function: FunctionType) -> None:
         """Prove native builtin lookups without invoking any selected operation.
 
+        A module's own identity attributes (``__name__``, ``__spec__``, ...) are
+        also attributes of the ``builtins`` module, but a global lookup of one
+        resolves to the supplier module's metadata, never to a builtin: the
+        stdlib ``dataclasses._process_class`` reads ``sys.modules[__name__]``.
+        Those names are derived from a fresh module's namespace and proved as
+        the supplier's identity instead of as builtins.
+
         Raises:
-            ValueError: If a builtin lookup is interposed in the SDK namespace.
+            ValueError: If a builtin lookup is interposed in the SDK namespace, or a
+                module identity lookup does not name the function's own module.
 
         """
         names = {
@@ -1878,7 +1891,14 @@ class FlextInfraWorkspaceGeneratedFunction:
             for instruction in get_instructions(function.__code__)
             if instruction.opname == "LOAD_GLOBAL" and type(instruction.argval) is str
         }
-        for name in names.intersection(vars(builtins)):
+        identity = vars(ModuleType(function.__module__)).keys()
+        if (
+            "__name__" in names
+            and function.__globals__.get("__name__") != function.__module__
+        ):
+            msg = "closed compiler module identity is interposed: __name__"
+            raise ValueError(msg)
+        for name in names.intersection(vars(builtins)).difference(identity):
             if (
                 name in function.__globals__
                 and function.__globals__[name] is not vars(builtins)[name]
