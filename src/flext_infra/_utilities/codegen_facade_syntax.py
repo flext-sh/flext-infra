@@ -144,6 +144,11 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
                     and isinstance(statement.value, ast.Constant)
                     and isinstance(statement.value.value, str)
                 )
+                or (
+                    isinstance(statement, ast.If)
+                    and isinstance(statement.test, ast.Name)
+                    and statement.test.id == "TYPE_CHECKING"
+                )
             ):
                 continue
             value = (
@@ -189,20 +194,25 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
     ) -> None:
         for statement in owner.body:
             if isinstance(statement, ast.Pass) or (
-                statement is namespace and namespace is not facade
-            ):
-                continue
-            if (
                 isinstance(statement, ast.Expr)
                 and isinstance(statement.value, ast.Constant)
                 and isinstance(statement.value.value, str)
             ):
                 continue
-            if (
-                isinstance(statement, ast.Assign)
-                and isinstance(statement.value, ast.Name)
+            if isinstance(statement, ast.Assign) and all(
+                isinstance(target, ast.Name) for target in statement.targets
+            ) and (
+                isinstance(statement.value, ast.Name)
                 and statement.value.id in aliases
-                and all(isinstance(target, ast.Name) for target in statement.targets)
+                or (
+                    isinstance(statement.value, ast.Attribute)
+                    and isinstance(statement.value.value, ast.Name)
+                    and statement.value.value.id in aliases
+                )
+            ):
+                continue
+            if isinstance(statement, ast.Pass) or (
+                statement is namespace and namespace is not facade
             ):
                 continue
             message = (
