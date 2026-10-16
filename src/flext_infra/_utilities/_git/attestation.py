@@ -1029,7 +1029,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                         f"{relative}"
                     )
                     raise FileNotFoundError(msg)
-                node = node / part
+                node /= part
             tracked.append(f"runtime:{relative}:{node.hexsha}")
         content = "\n".join(tracked)
         return f"sha256:{u.Cli.sha256_content(content)}"

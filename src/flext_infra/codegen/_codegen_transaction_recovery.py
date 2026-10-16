@@ -388,8 +388,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
         with cls.mutation_lease(root):
             if completed:
-                current = FlextInfraMiseArtifactsVerification.publication_outputs_current(
-                    batches,
+                current = (
+                    FlextInfraMiseArtifactsVerification.publication_outputs_current(
+                        batches,
+                    )
                 )
                 if current.failure:
                     return r[m.Infra.CodegenPhaseOutcome].from_failure(current)

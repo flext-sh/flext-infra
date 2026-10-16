@@ -473,6 +473,7 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             Whether the accepted batch contains source changes.
+
         """
         original: dict[Path, str] = {}
         for edit in edits:

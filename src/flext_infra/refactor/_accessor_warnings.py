@@ -33,6 +33,7 @@ class FlextInfraAccessorMigrationWarningsMixin:
 
         Returns:
             The declared function name.
+
         """
         function_prefix = ""
         if stripped.startswith("def "):
@@ -53,6 +54,7 @@ class FlextInfraAccessorMigrationWarningsMixin:
 
         Returns:
             Whether the declared function is exempt.
+
         """
         return (
             function_name.startswith("_")
@@ -69,6 +71,7 @@ class FlextInfraAccessorMigrationWarningsMixin:
 
         Returns:
             The manual contract review receipts.
+
         """
         lines = source.splitlines()
         warnings: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []

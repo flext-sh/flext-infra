@@ -12,9 +12,8 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, t, u
-from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
-from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
 from flext_infra._models.rope import FlextInfraModelsRope
+from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
 )

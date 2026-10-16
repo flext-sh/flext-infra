@@ -359,6 +359,7 @@ class FlextInfraModelsRefactorGrep:
 
             Raises:
                 ValueError: If a field-normalization rule lacks its owner or field.
+
             """
             if self.operation == "normalize-field" and (
                 self.declaring_class is None or self.field is None

@@ -52,6 +52,7 @@ class FlextInfraWorkspaceNativeReference:
     _compilation_facts: ClassVar[ContextVar[t.Infra.NativeInvocationFacts | None]] = (
         ContextVar("native_compilation_facts", default=None)
     )
+
     @classmethod
     @contextmanager
     def compilation_scope(cls) -> Generator[None]:
@@ -417,8 +418,7 @@ class FlextInfraWorkspaceNativeReference:
                 type(key) is not str for key in attributes
             ):
                 msg = (
-                    "native function metadata requires an exact "
-                    "string-keyed dictionary"
+                    "native function metadata requires an exact string-keyed dictionary"
                 )
                 raise TypeError(msg)
             inner = attributes.get("__wrapped__")
@@ -436,7 +436,6 @@ class FlextInfraWorkspaceNativeReference:
                 raise ValueError(msg)
             value = inner
         return tuple(functions)
-
 
     @staticmethod
     def _function_cells(
@@ -515,9 +514,7 @@ class FlextInfraWorkspaceNativeReference:
             for key in {*observed_globals, *expected.globals}
             if key not in observed_globals
             or key not in expected.globals
-            or not cls._same_construction(
-                observed_globals[key], expected.globals[key]
-            )
+            or not cls._same_construction(observed_globals[key], expected.globals[key])
         )
         checks = (
             ("defaults", value.__defaults__, expected.defaults),
@@ -2768,9 +2765,7 @@ class FlextInfraWorkspaceNativeReference:
             else item
             for item in original
         )
-        if any(
-            type(item) is int and item in markers for item in original
-        ):
+        if any(type(item) is int and item in markers for item in original):
             return code.replace(co_consts=constants, co_linetable=b"")
         return code.replace(co_consts=constants)
 
@@ -3844,7 +3839,6 @@ class FlextInfraWorkspaceNativeReference:
             )
         return r[str].ok(aliases[0])
 
-
     @classmethod
     def _generated_function_source(
         cls,
@@ -3876,18 +3870,17 @@ class FlextInfraWorkspaceNativeReference:
         )
         if receiver_path.failure:
             return result_type.from_failure(receiver_path)
-        return result_type.ok((supplier, (
-            ("generated_attribute", attribute),
-            ("generated_receiver", receiver_path.value),
+        return result_type.ok((
+            supplier,
             (
-                "generated_inputs",
-                dumps(tuple(str(state.path) for state in expected.inputs)),
+                ("generated_attribute", attribute),
+                ("generated_receiver", receiver_path.value),
+                (
+                    "generated_inputs",
+                    dumps(tuple(str(state.path) for state in expected.inputs)),
+                ),
+                ("generated_hashed", dumps(expected.hashed)),
             ),
-            ("generated_hashed", dumps(expected.hashed)),
-        )
-        return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].ok((
-            actual_supplier,
-            generated_operands,
         ))
 
     @classmethod
@@ -3947,8 +3940,10 @@ class FlextInfraWorkspaceNativeReference:
         # code may rewrite ``__qualname__`` (attrs re-labels ``evolve`` for each
         # class it serves), which would make the source epoch process-local.
         context.sources.add((
-            f"{actual_supplier}::"
-            f"{value.__qualname__ if generated else code.co_qualname}",
+            (
+                f"{actual_supplier}::"
+                f"{value.__qualname__ if generated else code.co_qualname}"
+            ),
             str(cls._source_path(origin, context.paths))
             if generated or supplier_spec.origin == "frozen"
             else code.co_filename,
@@ -4366,9 +4361,7 @@ class FlextInfraWorkspaceNativeReference:
                     None,
                 )
                 if found is None:
-                    absent = cls._absent_edge(
-                        context, facts, edge, instruction.argval
-                    )
+                    absent = cls._absent_edge(context, facts, edge, instruction.argval)
                     if absent.failure:
                         return absent
                     receiver = None

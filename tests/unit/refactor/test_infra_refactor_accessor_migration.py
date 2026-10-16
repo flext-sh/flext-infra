@@ -12,9 +12,8 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
-import pytest
 
-from flext_infra import c, config, infra, m, config, infra, m
+from flext_infra import c, config, infra, m
 from flext_infra.codemod import FlextInfraAccessorRenamePhase, FlextInfraModGateEngine
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
@@ -255,10 +254,14 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(output.stdout, eq="consumer_verified\n")
         with infra.rope_workspace(project) as rope:
             tm.that(phase.apply(project, preflight, rope).unwrap(), eq=False)
-        receipt = FlextInfraAccessorMigrationOrchestrator(
-            repository_root=workspace,
-            apply_changes=False,
-        ).execute().unwrap()
+        receipt = (
+            FlextInfraAccessorMigrationOrchestrator(
+                repository_root=workspace,
+                apply_changes=False,
+            )
+            .execute()
+            .unwrap()
+        )
         tm.that(receipt.automated_change_count, eq=0)
         tm.that(receipt.warning_count, eq=0)
 
@@ -276,10 +279,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         )
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
         consumer = package / "consumer.py"
-        source = (
-            "def unresolved(value):\n"
-            f"    return value.{rules[0].source_name}\n"
-        )
+        source = f"def unresolved(value):\n    return value.{rules[0].source_name}\n"
         consumer.write_text(source, encoding="utf-8")
         u.Tests.provision_checkout(workspace)
         with infra.rope_workspace(project) as rope:

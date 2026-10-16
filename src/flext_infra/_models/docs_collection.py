@@ -93,6 +93,7 @@ class FlextInfraModelsDocsCollection:
 
             Returns:
                 A tuple for list input, otherwise the original validation value.
+
             """
             return tuple(value) if isinstance(value, list) else value
 
@@ -134,6 +135,7 @@ class FlextInfraModelsDocsCollection:
 
             Returns:
                 A tuple for list input, otherwise the original validation value.
+
             """
             return tuple(value) if isinstance(value, list) else value
 

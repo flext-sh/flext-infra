@@ -12,6 +12,7 @@ import sys
 from dis import get_instructions
 from importlib.machinery import FrozenImporter
 from inspect import CO_VARARGS, CO_VARKEYWORDS
+from itertools import starmap
 from pathlib import Path
 from types import (
     BuiltinFunctionType,
@@ -432,7 +433,9 @@ class FlextInfraWorkspaceGeneratedFunction:
             return None
         namespace = vars(self._module(supplier))
         aliases = {
-            name for name, item in namespace.items() if type(name) is str and item is owner
+            name
+            for name, item in namespace.items()
+            if type(name) is str and item is owner
         }
         statements = [
             node.value
@@ -448,7 +451,10 @@ class FlextInfraWorkspaceGeneratedFunction:
         call: ast.expr = statements[0]
         while isinstance(call, ast.Call) and isinstance(call.func, ast.Name):
             helper = namespace.get(call.func.id)
-            if helper is not vars(sdk).get(call.func.id) or type(helper) is not FunctionType:
+            if (
+                helper is not vars(sdk).get(call.func.id)
+                or type(helper) is not FunctionType
+            ):
                 return None
             if attribute in self._attrs_helper_slots(helper, call.func.id, vars(sdk)):
                 return helper, call
@@ -608,7 +614,9 @@ class FlextInfraWorkspaceGeneratedFunction:
                     record
                     for record in records
                     if all(
-                        self._attrs_condition(condition, target, record, sdk["Attribute"])
+                        self._attrs_condition(
+                            condition, target, record, sdk["Attribute"]
+                        )
                         for condition in conditions
                     )
                 ]
@@ -716,8 +724,10 @@ class FlextInfraWorkspaceGeneratedFunction:
             case ast.Attribute(value=ast.Name(id=owner), attr="__slots__") if (
                 type(supplier.get(owner)) is type
             ):
-                slots = vars(type)["__dict__"].__get__(supplier[owner], type).get(
-                    "__slots__"
+                slots = (
+                    vars(type)["__dict__"]
+                    .__get__(supplier[owner], type)
+                    .get("__slots__")
                 )
             case ast.Tuple(elts=elements):
                 slots = tuple(
@@ -757,8 +767,8 @@ class FlextInfraWorkspaceGeneratedFunction:
                 return literal
             case ast.Name(id=name) if name == variable:
                 return item
-            case ast.Name(id=name) if (
-                name in supplier and supplier[name] is sdk.get("NOTHING")
+            case ast.Name(id=name) if name in supplier and supplier[name] is sdk.get(
+                "NOTHING"
             ):
                 return supplier[name]
             case ast.Compare(
@@ -811,7 +821,9 @@ class FlextInfraWorkspaceGeneratedFunction:
                 ops=[ast.Eq() | ast.NotEq() as operator],
                 comparators=[ast.Constant(value=literal)],
             ) if name == target and type(literal) in {bool, NoneType, str}:
-                equal = self._same_default(literal, self._attrs_slot(record, kind, slot))
+                equal = self._same_default(
+                    literal, self._attrs_slot(record, kind, slot)
+                )
                 return equal if isinstance(operator, ast.Eq) else not equal
             case _:
                 msg = "native attrs helper filter is outside the closed form"
@@ -1035,7 +1047,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             (self._attrs_slot(record, kind, "eq_key"), truth),
             (converter, lookup),
         )
-        if not all(self._attrs_plain(item, hooks) for item, hooks in operands) or (
+        if not all(starmap(self._attrs_plain, operands)) or (
             not self._attrs_callable(self._attrs_slot(record, kind, "repr"))
         ):
             msg = "native attrs record operand can run an authored hook"
@@ -1098,9 +1110,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             if type(name) is str
         }
         hashability = vars(type)["__dict__"].__get__(kind, type).get("Hashability")
-        members = vars(type)["__dict__"].__get__(
-            hashability, type(hashability)
-        ).get("_member_map_")
+        members = (
+            vars(type)["__dict__"]
+            .__get__(hashability, type(hashability))
+            .get("_member_map_")
+        )
         hook = values.get("on_setattr_hook")
         if (
             any(
@@ -1386,9 +1400,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                         pass
         return frozenset(keys)
 
-    def _attrs_module_snapshot(
-        self, qualified: str
-    ) -> t.DictKV[str, p.AttributeProbe]:
+    def _attrs_module_snapshot(self, qualified: str) -> t.DictKV[str, p.AttributeProbe]:
         """Read the defining module namespace as it stood at the class statement.
 
         Names first bound by the class statement or a later top-level statement
@@ -2321,7 +2333,9 @@ class FlextInfraWorkspaceGeneratedFunction:
                             body["__dict__"]
                             for base in vars(type)["__mro__"].__get__(kind, type(kind))
                             if "__dict__"
-                            in (body := vars(type)["__dict__"].__get__(base, type(base)))
+                            in (
+                                body := vars(type)["__dict__"].__get__(base, type(base))
+                            )
                         ),
                         None,
                     )
@@ -2353,8 +2367,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                 continue
             chain = self.function_chain(storage.get(node.name))
             marked = bool(chain) and (
-                self._function_attributes(chain[0]).get("__isabstractmethod__")
-                is True
+                self._function_attributes(chain[0]).get("__isabstractmethod__") is True
             )
             declared = any(
                 ast.unparse(decorator) in spellings for decorator in node.decorator_list

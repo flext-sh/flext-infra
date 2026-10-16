@@ -28,6 +28,7 @@ class FlextInfraAccessorMigrationExpressionMixin:
 
         Returns:
             The configuration-owned semantic rules.
+
         """
         return u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
             u.Cli.yaml_safe_load(
@@ -53,6 +54,7 @@ class FlextInfraAccessorMigrationExpressionMixin:
         Raises:
             TypeError: If a proven read-only accessor is written.
             ValueError: If a selected rule or owned use cannot be resolved safely.
+
         """
         tree = ast.parse(source, filename=str(py_file))
         resolver = FlextInfraAccessorOriginResolver(rope_project)
@@ -77,9 +79,7 @@ class FlextInfraAccessorMigrationExpressionMixin:
                     msg = f"Conflicting accessor normalizer origins: {prefix}"
                     raise ValueError(msg)
                 imports[prefix] = rule.origin
-                replacement = cls._expression_replacement(
-                    py_file, source, node, rule
-                )
+                replacement = cls._expression_replacement(py_file, source, node, rule)
                 replacements.append(replacement)
                 changes.append(
                     m.Infra.AccessorMigrationChange(
@@ -114,6 +114,7 @@ class FlextInfraAccessorMigrationExpressionMixin:
         Raises:
             TypeError: If a proven read-only accessor is written.
             ValueError: If the rule or owned backing field cannot be proven.
+
         """
         if rule.field is None or rule.declaring_class is None:
             msg = f"Incomplete accessor expression rule: {rule.source_name}"
@@ -141,10 +142,7 @@ class FlextInfraAccessorMigrationExpressionMixin:
                 raise ValueError(msg)
             return False
         if not isinstance(node.ctx, ast.Load):
-            msg = (
-                "Owned read-only accessor is written: "
-                f"{py_file}:{node.lineno}"
-            )
+            msg = f"Owned read-only accessor is written: {py_file}:{node.lineno}"
             raise TypeError(msg)
         return True
 
@@ -162,14 +160,12 @@ class FlextInfraAccessorMigrationExpressionMixin:
 
         Raises:
             ValueError: If the original source span is unavailable.
+
         """
         receiver = ast.get_source_segment(source, node.value)
         segment = ast.get_source_segment(source, node)
         if receiver is None or segment is None:
-            msg = (
-                "Accessor source span is unavailable: "
-                f"{py_file}:{node.lineno}"
-            )
+            msg = f"Accessor source span is unavailable: {py_file}:{node.lineno}"
             raise ValueError(msg)
         if not isinstance(node.value, ast.Name):
             receiver = f"({receiver})"
@@ -190,6 +186,7 @@ class FlextInfraAccessorMigrationExpressionMixin:
 
         Raises:
             ValueError: If owned expression spans overlap.
+
         """
         end_previous = 0
         for start, end, _replacement in sorted(replacements):
@@ -216,6 +213,7 @@ class FlextInfraAccessorMigrationExpressionMixin:
 
         Raises:
             ValueError: If a planned import has no Rope resource.
+
         """
         for prefix, origin in imports.items():
             snapshot = u.Infra.snapshot_project(

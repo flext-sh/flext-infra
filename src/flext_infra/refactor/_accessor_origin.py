@@ -506,6 +506,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If the receiver has no established semantic identity.
+
         """
         attributes = self._receiver_object(py_file, source, receiver).get_attributes()
         if not attributes:
@@ -523,6 +524,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If its resource or binding is unavailable.
+
         """
         resource = u.Infra.resolve_resource_from_path(self._rope_project, py_file)
         if resource is None:
@@ -551,6 +553,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If receiver class identity or acyclic lineage is unproven.
+
         """
         target = self._receiver_object(py_file, source, receiver)
         if FlextInfraUtilitiesRopeRuntime.instance_object(target):
@@ -580,6 +583,7 @@ class FlextInfraAccessorOriginResolver:
 
         Returns:
             Whether resolving that declaration produces the same native object.
+
         """
         module = candidate.get_module()
         if module is None:
@@ -608,6 +612,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             TypeError: If the defining module has no native Python module AST.
+
         """
         module, line = binding.get_definition_location()
         if module is None or line is None:
@@ -640,6 +645,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If the selected facade is conflicting or locally shadowed.
+
         """
         prefix = rule.replacement_name.split(".", maxsplit=1)[0]
         resource = u.Infra.resolve_resource_from_path(self._rope_project, py_file)

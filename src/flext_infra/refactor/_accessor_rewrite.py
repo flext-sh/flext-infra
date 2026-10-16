@@ -12,10 +12,10 @@ from tokenize import NAME, generate_tokens
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m
+from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.refactor._accessor_expression import (
     FlextInfraAccessorMigrationExpressionMixin,
 )
-from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.refactor._accessor_warnings import (
     FlextInfraAccessorMigrationWarningsMixin,
 )
@@ -58,6 +58,7 @@ class FlextInfraAccessorMigrationRewriteMixin(
 
         Returns:
             The proposed source and its migration receipts.
+
         """
         resource = u.Infra.resolve_resource_from_path(rope_project, py_file)
         if resource is None:
@@ -106,6 +107,7 @@ class FlextInfraAccessorMigrationRewriteMixin(
 
         Returns:
             The proposed source and actual rename or review receipts.
+
         """
         token_changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
         rewrite_ranges: t.MutableSequenceOf[t.Triple[int, int, str]] = []
@@ -175,6 +177,7 @@ class FlextInfraAccessorMigrationRewriteMixin(
 
         Returns:
             The source offset corresponding to the token position.
+
         """
         source_lines = source.splitlines(keepends=True)
         line_offset = sum(len(item) for item in source_lines[: line - 1])
