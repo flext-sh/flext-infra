@@ -402,9 +402,6 @@ class FlextInfraWorkspaceNativeReference:
             msg = "Native source module has no shared Rope graph"
             raise TypeError(msg)
         root = native.get_scope()
-        if not isinstance(root, p.Infra.RopeScope):
-            msg = "Native source module has no semantic scope"
-            raise TypeError(msg)
         compiled = (
             FrozenImporter.get_code(specification.name)
             if specification.origin == "frozen"
@@ -631,7 +628,8 @@ class FlextInfraWorkspaceNativeReference:
             )
             and cls._same_construction(value.__globals__, expected.globals)
             and cls._same_construction(
-                value.__builtins__, expected.globals.get("__builtins__")
+                vars(FunctionType)["__builtins__"].__get__(value, FunctionType),
+                expected.globals.get("__builtins__"),
             )
             and cls._same_construction(value.__annotations__, expected.annotations)
         )
@@ -660,13 +658,13 @@ class FlextInfraWorkspaceNativeReference:
             and all(type(key) is str for key in (*observed, *expected))
         ):
             return set(observed) == set(expected) and all(
-                cls._same_construction(observed[key], expected[key])
-                for key in expected
+                cls._same_construction(observed[key], expected[key]) for key in expected
             )
         if type(observed) is tuple and type(expected) is tuple:
             return len(observed) == len(expected) and all(
-                cls._same_construction(item, other)
-                for item, other in zip(observed, expected, strict=True)
+                itertools.starmap(
+                    cls._same_construction, zip(observed, expected, strict=True)
+                )
             )
         return cls._value(observed, construction=True) == cls._value(
             expected, construction=True
@@ -3198,7 +3196,7 @@ class FlextInfraWorkspaceNativeReference:
         value = module
         qualified = ".".join(nomination.attributes)
         for component in nomination.attributes:
-            namespace = (
+            namespace: t.MappingKV[str, t.Infra.NativeOperand] = (
                 cls._class_namespace(value)
                 if cls._is_class(value)
                 else cls._module_namespace(value)
@@ -3943,9 +3941,7 @@ class FlextInfraWorkspaceNativeReference:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _receiver_path(
-        cls, supplier: str, receiver: p.AttributeProbe
-    ) -> p.Result[str]:
+    def _receiver_path(cls, supplier: str, receiver: p.AttributeProbe) -> p.Result[str]:
         """Name a generated receiver by the lexical path that resolves to it.
 
         The qualified name is the path when it resolves to this exact class;
@@ -3959,10 +3955,12 @@ class FlextInfraWorkspaceNativeReference:
         module = sys.modules.get(supplier)
         if type(module) is not ModuleType:
             return r[str].fail(f"generated receiver supplier is not loaded: {supplier}")
+        if not cls._is_class(receiver):
+            return r[str].fail(f"generated receiver is not a native class: {supplier}")
         namespace = cls._module_namespace(module)
         qualified = cls._type_attr("__qualname__", receiver, type(receiver))
         resolved: p.AttributeProbe | None = module
-        for component in qualified.split(".") if type(qualified) is str else ():
+        for component in qualified.split("."):
             scope = (
                 cls._module_namespace(resolved)
                 if type(resolved) is ModuleType
@@ -3971,7 +3969,7 @@ class FlextInfraWorkspaceNativeReference:
                 else {}
             )
             resolved = scope.get(component)
-        if type(qualified) is str and resolved is receiver:
+        if resolved is receiver:
             return r[str].ok(qualified)
         aliases = sorted(
             name for name, value in namespace.items() if value is receiver
@@ -3979,16 +3977,13 @@ class FlextInfraWorkspaceNativeReference:
             f"{name}.<base:{index}>"
             for name, value in namespace.items()
             if type(value) is type
-            for index, base in enumerate(
-                vars(type)["__bases__"].__get__(value, type)
-            )
+            for index, base in enumerate(vars(type)["__bases__"].__get__(value, type))
             if base is receiver
         )
         if len(aliases) != 1:
             return r[str].fail(
                 f"generated receiver has no unique lexical path: {supplier}::"
-                f"{qualified if type(qualified) is str else '<non-string>'}; "
-                f"aliases={aliases[:8]}"
+                f"{qualified}; aliases={aliases[:8]}"
             )
         return r[str].ok(aliases[0])
 
@@ -4047,10 +4042,6 @@ class FlextInfraWorkspaceNativeReference:
                 f"code_qualname={value.__code__.co_qualname[:160]}",
             )
         source_supplier, source_attribute, receiver = generated_owner
-        if receiver is not None and not cls._is_class(receiver):
-            return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].fail(
-                f"generated receiver is not a native class: {context.binding}",
-            )
         proved = cls._generated_proof(
             value,
             (source_supplier, source_attribute, receiver),
@@ -4258,7 +4249,7 @@ class FlextInfraWorkspaceNativeReference:
         ]
         lexical = sys.modules.get(facts.supplier)
         for component in facts.code.co_qualname.split(".")[:-1]:
-            namespace = (
+            namespace: t.MappingKV[str, t.Infra.NativeOperand] = (
                 cls._class_namespace(lexical)
                 if cls._is_class(lexical)
                 else vars(lexical)
@@ -4294,21 +4285,7 @@ class FlextInfraWorkspaceNativeReference:
                     item = namespace.get(name)
                     if cls._is_class(item):
                         class_roots.append(item)
-                    elif (
-                        any(
-                            type(item) is kind
-                            for kind in (
-                                FunctionType,
-                                MethodType,
-                                property,
-                                classmethod,
-                                staticmethod,
-                            )
-                        )
-                        or cls._native_builtin(item)
-                        or cls._native_wrapper_kind(item) is not None
-                        or cls._callable_storage(item)
-                    ):
+                    elif cls._callable_operand(item):
                         context.pending.append((
                             f"{context.binding}.descriptor.{cls._symbol(ancestor)}.{name}",
                             item,
@@ -4427,6 +4404,83 @@ class FlextInfraWorkspaceNativeReference:
         )
 
     @classmethod
+    def _receiver_namespaces(
+        cls,
+        receiver: t.Infra.NativeOperand,
+    ) -> t.VariadicTuple[t.MappingKV[str, t.Infra.NativeOperand]]:
+        """Read a LOAD_ATTR receiver's raw storage in native lookup order.
+
+        Returns:
+            Class storage along the native MRO, the module storage, or none.
+
+        """
+        if cls._is_class(receiver):
+            return tuple(
+                cls._class_namespace(owner) for owner in cls._native_mro(receiver)
+            )
+        if isinstance(receiver, ModuleType):
+            return (cls._module_namespace(receiver),)
+        return ()
+
+    @classmethod
+    def _absent_edge(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        facts: m.Infra.NativeFunctionObservationContext,
+        edge: str,
+        name: str,
+    ) -> p.Result[bool]:
+        """Record one absent native attribute edge once, or contradict a known edge.
+
+        Returns:
+            Success after recording, or the contradiction of a now-absent edge.
+
+        """
+        missing = f"{edge}.{name}"
+        if missing in context.edges:
+            return r[bool].fail(
+                f"native edge became absent: {missing}; "
+                f"supplier={facts.supplier}; "
+                f"qualname={facts.value[0].__qualname__}",
+            )
+        if missing not in context.absent_edges:
+            context.absent_edges.add(missing)
+            context.evidence.append(
+                m.Infra.NativeBindingEvidence(
+                    binding=missing,
+                    kind="absent",
+                    supplier=facts.supplier,
+                    name=name,
+                    qualname=edge,
+                )
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _callable_operand(cls, value: t.Infra.NativeOperand) -> bool:
+        """Elect a non-class edge target that the observation must follow.
+
+        Returns:
+            Whether the target is a function, native descriptor or callable storage.
+
+        """
+        return (
+            any(
+                type(value) is kind
+                for kind in (
+                    FunctionType,
+                    MethodType,
+                    property,
+                    classmethod,
+                    staticmethod,
+                )
+            )
+            or cls._native_builtin(value)
+            or cls._native_wrapper_kind(value) is not None
+            or cls._callable_storage(value)
+        )
+
+    @classmethod
     def _function_attribute_edges(
         cls,
         context: m.Infra.NativeObservationContext,
@@ -4448,16 +4502,7 @@ class FlextInfraWorkspaceNativeReference:
                 receiver = facts.global_bindings.get(instruction.argval)
                 edge = f"{context.binding}.global.{instruction.argval}"
             elif instruction.opname == "LOAD_ATTR" and receiver is not None:
-                namespaces = (
-                    tuple(
-                        cls._class_namespace(owner)
-                        for owner in cls._native_mro(receiver)
-                    )
-                    if cls._is_class(receiver)
-                    else (cls._module_namespace(receiver),)
-                    if isinstance(receiver, ModuleType)
-                    else ()
-                )
+                namespaces = cls._receiver_namespaces(receiver)
                 if not namespaces:
                     receiver = None
                     continue
@@ -4470,24 +4515,9 @@ class FlextInfraWorkspaceNativeReference:
                     None,
                 )
                 if found is None:
-                    missing = f"{edge}.{instruction.argval}"
-                    if missing in context.edges:
-                        return r[bool].fail(
-                            f"native edge became absent: {missing}; "
-                            f"supplier={facts.supplier}; "
-                            f"qualname={facts.value[0].__qualname__}",
-                        )
-                    if missing not in context.absent_edges:
-                        context.absent_edges.add(missing)
-                        context.evidence.append(
-                            m.Infra.NativeBindingEvidence(
-                                binding=missing,
-                                kind="absent",
-                                supplier=facts.supplier,
-                                name=instruction.argval,
-                                qualname=edge,
-                            )
-                        )
+                    absent = cls._absent_edge(context, facts, edge, instruction.argval)
+                    if absent.failure:
+                        return absent
                     receiver = None
                     continue
                 if isinstance(receiver, ModuleType):
@@ -4496,22 +4526,7 @@ class FlextInfraWorkspaceNativeReference:
                         cls._module_generated_owners(context, supplier, found)
                 receiver = found[instruction.argval]
                 edge += f".{instruction.argval}"
-                if (
-                    cls._is_class(receiver)
-                    or any(
-                        type(receiver) is kind
-                        for kind in (
-                            FunctionType,
-                            MethodType,
-                            property,
-                            classmethod,
-                            staticmethod,
-                        )
-                    )
-                    or cls._native_builtin(receiver)
-                    or cls._native_wrapper_kind(receiver) is not None
-                    or cls._callable_storage(receiver)
-                ):
+                if cls._is_class(receiver) or cls._callable_operand(receiver):
                     context.pending.append((
                         edge,
                         receiver,
@@ -5205,10 +5220,11 @@ class FlextInfraWorkspaceNativeReference:
         if cls._is_function_binding(value):
             value = value.__func__
         if type(value) is not FunctionType:
+            kind = type(value)
             return result_type.fail(
                 "generated receipt has no native function: "
                 f"{binding.supplier}::{receiver_name}.{attribute}; "
-                f"slot_type={cls._type_attr('__name__', type(value), type(type(value)))}"
+                f"slot_type={vars(type)['__name__'].__get__(kind, type(kind))}"
             )
         return result_type.ok((value, receiver))
 
