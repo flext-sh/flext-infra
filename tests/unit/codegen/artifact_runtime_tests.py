@@ -249,12 +249,12 @@ class TestsArtifactRuntime:
         requires_dist: t.SequenceOf[str] = tuple(
             metadata.get_all("Requires-Dist", ()),
         )
-        declared: set[str] = {
-            canonicalize_name(parsed.name)
-            for requirement in requires_dist
-            if (parsed := Requirement(requirement)).marker is None
-            or (parsed.marker is not None and parsed.marker.evaluate({"extra": ""}))
-        }
+        declared: set[str] = set()
+        for requirement in requires_dist:
+            parsed = Requirement(requirement)
+            marker = parsed.marker
+            if marker is None or marker.evaluate({"extra": ""}):
+                declared.add(canonicalize_name(parsed.name))
         tm.that(
             set(excluded).intersection(declared),
             eq=set[str](),

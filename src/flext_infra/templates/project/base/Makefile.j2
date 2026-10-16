@@ -295,6 +295,7 @@ override PYTEST_DIAG_ARGS :={% for item in pytest.diagnostic_args %} {{ item }}{
 override PYTEST_PARALLEL_WORKERS := {{ pytest.parallel_workers }}
 override PYTEST_PARALLEL_WORKER_MEMORY_GB := {{ pytest.parallel_worker_memory_gb }}
 override PYTEST_PARALLEL_DISTRIBUTION := {{ pytest.parallel_distribution }}
+override PYTEST_LOADSCOPE_REORDER := {{ pytest.loadscope_reorder | lower }}
 override PYTEST_PARALLEL_SCHEDULE_CHUNK := {{ pytest.parallel_schedule_chunk }}
 override PYTEST_PROFILE_SORT := {{ pytest.profile_sort }}
 override PYTEST_PROFILE_LIMIT := {{ pytest.profile_limit }}
@@ -398,8 +399,8 @@ DOCS_ACTIONS :={% for action in make.docs.actions %} {{ action }}{% endfor %}
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
-# Source: template + computed (script_dispatch conditional)
-RUFF_PATHS := $(shell for directory in src tests examples{% if script_dispatch %} scripts{% endif %}; do if [ -d "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
+# Source: tooling.yaml pyright path-rules env-dirs (present directories only)
+RUFF_PATHS := $(shell for directory in {{ analyzer_roots | join(' ') }}; do if [ -e "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
 MYPY_PATHS := $(RUFF_PATHS)
 # End SECTION: lint/type paths
 
@@ -1234,6 +1235,16 @@ _builtin_gen_init:
 	if [ -n "$${KIND-}" ]; then set -- --kind "$$KIND"; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" "$$@"
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check-only
+
+{% for project_new in make.verbs if project_new.name == "project-new" and make_profile in project_new.profiles %}
+# Identity inputs are environment data, never interpolated into shell code.
+{% for argument in project_new.arguments %}
+export FLEXT_NEW_{{ argument }} := $(value {{ argument }})
+{% endfor %}
+
+_builtin-project-new: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) codegen new --apply{% for argument in project_new.arguments %} --{{ argument | lower | replace("_", "-") }} "$$FLEXT_NEW_{{ argument }}"{% endfor %}
+{% endfor %}
 
 _builtin_gen_all:
 	@set -eu; \

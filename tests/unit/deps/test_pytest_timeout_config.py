@@ -16,6 +16,47 @@ class TestsFlextInfraPytestTimeoutConfig:
     """Prove the operator caps and relational policy at the typed SSOT."""
 
     @staticmethod
+    @pytest.mark.parametrize("distribution", ["load", "loadscope"])
+    @pytest.mark.parametrize("reorder", [False, True])
+    def test_native_scheduling_policy_round_trips(
+        distribution: str,
+        *,
+        reorder: bool,
+    ) -> None:
+        """Every supported scheduler and explicit ordering policy stays typed."""
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
+        payload.update({
+            "parallel-distribution": distribution,
+            "loadscope-reorder": reorder,
+        })
+
+        configured = type(policy).model_validate(payload)
+        round_tripped = type(policy).model_validate(
+            configured.model_dump(by_alias=True, exclude_computed_fields=True),
+        )
+
+        tm.that(round_tripped, eq=configured)
+        tm.that(configured.parallel_arguments[:2], eq=("--dist", distribution))
+        expected = (
+            ("--maxschedchunk", str(configured.parallel_schedule_chunk))
+            if distribution == "load"
+            else ("--loadscope-reorder" if reorder else "--no-loadscope-reorder",)
+        )
+        tm.that(configured.parallel_arguments[2:], eq=expected)
+
+    @staticmethod
+    def test_reordering_refuses_string_coercion() -> None:
+        """A text flag cannot silently become an execution policy boolean."""
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
+        payload["loadscope-reorder"] = "false"
+        policy_model = type(policy)
+
+        with pytest.raises(c.ValidationError, match="valid boolean"):
+            policy_model.model_validate(payload)
+
+    @staticmethod
     def test_policy_round_trips_through_its_production_model() -> None:
         """Test policy round trips through its production model."""
         policy = config.Infra.tooling.tools.pytest
@@ -82,7 +123,14 @@ class TestsFlextInfraPytestTimeoutConfig:
     @staticmethod
     @pytest.mark.parametrize(
         "override",
-        ["-o", "-o=addopts=", "--override-ini", "--override-ini=addopts="],
+        [
+            "-o",
+            "-o=addopts=",
+            "--override-ini",
+            "--override-ini=addopts=",
+            "--loadscope-reorder",
+            "--no-loadscope-reorder",
+        ],
     )
     def test_pytest_ini_override_is_forbidden(override: str) -> None:
         """Test pytest ini override is forbidden."""
@@ -179,6 +227,8 @@ class TestsFlextInfraPytestTimeoutConfig:
             "--timeout=999",
             "-n=auto",
             "--dist=load",
+            "--loadscope-reorder",
+            "--no-loadscope-reorder",
             f"-p=no:{config.Infra.tooling.tools.pytest.enforcement_plugin}",
             "--junitxml=elsewhere.xml",
             "--cov=unowned",

@@ -279,10 +279,8 @@ class FlextInfraImportNormalizationRoutesMixin(
                 owner = cls._enclosing_scope(owner, state.parents)
         else:
             return node.id not in bound.get(id(state.tree), ())
-        return (
-            owner is not None
-            and node.id in globals_.get(id(owner), ())
-            and node.id not in bound.get(id(state.tree), ())
+        return node.id in globals_.get(id(owner), ()) and node.id not in bound.get(
+            id(state.tree), ()
         )
 
     @staticmethod

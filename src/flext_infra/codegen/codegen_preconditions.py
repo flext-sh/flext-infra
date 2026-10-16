@@ -8,14 +8,24 @@ from __future__ import annotations
 
 import sys
 from functools import partial
-from importlib.machinery import PathFinder
+from importlib.machinery import (
+    ExtensionFileLoader,
+    ModuleSpec,
+    PathFinder,
+    SourceFileLoader,
+)
+from importlib.metadata import packages_distributions
 from pathlib import Path
+from types import ModuleType
 from typing import TYPE_CHECKING
+
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
     FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournalRelocation,
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.validate import FlextInfraValidateFreshImport
@@ -186,17 +196,222 @@ class FlextInfraCodegenPreconditions:
         if observed.failure:
             return result_type.from_failure(observed)
         trees: t.MutableMappingKV[Path, m.Cli.AtomicPhysicalTreeManifest] = {}
-        captured = cls._captured_authority_states(
-            names, roots, observed.value, trees, states
+        captured = cls._runtime_dependency_roots(roots, owners, states).flat_map(
+            lambda _: cls._captured_authority_states(
+                names, roots, observed.value, trees, states
+            )
         )
         if captured.failure:
             return result_type.from_failure(captured)
         owned = cls._authenticated_distribution_ownership(
             names, roots, states, trees, owners
-        )
+        ).flat_map(lambda _: cls._loaded_provider_sources(roots, states))
         if owned.failure:
             return result_type.from_failure(owned)
-        return cls._sealed_source_authority(names, roots, observed.value, trees, states)
+        return cls._sealed_source_authority(names, roots, trees, states)
+
+    @classmethod
+    def _runtime_dependency_roots(
+        cls,
+        roots: t.MutableMappingKV[str, Path],
+        owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Elect declared runtime dependencies before the cold SDK import.
+
+        Live callable bindings do not enumerate imports performed while loading
+        their packages. Installed requirements own that dependency closure;
+        native import metadata and editable declarations own its import names.
+
+        Returns:
+            Success after electing the dependency roots and pinning declarations.
+
+        """
+        indexed = u.Infra.codemod_distributions()
+        packages = packages_distributions()
+        direct = {canonicalize_name(config.Infra.name)}
+        direct.update(
+            canonicalize_name(provider)
+            for namespace, providers in packages.items()
+            if namespace in roots
+            for provider in providers
+        )
+        closure = u.Infra.codemod_runtime_closure(tuple(sorted(direct)), indexed)
+        for namespace, providers in packages.items():
+            if not any(canonicalize_name(name) in closure for name in providers):
+                continue
+            selected = cls._elect_runtime_namespace(namespace, roots, owners)
+            if selected.failure:
+                return r[bool].from_failure(selected)
+        for name in sorted(closure):
+            editable = cls._runtime_editable_roots(
+                name, indexed[name], roots, owners, states
+            )
+            if editable.failure:
+                return r[bool].from_failure(editable)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _elect_runtime_namespace(
+        cls,
+        namespace: str,
+        roots: t.MutableMappingKV[str, Path],
+        owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+        *,
+        project_root: Path | None = None,
+    ) -> p.Result[bool]:
+        """Bind a runtime namespace to its unchanged physical election.
+
+        Returns:
+            Success or the original election and editable-root failure.
+
+        """
+        selected = cls._elect_namespace(namespace)
+        if selected.failure:
+            return r[bool].from_failure(selected)
+        if project_root is not None and not selected.value.is_relative_to(project_root):
+            return r[bool].fail(
+                "runtime dependency is outside declared editable root: "
+                f"{namespace}"
+            )
+        previous = roots.setdefault(namespace, selected.value)
+        if previous != selected.value:
+            return r[bool].fail(f"runtime dependency election changed: {namespace}")
+        owners.setdefault(namespace, set())
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _runtime_editable_roots(
+        cls,
+        name: str,
+        distribution: Distribution,
+        roots: t.MutableMappingKV[str, Path],
+        owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Elect editable import names and retain the declarations consumed.
+
+        Returns:
+            Success or the first missing, unreadable or inconsistent declaration.
+
+        """
+        declared = distribution.files
+        if declared is None:
+            return r[bool].fail(
+                f"runtime distribution has no native file manifest: {name}"
+            )
+        for entry in declared:
+            path = Path(str(distribution.locate_file(entry))).absolute()
+            if (
+                path.name != c.Infra.DISTRIBUTION_DIRECT_URL_FILE
+                or not path.parent.name.endswith(".dist-info")
+            ):
+                continue
+            observed = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            editable = FlextInfraMiseArtifactsFiles.editable_project_source(
+                observed.value
+            )
+            if editable.failure:
+                return r[bool].from_failure(editable)
+            for project_source, metadata in editable.value:
+                selected = cls._elect_runtime_namespace(
+                    metadata.package_name,
+                    roots,
+                    owners,
+                    project_root=project_source.path.parent,
+                )
+                if selected.failure:
+                    return r[bool].from_failure(selected)
+                states[path] = observed.value
+                states[project_source.path] = project_source
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _loaded_provider_sources(
+        cls,
+        roots: t.MappingKV[str, Path],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Pin already loaded elected-provider inputs for the atomic reader bootstrap.
+
+        This observes registered modules without importing a provider. A source
+        absent from these pins cannot execute before the child has its canonical
+        atomic reader. Later source loads retain their own pre-execution receipts.
+
+        Returns:
+            The first provenance/read failure or the complete bootstrap pins.
+
+        """
+        standard = FlextInfraWorkspaceEnvironmentProvenance.standard_library_root()
+        packages = (
+            FlextInfraWorkspaceEnvironmentProvenance.standard_library_package_roots()
+        )
+        u.Cli.info("stage=native-loader-bootstrap sources=loaded-provider-inputs")
+        for name, module in tuple(sys.modules.items()):
+            namespace = name.partition(".")[0]
+            if name == "__main__":
+                continue
+            if namespace in roots:
+                elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(name)
+                if elected.failure:
+                    return r[bool].from_failure(elected)
+                source = elected.value
+            else:
+                source = cls._runtime_bootstrap_file(module, standard, packages)
+                if source is None:
+                    continue
+            if source in states or source.is_dir():
+                continue
+            captured = FlextInfraMiseArtifactsFiles.read_state(source, required=True)
+            if captured.failure:
+                return r[bool].from_failure(captured)
+            states[source] = captured.value
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _runtime_bootstrap_file(
+        module: t.Infra.NativeOperand,
+        standard: Path,
+        packages: t.SequenceOf[Path],
+    ) -> Path | None:
+        """Locate a resident runtime file without authenticating its module.
+
+        Returns:
+            The original physical stdlib input path, when native file storage
+            agrees with its source or extension loader.
+
+        """
+        if not isinstance(module, ModuleType):
+            return None
+        storage = vars(ModuleType)["__dict__"].__get__(module, type(module))
+        native = storage.get("__spec__")
+        declared = storage.get("__file__")
+        loader = storage.get("__loader__")
+        if (
+            type(native) is not ModuleSpec
+            or not isinstance(declared, str)
+            or type(declared) is not str
+        ):
+            return None
+        if not isinstance(loader, (SourceFileLoader, ExtensionFileLoader)):
+            return None
+        if (
+            type(loader) not in {SourceFileLoader, ExtensionFileLoader}
+            or type(native.origin) is not str
+            or native.origin != declared
+            or native.loader is not loader
+            or loader.path != declared
+        ):
+            return None
+        source = Path(declared).absolute()
+        physical = source.resolve()
+        if not physical.is_relative_to(standard) or any(
+            physical.is_relative_to(root) for root in packages
+        ):
+            return None
+        return source
 
     @classmethod
     def _elected_source_roots(
@@ -391,7 +606,6 @@ class FlextInfraCodegenPreconditions:
         cls,
         names: t.VariadicTuple[m.Infra.SourceClassReference],
         roots: t.MappingKV[str, Path],
-        observed: m.Infra.NativeImportObservation,
         trees: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
         states: t.MappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenSourceAuthority]:
@@ -400,7 +614,6 @@ class FlextInfraCodegenPreconditions:
         Args:
             names: The nominated producer selections under authentication.
             roots: Elected namespace roots sealed into the authority.
-            observed: Native observation authored against the sealed inputs.
             trees: Captured physical tree manifests.
             states: Captured atomic file states awaiting their receipts.
 
@@ -418,14 +631,10 @@ class FlextInfraCodegenPreconditions:
             )
             if measured.failure:
                 return result_type.from_failure(measured)
-            if measured.value.device is not None and measured.value.size is not None:
-                with u.Cli.atomic_binary_file_reader(measured.value) as reader:
-                    if reader.read_range(0, measured.value.size) != state.content:
-                        return result_type.fail(
-                            "producer source changed while sealing authority: "
-                            f"{state.path}",
-                        )
             receipts.append(measured.value)
+        authenticated = cls._authenticated_receipt_files(states, tuple(receipts))
+        if authenticated.failure:
+            return result_type.from_failure(authenticated)
         authority = m.Infra.CodegenSourceAuthority(
             runtime=Path(sys.executable).resolve(),
             optimize=sys.flags.optimize,
@@ -434,11 +643,6 @@ class FlextInfraCodegenPreconditions:
             generator_modules=tuple(sorted(roots.items())),
             selections=names,
         )
-        authored = FlextInfraWorkspaceNativeReference.authored_sources_current(
-            observed, authority.inputs
-        )
-        if authored.failure:
-            return result_type.from_failure(authored)
         return cls.source_authority_current(authority).map(lambda _current: authority)
 
     @classmethod
@@ -586,6 +790,39 @@ class FlextInfraCodegenPreconditions:
         )
         if observed.failure:
             return result_type.from_failure(observed)
+        cold = cls._cold_native_observation(request)
+        if cold.failure:
+            return result_type.from_failure(cold)
+        reference = cold.value
+        consumed = cls._executed_source_authority(request, reference)
+        if consumed.failure:
+            return result_type.from_failure(consumed)
+        proof = (
+            FlextInfraWorkspaceNativeReference
+            .compare(observed.value, reference)
+            .flat_map(
+                lambda _: FlextInfraWorkspaceNativeReference.authored_sources_current(
+                    reference, consumed.value.inputs
+                )
+            )
+            .flat_map(lambda _: cls._native_inputs_current(request))
+            .flat_map(lambda _: cls.source_authority_current(consumed.value))
+        )
+        return proof.flat_map(
+            lambda _: cls._seal_native_reference(reference, consumed.value)
+        )
+
+    @staticmethod
+    def _cold_native_observation(
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportObservation]:
+        """Read the complete original child outcome before decoding its evidence.
+
+        Returns:
+            The original native import observation or process failure.
+
+        """
+        result_type = r[m.Infra.NativeImportObservation]
         consumer = FlextInfraValidateFreshImport(
             repository_root=request.repository_root,
             runtime_root=request.runtime_root,
@@ -598,25 +835,134 @@ class FlextInfraCodegenPreconditions:
                 f"cold native source import failed: {output.value.outcome}\n"
                 f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}",
             )
-        reference = m.Infra.NativeImportObservation.model_validate_json(
-            output.value.stdout
+        return result_type.ok(
+            m.Infra.NativeImportObservation.model_validate_json(output.value.stdout)
         )
-        proof = (
-            FlextInfraWorkspaceNativeReference
-            .compare(observed.value, reference)
-            .flat_map(
-                lambda _: FlextInfraWorkspaceNativeReference.authored_sources_current(
-                    reference, request.source_authority.inputs
-                )
-            )
-            .flat_map(lambda _: cls._native_inputs_current(request))
-        )
-        return proof.map(
-            lambda _: m.Infra.NativeImportReference(
+
+    @staticmethod
+    def _seal_native_reference(
+        reference: m.Infra.NativeImportObservation,
+        authority: m.Infra.CodegenSourceAuthority,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Issue one live reference after full physical and executable admission.
+
+        Returns:
+            The exact reference with its Pydantic-owned private birth storage.
+
+        """
+        return r[m.Infra.NativeImportReference].ok(
+            m.Infra.NativeImportReference(
                 **reference.model_dump(),
-                source_authority=request.source_authority,
-            )
+                source_authority=authority,
+            ),
         )
+
+    @classmethod
+    def reference_current(
+        cls,
+        reference: m.Infra.NativeImportReference,
+    ) -> p.Result[bool]:
+        """Re-prove a native reference by value against its sealed authority.
+
+        A reference is a value: the same producer is current on every path
+        (live, journaled, recovered) exactly when its source authority still
+        proves the capturing runtime, module election and pinned inputs.
+
+        Returns:
+            Success only while the reference's source authority is current.
+
+        """
+        if type(reference) is not m.Infra.NativeImportReference:
+            return r[bool].fail("native reference is not an admitted native import")
+        return cls.source_authority_current(reference.source_authority)
+
+    @classmethod
+    def _executed_source_authority(
+        cls,
+        request: m.Infra.NativeImportRequest,
+        observed: m.Infra.NativeImportObservation,
+    ) -> p.Result[m.Infra.CodegenSourceAuthority]:
+        """Bind pre-execution child receipts to the original elected providers.
+
+        Returns:
+            The complete input authority after physical and execution-trace proof.
+
+        """
+        result_type = r[m.Infra.CodegenSourceAuthority]
+        if not observed.executed_sources:
+            return result_type.fail(
+                "cold native import has no executed-source receipts"
+            )
+        consumed = cls._executed_sources_current(
+            request.source_authority, observed.executed_sources
+        )
+        if consumed.failure:
+            return result_type.from_failure(consumed)
+        executed = {receipt.path for receipt in observed.executed_sources}
+        for supplier, origin, declaration in observed.sources:
+            if supplier.partition("::")[0].partition(".")[0] in sys.stdlib_module_names:
+                continue
+            for source in (origin, declaration):
+                if (
+                    source
+                    and Path(source).suffix == c.Infra.EXT_PYTHON
+                    and Path(source) not in executed
+                ):
+                    return result_type.fail(
+                        f"cold producer source was not compiled by its loader: {source}"
+                    )
+        authority = request.source_authority.model_copy(
+            update={"inputs": consumed.value}
+        )
+        return cls.source_authority_current(authority).map(lambda _: authority)
+
+    @staticmethod
+    def _executed_sources_current(
+        authority: m.Infra.CodegenSourceAuthority,
+        receipts: t.VariadicTuple[m.Cli.AtomicFileReceipt],
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileReceipt]]:
+        """Authenticate every child receipt within the original physical election.
+
+        Returns:
+            The original and newly consumed receipts with unchanged physical bytes.
+
+        """
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileReceipt]]
+        standard = FlextInfraWorkspaceEnvironmentProvenance.standard_library_root()
+        packages = (
+            FlextInfraWorkspaceEnvironmentProvenance.standard_library_package_roots()
+        )
+        roots = tuple(root for _, root in authority.generator_modules)
+        pinned = {receipt.path: receipt for receipt in authority.inputs}
+        executed: dict[Path, m.Cli.AtomicFileReceipt] = {}
+        for receipt in receipts:
+            path = receipt.path
+            physical = path.resolve()
+            runtime_source = physical.is_relative_to(standard) and not any(
+                physical.is_relative_to(root) for root in packages
+            )
+            if not (
+                runtime_source
+                or any(
+                    physical.is_relative_to(root.resolve())
+                    if root.is_dir()
+                    else physical == root.resolve()
+                    for root in roots
+                )
+            ):
+                return result_type.fail(
+                    f"cold source escaped its elected provider: {path}"
+                )
+            previous = executed.get(path, pinned.get(path))
+            if previous is not None and previous != receipt:
+                return result_type.fail(f"cold source input changed: {path}")
+            current = u.Cli.atomic_read_binary_file_receipt(path, required=True)
+            if current.failure:
+                return result_type.from_failure(current)
+            if current.value != receipt:
+                return result_type.fail(f"cold executed source changed: {path}")
+            executed[path] = receipt
+        return result_type.ok(tuple({**pinned, **executed}.values()))
 
     @classmethod
     def _native_inputs_current(
@@ -629,6 +975,18 @@ class FlextInfraCodegenPreconditions:
             Success when source, environment and interpreter identities agree.
 
         """
+        if request.modules != request.source_authority.selections or (
+            request.import_roots
+            != tuple(
+                dict.fromkeys(
+                    root.parent
+                    for _, root in request.source_authority.generator_modules
+                )
+            )
+        ):
+            return r[bool].fail(
+                "native import request differs from its elected source authority"
+            )
         current = cls.source_authority_current(request.source_authority).flat_map(
             lambda _: FlextInfraMiseArtifactsVerification.states_current(request.inputs)
         )
@@ -694,16 +1052,58 @@ class FlextInfraCodegenPreconditions:
                 f"producer runtime is not a physical managed environment: {environment}"
             )
         runtime_root = environment.parent
+        reference = cls._capture_producer_reference(
+            repository_root, runtime_root, names
+        )
+        if reference.failure:
+            return result_type.from_failure(reference)
+        consumed = cls.authority_inputs(reference.value.source_authority)
+        if consumed.failure:
+            return result_type.from_failure(consumed)
+        authority = reference.value.source_authority
+        snapshot = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+            files=(),
+            inputs=consumed.value,
+            generator_trees=authority.generator_trees,
+            generator_modules=authority.generator_modules,
+            generator_reference=reference.value,
+        )
+        return cls.producer_current(snapshot).map(lambda _current: snapshot)
+
+    @classmethod
+    def _capture_producer_reference(
+        cls,
+        repository_root: Path,
+        runtime_root: Path,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Bind one elected source epoch to its independent native import.
+
+        Returns:
+            The live admitted reference or the first source/import failure.
+
+        """
+        result_type = r[m.Infra.NativeImportReference]
+        u.Cli.info(
+            f"stage=native-source-authority selections={len(names)} "
+            f"runtime={runtime_root}",
+        )
         cold = cls.capture_source_authority(
             runtime_root,
             nominated=names,
         )
         if cold.failure:
             return result_type.from_failure(cold)
+        u.Cli.info(
+            f"stage=native-source-authority-complete "
+            f"providers={len(cold.value.generator_modules)} "
+            f"inputs={len(cold.value.inputs)}",
+        )
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        reference = cls.capture_native_reference(
+        return cls.capture_native_reference(
             m.Infra.NativeImportRequest(
                 repository_root=repository_root,
                 runtime_root=runtime_root,
@@ -717,17 +1117,6 @@ class FlextInfraCodegenPreconditions:
                 ),
             ),
         )
-        if reference.failure:
-            return result_type.from_failure(reference)
-        snapshot = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-            files=(),
-            inputs=inputs.value,
-            generator_trees=cold.value.generator_trees,
-            generator_modules=cold.value.generator_modules,
-            generator_reference=reference.value,
-        )
-        return cls.producer_current(snapshot).map(lambda _current: snapshot)
 
     @classmethod
     def _distribution_providers(
@@ -965,13 +1354,16 @@ class FlextInfraCodegenPreconditions:
         """
         if reference is None:
             return r[bool].fail("producer closure lacks its pre-planning native epoch")
+        birth = FlextInfraCodegenPreconditions.reference_current(reference)
+        if birth.failure:
+            return birth
         if (
             tuple(trees) != reference.source_authority.generator_trees
             or modules != reference.source_authority.generator_modules
         ):
             return r[bool].fail("producer native epoch belongs to another election")
 
-        current = FlextInfraWorkspaceNativeReference.authority_current(
+        current = FlextInfraCodegenPreconditions.authority_current(
             reference.source_authority, outputs=outputs
         )
         if current.failure:
@@ -1013,6 +1405,75 @@ class FlextInfraCodegenPreconditions:
             if elected.value != root:
                 return r[bool].fail("producer module election changed after capture")
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _authorized_outputs_current(
+        outputs: t.SequenceOf[m.Infra.CodegenJournalSource],
+    ) -> p.Result[bool]:
+        """Authenticate every physical effect before permitting source substitution.
+
+        Returns:
+            The first physical mismatch or the exact recorded effects.
+
+        """
+        for expected in outputs:
+            state = FlextInfraMiseArtifactsFiles.read_state(
+                expected.path, required=expected.sha256 is not None
+            )
+            if state.failure:
+                return r[bool].from_failure(state)
+            recorded = FlextInfraMiseArtifactsJournalRelocation.source_record(
+                expected.phase, state.value, previous=expected
+            )
+            if recorded.failure:
+                return r[bool].from_failure(recorded)
+            if recorded.value != expected:
+                return r[bool].fail(
+                    f"native authorized output changed: {expected.path}"
+                )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def authority_current(
+        cls,
+        authority: m.Infra.CodegenSourceAuthority,
+        *,
+        outputs: t.SequenceOf[m.Infra.CodegenJournalSource] = (),
+    ) -> p.Result[bool]:
+        """Validate physical source authority and only authenticated own effects.
+
+        Returns:
+            The original input/election proof, without creating execution authority.
+
+        """
+        modules = cls._authority_modules_current(authority)
+        if modules.failure:
+            return modules
+        if not authority.inputs or authority.runtime not in {
+            item.path for item in authority.inputs
+        }:
+            return r[bool].fail(
+                "native source authority lacks its physical interpreter"
+            )
+        published = cls._authorized_outputs_current(outputs)
+        if published.failure:
+            return published
+        output_paths = {item.path for item in outputs}
+        for receipt in authority.inputs:
+            if receipt.path in output_paths and receipt.path != authority.runtime:
+                continue
+            current = u.Cli.atomic_read_binary_file_receipt(
+                receipt.path, required=receipt.device is not None
+            )
+            if current.failure:
+                return r[bool].from_failure(current)
+            if current.value != receipt:
+                return r[bool].fail(f"native source authority changed: {receipt.path}")
+        return cls.source_trees_current(
+            authority.generator_trees,
+            tuple(outputs),
+            modules=authority.generator_modules,
+        )
 
     @classmethod
     def _producer_tree_current(

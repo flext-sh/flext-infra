@@ -75,6 +75,7 @@ Repository = "https://github.com/flext-sh/flext-infra"
 
 [dependency-groups]
 dev = [
+  "mkdocstrings-python>=2.0.9",
   "actionlint-py>=1.7.12.24",
   "bandit>=1.9.4",
   "deptry",
@@ -174,7 +175,7 @@ scan_dirs = ["src"]
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-include = ["/src/flext_infra/**"]
+only-include = ["src/flext_infra"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src/flext_infra" = "flext_infra"
@@ -183,7 +184,7 @@ include = ["/src/flext_infra/**"]
 "pyproject.toml" = "flext_infra/pyproject.toml"
 
 [tool.hatch.build.targets.sdist]
-include = ["/src/flext_infra/**"]
+only-include = ["src/flext_infra"]
 
 [tool.hatch.build.targets.sdist.force-include]
 "pyproject.toml" = "pyproject.toml"
@@ -476,6 +477,7 @@ runtime-evaluated-base-classes = [
   "flext_cli.m.BaseSettings",
   "flext_cli.m.ContractModel",
   "flext_cli.m.FlexibleModel",
+  "flext_cli.m.FrozenModel",
   "flext_cli.m.ImmutableValueModel",
   "flext_cli.m.RootModel",
   "flext_cli.m.Value",
@@ -487,6 +489,7 @@ runtime-evaluated-base-classes = [
   "flext_infra.FlextInfraProjectSelectionServiceBase",
   "flext_infra.FlextInfraServiceBase",
   "flext_infra._models.FlextInfraModelsBase.FrozenArbitrary",
+  "flext_infra._models.FlextInfraModelsMiseToolchainBase",
   "flext_infra._models.FlextInfraModelsMixins.AbsoluteFilePathTextMixin",
   "flext_infra._models.FlextInfraModelsMixins.ErrorDetailMixin",
   "flext_infra._models.FlextInfraModelsMixins.FilePathMixin",
@@ -518,7 +521,6 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.git.GitRepoRequest",
   "flext_infra._models.layout._LayoutContract",
   "flext_infra._models.mise_toolchain._ConfigContract",
-  "flext_infra._models.mise_toolchain_base.FlextInfraModelsMiseToolchainBase",
   "flext_infra._models.mixins.FilePathMixin",
   "flext_infra._models.mixins.PositiveLineMixin",
   "flext_infra._models.mixins.ScopeMixin",
@@ -529,7 +531,6 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.scan.ModScanFinding",
   "flext_infra._models.workspace.NativeImportObservation",
   "flext_infra.base.s",
-  "flext_infra.base_selection.FlextInfraProjectSelectionServiceBase",
   "flext_infra.codegen.FlextInfraCodegenConform",
   "flext_infra.codegen.FlextInfraCodegenExecutionBase",
   "flext_infra.codegen._conform.FlextInfraCodegenConformArtifactRender",
@@ -547,14 +548,14 @@ runtime-evaluated-base-classes = [
   "flext_infra.codegen._conform.FlextInfraCodegenConformScaffoldPlan",
   "flext_infra.codegen._conform.plan.FlextInfraCodegenConformPlan",
   "flext_infra.deps._modernizer.FlextInfraPyprojectModernizerBase",
-  "flext_infra.docs.base.FlextInfraDocServiceBase",
+  "flext_infra.docs.FlextInfraDocServiceBase",
   "flext_infra.m.ArbitraryTypesModel",
   "flext_infra.m.FrozenModel",
   "flext_infra.m.ImmutableValueModel",
   "flext_infra.m.Infra.FrozenArbitrary",
   "flext_infra.m.Infra.ViolationsSweepRequest",
   "flext_infra.m.Value",
-  "flext_infra.maintenance.sonarcloud_client.FlextInfraSonarcloudClient",
+  "flext_infra.maintenance.FlextInfraSonarcloudClient",
   "flext_infra.release.FlextInfraReleaseArtifactMixin",
   "flext_infra.release.FlextInfraReleaseBoundaryMixin",
   "flext_infra.release.FlextInfraReleaseBuildMixin",

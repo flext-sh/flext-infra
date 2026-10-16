@@ -10,6 +10,7 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -76,7 +77,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         item: m.Infra.LogicalStatement,
         body: str,
-        native: t.Pair[p.Infra.RopePyModule, p.Infra.RopePyModule],
+        native: t.Pair[p.Infra.RopePyModule, p.Infra.RopeSemanticModule],
         classvar_name: str,
     ) -> str:
         """Render the original member category through its real native annotation.
@@ -104,7 +105,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         source: str,
         module: p.Infra.RopePyModule,
-        typing: p.Infra.RopePyModule,
+        typing: p.Infra.RopeSemanticModule,
         selection: t.Triple[
             t.SequenceOf[m.Infra.LogicalStatement],
             t.MappingKV[str, p.Infra.RopeScope],
@@ -360,6 +361,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         )
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(source)
         typing = project.get_module("typing")
+        if not FlextInfraUtilitiesRopeRuntimeTypes.semantic_module(typing):
+            message = "Typing declarations require a native semantic module"
+            raise TypeError(message)
         selection = cls._nesting_selection(module, facts, definitions)
         if any(
             item.category
@@ -416,7 +420,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     def _member_annotation(
         statement: m.Infra.LogicalStatement,
         module: p.Infra.RopePyModule,
-        typing: p.Infra.RopePyModule,
+        typing: p.Infra.RopeSemanticModule,
     ) -> str | None:
         if statement.category not in {
             c.Infra.StatementCategory.ANN_ASSIGN,
@@ -446,6 +450,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                 )
                 if constant.success:
                     return type(constant.value).__name__
+            case _:
+                return None
         return None
 
 

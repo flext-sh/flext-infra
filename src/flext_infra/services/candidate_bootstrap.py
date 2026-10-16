@@ -146,15 +146,7 @@ class FlextInfraCandidateBootstrapService:
             planned = self._planned_target(root, target, inputs)
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            if not contract.destinations and not planned.value.files:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"candidate bootstrap has no declared destinations: {root}",
-                )
-            for file in planned.value.files:
-                admitted = self._admit(root, contract, file, inputs)
-                if admitted.failure:
-                    return r[m.Infra.CodegenPhaseAnalysis].from_failure(admitted)
-                files.append(file)
+            files.extend(planned.value)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
@@ -163,23 +155,6 @@ class FlextInfraCandidateBootstrapService:
             ),
         )
 
-    @staticmethod
-    def _admit(
-        root: Path,
-        contract: m.Infra.CodegenConformSurfaceContract,
-        file: m.Infra.CodegenFilePlan,
-        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-    ) -> p.Result[bool]:
-        """Admit one planned file into its target surface and record its inputs.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if file.project != root or not file.path.is_relative_to(root):
-            return r[bool].fail(
-                f"candidate bootstrap destination has a foreign owner: {file.path}",
-            )
     def _planned_target(
         self,
         root: Path,
@@ -211,8 +186,6 @@ class FlextInfraCandidateBootstrapService:
             if diagnostic is not None:
                 return result_type.fail(diagnostic)
             files.append(file)
-            for state in file.source_states:
-                inputs[state.path] = state
         return result_type.ok(tuple(files))
 
     @staticmethod
@@ -304,9 +277,9 @@ class FlextInfraCandidateBootstrapService:
         root: Path,
         file: m.Infra.CodegenFilePlan,
         contract: m.Infra.CodegenConformSurfaceContract,
-        inputs: t.MappingKV[Path, m.Cli.AtomicFileState],
+        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> str | None:
-        """Name the first bootstrap violation of one planned file.
+        """Admit the file's source states or name its first bootstrap violation.
 
         Returns:
             The failure message, or ``None`` when the file is planable.
@@ -318,17 +291,14 @@ class FlextInfraCandidateBootstrapService:
             contract.destinations is not None
             and file.path.relative_to(root).as_posix() not in contract.destinations
         ):
-            return r[bool].fail(
-                f"candidate bootstrap destination is outside its surface: {file.path}",
+            return (
+                f"candidate bootstrap destination is outside its surface: {file.path}"
             )
         for state in file.source_states:
             previous = inputs.get(state.path)
             if previous is not None and previous != state:
-                return r[bool].fail(
-                    f"candidate bootstrap observed two states for {state.path}",
-                )
-            inputs[state.path] = state
-        return r[bool].ok(value=True)
+                return f"candidate bootstrap observed two states for {state.path}"
+        return None
 
     def _verify(
         self,

@@ -32,6 +32,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         Returns:
             Render inputs with the source-derived tooling fields reconciled.
 
+        Raises:
+            ValueError: If Python source rendering has no resolved tooling context.
+
         """
         root = render_inputs.target.root
         python_plans = tuple(
@@ -46,6 +49,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if plan.desired_content is not None
         }
         tooling = render_inputs.tooling_runtime
+        if tooling is None:
+            msg = "Python source rendering requires resolved tooling context"
+            raise ValueError(msg)
         policy = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
         runtime_bases = (
             tuple(tooling.ruff_runtime_evaluated_base_classes)
@@ -915,6 +921,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 examples_module=target.repository.examples_module,
                 make_profile=target.make_profile,
                 package=target.repository.package,
+                analyzer_roots=tuple(
+                    config.Infra.tooling.tools.pyright.path_rules.env_dirs,
+                ),
                 workspace_repositories=(
                     tuple(
                         sorted(

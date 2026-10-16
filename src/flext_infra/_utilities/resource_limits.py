@@ -104,6 +104,8 @@ class FlextInfraUtilitiesResourceLimits:
             ),
             "--no-error-summary",
             "--no-color-output",
+            # Profile the full analysis, never an incidental warm-cache hit.
+            *(("--no-incremental",) if invocation.profile_output is not None else ()),
             *(("--output", c.Infra.OUTPUT_JSON) if invocation.report_json else ()),
             *(("--verbose",) if invocation.verbose else ()),
             "--",

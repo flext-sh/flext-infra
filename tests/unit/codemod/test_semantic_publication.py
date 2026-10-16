@@ -481,11 +481,7 @@ class TestsFlextInfraSemanticPublication:
 
         def preflight() -> p.Result[bool]:
             return u.Cli.atomic_verify_binary_file_states(
-                tuple(
-                    plan.before
-                    for plan in plans
-                    if isinstance(plan.before, m.Cli.AtomicFileState)
-                ),
+                tuple(plan.before for plan in plans),
             )
 
         def validate(candidate_root: Path) -> p.Result[bool]:

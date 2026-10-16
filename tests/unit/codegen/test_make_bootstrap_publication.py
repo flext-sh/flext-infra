@@ -22,7 +22,13 @@ class TestsMakeBootstrapPublication:
     """Bootstrap preserves operation coverage across actual member transactions."""
 
     @staticmethod
-    def _workspace(tmp_path: Path) -> tuple[Path, tuple[Path, ...]]:
+    def workspace(tmp_path: Path) -> tuple[Path, tuple[Path, ...]]:
+        """Create real governed members installed in their workspace environment.
+
+        Returns:
+            The workspace root and its attached, installed member paths.
+
+        """
         root = tmp_path / "workspace"
         identity = u.Tests.BeadsIdentity(
             workspace="bootstrap-workspace",
@@ -133,7 +139,7 @@ class TestsMakeBootstrapPublication:
         tmp_path: Path,
     ) -> None:
         """Every requested target publishes its own independent bootstrap receipt."""
-        root, members = self._workspace(tmp_path)
+        root, members = self.workspace(tmp_path)
 
         for path in (root, *members):
             tm.that(u.Cli.process_succeeded(self._run(path).outcome), eq=True)
@@ -173,7 +179,7 @@ class TestsMakeBootstrapPublication:
         tmp_path: Path,
     ) -> None:
         """The elected Python resolves editable imports outside its install dirs."""
-        root, members = self._workspace(tmp_path)
+        root, members = self.workspace(tmp_path)
         package = u.Infra.project_package_name(members[0])
         facts = tm.ok(
             FlextInfraBindingService.consumer_package_environment(
@@ -218,7 +224,7 @@ class TestsMakeBootstrapPublication:
         tmp_path: Path,
     ) -> None:
         """A second actual installed metadata directory remains a duplicate."""
-        root, members = self._workspace(tmp_path)
+        root, members = self.workspace(tmp_path)
         facts = tm.ok(
             FlextInfraBindingService.consumer_package_environment(
                 consumer_root=root,
@@ -252,7 +258,7 @@ class TestsMakeBootstrapPublication:
         tmp_path: Path,
     ) -> None:
         """Metadata directory links cannot borrow an external installation."""
-        root, members = self._workspace(tmp_path)
+        root, members = self.workspace(tmp_path)
         facts = tm.ok(
             FlextInfraBindingService.consumer_package_environment(
                 consumer_root=root,
@@ -275,7 +281,7 @@ class TestsMakeBootstrapPublication:
         tmp_path: Path,
     ) -> None:
         """A failed member request cannot overwrite another target's receipt."""
-        root, members = self._workspace(tmp_path)
+        root, members = self.workspace(tmp_path)
         tm.that(u.Cli.process_succeeded(self._run(root).outcome), eq=True)
         receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
             c.Infra.CodegenConformSurface.MAKEFILE,
@@ -296,7 +302,7 @@ class TestsMakeBootstrapPublication:
         tmp_path: Path,
     ) -> None:
         """The elected environment cannot lend a foreign member source."""
-        root, members = self._workspace(tmp_path)
+        root, members = self.workspace(tmp_path)
         foreign = tmp_path / "foreign-member"
         tm.ok(
             u.Cli.run_checked(
@@ -334,7 +340,7 @@ class TestsMakeBootstrapPublication:
         hosted: bool,
     ) -> None:
         """Hosted init needs no member checkout, even when CI's gate token is absent."""
-        root, members = self._workspace(tmp_path)
+        root, members = self.workspace(tmp_path)
         if hosted:
             for member in members:
                 shutil.rmtree(member)

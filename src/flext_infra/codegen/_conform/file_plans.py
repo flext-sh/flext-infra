@@ -9,8 +9,6 @@ from __future__ import annotations
 from functools import partial
 from pathlib import Path
 
-from flext_core import FlextStrictYamlConfigSource
-
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformBeadsRoutes
 
@@ -163,7 +161,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             if parsed.failure:
                 return result_type.from_failure(parsed)
             payload = parsed.value
-        merged = FlextStrictYamlConfigSource.merge_values(
+        merged = u.config_merge(
             dict(payload),
             {"Infra": {"codegen": dict(values)}},
         )

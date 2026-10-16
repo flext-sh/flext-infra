@@ -11,7 +11,12 @@ import sys
 import sysconfig
 from base64 import urlsafe_b64encode
 from functools import lru_cache
-from importlib.machinery import BuiltinImporter, FrozenImporter
+from importlib.machinery import (
+    BuiltinImporter,
+    ExtensionFileLoader,
+    FrozenImporter,
+    ModuleSpec,
+)
 from importlib.metadata import Distribution, PackagePath
 from json import dumps
 from pathlib import Path
@@ -294,8 +299,25 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         module = registered.value
         namespace = vars(ModuleType)["__dict__"].__get__(module, type(module))
         native = namespace.get("__spec__")
-        if native is None or modules.get(native.name) is not module:
+        if native is None:
+            return cls._native_child_source(module_name, module, namespace)
+        if type(native) is not ModuleSpec or modules.get(native.name) is not module:
             return r[Path].fail(f"producer module lacks its native spec: {module_name}")
+        return cls._module_spec_source(module_name, namespace, native)
+
+    @classmethod
+    def _module_spec_source(
+        cls,
+        module_name: str,
+        namespace: t.MappingKV[str, t.Infra.NativeOperand],
+        native: ModuleSpec,
+    ) -> p.Result[Path]:
+        """Resolve an authenticated native spec through its declared loader.
+
+        Returns:
+            Its original interpreter, namespace or physical file authority.
+
+        """
         if namespace.get("__loader__") is not native.loader:
             return r[Path].fail(
                 f"producer module loader differs from native spec: {module_name}"
@@ -306,10 +328,15 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 module_name, native.name, native.origin, native.loader, interpreter
             )
         if native.origin is None:
+            locations = native.submodule_search_locations
+            if locations is None or namespace.get("__path__") is not locations:
+                return r[Path].fail(
+                    f"producer namespace paths differ from native spec: {module_name}"
+                )
             return cls._namespace_module_source(
                 module_name,
-                native.submodule_search_locations,
-                tuple(namespace.get("__path__", ())),
+                locations,
+                tuple(locations),
             )
         return cls._file_module_source(
             module_name,
@@ -318,6 +345,86 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             namespace.get("__file__"),
             interpreter,
         )
+
+    @staticmethod
+    def _native_child_parent(
+        module_name: str,
+        module: ModuleType,
+        namespace: t.MappingKV[str, t.Infra.NativeOperand],
+    ) -> p.Result[t.Pair[str, ModuleType]]:
+        """Observe the exact registrations used by native module construction.
+
+        Returns:
+            The canonical parent registration or the first identity mismatch.
+
+        """
+        result_type = r[t.Pair[str, ModuleType]]
+        name = namespace.get("__name__")
+        if type(module) is not ModuleType or not isinstance(name, str):
+            return result_type.fail(
+                f"native child module lacks canonical registration: {module_name}"
+            )
+        if (
+            type(name) is not str
+            or modules.get(name) is not module
+            or modules.get(module_name) is not module
+            or namespace.get("__file__") is not None
+            or namespace.get("__loader__") is not None
+        ):
+            return result_type.fail(
+                f"native child module lacks canonical registration: {module_name}"
+            )
+        parent_name, separator, attribute = name.rpartition(".")
+        parent = modules.get(parent_name)
+        if not separator or type(parent) is not ModuleType:
+            return result_type.fail(
+                f"native child module lacks its registered parent: {module_name}"
+            )
+        parent_namespace = vars(ModuleType)["__dict__"].__get__(parent, ModuleType)
+        if parent_namespace.get(attribute) is not module:
+            return result_type.fail(
+                f"native child module differs from its parent binding: {module_name}"
+            )
+        return result_type.ok((parent_name, parent))
+
+    @classmethod
+    def _native_child_source(
+        cls,
+        module_name: str,
+        module: ModuleType,
+        namespace: t.MappingKV[str, t.Infra.NativeOperand],
+    ) -> p.Result[Path]:
+        """Bind a spec-less native child to its parent's real binary authority.
+
+        Returns:
+            The authenticated parent binary, without manufacturing a child spec.
+
+        """
+        result_type = r[Path]
+        owner = cls._native_child_parent(module_name, module, namespace)
+        if owner.failure:
+            return result_type.from_failure(owner)
+        parent_name, parent = owner.value
+        parent_namespace = vars(ModuleType)["__dict__"].__get__(parent, ModuleType)
+        native = parent_namespace.get("__spec__")
+        if type(native) is not ModuleSpec or not (
+            isinstance(native.loader, ExtensionFileLoader)
+            or native.origin == "built-in"
+        ):
+            return result_type.fail(
+                f"native child module has no binary parent: {module_name}"
+            )
+        source = cls.module_source(parent_name)
+        if source.failure:
+            return result_type.from_failure(source)
+        current = cls._native_child_parent(module_name, module, namespace)
+        if current.failure:
+            return result_type.from_failure(current)
+        if current.value[0] != parent_name or current.value[1] is not parent:
+            return result_type.fail(
+                f"native child parent changed during observation: {module_name}"
+            )
+        return source
 
     @staticmethod
     def _registered_module(module_name: str) -> p.Result[ModuleType]:
@@ -389,17 +496,45 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[Path].ok(root)
 
     @staticmethod
-    def runtime_supplier(module_name: str) -> bool:
-        """Whether a module belongs to the interpreter's own standard library.
+    def standard_library_root() -> Path:
+        """Return the standard library owned by the current base interpreter.
 
         Returns:
-            True when the interpreter declares the top-level module as stdlib.
+            The resolved native standard-library directory.
 
         """
-        return module_name.partition(".")[0] in sys.stdlib_module_names
+        return Path(
+            sysconfig.get_path(
+                "stdlib",
+                vars={
+                    "base": sys.base_prefix,
+                    "platbase": sys.base_exec_prefix,
+                },
+            )
+        ).resolve()
 
     @staticmethod
+    def standard_library_package_roots() -> t.VariadicTuple[Path]:
+        """Elect package-installation trees inside the interpreter's base scheme.
+
+        Returns:
+            Physical purelib and platlib roots, kept outside stdlib authority.
+
+        """
+        variables = {
+            "base": sys.base_prefix,
+            "platbase": sys.base_exec_prefix,
+        }
+        return tuple(
+            dict.fromkeys(
+                Path(sysconfig.get_path(key, vars=variables)).resolve()
+                for key in ("purelib", "platlib")
+            )
+        )
+
+    @classmethod
     def _file_module_source(
+        cls,
         module_name: str,
         native_name: str,
         native_origin: str,
@@ -417,17 +552,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"producer module file differs from native origin: {module_name}"
             )
         origin = Path(native_origin).absolute()
-        if FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(native_name):
+        if native_name.partition(".")[0] in sys.stdlib_module_names:
             base = Path(sys.base_prefix).resolve()
-            standard = Path(
-                sysconfig.get_path(
-                    "stdlib",
-                    vars={
-                        "base": sys.base_prefix,
-                        "platbase": sys.base_exec_prefix,
-                    },
-                )
-            ).resolve()
+            standard = cls.standard_library_root()
             if not interpreter.is_relative_to(
                 base
             ) or not origin.resolve().is_relative_to(standard):

@@ -22,7 +22,8 @@ class FlextInfraRopeRestructure(Restructure):
         """Delegate every alternative to Rope's exact native identity matcher."""
 
         def __init__(self, project: p.Infra.RopeProject) -> None:
-            self._matches = DefaultWildcard(project).matches
+            wildcard: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
+            self._matches = wildcard.matches
 
         @staticmethod
         def get_name() -> str:
@@ -43,7 +44,8 @@ class FlextInfraRopeRestructure(Restructure):
             else ("identity_choices", tuple(value))
             for name, value in request.arguments.items()
         }
-        super().__init__(
+        native: p.Infra.RopeRestructure = super()
+        native.__init__(
             project,
             request.pattern,
             request.goal,
@@ -77,9 +79,6 @@ class FlextInfraRopeRestructure(Restructure):
         Returns:
             The upstream source-preserving change computer.
 
-        Raises:
-            TypeError: When Rope does not satisfy its change-computer contract.
-
         """
         selected = (
             list(matches)
@@ -88,11 +87,7 @@ class FlextInfraRopeRestructure(Restructure):
         )
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
-        computer = super()._compute_changes(selected, pymodule)
-        if not isinstance(computer, p.Infra.RopeChangeComputer):
-            message = "Rope returned an invalid source change computer"
-            raise TypeError(message)
-        return computer
+        return super()._compute_changes(selected, pymodule)
 
     @override
     def _add_imports(
@@ -109,7 +104,8 @@ class FlextInfraRopeRestructure(Restructure):
         """
         selected = imports
         if isinstance(self.import_policy, Mapping):
-            names = self.project.get_pymodule(resource).get_scope().get_defined_names()
+            project: p.Infra.RopeProject = self.project
+            names = project.get_pymodule(resource).get_scope().get_defined_names()
             selected = tuple(
                 declaration
                 for binding, declaration in self.import_policy.items()

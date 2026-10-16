@@ -518,10 +518,8 @@ class TestsFlextInfraUvNativeResolution:
                 (directory / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
                 "package",
             )
-            tm.that(
-                set(packages).issubset({package["name"] for package in locked}),
-                eq=True,
-            )
+            locked_names = tuple(package["name"] for package in locked)
+            tm.that(all(name in locked_names for name in packages), eq=True)
         tm.that(
             {name: u.Cli.toml_dumps(document) for name, document in complete.items()},
             eq=original,
@@ -1385,6 +1383,9 @@ class TestsFlextInfraUvNativeResolution:
         Returns:
             The real root and both distribution identities used by consumers.
 
+        Raises:
+            ValueError: The fixture identity is not a declared resolution scenario.
+
         """
         root = tmp_path / "root"
         remote = tmp_path / "root-origin"
@@ -1421,11 +1422,8 @@ class TestsFlextInfraUvNativeResolution:
                 cwd=provider,
             ),
         ).strip()
-        provider_requirement = (
-            f"{provider_name} @ git+{provider.as_uri()}@{provider_revision}"
-        )
         development = (
-            provider_requirement,
+            f"{provider_name} @ git+{provider.as_uri()}@{provider_revision}",
             f"identity-dev @ {leaves['identity-dev'].as_uri()}",
         )
         examples = f"identity-examples @ {leaves['identity-examples'].as_uri()}"
@@ -1464,6 +1462,11 @@ class TestsFlextInfraUvNativeResolution:
                 )
                 if identity == "scoped-self":
                     policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
+            case "virtual-root":
+                pass
+            case _:
+                msg = f"Unknown native resolution fixture identity: {identity}"
+                raise ValueError(msg)
         u.Tests.write_native_resolution_project(
             root,
             root_name,

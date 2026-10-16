@@ -25,6 +25,7 @@ from flext_infra._models import (
     FlextInfraModelsScan,
     FlextInfraModelsTransformers,
 )
+from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models._codegen.transaction import (
     FlextInfraModelsCodegenTransactionModels,
 )
@@ -165,6 +166,29 @@ class FlextInfraModelsRefactor(
         )
         candidate: FlextInfraModelsCodegenTransactionModels.StageSourcePlan = m.Field(
             description="Authenticated complete source and runtime candidate closure"
+        )
+
+    class RuleDeltaOptions(FlextInfraModelsBase.FrozenArbitrary):
+        """Optional scope and authentication inputs for one rule delta comparison."""
+
+        inventory: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+            default=(),
+            description="Declared repository and rule pairs included in the delta.",
+        )
+        repository_root: Path | None = m.Field(
+            default=None,
+            description="Root resolving text finding paths into the topology.",
+        )
+        projects: t.SequenceOf[Path] = m.Field(
+            default=(),
+            description="Declared project topology owning text findings.",
+        )
+        publication_chain: (
+            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenStagedFile]
+            | None
+        ) = m.Field(
+            default=None,
+            description="Authenticated staged publication receipts.",
         )
 
     class ViolationsTotals(m.ContractModel):

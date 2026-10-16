@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 from flext_cli import cli
 
 from flext_infra import c, m, r, u
-from flext_infra._utilities.refactor import _RuleDeltaOptions
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.refactor import (
     FlextInfraImportNormalization,
@@ -155,7 +154,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         deltas = u.Infra.rule_deltas(
             before,
             after,
-            options=_RuleDeltaOptions(
+            options=m.Infra.RuleDeltaOptions(
                 inventory=tuple(
                     (root.name, rule_id)
                     for root in project_roots
@@ -266,7 +265,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         enforcer = cls(repository_root=params.repository_root)
         report = enforcer.enforce(
             apply=params.apply,
-            project_names=params.project_names,
+            project_names=u.Infra.normalize_sequence_values(params.projects),
             module=params.module,
             gates=params.gates,
         )

@@ -170,8 +170,11 @@ message: >-
 # importing module: later layers are imported under TYPE_CHECKING only.
 # Facade letters imported from the own package root are layers; the other
 # runtime aliases it publishes (r, e, x, h, d, s) stand for the base layer.
-# Authored declaration boundaries are owned by settings-config-boundary.yml;
-# a TYPE_CHECKING guard never authorizes their own-namespace imports.
+# The family compose modules are the sanctioned static surface (bead
+# flext-6e72w): importing a canonical public compose leaf is the consumer
+# form every layer shares, not a layer crossing. Settings and config modules
+# declare models and read constants: they are governed by
+# ban-reverse-runtime-import-settings.
 id: ban-reverse-runtime-import
 language: python
 severity: error
@@ -192,7 +195,8 @@ metadata:
       - is: later-layer
         as: base
     TARGET:
-      is: later-layer
+      - is: later-layer
+      - not: compose-module
 rule:
   not:
     matches: inside-type-checking-guard
@@ -227,6 +231,92 @@ rule:
 message: >-
   Reverse runtime import: a later layer is imported at runtime; move the
   import under TYPE_CHECKING.
+---
+# Settings and config modules may import the declaration facades through
+# `u` at runtime; later layers stay TYPE_CHECKING-only, and the protocols
+# facade is never a runtime import of a settings layer. The family compose
+# modules are the same sanctioned static surface here (bead flext-6e72w).
+id: ban-reverse-runtime-import-settings
+language: python
+severity: error
+files:
+  - "**/settings.py"
+  - "**/_settings.py"
+  - "**/config.py"
+  - "**/_config.py"
+metadata:
+  context:
+    MODULE:
+      is: own-package
+    NAME:
+      - is: runtime-alias
+      - is: later-layer
+        arg: u
+        as: base
+    TARGET:
+      - is: later-layer
+        arg: u
+      - not: compose-module
+rule:
+  not:
+    matches: inside-type-checking-guard
+  any:
+    - kind: dotted_name
+      pattern: $NAME
+      not:
+        inside:
+          kind: import_from_statement
+          field: module_name
+      inside:
+        kind: import_from_statement
+        stopBy: end
+        has:
+          field: module_name
+          kind: dotted_name
+          pattern: $MODULE
+          not:
+            regex: "\\."
+    - any:
+        - kind: dotted_name
+        - kind: relative_import
+      pattern: $TARGET
+      inside:
+        kind: import_from_statement
+        field: module_name
+message: >-
+  Reverse runtime import in a settings layer: only the declaration facades
+  up to `u` are runtime imports here.
+---
+id: ban-runtime-protocols-in-settings
+language: python
+severity: error
+files:
+  - "**/settings.py"
+  - "**/_settings.py"
+  - "**/config.py"
+  - "**/_config.py"
+metadata:
+  context:
+    MODULE:
+      is: own-package
+rule:
+  kind: dotted_name
+  regex: "^p$"
+  not:
+    any:
+      - inside:
+          kind: import_from_statement
+          field: module_name
+      - matches: inside-type-checking-guard
+  inside:
+    kind: import_from_statement
+    stopBy: end
+    has:
+      field: module_name
+      kind: dotted_name
+      pattern: $MODULE
+message: >-
+  The protocols facade is TYPE_CHECKING-only in a settings layer.
 ---
 # Imports of the own package keep their names: an alias renames a published
 # facade or module for one file. Under TYPE_CHECKING, binding one of the

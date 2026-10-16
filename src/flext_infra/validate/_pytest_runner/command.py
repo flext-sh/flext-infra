@@ -470,14 +470,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *trailing,
             "-n",
             workers,
-            "--dist",
-            pytest.parallel_distribution,
-            # Why: xdist queues the shutdown marker behind each worker's
-            # pre-dispatched chunk, so the declared max-failures stop only took
-            # effect after every worker drained its assigned items at fleet
-            # scale. A one-item dispatch step makes that stop immediate.
-            "--maxschedchunk",
-            str(pytest.parallel_schedule_chunk),
+            *pytest.parallel_arguments,
             "--benchmark-disable",
         )
 

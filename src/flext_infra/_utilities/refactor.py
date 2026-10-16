@@ -14,7 +14,6 @@ from collections.abc import Generator, Mapping
 from contextlib import ExitStack, contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import Protocol
 
 from flext_cli import u
 
@@ -23,47 +22,7 @@ from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
 
-
-class _RuleDeltaOptions(m.Infra.FrozenArbitrary):
-    """Optional scope and authentication inputs for one rule delta comparison."""
-
-    inventory: t.VariadicTuple[t.Pair[str, str]] = m.Field(
-        default=(),
-        description="Declared repository and rule pairs included in the delta.",
-    )
-    repository_root: Path | None = m.Field(
-        default=None,
-        description="Root resolving text finding paths into the topology.",
-    )
-    projects: t.SequenceOf[Path] = m.Field(
-        default=(),
-        description="Declared project topology owning text findings.",
-    )
-    publication_chain: t.VariadicTuple[m.Infra.CodegenStagedFile] | None = m.Field(
-        default=None,
-        description="Authenticated staged publication receipts.",
-    )
-
-
-class _RuleDeltaSpec(Protocol):
-    """Read-only structural contract for rule delta comparison options."""
-
-    @property
-    def inventory(self) -> t.VariadicTuple[t.Pair[str, str]]: ...
-
-    @property
-    def repository_root(self) -> Path | None: ...
-
-    @property
-    def projects(self) -> t.SequenceOf[Path]: ...
-
-    @property
-    def publication_chain(
-        self,
-    ) -> t.VariadicTuple[m.Infra.CodegenStagedFile] | None: ...
-
-
-_EMPTY_RULE_DELTA_OPTIONS = _RuleDeltaOptions()
+_EMPTY_RULE_DELTA_OPTIONS = m.Infra.RuleDeltaOptions()
 
 
 class FlextInfraUtilitiesRefactor:
@@ -457,24 +416,25 @@ class FlextInfraUtilitiesRefactor:
             The lexical occurrence text standing in for the absent module.
 
         Raises:
+            TypeError: When the native byte offsets are not integers.
             ValueError: When the module occurrence is not the native root.
 
         """
         start, end = byte_offsets.get("start"), byte_offsets.get("end")
         content = state.content
-        native_offsets = (
-            isinstance(start, int)
-            and not isinstance(start, bool)
-            and isinstance(end, int)
-            and not isinstance(end, bool)
-        )
+        msg = f"module occurrence is not the native root: {entry.file}"
         if (
-            not native_offsets
-            or content is None
+            not isinstance(start, int)
+            or isinstance(start, bool)
+            or not isinstance(end, int)
+            or isinstance(end, bool)
+        ):
+            raise TypeError(msg)
+        if (
+            content is None
             or not 0 <= start <= end <= len(content)
             or content[start:end] != entry.text.encode(c.DEFAULT_ENCODING)
         ):
-            msg = f"module occurrence is not the native root: {entry.file}"
             raise ValueError(msg)
         proven.add((repository, entry.rule_id))
         return f"module-absence:{entry.catalog_digest}"
@@ -596,7 +556,7 @@ class FlextInfraUtilitiesRefactor:
         before: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModTextReport,
         after: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModTextReport,
         *,
-        options: _RuleDeltaSpec = _EMPTY_RULE_DELTA_OPTIONS,
+        options: m.Infra.RuleDeltaOptions = _EMPTY_RULE_DELTA_OPTIONS,
     ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
         """Compare lexical occurrences, or prove module absence through publication.
 
@@ -810,7 +770,7 @@ class FlextInfraUtilitiesRefactor:
             FlextInfraUtilitiesRefactor.rule_deltas(
                 before.ast_report,
                 after.ast_report,
-                options=_RuleDeltaOptions(
+                options=m.Infra.RuleDeltaOptions(
                     inventory=tuple(
                         (project.name, rule_id)
                         for rule_id in elected or ()
@@ -877,7 +837,7 @@ class FlextInfraUtilitiesRefactor:
             FlextInfraUtilitiesRefactor.rule_deltas(
                 before.text_report,
                 after.text_report,
-                options=_RuleDeltaOptions(
+                options=m.Infra.RuleDeltaOptions(
                     repository_root=stage.repository_root,
                     projects=before.repository_roots,
                 ),

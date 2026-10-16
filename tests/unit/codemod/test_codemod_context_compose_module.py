@@ -84,7 +84,7 @@ class TestsFlextInfraCodemodContextComposeModule:
             "[project]\n"
             'name = "mod-workspace"\n'
             'version = "0.0.0"\n'
-            "dependencies = [\"flext-cli\"]\n",
+            'dependencies = ["flext-cli"]\n',
             encoding="utf-8",
         )
         tm.that(
@@ -105,7 +105,12 @@ class TestsFlextInfraCodemodContextComposeModule:
 
     @staticmethod
     def _admits(root: Path, module: str) -> bool:
-        """Admit one probe finding through the compose-module predicate."""
+        """Admit one probe finding through the compose-module predicate.
+
+        Returns:
+            Whether the real binding owner admits the probe finding.
+
+        """
         package = u.Infra.project_package_name(root)
         path = root / c.Infra.DEFAULT_SRC_DIR / package / "consumer.py"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -128,7 +133,8 @@ class TestsFlextInfraCodemodContextComposeModule:
             ),
         )
         with u.Infra.codemod_binding_project(
-            root, m.Infra.CodemodBindingSnapshot(states=())
+            root,
+            u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=())),
         ) as (project, sources):
             return u.Infra.codemod_context_admits(
                 m.Infra.CodemodAdmission(

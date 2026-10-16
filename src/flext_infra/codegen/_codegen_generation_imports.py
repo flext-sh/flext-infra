@@ -10,7 +10,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_infra import config
+from flext_infra import config, u
 from flext_infra.codegen import FlextInfraCodegenGenerationPathsMixin
 
 if TYPE_CHECKING:
@@ -133,11 +133,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         """
         export_name, imported_name = item
         imported = imported_name or export_name
-        category = 0 if imported.isupper() else 1 if imported[:1].isupper() else 2
-        # Ruff isort orders names inside a type group case-insensitively
-        # (``TEST_FACADE_BASES`` < ``TESTS_ROOT``): raw ASCII puts ``S`` (83)
-        # before ``_`` (95) and flips the pair, producing a gen/fmt flip-flop.
-        return (category, imported.casefold()), export_name != imported_name
+        return u.Infra.isort_member_key(imported), export_name != imported_name
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationImportsMixin"]

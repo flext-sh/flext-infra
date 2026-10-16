@@ -24,7 +24,10 @@ class FlextInfraTypesRope:
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource
     type RopeFile = FlextInfraProtocolsRopeRuntime.RopeFile
     type RopeLocation = FlextInfraProtocolsRopeRuntime.RopeLocation
+    type RopeSemanticModule = FlextInfraProtocolsRopeRuntime.RopeSemanticModule
+    type RopeParsedModule = FlextInfraProtocolsRopeRuntime.RopeParsedModule
     type RopePyModule = FlextInfraProtocolsRopeRuntime.RopePyModule
+    type RopeSourceModule = FlextInfraProtocolsRopeRuntime.RopeSourceModule
     type RopePyName = FlextInfraProtocolsRopeRuntime.RopePyName
     type RopeAssignedName = FlextInfraProtocolsRopeRuntime.RopeAssignedName
     type RopePyObject = FlextInfraProtocolsRopeRuntime.RopePyObject

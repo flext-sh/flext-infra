@@ -11,10 +11,16 @@ from pathlib import Path
 from git import BadName, GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreePatchMixin
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStatePublicationMixin,
+    FlextInfraUtilitiesGitWorktreePatchMixin,
+)
 
 
-class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatchMixin):
+class FlextInfraUtilitiesGitSemanticRefsMixin(
+    FlextInfraUtilitiesGitWorktreePatchMixin,
+    FlextInfraUtilitiesGitStatePublicationMixin,
+):
     """Own semantic refs operations."""
 
     @classmethod
@@ -58,6 +64,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
 
         Returns:
             The live tip only when the existing ownership receipt proves closure.
+
         """
         receipt = request.ownership
         if receipt is None:
@@ -67,19 +74,28 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
                 "continue the existing candidate, not another lane",
             )
         snapshot = receipt.checkpoint.snapshot
-        if snapshot.repo_root.resolve() != request.repo_root.resolve() or snapshot.paths != (Path("."),):
+        if (
+            snapshot.repo_root.resolve() != request.repo_root.resolve()
+            or snapshot.paths != (Path(),)
+            or snapshot.branch is None
+        ):
             return r[m.Infra.GitOidReport].fail(
-                "lane ownership receipt does not cover this entire repository",
+                "lane ownership receipt does not cover this entire repository "
+                "on an owned branch",
             )
         retained = cls.git_verify_worktree_checkpoint_publication(
-            receipt.checkpoint, receipt.publication,
+            receipt.checkpoint,
+            receipt.publication,
         )
         if retained.failure:
             return r[m.Infra.GitOidReport].from_failure(retained)
-        integrated = cls.git_is_ancestor(m.Infra.GitAncestryRequest(
-            repo_root=request.repo_root, ancestor=receipt.checkpoint.worktree_commit,
-            descendant=tip,
-        ))
+        integrated = cls.git_is_ancestor(
+            m.Infra.GitAncestryRequest(
+                repo_root=request.repo_root,
+                ancestor=receipt.checkpoint.worktree_commit,
+                descendant=tip,
+            )
+        )
         if integrated.failure:
             return r[m.Infra.GitOidReport].from_failure(integrated)
         if not integrated.value.value:
@@ -95,7 +111,9 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
         owned_branch: str,
         tip: str,
     ) -> p.Result[m.Infra.GitOidReport]:
-        branch = cls.git_current_branch(m.Infra.GitRepoRequest(repo_root=request.repo_root))
+        branch = cls.git_current_branch(
+            m.Infra.GitRepoRequest(repo_root=request.repo_root)
+        )
         if branch.failure:
             return r[m.Infra.GitOidReport].from_failure(branch)
         if branch.value.text != owned_branch:
@@ -106,7 +124,9 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
         if status.failure:
             return r[m.Infra.GitOidReport].from_failure(status)
         if status.value.dirty:
-            return r[m.Infra.GitOidReport].fail("new lane refuses unpublished current WIP")
+            return r[m.Infra.GitOidReport].fail(
+                "new lane refuses unpublished current WIP"
+            )
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
 
     @classmethod

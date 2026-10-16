@@ -830,6 +830,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         )
         if outcome.failure:
             return result_type.from_failure(outcome)
+        reference = self._producer.value.generator_reference
+        if reference is None:
+            return result_type.fail("observed publication lacks its original producer")
         current = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             (*self._prior_publications, outcome.value),
             reference=self._producer.value.generator_reference,

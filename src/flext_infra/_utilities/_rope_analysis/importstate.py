@@ -446,9 +446,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         pyname = attributes[symbol]
         definition_module, definition_line = pyname.get_definition_location()
         if definition_module is not None:
-            definition_resource = definition_module.get_resource()
+            definition_resource = definition_module.get_module().get_resource()
             if definition_resource is not None:
-                source = definition_resource.read()
+                source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                    definition_resource, symbol
+                ).read()
         if definition_line is None:
             return None
         lines = source.splitlines(keepends=True)
@@ -585,9 +587,6 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         )
         owners: set[t.Pair[str, str]] = set()
         scope = module.get_scope()
-        if scope is None:
-            msg = f"module has no declaration scope: {resource.path}"
-            raise ValueError(msg)
         for child in scope.get_scopes():
             if child.get_kind() != "Class":
                 continue
@@ -631,7 +630,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         if module is None or (resource := module.get_resource()) is None:
             return frozenset()
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            resource.read(),
+            FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                resource, target.get_name()
+            ).read(),
         )
         return frozenset(
             name
@@ -788,7 +789,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         *,
         class_name: str,
         include_private: bool,
-        pymodule: t.Infra.RopePyModule,
+        pymodule: t.Infra.RopeSemanticModule,
     ) -> t.StrMapping:
         """Return method symbols for a class from one resolved Rope module.
 

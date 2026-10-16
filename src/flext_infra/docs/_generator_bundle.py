@@ -65,7 +65,7 @@ class FlextInfraDocGeneratorBundleMixin:
             return r[bool].fail(
                 "docs producer does not authenticate its actual entrypoints"
             )
-        return r[bool].ok(value=True)
+        return FlextInfraCodegenPreconditions.reference_current(reference)
 
     @classmethod
     def _prepare_batches(

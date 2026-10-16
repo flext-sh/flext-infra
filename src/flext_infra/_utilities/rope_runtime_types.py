@@ -7,14 +7,28 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TypeGuard
+from typing import TypeGuard, TypeIs
 
-from flext_infra import p, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
     """Expose typed predicates for Rope runtime objects."""
+
+    @classmethod
+    def semantic_module(
+        cls, value: p.AttributeProbe
+    ) -> TypeIs[p.Infra.RopeSemanticModule]:
+        """Admit module attributes only on the SDK's native module lineage.
+
+        Returns:
+            Whether the native module exposes its complete semantic interface.
+
+        """
+        return isinstance(
+            value, cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractModule")
+        ) and isinstance(value, p.Infra.RopeSemanticModule)
 
     @classmethod
     def file_resource(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopeFile]:
@@ -45,7 +59,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         return value
 
     @classmethod
-    def pymodule(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopePyModule]:
+    def pymodule(cls, value: p.AttributeProbe) -> TypeIs[t.Infra.RopeParsedModule]:
         """Accept every rope module-like object: modules and packages.
 
         ``find_module`` resolves an installed third-party package to its
@@ -57,7 +71,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         contract.
 
         Returns:
-            The resulting ``TypeGuard[t.Infra.RopePyModule]``.
+            The resulting ``TypeIs[t.Infra.RopeParsedModule]``.
 
         """
         return isinstance(
@@ -67,6 +81,16 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
                 cls.runtime_type("rope.base.pyobjectsdef", "PyPackage"),
             ),
         )
+
+    @classmethod
+    def source_module(cls, value: p.AttributeProbe) -> TypeIs[p.Infra.RopeSourceModule]:
+        """Recognize the SDK's source-bearing module, including string modules.
+
+        Returns:
+            Whether the value is a native source module rather than a package.
+
+        """
+        return isinstance(value, cls.runtime_type("rope.base.pyobjectsdef", "PyModule"))
 
     @classmethod
     def from_import_info(
@@ -108,7 +132,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         """
         return isinstance(
             value,
-            cls.runtime_type("rope.base.pyobjects", "AbstractClass"),
+            cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractClass"),
         )
 
     @classmethod
@@ -126,7 +150,10 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
             Whether ``value`` is a Rope inferred class instance.
 
         """
-        return type(value) is cls.runtime_type("rope.base.pyobjects", "PyObject")
+        return type(value) is cls.runtime_type(
+            c.Infra.ROPE_PYOBJECTS_MODULE,
+            "PyObject",
+        )
 
     @classmethod
     def py_class(cls, value: t.Infra.RopePyObject) -> bool:

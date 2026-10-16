@@ -15,6 +15,7 @@ from flext_core.lazy import install_lazy_exports
 if TYPE_CHECKING:
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates.codemod import FlextInfraCodemodGate
     from flext_infra.gates.conflict_markers import FlextInfraConflictMarkersGate
     from flext_infra.gates.deps import FlextInfraDepsGate
     from flext_infra.gates.direnv import FlextInfraDirenvGate
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraBanditGate",
+    "FlextInfraCodemodGate",
     "FlextInfraConflictMarkersGate",
     "FlextInfraDepsGate",
     "FlextInfraDirenvGate",
@@ -69,6 +71,7 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraBanditGate": ".bandit",
+        "FlextInfraCodemodGate": ".codemod",
         "FlextInfraConflictMarkersGate": ".conflict_markers",
         "FlextInfraDepsGate": ".deps",
         "FlextInfraDirenvGate": ".direnv",

@@ -288,6 +288,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             if recorded.failure:
                 return result_type.from_failure(recorded)
             journal, journal_state = recorded.value
+            original = self._live_producer_journal(journal)
+            if original.failure:
+                return result_type.from_failure(original)
+            journal = original.value
         bound = self.bind_publication_proof(
             m.Infra.CodegenTransactionSession(
                 plan=prepared.plan,
@@ -692,7 +696,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         current = FlextInfraMiseArtifactsJournal.read(layout)
         if current.failure:
             return result_type.from_failure(current)
-        if current.value != (journal, journal_state):
+        if (
+            current.value[0].model_dump() != journal.model_dump()
+            or current.value[1] != journal_state
+        ):
             return result_type.fail(
                 "generation journal changed before staging intentions",
             )
@@ -1340,7 +1347,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         )
         if cleaned.failure:
             return result_type.from_failure(cleaned)
-        self._journal_receipts.pop(session.plan.layout.journal_path, None)
         completed = self.record_publication(session, completed=True)
         if completed.failure:
             return result_type.from_failure(completed)

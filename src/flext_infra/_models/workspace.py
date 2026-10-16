@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from typing_extensions import TypeForm
@@ -30,57 +30,6 @@ class FlextInfraModelsWorkspace:
     - ``ArbitraryTypesModel`` for mutable discovery payloads.
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
-
-    class NativeSourceWitness(m.ArbitraryTypesModel):
-        """One captured native scope graph and independent compiler evidence."""
-
-        source: Path = m.Field(description="Cold-elected physical Python source")
-        state: m.Cli.AtomicFileState = m.Field(
-            description="Bytes authenticated before and after observation",
-        )
-        module: p.Infra.RopeSourceModule = m.Field(
-            description="Native Rope module sharing the invocation's source graph",
-        )
-        code: p.Infra.NativeCodeIdentity = m.Field(
-            description="CPython compiler result, never executed",
-        )
-        scopes: t.MappingKV[str, p.Infra.RopeScope] = m.Field(
-            description=(
-                "Native declaration scopes indexed by unique qualified identity; "
-                "a name declared more than once is absent, never guessed"
-            ),
-        )
-        statements: t.SequenceOf[FlextInfraModelsRope.LogicalStatement] = m.Field(
-            description="One native Rope logical-region pass over captured bytes",
-        )
-        finder: p.Infra.RopeSimilarFinder = m.Field(
-            description="Native semantic matcher shared across declarations",
-        )
-
-    class NativeGeneratedFunctionProof(m.ArbitraryTypesModel):
-        """Source-derived generated code and every consulted physical input."""
-
-        code: t.Infra.NativeCode = m.Field(
-            description="Expected compiler code extracted without executing it",
-        )
-        globals: t.MappingKV[str, p.AttributeProbe] = m.Field(
-            description="Source-derived global bindings of the emitted function",
-        )
-        annotations: t.MappingKV[str, p.AttributeProbe] = m.Field(
-            description="Source-derived annotation storage, never evaluated output",
-        )
-        defaults: p.AttributeProbe | None = m.Field(
-            description="Source-derived positional defaults or their absence",
-        )
-        keyword_defaults: t.MappingKV[str, p.AttributeProbe] | None = m.Field(
-            description="Source-derived keyword defaults or their absence",
-        )
-        closure: t.VariadicTuple[p.AttributeProbe] = m.Field(
-            description="Source-derived closure values in native cell order",
-        )
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
-            description="Physical sources revalidated after closed interpretation",
-        )
 
     class CodegenSourceAuthority(m.Value):
         """Cold reference authority has no project publication capability."""
@@ -230,18 +179,39 @@ class FlextInfraModelsWorkspace:
             ),
             description="Native operand registrations awaiting graph traversal",
         )
-        pending: t.MutableSequenceOf[t.Quad[str, t.Infra.NativeOperand, str, str]] = (
-            m.Field(
-                default_factory=u.empty(
-                    TypeForm(
-                        t.MutableSequenceOf[
-                            t.Quad[str, t.Infra.NativeOperand, str, str]
+        pending: t.MutableSequenceOf[
+            t.Quint[
+                str,
+                t.Infra.NativeOperand,
+                str,
+                str,
+                Literal["execution", "storage_type"],
+            ]
+        ] = m.Field(
+            default_factory=u.empty(
+                TypeForm(
+                    t.MutableSequenceOf[
+                        t.Quint[
+                            str,
+                            t.Infra.NativeOperand,
+                            str,
+                            str,
+                            Literal["execution", "storage_type"],
                         ]
-                    )
-                ),
-                description="Ordered native graph work awaiting "
-                "first-identity admission",
-            )
+                    ]
+                )
+            ),
+            description="Ordered native graph work awaiting first-identity admission",
+        )
+        expanded_classes: t.Infra.MutableSetOf[int] = m.Field(
+            default_factory=u.empty(TypeForm(t.Infra.MutableSetOf[int])),
+            description="Strongly retained classes whose executable "
+            "children were queued",
+        )
+        role: Literal["execution", "storage_type"] = m.Field(
+            default="execution",
+            description="The current edge consumes execution "
+            "or existing instance storage",
         )
         compiled: t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations] = m.Field(
             default_factory=u.empty(
@@ -287,12 +257,6 @@ class FlextInfraModelsWorkspace:
             default_factory=u.empty(TypeForm(t.Infra.MutableSetOf[str])),
             description="Actual lexical bindings observed as absent",
         )
-        compiler_inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = m.Field(
-            default_factory=u.empty(
-                TypeForm(t.MutableMappingKV[Path, m.Cli.AtomicFileState])
-            ),
-            description="Source inputs consumed by actual generated compilers",
-        )
 
     class NativeFunctionObservationContext(m.ArbitraryTypesModel):
         """Source-elected function facts within one native graph observation."""
@@ -306,10 +270,10 @@ class FlextInfraModelsWorkspace:
         supplier: str = m.Field(description="The actual defining native module")
         origin: Path = m.Field(description="The elected physical supplier source")
         generated: bool = m.Field(
-            description="Whether actual code requires the closed source compiler",
+            description="Whether code was emitted during the real native import",
         )
         generated_operands: t.VariadicTuple[t.Pair[str, str]] = m.Field(
-            description="Actual source compiler evidence or its native absence",
+            description="Actual generated binding and receiver identities",
         )
         nonlocals: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
             default_factory=u.empty(
@@ -342,6 +306,10 @@ class FlextInfraModelsWorkspace:
         )
         bindings: t.VariadicTuple[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
             m.Field(description="Complete static native binding observations")
+        )
+        executed_sources: t.VariadicTuple[m.Cli.AtomicFileReceipt] = m.Field(
+            default=(),
+            description="Sources authenticated before compilation in the cold import",
         )
 
     class NativeImportReference(NativeImportObservation):

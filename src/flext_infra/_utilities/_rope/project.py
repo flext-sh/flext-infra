@@ -20,11 +20,12 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Self, override
 
+from rope.base.builtins import BuiltinModule
 from rope.base.exceptions import ResourceNotFoundError
 from rope.base.project import NoProject, Project
-from rope.base.pycore import PyCore
+from rope.base.pyobjectsdef import PyModule, PyPackage
 from rope.base.resourceobserver import ChangeIndicator
-from rope.base.resources import File, Folder
+from rope.base.resources import File, Folder, Resource
 
 from flext_infra import c, p, t
 
@@ -62,16 +63,46 @@ class FlextInfraRopeProject(Project):
     @override
     def get_pymodule(
         self,
-        resource: t.Infra.RopeResource,
+        resource: Resource | p.Infra.RopeResource,
         force_errors: bool = False,
-    ) -> t.Infra.RopePyModule:
-        """Declared Python module owned by one project resource.
+    ) -> PyModule | PyPackage:
+        """Resolve a native resource while preserving the SDK return classes.
 
         Returns:
-            The resulting ``t.Infra.RopePyModule``.
+            The original native module or package.
+
+        Raises:
+            TypeError: The caller did not supply a native resource.
 
         """
+        if not isinstance(resource, Resource):
+            message = "Rope module lookup requires a native resource"
+            raise TypeError(message)
         return super().get_pymodule(resource, force_errors=force_errors)
+
+    @override
+    def get_module(
+        self,
+        name: str,
+        folder: Folder | p.Infra.RopeRoot | None = None,
+    ) -> BuiltinModule | PyModule | PyPackage:
+        """Resolve the native semantic module elected by the SDK.
+
+        Returns:
+            The original native builtin, package, or source module.
+
+        Raises:
+            TypeError: The folder or module violates the native SDK boundary.
+
+        """
+        if folder is not None and not isinstance(folder, Folder):
+            message = "Rope module lookup requires a native folder"
+            raise TypeError(message)
+        module = super().get_module(name, folder)
+        if not isinstance(module, BuiltinModule | PyModule | PyPackage):
+            message = "Rope lookup did not return a native semantic module"
+            raise TypeError(message)
+        return module
 
     @override
     def find_module(
@@ -92,6 +123,19 @@ class FlextInfraRopeProject(Project):
             message = "Rope module lookup requires a native folder"
             raise TypeError(message)
         return super().find_module(modname, folder)
+
+    @override
+    def validate(self, folder: Folder | p.Infra.RopeRoot | None = None) -> None:
+        """Validate the selected native folder, or the complete project root.
+
+        Raises:
+            TypeError: The supplied folder is not a native Rope folder.
+
+        """
+        if folder is not None and not isinstance(folder, Folder):
+            message = "Rope validation requires a native folder"
+            raise TypeError(message)
+        super().validate(self.root if folder is None else folder)
 
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
@@ -260,7 +304,7 @@ class FlextInfraRopeProject(Project):
         ignored_resources: t.SequenceOf[str] = (),
         *,
         python_path_folders: t.SequenceOf[str] = (),
-    ) -> Self:
+    ) -> p.Infra.RopeProject:
         """Construct a fresh Rope identity graph without persistent state.
 
         Args:
@@ -275,7 +319,7 @@ class FlextInfraRopeProject(Project):
                 must read the same captured inventory as project modules.
 
         Returns:
-            The resulting ``Self``.
+            The native project through its typed semantic boundary.
 
         Raises:
             ValueError: If Rope snapshot root must already exist.
@@ -368,18 +412,10 @@ class FlextInfraRopeProject(Project):
 
     @override
     def _init_other_parts(self) -> None:
-        """Install captured change observations before initializing resources.
-
-        Raises:
-            TypeError: The native project did not create its Python graph.
-
-        """
+        """Install captured change observations before initializing resources."""
         super()._init_other_parts()
         if isinstance(self.fscommands, self.SnapshotFiles):
             core = self.get_pycore()
-            if not isinstance(core, PyCore):
-                msg = "Rope project did not initialize its native Python graph"
-                raise TypeError(msg)
             core.observer.timekeeper = self.SnapshotChangeIndicator(self.fscommands)
 
     @override

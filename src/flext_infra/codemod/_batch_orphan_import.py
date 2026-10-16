@@ -44,7 +44,7 @@ class FlextInfraTypeCheckingGuardScanner(cst.CSTVisitor):
         """
         return (isinstance(test, cst.Name) and test.value == "TYPE_CHECKING") or (
             isinstance(test, cst.Attribute)
-            and test.attr == "TYPE_CHECKING"
+            and test.attr.value == "TYPE_CHECKING"
             and isinstance(test.value, cst.Name)
             and test.value.value == "typing"
         )

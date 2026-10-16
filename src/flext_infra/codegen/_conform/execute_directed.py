@@ -35,9 +35,16 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             The verified publication result, or the verification failure.
 
         """
+        verifier = FlextInfraCodegenPreconditions.capture_producer(
+            request.root,
+            entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
+        )
+        if verifier.failure:
+            return r[m.Infra.CodegenResult].from_failure(verifier)
         with FlextInfraCodegenFileLeases.mutation_lease(request.root):
             observed = FlextInfraMiseArtifactsVerification.publication_current(
                 request,
+                verifier=verifier.value,
             )
             if observed.failure:
                 return r[m.Infra.CodegenResult].from_failure(observed)
