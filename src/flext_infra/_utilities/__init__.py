@@ -191,8 +191,20 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
     from flext_infra._utilities._rope.restructure import FlextInfraRopeRestructure
+    from flext_infra._utilities._rope_analysis.asthelpers import (
+        FlextInfraUtilitiesRopeAnalysisAstHelpers,
+    )
     from flext_infra._utilities._rope_analysis.base import (
         FlextInfraUtilitiesRopeAnalysisBase,
+    )
+    from flext_infra._utilities._rope_analysis.exports import (
+        FlextInfraUtilitiesRopeAnalysisExports,
+    )
+    from flext_infra._utilities._rope_analysis.importstate import (
+        FlextInfraUtilitiesRopeAnalysisImportState,
+    )
+    from flext_infra._utilities._rope_analysis.sourcescan import (
+        FlextInfraUtilitiesRopeAnalysisSourceScan,
     )
     from flext_infra._utilities._rope_core_pymodule import (
         FlextInfraUtilitiesRopeCorePyModuleMixin,
@@ -208,6 +220,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._rope_source_bases_inventory import (
         FlextInfraUtilitiesRopeSourceBasesInventory,
+    )
+    from flext_infra._utilities._rope_source_bases_inventory_collector import (
+        FlextInfraUtilitiesRopeSourceBindingCollector,
     )
     from flext_infra._utilities._rope_source_bases_runtime import (
         FlextInfraUtilitiesRopeSourceBasesRuntime,
@@ -603,8 +618,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
     "FlextInfraUtilitiesRopeAnalysis",
+    "FlextInfraUtilitiesRopeAnalysisAstHelpers",
     "FlextInfraUtilitiesRopeAnalysisBase",
+    "FlextInfraUtilitiesRopeAnalysisExports",
+    "FlextInfraUtilitiesRopeAnalysisImportState",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
+    "FlextInfraUtilitiesRopeAnalysisSourceScan",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeClassMove",
     "FlextInfraUtilitiesRopeCore",
@@ -625,6 +644,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeSourceBasesAliases",
     "FlextInfraUtilitiesRopeSourceBasesInventory",
     "FlextInfraUtilitiesRopeSourceBasesRuntime",
+    "FlextInfraUtilitiesRopeSourceBindingCollector",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSemanticConstantConsumers",
     "FlextInfraUtilitiesSemanticContracts",
@@ -676,7 +696,6 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraRopeProject": "._rope.project",
         "FlextInfraRopeRestructure": "._rope.restructure",
         "FlextInfraUtilitiesBase": ".base",
@@ -685,6 +704,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
         "FlextInfraUtilitiesCodegenPathCutover": ".codegen_path_cutover",
+        "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
         "FlextInfraUtilitiesCompatibilityAliasValidation": (
@@ -813,8 +833,12 @@ install_lazy_exports(
         "FlextInfraUtilitiesRepository": ".repository",
         "FlextInfraUtilitiesResourceLimits": ".resource_limits",
         "FlextInfraUtilitiesRopeAnalysis": ".rope_analysis",
+        "FlextInfraUtilitiesRopeAnalysisAstHelpers": "._rope_analysis.asthelpers",
         "FlextInfraUtilitiesRopeAnalysisBase": "._rope_analysis.base",
+        "FlextInfraUtilitiesRopeAnalysisExports": "._rope_analysis.exports",
+        "FlextInfraUtilitiesRopeAnalysisImportState": "._rope_analysis.importstate",
         "FlextInfraUtilitiesRopeAnalysisIntrospection": ".rope_analysis_introspection",
+        "FlextInfraUtilitiesRopeAnalysisSourceScan": "._rope_analysis.sourcescan",
         "FlextInfraUtilitiesRopeAnalysisWorkspace": ".rope_analysis_workspace",
         "FlextInfraUtilitiesRopeClassMove": ".rope_class_move",
         "FlextInfraUtilitiesRopeCore": ".rope_core",
@@ -835,6 +859,9 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeSourceBasesAliases": "._rope_source_bases_aliases",
         "FlextInfraUtilitiesRopeSourceBasesInventory": "._rope_source_bases_inventory",
         "FlextInfraUtilitiesRopeSourceBasesRuntime": "._rope_source_bases_runtime",
+        "FlextInfraUtilitiesRopeSourceBindingCollector": (
+            "._rope_source_bases_inventory_collector"
+        ),
         "FlextInfraUtilitiesRopeStructure": ".rope_structure",
         "FlextInfraUtilitiesSemanticConstantConsumers": (
             "._semantic_cutover.constant_consumers"
