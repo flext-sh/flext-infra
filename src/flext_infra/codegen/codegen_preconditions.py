@@ -178,12 +178,12 @@ class FlextInfraCodegenPreconditions:
             The authenticated immutable producer closure.
 
         """
-        return cls._observed_source_authority(repository_root, tuple(nominated)).map(
+        return cls.capture_observed_source_authority(repository_root, tuple(nominated)).map(
             itemgetter(0)
         )
 
     @classmethod
-    def _observed_source_authority(
+    def capture_observed_source_authority(
         cls,
         repository_root: Path,
         names: t.VariadicTuple[m.Infra.SourceClassReference],
@@ -921,37 +921,21 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.NativeImportReference]
-        observed = FlextInfraWorkspaceNativeReference.capture(request.modules)
-        if observed.failure:
-            return result_type.from_failure(observed)
-        return cls._observed_native_reference(request, observed.value)
-
-    @classmethod
-    def _observed_native_reference(
-        cls,
-        request: m.Infra.NativeImportRequest,
-        snapshot: m.Infra.NativeImportObservation,
-    ) -> p.Result[m.Infra.NativeImportReference]:
-        """Prove one loaded-producer observation against the cold native import.
-
-        The observation must still match the sealed authority inputs; the cold
-        child then supplies the independent reference it is compared with.
-
-        Returns:
-            The sealed reference, or the first source or runtime failure.
-
-        """
-        result_type = r[m.Infra.NativeImportReference]
-        observed = FlextInfraWorkspaceNativeReference.authored_sources_current(
-            snapshot, request.source_authority.inputs
-        ).map(lambda _: snapshot)
-        if observed.failure:
-            return result_type.from_failure(observed)
-        cold = cls._cold_native_observation(request)
-        if cold.failure:
-            return result_type.from_failure(cold)
-        reference = cold.value
-        consumed = cls._executed_source_authority(request, reference, observed.value)
+        private = imported.__pydantic_private__
+        if type(imported) is not m.Infra.NativeImportObservation or (
+            private is None
+            or private.get("_import_birth")
+            != (
+                id(imported),
+                u.Cli.sha256_bytes(
+                    imported.model_dump_json().encode(c.DEFAULT_ENCODING)
+                ),
+            )
+        ):
+            return result_type.fail(
+                "native observation lacks its original cold import identity and payload"
+            )
+        consumed = cls._executed_source_authority(request, imported, original)
         if consumed.failure:
             return result_type.from_failure(consumed)
         return (
@@ -964,41 +948,7 @@ class FlextInfraCodegenPreconditions:
             )
             .flat_map(lambda _: cls._native_runtime_current(request))
             .flat_map(lambda _: cls.source_authority_current(consumed.value))
-        )
-        return proof.flat_map(
-            lambda _: cls._seal_native_reference(reference, consumed.value)
-        )
-
-    @classmethod
-    def _cold_native_observation(
-        cls,
-        request: m.Infra.NativeImportRequest,
-    ) -> p.Result[m.Infra.NativeImportObservation]:
-        """Admit the pinned inputs, then read the complete cold child outcome.
-
-        Returns:
-            The original native import observation, or the first admission or
-            process failure.
-
-        """
-        result_type = r[m.Infra.NativeImportObservation]
-        admitted = cls._native_inputs_current(request)
-        if admitted.failure:
-            return result_type.from_failure(admitted)
-        consumer = FlextInfraValidateFreshImport(
-            repository_root=request.repository_root,
-            runtime_root=request.runtime_root,
-        )
-        output = consumer.native_reference_probe(request)
-        if output.failure:
-            return result_type.from_failure(output)
-        if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
-            return result_type.fail(
-                f"cold native source import failed: {output.value.outcome}\n"
-                f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}",
-            )
-        return result_type.ok(
-            m.Infra.NativeImportObservation.model_validate_json(output.value.stdout)
+            .flat_map(lambda _: cls._seal_native_reference(imported, consumed.value))
         )
 
     @staticmethod
@@ -1012,12 +962,46 @@ class FlextInfraCodegenPreconditions:
             The exact reference with its Pydantic-owned private birth storage.
 
         """
-        return r[m.Infra.NativeImportReference].ok(
-            m.Infra.NativeImportReference(
-                **reference.model_dump(),
-                source_authority=authority,
-            ),
+        admitted = m.Infra.NativeImportReference(
+            **reference.model_dump(),
+            source_authority=authority,
         )
+        private = admitted.__pydantic_private__
+        if private is None:
+            return r[m.Infra.NativeImportReference].fail(
+                "native admission has no Pydantic private storage"
+            )
+        private["_native_birth"] = (
+            id(admitted),
+            u.Cli.sha256_bytes(admitted.model_dump_json().encode(c.DEFAULT_ENCODING)),
+        )
+        return r[m.Infra.NativeImportReference].ok(admitted)
+
+    @staticmethod
+    def reference_birth_current(
+        reference: m.Infra.NativeImportReference,
+    ) -> p.Result[bool]:
+        """Require the exact live reference emitted by complete native admission.
+
+        Returns:
+            Its original live identity and payload, never reconstructed authority.
+
+        """
+        private = reference.__pydantic_private__
+        if type(reference) is not m.Infra.NativeImportReference or (
+            private is None
+            or private.get("_native_birth")
+            != (
+                id(reference),
+                u.Cli.sha256_bytes(
+                    reference.model_dump_json().encode(c.DEFAULT_ENCODING)
+                ),
+            )
+        ):
+            return r[bool].fail(
+                "native reference lacks its original admission identity and payload"
+            )
+        return r[bool].ok(value=True)
 
     @classmethod
     def reference_current(
@@ -1026,9 +1010,8 @@ class FlextInfraCodegenPreconditions:
     ) -> p.Result[bool]:
         """Re-prove a native reference by value against its sealed authority.
 
-        A reference is a value: the same producer is current on every path
-        (live, journaled, recovered) exactly when its source authority still
-        proves the capturing runtime, module election and pinned inputs.
+        Historical and reconstructed evidence can prove physical currency;
+        only ``reference_birth_current`` grants a live operation's capability.
 
         Returns:
             Success only while the reference's source authority is current.
