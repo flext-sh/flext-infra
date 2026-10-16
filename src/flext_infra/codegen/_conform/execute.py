@@ -578,7 +578,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
         transaction = FlextInfraCodegenTransaction(mise_owner)
         root = request.root.expanduser().resolve()
-        roots = FlextInfraCodegenTransaction.capability_roots(
+        roots = transaction.capability_roots(
             "bootstrap",
             tuple(
                 (root / repository.path).resolve() for repository in plan.repositories

@@ -185,7 +185,12 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             if stage_workspace.failure:
                 return r[t.MappingKV[str, Path]].from_failure(stage_workspace)
             if stage_workspace.value != request.root.expanduser().resolve():
-                roots["@stage-inputs-0"] = stage_workspace.value
+                roots = {
+                    **roots,
+                    **FlextInfraCodegenTransaction.capability_roots(
+                        "stage-inputs", (stage_workspace.value,)
+                    ),
+                }
         return r[t.MappingKV[str, Path]].ok(roots)
 
     def _execute_lazy_init_locked(

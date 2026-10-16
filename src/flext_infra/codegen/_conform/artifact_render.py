@@ -230,10 +230,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         result_type = r[m.Infra.CodegenArtifactComposition]
         live_path = repository_root / c.PYPROJECT_FILENAME
-        live = cls._live_pyproject_text(repository_root)
-        if live.failure:
-            return result_type.from_failure(live)
-        overlaid = u.Infra.overlay_preserved(rendered, live.value)
+        live_text: str | None = None
+        if live_path.is_file():
+            live = u.Infra.live_pyproject_text(
+                live_path,
+                regenerate_managed_tools=True,
+            )
+            if live.failure:
+                return result_type.from_failure(live)
+            live_text = live.value
+        overlaid = u.Infra.overlay_preserved(rendered, live_text)
         if overlaid.failure:
             return result_type.from_failure(overlaid)
         composed_rendered = overlaid.value
@@ -285,32 +291,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 source_states=tuple(source_states),
             ),
         )
-
-    @classmethod
-    def _live_pyproject_text(cls, repository_root: Path) -> p.Result[str | None]:
-        """Read the live pyproject text with owned tool tables regenerated.
-
-        Args:
-            repository_root: The repository root holding the live pyproject.
-
-        Returns:
-            The recovered live text, or ``None`` when no live file exists.
-
-        """
-        live_path = repository_root / c.PYPROJECT_FILENAME
-        if not live_path.is_file():
-            return r[str | None].ok(None)
-        # Overlay reads the live text (managed merge conflicts resolved)
-        # with every owned tool table removed: those tables regenerate
-        # from the owner, so a corrupt owned table never blocks the
-        # render. The live file is never written here.
-        recovered_live = u.Infra.live_pyproject_text(
-            live_path,
-            regenerate_managed_tools=True,
-        )
-        if recovered_live.failure:
-            return r[str | None].from_failure(recovered_live)
-        return r[str | None].ok(recovered_live.value)
 
     @classmethod
     def _member_declaration_states(
