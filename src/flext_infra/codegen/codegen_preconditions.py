@@ -1885,9 +1885,33 @@ class FlextInfraCodegenPreconditions:
         result_type = r[tuple[m.Cli.AtomicFileState, ...]]
         by_path: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for file_state in states:
-            if by_path.setdefault(file_state.path, file_state) != file_state:
+            previous = by_path.setdefault(file_state.path, file_state)
+            if previous != file_state:
+                first_hash = (
+                    u.Cli.sha256_bytes(previous.content)
+                    if previous.content is not None
+                    else None
+                )
+                observed_hash = (
+                    u.Cli.sha256_bytes(file_state.content)
+                    if file_state.content is not None
+                    else None
+                )
+                details = (
+                    f" first={previous.model_dump_json(exclude={'content'})}"
+                    f" observed={file_state.model_dump_json(exclude={'content'})}"
+                    f" first_sha256={first_hash}"
+                    f" observed_sha256={observed_hash}"
+                )
+                if previous.model_dump() == file_state.model_dump():
+                    details += (
+                        f" first_type={type(previous).__module__}."
+                        f"{type(previous).__qualname__}"
+                        f" observed_type={type(file_state).__module__}."
+                        f"{type(file_state).__qualname__}"
+                    )
                 return result_type.fail(
-                    f"planner observed two states for {file_state.path}"
+                    f"planner observed two states for {file_state.path};{details}"
                 )
         return result_type.ok(tuple(by_path.values()))
 

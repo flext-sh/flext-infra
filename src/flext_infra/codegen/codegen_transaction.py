@@ -821,17 +821,22 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         if prepared.failure:
             return result_type.from_failure(prepared)
         layout = prepared.value
-        outcome = self._file_transaction_guard(layout).flat_map(
-            lambda _guarded: FlextInfraMiseArtifactsJournal.observed_outcome(
-                layout,
-                admission,
-                producer=(
-                    self._source_authority
-                    if self._source_authority is not None
-                    else self._producer
-                ),
+        outcome = (
+            self
+            ._file_transaction_guard(layout)
+            .flat_map(
+                lambda _guarded: FlextInfraMiseArtifactsJournal.observed_outcome(
+                    layout,
+                    admission,
+                    producer=(
+                        self._source_authority
+                        if self._source_authority is not None
+                        else self._producer
+                    ),
+                )
             )
-        ).flat_map(self._owned_publication_outcome)
+            .flat_map(self._owned_publication_outcome)
+        )
         if outcome.failure:
             return result_type.from_failure(outcome)
         current = FlextInfraMiseArtifactsVerification.publication_outputs_current(

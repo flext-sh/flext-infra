@@ -39,7 +39,10 @@ class FlextInfraMiseRecovery:
         topology = FlextInfraMiseArtifactsVerification.journal_topology(layout, journal)
         if topology.failure:
             return topology
-        authorized = FlextInfraMiseArtifactsState.validate_transaction_roots(
+        current = FlextInfraMiseArtifactsVerification.states_current((journal_state,))
+        if current.failure:
+            return current
+        authorized = FlextInfraMiseArtifactsState.reconcile_pending_directories(
             layout, journal
         )
         if authorized.failure:

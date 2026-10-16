@@ -459,6 +459,13 @@ declared generation and repair verbs; dependency resolution requires a separate,
 explicit `make upg` at the selected workspace or standalone owner.
 Git dependencies follow their declared integration branches, and `APPLY` stays removed.
 
+The toolchain elects the native `github:direnv/direnv` backend for Direnv's
+official release assets. This keeps platform selection with Mise and the
+publisher rather than an intermediate Aqua descriptor that omits the Windows
+executable suffix. The `latest` selector, release cooldown and platform matrix
+remain declared by the same toolchain owner. Qualify changes through native
+generation, `make upg` and the locked-install checks.
+
 One `make upg` run provisions the frozen producer before corrective pyproject
 projection, without requiring final runtime admission. The elected runtime
 owner resolves both native views; attached members delegate that operation

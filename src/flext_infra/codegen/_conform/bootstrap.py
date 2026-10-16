@@ -76,6 +76,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         exclude=True,
         description="Actual docs planner retained before effects",
     )
+
     def _record_file_failure(
         self,
         path: Path,

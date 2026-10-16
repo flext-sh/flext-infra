@@ -88,37 +88,34 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
-        with FlextInfraWorkspaceNativeReference.compilation_scope():
-            if (
-                c.Infra.CodegenConformMode(request.mode)
-                is c.Infra.CodegenConformMode.CHECK
-            ):
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+            with FlextInfraWorkspaceNativeReference.compilation_scope():
                 return cls._observe_publication(request)
-            root = request.root.expanduser().resolve()
-            operation = "generate" if generation_only else "conform"
-            u.Cli.info(
-                f"operation={operation} stage=inputs root={root} "
-                f"scope={request.scope} surface={request.what}"
-            )
-            prelude = cls._validated_request_prelude(root, initial_workspace)
-            if prelude.failure:
-                return r[m.Infra.CodegenResult].from_failure(prelude)
-            if initial_workspace is not None and not root.is_dir():
-                created = cls._bootstrap_request_root(root)
-                if created.failure:
-                    return r[m.Infra.CodegenResult].from_failure(created)
-            if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
-                initialized = cls._initialize_request_git(root, initial_workspace)
-                if initialized.failure:
-                    return r[m.Infra.CodegenResult].from_failure(initialized)
-            service = cls(
-                repository_root=root,
-                request=request,
-                initial_workspace=initial_workspace,
-                ports=ports,
-                generation_only=generation_only,
-            )
-            return service.execute()
+        root = request.root.expanduser().resolve()
+        operation = "generate" if generation_only else "conform"
+        u.Cli.info(
+            f"operation={operation} stage=inputs root={root} "
+            f"scope={request.scope} surface={request.what}"
+        )
+        prelude = cls._validated_request_prelude(root, initial_workspace)
+        if prelude.failure:
+            return r[m.Infra.CodegenResult].from_failure(prelude)
+        if initial_workspace is not None and not root.is_dir():
+            created = cls._bootstrap_request_root(root)
+            if created.failure:
+                return r[m.Infra.CodegenResult].from_failure(created)
+        if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
+            initialized = cls._initialize_request_git(root, initial_workspace)
+            if initialized.failure:
+                return r[m.Infra.CodegenResult].from_failure(initialized)
+        service = cls(
+            repository_root=root,
+            request=request,
+            initial_workspace=initial_workspace,
+            ports=ports,
+            generation_only=generation_only,
+        )
+        return service.execute()
 
     @staticmethod
     def _validated_request_prelude(
@@ -293,7 +290,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
-        inputs = self._capture_current_codegen_inputs(request)
+        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenResult].from_failure(inputs)
         if not self.generation_only:
@@ -301,18 +298,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             if blocked is not None:
                 return blocked
         return self._dispatch_conform_surface(request)
-
-    def _capture_current_codegen_inputs(
-        self,
-        request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[m.Infra.CodegenInputs]:
-        """Capture the configuration and templates consumed by generation.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenInputs]``.
-
-        """
-        return u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
 
     def _migrate_declarations_for_apply(
         self,

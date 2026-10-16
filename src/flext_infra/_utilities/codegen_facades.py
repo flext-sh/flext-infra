@@ -268,54 +268,41 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         *,
         family: Literal["c", "t", "u", "p", "m"],
     ) -> str:
-        """Publish lawful composition and identity-proven lazy-package imports.
+        """Publish composition through the declared family export boundaries.
+
+        Authored declarations and unrelated imports retain their syntax. The
+        namespace rule catalog owns their architecture checks; generation only
+        rewires bindings the selected family explicitly publishes.
 
         Returns:
             Generated composition carrying the canonical ownership marker.
 
-        Raises:
-            ValueError: If authored declarations or unpublished imports remain.
-
         """
         tree = ast.parse(source)
-        sources, declarations = cls._declared_sources(
+        _, declarations = cls._declared_sources(
             pkg_dir,
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory,
         )
-        facade, namespace = cls._facade_classes(tree, pkg_dir)
-        aliases = {declaration.qualified_base for declaration in declarations}
-        cls._facade_module_declarations(tree, facade, pkg_dir)
-        for owner in (facade, namespace) if namespace is not facade else (facade,):
-            cls._facade_owner_declarations(owner, facade, namespace, aliases, pkg_dir)
+        published = {
+            f"{declaration.target}.{declaration.qualified_base}": (
+                f"{declaration.target.rpartition('.')[0]}.{declaration.qualified_base}"
+            )
+            for declaration in declarations
+        }
         for node in tree.body:
             if not isinstance(node, ast.ImportFrom) or not node.module:
                 continue
             module = f"{pkg_dir.name}.{node.module}" if node.level else node.module
-            if not module.startswith(f"{pkg_dir.name}."):
-                continue
-            provider_state = sources.get(module)
-            if provider_state is None:
-                message = f"Generated facade has unresolved owned import: {module}"
-                raise ValueError(message)
-            leaf, provider = provider_state
-            if leaf.name == c.Infra.INIT_PY:
-                continue
-            exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                provider,
-            )
             for alias in node.names:
-                if alias.name not in exports:
-                    message = (
-                        f"Generated facade imports unpublished owner: "
-                        f"{module}.{alias.name}"
-                    )
-                    raise ValueError(message)
+                target = published.get(f"{module}.{alias.name}")
+                if target is None:
+                    continue
                 source = (
                     RenameCommand(
                         CodemodContext(full_package_name=pkg_dir.name),
                         old_name=f"{module}.{alias.name}",
-                        new_name=f"{module.rpartition('.')[0]}.{alias.name}",
+                        new_name=target,
                     )
                     .transform_module(parse_module(source))
                     .code

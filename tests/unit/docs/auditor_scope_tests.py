@@ -310,8 +310,13 @@ class TestsFlextInfraAuditorScope:
         tm.that(issues[0].file, eq="docs/guide.md")
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "marker",
+        ["TODO: finish me.", "Placeholder", "# Placeholder", "<placeholder>"],
+    )
     def test_shipped_policy_flags_open_markers_not_prose_or_declared_verbs(
         tmp_path: Path,
+        marker: str,
     ) -> None:
         """The rendered fleet policy keeps lexical markers and manifest overrides.
 
@@ -330,6 +335,7 @@ class TestsFlextInfraAuditorScope:
         )
         (docs / "guide.md").write_text(
             "TODOS os pods.\nSee `scripts/TODO.md`.\nUse placeholders `<x>`.\n"
+            "The placeholder `{platform}` is bound by the naming profile.\n"
             "Run `make sync`.\n",
         )
         scope = m.Infra.DocScope(
@@ -340,7 +346,7 @@ class TestsFlextInfraAuditorScope:
         auditor = FlextInfraDocAuditor()
         tm.that(auditor.placeholder_issues(scope), eq=[])
         tm.that(auditor.forbidden_term_issues(scope), eq=[])
-        (docs / "guide.md").write_text("TODO: finish me.\n")
+        (docs / "guide.md").write_text(f"{marker}\n")
         tm.that(len(auditor.placeholder_issues(scope)), eq=1)
         policy = u.Infra.docs_audit_policy(scope)
         tm.that(policy.stale_symbols, eq=workspace.docs_audit.stale_symbols)
