@@ -128,13 +128,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
-                analysis_python_roots=u.Infra.analyzer_python_roots(
-                    repository_root,
-                    u.Infra.production_python_roots(target.project),
-                    workspace_excluded_top_dirs=frozenset(
-                        path.parts[0] for path in target.external_dependency_paths
-                    ),
-                ),
                 pytest=config.Infra.tooling.tools.pytest,
                 make=codegen.make,
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,

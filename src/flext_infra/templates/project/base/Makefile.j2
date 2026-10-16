@@ -400,7 +400,7 @@ DOCS_ACTIONS :={% for action in make.docs.actions %} {{ action }}{% endfor %}
 
 # === SECTION: lint/type paths (managed) ===
 # Source: template + computed (script_dispatch conditional)
-RUFF_PATHS := $(shell for directory in {{ analysis_python_roots | join(' ') }}; do if [ -d "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
+RUFF_PATHS := $(shell for directory in {{ tooling_runtime.pyright_include | join(' ') }}; do if [ -e "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
 MYPY_PATHS := $(RUFF_PATHS)
 # End SECTION: lint/type paths
 

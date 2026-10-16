@@ -186,6 +186,17 @@ in `config/tooling.yaml`. The typed runner and generated Make process bound
 derive from that policy. Use the profile and complete run receipts to repair
 a slow owner; an interrupted selection or suite remains a failed invocation.
 
+The same typed policy owns `parallel-distribution` and `loadscope-reorder`.
+`load` keeps native chunk scheduling; `loadscope` uses the native scope-ordering
+option. `PytestConfig.parallel_arguments` projects those fields once for the
+runner. A consumer declares its policy in its own `config/tooling.yaml` override;
+its conftest does not import a scheduler implementation or overwrite xdist options.
+The worker setting remains a ceiling bounded by the existing CPU and memory policy.
+
+Generated Make checker inputs consume the resolved
+`ToolingRuntimeContext.pyright_include` roots. They therefore share the analyzer's
+declared source scope instead of maintaining another directory list in Make.
+
 The runner first completes the incremental operation, then executes the full suite using
 the same database without process, suite, or item time limits. The first failure stops
 the sequence. The

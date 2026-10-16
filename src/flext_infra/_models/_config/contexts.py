@@ -166,10 +166,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
-        analysis_python_roots: Annotated[
-            t.StrSequence,
-            m.Field(description="Declared and discovered Python roots owned by the project"),
-        ]
         owns_workspace_manifest: Annotated[
             bool,
             m.Field(
