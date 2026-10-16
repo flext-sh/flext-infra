@@ -351,15 +351,16 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 None,
             )
             values = (
-                FlextStrictYamlConfigSource.merge_values(
+                u.config_merge(
                     dict(payload),
                     dict(projected.values),
                 )
                 if projected is not None
                 else dict(payload)
             )
-            merged = FlextStrictYamlConfigSource.merge_values(merged, values)
-        return merged
+            merged = u.config_merge(merged, values)
+        codegen = u.Cli.json_walk_path(merged, ("Infra", "codegen"))
+        return m.Infra.CodegenConfigSpec.model_validate(codegen)
 
     @staticmethod
     def compose_ruff_per_file_ignores(

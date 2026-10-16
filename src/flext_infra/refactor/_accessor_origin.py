@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import u
+from flext_infra import c, m, p, u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import t
 
 
@@ -556,9 +556,9 @@ class FlextInfraAccessorOriginResolver:
 
         """
         target = self._receiver_object(py_file, source, receiver)
-        if FlextInfraUtilitiesRopeRuntime.instance_object(target):
+        if u.Infra.instance_object(target):
             target = target.get_type()
-        if not FlextInfraUtilitiesRopeRuntime.abstract_class(target):
+        if not u.Infra.abstract_class(target):
             msg = f"Unknown accessor receiver class: {py_file}:{receiver.lineno}"
             raise ValueError(msg)
         pending = [(target, frozenset[int]())]

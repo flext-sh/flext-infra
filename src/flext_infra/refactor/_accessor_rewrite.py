@@ -11,7 +11,7 @@ from operator import itemgetter
 from tokenize import NAME, generate_tokens
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, m
+from flext_infra import c, m, u
 from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.refactor._accessor_expression import (
     FlextInfraAccessorMigrationExpressionMixin,

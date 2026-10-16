@@ -446,9 +446,6 @@ class FlextInfraWorkspaceNativeReference:
         Returns:
             The original native cell for every declared free variable.
 
-        Raises:
-            TypeError: Closure storage or a cell has a foreign native type.
-
         """
         chain = FlextInfraWorkspaceGeneratedFunction.function_chain(
             cls._class_namespace(receiver).get(attribute)
@@ -2757,7 +2754,7 @@ class FlextInfraWorkspaceNativeReference:
 
         """
         original = cls._native_code_constants(code)
-        constants = tuple(
+        constants: t.SequenceOf[t.Infra.NativeCode | int | str] = tuple(
             cls._code_hash_markers(item, markers)
             if type(item) is CodeType
             else markers.get(item, item)

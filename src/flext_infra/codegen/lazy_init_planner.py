@@ -70,7 +70,6 @@ class FlextInfraCodegenLazyInitPlanner(
     )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
-        default_factory=dict[str, t.StrSequence],
     )
     _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
         default_factory=dict[str, Path],

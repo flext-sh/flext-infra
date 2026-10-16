@@ -1263,6 +1263,9 @@ class FlextInfraCodegenPreconditions:
             The original input/election proof, without creating execution authority.
 
         """
+        modules = cls._authority_modules_current(authority)
+        if modules.failure:
+            return modules
         if not authority.inputs or authority.runtime not in {
             item.path for item in authority.inputs
         }:
