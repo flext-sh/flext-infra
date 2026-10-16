@@ -178,8 +178,6 @@ class FlextInfraUtilitiesCodemodRules:
         """Project one provider's utilities under qualified global identities.
 
         Raises:
-            ValueError: If a provider config is absent, its native values
-                conflict, or its projected utility is not a mapping.
             TypeError: If projected codemod utility is not a mapping.
 
         """
@@ -188,7 +186,7 @@ class FlextInfraUtilitiesCodemodRules:
         global_documents = cls._collect_utility_documents(declaration, config_path)
         namespace = u.Cli.sha256_content(
             u.Cli.json_dumps(
-                [global_documents[key] for key in sorted(global_documents)],
+                [dict(global_documents[key]) for key in sorted(global_documents)],
                 sort_keys=True,
             ).unwrap()
         )

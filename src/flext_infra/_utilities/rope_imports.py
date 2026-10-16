@@ -95,19 +95,14 @@ class FlextInfraUtilitiesRopeImports:
             while from_position < len(froms) and froms[from_position] < offset:
                 preceding = froms[from_position]
                 from_position += 1
-            if preceding is not None and preceding >= region.start_offset:
-                # Only a dotted import module may stand between `from` and
-                # `import`; `yield from` and exception chaining are not imports.
-                target = "".join(
-                    source[preceding + len("from") : offset]
-                    .replace("\\\n", "")
-                    .split(),
-                )
-                if target and all(
-                    not component or component.isidentifier()
-                    for component in target.split(".")
-                ):
-                    start = preceding
+            # Only a dotted import module may stand between `from` and
+            # `import`; `yield from` and exception chaining are not imports.
+            if (
+                preceding is not None
+                and preceding >= region.start_offset
+                and cls._from_import_prefix(source, preceding, offset)
+            ):
+                start = preceding
             fragment = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
                 project,
                 source[start : region.end_offset],
@@ -127,6 +122,21 @@ class FlextInfraUtilitiesRopeImports:
             while position < len(imports) and imports[position] < region.end_offset:
                 position += 1
         return tuple(statements)
+
+    @staticmethod
+    def _from_import_prefix(source: str, start: int, end: int) -> bool:
+        """Recognize the original dotted prefix between two native tokens.
+
+        Returns:
+            Whether the prefix names a relative or absolute import module.
+
+        """
+        target = "".join(
+            source[start + len("from") : end].replace("\\\n", "").split(),
+        )
+        return bool(target) and all(
+            not component or component.isidentifier() for component in target.split(".")
+        )
 
     @staticmethod
     def import_statements(
@@ -980,7 +990,6 @@ class FlextInfraUtilitiesRopeImports:
         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         protected = FlextInfraUtilitiesSemanticFamilyTypeReferences.type_payload_ranges(
             "".join(lines),
-            rope_project,
             pymodule,
         )
         source = "".join(lines)
@@ -1006,11 +1015,8 @@ class FlextInfraUtilitiesRopeImports:
                     f"{resource.path}:{pymodule.lines.get_line_number(begin)}"
                 )
                 raise RuntimeError(msg)
-        for (
-            expression,
-            scope,
-            line,
-        ) in FlextInfraUtilitiesSemanticFamilyTypeReferences.scoped_quoted_type_references(
+        type_sources = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        for expression, scope, line in type_sources.scoped_quoted_type_references(
             "".join(lines),
             rope_project,
             pymodule,

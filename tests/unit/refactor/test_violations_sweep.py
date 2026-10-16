@@ -192,8 +192,15 @@ class TestsFlextInfraRefactorViolationsSweep:
         observed = before
         for index, rule_id in enumerate(("repair-marker", "resolve-future")):
             tm.ok(
-                FlextInfraModGateEngine.scan(
-                    root, fix=True, rule_ids=(rule_id,), published_plans=chain
+                FlextInfraModGateEngine.apply_report(
+                    root,
+                    tm.ok(
+                        FlextInfraModGateEngine.scan(
+                            root, fix=False, rule_ids=(rule_id,)
+                        )
+                    ),
+                    exact_replacements=True,
+                    published_plans=chain,
                 )
             )
             observed = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
@@ -321,10 +328,14 @@ class TestsFlextInfraRefactorViolationsSweep:
         before = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
         chain: list[m.Infra.CodegenStagedFile] = []
         tm.ok(
-            FlextInfraModGateEngine.scan(
+            FlextInfraModGateEngine.apply_report(
                 mod_workspace,
-                fix=True,
-                rule_ids=("repair-marker",),
+                tm.ok(
+                    FlextInfraModGateEngine.scan(
+                        mod_workspace, fix=False, rule_ids=("repair-marker",)
+                    )
+                ),
+                exact_replacements=True,
                 published_plans=chain,
             )
         )

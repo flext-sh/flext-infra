@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._promoted.dispatch import FlextInfraPromotedDispatch
+from flext_infra._promoted import FlextInfraPromotedDispatch
 
 
 class FlextInfraPromotedBase(FlextInfraPromotedDispatch):

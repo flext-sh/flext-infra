@@ -57,6 +57,13 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
             plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
+            if idx == 1 or idx == len(pkg_dirs) or idx % progress_interval == 0:
+                u.Cli.info(
+                    f"lazy-init: resolved {idx}/{len(pkg_dirs)} "
+                    f"package={plan.context.current_pkg} "
+                    f"importable={plan.context.importable} "
+                    f"action={plan.action.value} exports={len(plan.lazy_map)}"
+                )
             if plan.lazy_map:
                 dir_exports[str(pkg_dir.resolve())] = dict(plan.lazy_map)
             should_process = (

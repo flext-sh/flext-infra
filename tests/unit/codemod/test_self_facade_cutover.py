@@ -55,7 +55,7 @@ class TestsFlextInfraSelfFacadeCutover:
         with infra.rope_workspace(root) as rope:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                     rope_workspace=rope,
                     sources=sources,
                 )
@@ -120,7 +120,7 @@ class TestsFlextInfraSelfFacadeCutover:
         with infra.rope_workspace(root) as rope:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                     rope_workspace=rope,
                     sources={consumer: source},
                 )
@@ -130,7 +130,7 @@ class TestsFlextInfraSelfFacadeCutover:
                 tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
             remaining = tm.ok(
                 u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                     rope_workspace=rope,
                     sources={consumer: consumer.read_text(encoding="utf-8")},
                 )
@@ -221,7 +221,7 @@ class TestsFlextInfraSelfFacadeCutover:
         with infra.rope_workspace(root) as rope:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                     rope_workspace=rope,
                     sources=sources,
                 ),
@@ -234,7 +234,7 @@ class TestsFlextInfraSelfFacadeCutover:
                 sources[edit.file_path] = edit.updated_source
             remaining = tm.ok(
                 u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                     rope_workspace=rope,
                     sources=sources,
                 ),
@@ -325,7 +325,7 @@ class TestsFlextInfraSelfFacadeCutover:
             path.write_text(content, encoding="utf-8")
         with infra.rope_workspace(root) as rope:
             result = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT,
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                 rope_workspace=rope,
                 sources=sources,
             )

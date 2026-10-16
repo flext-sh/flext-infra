@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformPyprojectPolicy
-from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
+from flext_infra.deps.phases import FlextInfraEnsurePackagingPhase
 
 
 class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
@@ -151,6 +151,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 workspace_subprojects=tuple(
                     item.path.as_posix() for item in workspace.subprojects
                 ),
+                owns_workspace_manifest=(
+                    repository_root / "config/workspace.yaml"
+                ).is_file(),
                 workspace_repositories=subprojects,
                 environment_imports=self._declared_environment_imports(
                     target, workspace
@@ -402,7 +405,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return result_type.from_failure(development_dependencies)
         return result_type.ok((
             project_dependencies,
-            development_dependencies,
+            development_dependencies.value,
         ))
 
     def _project_render_context(
@@ -477,7 +480,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     ),
                 ),
                 project_dependencies=project_dependencies,
-                development_dependencies=development_dependencies.value,
+                development_dependencies=tuple(development_dependencies),
                 tooling=config.Infra.tooling,
                 # The in-place pyproject edit and this render read the same
                 # fleet exemption map, unchanged for every project.

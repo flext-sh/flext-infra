@@ -127,8 +127,7 @@ class TestsNativeCompilerAdmission:
         native_consumer(consumer, str(tmp_path), module_name)
 
     @staticmethod
-    @pytest.mark.parametrize("defect", ["absent", "missing-spec", "broken-origin"])
-    def test_imported_class_preserves_its_supplier_failure(
+    def test_source_proof_never_replays_an_absolute_import_effect(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
@@ -237,7 +236,11 @@ class TestsNativeCompilerAdmission:
     ) -> None:
         """Cold authentication preserves the original construction callbacks."""
         options = "slots=True, unsafe_hash=True"
-        declaration = "class Payload:\n"
+        declaration = (
+            "class Payload(metaclass=Meta):\n"
+            if feature == "metaclass"
+            else "class Payload:\n"
+        )
         decorator = f"@attrs({options})\n"
         field = "    _value = attrib()\n"
         extra = ""
@@ -245,8 +248,6 @@ class TestsNativeCompilerAdmission:
             field = "    _value = make_field()\n"
         elif feature == "class-decorator":
             decorator = "@decorate\n"
-        elif feature == "metaclass":
-            declaration = "class Payload(metaclass=Meta):\n"
         elif feature == "set-name":
             extra = "    marker = Descriptor()\n"
         elif feature == "validator":

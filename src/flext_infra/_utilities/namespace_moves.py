@@ -22,10 +22,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSource,
-    FlextInfraUtilitiesTransformerHeader,
 )
 from flext_infra._utilities._rope_analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
+)
+from flext_infra._utilities.transformer_header import (
+    FlextInfraUtilitiesTransformerHeader,
 )
 
 
@@ -58,8 +60,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 gates=gates,
             )
 
-    @staticmethod
+    @classmethod
     def rewrite_manual_typing_alias_violations(
+        cls,
         *,
         project_root: Path,
         names_by_file: t.MappingKV[Path, t.Infra.StrSet],
@@ -67,7 +70,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> None:
         """Relocate the named typing declarations of each file to its typings owner."""
         for source_file, alias_names in names_by_file.items():
-            FlextInfraUtilitiesRefactorNamespaceMoves._move_typing_alias_lines(
+            cls._move_typing_alias_lines(
                 project_root=project_root,
                 source_file=source_file,
                 alias_names=alias_names,
@@ -847,8 +850,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         import_line = f"from {target_module} import {', '.join(referenced_aliases)}"
         return [import_line] if import_line not in kept_source.splitlines() else ()
 
-    @staticmethod
-    def _strip_self_bound_aliases(*, import_line: str, target_source: str) -> str:
+    @classmethod
+    def _strip_self_bound_aliases(cls, *, import_line: str, target_source: str) -> str:
         """Drop names already bound locally in the move target from an import.
 
         A facade-root module (``typings.py``, ``constants.py``, ...) binds its

@@ -304,7 +304,6 @@ class FlextInfraConstantsRefactor:
         PRIVATE_IMPORT = "private-import"
         FACADE_BASE = "facade-base"
         MODEL_FIELDS = "model-fields"
-        SELF_FACADE_IMPORT = "self-facade-import"
         DYNAMIC_ENVIRONMENT = "dynamic-environment"
         MODULE_END = "module-end"
         NOTICE_LAST = "notice-last"

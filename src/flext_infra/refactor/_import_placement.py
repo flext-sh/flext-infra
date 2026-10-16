@@ -222,6 +222,9 @@ class FlextInfraImportNormalizationPlacementMixin(
         Returns:
             The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
 
+        Raises:
+            ValueError: If distinct inline providers would share one global binding.
+
         """
         promoted = cls._typing_runtime_edits(state, lines)
         if promoted:
@@ -230,7 +233,47 @@ class FlextInfraImportNormalizationPlacementMixin(
             placement: [] for placement in c.Infra.ImportPlacement
         }
         edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
+        pending: MutableMapping[str, ast.Import | ast.ImportFrom] = {}
         for node in cls._iter_imports(state.tree):
+            inline = cls._enclosing_scope(node, state.parents) is not None
+            if (
+                inline
+                and not cls._inside_type_checking(node, state.parents)
+                and not cls._sole_body_statement(node, state.parents)
+            ):
+                for alias in node.names:
+                    placement = cls._alias_placement(state, node, alias, inline=True)
+                    if placement not in {
+                        c.Infra.ImportPlacement.RUNTIME,
+                        c.Infra.ImportPlacement.TYPING,
+                    }:
+                        continue
+                    bound = alias.asname or alias.name.partition(".")[0]
+                    existing = pending.setdefault(bound, node)
+                    # Dotted imports load distinct modules but bind one root
+                    # package without an alias. Keep every module import.
+                    shared_package = (
+                        isinstance(existing, ast.Import)
+                        and isinstance(node, ast.Import)
+                        and alias.asname is None
+                        and any(
+                            other.asname is None
+                            and other.name.partition(".")[0] == bound
+                            for other in existing.names
+                        )
+                    )
+                    if (
+                        existing is not node
+                        and not shared_package
+                        and not cls._binds_same(existing, node, alias)
+                    ):
+                        msg = (
+                            f"{state.scope.file_path}: conflicting inline import "
+                            f"providers for {bound}: {ast.unparse(existing)} "
+                            f"(line {existing.lineno}) and {ast.unparse(node)} "
+                            f"(line {node.lineno}); semantic receiver repair required"
+                        )
+                        raise ValueError(msg)
             edit = cls._statement_edit(state, node, lines, placed)
             if edit is not None:
                 edits.append(edit)

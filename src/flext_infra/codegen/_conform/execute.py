@@ -7,17 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import traceback
+from functools import partial
 from pathlib import Path
 from typing import Self, override
 
 from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
+    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 # The surfaces a partial apply plan may publish; every other non-ALL surface is
@@ -676,12 +678,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     }),
                 ),
                 staged_validator=(
-                    self._validate_mise_stage
+                    partial(self._validate_mise_stage, plans=plan.files)
                     if surface is c.Infra.CodegenConformSurface.MISE_CONFIG
-                    else self._validate_pyproject_stage
+                    else partial(self._validate_pyproject_stage, plans=plan.files)
                     if surface is c.Infra.CodegenConformSurface.PYPROJECT
                     else None
-                ),
+                )
+                if changed
+                else None,
             ),
             publication_receipts=publication_receipts,
         )
@@ -759,58 +763,113 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
 
     @staticmethod
-    def _validate_pyproject_stage(
+    def _bootstrap_validation_paths(
         session: m.Infra.CodegenTransactionSession,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Authenticate the exact staged effects or unchanged physical plans.
+
+        Returns:
+            Paths admitted for consumption, or the first plan identity failure.
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        if not plans or len({plan.path for plan in plans}) != len(plans):
+            return result_type.fail("bootstrap validation requires unique file plans")
+        expected = {
+            plan.path: (plan.project, plan.desired_content, plan.desired_mode)
+            for plan in plans
+            if u.Infra.codegen_file_requires_effect(plan)
+        }
+        actual = {
+            publication.before.path: (
+                publication.project,
+                publication.replacement.content,
+                publication.replacement.mode,
+            )
+            for publication in publications
+            if publication.replacement is not None
+        }
+        if len(actual) != len(publications) or actual != expected:
+            return result_type.fail("bootstrap replacements differ from file plans")
+        current = FlextInfraMiseArtifactsVerification.plans_current(
+            plans, journal=session.journal
+        )
+        if current.failure:
+            return result_type.from_failure(current)
+        staged_paths = {
+            publication.before.path: publication.replacement.path
+            for publication in publications
+            if publication.replacement is not None
+        }
+        return result_type.ok(
+            tuple(staged_paths.get(plan.path, plan.path) for plan in plans)
+        )
+
+    @classmethod
+    def _validate_pyproject_stage(
+        cls,
+        session: m.Infra.CodegenTransactionSession,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        *,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Parse the staged replacement before publishing semantic prerequisites.
+        """Parse every staged or retained plan through the real TOML consumer.
 
         Returns:
             The unchanged session or the native TOML parser failure.
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        # A converged surface stages nothing: the transaction still consults the
-        # validator for the unchanged phase, and there is nothing to parse.
-        if not publications:
-            return result_type.ok(session)
-        for publication in publications:
-            if publication.replacement is None:
-                return result_type.fail(
-                    "pyproject bootstrap requires a replacement for every publication",
-                )
-            parsed = u.Cli.toml_read_document(publication.replacement.path)
+        paths = cls._bootstrap_validation_paths(session, publications, plans)
+        if paths.failure:
+            return result_type.from_failure(paths)
+        for path in paths.value:
+            parsed = u.Cli.toml_read_document(path)
             if parsed.failure:
                 return result_type.from_failure(parsed)
+        current = FlextInfraMiseArtifactsVerification.plans_current(
+            plans, journal=session.journal
+        )
+        if current.failure:
+            return result_type.from_failure(current)
         u.Cli.info(
-            f"stage=pyproject-staged-validation files={len(publications)} "
+            f"stage=pyproject-staged-validation files={len(paths.value)} "
             "semantic-analysis=next-gen",
         )
         return result_type.ok(session)
 
-    @staticmethod
+    @classmethod
     def _validate_mise_stage(
+        cls,
         session: m.Infra.CodegenTransactionSession,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        *,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Reject invalid staged TOML before the journal publishes its replacement.
+        """Validate staged or retained Mise TOML before completing its phase.
 
         Returns:
             The unchanged session or the exact declaration failure.
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        # A converged .mise.toml stages nothing: the unchanged phase still
-        # consults the validator, and upg must continue past it.
-        if not publications:
-            return result_type.ok(session)
-        if len(publications) != 1 or publications[0].replacement is None:
-            return result_type.fail("mise-config requires one staged replacement")
+        if len(plans) != 1:
+            return result_type.fail("mise-config requires one file plan")
+        paths = cls._bootstrap_validation_paths(session, publications, plans)
+        if paths.failure:
+            return result_type.from_failure(paths)
         checked = FlextInfraCodegenMiseArtifacts.validate_config_file(
-            publications[0].replacement.path,
+            paths.value[0],
         )
         if checked.failure:
             return result_type.from_failure(checked)
+        current = FlextInfraMiseArtifactsVerification.plans_current(
+            plans, journal=session.journal
+        )
+        if current.failure:
+            return result_type.from_failure(current)
         u.Cli.info("stage=mise-config-staged-validation files=1 installs=0")
         return result_type.ok(session)
 
@@ -859,7 +918,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         self,
         request: m.Infra.CodegenConformRequest,
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Run complete conformance inside the sole generation lock.
+        """Plan outside the lease and publish through locked generation phases.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenResult]``.
@@ -867,36 +926,32 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
-        ports = self.ports
-        producer = self.producer
-        if ports is None or producer is None:
-            return r[m.Infra.CodegenResult].fail(
-                "complete conform requires the facade-wired docs and fresh-import "
-                "ports and an authenticated producer; "
-                "run it through FlextInfra.codegen_conform",
-            )
-        seeded = self._seed_declared_beads_identity(request.root)
-        if seeded.failure:
-            return r[m.Infra.CodegenResult].from_failure(seeded)
-        policy = ports.participant_policy(
-            request.root,
-            initial_workspace=self.initial_workspace,
-            producer=producer,
-        )
-        if policy.failure:
-            return r[m.Infra.CodegenResult].from_failure(policy)
-        mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
+        configured = self._managed_policy(request)
+        if configured.failure:
+            return r[m.Infra.CodegenResult].from_failure(configured)
+        policy, producer = configured.value
         transaction = FlextInfraCodegenTransaction(
-            mise_owner,
-            participant_policy=policy.value,
+            FlextInfraCodegenMiseArtifacts(repository_root=request.root),
+            participant_policy=policy,
             producer=producer,
         )
-        batches: list[m.Infra.CodegenPhaseOutcome] = []
-
-        published = transaction.run_locked(
+        prepared = transaction.run_locked(
             prepare=True,
             operation=lambda scope_root: self._execute_managed_locked(
                 request,
+                scope_root,
+            ),
+        )
+        if prepared.failure:
+            return r[m.Infra.CodegenResult].from_failure(prepared)
+        planned = self._prepare_managed_plan(request)
+        if planned.failure:
+            return r[m.Infra.CodegenResult].from_failure(planned)
+        batches: list[m.Infra.CodegenPhaseOutcome] = []
+        published = transaction.run_locked(
+            prepare=True,
+            operation=lambda scope_root: self._execute_managed_locked_prepared(
+                planned.value,
                 scope_root,
                 transaction,
                 batches,
@@ -910,30 +965,56 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             tuple(batches),
         )
 
+    def _managed_policy(
+        self,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[
+        t.Pair[m.Infra.CodegenParticipantPolicy, m.Infra.CodegenPhaseAnalysis]
+    ]:
+        """Bind the declared participant policy to its original producer.
+
+        Returns:
+            The policy and original producer, or their first prerequisite failure.
+
+        """
+        result = r[
+            t.Pair[m.Infra.CodegenParticipantPolicy, m.Infra.CodegenPhaseAnalysis]
+        ]
+        ports = self.ports
+        producer = self.producer
+        if ports is None or producer is None:
+            return result.fail(
+                "complete conform requires the facade-wired docs and fresh-import "
+                "ports and an authenticated producer; "
+                "run it through FlextInfra.codegen_conform",
+            )
+        seeded = self._seed_declared_beads_identity(request.root)
+        if seeded.failure:
+            return result.from_failure(seeded)
+        policy = ports.participant_policy(
+            request.root,
+            initial_workspace=self.initial_workspace,
+            producer=producer,
+        )
+        if policy.failure:
+            return result.from_failure(policy)
+        return result.ok((policy.value, producer))
+
     def _execute_managed_locked(
         self,
         request: m.Infra.CodegenConformRequest,
         scope_root: Path,
-        transaction: FlextInfraCodegenTransaction,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Materialize scaffold parents, then run one locked generation cycle.
+    ) -> p.Result[Path]:
+        """Prepare scaffold parents after locked recovery, before source planning.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The reconciled scope root, or the original preparation failure.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            return self._observe_publication(request)
         prepared = self._prepare_scaffold_directories(request)
         if prepared.failure:
-            return r[m.Infra.CodegenResult].from_failure(prepared)
-        return self._execute_managed_locked_prepared(
-            request,
-            scope_root,
-            transaction,
-            publication_receipts,
-        )
+            return r[Path].from_failure(prepared)
+        return r[Path].ok(scope_root)
 
     @staticmethod
     def lazy_repository_task(root: Path) -> m.Infra.CodegenPhaseOutcome:
@@ -1032,29 +1113,24 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
         )
 
-    def _execute_managed_locked_prepared(
+    def _prepare_managed_plan(
         self,
         request: m.Infra.CodegenConformRequest,
-        scope_root: Path,
-        transaction: FlextInfraCodegenTransaction,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Plan, publish, and validate one prepared locked generation cycle.
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Plan sources and capture the actual Docs producer outside the lease.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The immutable plan, or the original planning or capture failure.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            return self._observe_publication(request)
         u.Cli.header("Codegen Conform")
         u.Cli.info(
             f"stage=plan mode={request.mode} scope={request.scope} "
-            f"what={request.what} root={request.root} lock_scope={scope_root}",
+            f"what={request.what} root={request.root} lease=unheld",
         )
         planned = self.plan(request)
         if planned.failure:
-            return r[m.Infra.CodegenResult].from_failure(planned)
+            return r[m.Infra.CodegenPlan].from_failure(planned)
         plan = planned.value
         owned = tuple(
             repository.name
@@ -1066,7 +1142,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if owned:
             ports = self.ports
             if ports is None:
-                return r[m.Infra.CodegenResult].fail(
+                return r[m.Infra.CodegenPlan].fail(
                     "docs planning requires the facade-wired planner before effects"
                 )
             planner = ports.docs_planner(
@@ -1080,9 +1156,25 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 collaborators=(planner.publish_batch, ports.docs_planner),
             )
             if captured.failure:
-                return r[m.Infra.CodegenResult].from_failure(captured)
+                return r[m.Infra.CodegenPlan].from_failure(captured)
             self.docs_planner = planner
             self.docs_producer = captured.value
+        return planned
+
+    def _execute_managed_locked_prepared(
+        self,
+        plan: m.Infra.CodegenPlan,
+        scope_root: Path,
+        transaction: FlextInfraCodegenTransaction,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Reauthenticate the captured plan and publish one locked generation cycle.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
+        request = plan.request
         config_plans = self.mise_config_plans(plan)
         if config_plans.failure:
             return r[m.Infra.CodegenResult].from_failure(config_plans)
@@ -1186,12 +1278,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
             inputs=lazy_analysis.value.inputs,
             publications=lazy_analysis.value.publications,
+            issues=lazy_analysis.value.issues,
         )
         extended = transaction.append_phase_locked(
             session,
             owned_lazy_analysis.phase,
             owned_lazy_analysis.files,
-            issues=lazy_analysis.value.issues,
+            issues=owned_lazy_analysis.issues,
         )
         if extended.failure:
             return result_type.from_failure(extended)

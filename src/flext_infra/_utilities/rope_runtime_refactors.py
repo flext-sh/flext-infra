@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Sequence
 from typing import cast
 
@@ -14,9 +13,6 @@ from flext_cli import u
 
 from flext_infra import m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
-
-_NATIVE_REGION_SPAN = 2
-"""Character-region tuples carry exactly one begin and one end coordinate."""
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
@@ -28,13 +24,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         Args:
             source: The source code whose indentation is to be adjusted.
-            amount: The number of spaces to add (positive) or remove (negative) from the indentation of each line.
+            amount: Spaces to add or remove from each line's indentation.
 
         Returns:
             The source code with adjusted indentation.
 
         Raises:
-            ValueError: If the source contains lines with indentation smaller than the amount to be removed.
+            ValueError: If a source line has less indentation than the removal.
 
         """
         literals = tuple(
@@ -42,7 +38,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             for begin, end, _metadata in cls.ignored_regions(source)
             if source[begin] != "#"
         )
-        result = []
+        result: list[str] = []
         offset = 0
         for line in source.splitlines(keepends=True):
             inside_literal = any(begin < offset < end for begin, end in literals)
@@ -124,46 +120,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
                 strict=True,
             ),
         )
-
-    @classmethod
-    def patched_ast(cls, source: str) -> ast.AST:
-        """Parse the real SDK patched AST and validate its native result.
-
-        Returns:
-            The SDK AST with source-order information attached.
-
-        Raises:
-            TypeError: If the native parser does not return an AST.
-
-        """
-        value = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "get_patched_ast",
-        )(source, sorted_children=True)
-        if not isinstance(value, ast.AST):
-            msg = "Rope patched AST parser did not return an AST"
-            raise TypeError(msg)
-        return value
-
-    @classmethod
-    def write_patched_ast(cls, tree: ast.AST) -> str:
-        """Render the real SDK patched AST without replacing its writer.
-
-        Returns:
-            The source emitted by the native patched-AST writer.
-
-        Raises:
-            TypeError: If the native writer does not return source text.
-
-        """
-        value = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "write_ast",
-        )(tree)
-        if not isinstance(value, str):
-            msg = "Rope patched AST writer did not return source text"
-            raise TypeError(msg)
-        return value
 
     @staticmethod
     def change_set_members(
@@ -412,7 +368,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             variable: The name of the captured variable to retrieve the region for.
 
         Returns:
-            A pair of integers representing the start and end character positions of the captured region.
+            The start and end character positions of the captured region.
 
         Raises:
             ValueError: If the specified variable is not captured in the match.
@@ -427,14 +383,12 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             "rope.refactor.patchedast",
             "node_region",
         )(captured)
-        if not isinstance(region, tuple) or len(region) != _NATIVE_REGION_SPAN:
-            message = "Rope capture does not expose its native character region"
-            raise TypeError(message)
-        begin, end = region
-        if not isinstance(begin, int) or not isinstance(end, int):
-            message = "Rope capture region contains non-integer coordinates"
-            raise TypeError(message)
-        return begin, end
+        match region:
+            case tuple((int(begin), int(end))):
+                return begin, end
+            case _:
+                message = "Rope capture does not expose its native character region"
+                raise TypeError(message)
 
     @classmethod
     def create_move(
@@ -513,10 +467,10 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             name: The name of the variable or function to find occurrences for.
 
         Returns:
-            An instance of RopeOccurrenceFinder that can be used to locate occurrences of the specified name.
+            The native finder for occurrences of the specified name.
 
         Raises:
-            TypeError: If the created finder does not satisfy the expected RopeOccurrenceFinder interface.
+            TypeError: If the finder violates its native Rope contract.
 
         """
         finder = cls.runtime_callable("rope.refactor.occurrences", "Finder")(

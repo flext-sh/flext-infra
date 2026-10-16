@@ -17,7 +17,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesSemanticCutoverModuleLayout,
     FlextInfraUtilitiesSemanticCutoverNesting,
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
-    FlextInfraUtilitiesSemanticCutoverSelfFacade,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticConstantConsumers,
@@ -42,7 +41,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
     FlextInfraUtilitiesSemanticCutoverModelFields,
-    FlextInfraUtilitiesSemanticCutoverSelfFacade,
     FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
     FlextInfraUtilitiesSemanticCutoverModuleLayout,
 ):
@@ -101,8 +99,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                     selected,
                 )
             case (
-                c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT
-                | c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
+                c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
                 | c.Infra.SemanticCutoverPhase.MODULE_END
                 | c.Infra.SemanticCutoverPhase.NOTICE_LAST
             ):
@@ -229,8 +226,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
 
         """
         match phase:
-            case c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT:
-                return cls._plan_self_facade_imports(root, sources)
             case c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT:
                 return cls._plan_dynamic_environment(root, sources, selected)
             case c.Infra.SemanticCutoverPhase.MODULE_END:

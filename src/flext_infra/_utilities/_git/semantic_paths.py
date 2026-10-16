@@ -131,7 +131,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             msg = "the locked index has no captured bytes"
             raise ValueError(msg)
         lock = LockedFD(index_path)
-        if not isinstance(lock, p.Infra.GitIndexLock):
+        if type(lock) is not LockedFD:
             msg = "native gitdb LockedFD does not provide the index lock contract"
             raise TypeError(msg)
         committed = False

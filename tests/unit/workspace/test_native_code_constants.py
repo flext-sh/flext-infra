@@ -42,9 +42,15 @@ class TestsNativeCodeConstants:
         )
         u.Tests.run_lazy_init_probe(
             """from flext_infra import m
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 import test_pkg as module
-selection = (m.Infra.SourceClassReference(target=module.__name__, attributes=('operation',)),)
+selection = (
+    m.Infra.SourceClassReference(
+        target=module.__name__, attributes=('operation',)
+    ),
+)
 original = module.operation()
 original_code = module.operation.__code__
 before = native.capture(selection).unwrap()

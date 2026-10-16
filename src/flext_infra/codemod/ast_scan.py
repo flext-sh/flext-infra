@@ -23,8 +23,7 @@ from flext_cli import cli
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra._utilities.refactor import _RuleDeltaOptions
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
+from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 
 
 class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -384,8 +383,11 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
             seen.add(fingerprint)
             cli.display_text(f"ast: apply iteration {iteration}")
-            applied = FlextInfraModGateEngine.scan(
-                root, fix=True, rule_ids=rule_ids, published_plans=published_plans
+            applied = FlextInfraModGateEngine.apply_report(
+                root,
+                current,
+                exact_replacements=rule_ids is not None,
+                published_plans=published_plans,
             )
             if rule_ids is None:
                 applied.unwrap()

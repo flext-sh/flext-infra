@@ -76,16 +76,22 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         t.VariadicTuple[m.Infra.SemanticMigrationEdit],
         t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
     ]:
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        project = runtime.snapshot_project(workspace.rope_project, sources)
+        project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+            workspace.rope_project, sources
+        )
         working = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
         unresolved: set[t.Triple[Path, str, str]] = set()
         try:
-            working = cls._settings_import_rewrites(project, working)
+            working, import_findings = cls._declaration_import_rewrites(
+                project, working
+            )
+            findings.extend(import_findings)
             if working != sources:
                 project.close()
-                project = runtime.snapshot_project(workspace.rope_project, working)
+                project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                    workspace.rope_project, working
+                )
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
                     continue
@@ -135,7 +141,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
-                    project = runtime.snapshot_project(workspace.rope_project, working)
+                    project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                        workspace.rope_project, working
+                    )
             cls._preflight_declaration_graph(workspace, sources, working)
             return (
                 tuple(
@@ -204,35 +212,37 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         return None
 
     @classmethod
-    def _settings_import_rewrites(
+    def _declaration_import_rewrites(
         cls,
         project: p.Infra.RopeProject,
         sources: t.MappingKV[Path, str],
-    ) -> t.MutableMappingKV[Path, str]:
-        """Rebind config imports only to their existing, permitted declaration.
+    ) -> t.Pair[
+        t.MutableMappingKV[Path, str],
+        t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
+    ]:
+        """Rebind declarations only to identity-proven external public exports.
 
-        A declaration in another family is not repaired by importing its leaf.
-        Such findings require relocation and remain visible to the boundary gate.
+        An own-namespace provider has to relocate; importing its defining leaf
+        does not repair the dependency. Unresolved identities remain typed red
+        findings while the other safe semantic edits can proceed.
 
         Returns:
-            The proposed sources with config imports rebound to their
-            existing, permitted declaration.
+            Proposed sources and every dependency lacking a permitted owner.
 
         """
         layers = FlextInfraUtilitiesImportLaw
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
         proposed = dict(sources)
+        findings: list[m.Infra.DeclarationRelocationFinding] = []
         for path, source in sources.items():
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
             located = layers.import_namespace(root, path)
             if located is None:
                 continue
-            namespace, _module = located
-            if not cls._is_import_law_singleton(
-                path, namespace, c.Infra.IMPORT_LAW_ROOT_SINGLETONS
-            ):
+            namespace, module = located
+            if layers.import_module_role(module) != "layer0":
                 continue
             exports = cls._collect_settings_exports(
                 (
@@ -244,6 +254,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     root,
                     sources,
                 ),
+                findings,
             )
             if exports:
                 proposed[path] = cls._relocate_settings_exports(
@@ -252,18 +263,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     source,
                     exports,
                 )
-        return proposed
-
-    @staticmethod
-    def _is_import_law_singleton(
-        path: Path,
-        namespace: Path,
-        singletons: frozenset[str],
-    ) -> bool:
-        return any(
-            part.removesuffix(".py").lstrip("_").startswith(tuple(singletons))
-            for part in path.relative_to(namespace).parts
-        )
+        return proposed, tuple(findings)
 
     @classmethod
     def _collect_settings_exports(
@@ -277,6 +277,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             Path,
             t.MappingKV[Path, str],
         ],
+        findings: list[m.Infra.DeclarationRelocationFinding],
     ) -> t.MutableMappingKV[str, t.Pair[str, str]]:
         project, path, _source, namespace, runtime, root, sources = context
         exports: t.MutableMappingKV[str, t.Pair[str, str]] = {}
@@ -305,6 +306,18 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 resolved = cls._resolve_settings_export(alias_context)
                 if resolved is not None:
                     exports[resolved[0]] = resolved[1]
+                else:
+                    findings.append(
+                        m.Infra.DeclarationRelocationFinding(
+                            file_path=path,
+                            declaration=f"{module_name}.{name}",
+                            expected_owner="external public declaration",
+                            reason=(
+                                "own-namespace dependency has no "
+                                "identity-proven external export"
+                            ),
+                        )
+                    )
         return exports
 
     @staticmethod
@@ -334,15 +347,17 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         if resource is None:
             return None
         target = Path(resource.real_path).resolve()
-        if (
-            target not in sources
-            or not target.is_relative_to(namespace)
-            or not FlextInfraUtilitiesImportLaw.import_direct_module(namespace, target)
-        ):
+        if target.is_relative_to(namespace):
             return None
         destination = project.get_pymodule(resource)
-        declared = destination.get_attributes().get(name)
-        destination_name = destination.get_name()
+        destination_name = destination.get_name().split(".")[0]
+        declared = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_binding(
+            project,
+            destination_name,
+            name,
+            root,
+            sources,
+        )
         if (
             declared is None
             or not runtime.same_name(binding, declared)
@@ -498,8 +513,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project.get_resource(path.relative_to(root).as_posix()),
         )
         module_scope = module.get_scope()
-        if module_scope is None:
-            return None
         for outer in module_scope.get_scopes():
             if outer.get_kind() != "Class":
                 continue
@@ -800,7 +813,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         if not orphaned:
             return proposed
-        rewrites = []
+        rewrites: list[m.Infra.SourceRewrite] = []
         lines = cls._source_lines(proposed)
         for statement in runtime.module_imports_for_pymodule(project, after).imports:
             information = statement.import_info
@@ -845,7 +858,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             for information in imports
             for name, alias in information.names_and_aliases
         }
-        used = set()
+        used: set[str] = set()
         for name in names:
             binding = module.get_scope().get_names().get(name)
             if binding is None:
@@ -933,7 +946,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 m.Infra.SourceRewrite(
                     start=start,
                     end=end,
-                    text=cls._checked_type_reference(
+                    text=cls._checked_relocation_reference(
                         runtime.scope_at(module, start),
                         expression,
                     ),
@@ -956,7 +969,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
 
     @classmethod
-    def _checked_type_reference(cls, scope: p.Infra.RopeScope, expression: str) -> str:
+    def _checked_relocation_reference(
+        cls, scope: p.Infra.RopeScope, expression: str
+    ) -> str:
         root = expression.partition(".")[0]
         if not all(part.isidentifier() for part in expression.split(".")):
             msg = f"quoted type destination is not an identifier chain: {expression}"
@@ -983,12 +998,12 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         types = FlextInfraUtilitiesSemanticFamilyTypeReferences
         module = project.get_pymodule(resource)
         lines = cls._source_lines(source)
-        edits = []
+        edits: list[m.Infra.SourceRewrite] = []
 
         def replace(lexical: p.Infra.RopeScope, value: str) -> str | None:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             return (
-                cls._checked_type_reference(lexical, expression)
+                cls._checked_relocation_reference(lexical, expression)
                 if runtime.same_name(binding, runtime.expression_name(lexical, value))
                 else None
             )
@@ -1037,7 +1052,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         scope = project.get_pymodule(resource).get_scope()
-        existing = scope.get_names().get("m") if scope is not None else None
+        existing = scope.get_names().get("m")
         expected = project.get_pymodule(
             project.get_resource(
                 (target.parent.parent / c.Infra.MODELS_PY)
@@ -1078,6 +1093,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         Returns:
             The dedented payload text and its original indentation.
 
+        Raises:
+            TypeError: A payload or its enclosing declaration lacks a source scope.
+
         """
         origin, node, _binding = declaration
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1088,14 +1106,23 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 origin.relative_to(Path(project.root.real_path)).as_posix(),
             ),
         )
+        if node.parent is None:
+            message = "payload declaration has no enclosing source scope"
+            raise TypeError(message)
         outer_name = node.parent.pyobject.get_name()
         outer = origin_module.get_attribute(outer_name).get_object().get_scope()
+        if outer is None:
+            message = "payload enclosing declaration has no native source scope"
+            raise TypeError(message)
         payload = (
             outer.pyobject
             .get_attribute(node.pyobject.get_name())
             .get_object()
             .get_scope()
         )
+        if payload is None:
+            message = "payload declaration has no native source scope"
+            raise TypeError(message)
         lines = cls._source_lines(updated[origin])
         start = lines.get_line_start(payload.get_start())
         end = min(lines.get_line_end(payload.get_end()) + 1, len(updated[origin]))
@@ -1142,6 +1169,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             imports: Required imports added to the destination module.
             transplanted: Payload text and indentation from the origin cut.
 
+        Raises:
+            TypeError: The destination owner lacks its native source scope.
+
         """
         transferred, indentation = transplanted
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1152,6 +1182,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project, updated[target[0]], resource=resource
         )
         owner = destination.get_attribute(target[1]).get_object().get_scope()
+        if owner is None:
+            message = "payload destination owner has no native source scope"
+            raise TypeError(message)
         target_lines = cls._source_lines(updated[target[0]])
         first = target_lines.get_line_start(owner.get_body_start())
         last = min(
@@ -1207,11 +1240,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project.get_resource(origin.relative_to(root).as_posix()),
         )
         scope = module.get_scope()
-        if scope is None or destination is None:
-            msg = (
-                f"declaration-relocation: missing module scope for {origin} or {target}"
-            )
-            raise ValueError(msg)
         imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo] = {}
         for information in cls.native_import_infos(project, module):
             for name, alias in information.names_and_aliases:
@@ -1278,19 +1306,18 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project,
             module.source_code,
         )
+        finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+            project, "import"
+        )
         tokens = tuple(
-            occurrence.offset
-            for occurrence in FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-                project,
-                "import",
-            ).find_occurrences(pymodule=module)
+            occurrence.offset for occurrence in finder.find_occurrences(pymodule=module)
         )
         if len(tokens) != len(records):
             msg = "native import records differ from their lexical occurrences"
             raise ValueError(msg)
         guard = project.get_module("typing").get_attribute("TYPE_CHECKING")
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(module.source_code)
-        selected = []
+        selected: list[p.Infra.RopeImportInfo] = []
         conditions: list[t.Pair[int, bool]] = []
         position = 0
         for statement in facts:
@@ -1330,8 +1357,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 if offset < statement.start_offset:
                     msg = "native import token has no enclosing logical statement"
                     raise ValueError(msg)
-                lexical = runtime.scope_at(module, offset)
-                if lexical.get_kind() == "Module" and all(
+                if runtime.scope_at(module, offset).get_kind() == "Module" and all(
                     condition for _indent, condition in conditions
                 ):
                     selected.append(record.import_info)
@@ -1439,10 +1465,16 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         Returns:
             Attribute replacements and required direct owner imports.
 
+        Raises:
+            TypeError: The dependency scope lacks its native source module.
+
         """
         dependencies: t.MutableMappingKV[t.Pair[int, int], str] = {}
         imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo] = {}
         module = context[1].pyobject.get_module()
+        if module is None:
+            message = "payload dependency scope has no native source module"
+            raise TypeError(message)
         source = module.source_code
         lines = cls._source_lines(source)
         first = lines.get_line_start(node.get_start())

@@ -94,7 +94,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "def build():\n    class Local(Contract):\n        pass\n"
         )
         for declarations, expected in (
-            (negative, []),
+            (negative, list[str]()),
             (
                 negative
                 + "class Reader(Contract):\n    def read(self) -> str: ...\n"
