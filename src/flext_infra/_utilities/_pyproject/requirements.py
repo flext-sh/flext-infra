@@ -141,12 +141,8 @@ class FlextInfraUtilitiesPyprojectRequirements:
             if not isinstance(entry, str)
         }
         additions: list[str | m.Infra.DependencyGroupInclude] = []
-        seen: set[
-            tuple[t.Pair[str, str], t.Pair[str | None, str | None]],
-        ] = set()
-        replaced: set[
-            tuple[t.Pair[str, str], t.Pair[str | None, str | None]],
-        ] = set()
+        seen: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
+        replaced: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
         for entry in generated:
             if isinstance(entry, str):
                 identity = cls._development_requirement_identity(entry)

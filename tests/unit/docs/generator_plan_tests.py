@@ -12,6 +12,7 @@ from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, tm, u
 
+
 class TestsFlextInfraDocsGeneratorPlan:
     """Read-only publication-plan contracts for generated documentation."""
 

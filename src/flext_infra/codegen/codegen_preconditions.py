@@ -919,7 +919,8 @@ class FlextInfraCodegenPreconditions:
         if consumed.failure:
             return result_type.from_failure(consumed)
         return (
-            FlextInfraWorkspaceNativeReference.compare(original, imported)
+            FlextInfraWorkspaceNativeReference
+            .compare(original, imported)
             .flat_map(
                 lambda _: FlextInfraWorkspaceNativeReference.authored_sources_current(
                     imported, consumed.value.inputs

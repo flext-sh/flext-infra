@@ -356,10 +356,14 @@ _native_atomic = (
                 f"cold native source import failed: {output.value.outcome}\n"
                 f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}",
             )
-        imported = m.Infra.NativeImportObservation.model_validate_json(output.value.stdout)
+        imported = m.Infra.NativeImportObservation.model_validate_json(
+            output.value.stdout
+        )
         private = imported.__pydantic_private__
         if private is None:
-            return result_type.fail("native observation has no Pydantic private storage")
+            return result_type.fail(
+                "native observation has no Pydantic private storage"
+            )
         private["_import_birth"] = (
             id(imported),
             u.Cli.sha256_bytes(imported.model_dump_json().encode(c.DEFAULT_ENCODING)),

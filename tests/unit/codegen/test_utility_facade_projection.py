@@ -339,12 +339,12 @@ class TestsFlextInfraUtilityFacadeProjection:
             The rendered facade source that was projected and executed.
 
         """
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
-        cls._write(facade, rendered)
         service = u.Tests.create_lazy_init_service(package.parent.parent)
         family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
         service.target_module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        cls._write(facade, rendered)
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -1430,6 +1430,10 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         self._write(facade, original)
 
+        service = u.Tests.create_lazy_init_service(root)
+        family = u.Infra.facade_family_declared_by(facade.name)
+        service.target_module = f"{package.name}.{family.directory}"
+        tm.ok(u.Tests.materialize_lazy_init(service))
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
         updated = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
 
@@ -1507,6 +1511,10 @@ class TestsFlextInfraUtilityFacadeProjection:
             + '__all__ = ["FlextSampleProtocols", "p"]\n',
         )
 
+        service = u.Tests.create_lazy_init_service(root)
+        family = u.Infra.facade_family_declared_by(facade.name)
+        service.target_module = f"{package.name}.{family.directory}"
+        tm.ok(u.Tests.materialize_lazy_init(service))
         updated = u.Infra.render_utility_facade(package, family="p")
 
         assert updated is not None
