@@ -11,8 +11,10 @@ from pathlib import Path
 
 from flext_infra import m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
@@ -34,8 +36,13 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         *,
         protected: t.Pair[int, int] | None = None,
     ) -> str:
-        module = project.get_pymodule(resource)
-        edits = []
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                resource, resource.path
+            ),
+        )
+        edits: list[m.Infra.SourceRewrite] = []
         for begin, end, literal, scope in cls.quoted_type_regions(
             source, project, module
         ):
@@ -79,7 +86,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                     continue
                 if isinstance(actual, p.Infra.RopeImportedName):
                     module = scope.pyobject.get_module()
-                    if module is None:
+                    if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
                         msg = "quoted type scope has no declaring module"
                         raise ValueError(msg)
                     _, destination = runtime.import_binding(
@@ -112,7 +119,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = expression.partition(".")[0]
         module = scope.pyobject.get_module()
-        if module is None:
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             msg = "quoted type scope has no declaring module"
             raise ValueError(msg)
         local = runtime.expression_name(scope, root)

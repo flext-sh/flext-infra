@@ -830,6 +830,19 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         )
         if outcome.failure:
             return result_type.from_failure(outcome)
+        reference = self._producer.value.generator_reference
+        if reference is None:
+            return result_type.fail("observed publication lacks its original producer")
+        storage = outcome.value.__pydantic_private__
+        if storage is None:
+            return result_type.fail(
+                "observed publication lacks its declared private storage",
+            )
+        storage["_publication_birth"] = (
+            id(outcome.value),
+            id(reference),
+            u.Cli.sha256_content(outcome.value.model_dump_json()),
+        )
         current = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             (*self._prior_publications, outcome.value),
             reference=self._producer.value.generator_reference,

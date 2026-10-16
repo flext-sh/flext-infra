@@ -475,10 +475,9 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             isinstance(value, ast.Name) and value.id not in visible
         ):
             return False
-        owner = cls._reference(target.value, visible, spec.module)
+        owner = cls._reference(target.value, visible, spec)
         if owner.target not in spec.definitions or owner.attributes:
             return False
-        member = visible[value.id] if isinstance(value, ast.Name) else None
         definition = spec.definitions[owner.target]
         members = dict(definition.members)
         assigned = cls._name_assignment(spec, node, visible)
@@ -487,7 +486,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         else:
             members[target.attr] = assigned
         spec.definitions[owner.target] = definition.model_copy(
-            update={"members": {**definition.members, target.attr: member}},
+            update={"members": members},
         )
         return True
 

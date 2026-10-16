@@ -14,6 +14,7 @@ from flext_cli import cli
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -301,12 +302,19 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             Whether the member's owner declares the qualified enum ancestry.
 
+        Raises:
+            TypeError: The constant declaration has no native source module.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding = cls._constant_terminal(project, candidate, "enum member")
         module, line = binding.get_definition_location()
         if module is None or line is None:
             return False
+        module = module.get_module()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            message = "Constant declarations require a native source module"
+            raise TypeError(message)
         enum = runtime.qualified_name(project, qualified).get_object()
         for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
             module.source_code
@@ -505,6 +513,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Each defining module with its uniquely assigned constant bindings
             and definition lines.
 
+        Raises:
+            TypeError: A constant binding has no native source module.
+
         """
         declarations: t.MutableMappingKV[
             Path,
@@ -523,6 +534,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             module, line = binding.get_definition_location()
             if module is None or line is None:
                 continue
+            module = module.get_module()
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+                message = "Constant bindings require a native source module"
+                raise TypeError(message)
             resource = module.get_resource()
             if resource is None:
                 continue
@@ -672,7 +687,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         resource = project.get_resource(
             path.relative_to(Path(project.root.real_path)).as_posix()
         )
-        module = project.get_pymodule(resource)
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(resource, path),
+        )
         statements = cls._constant_imports(project, module)
         if not any(
             name not in c.Infra.ALIAS_NAMES or (name == "c" and alias is not None)
@@ -853,7 +871,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     message = f"generated constants package has no source: {qualified}"
                     raise ValueError(message)
                 declaration = owner.parent.get_child(c.Infra.CONSTANTS_PY)
-                module = project.get_pymodule(declaration)
+                module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    project,
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                        declaration, declaration.path
+                    ),
+                )
             terminal = module.get_attributes().get(binding.imported_name)
             if terminal is None:
                 message = f"unresolved constant import chain: {qualified}"
@@ -885,7 +908,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 message = f"constant import has no package declarations: {qualified}"
                 raise ValueError(message)
             resource = resource.get_child(c.Infra.INIT_PY)
-        return project.get_pymodule(resource)
+        return FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                resource, qualified
+            ),
+        )
 
     @classmethod
     def _constant_reference(
@@ -1111,13 +1139,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             Public reference paths bound by the constants facade's Rope graph.
 
+        Raises:
+            TypeError: The constants provider lacks the native module capability.
+
         """
-        facade = (
-            project
-            .get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
-            .get_attributes()
-            .get("c")
-        )
+        module = project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
+        if not FlextInfraUtilitiesRopeRuntimeTypes.semantic_module(module):
+            message = "Rope constants provider has no semantic module"
+            raise TypeError(message)
+        facade = module.get_attributes().get("c")
         if facade is None:
             return {}
         found: t.MutableMappingKV[str, p.Infra.RopePyName] = {"c": facade}

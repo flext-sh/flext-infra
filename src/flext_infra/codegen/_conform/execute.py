@@ -935,16 +935,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             participant_policy=policy,
             producer=producer,
         )
-        prepared = transaction.run_locked(
+        planned = transaction.run_locked(
             prepare=True,
             operation=lambda scope_root: self._execute_managed_locked(
                 request,
                 scope_root,
             ),
-        )
-        if prepared.failure:
-            return r[m.Infra.CodegenResult].from_failure(prepared)
-        planned = self._prepare_managed_plan(request)
+        ).flat_map(lambda _: self._prepare_managed_plan(request))
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
         batches: list[m.Infra.CodegenPhaseOutcome] = []
@@ -959,10 +956,93 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         if published.failure:
             return published
-        return self._publish_docs_batches(
-            request,
-            published.value,
-            tuple(batches),
+        lazy_published = self._publish_lazy_batch(
+            planned.value,
+            policy,
+            producer,
+            batches,
+        )
+        if lazy_published.failure:
+            return r[m.Infra.CodegenResult].from_failure(lazy_published)
+        written = (*published.value.written_files, *lazy_published.value)
+        return (
+            self
+            .conform_workspace_beads_routes(request)
+            .flat_map(lambda _: self._allow_direnv_after_apply(request, written))
+            .flat_map(
+                lambda _: self._publish_docs_batches(
+                    request,
+                    published.value.model_copy(update={"written_files": written}),
+                    tuple(batches),
+                ),
+            )
+        )
+
+    def _publish_lazy_batch(
+        self,
+        plan: m.Infra.CodegenPlan,
+        policy: m.Infra.CodegenParticipantPolicy,
+        producer: m.Infra.CodegenPhaseAnalysis,
+        batches: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Plan after bootstrap and lease only the next publication batch.
+
+        Returns:
+            The written paths, or the original planning or publication failure.
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        lazy = self._lazy_phase(plan.request, plan)
+        if lazy.failure:
+            return result_type.from_failure(lazy)
+        conform_paths = frozenset(file.path for file in plan.files)
+        files = tuple(
+            file for file in lazy.value.files if file.path not in conform_paths
+        )
+        if not files:
+            current = FlextInfraMiseArtifactsVerification.states_current(
+                lazy.value.inputs,
+            )
+            if current.failure:
+                return result_type.from_failure(current)
+            if lazy.value.issues or lazy.value.exception is not None:
+                return result_type.fail(
+                    "\n".join(issue.formatted for issue in lazy.value.issues)
+                    or "lazy planning failed",
+                    exception=lazy.value.exception,
+                )
+            return result_type.ok(())
+        inputs = FlextInfraCodegenPreconditions.unique_states(
+            tuple(source for file in files for source in file.source_states),
+        )
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        analysis = lazy.value.model_copy(
+            update={"files": files, "inputs": inputs.value},
+        )
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=plan.request.root),
+            participant_policy=policy,
+            producer=producer,
+            prior_publications=tuple(batches),
+        )
+        roots = {
+            repository.name: (plan.request.root / repository.path).resolve()
+            for repository in plan.repositories
+            if any(
+                file.project == (plan.request.root / repository.path).resolve()
+                for file in files
+            )
+        }
+        return transaction.run_files_locked(
+            roots,
+            lambda scope_root: transaction.publish_file_phase_locked(
+                scope_root,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
+                publication_receipts=batches,
+            ),
         )
 
     def _managed_policy(
@@ -1036,6 +1116,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 else str(root)
             )
             return m.Infra.CodegenPhaseOutcome(
+                exception=exc,
                 issues=(
                     m.Infra.Issue(
                         file=path,
@@ -1049,6 +1130,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if analysis.failure:
             return m.Infra.CodegenPhaseOutcome(
                 error=analysis.error or f"lazy-init analysis failed: {root}",
+                exception=analysis.exception,
             )
         return m.Infra.CodegenPhaseOutcome(analysis=analysis.value)
 
@@ -1073,6 +1155,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         publications: list[m.Infra.LazyInitPlan] = []
         issues: list[m.Infra.Issue] = []
+        first_exception: BaseException | None = None
         roots = tuple(
             (request.root / repository.path).resolve()
             for repository in plan.repositories
@@ -1085,6 +1168,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             roots,
         )
         for root, outcome in zip(roots, outcomes, strict=True):
+            if first_exception is None:
+                first_exception = outcome.exception
             issues.extend(outcome.issues)
             if outcome.analysis is None:
                 if outcome.error:
@@ -1099,6 +1184,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     )
                 continue
             files.extend(outcome.analysis.files)
+            if first_exception is None:
+                first_exception = outcome.analysis.exception
             issues.extend(outcome.analysis.issues)
             publications.extend(outcome.analysis.publications)
             for state in outcome.analysis.inputs:
@@ -1110,6 +1197,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 inputs=tuple(inputs[path] for path in sorted(inputs)),
                 publications=tuple(publications),
                 issues=tuple(issues),
+                exception=first_exception,
             ),
         )
 
@@ -1174,7 +1262,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
-        request = plan.request
         config_plans = self.mise_config_plans(plan)
         if config_plans.failure:
             return r[m.Infra.CodegenResult].from_failure(config_plans)
@@ -1195,7 +1282,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         return transaction.publish_prepared_locked(
             recorded.value,
             lambda current: self._publish_managed_locked(
-                request,
                 plan,
                 transaction=transaction,
                 session=current,
@@ -1203,92 +1289,28 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
         )
 
+    @staticmethod
     def _publish_managed_locked(
-        self,
-        request: m.Infra.CodegenConformRequest,
         plan: m.Infra.CodegenPlan,
         transaction: FlextInfraCodegenTransaction,
         session: m.Infra.CodegenTransactionSession,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Complete every post-begin phase through prepared-state recovery.
+        """Settle bootstrap publication before planning the lazy phase.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
-        lazy = self._append_lazy_phase(request, plan, transaction, session)
-        if lazy.failure:
-            return r[m.Infra.CodegenResult].from_failure(lazy)
-        session, _owned_lazy_analysis = lazy.value
         published = transaction.commit_locked(
             session,
             publication_receipts=publication_receipts,
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
-        routes = self.conform_workspace_beads_routes(request)
-        if routes.failure:
-            return r[m.Infra.CodegenResult].from_failure(routes)
-        allowed = self._allow_direnv_after_apply(request, published.value)
-        if allowed.failure:
-            return r[m.Infra.CodegenResult].from_failure(allowed)
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=plan, written_files=published.value),
         )
-
-    def _append_lazy_phase(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        plan: m.Infra.CodegenPlan,
-        transaction: FlextInfraCodegenTransaction,
-        session: m.Infra.CodegenTransactionSession,
-    ) -> p.Result[
-        t.Pair[m.Infra.CodegenTransactionSession, m.Infra.CodegenPhaseAnalysis]
-    ]:
-        """Plan and append the lazy-init phase owned by this transaction.
-
-        A path already planned by conform has exactly one publication owner
-        in the transaction: the lazy-init phase keeps only the paths conform
-        does not plan, and that same filtered receipt is published and
-        verified at the fixed point.
-
-        Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.CodegenTransactionSession,
-                m.Infra.CodegenPhaseAnalysis]]``.
-
-        """
-        result_type = r[
-            t.Pair[m.Infra.CodegenTransactionSession, m.Infra.CodegenPhaseAnalysis]
-        ]
-        lazy_analysis = self._lazy_phase(request, plan)
-        if lazy_analysis.failure:
-            aborted = transaction.abort_locked(
-                session,
-                lazy_analysis,
-            )
-            return result_type.from_failure(aborted)
-        conform_paths = frozenset(file.path for file in plan.files)
-        owned_lazy_analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=lazy_analysis.value.phase,
-            files=tuple(
-                file
-                for file in lazy_analysis.value.files
-                if file.path not in conform_paths
-            ),
-            inputs=lazy_analysis.value.inputs,
-            publications=lazy_analysis.value.publications,
-            issues=lazy_analysis.value.issues,
-        )
-        extended = transaction.append_phase_locked(
-            session,
-            owned_lazy_analysis.phase,
-            owned_lazy_analysis.files,
-            issues=owned_lazy_analysis.issues,
-        )
-        if extended.failure:
-            return result_type.from_failure(extended)
-        return result_type.ok((extended.value, owned_lazy_analysis))
 
     def _publish_docs_batches(
         self,

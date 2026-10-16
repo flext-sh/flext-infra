@@ -182,7 +182,7 @@ class FlextInfra(
             check_only=request.check_only,
             dry_run=request.dry_run,
             output_format=request.output_format,
-            selected_projects=request.project_names,
+            selected_projects=request.projects,
             rules_only=request.rules_only,
         ).execute()
 

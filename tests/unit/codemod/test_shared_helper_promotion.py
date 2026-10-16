@@ -117,7 +117,9 @@ class TestsFlextInfraSharedHelperPromotion:
             assert resource is not None
             _, binding = u.Infra.import_binding(
                 rope.rope_project,
-                rope.rope_project.get_pymodule(resource),
+                u.Infra.resolve_pymodule(
+                    rope.rope_project, u.Infra.require_file_resource(resource, quoted)
+                ),
                 rope.convention(
                     root / c.Infra.DIR_TESTS / c.Infra.UTILITIES_PY,
                 ).module_name,

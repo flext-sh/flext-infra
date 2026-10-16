@@ -10,7 +10,6 @@ import ast
 import io
 import re
 import tokenize
-from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, m, t, u
@@ -90,11 +89,7 @@ class FlextInfraRenameSources:
 
         """
         files: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        configuration_root = (
-            params.repository_root
-            if params.repository_root is not None
-            else Path(commonpath(roots))
-        )
+        configuration_root = params.repository_root
         codegen = u.Infra.load_codegen_inputs(configuration_root).unwrap().spec
         ignored = codegen.source_scan_ignored
         generated = {item.path for item in codegen.managed_file_specs}

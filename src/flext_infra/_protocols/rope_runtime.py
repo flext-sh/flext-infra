@@ -86,7 +86,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_name(self) -> str: ...
 
-        def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule | None: ...
+        def get_module(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeSemanticModule | None: ...
 
         def get_kind(self) -> str: ...
 
@@ -180,7 +182,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_definition_location(
             self,
-        ) -> tuple[FlextInfraProtocolsRopeRuntime.RopePyModule | None, int | None]: ...
+        ) -> tuple[
+            FlextInfraProtocolsRopeRuntime.RopeParsedModule | None, int | None
+        ]: ...
 
     @runtime_checkable
     class RopeAssignedName(RopePyName, Protocol):
@@ -192,7 +196,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeImportedModule(RopePyName, Protocol):
         """Declared import provenance, before its module is evaluated."""
 
-        importing_module: FlextInfraProtocolsRopeRuntime.RopePyModule
+        importing_module: FlextInfraProtocolsRopeRuntime.RopeSourceModule
         module_name: str | None
         level: int
         resource: FlextInfraProtocolsRopeRuntime.RopeResource | None
@@ -251,15 +255,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
     @runtime_checkable
-    class RopePyModule(Protocol):
-        """Rope parsed module shape."""
+    class RopeSemanticModule(Protocol):
+        """Module attributes shared by native builtins, packages, and source."""
 
-        source_code: str
-
-        @property
-        def lines(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceLines: ...
-
-        def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
+        def get_module(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeSemanticModule | None: ...
 
         def get_attribute(
             self,
@@ -270,24 +271,51 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_doc(self) -> str | None: ...
 
+        def get_attributes(
+            self,
+        ) -> t.MappingKV[str, FlextInfraProtocolsRopeRuntime.RopePyName]: ...
+
+        def get_resource(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+
+    @runtime_checkable
+    class RopeParsedModule(RopeSemanticModule, Protocol):
+        """AST and scope exposed by native Python modules and packages."""
+
+        def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopeParsedModule: ...
+
         # NOTE (multi-agent, flext-f8vk / kimi): rope returns None for
         # string-parsed modules (pycore.get_string_module(resource=None));
         # the widened contract keeps every consumer None guard live.
         def get_resource(
             self,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeFile | None: ...
-
-        def get_attributes(
-            self,
-        ) -> t.MappingKV[str, FlextInfraProtocolsRopeRuntime.RopePyName]: ...
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
         def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
 
         def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
     @runtime_checkable
+    class RopePyModule(RopeParsedModule, Protocol):
+        """Native source text, including modules parsed from a string."""
+
+        source_code: str
+
+        @property
+        def lines(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceLines: ...
+
+        def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
+
+        def get_resource(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeFile | None: ...
+
+    @runtime_checkable
     class RopeSourceModule(RopePyModule, Protocol):
         """Source-module capability retaining its native semantic graph."""
+
+        def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceModule: ...
 
         @property
         def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
@@ -310,7 +338,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_pymodule(
             self,
             resource: FlextInfraProtocolsRopeRuntime.RopeResource,
-        ) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
+        ) -> FlextInfraProtocolsRopeRuntime.RopeParsedModule: ...
 
         def get_source_folders(
             self,
@@ -337,7 +365,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             name: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
+        ) -> FlextInfraProtocolsRopeRuntime.RopeSemanticModule: ...
 
         def get_python_files(
             self,
@@ -471,11 +499,47 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_changed(self) -> str | None: ...
 
     @runtime_checkable
+    class RopeWildcard[Argument](Protocol):
+        """Native wildcard callback, parameterized by its argument grammar."""
+
+        def get_name(self) -> str: ...
+
+        def matches(self, suspect: p.AttributeProbe, arg: Argument) -> bool: ...
+
+    @runtime_checkable
     class RopeRestructure(Protocol):
         """Public semantic restructuring planner at the Rope runtime boundary."""
 
         matched_count: int
         admitted_count: int
+
+        def __init__(
+            self,
+            project: FlextInfraProtocolsRopeRuntime.RopeProject,
+            pattern: str,
+            goal: str,
+            args: t.MappingKV[str, str | tuple[str, t.StrSequence]] | None = None,
+            imports: t.StrSequence | None = None,
+            wildcards: t.MappingKV[
+                str,
+                FlextInfraProtocolsRopeRuntime.RopeWildcard[str]
+                | FlextInfraProtocolsRopeRuntime.RopeWildcard[t.StrSequence],
+            ]
+            | None = None,
+        ) -> None: ...
+
+        def _compute_changes(
+            self,
+            matches: t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeContractMatch],
+            pymodule: FlextInfraProtocolsRopeRuntime.RopePyModule,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeComputer: ...
+
+        def _add_imports(
+            self,
+            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
+            source: str,
+            imports: t.StrSequence,
+        ) -> str: ...
 
         def get_changes(
             self,

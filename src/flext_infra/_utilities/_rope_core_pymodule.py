@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, overload
 
 from flext_infra import t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
@@ -108,17 +108,31 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
         return (path / "__init__.py").is_file() or path.with_suffix(".py").is_file()
 
     @staticmethod
+    @overload
+    def resolve_pymodule(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeFile,
+    ) -> t.Infra.RopeSourceModule: ...
+
+    @staticmethod
+    @overload
     def resolve_pymodule(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> t.Infra.RopePyModule:
+    ) -> t.Infra.RopeParsedModule: ...
+
+    @staticmethod
+    def resolve_pymodule(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> t.Infra.RopeParsedModule:
         """Resolve modules and packages with Python's namespace precedence.
 
         A sibling source module takes precedence over an uninitialized data
         directory; an initialized package retains precedence over that module.
 
         Returns:
-            The resulting ``t.Infra.RopePyModule``.
+            The resulting ``t.Infra.RopeParsedModule``.
 
         Raises:
             TypeError: If rope project returned non-PyModule.
@@ -135,7 +149,12 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
         if not FlextInfraUtilitiesRopeRuntime.pymodule(pymodule):
             msg = "rope project returned non-PyModule"
             raise TypeError(msg)
-        result: t.Infra.RopePyModule = pymodule
+        if FlextInfraUtilitiesRopeRuntime.file_resource(
+            resource
+        ) and not FlextInfraUtilitiesRopeRuntime.source_module(pymodule):
+            msg = "rope file resource returned a non-source module"
+            raise TypeError(msg)
+        result: t.Infra.RopeParsedModule = pymodule
         return result
 
     @staticmethod

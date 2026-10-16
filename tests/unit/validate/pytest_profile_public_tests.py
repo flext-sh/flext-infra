@@ -211,6 +211,65 @@ class TestsFlextInfraPytestProfile:
 
     @staticmethod
     @pytest.mark.slow
+    def test_parent_publication_error_preserves_the_child_failure(
+        cached_runner_project: Path,
+    ) -> None:
+        """A real receipt write error cannot replace a killed suite's exit code."""
+        cache = config.Infra.codegen.make.testmon_cache
+        policy = config.Infra.tooling.tools.pytest
+        target = Path(cache.target_directory) / "test_runtime.py"
+        output = (
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / policy.profile_suite_filename
+        )
+        (cached_runner_project / target).write_text(
+            "import os, signal\nfrom pathlib import Path\n"
+            "def test_runtime():\n"
+            f"    Path({str(output.with_suffix('.pstats.json'))!r}).mkdir()\n"
+            "    os.kill(os.getpid(), signal.SIGKILL)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=target
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-m",
+                    "flext_infra._pytest_entry",
+                    "profile",
+                    str(output),
+                ),
+                cwd=cached_runner_project,
+                timeout=policy.slow_timeout_seconds,
+                options=m.Cli.ProcessOptions(
+                    env=u.Cli.process_env(
+                        overrides={
+                            c.Infra.PYTEST_ENV_TARGET: str(runner.target),
+                            c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
+                            c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
+                            cache.database_environment_variable: str(runner.testmon_db),
+                        },
+                    ),
+                ),
+            ),
+        )
+        tm.that(result.outcome.raw_return_code, eq=(-signal.SIGKILL) % 256)
+        tm.that(result.outcome.timed_out, eq=False)
+        tm.that(
+            result.stderr,
+            has=[
+                f"raw_return_code={-signal.SIGKILL}",
+                "Traceback",
+                str(output.with_suffix(".pstats.json")),
+            ],
+        )
+
+    @staticmethod
+    @pytest.mark.slow
     def test_focused_profile_keeps_one_run_and_excludes_other_files(
         cached_runner_project: Path,
     ) -> None:
@@ -251,6 +310,28 @@ class TestsFlextInfraPytestProfile:
         stats = pstats.Stats(str(output)).get_stats_profile().func_profiles
         tm.that(FlextInfraPytestRunner.__name__ in stats, eq=True)
         tm.that("FlextInfraPytestProfile" in stats, eq=True)
+        processes = (
+            output.parent / config.Infra.tooling.tools.pytest.profile_process_directory
+        )
+        immutable_profiles = tuple(processes.glob("*.pstats"))
+        tm.that(len(immutable_profiles), eq=1)
+        immutable = immutable_profiles[0]
+        receipt = immutable.with_suffix(".pstats.json").read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(
+            receipt,
+            eq=output.with_suffix(".pstats.json").read_text(
+                encoding=c.DEFAULT_ENCODING
+            ),
+        )
+        # Replacing the public destination must leave the per-process evidence intact.
+        replacement = output.with_suffix(".replacement")
+        replacement.write_bytes(b"a later invocation")
+        replacement.replace(output)
+        bound = m.Infra.PytestRunContext.model_validate_json(receipt)
+        tm.that(bound.report_directory, eq=context.report_directory)
+        tm.that(bound.profile_sha256, eq=u.Cli.sha256_bytes(immutable.read_bytes()))
 
     @staticmethod
     @pytest.mark.slow

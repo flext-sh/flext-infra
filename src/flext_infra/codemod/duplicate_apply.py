@@ -294,8 +294,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         """
         module = u.Infra.build_string_module(project, source)
         scope = module.get_scope()
-        if scope is None:
-            return None
         binding = scope.get_defined_names().get(item.name)
         if binding is None:
             return None
@@ -355,8 +353,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
 
         """
         module_scope = module.get_scope()
-        if module_scope is None:
-            return False
         binding = module_scope.get_defined_names().get(definition.item.name)
         return not (
             binding is None
@@ -381,6 +377,9 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         Returns:
             Whether the statement is a pure module-level definition.
 
+        Raises:
+            TypeError: The builtin module lacks its native semantic interface.
+
         """
         statement = definition.statement
         if statement is None:
@@ -396,7 +395,11 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             and statement.start_offset <= row.start_offset < statement.end_offset
             and u.Infra.target_name(row)
         )
-        builtins = project.get_module("builtins").get_attributes()
+        builtin_module = project.get_module("builtins")
+        if not u.Infra.semantic_module(builtin_module):
+            message = "Duplicate binding comparison requires native builtins"
+            raise TypeError(message)
+        builtins = builtin_module.get_attributes()
         for start, stop in u.Infra.semantic_regions(
             module,
             "${duplicate_expression}",
@@ -593,6 +596,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         resource = workspace.resource(path)
         if resource is None:
             return False
+        resource = u.Infra.require_file_resource(resource, path)
         imports = u.Infra.resolve_module_imports(workspace.rope_project, resource)
         imported = False
         for statement in u.Infra.import_statements(imports):
@@ -610,7 +614,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 return True
         if not imported:
             return False
-        pymodule = workspace.rope_project.get_pymodule(resource)
+        pymodule = u.Infra.resolve_pymodule(workspace.rope_project, resource)
         lines = pymodule.source_code.splitlines(keepends=True)
         start = sum(len(text) for text in lines[: line - 1])
         end = start + len(lines[line - 1])
@@ -973,7 +977,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             published = Path(deletion.path).read_text(encoding=c.DEFAULT_ENCODING)
             module = u.Infra.build_string_module(project, published)
             scope = module.get_scope()
-            if scope is not None and deletion.name in scope.get_defined_names():
+            if deletion.name in scope.get_defined_names():
                 return f"published source still defines the copy: {deletion.path}"
         for edit in edits:
             published = Path(edit.file_path).read_text(encoding=c.DEFAULT_ENCODING)

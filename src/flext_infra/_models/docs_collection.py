@@ -78,6 +78,25 @@ class FlextInfraModelsDocsCollection:
             description="Authorized publication classification",
         )
 
+        @m.field_validator(
+            "plan_globs",
+            "exclude_globs",
+            "updated_fields",
+            mode="before",
+        )
+        @classmethod
+        def _tuple_from_list(
+            cls,
+            value: t.JsonPayload,
+        ) -> t.JsonPayload:
+            """Convert lists from the canonical validation producer domain.
+
+            Returns:
+                A tuple for list input, otherwise the original validation value.
+
+            """
+            return tuple(value) if isinstance(value, list) else value
+
     class PlanCollectionConfig(m.ContractModel):
         """Repository-owned associations; projection is separately authorized."""
 
@@ -105,6 +124,20 @@ class FlextInfraModelsDocsCollection:
                 description="Complete explicitly associated source inventory",
             ),
         ] = ()
+
+        @m.field_validator("sources", mode="before")
+        @classmethod
+        def _tuple_from_list(
+            cls,
+            value: t.JsonPayload,
+        ) -> t.JsonPayload:
+            """Preserve native models and paths while converting source lists.
+
+            Returns:
+                A tuple for list input, otherwise the original validation value.
+
+            """
+            return tuple(value) if isinstance(value, list) else value
 
         @m.model_validator(mode="after")
         def _authorization_matches_sources(self) -> Self:

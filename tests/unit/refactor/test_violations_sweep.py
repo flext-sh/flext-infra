@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, main
-from flext_infra._utilities.refactor import _RuleDeltaOptions
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 from tests import c, m, tm, u
@@ -127,7 +126,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             u.Infra.rule_deltas(
                 before,
                 changed,
-                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
             )
         if quiet_before is not None:
             quiet_after = tm.ok(
@@ -139,7 +138,7 @@ class TestsFlextInfraRefactorViolationsSweep:
                 u.Infra.rule_deltas(
                     quiet_before,
                     quiet_after,
-                    options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                    options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
                 )
 
     def test_actual_publication_identity_and_complete_resolution_inventory(
@@ -208,7 +207,7 @@ class TestsFlextInfraRefactorViolationsSweep:
                 u.Infra.rule_deltas(
                     before,
                     observed,
-                    options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                    options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
                 )
                 assert observed.source_states is not None
                 admitted = next(item for item in chain if item.before.path == sample)
@@ -225,7 +224,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             rows = u.Infra.rule_deltas(
                 before,
                 observed,
-                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
             )
             future = next(row for row in rows if row.rule_id == "absent-future")
             tm.that(future.resolved, eq=1)
@@ -237,7 +236,7 @@ class TestsFlextInfraRefactorViolationsSweep:
                 u.Infra.rule_deltas(
                     before,
                     observed,
-                    options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                    options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
                 )
 
     def test_native_lint_failure_keeps_independent_scan_evidence(
@@ -346,7 +345,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             for row in u.Infra.rule_deltas(
                 before,
                 after,
-                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
             )
         }
         absence = rows["absent-class"]
@@ -373,7 +372,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             u.Infra.rule_deltas(
                 before,
                 after,
-                options=_RuleDeltaOptions(publication_chain=(*chain, *chain)),
+                options=m.Infra.RuleDeltaOptions(publication_chain=(*chain, *chain)),
             )
         duplicated = FlextInfraModGateEngine.recounted(
             (
@@ -389,7 +388,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             for row in u.Infra.rule_deltas(
                 before,
                 duplicated,
-                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
             )
         }
         tm.that(duplicate_rows["absent-class"].introduced, eq=1)
@@ -397,13 +396,13 @@ class TestsFlextInfraRefactorViolationsSweep:
             u.Infra.rule_deltas(
                 before,
                 after.model_copy(update={"source_states": None}),
-                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
             )
         lexical = {row.rule_id: row for row in u.Infra.rule_deltas(before, after)}
         tm.that(lexical["absent-class"].introduced, eq=1)
         with pytest.raises(ValueError, match="source identity drift"):
             u.Infra.rule_deltas(
-                before, after, options=_RuleDeltaOptions(publication_chain=())
+                before, after, options=m.Infra.RuleDeltaOptions(publication_chain=())
             )
         drifted = after.model_copy(
             update={
@@ -427,7 +426,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             u.Infra.rule_deltas(
                 before,
                 drifted,
-                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
             )
         changed_catalog = after.model_copy(
             update={
@@ -443,7 +442,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             u.Infra.rule_deltas(
                 before,
                 changed_catalog,
-                options=_RuleDeltaOptions(publication_chain=tuple(chain)),
+                options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
             )
 
     @pytest.mark.parametrize("counts", [(2, 0), (2, 1), (1, 2), (0, 0)])
@@ -487,7 +486,7 @@ class TestsFlextInfraRefactorViolationsSweep:
             for rule in plan.rules
         )
         deltas = u.Infra.rule_deltas(
-            before, after, options=_RuleDeltaOptions(inventory=inventory)
+            before, after, options=m.Infra.RuleDeltaOptions(inventory=inventory)
         )
         tm.that(
             [(row.repository, row.rule_id) for row in deltas], eq=sorted(set(inventory))
@@ -713,7 +712,7 @@ class TestsFlextInfraRefactorViolationsSweep:
         text_rows = u.Infra.rule_deltas(
             before_text,
             after_text,
-            options=_RuleDeltaOptions(
+            options=m.Infra.RuleDeltaOptions(
                 repository_root=root,
                 projects=(root.resolve(),),
             ),

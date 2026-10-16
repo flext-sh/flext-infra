@@ -416,12 +416,15 @@ class FlextInfraUtilitiesCodegenFacades:
                     item.asname is not None,
                 ),
             )
-            names = tuple(
-                item.with_changes(
-                    comma=Comma(whitespace_after=SimpleWhitespace(" ")),
-                )
-                for item in ordered[:-1]
-            ) + (ordered[-1],)
+            names = (
+                *tuple(
+                    item.with_changes(
+                        comma=Comma(whitespace_after=SimpleWhitespace(" "))
+                    )
+                    for item in ordered[:-1]
+                ),
+                ordered[-1],
+            )
             body.append(
                 statement.with_changes(
                     body=(

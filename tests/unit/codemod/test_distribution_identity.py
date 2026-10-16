@@ -6,12 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from tests import c, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraDistributionIdentity:
@@ -38,41 +37,35 @@ class TestsFlextInfraDistributionIdentity:
     def test_repeated_directory_is_one_installation(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test repeated directory is one installation."""
         self.project(tmp_path)
         site = tmp_path / "site"
         self.distribution(site)
-        prepend = u.type_adapter(Callable[[str], None]).validate_python(
-            monkeypatch.syspath_prepend,
-        )
-        prepend(str(site))
-        prepend(str(site))
-        planned = u.Infra.codemod_rule_plan(tmp_path)
+        with tm.scope(python_paths=(str(site), str(site))):
+            planned = u.Infra.codemod_rule_plan(tmp_path)
         assert planned.success, planned.error
 
     def test_distinct_duplicate_installations_are_rejected(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test distinct duplicate installations are rejected."""
         self.project(tmp_path)
-        prepend = u.type_adapter(Callable[[str], None]).validate_python(
-            monkeypatch.syspath_prepend,
-        )
+        sites: list[str] = []
         for name in ("first", "second"):
             site = tmp_path / name
             self.distribution(site)
-            prepend(str(site))
-        with pytest.raises(ValueError, match="duplicate installed distribution"):
+            sites.append(str(site))
+        with (
+            tm.scope(python_paths=sites),
+            pytest.raises(ValueError, match="duplicate installed distribution"),
+        ):
             u.Infra.codemod_rule_plan(tmp_path)
 
     def test_selected_provider_cycle_escapes_without_normalization(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The installed providers retain the dependency owner's cycle failure."""
         self.project(tmp_path)
@@ -94,10 +87,8 @@ class TestsFlextInfraDistributionIdentity:
                 f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n",
                 encoding=c.DEFAULT_ENCODING,
             )
-        prepend = u.type_adapter(Callable[[str], None]).validate_python(
-            monkeypatch.syspath_prepend,
-        )
-        prepend(str(site))
-
-        with pytest.raises(ValueError, match=r"^cyclic dependency graph:"):
+        with (
+            tm.scope(python_paths=(str(site),)),
+            pytest.raises(ValueError, match=r"^cyclic dependency graph:"),
+        ):
             u.Infra.codemod_rule_plan(tmp_path)

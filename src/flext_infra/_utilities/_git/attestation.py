@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import ClassVar, Protocol
 
 from flext_cli import u
-from git import GitCommandError
+from git import GitCommandError, Tree
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities._git import (
@@ -1023,7 +1023,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             prefix: list[str] = []
             for part in relative.split("/"):
                 prefix.append(part)
-                if "/".join(prefix) not in node:
+                if not isinstance(node, Tree) or "/".join(prefix) not in node:
                     msg = (
                         "selected resolver input is absent from the runtime commit: "
                         f"{relative}"
@@ -1094,39 +1094,16 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo = cls._repo(repo_root)
         tag = cls._attestation_tag(request, predicate.repository)
         try:
-            if tag in {item.name for item in repo.tags}:
-                existing = cls._verified_gate_predicate(
-                    request,
-                    repo_root,
-                    allowed,
+            reused = tag in {item.name for item in repo.tags}
+            if not reused:
+                repo.git.tag(
+                    "--sign",
+                    "--annotate",
+                    "--message",
+                    serialized,
                     tag,
-                    context,
+                    predicate.commit_sha,
                 )
-                if existing.failure:
-                    return r[m.Infra.GateAttestationReport].from_failure(existing)
-                if existing.value != predicate:
-                    stored = existing.value.model_dump(mode="json")
-                    current = predicate.model_dump(mode="json")
-                    fields = sorted(
-                        name
-                        for name in stored.keys() | current.keys()
-                        if stored.get(name) != current.get(name)
-                    )
-                    return r[m.Infra.GateAttestationReport].fail(
-                        f"existing immutable stage proof differs from original "
-                        f"evidence: {tag}; fields={','.join(fields)}",
-                    )
-                return r[m.Infra.GateAttestationReport].ok(
-                    cls._attestation_report(tag, predicate, reused=True),
-                )
-            repo.git.tag(
-                "--sign",
-                "--annotate",
-                "--message",
-                serialized,
-                tag,
-                predicate.commit_sha,
-            )
         except (GitCommandError, OSError, ValueError) as exc:
             return r[m.Infra.GateAttestationReport].fail(str(exc), exception=exc)
         verified = cls._verified_gate_predicate(
@@ -1138,8 +1115,20 @@ class FlextInfraUtilitiesGitAttestationMixin(
         )
         if verified.failure:
             return r[m.Infra.GateAttestationReport].from_failure(verified)
+        if reused and verified.value != predicate:
+            stored = verified.value.model_dump(mode="json")
+            current = predicate.model_dump(mode="json")
+            fields = sorted(
+                name
+                for name in stored.keys() | current.keys()
+                if stored.get(name) != current.get(name)
+            )
+            return r[m.Infra.GateAttestationReport].fail(
+                f"existing immutable stage proof differs from original "
+                f"evidence: {tag}; fields={','.join(fields)}",
+            )
         return r[m.Infra.GateAttestationReport].ok(
-            cls._attestation_report(tag, verified.value)
+            cls._attestation_report(tag, verified.value, reused=reused)
         )
 
     @classmethod

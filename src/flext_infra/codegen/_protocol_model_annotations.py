@@ -124,7 +124,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
 
         """
         module = scope.pyobject.get_module()
-        if module is None:
+        if not u.Infra.source_module(module):
             msg = "protocol annotation has no declaring module"
             raise ValueError(msg)
         roots = {

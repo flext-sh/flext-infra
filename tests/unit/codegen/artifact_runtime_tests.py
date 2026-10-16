@@ -253,7 +253,7 @@ class TestsArtifactRuntime:
             canonicalize_name(parsed.name)
             for requirement in requires_dist
             if (parsed := Requirement(requirement)).marker is None
-            or (parsed.marker is not None and parsed.marker.evaluate({"extra": ""}))
+            or parsed.marker.evaluate({"extra": ""})
         }
         tm.that(
             set(excluded).intersection(declared),

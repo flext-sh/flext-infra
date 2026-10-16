@@ -45,62 +45,6 @@ class FlextInfraProtocolsCheck(Protocol):
         def submodule_search_locations(self) -> t.SequenceOf[str] | None: ...
 
     @runtime_checkable
-    class NativeCodeIdentity(Protocol):
-        """Immutable native code metadata consumed by source provenance."""
-
-        @property
-        def co_argcount(self) -> int: ...
-
-        @property
-        def co_posonlyargcount(self) -> int: ...
-
-        @property
-        def co_kwonlyargcount(self) -> int: ...
-
-        @property
-        def co_filename(self) -> str: ...
-
-        @property
-        def co_qualname(self) -> str: ...
-
-        @property
-        def co_firstlineno(self) -> int: ...
-
-        @property
-        def co_consts(self) -> tuple[p.AttributeProbe | None, ...]: ...
-
-        @property
-        def co_names(self) -> tuple[str, ...]: ...
-
-        @property
-        def co_varnames(self) -> tuple[str, ...]: ...
-
-        @property
-        def co_freevars(self) -> tuple[str, ...]: ...
-
-        @property
-        def co_cellvars(self) -> tuple[str, ...]: ...
-
-        @property
-        def co_code(self) -> bytes: ...
-
-        @property
-        def co_linetable(self) -> bytes: ...
-
-        @property
-        def co_exceptiontable(self) -> bytes: ...
-
-        @property
-        def co_flags(self) -> int: ...
-
-        def replace(
-            self,
-            *,
-            co_filename: str,
-            co_consts: tuple[p.AttributeProbe | None, ...],
-        ) -> FlextInfraProtocolsCheck.NativeCodeIdentity: ...
-
-    @runtime_checkable
     class PytestRunContextReceiver(Protocol):
         """Receive the runner's immutable Pydantic receipt through explicit DI."""
 

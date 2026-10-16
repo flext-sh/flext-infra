@@ -10,7 +10,6 @@ from ast import Import, ImportFrom
 from collections.abc import Callable
 
 from flext_core import t
-from rope.refactor.restructure import _ChangeComputer
 
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
 
@@ -24,7 +23,10 @@ class FlextInfraTypesRope:
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource
     type RopeFile = FlextInfraProtocolsRopeRuntime.RopeFile
     type RopeLocation = FlextInfraProtocolsRopeRuntime.RopeLocation
+    type RopeSemanticModule = FlextInfraProtocolsRopeRuntime.RopeSemanticModule
+    type RopeParsedModule = FlextInfraProtocolsRopeRuntime.RopeParsedModule
     type RopePyModule = FlextInfraProtocolsRopeRuntime.RopePyModule
+    type RopeSourceModule = FlextInfraProtocolsRopeRuntime.RopeSourceModule
     type RopePyName = FlextInfraProtocolsRopeRuntime.RopePyName
     type RopeAssignedName = FlextInfraProtocolsRopeRuntime.RopeAssignedName
     type RopePyObject = FlextInfraProtocolsRopeRuntime.RopePyObject
@@ -36,7 +38,7 @@ class FlextInfraTypesRope:
     type RopeImportStatement = FlextInfraProtocolsRopeRuntime.RopeImportStatement
     type RopeModuleImports = FlextInfraProtocolsRopeRuntime.RopeModuleImports
     type RopeChangeSet = FlextInfraProtocolsRopeRuntime.RopeChangeSet
-    type RopeChangeComputer = _ChangeComputer
+    type RopeChangeComputer = FlextInfraProtocolsRopeRuntime.RopeChangeComputer
     type RopeMoveGlobal = FlextInfraProtocolsRopeRuntime.RopeMoveGlobal
     type RopeOccurrence = FlextInfraProtocolsRopeRuntime.RopeOccurrence
     type RopeOccurrenceFinder = FlextInfraProtocolsRopeRuntime.RopeOccurrenceFinder
