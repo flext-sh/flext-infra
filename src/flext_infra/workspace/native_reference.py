@@ -402,9 +402,6 @@ class FlextInfraWorkspaceNativeReference:
             msg = "Native source module has no shared Rope graph"
             raise TypeError(msg)
         root = native.get_scope()
-        if not isinstance(root, p.Infra.RopeScope):
-            msg = "Native source module has no semantic scope"
-            raise TypeError(msg)
         compiled = (
             FrozenImporter.get_code(specification.name)
             if specification.origin == "frozen"
@@ -631,7 +628,8 @@ class FlextInfraWorkspaceNativeReference:
             )
             and cls._same_construction(value.__globals__, expected.globals)
             and cls._same_construction(
-                value.__builtins__, expected.globals.get("__builtins__")
+                vars(FunctionType)["__builtins__"].__get__(value, FunctionType),
+                expected.globals.get("__builtins__"),
             )
             and cls._same_construction(value.__annotations__, expected.annotations)
         )
@@ -4287,21 +4285,7 @@ class FlextInfraWorkspaceNativeReference:
                     item = namespace.get(name)
                     if cls._is_class(item):
                         class_roots.append(item)
-                    elif (
-                        any(
-                            type(item) is kind
-                            for kind in (
-                                FunctionType,
-                                MethodType,
-                                property,
-                                classmethod,
-                                staticmethod,
-                            )
-                        )
-                        or cls._native_builtin(item)
-                        or cls._native_wrapper_kind(item) is not None
-                        or cls._callable_storage(item)
-                    ):
+                    elif cls._callable_operand(item):
                         context.pending.append((
                             f"{context.binding}.descriptor.{cls._symbol(ancestor)}.{name}",
                             item,
@@ -4439,6 +4423,64 @@ class FlextInfraWorkspaceNativeReference:
         return ()
 
     @classmethod
+    def _absent_edge(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        facts: m.Infra.NativeFunctionObservationContext,
+        edge: str,
+        name: str,
+    ) -> p.Result[bool]:
+        """Record one absent native attribute edge once, or contradict a known edge.
+
+        Returns:
+            Success after recording, or the contradiction of a now-absent edge.
+
+        """
+        missing = f"{edge}.{name}"
+        if missing in context.edges:
+            return r[bool].fail(
+                f"native edge became absent: {missing}; "
+                f"supplier={facts.supplier}; "
+                f"qualname={facts.value[0].__qualname__}",
+            )
+        if missing not in context.absent_edges:
+            context.absent_edges.add(missing)
+            context.evidence.append(
+                m.Infra.NativeBindingEvidence(
+                    binding=missing,
+                    kind="absent",
+                    supplier=facts.supplier,
+                    name=name,
+                    qualname=edge,
+                )
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _callable_operand(cls, value: t.Infra.NativeOperand) -> bool:
+        """Elect a non-class edge target that the observation must follow.
+
+        Returns:
+            Whether the target is a function, native descriptor or callable storage.
+
+        """
+        return (
+            any(
+                type(value) is kind
+                for kind in (
+                    FunctionType,
+                    MethodType,
+                    property,
+                    classmethod,
+                    staticmethod,
+                )
+            )
+            or cls._native_builtin(value)
+            or cls._native_wrapper_kind(value) is not None
+            or cls._callable_storage(value)
+        )
+
+    @classmethod
     def _function_attribute_edges(
         cls,
         context: m.Infra.NativeObservationContext,
@@ -4473,24 +4515,9 @@ class FlextInfraWorkspaceNativeReference:
                     None,
                 )
                 if found is None:
-                    missing = f"{edge}.{instruction.argval}"
-                    if missing in context.edges:
-                        return r[bool].fail(
-                            f"native edge became absent: {missing}; "
-                            f"supplier={facts.supplier}; "
-                            f"qualname={facts.value[0].__qualname__}",
-                        )
-                    if missing not in context.absent_edges:
-                        context.absent_edges.add(missing)
-                        context.evidence.append(
-                            m.Infra.NativeBindingEvidence(
-                                binding=missing,
-                                kind="absent",
-                                supplier=facts.supplier,
-                                name=instruction.argval,
-                                qualname=edge,
-                            )
-                        )
+                    absent = cls._absent_edge(context, facts, edge, instruction.argval)
+                    if absent.failure:
+                        return absent
                     receiver = None
                     continue
                 if isinstance(receiver, ModuleType):
@@ -4499,22 +4526,7 @@ class FlextInfraWorkspaceNativeReference:
                         cls._module_generated_owners(context, supplier, found)
                 receiver = found[instruction.argval]
                 edge += f".{instruction.argval}"
-                if (
-                    cls._is_class(receiver)
-                    or any(
-                        type(receiver) is kind
-                        for kind in (
-                            FunctionType,
-                            MethodType,
-                            property,
-                            classmethod,
-                            staticmethod,
-                        )
-                    )
-                    or cls._native_builtin(receiver)
-                    or cls._native_wrapper_kind(receiver) is not None
-                    or cls._callable_storage(receiver)
-                ):
+                if cls._is_class(receiver) or cls._callable_operand(receiver):
                     context.pending.append((
                         edge,
                         receiver,

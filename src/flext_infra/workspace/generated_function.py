@@ -69,15 +69,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             Expected code, globals, annotations and consulted physical inputs.
 
         Raises:
-            TypeError: If the observed export is not a native Python function.
             ValueError: If a source binding or closed compiler grammar is unproved.
 
         """
         engine = cls(witness)
         namespace = engine._module(supplier)
-        if type(value) is not FunctionType:
-            msg = "generated function is not its registered source export"
-            raise TypeError(msg)
         if vars(namespace).get(attribute) is not value:
             msg = "generated function is not its registered source export"
             raise ValueError(msg)
@@ -1009,12 +1005,9 @@ class FlextInfraWorkspaceGeneratedFunction:
             Independent native emission and the physical inputs that admitted it.
 
         Raises:
-            TypeError: If an observed compiler callable has a foreign native type.
+            TypeError: If the SDK returns a receiver of a foreign native type.
 
         """
-        if type(value) is not FunctionType:
-            msg = "native dataclass emission is not an exact Python function"
-            raise TypeError(msg)
         self._dataclass_sdk(factory[0])
         namespace = self._dataclass_inputs(owner, declaration)
         self._dataclass_hash_action(factory[1], namespace)
@@ -1155,10 +1148,10 @@ class FlextInfraWorkspaceGeneratedFunction:
             match constructors:
                 case [ast.Call(func=ast.Name(id=class_name), keywords=[])]:
                     owner = namespace.get(class_name)
+                    self._sdk_class(owner, namespace, tree)
                     if type(namespace.get(name)) is not owner:
                         msg = f"native dataclass marker has foreign identity: {name}"
                         raise ValueError(msg)
-                    self._sdk_class(owner, namespace, tree)
                 case _:
                     msg = (
                         "native dataclass marker lacks its physical constructor: "
@@ -1411,7 +1404,9 @@ class FlextInfraWorkspaceGeneratedFunction:
         if type(owner) is not type:
             msg = "native compiler class has a foreign metaclass"
             raise TypeError(msg)
-        storage = vars(type)["__dict__"].__get__(owner, type)
+        storage: t.MappingKV[str, p.AttributeProbe] = vars(type)["__dict__"].__get__(
+            owner, type
+        )
         name = vars(type)["__name__"].__get__(owner, type)
         if namespace.get(name) is not owner or vars(type)["__bases__"].__get__(
             owner, type
@@ -1758,7 +1753,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         namespace: t.MappingKV[str, p.AttributeProbe],
         declaration: ast.ClassDef | None,
     ) -> t.Triple[
-        p.Infra.NativeCodeIdentity,
+        CodeType,
         t.MappingKV[str, p.AttributeProbe],
         t.MappingKV[str, p.AttributeProbe],
     ]:
@@ -2338,7 +2333,8 @@ class FlextInfraWorkspaceGeneratedFunction:
             self._function_binding(function, source_name, source_namespace)
         if (
             function.__closure__ is not None
-            or function.__builtins__ is not vars(builtins)
+            or vars(FunctionType)["__builtins__"].__get__(function, FunctionType)
+            is not vars(builtins)
             or any(
                 isinstance(item, ast.ImportFrom) and item.module == "__future__"
                 for item in tree.body
@@ -2794,16 +2790,17 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = f"closed compiler data constructor is interposed: {name}"
                 raise ValueError(msg)
             return value
+        native = value if type(value) is BuiltinFunctionType else None
         if (
-            type(value) is not BuiltinFunctionType
-            or vars(builtins).get(name) is not value
-            or value.__self__ is not builtins
-            or value.__module__ != "builtins"
-            or value.__name__ != name
+            native is None
+            or vars(builtins).get(name) is not native
+            or native.__self__ is not builtins
+            or native.__module__ != "builtins"
+            or native.__name__ != name
         ):
             msg = f"closed compiler builtin binding is not native: {name}"
             raise ValueError(msg)
-        return value
+        return native
 
     def _global(
         self,
@@ -3230,7 +3227,8 @@ class FlextInfraWorkspaceGeneratedFunction:
             and node.attr == "__new__"
             and self._global("tuple", namespace, tree) is tuple
         ):
-            return vars(tuple)["__new__"]
+            constructor: p.AttributeProbe = vars(tuple)["__new__"]
+            return constructor
         if node.attr == "intern":
             receiver = self._expression(node.value, local, namespace, tree)
             if receiver is sys:
@@ -3405,7 +3403,8 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise ValueError(msg)
         key = self._expression(node.slice, local, namespace, tree)
         if type(mapping) is dict and type(key) is str:
-            return mapping[key]
+            item: p.AttributeProbe = mapping[key]
+            return item
         if type(key) is int and (
             type(mapping) is str or type(mapping) is tuple or type(mapping) is list
         ):
