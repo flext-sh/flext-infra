@@ -1118,7 +1118,7 @@ class FlextInfraWorkspaceNativeReference:
     @staticmethod
     def _is_function_binding(
         value: t.Infra.NativeOperand,
-    ) -> TypeGuard[t.Infra.NativeFunctionBinding]:
+    ) -> TypeGuard[p.Infra.FunctionDescriptor]:
         """Admit the two interpreter-owned function wrapper slots.
 
         Returns:
@@ -3485,7 +3485,7 @@ class FlextInfraWorkspaceNativeReference:
     def _capture_function_binding(
         cls,
         context: m.Infra.NativeObservationContext,
-        value: t.Infra.NativeFunctionBinding,
+        value: p.Infra.FunctionDescriptor,
     ) -> p.Result[bool]:
         """Observe an exact classmethod or staticmethod and enqueue its function.
 
