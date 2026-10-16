@@ -47,13 +47,19 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
             The resulting ``m.Infra.ReferenceSite | None``.
 
         """
-        file_path = FlextInfraUtilitiesRopeInventorySitesMixin._location_file_path(location)
+        file_path = FlextInfraUtilitiesRopeInventorySitesMixin._location_file_path(
+            location
+        )
         if file_path is None:
             return None
         return m.Infra.ReferenceSite(
-            file_path=FlextInfraUtilitiesRopeInventorySitesMixin._normalize_file_path(file_path),
+            file_path=FlextInfraUtilitiesRopeInventorySitesMixin._normalize_file_path(
+                file_path
+            ),
             line=FlextInfraUtilitiesRopeInventorySitesMixin._location_line(location),
-            surface=FlextInfraUtilitiesRopeInventorySitesMixin._reference_surface(file_path),
+            surface=FlextInfraUtilitiesRopeInventorySitesMixin._reference_surface(
+                file_path
+            ),
         )
 
     @staticmethod
@@ -65,7 +71,9 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
     ) -> None:
         """Discard definition site."""
         definition_key = (
-            FlextInfraUtilitiesRopeInventorySitesMixin._normalize_file_path(definition_path),
+            FlextInfraUtilitiesRopeInventorySitesMixin._normalize_file_path(
+                definition_path
+            ),
             line,
         )
         match_index = next(
@@ -103,7 +111,9 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
             The resulting ``bool``.
 
         """
-        location_path = FlextInfraUtilitiesRopeInventorySitesMixin._location_file_path(location)
+        location_path = FlextInfraUtilitiesRopeInventorySitesMixin._location_file_path(
+            location
+        )
         if (
             definition_path is not None
             and location_path is not None

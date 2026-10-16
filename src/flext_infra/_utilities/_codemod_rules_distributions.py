@@ -118,8 +118,14 @@ class FlextInfraUtilitiesCodemodRulesDistributionsMixin:
 
         """
         configs: MutableMapping[str, Path] = {}
-        for name in FlextInfraUtilitiesCodemodRulesDistributionsMixin._indexed_distributions(paths):
-            provider_config = FlextInfraUtilitiesCodemodRulesDistributionsMixin._provider_config(name)
+        for (
+            name
+        ) in FlextInfraUtilitiesCodemodRulesDistributionsMixin._indexed_distributions(
+            paths
+        ):
+            provider_config = (
+                FlextInfraUtilitiesCodemodRulesDistributionsMixin._provider_config(name)
+            )
             if provider_config is not None:
                 configs[name] = provider_config
         return MappingProxyType(configs)
