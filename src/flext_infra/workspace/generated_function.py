@@ -348,8 +348,54 @@ class FlextInfraWorkspaceGeneratedFunction:
                 keyword_defaults=expected.__kwdefaults__,
                 closure=(),
                 inputs=tuple(self._inputs.values()),
+                hashed=self._attrs_hashed(identity, namespace),
             )
         )
+
+    def _attrs_hashed(
+        self, receiver: type, namespace: t.MappingKV[str, p.AttributeProbe]
+    ) -> t.VariadicTuple[str]:
+        """Derive the strings whose hash the attrs hash builder embeds.
+
+        The builder hashes the unique file name it derives for the receiver;
+        string hashing is randomized per process, so evidence names the string.
+
+        Returns:
+            Each file name the physical hash builder passes to ``hash``.
+
+        Raises:
+            TypeError: If the file name builder returns foreign storage.
+            ValueError: If the builder derives no file name from a literal label.
+
+        """
+        declaration, _tree, _namespace = self._function(
+            namespace.get("_make_hash_script"),
+            source_name="_make_hash_script",
+            source_namespace=namespace,
+        )
+        labels = [
+            label
+            for node in ast.walk(declaration)
+            for label in (
+                (node.args[1].value,)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "_generate_unique_filename"
+                and len(node.args) == len(("cls", "func_name"))
+                and isinstance(node.args[1], ast.Constant)
+                and type(node.args[1].value) is str
+                else ()
+            )
+        ]
+        if not labels:
+            msg = "native attrs hash builder derives no literal file name"
+            raise ValueError(msg)
+        builder = self._attrs_builder(namespace, "_generate_unique_filename")
+        names = tuple(builder(receiver, label) for label in labels)
+        if any(type(name) is not str for name in names):
+            msg = "native attrs file name builder returned foreign storage"
+            raise TypeError(msg)
+        return tuple(str(name) for name in names)
 
     def _attrs_helper(
         self,
@@ -507,6 +553,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                 keyword_defaults=expected.__kwdefaults__,
                 closure=(),
                 inputs=tuple(self._inputs.values()),
+                hashed=self._attrs_hashed(receiver, sdk),
             )
         )
 
@@ -1553,6 +1600,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                 keyword_defaults=None,
                 closure=(),
                 inputs=tuple(engine._inputs.values()),
+                hashed=(),
             ),
         )
 
@@ -2257,6 +2305,7 @@ class FlextInfraWorkspaceGeneratedFunction:
                 keyword_defaults=expected.__kwdefaults__,
                 closure=closure,
                 inputs=tuple(self._inputs.values()),
+                hashed=(),
             )
         )
 
@@ -5140,6 +5189,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             keyword_defaults=None,
             closure=(),
             inputs=(),
+            hashed=(),
         )
 
     @staticmethod

@@ -19,7 +19,7 @@ from functools import partial
 from gc import get_referents
 from importlib.machinery import ExtensionFileLoader, FrozenImporter, ModuleSpec
 from inspect import CO_NEWLOCALS, CO_OPTIMIZED
-from json import dumps
+from json import dumps, loads
 from math import isnan
 from pathlib import Path
 from types import (
@@ -2945,13 +2945,26 @@ class FlextInfraWorkspaceNativeReference:
         return tuple(rejected)
 
     @classmethod
-    def _code_evidence(cls, code: t.Infra.NativeCode) -> m.Infra.NativeCodeEvidence:
+    def _code_evidence(
+        cls,
+        code: t.Infra.NativeCode,
+        *,
+        hashed: t.VariadicTuple[str] = (),
+    ) -> m.Infra.NativeCodeEvidence:
         """Capture complete compiler bytes without reconstructing executable code.
+
+        A generated proof may declare strings whose process-local ``hash`` the
+        emission embeds; those integer constants are named by their string so
+        independent processes record the same witness.
 
         Returns:
             Native compiler evidence or explicit nonportable constant markers.
 
         """
+        if hashed:
+            code = cls._code_hash_markers(
+                code, {hash(text): f"<process-hash {text}>" for text in hashed}
+            )
         nonportable = cls._code_nonportable_constants(code)
         return m.Infra.NativeCodeEvidence(
             filename=code.co_filename,
@@ -2965,6 +2978,48 @@ class FlextInfraWorkspaceNativeReference:
             locations=None if nonportable else tuple(cls._code_locations(code)),
             nonportable_constants=nonportable,
         )
+
+    @staticmethod
+    def _generated_hashed(
+        operands: t.SequenceOf[t.Pair[str, str]],
+    ) -> t.VariadicTuple[str]:
+        """Read the hashed strings a generated proof declared for its code.
+
+        Returns:
+            The declared strings, or none for authored code.
+
+        Raises:
+            TypeError: If the declared operand is not a JSON list of strings.
+
+        """
+        declared = dict(operands).get("generated_hashed")
+        if declared is None:
+            return ()
+        parsed = loads(declared)
+        if type(parsed) is not list or any(type(item) is not str for item in parsed):
+            msg = "generated hashed strings are not a JSON list of strings"
+            raise TypeError(msg)
+        return tuple(str(item) for item in parsed)
+
+    @classmethod
+    def _code_hash_markers(
+        cls, code: t.Infra.NativeCode, markers: t.MappingKV[int, str]
+    ) -> t.Infra.NativeCode:
+        """Name process-local hash constants inside a code tree.
+
+        Returns:
+            The code with each declared hash constant replaced by its marker.
+
+        """
+        constants = tuple(
+            cls._code_hash_markers(item, markers)
+            if type(item) is CodeType
+            else markers.get(item, item)
+            if type(item) is int
+            else item
+            for item in cls._native_code_constants(code)
+        )
+        return code.replace(co_consts=constants)
 
     @staticmethod
     def _code_matches(
@@ -4108,6 +4163,7 @@ class FlextInfraWorkspaceNativeReference:
                 "generated_inputs",
                 dumps(tuple(str(state.path) for state in expected.inputs)),
             ),
+            ("generated_hashed", dumps(expected.hashed)),
         )
         return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].ok((
             actual_supplier,
@@ -4371,7 +4427,9 @@ class FlextInfraWorkspaceNativeReference:
                 supplier=facts.supplier,
                 name=facts.value[0].__name__,
                 qualname=facts.value[0].__qualname__,
-                code=cls._code_evidence(facts.code).model_dump_json(),
+                code=cls._code_evidence(
+                    facts.code, hashed=cls._generated_hashed(facts.generated_operands)
+                ).model_dump_json(),
                 operands=(
                     *facts.generated_operands,
                     ("module", observe_value(facts.value[0].__module__)),
@@ -5278,10 +5336,13 @@ class FlextInfraWorkspaceNativeReference:
         if proved.failure:
             return result_type.from_failure(proved)
         _supplier, _attribute, expected = proved.value
-        if not cls._code_matches(
-            executed, cls._code_evidence(expected.code)
-        ) or metadata.get("generated_inputs") != dumps(
-            tuple(str(state.path) for state in expected.inputs)
+        if (
+            not cls._code_matches(
+                executed, cls._code_evidence(expected.code, hashed=expected.hashed)
+            )
+            or metadata.get("generated_inputs")
+            != dumps(tuple(str(state.path) for state in expected.inputs))
+            or metadata.get("generated_hashed") != dumps(expected.hashed)
         ):
             return result_type.fail(
                 "generated receipt differs from its physical compiler: "

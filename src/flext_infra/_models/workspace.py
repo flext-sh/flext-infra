@@ -81,6 +81,12 @@ class FlextInfraModelsWorkspace:
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             description="Physical sources revalidated after closed interpretation",
         )
+        hashed: t.VariadicTuple[str] = m.Field(
+            description=(
+                "Strings whose process-local hash the emission embeds as code "
+                "constants; evidence names them instead of their per-process value"
+            ),
+        )
 
     class CodegenSourceAuthority(m.Value):
         """Cold reference authority has no project publication capability."""
