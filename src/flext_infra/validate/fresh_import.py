@@ -89,8 +89,13 @@ _native_trace = {}
 _native_atomic = None
 for _native_name in tuple(sys.modules):
     _native_namespace = _native_name.partition('.')[0]
-    if _native_namespace in _native_roots and _native_namespace not in sys.stdlib_module_names:
-        raise ImportError('producer was imported before its source loader: ' + _native_name)
+    if (
+        _native_namespace in _native_roots
+        and _native_namespace not in sys.stdlib_module_names
+    ):
+        raise ImportError(
+            'producer was imported before its source loader: ' + _native_name
+        )
 
 def _native_source_path(fullname, filename):
     path = Path(filename).absolute()
@@ -99,23 +104,34 @@ def _native_source_path(fullname, filename):
     if root is not None:
         allowed = path.is_relative_to(root) if root.is_dir() else path == root
     else:
-        allowed = namespace in sys.stdlib_module_names and path.is_relative_to(_native_standard)
+        allowed = (
+            namespace in sys.stdlib_module_names
+            and path.is_relative_to(_native_standard)
+        )
     if not allowed:
-        raise ImportError('source has no elected physical provider: ' + fullname + ': ' + str(path))
+        raise ImportError(
+            'source has no elected physical provider: '
+            + fullname + ': ' + str(path)
+        )
     return path
 
 def _native_before_load(fullname, filename, source):
     path = _native_source_path(fullname, filename)
     if _native_atomic is None:
         if path not in _native_receipts or (source and path not in _native_payloads):
-            raise ImportError('source is not pinned before atomic-reader bootstrap: ' + str(path))
+            raise ImportError(
+                'source is not pinned before atomic-reader bootstrap: ' + str(path)
+            )
         encoded = _native_receipts[path]
         content = _native_payloads[path] if source else None
     else:
         receipt_reader, file_reader, receipt_model = _native_atomic
         receipt = receipt_reader(path, required=True).unwrap()
         previous = _native_trace.get(path, _native_receipts.get(path))
-        if previous is not None and receipt != receipt_model.model_validate_json(previous):
+        if (
+            previous is not None
+            and receipt != receipt_model.model_validate_json(previous)
+        ):
             raise ImportError('native source changed before compilation: ' + str(path))
         encoded = receipt.model_dump_json()
         content = None
@@ -149,10 +165,15 @@ class _NativeSourceFinder(PathFinder):
             return native
         native = PathFinder.find_spec(fullname, path, target)
         if native is None:
-            raise ModuleNotFoundError('native import has no elected module: ' + fullname, name=fullname)
+            raise ModuleNotFoundError(
+                'native import has no elected module: ' + fullname, name=fullname
+            )
         if native.origin is None:
             if native.submodule_search_locations is None:
-                raise ImportError('native module has neither source nor namespace portions: ' + fullname)
+                raise ImportError(
+                    'native module has neither source nor namespace portions: '
+                    + fullname
+                )
             for portion in native.submodule_search_locations:
                 _native_source_path(fullname, portion)
             return native
@@ -162,7 +183,9 @@ class _NativeSourceFinder(PathFinder):
         elif type(native.loader) is ExtensionFileLoader:
             native.loader = _NativeExtensionLoader(fullname, native.origin)
         else:
-            raise ImportError('native source loader cannot prove compilation: ' + fullname)
+            raise ImportError(
+                'native source loader cannot prove compilation: ' + fullname
+            )
         return native
 
 sys.meta_path.insert(0, _NativeSourceFinder)
@@ -202,10 +225,14 @@ _native_atomic = (
             if state.path.suffix == c.Infra.EXT_PYTHON and state.content is not None
         }
         standard = FlextInfraWorkspaceEnvironmentProvenance.standard_library_root()
+        elected_roots = tuple(
+            (name, str(root))
+            for name, root in request.source_authority.generator_modules
+        )
         code = (
             "import importlib, sys\nfrom pathlib import Path\n"
             f"_native_roots = {{name: Path(root) for name, root in "
-            f"{tuple((name, str(root)) for name, root in request.source_authority.generator_modules)!r}}}\n"
+            f"{elected_roots!r}}}\n"
             f"_native_standard = Path({str(standard)!r})\n"
             f"_native_receipts = {{Path(path): receipt for path, receipt in "
             f"{tuple((str(path), receipt) for path, receipt in receipts.items())!r}}}\n"

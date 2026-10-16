@@ -324,15 +324,27 @@ class FlextInfraWorkspaceNativeReference:
             or "__name__" in namespace
         ):
             return False
-        supplier_name = namespace.get("__module__")
-        supplier = (
-            sys.modules.get(supplier_name)
-            if cls._is_native(supplier_name, str)
-            else None
+        supplier = cls._native_type_supplier(native)
+        return supplier is not None and any(
+            registered is native for registered in vars(supplier[1]).values()
         )
-        return type(supplier) is ModuleType and any(
-            registered is native for registered in vars(supplier).values()
-        )
+
+    @classmethod
+    def _native_type_supplier(
+        cls, native: t.Infra.NativeType
+    ) -> t.Pair[str, ModuleType] | None:
+        """Resolve native type metadata through the actual module registry.
+
+        Returns:
+            Its exact string/module registration or no native registration.
+
+        """
+        name = cls._type_attr("__module__", native, type(native))
+        if cls._is_native(name, str):
+            module = sys.modules.get(name)
+            if type(module) is ModuleType:
+                return name, module
+        return None
 
     @classmethod
     def _python_callable_instance(cls, value: t.Infra.NativeOperand) -> bool:
@@ -347,8 +359,9 @@ class FlextInfraWorkspaceNativeReference:
             for owner in vars(type)["__mro__"].__get__(type(value), type(type(value)))
         )
 
-    @staticmethod
+    @classmethod
     def _function_chain(
+        cls,
         value: t.Infra.NativeOperand | None,
     ) -> t.VariadicTuple[FunctionType]:
         """Read a slot function and its raw wrapped functions without hooks.
@@ -375,25 +388,18 @@ class FlextInfraWorkspaceNativeReference:
             if type(attributes) is not dict or any(
                 type(key) is not str for key in attributes
             ):
-                raise TypeError(
-                    "native function metadata requires an exact string-keyed dictionary"
+                msg = (
+                    "native function metadata requires an exact "
+                    "string-keyed dictionary"
                 )
+                raise TypeError(msg)
             inner = attributes.get("__wrapped__")
             if inner is None:
                 break
             if type(inner) is not FunctionType:
                 msg = "generated receiver wrapper has foreign callable storage"
                 raise TypeError(msg)
-            closure = value.__closure__
-            if closure is None:
-                closure = ()
-            elif type(closure) is not tuple:
-                msg = "generated receiver wrapper has foreign closure storage"
-                raise TypeError(msg)
-            if any(type(cell) is not CellType for cell in closure):
-                msg = "generated receiver wrapper has a foreign closure cell"
-                raise TypeError(msg)
-            cells = dict(zip(value.__code__.co_freevars, closure, strict=True))
+            cells = cls._function_cells(value)
             if (
                 "user_function" in cells
                 and cells["user_function"].cell_contents is not inner
@@ -402,6 +408,30 @@ class FlextInfraWorkspaceNativeReference:
                 raise ValueError(msg)
             value = inner
         return tuple(functions)
+
+    @staticmethod
+    def _function_cells(
+        value: FunctionType,
+    ) -> t.DictKV[str, CellType]:
+        """Read exact interpreter closure cells without accessing their payloads.
+
+        Returns:
+            The original native cell for every declared free variable.
+
+        Raises:
+            TypeError: Closure storage or a cell has a foreign native type.
+
+        """
+        closure = value.__closure__
+        if closure is None:
+            closure = ()
+        elif type(closure) is not tuple:
+            msg = "native function has foreign closure storage"
+            raise TypeError(msg)
+        if any(type(cell) is not CellType for cell in closure):
+            msg = "native function has a foreign closure cell"
+            raise TypeError(msg)
+        return dict(zip(value.__code__.co_freevars, closure, strict=True))
 
     @classmethod
     def _remember_generated_descriptors(
@@ -2349,14 +2379,10 @@ class FlextInfraWorkspaceNativeReference:
             ]
         if observed:
             return ["storage", cls._symbol(native), observed]
-        supplier_name = cls._type_attr("__module__", native, type(native))
-        supplier = (
-            sys.modules.get(supplier_name)
-            if cls._is_native(supplier_name, str)
-            else None
-        )
-        if type(supplier_name) is str and type(supplier) is ModuleType:
-            namespace = cls._module_namespace(supplier)
+        supplier = cls._native_type_supplier(native)
+        if supplier is not None:
+            supplier_name, module = supplier
+            namespace = cls._module_namespace(module)
             bindings = tuple(
                 name
                 for name, registered in sorted(namespace.items())
@@ -3589,9 +3615,14 @@ class FlextInfraWorkspaceNativeReference:
         owner = context.generated_owners.get(id(value))
         if owner is None:
             return result_type.fail(
-                f"generated function has no physical source owner: {context.binding_context}"
+                "generated function has no physical source owner: "
+                f"{context.binding_context}"
             )
         supplier, attribute, receiver = owner
+        if receiver is not None and not cls._is_class(receiver):
+            return result_type.fail(
+                f"generated receiver is not a native class: {context.binding}"
+            )
         receiver_path = (
             r[str].ok("")
             if receiver is None
@@ -3686,13 +3717,10 @@ class FlextInfraWorkspaceNativeReference:
         instructions: t.Infra.NativeInstructionFacts,
     ) -> None:
         """Observe actual closure, globals and builtins before lexical expansion."""
-        if facts.value[0].__closure__ is not None:
-            facts.nonlocals.update({
-                name: cell.cell_contents
-                for name, cell in zip(
-                    facts.code.co_freevars, facts.value[0].__closure__, strict=True
-                )
-            })
+        facts.nonlocals.update(
+            (name, cell.cell_contents)
+            for name, cell in cls._function_cells(facts.value[0]).items()
+        )
         global_namespace = facts.value[0].__globals__
         # The native function slot retains its actual builtins dictionary.
         builtin_slot: p.Infra.NativeStorageSlot[
@@ -3864,7 +3892,12 @@ class FlextInfraWorkspaceNativeReference:
         facts: m.Infra.NativeFunctionObservationContext,
         kind: str,
     ) -> None:
-        """Record complete function evidence after expanding its native graph."""
+        """Record complete function evidence after expanding its native graph.
+
+        Raises:
+            TypeError: Generated globals have foreign storage or non-string keys.
+
+        """
         observe_value = partial(
             cls._value, context=context, binding=context.binding_context
         )
@@ -3880,7 +3913,8 @@ class FlextInfraWorkspaceNativeReference:
             type(function.__globals__) is not dict
             or any(type(name) is not str for name in function.__globals__)
         ):
-            raise TypeError("generated globals require native string-keyed storage")
+            msg = "generated globals require native string-keyed storage"
+            raise TypeError(msg)
         generated_storage = (
             (
                 (
