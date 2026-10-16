@@ -312,14 +312,12 @@ class FlextInfraProtocolsBase(Protocol):
             root: Path,
             *,
             initial_workspace: m.Infra.WorkspaceSpec | None,
-            producer: m.Infra.CodegenPhaseAnalysis,
         ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
             """Read the request's physical topology without acquiring a lease.
 
             ``initial_workspace`` is the declared topology of a scaffold whose
             own workspace configuration is not rendered yet; ``None`` reads
             the repository's committed declaration.
-            ``producer`` carries the executor's already authenticated epoch.
             """
             ...
 
@@ -331,7 +329,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         ) -> p.Result[bool]:
-            """Continue the original producer through its verified effects."""
+            """Continue planning through the invocation's verified effects."""
             ...
 
         def surface_contract(
@@ -358,11 +356,10 @@ class FlextInfraProtocolsBase(Protocol):
         def prepare_batches(
             self,
             *,
-            producer: m.Infra.CodegenPhaseAnalysis | None = None,
             publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
             | None = None,
         ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-            """Pin the producer eagerly, then capture each settled scope."""
+            """Capture each scope after the preceding publication settles."""
             ...
 
         def publish_batch(
@@ -375,12 +372,8 @@ class FlextInfraProtocolsBase(Protocol):
             """Admit, publish and settle one captured scope batch."""
             ...
 
-        def prepare_bundle(
-            self,
-            *,
-            producer: m.Infra.CodegenPhaseAnalysis | None = None,
-        ) -> p.Result[m.Infra.DocsGenerationBundle]:
-            """Freeze one configured inventory with its original producer epoch."""
+        def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
+            """Freeze one configured inventory and its consumed inputs."""
             ...
 
         def required_directories(

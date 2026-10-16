@@ -120,7 +120,6 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             return self._observe_publication(request)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
-            producer=self.producer,
         )
         root = request.root.expanduser().resolve()
         engine = FlextInfraCodegenPreconditions.rendering_engine(root)
@@ -241,16 +240,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         """
         roots, scope_root = scope
         plan, analysis, changed = candidate
-        if self.producer is None:
-            return r[m.Infra.CodegenResult].fail(
-                "directed phase lacks pre-planning producer context"
-            )
-        bound = FlextInfraCodegenPreconditions.bind_producer_analysis(
-            analysis, self.producer
-        )
-        if bound.failure:
-            return r[m.Infra.CodegenResult].from_failure(bound)
-        staged = self._directed_stage_inputs(request, bound.value)
+        staged = self._directed_stage_inputs(request, analysis)
         if staged.failure:
             return r[m.Infra.CodegenResult].from_failure(staged)
         analysis, stage_plan = staged.value

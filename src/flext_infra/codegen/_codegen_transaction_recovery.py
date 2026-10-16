@@ -22,7 +22,6 @@ from flext_infra.codegen import (
     FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.validate import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -58,18 +57,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             raise ValueError(msg)
         self._source_authority = source_authority
         self._prior_publications = prior_publications
-        self._producer = (
-            r[m.Infra.CodegenPhaseAnalysis].fail(
-                "cold source authority cannot authorize project publication",
-            )
-            if source_authority is not None
-            else FlextInfraValidateFreshImport.capture_producer(
-                owner.repository_root,
-                entrypoint=type(self).__init__,
-            )
-            if producer is None
-            else r[m.Infra.CodegenPhaseAnalysis].ok(producer)
-        )
+        self._producer = producer
 
     def record_publication(
         self,
@@ -122,7 +110,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         original = self._publication_journal_current(session)
         if original.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(original)
-        reference = original.value
+        journal = original.value
         destinations: list[Path] = []
         for entry in session.journal.entries:
             destination = FlextInfraMiseArtifactsFiles.resolve_transaction(
@@ -210,11 +198,23 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             generator_sources=session.journal.generator_sources,
             generator_trees=session.journal.generator_trees,
             generator_modules=session.journal.generator_modules,
-            generator_reference=reference,
+            generator_reference=journal.generator_reference,
             source_topology=topology,
             scope_roots=session.journal.scope_roots,
             source_scope=session.journal.source_scope,
         )
+        return self._owned_publication_outcome(outcome)
+
+    @staticmethod
+    def _owned_publication_outcome(
+        outcome: m.Infra.CodegenPhaseOutcome,
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Bind a newly constructed physical receipt to its live writer.
+
+        Returns:
+            The exact receipt emitted here, or its storage failure.
+
+        """
         private = outcome.__pydantic_private__
         if private is None:
             return r[m.Infra.CodegenPhaseOutcome].fail(
@@ -222,7 +222,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             )
         private["_publication_birth"] = (
             id(outcome),
-            id(reference),
             u.Cli.sha256_content(outcome.model_dump_json()),
         )
         return r[m.Infra.CodegenPhaseOutcome].ok(outcome)
@@ -230,14 +229,14 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
     def _publication_journal_current(
         self,
         session: m.Infra.CodegenTransactionSession,
-    ) -> p.Result[m.Infra.NativeImportReference]:
+    ) -> p.Result[m.Infra.CodegenTransactionJournal]:
         """Authenticate the exact journal emitted by this publication owner.
 
         Returns:
-            Its original live producer, or the first journal-origin failure.
+            Its exact invocation-owned journal, or the first origin failure.
 
         """
-        result_type = r[m.Infra.NativeImportReference]
+        result_type = r[m.Infra.CodegenTransactionJournal]
         original = self._live_producer_journal(session.journal)
         if original.failure:
             return result_type.from_failure(original)
@@ -249,10 +248,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             exclude={"state"},
         ):
             return result_type.fail("publication differs from its own journal receipt")
-        reference = original.value.generator_reference
-        if reference is None:
-            return result_type.fail("publication lacks its original producer")
-        return result_type.ok(reference)
+        return original
 
     @staticmethod
     def publish_outcome(
@@ -1122,16 +1118,22 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self,
         journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[m.Infra.CodegenTransactionJournal]:
-        """Bind validated journal data to this owner's original native reference.
+        """Bind journal data to the authority explicitly supplied to this writer.
 
         Returns:
-            The journal with its retained reference, never a newly sealed copy.
+            The original journal, retaining any explicitly supplied reference.
 
         """
         result_type = r[m.Infra.CodegenTransactionJournal]
-        if self._producer.failure:
-            return result_type.from_failure(self._producer)
-        reference = self._producer.value.generator_reference
+        if self._source_authority is not None:
+            return result_type.fail(
+                "cold source authority cannot authorize project publication",
+            )
+        if self._producer is None:
+            if journal.generator_reference is not None:
+                return result_type.fail("journal has an unowned producer reference")
+            return result_type.ok(journal)
+        reference = self._producer.generator_reference
         if reference is None or journal.generator_reference is None:
             return result_type.fail("journal lacks its original native producer")
         born = FlextInfraCodegenPreconditions.reference_birth_current(reference)

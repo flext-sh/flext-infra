@@ -28,7 +28,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         admission: m.Infra.CodegenPhaseOutcome,
         *,
-        producer: m.Infra.CodegenPhaseAnalysis | m.Infra.CodegenSourceAuthority,
+        producer: m.Infra.CodegenPhaseAnalysis
+        | m.Infra.CodegenSourceAuthority
+        | None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Encode an admitted observation without materializing a transaction.
 
