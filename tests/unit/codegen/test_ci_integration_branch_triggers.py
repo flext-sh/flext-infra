@@ -345,7 +345,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 step
                 for step in steps
                 if step.get("run")
-                == f"{spec.make.ci.variable}={spec.make.ci.value} make {c.Infra.VERB_TEST}"
+                == f"{spec.make.ci.variable}={spec.make.ci.value} make "
+                   f"{c.Infra.VERB_TEST}"
             )
             tm.that(
                 cache_input["path"],
@@ -359,8 +360,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             tm.that(
                 str(restore_inputs["restore-keys"]).splitlines(),
                 eq=[
-                    "${{ steps.testmon_path.outputs.namespace }}"
-                    "${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}-",
+                    ("${{ steps.testmon_path.outputs.namespace }}"
+                    "${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}-"),
                     "${{ steps.testmon_path.outputs.namespace }}",
                     "${{ steps.testmon_path.outputs.seed_namespace }}",
                 ],

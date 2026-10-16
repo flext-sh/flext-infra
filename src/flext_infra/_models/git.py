@@ -530,7 +530,8 @@ class FlextInfraModelsGit(
         body_file: Annotated[Path, m.Field(description="Pull-request body file")]
         ownership: Annotated[
             FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None,
-            m.Field(description="Live retained and integrated prior owned repository state"),
+            m.Field(description="Live retained and integrated prior owned repository "
+                                "state"),
         ] = None
 
     class GitCheckoutPathsRequest(m.ContractModel):

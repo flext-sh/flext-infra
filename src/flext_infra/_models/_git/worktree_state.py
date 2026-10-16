@@ -235,7 +235,8 @@ class FlextInfraModelsGitWorktreeState:
 
         checkpoint: Annotated[
             FlextInfraModelsGitWorktreeState.GitWorktreeStateCheckpoint,
-            m.Field(description="Full-repository capture identifying the prior owned branch"),
+            m.Field(description="Full-repository capture identifying the prior owned "
+                                "branch"),
         ]
         publication: Annotated[
             FlextInfraModelsGitWorktreeState.GitWorktreeCheckpointPublication,

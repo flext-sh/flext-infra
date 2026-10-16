@@ -59,7 +59,7 @@ class TestsFlextInfraReleasePublicationLane:
         u.Tests.commit_git_changes(repo, "declare integration owner")
         u.Tests.git_run(repo, "push", c.Infra.GIT_ORIGIN, base)
         snapshot = tm.ok(u.Infra.git_snapshot_worktree_state(
-            m.Infra.GitWorktreeStateRequest(repo_root=repo, paths=(Path("."),)),
+            m.Infra.GitWorktreeStateRequest(repo_root=repo, paths=(Path(),)),
         ))
         checkpoint = tm.ok(u.Infra.git_checkpoint_worktree_state(
             snapshot, "refs/checkpoints/prior-owned",

@@ -14,16 +14,20 @@ from typing import Literal, override
 
 from libcst import (
     Arg,
+    BaseStatement,
     ClassDef,
     Comma,
     CSTTransformer,
+    ImportAlias,
     ImportFrom,
     ImportStar,
     LeftParen,
+    MaybeSentinel,
     Module,
     Name,
     ParenthesizedWhitespace,
     RightParen,
+    SimpleStatementLine,
     SimpleWhitespace,
     parse_expression,
     parse_module,
@@ -336,9 +340,100 @@ class FlextInfraUtilitiesCodegenFacades:
                     .transform_module(parse_module(source))
                     .code
                 )
+        source = cls._wrap_facade_imports(cls._merged_facade_imports(source))
         if source.startswith(c.Infra.AUTOGEN_HEADERS):
             return source
         return f"{c.Infra.AUTOGEN_HEADER}\n{source}"
+
+    @staticmethod
+    def _mergeable_import(
+        module: Module,
+        statement: BaseStatement,
+    ) -> t.Pair[str, ImportFrom] | None:
+        """Return the module name and node of one absolute member import.
+
+        Returns:
+            The imported module spelling and its node, or None for any other
+            statement (relative, star and module imports keep their form).
+
+        """
+        if not isinstance(statement, SimpleStatementLine) or len(statement.body) != 1:
+            return None
+        node = statement.body[0]
+        if (
+            not isinstance(node, ImportFrom)
+            or isinstance(node.names, ImportStar)
+            or node.relative
+            or node.module is None
+        ):
+            return None
+        return module.code_for_node(node.module), node
+
+    @staticmethod
+    def _merged_facade_imports(source: str) -> str:
+        """Normalize absolute from-imports into one Ruff isort block per module.
+
+        The package-form rewrite leaves one statement per owner bound from the
+        same package, sometimes inside a reflowed parenthesized block. Ruff
+        isort merges them and orders members by type, so an unmerged
+        projection makes ``make fix`` rewrite generated output and breaks the
+        generation fixed point. Every absolute member import is rebuilt once
+        per module, at its first position, with members in isort order; the
+        line budget is applied afterwards by ``_wrap_facade_imports``.
+
+        Returns:
+            Source whose absolute from-imports appear once per module.
+
+        """
+        module = parse_module(source)
+        mergeable = FlextInfraUtilitiesCodegenFacades._mergeable_import
+        members: dict[str, dict[str, ImportAlias]] = {}
+        for statement in module.body:
+            found = mergeable(module, statement)
+            if found is None or isinstance(found[1].names, ImportStar):
+                continue
+            bucket = members.setdefault(found[0], {})
+            for item in tuple(found[1].names):
+                plain = item.with_changes(comma=MaybeSentinel.DEFAULT)
+                bucket.setdefault(module.code_for_node(plain), plain)
+        body: list[BaseStatement] = []
+        emitted: set[str] = set()
+        for statement in module.body:
+            found = mergeable(module, statement)
+            if found is None:
+                body.append(statement)
+                continue
+            name, node = found
+            if name in emitted:
+                continue
+            emitted.add(name)
+            ordered = sorted(
+                members[name].values(),
+                key=lambda item: (
+                    FlextInfraUtilitiesCodegenNamespace.isort_member_key(
+                        module.code_for_node(item.name),
+                    ),
+                    item.asname is not None,
+                ),
+            )
+            names = tuple(
+                item.with_changes(
+                    comma=Comma(whitespace_after=SimpleWhitespace(" ")),
+                )
+                for item in ordered[:-1]
+            ) + (ordered[-1],)
+            body.append(
+                statement.with_changes(
+                    body=(
+                        node.with_changes(
+                            names=names,
+                            lpar=MaybeSentinel.DEFAULT,
+                            rpar=MaybeSentinel.DEFAULT,
+                        ),
+                    ),
+                ),
+            )
+        return module.with_changes(body=tuple(body)).code
 
     @staticmethod
     def _facade_module_declarations(

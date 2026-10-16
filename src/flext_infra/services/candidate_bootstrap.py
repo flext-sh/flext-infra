@@ -180,6 +180,8 @@ class FlextInfraCandidateBootstrapService:
             return r[bool].fail(
                 f"candidate bootstrap destination has a foreign owner: {file.path}",
             )
+        return None
+
     def _planned_target(
         self,
         root: Path,

@@ -58,6 +58,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
 
         Returns:
             The live tip only when the existing ownership receipt proves closure.
+
         """
         receipt = request.ownership
         if receipt is None:
@@ -67,7 +68,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
                 "continue the existing candidate, not another lane",
             )
         snapshot = receipt.checkpoint.snapshot
-        if snapshot.repo_root.resolve() != request.repo_root.resolve() or snapshot.paths != (Path("."),):
+        if snapshot.repo_root.resolve() != request.repo_root.resolve() or snapshot.paths != (Path(),):
             return r[m.Infra.GitOidReport].fail(
                 "lane ownership receipt does not cover this entire repository",
             )
@@ -106,7 +107,8 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
         if status.failure:
             return r[m.Infra.GitOidReport].from_failure(status)
         if status.value.dirty:
-            return r[m.Infra.GitOidReport].fail("new lane refuses unpublished current WIP")
+            return r[m.Infra.GitOidReport].fail("new lane refuses unpublished current "
+                                                "WIP")
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
 
     @classmethod

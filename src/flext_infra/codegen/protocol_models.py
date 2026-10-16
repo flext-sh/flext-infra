@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import re
 from importlib import import_module
 from itertools import chain
 from pathlib import Path
@@ -56,7 +55,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.MappingKV[Path, str]]``.
 
         """
-        package_dir, facades, runtime_facades = cls._facade_inventory(
+        _package_dir, facades, runtime_facades = cls._facade_inventory(
             project, workspace
         )
         if not name:
@@ -158,7 +157,6 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
     ]:
         facades: dict[str, p.Infra.RopePyName] = {}
         runtime_facades: dict[str, p.ModuleOwned] = {}
-        package_dir: Path | None = None
         for entry in workspace.modules():
             if entry.package_name != project.package_name:
                 continue
@@ -299,6 +297,9 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
+
+        Raises:
+            ValueError: If indexed module unavailable.
 
         """
         found: set[str] = set()
