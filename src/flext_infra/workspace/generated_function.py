@@ -2790,13 +2790,15 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = f"closed compiler data constructor is interposed: {name}"
                 raise ValueError(msg)
             return value
-        native = value if type(value) is BuiltinFunctionType else None
+        native: BuiltinFunctionType | None = (
+            value if type(value) is BuiltinFunctionType else None
+        )
         if (
             native is None
-            or vars(builtins).get(name) is not native
             or native.__self__ is not builtins
             or native.__module__ != "builtins"
             or native.__name__ != name
+            or vars(builtins).get(name) is not native
         ):
             msg = f"closed compiler builtin binding is not native: {name}"
             raise ValueError(msg)
