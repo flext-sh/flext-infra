@@ -192,6 +192,15 @@ These barriers compare the running original epoch with its original expectation;
 they do not cold-import already updated generator files as a replacement epoch.
 Candidate publication still owns its staged source view, journal and real consumer
 checks.
+
+Read-only conformance authenticates its current checker before acquiring the
+publication lease. That checker compares historical receipt data with current
+physical states and passive native observations. Historical references and outcomes
+retain their role as expectations; checking them does not establish an in-process
+birth. Write admission requires the exact original outcomes from actual earlier
+publications and reobserves their producer epochs and effects. Operation completion
+uses those original receipts without cold-importing the updated generator again.
+
 Source-declared descriptor aliases authenticate the receiver's physical lexical
 declaration and the exact imported supplier binding. Relative imports resolve from
 the declaring module's package; class attributes are read as raw descriptors through
