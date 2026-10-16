@@ -14,9 +14,12 @@ from importlib.machinery import (
     PathFinder,
     SourceFileLoader,
 )
+from importlib.metadata import packages_distributions
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
+
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
@@ -192,6 +195,9 @@ class FlextInfraCodegenPreconditions:
         observed = cls._observed_source_roots(names, roots, owners)
         if observed.failure:
             return result_type.from_failure(observed)
+        dependencies = cls._runtime_dependency_roots(roots, owners, states)
+        if dependencies.failure:
+            return result_type.from_failure(dependencies)
         trees: t.MutableMappingKV[Path, m.Cli.AtomicPhysicalTreeManifest] = {}
         captured = cls._captured_authority_states(
             names, roots, observed.value, trees, states
@@ -204,6 +210,84 @@ class FlextInfraCodegenPreconditions:
         if owned.failure:
             return result_type.from_failure(owned)
         return cls._sealed_source_authority(names, roots, trees, states)
+
+    @classmethod
+    def _runtime_dependency_roots(
+        cls,
+        roots: t.MutableMappingKV[str, Path],
+        owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Elect declared runtime dependencies before the cold SDK import.
+
+        Live callable bindings do not enumerate imports performed while loading
+        their packages. Installed requirements own that dependency closure;
+        native import metadata and editable declarations own its import names.
+
+        Returns:
+            Success after electing the dependency roots and pinning declarations.
+
+        """
+        indexed = u.Infra.codemod_distributions()
+        packages = packages_distributions()
+        direct = {canonicalize_name(config.Infra.name)}
+        direct.update(
+            canonicalize_name(provider)
+            for namespace, providers in packages.items()
+            if namespace in roots
+            for provider in providers
+        )
+        closure = u.Infra.codemod_runtime_closure(tuple(sorted(direct)), indexed)
+        for namespace, providers in packages.items():
+            if not any(canonicalize_name(name) in closure for name in providers):
+                continue
+            selected = cls._elect_namespace(namespace)
+            if selected.failure:
+                return r[bool].from_failure(selected)
+            previous = roots.setdefault(namespace, selected.value)
+            if previous != selected.value:
+                return r[bool].fail(f"runtime dependency election changed: {namespace}")
+            owners.setdefault(namespace, set())
+        for name in sorted(closure):
+            declared = indexed[name].files
+            if declared is None:
+                return r[bool].fail(
+                    f"runtime distribution has no native file manifest: {name}"
+                )
+            for entry in declared:
+                path = Path(str(indexed[name].locate_file(entry))).absolute()
+                if (
+                    path.name != c.Infra.DISTRIBUTION_DIRECT_URL_FILE
+                    or not path.parent.name.endswith(".dist-info")
+                ):
+                    continue
+                observed = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
+                if observed.failure:
+                    return r[bool].from_failure(observed)
+                editable = FlextInfraMiseArtifactsFiles.editable_project_source(
+                    observed.value
+                )
+                if editable.failure:
+                    return r[bool].from_failure(editable)
+                for project_source, metadata in editable.value:
+                    namespace = metadata.package_name
+                    selected = cls._elect_namespace(namespace)
+                    if selected.failure:
+                        return r[bool].from_failure(selected)
+                    if not selected.value.is_relative_to(project_source.path.parent):
+                        return r[bool].fail(
+                            "runtime dependency is outside declared editable root: "
+                            f"{namespace}"
+                        )
+                    previous = roots.setdefault(namespace, selected.value)
+                    if previous != selected.value:
+                        return r[bool].fail(
+                            f"runtime dependency election changed: {namespace}"
+                        )
+                    owners.setdefault(namespace, set())
+                    states[path] = observed.value
+                    states[project_source.path] = project_source
+        return r[bool].ok(value=True)
 
     @classmethod
     def _loaded_provider_sources(

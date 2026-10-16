@@ -87,8 +87,7 @@ class FlextInfraRopeRestructure(Restructure):
         )
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
-        native: p.Infra.RopeRestructure = super()
-        return native._compute_changes(selected, pymodule)
+        return super()._compute_changes(selected, pymodule)
 
     @override
     def _add_imports(

@@ -25,9 +25,31 @@ class FlextInfraPytestProfile:
         self.output = output
         self.context: m.Infra.PytestRunContext | None = None
 
-    def _record_context(self, context: m.Infra.PytestRunContext) -> None:
-        """Receive the runner's actual context, never a latest-run pointer."""
-        self.context = context
+    def _record_context(
+        self, reports_root: Path, preexisting: frozenset[Path]
+    ) -> None:
+        """Bind only the context produced by this profiling invocation.
+
+        Args:
+            reports_root: The runner's declared report tree.
+            preexisting: Context receipts observed before the runner started.
+
+        Raises:
+            RuntimeError: The invocation produced more than one matching context.
+
+        """
+        owned = [
+            receipt
+            for receipt in reports_root.glob(f"*-{os.getpid()}/run-context.json")
+            if receipt not in preexisting
+        ]
+        if len(owned) > 1:
+            msg = f"profiled run published more than one run context: {owned}"
+            raise RuntimeError(msg)
+        if owned:
+            self.context = m.Infra.PytestRunContext.model_validate_json(
+                owned[0].read_text(encoding=c.DEFAULT_ENCODING),
+            )
 
     def run_parent(
         self, *, started_at_monotonic: float, profile: cProfile.Profile
@@ -39,7 +61,6 @@ class FlextInfraPytestProfile:
 
         Raises:
             ValueError: If the profile destination escapes the runner's reports tree.
-            RuntimeError: If the invocation publishes ambiguous run receipts.
 
         """
         # The entry has already started profiling before importing this adapter.
@@ -69,21 +90,6 @@ class FlextInfraPytestProfile:
         reports_root = runner.root / runner.reports
         preexisting = frozenset(reports_root.glob("*/run-context.json"))
 
-        def owned_receipts() -> list[Path]:
-            return [
-                receipt
-                for receipt in reports_root.glob(f"*-{os.getpid()}/run-context.json")
-                if receipt not in preexisting
-            ]
-
-        def bind(owned: list[Path]) -> None:
-            if owned:
-                self._record_context(
-                    m.Infra.PytestRunContext.model_validate_json(
-                        owned[0].read_text(encoding="utf-8"),
-                    ),
-                )
-
         outcome: int | None = None
         try:
             outcome = runner.execute().unwrap()
@@ -92,11 +98,7 @@ class FlextInfraPytestProfile:
             failure = sys.exception()
             publication_failure: BaseException | None = None
             try:
-                owned = owned_receipts()
-                if len(owned) > 1:
-                    msg = f"profiled run published more than one run context: {owned}"
-                    raise RuntimeError(msg)
-                bind(owned)
+                self._record_context(reports_root, preexisting)
             except BaseException as binding_failure:
                 publication_failure = binding_failure
             try:

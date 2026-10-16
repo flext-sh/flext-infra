@@ -358,8 +358,9 @@ class TestsFlextInfraPytestProfile:
         tm.that(
             u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
         )
-        reports = cached_runner_project / runner.reports
-        contexts = list(reports.glob("*/run-context.json"))
+        contexts = list(
+            (cached_runner_project / runner.reports).glob("*/run-context.json"),
+        )
         tm.that(len(contexts), eq=1)
         context = m.Infra.PytestRunContext.model_validate_json(
             contexts[0].read_text(encoding="utf-8"),

@@ -243,10 +243,18 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         parallel_distribution: Annotated[
-            Literal["load"],
+            Literal["load", "loadscope"],
             m.Field(
                 alias="parallel-distribution",
                 description="Pytest-xdist scheduler for full runs.",
+            ),
+        ]
+        loadscope_reorder: Annotated[
+            bool,
+            m.Field(
+                alias="loadscope-reorder",
+                strict=True,
+                description="Let the native loadscope scheduler reorder scopes by size.",
             ),
         ]
         parallel_schedule_chunk: Annotated[
@@ -396,6 +404,21 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ] = ()
 
+        @m.computed_field
+        @property
+        def parallel_arguments(self) -> t.StrTuple:
+            """Native scheduler arguments derived from the typed policy."""
+            scheduling = (
+                ("--maxschedchunk", str(self.parallel_schedule_chunk))
+                if self.parallel_distribution == "load"
+                else (
+                    "--loadscope-reorder"
+                    if self.loadscope_reorder
+                    else "--no-loadscope-reorder",
+                )
+            )
+            return ("--dist", self.parallel_distribution, *scheduling)
+
         @property
         def process_timeout_seconds(self) -> int:
             """Derive the fleet-default outer wall without a second config field."""
@@ -458,7 +481,15 @@ class FlextInfraModelsDepsToolConfig(
             ):
                 msg = "pytest run timeout must exceed the suite stop reserve"
                 raise ValueError(msg)
-            derived_options = ("--timeout", "--session-timeout")
+            derived_options = (
+                "--timeout",
+                "--session-timeout",
+                "--dist",
+                "--loadscope-reorder",
+                "--no-loadscope-reorder",
+                "--maxschedchunk",
+                "-n",
+            )
             if any(
                 option in {"-o", "--override-ini"}
                 or option.startswith(("-o=", "--override-ini=", *derived_options))
@@ -511,6 +542,9 @@ class FlextInfraModelsDepsToolConfig(
                 "-x",
                 "--cov",
                 "--dist",
+                "--loadscope-reorder",
+                "--no-loadscope-reorder",
+                "--maxschedchunk",
                 "--junitxml",
                 "--override-ini",
                 "--timeout",

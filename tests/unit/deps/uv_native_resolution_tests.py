@@ -1383,6 +1383,9 @@ class TestsFlextInfraUvNativeResolution:
         Returns:
             The real root and both distribution identities used by consumers.
 
+        Raises:
+            ValueError: The fixture identity is not a declared resolution scenario.
+
         """
         root = tmp_path / "root"
         remote = tmp_path / "root-origin"
@@ -1419,11 +1422,8 @@ class TestsFlextInfraUvNativeResolution:
                 cwd=provider,
             ),
         ).strip()
-        provider_requirement = (
-            f"{provider_name} @ git+{provider.as_uri()}@{provider_revision}"
-        )
         development = (
-            provider_requirement,
+            f"{provider_name} @ git+{provider.as_uri()}@{provider_revision}",
             f"identity-dev @ {leaves['identity-dev'].as_uri()}",
         )
         examples = f"identity-examples @ {leaves['identity-examples'].as_uri()}"

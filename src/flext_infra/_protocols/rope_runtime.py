@@ -493,12 +493,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> Iterator[tuple[int, int]]: ...
 
     @runtime_checkable
-    class RopeChangeComputer(Protocol):
-        """The native source writer without exposing its internal syntax tree."""
-
-        def get_changed(self) -> str | None: ...
-
-    @runtime_checkable
     class RopeWildcard[Argument](Protocol):
         """Native wildcard callback, parameterized by its argument grammar."""
 
@@ -527,12 +521,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             ]
             | None = None,
         ) -> None: ...
-
-        def _compute_changes(
-            self,
-            matches: t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeContractMatch],
-            pymodule: FlextInfraProtocolsRopeRuntime.RopePyModule,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeComputer: ...
 
         def _add_imports(
             self,
