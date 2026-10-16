@@ -45,7 +45,7 @@ name: CI
 # group: a PR event delivered after its merge resolves github.ref to the base
 # branch and, keyed by ref alone, cancelled the post-merge run.
 concurrency:
-  group: {% raw %}${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}{% endraw %}
+  group: {% raw %}${{ github.workflow }}-${{ github.event_name }}-${{ (github.event_name == 'pull_request' && github.event.pull_request.number) || github.ref }}{% endraw %}
   cancel-in-progress: true
 
 jobs:

@@ -186,8 +186,6 @@ class FlextInfraCandidateBootstrapService:
             if diagnostic is not None:
                 return result_type.fail(diagnostic)
             files.append(file)
-            for state in file.source_states:
-                inputs[state.path] = state
         return result_type.ok(tuple(files))
 
     @staticmethod
@@ -279,9 +277,9 @@ class FlextInfraCandidateBootstrapService:
         root: Path,
         file: m.Infra.CodegenFilePlan,
         contract: m.Infra.CodegenConformSurfaceContract,
-        inputs: t.MappingKV[Path, m.Cli.AtomicFileState],
+        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> str | None:
-        """Name the first bootstrap violation of one planned file.
+        """Admit the file's source states or name its first bootstrap violation.
 
         Returns:
             The failure message, or ``None`` when the file is planable.
@@ -293,7 +291,9 @@ class FlextInfraCandidateBootstrapService:
             contract.destinations is not None
             and file.path.relative_to(root).as_posix() not in contract.destinations
         ):
-            return f"candidate bootstrap destination is outside its surface: {file.path}"
+            return (
+                f"candidate bootstrap destination is outside its surface: {file.path}"
+            )
         for state in file.source_states:
             previous = inputs.get(state.path)
             if previous is not None and previous != state:

@@ -339,9 +339,13 @@ message: >-
   re-exports `$NAME`; import it from there.
 ---
 # ENFORCE-099: a consumer imports another facade package through its public
-# root only: a module path below the root is the owner's layout. Runtime
-# aliases are ENFORCE-002's and private paths ban-private-import's; a root
-# import of a name the root does not declare in __all__ is the type
+# root or its public family compose modules: a module path below the root is
+# the owner's layout, with the family-shape exemption the compose-module
+# predicate proves — the canonical public compose leaf
+# (constants/models/protocols/typings/utilities, bead flext-6e72w) is the
+# sanctioned static surface every consumer imports the composed classes from.
+# Runtime aliases are ENFORCE-002's and private paths ban-private-import's; a
+# root import of a name the root does not declare in __all__ is the type
 # checkers' private-import-usage finding. The one sanctioned literal is the
 # lazy defining module below: every generated consumer initializer imports
 # the lazy helpers from it (contract #1362 — the root bootstrap no longer

@@ -825,7 +825,9 @@ class FlextInfraConfigModelsArtifact:
         ]
         tooling_runtime: Annotated[
             FlextInfraModelsDepsToolConfig.ToolingRuntimeContext | None,
-            m.Field(description="Tooling values resolved only when outputs consume them"),
+            m.Field(
+                description="Tooling values resolved only when outputs consume them"
+            ),
         ]
         managed_artifacts: Annotated[
             FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsSnapshot,

@@ -110,10 +110,15 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         base = cls._verified_lane_base(request)
         if base.failure:
             return r[bool].from_failure(base)
-        owned = cls.git_verify_lane(m.Infra.GitLaneVerificationRequest(
-            repo_root=root, operation="create", candidate=request.base,
-            ownership=request.ownership, expected_tip=admitted.value.oid,
-        ))
+        owned = cls.git_verify_lane(
+            m.Infra.GitLaneVerificationRequest(
+                repo_root=root,
+                operation="create",
+                candidate=request.base,
+                ownership=request.ownership,
+                expected_tip=admitted.value.oid,
+            )
+        )
         if owned.failure:
             return r[bool].from_failure(owned)
         produced = cls._git_produce_lane(request, produce)
@@ -125,9 +130,11 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         )
         if ahead.failure:
             return r[bool].from_failure(ahead)
-        if ahead.value.strip() == "0":
-            return cls._git_discard_empty_lane(request)
-        return cls._git_open_pull_request(request)
+        return (
+            cls._git_discard_empty_lane(request)
+            if ahead.value.strip() == "0"
+            else cls._git_open_pull_request(request)
+        )
 
     @classmethod
     def _git_discard_empty_lane(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:

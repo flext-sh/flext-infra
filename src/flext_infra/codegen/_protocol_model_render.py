@@ -116,7 +116,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         """
         lines = self._field_lines(model, scope)
         module = scope.pyobject.get_module()
-        if module is None:
+        if not u.Infra.source_module(module):
             msg = f"model declaration has no source module: {name}"
             raise ValueError(msg)
         statements = u.Infra.logical_statements(module.source_code)

@@ -14,7 +14,9 @@ from pathlib import Path
 from flext_infra import m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeClassMove,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticNestingTypes,
@@ -48,7 +50,12 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
         resource = project.get_resource(path.relative_to(root).as_posix())
-        module = project.get_pymodule(resource)
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                resource, resource.path
+            ),
+        )
         updated, expression = cls._moved_quoted_source(
             move,
             resource,
@@ -323,7 +330,12 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         request = move.request
         project = request.rope_project
-        module = project.get_pymodule(resource)
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                resource, resource.path
+            ),
+        )
         expression: str | None = None
 
         def replacement(scope: p.Infra.RopeScope, value: str) -> str | None:
@@ -367,9 +379,6 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         Returns:
             The resulting ``str``.
 
-        Raises:
-            ValueError: If shared helper consumer has no Rope scope.
-
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         project = move.request.rope_project
@@ -377,9 +386,6 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         module = runtime.build_string_module(project, source, resource=resource)
         imports = runtime.module_imports_for_pymodule(project, module)
         scope = original.get_scope()
-        if scope is None:
-            msg = f"shared helper consumer has no Rope scope: {resource.path}"
-            raise ValueError(msg)
         names = scope.get_names()
         moved: list[t.Pair[str, str | None]] = []
         for statement in tuple(imports.imports):

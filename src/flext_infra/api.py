@@ -46,6 +46,7 @@ from flext_infra.workspace import (
     FlextInfraRopeWorkspace,
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentMixin,
+    FlextInfraWorkspaceNativeReference,
 )
 
 if TYPE_CHECKING:
@@ -76,47 +77,47 @@ class FlextInfra(
             The resulting ``p.Result[bool]``.
 
         """
-        identity = u.Infra.exact_worktree_root(
-            request.repository_root.expanduser().absolute(),
-        )
-        if identity.failure:
-            return r[bool].from_failure(identity)
-        source_root = identity.value.repo_root
-        inputs = u.Infra.load_codegen_inputs(source_root)
-        if inputs.failure:
-            return r[bool].from_failure(inputs)
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            source_root,
-            inputs=inputs.value,
-        )
-        if workspace.failure:
-            return r[bool].from_failure(workspace)
-        planner = FlextInfraCodegenConform(
-            repository_root=source_root,
-            ports=None,
-        )
-        producer = FlextInfraCodegenPreconditions.capture_producer(
-            source_root,
-            entrypoint=planner.plan_repositories,
-            collaborators=(
-                FlextInfraCandidateBootstrapService.plan_candidates,
-                FlextInfraCandidateBootstrapService,
-                FlextInfraMiseArtifactsFiles.write_publication,
-            ),
-        )
-        if producer.failure:
-            return r[bool].from_failure(producer)
-        planner.producer = producer.value
-        return FlextInfraCandidateBootstrapService(
-            # The campaign only plans through conform; it publishes through its
-            # own transaction and never runs the complete surface.
-            planner=planner,
-            producer=producer.value,
-            transaction=FlextInfraCodegenTransaction(
-                FlextInfraCodegenMiseArtifacts(repository_root=source_root),
+        with FlextInfraWorkspaceNativeReference.compilation_scope():
+            identity = u.Infra.exact_worktree_root(
+                request.repository_root.expanduser().absolute(),
+            )
+            if identity.failure:
+                return r[bool].from_failure(identity)
+            source_root = identity.value.repo_root
+            inputs = u.Infra.load_codegen_inputs(source_root)
+            if inputs.failure:
+                return r[bool].from_failure(inputs)
+            workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+                source_root,
+                inputs=inputs.value,
+            )
+            if workspace.failure:
+                return r[bool].from_failure(workspace)
+            planner = FlextInfraCodegenConform(
+                repository_root=source_root,
+                ports=None,
+            )
+            producer = FlextInfraCodegenPreconditions.capture_producer(
+                source_root,
+                entrypoint=planner.plan_repositories,
+                collaborators=(
+                    FlextInfraCandidateBootstrapService.plan_candidates,
+                    FlextInfraCandidateBootstrapService,
+                    FlextInfraMiseArtifactsFiles.write_publication,
+                ),
+            )
+            if producer.failure:
+                return r[bool].from_failure(producer)
+            planner.producer = producer.value
+            return FlextInfraCandidateBootstrapService(
+                # Planning and publication share the invocation's compilation facts.
+                planner=planner,
                 producer=producer.value,
-            ),
-        ).execute(source_root, workspace.value, request, inputs.value.sources)
+                transaction=FlextInfraCodegenTransaction(
+                    FlextInfraCodegenMiseArtifacts(repository_root=source_root),
+                    producer=producer.value,
+                ),
+            ).execute(source_root, workspace.value, request, inputs.value.sources)
 
     @override
     def rope_workspace(
@@ -182,7 +183,7 @@ class FlextInfra(
             check_only=request.check_only,
             dry_run=request.dry_run,
             output_format=request.output_format,
-            selected_projects=request.project_names,
+            selected_projects=request.projects,
             rules_only=request.rules_only,
         ).execute()
 

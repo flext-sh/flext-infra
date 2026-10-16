@@ -114,7 +114,9 @@ class TestsFlextInfraModRuleEnsureImports:
         main(["refactor", "mod", "--repository-root", str(mod_workspace), "--apply"])
         capture = capsys.readouterr()
 
-        tm.that(capture.out + capture.err, has="fixed point verified with zero findings")
+        tm.that(
+            capture.out + capture.err, has="fixed point verified with zero findings"
+        )
         tm.that(
             self._published(mod_workspace),
             has="container = ModWorkspaceTypes.ModWorkspace.YamlMap",
@@ -131,13 +133,15 @@ class TestsFlextInfraModRuleEnsureImports:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 conflict,
-                (
-                    "from elsewhere import ModWorkspaceTypes\n"
-                    "\n"
-                    'container = "before"\n'
-                ),
+                ('from elsewhere import ModWorkspaceTypes\n\ncontainer = "before"\n'),
             ),
         )
 
-        with pytest.raises(Exception, match="binds it from"):  # noqa: B017
-            main(["refactor", "mod", "--repository-root", str(mod_workspace), "--apply"])
+        with pytest.raises(Exception, match="binds it from"):
+            main([
+                "refactor",
+                "mod",
+                "--repository-root",
+                str(mod_workspace),
+                "--apply",
+            ])

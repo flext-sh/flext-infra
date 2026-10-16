@@ -8,8 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import m
-from tests import tm
+from flext_infra.deps import FlextInfraDependencyDetectionService
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraDepsDetectorInit:
@@ -21,7 +24,7 @@ class TestsFlextInfraDepsDetectorInit:
         output_path = tmp_path / "out.json"
         params = m.Infra.DetectCommand(
             repository_root=tmp_path,
-            projects=["test"],
+            apply=False,
             no_pip_check=True,
             output_format="json",
             output=str(output_path),
@@ -31,7 +34,7 @@ class TestsFlextInfraDepsDetectorInit:
             apply_typings=True,
             limits="/custom/limits.toml",
         )
-        tm.that(params.project_names, eq=["test"])
+        tm.that(params.repository_root, eq=tmp_path.resolve())
         tm.that(params.no_pip_check, eq=True)
         tm.that(params.dry_run, eq=True)
         tm.that(params.output_format, eq="json")
@@ -43,24 +46,53 @@ class TestsFlextInfraDepsDetectorInit:
         tm.that(str(params.limits_path), eq=str(Path("/custom/limits.toml").resolve()))
 
     @staticmethod
-    def test_detect_command_project_names_with_single_project(
+    @pytest.mark.parametrize(
+        "members",
+        [(), ("flext-a",), ("flext-a", "flext-b", "flext-c")],
+    )
+    def test_detect_command_discovers_its_complete_declared_scope(
+        tmp_path: Path, members: t.StrSequence
+    ) -> None:
+        """Standalone and workspace detection discover every declared project."""
+        workspace = u.Tests.create_docs_workspace(tmp_path, project_names=members)
+        u.Tests.write_package_init(
+            workspace
+            / c.Infra.DEFAULT_SRC_DIR
+            / u.Infra.project_package_name(workspace),
+            '"""Dependency detection fixture package."""\n',
+        )
+        params = m.Infra.DetectCommand(repository_root=workspace)
+        projects = tm.ok(
+            FlextInfraDependencyDetectionService.discover_project_paths(
+                params.repository_root,
+            ),
+        )
+        tm.that(
+            projects,
+            eq=sorted((workspace, *(workspace / member for member in members))),
+        )
+
+    @staticmethod
+    def test_detect_command_excludes_undeclared_neighbor_projects(
         tmp_path: Path,
     ) -> None:
-        """Verify detect command project names with single project."""
-        params = m.Infra.DetectCommand(repository_root=tmp_path, projects=["test-proj"])
-        tm.that(params.project_names, eq=["test-proj"])
-
-    @staticmethod
-    def test_detect_command_project_names_split_csv(tmp_path: Path) -> None:
-        """Verify detect command project names split csv."""
-        params = m.Infra.DetectCommand(
-            repository_root=tmp_path,
-            projects=["proj-a,proj-b", "proj-c"],
+        """A complete declared scope does not adopt an unrelated local checkout."""
+        workspace = u.Tests.create_docs_workspace(
+            tmp_path,
+            project_names=("flext-a",),
         )
-        tm.that(params.project_names, eq=["proj-a", "proj-b", "proj-c"])
-
-    @staticmethod
-    def test_detect_command_without_project_filter(tmp_path: Path) -> None:
-        """Verify detect command without project filter."""
-        params = m.Infra.DetectCommand(repository_root=tmp_path)
-        tm.that(params.project_names, eq=None)
+        u.Tests.write_package_init(
+            workspace
+            / c.Infra.DEFAULT_SRC_DIR
+            / u.Infra.project_package_name(workspace),
+            '"""Dependency detection fixture package."""\n',
+        )
+        unlisted = u.Tests.mk_project(workspace, "unlisted", with_src=True)
+        params = m.Infra.DetectCommand(repository_root=workspace)
+        projects = tm.ok(
+            FlextInfraDependencyDetectionService.discover_project_paths(
+                params.repository_root,
+            ),
+        )
+        tm.that(projects, eq=sorted((workspace, workspace / "flext-a")))
+        tm.that(unlisted in projects, eq=False)

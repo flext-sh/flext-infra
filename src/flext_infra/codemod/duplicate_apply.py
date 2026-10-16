@@ -381,6 +381,9 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         Returns:
             Whether the statement is a pure module-level definition.
 
+        Raises:
+            TypeError: The builtin module lacks its native semantic interface.
+
         """
         statement = definition.statement
         if statement is None:
@@ -396,7 +399,11 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             and statement.start_offset <= row.start_offset < statement.end_offset
             and u.Infra.target_name(row)
         )
-        builtins = project.get_module("builtins").get_attributes()
+        builtin_module = project.get_module("builtins")
+        if not u.Infra.semantic_module(builtin_module):
+            message = "Duplicate binding comparison requires native builtins"
+            raise TypeError(message)
+        builtins = builtin_module.get_attributes()
         for start, stop in u.Infra.semantic_regions(
             module,
             "${duplicate_expression}",
@@ -593,6 +600,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         resource = workspace.resource(path)
         if resource is None:
             return False
+        resource = u.Infra.require_file_resource(resource, path)
         imports = u.Infra.resolve_module_imports(workspace.rope_project, resource)
         imported = False
         for statement in u.Infra.import_statements(imports):
@@ -610,7 +618,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 return True
         if not imported:
             return False
-        pymodule = workspace.rope_project.get_pymodule(resource)
+        pymodule = u.Infra.resolve_pymodule(workspace.rope_project, resource)
         lines = pymodule.source_code.splitlines(keepends=True)
         start = sum(len(text) for text in lines[: line - 1])
         end = start + len(lines[line - 1])

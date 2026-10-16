@@ -338,7 +338,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         root = target.root
         repository = target.repository
-        _project, _metadata = identity
         managed_started = time.monotonic()
         u.Cli.info(f"  stage=managed-artifacts repository={repository.name}")
         managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
@@ -358,7 +357,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(custom_result)
         lazy_result = (
             self._planned_lazy_init_files(root)
-            if contract.custom
+            if contract.tooling
             else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
         )
         if lazy_result.failure:
@@ -416,14 +415,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     def _planned_lazy_init_files(
         root: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan the lazy-init projection this generation will publish, read-only.
+        """Plan the lazy-init projection the declarations determine, read-only.
 
-        Facade plans import family owners in package form, which resolves
-        only through the package initializer the same transaction publishes.
-        Tooling derivations therefore read the planned initializers, never the
-        previous projection on disk: a stale initializer otherwise blocks its
-        own regeneration. ADR-014: these plans are derivation inputs only; the
-        post-begin lazy-init phase remains their single publication owner.
+        Facades import family owners in package form, which resolves only
+        through the package initializer the declaring modules' ``__all__``
+        project. Tooling derivations therefore read the planned initializers,
+        never the previous projection on disk: a stale initializer otherwise
+        blocks its own regeneration, on every conform surface (a partial
+        surface such as ``dependencies`` derives tooling too). ADR-014: these
+        plans are derivation inputs only; the post-begin lazy-init phase of a
+        full generation remains their single publication owner.
 
         Returns:
             The repository's planned lazy-init file plans, or the planning failure.

@@ -11,8 +11,10 @@ from collections.abc import Callable, Iterator
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
 
@@ -220,11 +222,12 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 "]",
             )
             regions.update(
-                cls._generic_parameter_regions(
+                cls._parameter_annotation_regions(
                     source,
                     generic_start + 1,
                     generic_end - 1,
                     statement,
+                    include_defaults=True,
                 ),
             )
             after = generic_end
@@ -236,7 +239,9 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             regions.add((first + 1, last - 1, statement.line))
             return regions
         regions.update(
-            cls._annotated_parameter_regions(source, first + 1, last - 1, statement),
+            cls._parameter_annotation_regions(
+                source, first + 1, last - 1, statement, include_defaults=False
+            ),
         )
         tail = source[last:end]
         arrow = tail.find("->")
@@ -245,42 +250,21 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         return regions
 
     @classmethod
-    def _generic_parameter_regions(
+    def _parameter_annotation_regions(
         cls,
         source: str,
         begin: int,
         end: int,
         statement: m.Infra.LogicalStatement,
+        *,
+        include_defaults: bool,
     ) -> set[t.Triple[int, int, int | None]]:
-        """Return every annotation region inside one generic parameter list."""
-        regions: set[t.Triple[int, int, int | None]] = set()
-        for parameter_start, parameter_end in cls.expression_segments(
-            source,
-            begin,
-            end,
-            ",",
-        ):
-            parts = cls.expression_segments(
-                source,
-                parameter_start,
-                parameter_end,
-                ":=",
-            )
-            regions.update(
-                (annotation_start, annotation_end, statement.line)
-                for annotation_start, annotation_end in parts[1:]
-            )
-        return regions
+        """Read parameter annotations, including generic bounds and defaults.
 
-    @classmethod
-    def _annotated_parameter_regions(
-        cls,
-        source: str,
-        begin: int,
-        end: int,
-        statement: m.Infra.LogicalStatement,
-    ) -> set[t.Triple[int, int, int | None]]:
-        """Return annotation regions of the parameters annotated in one region."""
+        Returns:
+            Source regions for the selected parameter type expressions.
+
+        """
         regions: set[t.Triple[int, int, int | None]] = set()
         for parameter_start, parameter_end in cls.expression_segments(
             source,
@@ -294,11 +278,16 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 parameter_end,
                 ":=",
             )
-            if (
+            if include_defaults:
+                selected = parts[1:]
+            elif (
                 len(parts) >= _MIN_DECLARATION_SEGMENTS
                 and ":" in source[parts[0][1] : parts[1][0]]
             ):
-                regions.add((*parts[1], statement.line))
+                selected = parts[1:2]
+            else:
+                continue
+            regions.update((*region, statement.line) for region in selected)
         return regions
 
     @classmethod
@@ -556,7 +545,12 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
-        module = flatten.project.get_pymodule(resource)
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            flatten.project,
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                resource, resource.path
+            ),
+        )
         edits: list[m.Infra.SourceRewrite] = []
         for begin, end, literal, scope in cls.quoted_type_regions(
             source, flatten.project, module

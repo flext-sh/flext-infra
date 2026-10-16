@@ -10,6 +10,8 @@ from ast import Import, ImportFrom
 from collections.abc import Callable
 
 from flext_core import t
+from rope.base.builtins import BuiltinModule
+from rope.base.pyobjectsdef import PyModule, PyPackage
 from rope.refactor.restructure import _ChangeComputer
 
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
@@ -24,7 +26,12 @@ class FlextInfraTypesRope:
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource
     type RopeFile = FlextInfraProtocolsRopeRuntime.RopeFile
     type RopeLocation = FlextInfraProtocolsRopeRuntime.RopeLocation
+    type RopeNativeParsedModule = PyModule | PyPackage
+    type RopeNativeSemanticModule = BuiltinModule | RopeNativeParsedModule
+    type RopeSemanticModule = FlextInfraProtocolsRopeRuntime.RopeSemanticModule
+    type RopeParsedModule = FlextInfraProtocolsRopeRuntime.RopeParsedModule
     type RopePyModule = FlextInfraProtocolsRopeRuntime.RopePyModule
+    type RopeSourceModule = FlextInfraProtocolsRopeRuntime.RopeSourceModule
     type RopePyName = FlextInfraProtocolsRopeRuntime.RopePyName
     type RopeAssignedName = FlextInfraProtocolsRopeRuntime.RopeAssignedName
     type RopePyObject = FlextInfraProtocolsRopeRuntime.RopePyObject
