@@ -388,21 +388,16 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         )
         verifier: m.Infra.CodegenPhaseAnalysis | None = None
         if completed:
-            captured = (
-                FlextInfraCodegenPreconditions.capture_producer(
-                    root,
-                    entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
-                )
-                .flat_map(
-                    lambda candidate: (
-                        FlextInfraMiseArtifactsVerification
-                        .publication_outputs_current(
-                            batches,
-                            reference=candidate.generator_reference,
-                        )
-                        .map(lambda _outputs: candidate)
-                    ),
-                )
+            captured = FlextInfraCodegenPreconditions.capture_producer(
+                root,
+                entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
+            ).flat_map(
+                lambda candidate: (
+                    FlextInfraMiseArtifactsVerification.publication_outputs_current(
+                        batches,
+                        reference=candidate.generator_reference,
+                    ).map(lambda _outputs: candidate)
+                ),
             )
             if captured.failure:
                 return r[m.Infra.CodegenPhaseOutcome].from_failure(captured)

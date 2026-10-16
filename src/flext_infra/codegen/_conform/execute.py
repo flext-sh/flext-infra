@@ -969,7 +969,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[m.Infra.CodegenResult].from_failure(lazy_published)
         written = (*published.value.written_files, *lazy_published.value)
         return (
-            self.conform_workspace_beads_routes(request)
+            self
+            .conform_workspace_beads_routes(request)
             .flat_map(lambda _: self._allow_direnv_after_apply(request, written))
             .flat_map(
                 lambda _: self._publish_docs_batches(
@@ -1264,7 +1265,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
-        request = plan.request
         config_plans = self.mise_config_plans(plan)
         if config_plans.failure:
             return r[m.Infra.CodegenResult].from_failure(config_plans)

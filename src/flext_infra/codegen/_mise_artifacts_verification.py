@@ -294,7 +294,9 @@ class FlextInfraMiseArtifactsVerification(
             else:
                 born = cls.publication_birth_current(publication)
                 if born.failure:
-                    return r[t.VariadicTuple[m.Infra.CodegenJournalSource]].from_failure(
+                    return r[
+                        t.VariadicTuple[m.Infra.CodegenJournalSource]
+                    ].from_failure(
                         born,
                     )
         return cls._publication_history_current(

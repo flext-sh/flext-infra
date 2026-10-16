@@ -353,6 +353,12 @@ class FlextInfraModelsGit(
         expected_tip: Annotated[
             t.NonEmptyStr | None, m.Field(description="Previously observed tip")
         ] = None
+        ownership: Annotated[
+            FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None,
+            m.Field(
+                description="Required integrated preservation receipt for creation"
+            ),
+        ] = None
 
         @m.model_validator(mode="after")
         def _validate_ownership_selection(self) -> Self:
@@ -524,6 +530,12 @@ class FlextInfraModelsGit(
             m.Field(description="Commit subject and pull-request title"),
         ]
         body_file: Annotated[Path, m.Field(description="Pull-request body file")]
+        ownership: Annotated[
+            FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None,
+            m.Field(
+                description="Live retained and integrated prior owned repository state"
+            ),
+        ] = None
 
     class GitCheckoutPathsRequest(m.ContractModel):
         """Repository plus optional paths for checkout/restore operations."""

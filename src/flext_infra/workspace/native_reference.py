@@ -52,6 +52,14 @@ class FlextInfraWorkspaceNativeReference:
     _compilation_facts: ClassVar[ContextVar[t.Infra.NativeInvocationFacts | None]] = (
         ContextVar("native_compilation_facts", default=None)
     )
+    # Last module-file index and the exact registry state it derives from.
+    _module_file_index: ClassVar[
+        t.Pair[
+            t.Pair[str, t.VariadicTuple[t.Pair[str, int]]],
+            t.MappingKV[str, t.VariadicTuple[str]],
+        ]
+        | None
+    ] = None
 
     @classmethod
     @contextmanager
@@ -370,44 +378,122 @@ class FlextInfraWorkspaceNativeReference:
             The slot function followed by every raw ``__wrapped__`` function.
 
         Raises:
-            TypeError: If a wrapper has foreign callable or dictionary storage.
-            ValueError: If the raw wrapper chain is cyclic.
+            TypeError: Rope or the native compiler violates its declared contract.
 
         """
-        if type(value) is classmethod or type(value) is staticmethod:
-            value = value.__func__
-        functions: list[FunctionType] = []
-        seen: set[int] = set()
-        while type(value) is FunctionType:
-            if id(value) in seen:
-                msg = "generated receiver function wrapper chain is cyclic"
-                raise ValueError(msg)
-            seen.add(id(value))
-            functions.append(value)
-            attributes = vars(value)
-            if type(attributes) is not dict or any(
-                type(key) is not str for key in attributes
-            ):
-                msg = (
-                    "native function metadata requires an exact "
-                    "string-keyed dictionary"
-                )
-                raise TypeError(msg)
-            inner = attributes.get("__wrapped__")
-            if inner is None:
-                break
-            if type(inner) is not FunctionType:
-                msg = "generated receiver wrapper has foreign callable storage"
-                raise TypeError(msg)
-            cells = cls._function_cells(value)
-            if (
-                "user_function" in cells
-                and cells["user_function"].cell_contents is not inner
-            ):
-                msg = "generated receiver wrapper does not retain its raw inner"
-                raise ValueError(msg)
-            value = inner
-        return tuple(functions)
+        if name in witnesses:
+            return r[m.Infra.NativeSourceWitness].ok(witnesses[name])
+        module = sys.modules.get(name)
+        if type(module) is not ModuleType:
+            return r[m.Infra.NativeSourceWitness].fail(
+                f"producer source supplier is not loaded: {name}",
+            )
+        elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(name)
+        if elected.failure:
+            return r[m.Infra.NativeSourceWitness].from_failure(elected)
+        specification = vars(module)["__spec__"]
+        source = (
+            Path(specification.loader_state.filename).absolute()
+            if specification.origin == "frozen"
+            else elected.value
+        )
+        captured = u.Cli.atomic_read_binary_file_state(source, required=True)
+        if captured.failure:
+            return r[m.Infra.NativeSourceWitness].from_failure(captured)
+        if captured.value.content is None:
+            return r[m.Infra.NativeSourceWitness].fail(
+                f"producer captured source is absent: {source}",
+            )
+        resource = u.Infra.runtime_callable("rope.base.resources", "File")(
+            u.Infra.runtime_callable("rope.base.project", "get_no_project")(),
+            str(source),
+        )
+        if not isinstance(resource, p.Infra.RopeFile):
+            msg = "Native source resource violates Rope's contract"
+            raise TypeError(msg)
+        native = u.Infra.build_string_module(
+            project,
+            captured.value.content.decode("utf-8"),
+            resource=resource,
+        )
+        if not isinstance(native, p.Infra.RopeSourceModule):
+            msg = "Native source module has no shared Rope graph"
+            raise TypeError(msg)
+        root = native.get_scope()
+        compiled = (
+            FrozenImporter.get_code(specification.name)
+            if specification.origin == "frozen"
+            else compile(
+                captured.value.content,
+                str(source),
+                "exec",
+                dont_inherit=True,
+                optimize=sys.flags.optimize,
+            )
+        )
+        if not isinstance(compiled, CodeType):
+            msg = "Native supplier has no compiler result"
+            raise TypeError(msg)
+        witness = m.Infra.NativeSourceWitness(
+            source=source,
+            state=captured.value,
+            module=native,
+            code=compiled,
+            scopes=cls._source_scopes(root),
+            statements=u.Infra.logical_statements(native.source_code),
+            finder=u.Infra.semantic_finder(native),
+        )
+        witnesses[name] = witness
+        return r[m.Infra.NativeSourceWitness].ok(witness)
+
+    @staticmethod
+    def _source_scopes(
+        root: p.Infra.RopeScope,
+    ) -> t.MappingKV[str, p.Infra.RopeScope]:
+        """Index the uniquely declared native scopes in traversal order.
+
+        A qualified name declared more than once (version-conditional
+        definitions) is left out together with its nested scopes, so a consumer
+        that needs it fails at its own lookup instead of the whole module.
+
+        Returns:
+            Source-qualified scope identities belonging to the captured module.
+
+        Raises:
+            ValueError: A declaration has no source identity.
+
+        """
+        scopes: dict[str, p.Infra.RopeScope] = {"": root}
+        ambiguous: set[str] = set()
+        pending = [("", root)]
+        while pending:
+            prefix, scope = pending.pop()
+            for child in scope.get_scopes():
+                if child.get_kind() not in {"Class", "Function"}:
+                    continue
+                name = child.pyobject.get_name()
+                if type(name) is not str or not name:
+                    msg = "Native declaration scope has no source identity"
+                    raise ValueError(msg)
+                separator = ".<locals>." if scope.get_kind() == "Function" else "."
+                qualified = f"{prefix}{separator}{name}" if prefix else name
+                if qualified in ambiguous or prefix in ambiguous:
+                    ambiguous.add(qualified)
+                    continue
+                if qualified in scopes:
+                    ambiguous.add(qualified)
+                    del scopes[qualified]
+                    continue
+                scopes[qualified] = child
+                pending.append((qualified, child))
+        return {
+            qualified: scope
+            for qualified, scope in scopes.items()
+            if not any(
+                qualified == item or qualified.startswith(f"{item}.")
+                for item in ambiguous
+            )
+        }
 
     @staticmethod
     def _function_cells(
@@ -422,16 +508,145 @@ class FlextInfraWorkspaceNativeReference:
             TypeError: Closure storage or a cell has a foreign native type.
 
         """
-        closure = value.__closure__
-        if closure is None:
-            closure = ()
-        elif type(closure) is not tuple:
-            msg = "native function has foreign closure storage"
-            raise TypeError(msg)
-        if any(type(cell) is not CellType for cell in closure):
-            msg = "native function has a foreign closure cell"
-            raise TypeError(msg)
-        return dict(zip(value.__code__.co_freevars, closure, strict=True))
+        chain = FlextInfraWorkspaceGeneratedFunction.function_chain(
+            cls._class_namespace(receiver).get(attribute)
+        )
+        if not any(candidate is value for candidate in chain):
+            return r[m.Infra.NativeGeneratedFunctionProof].fail(
+                "generated receiver binding differs from its observed function: "
+                f"{witness.source}::{attribute}",
+            )
+        return FlextInfraWorkspaceGeneratedFunction.compile_class_function(
+            value, receiver, attribute, witness
+        )
+
+    @classmethod
+    def _generated_storage_native(
+        cls, expected: m.Infra.NativeGeneratedFunctionProof
+    ) -> bool:
+        """Check that a closed compiler emitted only the original native storage.
+
+        Returns:
+            Whether every emitted construction container has its exact native type.
+
+        """
+        if (
+            type(expected.code) is not CodeType
+            or type(expected.globals) is not dict
+            or type(expected.annotations) is not dict
+        ):
+            return False
+        return (
+            cls._native_type(expected.defaults, tuple, type(None))
+            and cls._native_type(expected.keyword_defaults, dict, type(None))
+            and type(expected.closure) is tuple
+        )
+
+    @classmethod
+    def _generated_function_matches(
+        cls, value: FunctionType, expected: m.Infra.NativeGeneratedFunctionProof
+    ) -> bool:
+        """Compare all immutable executable construction inputs in native order.
+
+        Returns:
+            Whether code, defaults, closure, namespaces and annotations agree.
+
+        """
+        if (
+            not cls._code_matches(
+                cls._code_evidence(value.__code__),
+                cls._code_evidence(expected.code),
+            )
+            or not cls._same_construction(value.__defaults__, expected.defaults)
+            or not cls._same_construction(
+                value.__kwdefaults__, expected.keyword_defaults
+            )
+        ):
+            return False
+        return (
+            cls._same_construction(
+                tuple(cell.cell_contents for cell in value.__closure__ or ()),
+                expected.closure,
+            )
+            and cls._same_construction(value.__globals__, expected.globals)
+            and cls._same_construction(
+                vars(FunctionType)["__builtins__"].__get__(value, FunctionType),
+                expected.globals.get("__builtins__"),
+            )
+            and cls._same_construction(value.__annotations__, expected.annotations)
+        )
+
+    @classmethod
+    def _same_construction(
+        cls,
+        observed: t.Infra.NativeOperand | None,
+        expected: t.Infra.NativeOperand | None,
+    ) -> bool:
+        """Compare construction inputs, identity first, then native encoding.
+
+        The same object is equal under every deterministic encoding, so it is
+        never re-encoded; exact ``dict`` (string keys) and ``tuple`` containers
+        compare item by item; any other pair compares by native encoding.
+
+        Returns:
+            Whether the observed construction input equals the expected one.
+
+        """
+        if observed is expected:
+            return True
+        if (
+            type(observed) is dict
+            and type(expected) is dict
+            and all(type(key) is str for key in (*observed, *expected))
+        ):
+            return set(observed) == set(expected) and all(
+                cls._same_construction(observed[key], expected[key]) for key in expected
+            )
+        if type(observed) is tuple and type(expected) is tuple:
+            return len(observed) == len(expected) and all(
+                itertools.starmap(
+                    cls._same_construction, zip(observed, expected, strict=True)
+                )
+            )
+        return cls._value(observed, construction=True) == cls._value(
+            expected, construction=True
+        )
+
+    @classmethod
+    def _generated_proof(
+        cls,
+        value: FunctionType,
+        source: t.Triple[str, str, p.AttributeProbe | None],
+        project: p.Infra.RopeProject,
+        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+    ) -> p.Result[t.Triple[str, str, m.Infra.NativeGeneratedFunctionProof]]:
+        """Authenticate source-generated code and every consulted physical input.
+
+        Returns:
+            The defining binding and its complete source-derived function proof.
+
+        """
+        result_type = r[t.Triple[str, str, m.Infra.NativeGeneratedFunctionProof]]
+        compiled = cls._generated_source(value, source, project, witnesses)
+        if compiled.failure:
+            return result_type.from_failure(compiled)
+        supplier, attribute, expected = compiled.value
+        if not cls._generated_storage_native(expected):
+            return result_type.fail("generated compiler returned non-native storage")
+        if not cls._generated_function_matches(value, expected):
+            return result_type.fail(
+                f"generated executable differs from its physical compiler: "
+                f"{supplier}::{attribute}; qualname={value.__qualname__[:160]}"
+            )
+        for state in expected.inputs:
+            current = u.Cli.atomic_read_binary_file_state(state.path, required=True)
+            if current.failure:
+                return result_type.from_failure(current)
+            if current.value != state:
+                return result_type.fail(
+                    f"generated compiler source changed: {state.path}"
+                )
+        return result_type.ok((supplier, attribute, expected))
 
     @classmethod
     def _remember_generated_descriptors(
@@ -2776,7 +2991,7 @@ class FlextInfraWorkspaceNativeReference:
         value = module
         qualified = ".".join(nomination.attributes)
         for component in nomination.attributes:
-            namespace = (
+            namespace: t.MappingKV[str, t.Infra.NativeOperand] = (
                 cls._class_namespace(value)
                 if cls._is_class(value)
                 else cls._module_namespace(value)
@@ -3067,6 +3282,9 @@ class FlextInfraWorkspaceNativeReference:
                 f"producer class has no native qualified name: {binding}",
             )
         context.sources.add((f"{supplier}::{qualname}", source, ""))
+        if FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(supplier):
+            name = cls._type_attr("__name__", value, type(value))
+            return cls._capture_runtime_binding(context, supplier, name, qualname)
         return cls._capture_class_body(
             context,
             value,
@@ -3568,10 +3786,12 @@ class FlextInfraWorkspaceNativeReference:
         module = sys.modules.get(supplier)
         if type(module) is not ModuleType:
             return r[str].fail(f"generated receiver supplier is not loaded: {supplier}")
+        if not cls._is_class(receiver):
+            return r[str].fail(f"generated receiver is not a native class: {supplier}")
         namespace = cls._module_namespace(module)
         qualified = cls._type_attr("__qualname__", receiver, type(receiver))
         resolved: p.AttributeProbe | None = module
-        for component in qualified.split(".") if type(qualified) is str else ():
+        for component in qualified.split("."):
             scope = (
                 cls._module_namespace(resolved)
                 if type(resolved) is ModuleType
@@ -3580,7 +3800,7 @@ class FlextInfraWorkspaceNativeReference:
                 else {}
             )
             resolved = scope.get(component)
-        if type(qualified) is str and resolved is receiver:
+        if resolved is receiver:
             return r[str].ok(qualified)
         aliases = sorted(
             name for name, value in namespace.items() if value is receiver
@@ -3594,10 +3814,66 @@ class FlextInfraWorkspaceNativeReference:
         if len(aliases) != 1:
             return r[str].fail(
                 f"generated receiver has no unique lexical path: {supplier}::"
-                f"{qualified if type(qualified) is str else '<non-string>'}; "
-                f"aliases={aliases[:8]}"
+                f"{qualified}; aliases={aliases[:8]}"
             )
         return r[str].ok(aliases[0])
+
+    @classmethod
+    def _module_file_owners(cls) -> t.MappingKV[str, t.VariadicTuple[str]]:
+        """Index registered modules by the absolute file their namespace declares.
+
+        Every compiler-input election used to rescan the whole ``sys.modules``
+        and build two ``Path`` objects per module (flext-zd80z: thousands of
+        modules per election, ~44 s of a cold capture). The index is a pure
+        derivation of the exact registry state (module name and object
+        identity) and the working directory, rebuilt whenever either changes,
+        so an import or replacement during capture is always observed.
+
+        Returns:
+            Absolute declared file path -> names of the modules declaring it.
+
+        """
+        registry = tuple(
+            (name, id(module)) for name, module in tuple(sys.modules.items())
+        )
+        cwd = str(Path.cwd())
+        cached = cls._module_file_index
+        if cached is not None and cached[0] == (cwd, registry):
+            return cached[1]
+        index: t.MutableMappingKV[str, t.VariadicTuple[str]] = {}
+        for name, module in tuple(sys.modules.items()):
+            if name == "__main__" or type(module) is not ModuleType:
+                continue
+            declared = cls._module_namespace(module).get("__file__")
+            if isinstance(declared, str):
+                key = str(Path(cwd, declared))
+                index[key] = (*index.get(key, ()), name)
+        frozen = dict(index)
+        cls._module_file_index = ((cwd, registry), frozen)
+        return frozen
+
+    @classmethod
+    def _compiler_input_module(cls, path: Path) -> p.Result[str]:
+        """Name the one registered module whose physical file is a compiler input.
+
+        Source entries are keyed by module so supplier election can resolve them.
+        Interpreter-owned (built-in) compiler inputs elect the interpreter
+        itself, as the native supplier capture does for ``builtins``.
+
+        Returns:
+            The unique registered module owning the physical input file.
+
+        """
+        target = path.absolute()
+        if target == Path(sys.executable).resolve():
+            return r[str].ok("builtins")
+        owners = sorted(cls._module_file_owners().get(str(target), ()))
+        if len(owners) != 1:
+            return r[str].fail(
+                f"generated compiler input has no unique registered module: {path}; "
+                f"owners={owners[:8]}"
+            )
+        return r[str].ok(owners[0])
 
     @classmethod
     def _generated_function_source(
@@ -3618,11 +3894,35 @@ class FlextInfraWorkspaceNativeReference:
                 "generated function has no physical source owner: "
                 f"{context.binding_context}"
             )
-        supplier, attribute, receiver = owner
-        if receiver is not None and not cls._is_class(receiver):
-            return result_type.fail(
-                f"generated receiver is not a native class: {context.binding}"
+        source_supplier, source_attribute, receiver = generated_owner
+        proved = cls._generated_proof(
+            value,
+            (source_supplier, source_attribute, receiver),
+            graph[0],
+            graph[1],
+        )
+        if proved.failure:
+            return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].from_failure(
+                proved
             )
+        _actual_supplier, source_attribute, expected = proved.value
+        for state in expected.inputs:
+            previous = context.compiler_inputs.get(state.path)
+            if previous is not None and previous != state:
+                return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].fail(
+                    f"generated compiler input changed within observation: {state.path}"
+                )
+            context.compiler_inputs[state.path] = state
+            owner = cls._compiler_input_module(state.path)
+            if owner.failure:
+                return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].from_failure(
+                    owner
+                )
+            context.sources.add((
+                owner.value,
+                str(cls._source_path(state.path, context.paths)),
+                "",
+            ))
         receiver_path = (
             r[str].ok("")
             if receiver is None
@@ -3788,7 +4088,7 @@ class FlextInfraWorkspaceNativeReference:
         ]
         lexical = sys.modules.get(facts.supplier)
         for component in facts.code.co_qualname.split(".")[:-1]:
-            namespace = (
+            namespace: t.MappingKV[str, t.Infra.NativeOperand] = (
                 cls._class_namespace(lexical)
                 if cls._is_class(lexical)
                 else vars(lexical)
@@ -3824,21 +4124,7 @@ class FlextInfraWorkspaceNativeReference:
                     item = namespace.get(name)
                     if cls._is_class(item):
                         class_roots.append(item)
-                    elif (
-                        any(
-                            type(item) is kind
-                            for kind in (
-                                FunctionType,
-                                MethodType,
-                                property,
-                                classmethod,
-                                staticmethod,
-                            )
-                        )
-                        or cls._native_builtin(item)
-                        or cls._native_wrapper_kind(item) is not None
-                        or cls._callable_storage(item)
-                    ):
+                    elif cls._callable_operand(item):
                         context.pending.append((
                             f"{context.binding}.descriptor.{cls._symbol(ancestor)}.{name}",
                             item,
@@ -4010,20 +4296,40 @@ class FlextInfraWorkspaceNativeReference:
             ),
         )
 
-    @staticmethod
-    def _capture_absent_function_edge(
+    @classmethod
+    def _receiver_namespaces(
+        cls,
+        receiver: t.Infra.NativeOperand,
+    ) -> t.VariadicTuple[t.MappingKV[str, t.Infra.NativeOperand]]:
+        """Read a LOAD_ATTR receiver's raw storage in native lookup order.
+
+        Returns:
+            Class storage along the native MRO, the module storage, or none.
+
+        """
+        if cls._is_class(receiver):
+            return tuple(
+                cls._class_namespace(owner) for owner in cls._native_mro(receiver)
+            )
+        if isinstance(receiver, ModuleType):
+            return (cls._module_namespace(receiver),)
+        return ()
+
+    @classmethod
+    def _absent_edge(
+        cls,
         context: m.Infra.NativeObservationContext,
         facts: m.Infra.NativeFunctionObservationContext,
         edge: str,
-        attribute: str,
+        name: str,
     ) -> p.Result[bool]:
-        """Record one absent lexical edge after rejecting a prior target.
+        """Record one absent native attribute edge once, or contradict a known edge.
 
         Returns:
-            The original edge contradiction or its unique absence evidence.
+            Success after recording, or the contradiction of a now-absent edge.
 
         """
-        missing = f"{edge}.{attribute}"
+        missing = f"{edge}.{name}"
         if missing in context.edges:
             return r[bool].fail(
                 f"native edge became absent: {missing}; "
@@ -4037,11 +4343,35 @@ class FlextInfraWorkspaceNativeReference:
                     binding=missing,
                     kind="absent",
                     supplier=facts.supplier,
-                    name=attribute,
+                    name=name,
                     qualname=edge,
                 )
             )
         return r[bool].ok(value=True)
+
+    @classmethod
+    def _callable_operand(cls, value: t.Infra.NativeOperand) -> bool:
+        """Elect a non-class edge target that the observation must follow.
+
+        Returns:
+            Whether the target is a function, native descriptor or callable storage.
+
+        """
+        return (
+            any(
+                type(value) is kind
+                for kind in (
+                    FunctionType,
+                    MethodType,
+                    property,
+                    classmethod,
+                    staticmethod,
+                )
+            )
+            or cls._native_builtin(value)
+            or cls._native_wrapper_kind(value) is not None
+            or cls._callable_storage(value)
+        )
 
     @classmethod
     def _function_attribute_edges(
@@ -4065,16 +4395,7 @@ class FlextInfraWorkspaceNativeReference:
                 receiver = facts.global_bindings.get(instruction.argval)
                 edge = f"{context.binding}.global.{instruction.argval}"
             elif instruction.opname == "LOAD_ATTR" and receiver is not None:
-                namespaces = (
-                    tuple(
-                        cls._class_namespace(owner)
-                        for owner in cls._native_mro(receiver)
-                    )
-                    if cls._is_class(receiver)
-                    else (cls._module_namespace(receiver),)
-                    if isinstance(receiver, ModuleType)
-                    else ()
-                )
+                namespaces = cls._receiver_namespaces(receiver)
                 if not namespaces:
                     receiver = None
                     continue
@@ -4100,22 +4421,7 @@ class FlextInfraWorkspaceNativeReference:
                         cls._module_generated_owners(context, supplier, found)
                 receiver = found[instruction.argval]
                 edge += f".{instruction.argval}"
-                if (
-                    cls._is_class(receiver)
-                    or any(
-                        type(receiver) is kind
-                        for kind in (
-                            FunctionType,
-                            MethodType,
-                            property,
-                            classmethod,
-                            staticmethod,
-                        )
-                    )
-                    or cls._native_builtin(receiver)
-                    or cls._native_wrapper_kind(receiver) is not None
-                    or cls._callable_storage(receiver)
-                ):
+                if cls._is_class(receiver) or cls._callable_operand(receiver):
                     context.pending.append((
                         edge,
                         receiver,
@@ -4145,7 +4451,16 @@ class FlextInfraWorkspaceNativeReference:
         if captured.failure:
             return r[bool].from_failure(captured)
         facts = captured.value
-        cls._function_namespaces(context, facts, instructions)
+        if (
+            not facts.generated
+            and FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(
+                facts.supplier
+            )
+        ):
+            return cls._capture_runtime_binding(
+                context, facts.supplier, value.__name__, value.__qualname__
+            )
+        cls._function_namespaces(context, facts, graph[2])
         if context.lexical:
             attributes = cls._function_attribute_edges(context, facts, instructions)
             if attributes.failure:
@@ -4153,6 +4468,34 @@ class FlextInfraWorkspaceNativeReference:
             cls._function_descriptor_edges(context, facts)
         cls._enqueue_function_operands(context, facts)
         cls._capture_function_evidence(context, facts, kind)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _capture_runtime_binding(
+        context: m.Infra.NativeObservationContext,
+        supplier: str,
+        name: str,
+        qualname: str,
+    ) -> p.Result[bool]:
+        """End the walk at an interpreter-owned standard-library identity.
+
+        The interpreter identity (runtime, prefix and the stdlib origin its
+        provenance proves) authenticates the binding; its live module globals
+        are interpreter state, never producer source.
+
+        Returns:
+            Success after recording the runtime identity evidence.
+
+        """
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind="runtime",
+                supplier=supplier,
+                name=name,
+                qualname=qualname,
+            )
+        )
         return r[bool].ok(value=True)
 
     @classmethod
@@ -4674,6 +5017,237 @@ class FlextInfraWorkspaceNativeReference:
             if code.failure:
                 return code
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _authorized_outputs_current(
+        outputs: t.SequenceOf[m.Infra.CodegenJournalSource],
+    ) -> p.Result[bool]:
+        """Authenticate every actual publication effect before source substitution.
+
+        Returns:
+            The first physical output failure or the exact recorded effects.
+
+        """
+        for expected in outputs:
+            state = codegen.FlextInfraMiseArtifactsFiles.read_state(
+                expected.path, required=expected.sha256 is not None
+            )
+            if state.failure:
+                return r[bool].from_failure(state)
+            recorded = codegen.FlextInfraMiseArtifactsJournalRelocation.source_record(
+                expected.phase, state.value, previous=expected
+            )
+            if recorded.failure:
+                return r[bool].from_failure(recorded)
+            if recorded.value != expected:
+                return r[bool].fail(
+                    f"native authorized output changed: {expected.path}"
+                )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def authority_current(
+        authority: m.Infra.CodegenSourceAuthority,
+        *,
+        outputs: t.SequenceOf[m.Infra.CodegenJournalSource] = (),
+    ) -> p.Result[bool]:
+        """Validate cold byte/membership authority without granting publication.
+
+        Returns:
+            Successful authority validation or the first changed input.
+
+        """
+        if not authority.inputs or authority.runtime not in {
+            item.path for item in authority.inputs
+        }:
+            return r[bool].fail(
+                "native source authority lacks its physical interpreter"
+            )
+        output_paths = {item.path for item in outputs}
+        published = FlextInfraWorkspaceNativeReference._authorized_outputs_current(
+            outputs
+        )
+        if published.failure:
+            return published
+        for receipt in authority.inputs:
+            if receipt.path in output_paths and receipt.path != authority.runtime:
+                continue
+            current = u.Cli.atomic_read_binary_file_receipt(
+                receipt.path, required=receipt.device is not None
+            )
+            if current.failure:
+                return r[bool].from_failure(current)
+            if current.value != receipt:
+                return r[bool].fail(f"native source authority changed: {receipt.path}")
+
+        return codegen.FlextInfraCodegenPreconditions.source_trees_current(
+            authority.generator_trees,
+            tuple(outputs),
+            modules=authority.generator_modules,
+        )
+
+    @classmethod
+    def _registered_generated_receiver(
+        cls,
+        module: ModuleType,
+        receiver_name: str,
+    ) -> p.Result[t.VariadicTuple[p.AttributeProbe]]:
+        """Resolve a generated class receiver through its actual lexical namespace.
+
+        Returns:
+            The registered class receiver, or an empty tuple for the original
+            module-level absence (a success payload is never ``None``).
+
+        """
+        result_type = r[t.VariadicTuple[p.AttributeProbe]]
+        if not receiver_name:
+            return result_type.ok(())
+        receiver: p.AttributeProbe = module
+        for component in receiver_name.split("."):
+            if component.startswith("<base:") and component.endswith(">"):
+                bases = (
+                    vars(type)["__bases__"].__get__(receiver, type(receiver))
+                    if cls._is_class(receiver)
+                    else ()
+                )
+                index = component[len("<base:") : -1]
+                if not index.isdigit() or int(index) >= len(bases):
+                    return result_type.fail(
+                        "generated class has no registered physical receiver"
+                    )
+                receiver = bases[int(index)]
+                continue
+            namespace = (
+                vars(receiver)
+                if type(receiver) is ModuleType
+                else cls._class_namespace(receiver)
+                if cls._is_class(receiver)
+                else None
+            )
+            if namespace is None or component not in namespace:
+                return result_type.fail(
+                    "generated class has no registered physical receiver"
+                )
+            receiver = namespace[component]
+        if not cls._is_class(receiver):
+            return result_type.fail("generated receiver is not a native class")
+        return result_type.ok((receiver,))
+
+    @classmethod
+    def _registered_generated_function(
+        cls,
+        binding: m.Infra.NativeBindingEvidence,
+    ) -> p.Result[t.Pair[FunctionType, p.AttributeProbe | None]]:
+        """Read the actual generated function and its source-owned receiver.
+
+        Returns:
+            The exact native function/receiver pair or its first registration error.
+
+        """
+        result_type = r[t.Pair[FunctionType, p.AttributeProbe | None]]
+        metadata = dict(binding.operands)
+        attribute = metadata.get("generated_attribute")
+        receiver_name = metadata.get("generated_receiver")
+        if type(attribute) is not str or type(receiver_name) is not str:
+            return result_type.fail(
+                "generated binding lacks its physical compiler receipt: "
+                f"{binding.binding}"
+            )
+        module = sys.modules.get(binding.supplier)
+        if type(module) is not ModuleType:
+            return result_type.fail("generated compiler supplier is not loaded")
+        registered = cls._registered_generated_receiver(module, receiver_name)
+        if registered.failure:
+            return result_type.from_failure(registered)
+        receiver = registered.value[0] if registered.value else None
+        namespace = vars(module) if receiver is None else cls._class_namespace(receiver)
+        value = namespace.get(attribute)
+        if cls._is_function_binding(value):
+            value = value.__func__
+        if type(value) is not FunctionType:
+            kind = type(value)
+            return result_type.fail(
+                "generated receipt has no native function: "
+                f"{binding.supplier}::{receiver_name}.{attribute}; "
+                f"slot_type={vars(type)['__name__'].__get__(kind, type(kind))}"
+            )
+        return result_type.ok((value, receiver))
+
+    @classmethod
+    def _generated_binding_current(
+        cls,
+        binding: m.Infra.NativeBindingEvidence,
+        executed: m.Infra.NativeCodeEvidence,
+        states: t.MappingKV[Path, m.Cli.AtomicFileReceipt],
+        project: p.Infra.RopeProject,
+        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
+    ) -> p.Result[bool]:
+        """Re-derive a generated witness against its pinned physical receipts.
+
+        Returns:
+            Whether the generated executable and its physical receipts agree.
+
+        """
+        result_type = r[bool]
+        registered = cls._registered_generated_function(binding)
+        if registered.failure:
+            return result_type.from_failure(registered)
+        value, receiver = registered.value
+        metadata = dict(binding.operands)
+        attribute = metadata["generated_attribute"]
+        proved = cls._generated_proof(
+            value, (binding.supplier, attribute, receiver), project, witnesses
+        )
+        if proved.failure:
+            return result_type.from_failure(proved)
+        _supplier, _attribute, expected = proved.value
+        if not cls._code_matches(
+            executed, cls._code_evidence(expected.code)
+        ) or metadata.get("generated_inputs") != dumps(
+            tuple(str(state.path) for state in expected.inputs)
+        ):
+            return result_type.fail(
+                "generated receipt differs from its physical compiler: "
+                f"{binding.binding}"
+            )
+        return cls._generated_inputs_current(expected, states)
+
+    @staticmethod
+    def _generated_inputs_current(
+        expected: m.Infra.NativeGeneratedFunctionProof,
+        states: t.MappingKV[Path, m.Cli.AtomicFileReceipt],
+    ) -> p.Result[bool]:
+        """Authenticate every source consumed by the closed generated compiler.
+
+        Returns:
+            Whether original receipt identity and descriptor-read contents agree.
+
+        """
+        result_type = r[bool]
+        for state in expected.inputs:
+            receipt = states.get(state.path)
+            if receipt is None:
+                return result_type.fail(
+                    f"generated compiler input is not pinned: {state.path}"
+                )
+            if receipt.size is None:
+                return result_type.fail(
+                    f"generated compiler receipt has no byte count: {state.path}"
+                )
+            measured = u.Cli.atomic_read_binary_file_receipt(state.path, required=True)
+            if measured.failure:
+                return result_type.from_failure(measured)
+            if measured.value != receipt:
+                return result_type.fail(
+                    f"generated compiler receipt changed: {state.path}"
+                )
+            with u.Cli.atomic_binary_file_reader(receipt) as reader:
+                if reader.read_range(0, receipt.size) != state.content:
+                    return result_type.fail(
+                        "generated compiler source differs from its receipt: "
+                        f"{state.path}"
+                    )
+        return result_type.ok(value=True)
 
     @classmethod
     def authored_sources_current(

@@ -389,6 +389,16 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[Path].ok(root)
 
     @staticmethod
+    def runtime_supplier(module_name: str) -> bool:
+        """Whether a module belongs to the interpreter's own standard library.
+
+        Returns:
+            True when the interpreter declares the top-level module as stdlib.
+
+        """
+        return module_name.partition(".")[0] in sys.stdlib_module_names
+
+    @staticmethod
     def standard_library_root() -> Path:
         """Return the standard library owned by the current base interpreter.
 
@@ -426,7 +436,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"producer module file differs from native origin: {module_name}"
             )
         origin = Path(native_origin).absolute()
-        if native_name.partition(".")[0] in sys.stdlib_module_names:
+        if FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(native_name):
             base = Path(sys.base_prefix).resolve()
             standard = cls.standard_library_root()
             if not interpreter.is_relative_to(

@@ -744,8 +744,7 @@ class FlextInfraCodegenPreconditions:
                     and Path(source) not in executed
                 ):
                     return result_type.fail(
-                        "cold producer source was not compiled by its loader: "
-                        f"{source}"
+                        f"cold producer source was not compiled by its loader: {source}"
                     )
         authority = request.source_authority.model_copy(
             update={"inputs": consumed.value}

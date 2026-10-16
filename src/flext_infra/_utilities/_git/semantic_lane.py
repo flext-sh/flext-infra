@@ -100,8 +100,9 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         admitted = cls.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=root,
-                operation="create",
+                operation="verify",
                 candidate=request.base,
+                ownership=request.ownership,
             ),
         )
         if admitted.failure:
@@ -109,6 +110,17 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         base = cls._verified_lane_base(request)
         if base.failure:
             return r[bool].from_failure(base)
+        owned = cls.git_verify_lane(
+            m.Infra.GitLaneVerificationRequest(
+                repo_root=root,
+                operation="create",
+                candidate=request.base,
+                ownership=request.ownership,
+                expected_tip=admitted.value.oid,
+            )
+        )
+        if owned.failure:
+            return r[bool].from_failure(owned)
         produced = cls._git_produce_lane(request, produce)
         if produced.failure:
             return produced
