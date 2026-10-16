@@ -241,17 +241,28 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             for name in rule.model_bases
         ):
             return False
-        if rule.repeats_annotation or rule.reorders_annotation:
-            calls = FlextInfraUtilitiesRopeRuntimeRefactors.word_call_regions(
-                module.source_code, match.get_region()
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        # Only the capture the goal evaluates again must be free of calls; the
+        # rest of the declaration (Annotated metadata, the field call) runs once.
+        if rule.repeats is not None and refactors.word_call_regions(
+            module.source_code,
+            refactors.semantic_capture_region(match, rule.repeats),
+        ):
+            message = (
+                f"{rule.id}: annotation evaluation cannot repeat authored calls "
+                f"in {module.get_name()}:{scope.get_start()}"
             )
-            if len(calls) != 1:
-                message = (
-                    f"{rule.id}: annotation evaluation cannot repeat or reorder "
-                    f"authored calls "
-                    f"in {module.get_name()}:{scope.get_start()}"
-                )
-                raise ValueError(message)
+            raise ValueError(message)
+        if (
+            rule.reorders_annotation
+            and len(refactors.word_call_regions(module.source_code, match.get_region()))
+            != 1
+        ):
+            message = (
+                f"{rule.id}: annotation evaluation cannot reorder authored calls "
+                f"in {module.get_name()}:{scope.get_start()}"
+            )
+            raise ValueError(message)
         if not cls._admitted_unshadowed_builtins(rule, scope):
             return False
         return cls._admitted_bindings(
