@@ -64,10 +64,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         if planned.failure:
             return r[T].from_failure(planned)
         plan = planned.value
-        roots = {
-            f"@stage-inputs-{index}": root
-            for index, root in enumerate(sorted(plan.roots))
-        }
+        roots = self.capability_roots("stage-inputs", sorted(plan.roots))
 
         def validate_locked(scope_root: Path) -> p.Result[T]:
             source_barrier = FlextInfraStagedPackage.source_inputs_current(plan)
@@ -356,6 +353,19 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1],
             ))
         return tuple(writes)
+
+    @staticmethod
+    def capability_roots(
+        label: str,
+        paths: t.SequenceOf[Path],
+    ) -> t.MappingKV[str, Path]:
+        """Key physical roots by the selectors validated by file participants.
+
+        Returns:
+            The capability root mapping in the supplied order.
+
+        """
+        return {f"@{label}-{index}": path for index, path in enumerate(paths)}
 
     def run_files_locked[T](
         self,

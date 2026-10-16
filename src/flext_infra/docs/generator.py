@@ -97,12 +97,10 @@ class FlextInfraDocGenerator(
             The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
 
         """
-        roots = {
-            f"@docs-{index}": path
-            for index, path in enumerate(
-                sorted({item.scope.path for item in bundle.scopes}),
-            )
-        }
+        roots = FlextInfraCodegenTransaction.capability_roots(
+            "docs",
+            sorted({item.scope.path for item in bundle.scopes}),
+        )
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=bundle.repository_root),
             prior_publications=tuple(publication_receipts or ()),

@@ -473,6 +473,14 @@ class FlextInfraProtocolsBase(Protocol):
     class CandidateBootstrapTransaction(Protocol):
         """Atomic multi-root file publisher consumed by the campaign."""
 
+        def capability_roots(
+            self,
+            label: str,
+            paths: t.SequenceOf[Path],
+        ) -> t.MappingKV[str, Path]:
+            """Key physical roots by their file capability selector."""
+            ...
+
         def run_files_locked[T](
             self,
             roots: t.MappingKV[str, Path],
