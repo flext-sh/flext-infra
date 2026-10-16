@@ -112,11 +112,16 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         working = dict(items)
         applied: dict[Path, list[str]] = {}
         epoch = cls._contract_epoch(workspace, working, rules)
-        for rule in rules:
-            project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                workspace.rope_project, working, captured=epoch
-            )
-            try:
+        # A snapshot is a pure function of (working, epoch); restructuring only
+        # plans a ChangeSet, so consecutive rules share one graph until a rule
+        # actually changes a source.
+        project: p.Infra.RopeProject | None = None
+        try:
+            for rule in rules:
+                if project is None:
+                    project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                        workspace.rope_project, working, captured=epoch
+                    )
                 resources = tuple(
                     project.get_resource(
                         path.relative_to(Path(project.root.real_path)).as_posix()
@@ -137,16 +142,22 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 members = FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
                     changes.changes, f"{rule.id}: invalid Rope content changes"
                 ).unwrap()
+                changed = False
                 for change in members:
                     path = Path(change.resource.real_path).resolve()
                     if change.new_contents == working[path]:
                         continue
                     working[path] = change.new_contents
                     applied.setdefault(path, []).append(rule.id)
+                    changed = True
                 cli.display_text(
                     f"mod: Rope contract {rule.id}: changed_files={len(members)}"
                 )
-            finally:
+                if changed:
+                    project.close()
+                    project = None
+        finally:
+            if project is not None:
                 project.close()
         return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
             tuple(
