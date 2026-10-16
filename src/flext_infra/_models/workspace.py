@@ -45,7 +45,10 @@ class FlextInfraModelsWorkspace:
             description="CPython compiler result, never executed",
         )
         scopes: t.MappingKV[str, p.Infra.RopeScope] = m.Field(
-            description="Native declaration scopes indexed by qualified identity",
+            description=(
+                "Native declaration scopes indexed by unique qualified identity; "
+                "a name declared more than once is absent, never guessed"
+            ),
         )
         statements: t.SequenceOf[FlextInfraModelsRope.LogicalStatement] = m.Field(
             description="One native Rope logical-region pass over captured bytes",
