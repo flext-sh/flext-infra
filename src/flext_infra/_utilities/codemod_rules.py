@@ -113,7 +113,7 @@ class FlextInfraUtilitiesCodemodRules(
     @staticmethod
     def _admit_utility_documents(
         path: Path,
-        global_documents: dict[tuple[str, str], t.JsonMapping],
+        global_documents: t.MutableMappingKV[tuple[str, str], t.JsonMapping],
     ) -> None:
         """Admit one utility file's documents under a unique identity.
 
@@ -146,7 +146,7 @@ class FlextInfraUtilitiesCodemodRules(
         cls,
         declaration: t.JsonMapping,
         config_path: Path,
-    ) -> dict[tuple[str, str], t.JsonMapping]:
+    ) -> t.MutableMappingKV[tuple[str, str], t.JsonMapping]:
         """Collect one provider's utility documents by language and identity.
 
         Returns:
@@ -155,7 +155,7 @@ class FlextInfraUtilitiesCodemodRules(
             validation helpers with ``ValueError``.
 
         """
-        global_documents: dict[tuple[str, str], t.JsonMapping] = {}
+        global_documents: t.MutableMappingKV[tuple[str, str], t.JsonMapping] = {}
         raw_directories = declaration.get(c.Infra.CODEMOD_UTIL_DIRS_KEY)
         if raw_directories is None:
             return global_documents
@@ -171,8 +171,8 @@ class FlextInfraUtilitiesCodemodRules(
         cls,
         config_path: Path,
         native_config: t.JsonDict,
-        aliases: dict[Path, dict[str, str]],
-        utilities: dict[str, t.JsonMapping],
+        aliases: t.MutableMappingKV[Path, t.MutableStrMapping],
+        utilities: t.MutableMappingKV[str, t.JsonMapping],
     ) -> None:
         """Project one provider's utilities under qualified global identities.
 
@@ -207,9 +207,9 @@ class FlextInfraUtilitiesCodemodRules(
     def _project_rule_document(
         cls,
         rule: m.Infra.CodemodRule,
-        documents: dict[Path, t.SequenceOf[t.JsonMapping]],
+        documents: t.MutableMappingKV[Path, t.SequenceOf[t.JsonMapping]],
         rule_directory: Path,
-        aliases: t.MappingKV[Path, dict[str, str]],
+        aliases: t.MappingKV[Path, t.MutableStrMapping],
     ) -> None:
         """Project one elected rule document under its owning provider aliases.
 
@@ -268,9 +268,9 @@ class FlextInfraUtilitiesCodemodRules(
         u.Cli.ensure_dir(rule_directory).unwrap()
         u.Cli.ensure_dir(utility_directory).unwrap()
         native_config: t.JsonDict = {}
-        aliases: dict[Path, dict[str, str]] = {}
-        documents: dict[Path, t.SequenceOf[t.JsonMapping]] = {}
-        utilities: dict[str, t.JsonMapping] = {}
+        aliases: t.MutableMappingKV[Path, t.MutableStrMapping] = {}
+        documents: t.MutableMappingKV[Path, t.SequenceOf[t.JsonMapping]] = {}
+        utilities: t.MutableMappingKV[str, t.JsonMapping] = {}
         for ruleset in plan.rulesets:
             cls._project_provider_utilities(
                 ruleset.config.resolve(),
@@ -314,10 +314,10 @@ class FlextInfraUtilitiesCodemodRules(
         """
         if isinstance(value, Mapping):
             local = value.get("utils")
-            shadows: frozenset[str] = local_names | (
-                frozenset(local) if isinstance(local, Mapping) else frozenset()
+            shadows = (
+                local_names | frozenset(local) if u.mapping(local) else local_names
             )
-            if isinstance(local, Mapping) and set(aliases.values()).intersection(local):
+            if u.mapping(local) and set(aliases.values()).intersection(local):
                 msg = "qualified global utility conflicts with a native local utility"
                 raise ValueError(msg)
             return {

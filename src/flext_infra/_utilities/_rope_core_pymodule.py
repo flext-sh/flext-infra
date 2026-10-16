@@ -135,7 +135,7 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
             The resulting ``t.Infra.RopeParsedModule``.
 
         Raises:
-            TypeError: If rope project returned non-PyModule.
+            TypeError: If a rope file resource returned a non-source module.
 
         """
         if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
@@ -146,9 +146,6 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
             ):
                 resource = resource.parent.get_child(f"{path.name}.py")
         pymodule = rope_project.get_pymodule(resource)
-        if not FlextInfraUtilitiesRopeRuntime.pymodule(pymodule):
-            msg = "rope project returned non-PyModule"
-            raise TypeError(msg)
         if FlextInfraUtilitiesRopeRuntime.file_resource(
             resource
         ) and not FlextInfraUtilitiesRopeRuntime.source_module(pymodule):

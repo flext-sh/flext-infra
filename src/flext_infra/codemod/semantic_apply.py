@@ -284,9 +284,11 @@ class FlextInfraCodemodSemanticApply:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
         """
-        inventory = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
-            files=frozenset(),
-            entries=(),
+        inventory: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
+            m.Infra.ModOccurrenceReport(
+                files=frozenset(),
+                entries=(),
+            )
         )
         original = cls.source_inventory(root, inventory)
         phases = (
@@ -476,7 +478,7 @@ class FlextInfraCodemodSemanticApply:
             Whether the accepted batch contains source changes.
 
         """
-        original: dict[Path, str] = {}
+        original: t.MutableMappingKV[Path, str] = {}
         for edit in edits:
             if edit.file_path not in original:
                 original[edit.file_path] = edit.original_source

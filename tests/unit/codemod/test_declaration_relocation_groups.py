@@ -36,7 +36,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         guard: str,
     ) -> None:
         """A same-spelled local flag is not the typing module's guard identity."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             body="amount: 'Amount'",
         )
@@ -68,7 +68,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         independent_group: bool,
     ) -> None:
         """A destination refusal recovers only its invocation's dependent group."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             body="count: int = Field(default=3)",
         )
@@ -201,7 +201,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         accepted: bool,
     ) -> None:
         """A fresh consumer accepts the full cutover, never a partial runtime."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             body="count: int = Field(default=3)",
         )
@@ -315,7 +315,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
     @staticmethod
     def test_real_scan_selects_the_immutable_declaration_phase(tmp_path: Path) -> None:
         """Test real scan selects the immutable declaration phase."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(tmp_path)
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         preflight = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         phase = c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
         rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[phase]
@@ -348,7 +348,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             RuntimeError: If Published validator has no loader.
 
         """
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             body=(
                 "value: int = 1\n"
@@ -407,7 +407,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
     @staticmethod
     def test_generated_sources_refuse_the_whole_plan(tmp_path: Path) -> None:
         """Test unsafe sources refuse the whole plan."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(tmp_path)
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         path = next(path for path in sources if path.name == "consumer.py")
         sources[path] = c.Infra.AUTOGEN_HEADERS[0] + "\n" + sources[path]
         expected = "generated consumer"
@@ -429,7 +429,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         tmp_path: Path,
     ) -> None:
         """An unexpected outer owner is reported while resolvable moves apply."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             variants=frozenset({"stray"}),
         )
@@ -466,7 +466,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         tmp_path: Path,
     ) -> None:
         """An unresolved owner stays visible; failed candidate gates publish nothing."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             variants=frozenset({"uncomposed"}),
         )
@@ -526,7 +526,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         split: bool,
     ) -> None:
         """The public model consumer loads the relocated payload and its preset."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(tmp_path)
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         stem = u.derive_class_stem(root.name)
         target = next(path for path in sources if path.parent.name == "_models")
         owner = f"{stem}ModelsPayload"
@@ -610,7 +610,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         competing: bool,
     ) -> None:
         """Unrelated composition parts do not compete with the preset owner."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(tmp_path)
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         stem = u.derive_class_stem(root.name)
         target = next(path for path in sources if path.parent.name == "_models")
         owner = f"{stem}ModelsPayload"

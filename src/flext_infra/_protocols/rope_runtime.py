@@ -321,7 +321,18 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
     @runtime_checkable
-    class RopeProject(Protocol):
+    class RopeModuleFinder(Protocol):
+        """Native relative module lookup shared by every Rope project flavour."""
+
+        def find_relative_module(
+            self,
+            modname: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            level: int,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+
+    @runtime_checkable
+    class RopeProject(RopeModuleFinder, Protocol):
         """Rope project shape used by flext-infra."""
 
         @property
@@ -352,13 +363,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             modname: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
-
-        def find_relative_module(
-            self,
-            modname: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
-            level: int,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
         def get_module(

@@ -44,10 +44,17 @@ class FlextInfraRopeProject(Project):
         """Declared project root address.
 
         Returns:
-            The resulting ``str``.
+            The native project address.
+
+        Raises:
+            TypeError: The SDK published a non-string address.
 
         """
-        return super().address
+        address = super().address
+        if not isinstance(address, str):
+            message = "Rope project address must be a string"
+            raise TypeError(message)
+        return address
 
     @property
     @override
@@ -55,10 +62,17 @@ class FlextInfraRopeProject(Project):
         """Declared project root folder.
 
         Returns:
-            The resulting ``p.Infra.RopeRoot``.
+            The native project root folder.
+
+        Raises:
+            TypeError: The SDK published a non-folder root.
 
         """
-        return super().root
+        root = super().root
+        if not isinstance(root, Folder):
+            message = "Rope project root must be a native folder"
+            raise TypeError(message)
+        return root
 
     @override
     def get_pymodule(
@@ -126,17 +140,44 @@ class FlextInfraRopeProject(Project):
         if folder is not None and not isinstance(folder, Folder):
             message = "Rope module lookup requires a native folder"
             raise TypeError(message)
-        namespace: Folder | None = None
-        roots = (
-            *self.get_source_folders(),
-            *self.get_python_path_folders(),
-            *((folder,) if folder is not None else ()),
+        return self._elect_module(
+            self,
+            modname,
+            (
+                *self.get_source_folders(),
+                *self.get_python_path_folders(),
+                *((folder,) if folder is not None else ()),
+            ),
         )
+
+    @staticmethod
+    def _elect_module(
+        finder: p.Infra.RopeModuleFinder,
+        modname: str,
+        roots: t.SequenceOf[File | Folder],
+    ) -> File | Folder | None:
+        """Elect a regular package or module before a namespace portion.
+
+        Returns:
+            The native module resource, or no matching module.
+
+        Raises:
+            TypeError: The SDK elected a resource that is neither file nor folder.
+
+        """
+        namespace: Folder | None = None
         for root in roots:
-            resource = super().find_relative_module(modname, root, 1)
+            if not isinstance(root, Folder):
+                continue
+            resource = finder.find_relative_module(modname, root, 1)
             if resource is None:
                 continue
-            if isinstance(resource, File) or resource.has_child(c.Infra.INIT_PY):
+            if isinstance(resource, File):
+                return resource
+            if not isinstance(resource, Folder):
+                message = "Rope module lookup elected a non-native resource"
+                raise TypeError(message)
+            if resource.has_child(c.Infra.INIT_PY):
                 return resource
             module = f"{resource.name}{c.Infra.EXT_PYTHON}"
             if resource.parent.has_child(module):
@@ -146,19 +187,6 @@ class FlextInfraRopeProject(Project):
             if namespace is None:
                 namespace = resource
         return namespace
-
-    @override
-    def validate(self, folder: Folder | p.Infra.RopeRoot | None = None) -> None:
-        """Validate the selected native folder, or the complete project root.
-
-        Raises:
-            TypeError: The supplied folder is not a native Rope folder.
-
-        """
-        if folder is not None and not isinstance(folder, Folder):
-            message = "Rope validation requires a native folder"
-            raise TypeError(message)
-        super().validate(self.root if folder is None else folder)
 
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
@@ -184,7 +212,7 @@ class FlextInfraRopeProject(Project):
                 )
                 for parent in (path, *path.parents)
             )
-            children: dict[Path, set[Path]] = {
+            children: t.MutableMappingKV[Path, set[Path]] = {
                 directory: set() for directory in self._directories
             }
             for path in (*self._sources, *self._directories):
