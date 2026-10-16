@@ -226,6 +226,10 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         Returns:
             Provider and attribute pairs, including explicit module exports.
 
+        Raises:
+            ValueError: An export name or provider binding is not a literal string
+                or a provider/attribute pair.
+
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         source = source.strip()
@@ -234,8 +238,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         result: dict[str, t.StrPair] = {}
         split = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments
         for begin, end in split(source, 1, len(source) - 1, ","):
-            parts = split(source, begin, end, ":")
-            match parts:
+            match split(source, begin, end, ":"):
                 case [(key_start, key_end), (value_start, value_end)]:
                     pass
                 case _:
@@ -250,14 +253,12 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 result[key] = (provider, key)
                 continue
             if expression.startswith("(") and expression.endswith(")"):
-                values = tuple(
+                match tuple(
                     refactors.literal_string(expression[start:stop])
                     for start, stop in split(expression, 1, len(expression) - 1, ",")
-                )
-                if len(values) == 2 and all(value is not None for value in values):
-                    first, second = values
-                    if first is not None and second is not None:
-                        result[key] = (first, second)
+                ):
+                    case (str() as provider, str() as attribute):
+                        result[key] = (provider, attribute)
                         continue
             message = (
                 f"Lazy export requires a provider or provider/attribute pair: {key}"

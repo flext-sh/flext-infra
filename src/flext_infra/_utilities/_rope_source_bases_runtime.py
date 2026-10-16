@@ -11,6 +11,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
@@ -594,6 +596,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         visiting | {target},
                         depth + 1,
                     )
+                u.Cli.info(
+                    f"stage=unresolved-provider module={module.get_name()} "
+                    f"attribute={name} lazy-bindings={len(aliases)}"
+                )
             binding = module.get_attribute(name)
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._provider_imported_name_reference(

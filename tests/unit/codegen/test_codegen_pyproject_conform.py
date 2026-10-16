@@ -393,7 +393,9 @@ class TestsFlextInfraCodegenPyprojectConform:
     ) -> None:
         """PEP 735 groups never create references to absent PEP 621 extras."""
         policy = config.Infra.tooling.tools.deptry.optional_dependencies_dev_groups
-        optional = {group: ["requests"] for group in policy if declare_optional}
+        optional: t.JsonDict = {
+            group: ["requests"] for group in policy if declare_optional
+        }
         source = u.Cli.toml_dumps(
             u.Cli.toml_document_from_mapping({
                 "project": {

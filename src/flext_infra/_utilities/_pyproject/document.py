@@ -826,7 +826,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             "optional_dependencies_dev_groups",
             [
                 group
-                for group in config.Infra.tooling.tools.deptry.optional_dependencies_dev_groups
+                for group in (
+                    config.Infra.tooling.tools.deptry.optional_dependencies_dev_groups
+                )
                 if optional is not None and group in optional
             ],
         )

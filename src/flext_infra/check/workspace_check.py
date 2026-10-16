@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shlex
+import sys
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -16,6 +17,7 @@ from flext_infra.check import (
     FlextInfraWorkspaceCheckGatesMixin,
     FlextInfraWorkspaceCheckReportsMixin,
 )
+from flext_infra.workspace.runtime_dependencies import FlextInfraRuntimeDependencyCollector
 
 
 class FlextInfraWorkspaceChecker(
@@ -121,6 +123,10 @@ class FlextInfraWorkspaceChecker(
             ruff_args=tuple(self.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
+            runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
+                python=Path(sys.executable),
+                development_only=tuple(config.Infra.codegen.scaffold.project.required_flext_dev),
+            ),
         )
         run_result = self.run_projects(
             projects=project_targets,

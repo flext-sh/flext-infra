@@ -74,7 +74,6 @@ class TestsFlextInfraUtilityFacadeProjection:
             "tm.ok(u.Cli.atomic_write_text_file(facade, rendered))\n"
             "assert u.Infra.render_utility_facade(package) == rendered\n"
             "service = test_u.Tests.create_lazy_init_service(root)\n"
-            "service.target_module = package.name\n"
             "tm.ok(test_u.Tests.materialize_lazy_init(service))\n"
             "initializer = package / '__init__.py'\n"
             "published = tm.ok(u.Cli.atomic_read_binary_file_state(\n"
@@ -759,13 +758,13 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
 
-    @pytest.mark.parametrize("conflict", ["ownership", "shadowing"])
-    def test_behavior_cutover_rejects_ambiguity_without_mutation(
+    @pytest.mark.parametrize("conflict", ["unpublished", "shadowing"])
+    def test_behavior_cutover_rejects_unavailable_destination_without_mutation(
         self,
         tmp_path: Path,
         conflict: str,
     ) -> None:
-        """Neither competing owners nor a shadowed destination permits a cutover."""
+        """An unpublished or shadowed public destination prevents every effect."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         family = (
             package / u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
@@ -787,7 +786,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             }
         )
         sources[consumer] = source
-        if conflict == "ownership":
+        if conflict == "unpublished":
             for name in ("First", "Second"):
                 sources[family / f"{name.lower()}.py"] = (
                     f"class {name}:\n"
@@ -798,28 +797,19 @@ class TestsFlextInfraUtilityFacadeProjection:
         for path, content in sources.items():
             self._write(path, content)
         with infra.rope_workspace(root) as rope:
-            if conflict == "shadowing":
-                with pytest.raises(
-                    ValueError,
-                    match=(
-                        "relocated behavior receiver is shadowed: "
-                        f"{c.Infra.FacadeFamily.U}"
-                    ),
-                ):
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                        rope_workspace=rope,
-                        sources=sources,
-                    )
-            else:
-                tm.fail(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                        rope_workspace=rope,
-                        sources=sources,
-                    )
+            cause = (
+                f"relocated behavior receiver is shadowed: {c.Infra.FacadeFamily.U}"
+                if conflict == "shadowing"
+                else "relocated behavior is not reachable through public utilities:"
+            )
+            with pytest.raises(ValueError, match=cause):
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
                 )
-        tm.that(consumer.read_text(encoding="utf-8"), eq=source)
+        for path, content in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=content)
 
     @pytest.mark.parametrize(
         ("import_statement", "consumer_name"),
