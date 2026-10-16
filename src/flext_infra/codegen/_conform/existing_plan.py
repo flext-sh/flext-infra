@@ -460,8 +460,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             existing = by_path.get(barrel.path)
             if existing is not None and existing != barrel:
                 return result_type.fail(
-                    "runtime barrel has competing bootstrap plans: "
-                    f"{barrel.path}"
+                    f"runtime barrel has competing bootstrap plans: {barrel.path}"
                 )
         grouped_paths = {item.path for item in (*barrels, *facades)}
         group = f"{c.Infra.CodegenConformSurface.FACADES.value}:{root}"
@@ -1060,9 +1059,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 plans.append(make_plan_value)
         if root.is_dir():
             states = FlextInfraCodegenPreconditions.unique_states(
-                tuple(
-                    state for plan in lazy_plans for state in plan.source_states
-                )
+                tuple(state for plan in lazy_plans for state in plan.source_states)
             )
             if states.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(states)
@@ -1112,9 +1109,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         facade_path = u.Infra.facade_module_path(package_dir, family)
         failure_path = facade_path if facade_path is not None else package_dir
         try:
-            planned = self._utility_facade_plan(
-                root, package_dir, family, binding
-            )
+            planned = self._utility_facade_plan(root, package_dir, family, binding)
         except (OSError, ValueError) as exception:
             self._record_file_failure(
                 failure_path, traceback.format_exc(), exception=exception
@@ -1197,14 +1192,15 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         utility_plan = self.file_plan(root, relative.as_posix(), rendered)
         if utility_plan.failure:
             return result_type.from_failure(utility_plan)
-        inputs = FlextInfraCodegenPreconditions.unique_states(
-            (*utility_plan.value.source_states, *epoch.snapshot.states)
-        )
+        inputs = FlextInfraCodegenPreconditions.unique_states((
+            *utility_plan.value.source_states,
+            *epoch.snapshot.states,
+        ))
         if inputs.failure:
             return result_type.from_failure(inputs)
-        return result_type.ok(
-            (utility_plan.value.model_copy(update={"source_states": inputs.value}),)
-        )
+        return result_type.ok((
+            utility_plan.value.model_copy(update={"source_states": inputs.value}),
+        ))
 
     def _complete_governed_plans(
         self,
