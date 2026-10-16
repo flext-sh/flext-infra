@@ -1077,7 +1077,10 @@ class FlextInfraUtilitiesCodegenFacades:
         source: str,
         declarations: t.SequenceOf[m.Infra.SourceClassReference],
     ) -> str:
-        """Bind published owner names to their current declaration modules.
+        """Rebind obsolete leaf imports to their current declaration modules.
+
+        Package-form imports already name the public family boundary. Its
+        initializer owns publishing the declared bindings.
 
         Returns:
             Source with obsolete owned import origins replaced.
@@ -1095,7 +1098,7 @@ class FlextInfraUtilitiesCodegenFacades:
             if not isinstance(node, ast.ImportFrom) or node.module is None:
                 continue
             module = f"{pkg_dir.name}.{node.module}" if node.level else node.module
-            if module != prefix and not module.startswith(f"{prefix}."):
+            if not module.startswith(f"{prefix}."):
                 continue
             for alias in node.names:
                 target = owners.get(alias.name)

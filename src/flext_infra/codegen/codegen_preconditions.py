@@ -1224,102 +1224,6 @@ class FlextInfraCodegenPreconditions:
         return r[bool].ok(value=True)
 
     @classmethod
-    def capture_producer(
-        cls,
-        repository_root: Path,
-        *,
-        entrypoint: p.AttributeProbe,
-        collaborators: t.SequenceOf[p.AttributeProbe] = (),
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Authenticate the loaded producer against its cold physical authority.
-
-        Returns:
-            The authenticated producer phase analysis snapshot.
-
-        """
-        result_type = r[m.Infra.CodegenPhaseAnalysis]
-        selection = FlextInfraWorkspaceNativeReference.producer_selections(
-            entrypoint,
-            collaborators,
-        )
-        if selection.failure:
-            return result_type.from_failure(selection)
-        names = selection.value
-        environment = Path(sys.prefix).absolute()
-        if (
-            environment.name != c.Infra.ENVIRONMENT_DIRECTORY
-            or environment.is_symlink()
-        ):
-            return result_type.fail(
-                f"producer runtime is not a physical managed environment: {environment}"
-            )
-        runtime_root = environment.parent
-        reference = cls._capture_producer_reference(
-            repository_root, runtime_root, names
-        )
-        if reference.failure:
-            return result_type.from_failure(reference)
-        consumed = cls.authority_inputs(reference.value.source_authority)
-        if consumed.failure:
-            return result_type.from_failure(consumed)
-        authority = reference.value.source_authority
-        snapshot = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-            files=(),
-            inputs=consumed.value,
-            generator_trees=authority.generator_trees,
-            generator_modules=authority.generator_modules,
-            generator_reference=reference.value,
-        )
-        return cls.producer_current(snapshot).map(lambda _current: snapshot)
-
-    @classmethod
-    def _capture_producer_reference(
-        cls,
-        repository_root: Path,
-        runtime_root: Path,
-        names: t.VariadicTuple[m.Infra.SourceClassReference],
-    ) -> p.Result[m.Infra.NativeImportReference]:
-        """Bind one elected source epoch to its independent native import.
-
-        Returns:
-            The live admitted reference or the first source/import failure.
-
-        """
-        result_type = r[m.Infra.NativeImportReference]
-        u.Cli.info(
-            f"stage=native-source-authority selections={len(names)} "
-            f"runtime={runtime_root}",
-        )
-        sealed = cls._observed_source_authority(runtime_root, names)
-        if sealed.failure:
-            return result_type.from_failure(sealed)
-        authority, observation = sealed.value
-        u.Cli.info(
-            f"stage=native-source-authority-complete "
-            f"providers={len(authority.generator_modules)} "
-            f"inputs={len(authority.inputs)}",
-        )
-        inputs = cls.authority_inputs(authority)
-        if inputs.failure:
-            return result_type.from_failure(inputs)
-        request = m.Infra.NativeImportRequest(
-            repository_root=repository_root,
-            runtime_root=runtime_root,
-            modules=names,
-            inputs=inputs.value,
-            source_authority=authority,
-            import_roots=tuple(
-                dict.fromkeys(
-                    root.parent for _name, root in authority.generator_modules
-                )
-            ),
-        )
-        # The authority already observed these exact selections; a second
-        # capture could only repeat it.
-        return cls._observed_native_reference(request, observation)
-
-    @classmethod
     def _distribution_providers(
         cls,
         distribution: Distribution,
@@ -1467,6 +1371,9 @@ class FlextInfraCodegenPreconditions:
         """
         if not producer.inputs or producer.generator_reference is None:
             return r[bool].fail("producer context lacks authenticated source closure")
+        birth = cls.reference_birth_current(producer.generator_reference)
+        if birth.failure:
+            return birth
         states = cls.unique_states(producer.inputs)
         if states.failure:
             return r[bool].from_failure(states)
