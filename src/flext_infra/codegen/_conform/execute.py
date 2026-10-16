@@ -600,20 +600,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 m.Infra.CodegenResult(plan=plan, written_files=written.value),
             )
 
-        published = transaction.run_files_locked(roots, publish)
-        if published.failure:
-            return published
-        qualified = transaction.publish_operation_receipt(
-            request,
-            tuple(receipts),
-            scope_roots=tuple(roots.values()),
-            completed=True,
-        )
-        if qualified.failure:
-            return r[m.Infra.CodegenResult].from_failure(qualified)
-        return r[m.Infra.CodegenResult].ok(
-            published.value.model_copy(
-                update={"publication_receipt": qualified.value},
+        return transaction.run_files_locked(roots, publish).flat_map(
+            lambda result: transaction.publish_operation_receipt(
+                request,
+                tuple(receipts),
+                scope_roots=tuple(roots.values()),
+                completed=True,
+            ).map(
+                lambda receipt: result.model_copy(
+                    update={"publication_receipt": receipt},
+                ),
             ),
         )
 

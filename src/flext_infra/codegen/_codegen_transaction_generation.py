@@ -127,8 +127,8 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             return result_type.from_failure(published)
         return result_type.ok(published.value)
 
+    @staticmethod
     def _validated_generation_inputs(
-        self,
         config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         file_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
