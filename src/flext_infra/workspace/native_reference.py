@@ -3943,6 +3943,85 @@ class FlextInfraWorkspaceNativeReference:
         return r[bool].ok(value=True)
 
     @classmethod
+    def _receiver_path(
+        cls, supplier: str, receiver: p.AttributeProbe
+    ) -> p.Result[str]:
+        """Name a generated receiver by the lexical path that resolves to it.
+
+        The qualified name is the path when it resolves to this exact class;
+        a tuple built as ``Alias = namedtuple("Name", ...)`` resolves only
+        through its unique module alias.
+
+        Returns:
+            The module-relative path the receipt re-resolves to this receiver.
+
+        """
+        module = sys.modules.get(supplier)
+        if type(module) is not ModuleType:
+            return r[str].fail(f"generated receiver supplier is not loaded: {supplier}")
+        namespace = cls._module_namespace(module)
+        qualified = cls._type_attr("__qualname__", receiver, type(receiver))
+        resolved: p.AttributeProbe | None = module
+        for component in qualified.split(".") if type(qualified) is str else ():
+            scope = (
+                cls._module_namespace(resolved)
+                if type(resolved) is ModuleType
+                else cls._class_namespace(resolved)
+                if cls._is_class(resolved)
+                else {}
+            )
+            resolved = scope.get(component)
+        if type(qualified) is str and resolved is receiver:
+            return r[str].ok(qualified)
+        aliases = sorted(
+            name for name, value in namespace.items() if value is receiver
+        ) or sorted(
+            f"{name}.<base:{index}>"
+            for name, value in namespace.items()
+            if type(value) is type
+            for index, base in enumerate(
+                vars(type)["__bases__"].__get__(value, type)
+            )
+            if base is receiver
+        )
+        if len(aliases) != 1:
+            return r[str].fail(
+                f"generated receiver has no unique lexical path: {supplier}::"
+                f"{qualified if type(qualified) is str else '<non-string>'}; "
+                f"aliases={aliases[:8]}"
+            )
+        return r[str].ok(aliases[0])
+
+    @classmethod
+    def _compiler_input_module(cls, path: Path) -> p.Result[str]:
+        """Name the one registered module whose physical file is a compiler input.
+
+        Source entries are keyed by module so supplier election can resolve them.
+        Interpreter-owned (built-in) compiler inputs elect the interpreter
+        itself, as the native supplier capture does for ``builtins``.
+
+        Returns:
+            The unique registered module owning the physical input file.
+
+        """
+        if path.absolute() == Path(sys.executable).resolve():
+            return r[str].ok("builtins")
+        owners = sorted(
+            name
+            for name, module in tuple(sys.modules.items())
+            if name != "__main__"
+            and type(module) is ModuleType
+            and type(declared := cls._module_namespace(module).get("__file__")) is str
+            and Path(declared).absolute() == path.absolute()
+        )
+        if len(owners) != 1:
+            return r[str].fail(
+                f"generated compiler input has no unique registered module: {path}; "
+                f"owners={owners[:8]}"
+            )
+        return r[str].ok(owners[0])
+
+    @classmethod
     def _generated_function_source(
         cls,
         context: m.Infra.NativeObservationContext,
@@ -3990,19 +4069,28 @@ class FlextInfraWorkspaceNativeReference:
                     f"generated compiler input changed within observation: {state.path}"
                 )
             context.compiler_inputs[state.path] = state
+            owner = cls._compiler_input_module(state.path)
+            if owner.failure:
+                return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].from_failure(
+                    owner
+                )
             context.sources.add((
-                f"native_compiler::{state.path}",
+                owner.value,
                 str(cls._source_path(state.path, context.paths)),
                 "",
             ))
+        receiver_path = (
+            r[str].ok("")
+            if receiver is None
+            else cls._receiver_path(actual_supplier, receiver)
+        )
+        if receiver_path.failure:
+            return r[t.Pair[str, t.VariadicTuple[t.Pair[str, str]]]].from_failure(
+                receiver_path
+            )
         generated_operands = (
             ("generated_attribute", source_attribute),
-            (
-                "generated_receiver",
-                ""
-                if receiver is None
-                else cls._type_attr("__qualname__", receiver, type(receiver)),
-            ),
+            ("generated_receiver", receiver_path.value),
             (
                 "generated_inputs",
                 dumps(tuple(str(state.path) for state in expected.inputs)),
@@ -5043,33 +5131,47 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         module: ModuleType,
         receiver_name: str,
-    ) -> p.Result[p.AttributeProbe | None]:
+    ) -> p.Result[t.VariadicTuple[p.AttributeProbe]]:
         """Resolve a generated class receiver through its actual lexical namespace.
 
         Returns:
-            The registered class receiver or the original module-level absence.
+            The registered class receiver, or an empty tuple for the original
+            module-level absence (a success payload is never ``None``).
 
         """
-        result_type = r[p.AttributeProbe | None]
-        receiver = None
-        if receiver_name:
-            receiver = module
-            for component in receiver_name.split("."):
-                namespace = (
-                    vars(receiver)
-                    if type(receiver) is ModuleType
-                    else cls._class_namespace(receiver)
+        result_type = r[t.VariadicTuple[p.AttributeProbe]]
+        if not receiver_name:
+            return result_type.ok(())
+        receiver: p.AttributeProbe = module
+        for component in receiver_name.split("."):
+            if component.startswith("<base:") and component.endswith(">"):
+                bases = (
+                    vars(type)["__bases__"].__get__(receiver, type(receiver))
                     if cls._is_class(receiver)
-                    else None
+                    else ()
                 )
-                if namespace is None or component not in namespace:
+                index = component[len("<base:") : -1]
+                if not index.isdigit() or int(index) >= len(bases):
                     return result_type.fail(
                         "generated class has no registered physical receiver"
                     )
-                receiver = namespace[component]
-            if not cls._is_class(receiver):
-                return result_type.fail("generated receiver is not a native class")
-        return result_type.ok(receiver)
+                receiver = bases[int(index)]
+                continue
+            namespace = (
+                vars(receiver)
+                if type(receiver) is ModuleType
+                else cls._class_namespace(receiver)
+                if cls._is_class(receiver)
+                else None
+            )
+            if namespace is None or component not in namespace:
+                return result_type.fail(
+                    "generated class has no registered physical receiver"
+                )
+            receiver = namespace[component]
+        if not cls._is_class(receiver):
+            return result_type.fail("generated receiver is not a native class")
+        return result_type.ok((receiver,))
 
     @classmethod
     def _registered_generated_function(
@@ -5097,13 +5199,17 @@ class FlextInfraWorkspaceNativeReference:
         registered = cls._registered_generated_receiver(module, receiver_name)
         if registered.failure:
             return result_type.from_failure(registered)
-        receiver = registered.value
+        receiver = registered.value[0] if registered.value else None
         namespace = vars(module) if receiver is None else cls._class_namespace(receiver)
         value = namespace.get(attribute)
         if cls._is_function_binding(value):
             value = value.__func__
         if type(value) is not FunctionType:
-            return result_type.fail("generated receipt has no native function")
+            return result_type.fail(
+                "generated receipt has no native function: "
+                f"{binding.supplier}::{receiver_name}.{attribute}; "
+                f"slot_type={cls._type_attr('__name__', type(value), type(type(value)))}"
+            )
         return result_type.ok((value, receiver))
 
     @classmethod

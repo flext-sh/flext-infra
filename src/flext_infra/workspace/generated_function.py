@@ -549,11 +549,16 @@ class FlextInfraWorkspaceGeneratedFunction:
         self,
         field: ast.AnnAssign,
         namespace: t.MappingKV[str, p.AttributeProbe],
+        fields: t.MappingKV[str, p.AttributeProbe],
     ) -> p.AttributeProbe:
         """Read the annotation through its original native compilation semantics.
 
+        Without postponed evaluation a declared field's annotation is the type
+        object its executed SDK ``Field`` stores (read, never invoked); other
+        annotations go through the closed interpreter.
+
         Returns:
-            The exact compiled future string or a closed native annotation value.
+            The exact compiled future string or a native annotation value.
 
         Raises:
             TypeError: If the compiler did not produce native annotation text.
@@ -568,6 +573,10 @@ class FlextInfraWorkspaceGeneratedFunction:
         if not any(
             alias.name == "annotations" for node in future for alias in node.names
         ):
+            name = field.target.id if isinstance(field.target, ast.Name) else ""
+            observed = fields.get(name)
+            if type(observed) is vars(self._module("dataclasses")).get("Field"):
+                return observed.type
             return self._expression(field.annotation, {}, namespace, tree)
         isolated = ast.Module(
             body=[
@@ -618,6 +627,10 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise ValueError(msg)
         source_globals = vars(self._module(module_name))
         qualified = vars(type)["__qualname__"].__get__(owner, type(owner))
+        stored = namespace.get("__dataclass_fields__")
+        observed_fields: t.MappingKV[str, p.AttributeProbe] = (
+            stored if type(stored) is dict else {}
+        )
         annotations: t.DictKV[str, p.AttributeProbe] = {}
         result: t.DictKV[str, p.AttributeProbe] = {
             "__module__": module_name,
@@ -630,15 +643,24 @@ class FlextInfraWorkspaceGeneratedFunction:
             ):
                 continue
             annotations[field.target.id] = self._dataclass_annotation(
-                field, source_globals
+                field, source_globals, observed_fields
             )
-            if isinstance(field.value, ast.Call):
+            if isinstance(field.value, ast.Call) and self._sdk_field_call(
+                field.value, source_globals
+            ):
                 result[field.target.id] = self._dataclass_field(
                     field.value, field.target.id, namespace, source_globals
                 )
-            elif field.value is not None:
+            elif isinstance(field.value, ast.Constant | ast.Tuple | ast.List | ast.Name):
                 result[field.target.id] = self._source_scalar(
                     field.value, source_globals, self._trees[self._witness.source]
+                )
+            elif field.value is not None:
+                # Any other physical expression (attribute, operator, a helper
+                # returning a Field) was evaluated by the class body already:
+                # rebuild the SDK field from its stored data.
+                result[field.target.id] = self._rebuilt_field(
+                    field.target.id, namespace
                 )
         for ancestor in vars(type)["__mro__"].__get__(owner, type(owner)):
             body = vars(type)["__dict__"].__get__(ancestor, type(ancestor))
@@ -679,6 +701,67 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = f"native dataclass default is not an SDK field call: {name}"
             raise ValueError(msg)
         self._physical_function(factory)
+        return self._rebuilt_field(name, namespace)
+
+    def _rebuilt_field(
+        self, name: str, namespace: t.MappingKV[str, p.AttributeProbe]
+    ) -> p.AttributeProbe:
+        """Rebuild a fresh SDK field from one stored ``Field``'s data.
+
+        Returns:
+            A fresh SDK field; neither its default nor its factory is invoked.
+
+        Raises:
+            ValueError: If the SDK field factory is not an exact function.
+
+        """
+        factory = vars(self._module("dataclasses")).get("field")
+        if type(factory) is not FunctionType:
+            msg = "native dataclass field factory is not an exact Python function"
+            raise ValueError(msg)
+        self._physical_function(factory)
+        observed = self._stored_field(name, namespace)
+        return factory(
+            default=observed.default,
+            default_factory=observed.default_factory,
+            init=observed.init,
+            repr=observed.repr,
+            hash=observed.hash,
+            compare=observed.compare,
+            kw_only=observed.kw_only,
+        )
+
+    def _sdk_field_call(
+        self, call: ast.Call, source_globals: t.MappingKV[str, p.AttributeProbe]
+    ) -> bool:
+        """Recognize a physical call naming the SDK ``field`` factory.
+
+        Returns:
+            Whether the call target is bound to the SDK factory or its module.
+
+        """
+        sdk = self._module("dataclasses")
+        match call.func:
+            case ast.Name(id=name):
+                return source_globals.get(name) is vars(sdk).get("field")
+            case ast.Attribute(value=ast.Name(id=name), attr="field"):
+                return source_globals.get(name) is sdk
+            case _:
+                return False
+
+    def _stored_field(
+        self, name: str, namespace: t.MappingKV[str, p.AttributeProbe]
+    ) -> p.AttributeProbe:
+        """Read one executed SDK ``Field`` whose default carries no authored hook.
+
+        Returns:
+            The exact stored SDK field.
+
+        Raises:
+            ValueError: If the storage is foreign or the default has a set-name hook.
+
+        """
+        sdk = vars(self._module("dataclasses"))
         fields = namespace.get("__dataclass_fields__")
         observed = fields.get(name) if type(fields) is dict else None
         if type(observed) is not sdk.get("Field"):
@@ -693,15 +776,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         ):
             msg = f"native dataclass default carries an authored __set_name__: {name}"
             raise ValueError(msg)
-        return factory(
-            default=default,
-            default_factory=observed.default_factory,
-            init=observed.init,
-            repr=observed.repr,
-            hash=observed.hash,
-            compare=observed.compare,
-            kw_only=observed.kw_only,
-        )
+        return observed
 
     def _compile_dataclass(
         self,
@@ -1242,9 +1317,13 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "native tuple constructor differs from its physical imported owner"
             raise ValueError(msg)
         self._function(factory)
-        typename, fields = (self._tuple_literal(argument) for argument in call.args)
+        typename, fields = (
+            self._tuple_operand(argument, namespace) for argument in call.args
+        )
         defaults = (
-            self._tuple_literal(call.keywords[0].value) if call.keywords else None
+            self._tuple_operand(call.keywords[0].value, namespace)
+            if call.keywords
+            else None
         )
         if (
             type(typename) is not str
@@ -1302,6 +1381,53 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "native tuple has competing physical base invocations"
             raise ValueError(msg)
         return calls[0] if calls else None
+
+    def _tuple_operand(
+        self,
+        node: ast.expr,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> p.AttributeProbe | None:
+        """Read a constructor operand from literals and native tuple field storage.
+
+        ``Name._fields`` reads the exact ``_fields`` storage of a module tuple
+        class, and ``+`` joins two operands of the same sequence type; the
+        normalized layout is still checked against the owner's own fields.
+
+        Returns:
+            The closed operand value.
+
+        Raises:
+            ValueError: If the operand is neither closed data nor tuple storage.
+
+        """
+        match node:
+            case ast.BinOp(op=ast.Add(), left=left, right=right):
+                first, second = (
+                    self._tuple_operand(item, namespace) for item in (left, right)
+                )
+                if (type(first) is tuple or type(first) is list) and type(
+                    first
+                ) is type(second):
+                    return first + second
+            case ast.Attribute(value=ast.Name(id=name), attr="_fields"):
+                owner = namespace.get(name)
+                if type(owner) is type:
+                    fields = next(
+                        (
+                            body["_fields"]
+                            for ancestor in vars(type)["__mro__"].__get__(owner, type)
+                            if "_fields"
+                            in (body := vars(type)["__dict__"].__get__(ancestor, type))
+                        ),
+                        None,
+                    )
+                    if type(fields) is tuple and all(
+                        type(item) is str for item in fields
+                    ):
+                        return fields
+            case _:
+                pass
+        return self._tuple_literal(node)
 
     @staticmethod
     def _tuple_literal(node: ast.expr) -> p.AttributeProbe | None:
@@ -1690,7 +1816,10 @@ class FlextInfraWorkspaceGeneratedFunction:
                                 and int.__index__(sentinel) == 0
                             ):
                                 return sentinel
-        msg = "closed compiler default has no literal or native sentinel witness"
+        msg = (
+            "closed compiler default has no literal or native sentinel witness: "
+            f"{ast.unparse(node)[:160]}; source={self._witness.source}"
+        )
         raise ValueError(msg)
 
     @staticmethod
