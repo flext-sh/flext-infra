@@ -1,0 +1,539 @@
+"""Import-law engine: scoped bindings, hoisting, and provider identity contracts.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+import sys
+from typing import TYPE_CHECKING
+
+import pytest
+
+from flext_infra import c, m
+from flext_infra.refactor import FlextInfraImportNormalization
+from tests import tm, u
+from tests.unit.refactor.import_normalization_support import (
+    TestsFlextInfraRefactorImportNormalizationSupport,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+class TestsFlextInfraRefactorImportNormalizationBindings(
+    TestsFlextInfraRefactorImportNormalizationSupport,
+):
+    """Binding, hoisting, and provider rules observed through ``normalize_source``."""
+
+    @classmethod
+    def test_nested_config_models_are_family_sources_not_layer_zero(
+        cls, tmp_path: Path
+    ) -> None:
+        """Domain config MRO assembly remains valid source for generated facets."""
+        project, package = cls._project(tmp_path)
+        family = u.Infra.facade_families()["m"]
+        module = package / family.directory / "_config" / "base.py"
+        source = (
+            f"from demo_pkg.{family.directory}._config.part import ConfigPart\n"
+            "class ConfigModels(ConfigPart):\n    pass\n"
+            "__all__ = ['ConfigModels']\n"
+        )
+        tm.that(
+            u.Infra.import_module_role("demo_pkg._models._config.base"), eq="family"
+        )
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=source
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    @pytest.mark.parametrize("letter", sorted(u.Infra.facade_families()))
+    def test_missing_reverse_runtime_letter_is_not_synthesized(
+        cls, tmp_path: Path, letter: str
+    ) -> None:
+        """A missing higher own alias is a defect, never a new runtime edge."""
+        project, package = cls._project(tmp_path)
+        families = u.Infra.facade_families()
+        higher = [
+            name
+            for name, family in families.items()
+            if u.Infra.module_import_layer(f"demo_pkg.{family.module}")
+            > u.Infra.module_import_layer(f"demo_pkg.{families[letter].module}")
+        ]
+        cls._lazy_init(
+            package, {name: f".{family.module}" for name, family in families.items()}
+        )
+        for name in higher:
+            with pytest.raises(ValueError, match="forbidden reverse namespace import"):
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=project,
+                    file_path=package / families[letter].directory / "declaration.py",
+                    source=f"value = {name}.Value\n",
+                )
+            module = package / families[letter].directory / "annotations.py"
+            normalized = cls._normalize(
+                project,
+                module,
+                "from __future__ import annotations\n"
+                f"def describe(value: {name}.Value) -> str:\n    return 'value'\n",
+            )
+            tm.that(
+                normalized,
+                has=f"if TYPE_CHECKING:\n    from demo_pkg import {name}\n",
+            )
+            tm.that(
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=project, file_path=module, source=normalized
+                ),
+                eq=None,
+            )
+
+    @classmethod
+    def test_internal_tier_alias_binds_through_tier_root(cls, tmp_path: Path) -> None:
+        """An internal tier imports root aliases from its own root."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        cls._lazy_init(tier, {"r": "flext_tests", "c": ".constants"})
+        normalized = cls._normalize(
+            project,
+            tier / "unit" / "test_demo.py",
+            "from __future__ import annotations\n"
+            "\n"
+            "from demo_pkg import c\n"
+            "from flext_tests import r\n"
+            "\n"
+            "\n"
+            "def test_demo() -> None:\n"
+            "    assert r.ok(c)\n",
+        )
+
+        tm.that(normalized, has="from tests import c\n")
+        tm.that(normalized, has="from tests import r\n")
+
+    @classmethod
+    def test_relative_import_becomes_absolute(cls, tmp_path: Path) -> None:
+        """A service consumes its helper through the absolute lazy package."""
+        project, package = cls._project(tmp_path)
+        (package / "_utilities" / "helper.py").write_text(
+            "class DemoHelper:\n"
+            "    @staticmethod\n"
+            "    def read(value):\n        return value\n"
+            "__all__ = ['DemoHelper']\n",
+            encoding="utf-8",
+        )
+        cls._lazy_init(package / "services", {"run": ".worker"})
+        target = package / "services" / "worker.py"
+        normalized = cls._normalize(
+            project,
+            target,
+            "from __future__ import annotations\n"
+            "\n"
+            "from .._utilities.helper import DemoHelper\n"
+            "\n"
+            "\n"
+            "def run() -> str:\n"
+            "    return DemoHelper.read('lazy-value')\n"
+            "__all__ = ['run']\n",
+        )
+        target.write_text(normalized, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    "from demo_pkg.services import run; print(run())",
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout.strip(), eq="lazy-value")
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=target,
+                source=normalized,
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    def test_import_guard_becomes_plain_import(cls, tmp_path: Path) -> None:
+        """A ``try/except ImportError`` guard becomes its plain imports."""
+        project, package = cls._project(tmp_path)
+        normalized = cls._normalize(
+            project,
+            package / "services" / "worker.py",
+            "from __future__ import annotations\n"
+            "\n"
+            "try:\n"
+            "    import json\n"
+            "except ImportError:\n"
+            "    json = None\n"
+            "\n"
+            "\n"
+            "def run() -> str:\n"
+            "    return json.dumps({})\n",
+        )
+
+        tm.that(normalized, lacks="except ImportError")
+        tm.that(normalized, has="\nimport json\n")
+
+    @classmethod
+    def test_normalization_is_idempotent(cls, tmp_path: Path) -> None:
+        """A second pass over the normalized module changes nothing."""
+        project, package = cls._project(tmp_path)
+        target = package / "services" / "worker.py"
+        first = cls._normalize(
+            project,
+            target,
+            "from __future__ import annotations\n"
+            "\n"
+            "from flext_core import r\n"
+            "\n"
+            "\n"
+            "def run() -> object:\n"
+            "    from demo_pkg._models.record import DemoRecord\n"
+            "\n"
+            "    return r.ok(DemoRecord)\n",
+        )
+
+        second = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=target,
+            source=first,
+        )
+
+        tm.that(second, eq=None)
+
+    @classmethod
+    def test_unbound_tier_letters_bind_through_tier_root(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """A test module reading unbound tier letters imports them from its root."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        cls._lazy_init(tier, {"c": ".constants", "u": ".utilities"})
+        target = tier / "unit" / "test_demo.py"
+        normalized = cls._normalize(
+            project,
+            target,
+            '"""Demo tests."""\n'
+            "\n"
+            "from __future__ import annotations\n"
+            "\n"
+            "\n"
+            "def test_demo(value: int) -> None:\n"
+            "    assert u.Demo.run(c.Demo.NAME, value)\n",
+        )
+
+        tm.that(normalized, has="from tests import c, u\n")
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=target,
+                source=normalized,
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    def test_locally_bound_letter_is_not_imported(cls, tmp_path: Path) -> None:
+        """A letter the module binds itself is never imported from its root."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        cls._lazy_init(tier, {"c": ".constants"})
+        result = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=tier / "unit" / "test_demo.py",
+            source=(
+                "from __future__ import annotations\n"
+                "\n"
+                "\n"
+                "def test_demo(c: int) -> None:\n"
+                "    assert c\n"
+            ),
+        )
+
+        tm.that(result, eq=None)
+
+    @classmethod
+    def test_tier_owner_drops_import_of_its_own_definition(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """A tier facade module never imports the alias it defines from its root."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        cls._lazy_init(tier, {"c": ".constants"})
+        target = tier / "constants.py"
+        normalized = cls._normalize(
+            project,
+            target,
+            "from __future__ import annotations\n"
+            "\n"
+            "from tests import c\n"
+            "\n"
+            "\n"
+            "class TestsDemoConstants:\n"
+            "    NAME = 'tier-value'\n"
+            "\n"
+            "\n"
+            "c = TestsDemoConstants\n"
+            "__all__ = ['TestsDemoConstants', 'c']\n",
+        )
+        target.write_text(normalized, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (sys.executable, "-c", "from tests import c; print(c.NAME)"),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(project)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout.strip(), eq="tier-value")
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=target,
+                source=normalized,
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    def test_distinct_inline_providers_fail_before_consumer_publication(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """Refuse a global binding that would change two real local consumers."""
+        project, package = cls._project(tmp_path)
+        for provider, value in (
+            ("first_provider", "first provider"),
+            ("second_provider", "second provider"),
+        ):
+            (package.parent / f"{provider}.py").write_text(
+                f"def value() -> str:\n    return {value!r}\n",
+                encoding="utf-8",
+            )
+        consumer = package / "consumer.py"
+        consumer.write_text(
+            "def first() -> str:\n"
+            "    from first_provider import value\n"
+            "    return value()\n\n"
+            "def second() -> str:\n"
+            "    from second_provider import value\n"
+            "    return value()\n",
+            encoding="utf-8",
+        )
+        command = (
+            sys.executable,
+            "-c",
+            "from demo_pkg.consumer import first, second; print(first(), second())",
+        )
+        options = m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)})
+        before = tm.ok(u.Cli.run(command, cwd=project, options=options))
+        tm.that(u.Cli.process_succeeded(before.outcome), eq=True, msg=before.stderr)
+        tm.that(before.stdout.strip(), eq="first provider second provider")
+        with pytest.raises(ValueError, match="conflicting inline import providers"):
+            FlextInfraImportNormalization.apply_files(project, (consumer,))
+        after = tm.ok(u.Cli.run(command, cwd=project, options=options))
+        tm.that(u.Cli.process_succeeded(after.outcome), eq=True, msg=after.stderr)
+        tm.that(after.stdout, eq=before.stdout)
+
+    @classmethod
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            (
+                (
+                    "def read_failure() -> str:\n"
+                    "    try:\n"
+                    "        raise ValueError('handler failure')\n"
+                    "    except ValueError as e:\n"
+                    "        return str(e)\n"
+                    "\n"
+                    "print(read_failure())\n"
+                ),
+                "handler failure",
+            ),
+            (
+                "match 'pattern value':\n    case str() as s:\n        print(s)\n",
+                "pattern value",
+            ),
+            (
+                "match ['pattern value']:\n    case [*s]:\n        print(s[0])\n",
+                "pattern value",
+            ),
+            (
+                (
+                    "match {'value': 'pattern value'}:\n"
+                    "    case {**s}:\n"
+                    "        print(s['value'])\n"
+                ),
+                "pattern value",
+            ),
+        ],
+    )
+    def test_local_bindings_do_not_load_a_facade_provider(
+        cls,
+        tmp_path: Path,
+        source: str,
+        expected: str,
+    ) -> None:
+        """Exception and pattern bindings execute without a facade dependency."""
+        project, package = cls._project(tmp_path)
+        cls._lazy_init(
+            package,
+            {"e": ".unavailable_provider", "s": ".unavailable_provider"},
+        )
+        module = package / "handler.py"
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=module,
+            source=source,
+        )
+        module.write_text(
+            normalized if normalized is not None else source,
+            encoding="utf-8",
+        )
+        result = tm.ok(
+            u.Cli.run(
+                (sys.executable, str(module)),
+                cwd=project,
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.that(result.stdout.strip(), eq=expected)
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=module,
+                source=module.read_text(encoding="utf-8"),
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    @pytest.mark.parametrize(
+        "module_name",
+        ["_config", "_settings", "_models/provider"],
+    )
+    def test_declarations_keep_external_providers(
+        cls,
+        tmp_path: Path,
+        module_name: str,
+    ) -> None:
+        """Authored declarations instantiate through their real external provider."""
+        project, package = cls._project(tmp_path)
+        module = package / f"{module_name}.py"
+        source = (
+            "from flext_core import m\n\n"
+            "class DemoConfig(m.BaseModel):\n"
+            "    value: str\n\n"
+            "print(DemoConfig(value='validated-value').value)\n"
+        )
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=module,
+            source=source,
+        )
+        module.write_text(
+            normalized if normalized is not None else source,
+            encoding="utf-8",
+        )
+        outcome = tm.ok(
+            u.Cli.run(
+                (sys.executable, str(module)),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+        tm.that(outcome.stdout.strip(), eq="validated-value")
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=module,
+                source=module.read_text(encoding="utf-8"),
+            ),
+            eq=None,
+        )
+
+    @classmethod
+    @pytest.mark.parametrize(
+        "consumer",
+        [
+            "def consume():\n    return s()\n",
+            "def consume(s=s()):\n    return s\n",
+            (
+                "@(lambda value: lambda function: function)(s())\n"
+                "def consume():\n    return s()\n"
+            ),
+            "VALUES = [s for s in [s()]]\ndef consume():\n    return VALUES[0]\n",
+            "def consume():\n    return [s for s in [s()]][0]\n",
+        ],
+    )
+    @pytest.mark.parametrize(
+        "local_body",
+        [
+            (
+                "    try:\n"
+                "        raise ValueError('local-value')\n"
+                "    except ValueError as s:\n"
+                "        return str(s)\n"
+            ),
+            "    match 'local-value':\n        case s:\n            return s\n",
+        ],
+    )
+    def test_local_binding_does_not_hide_another_scope_provider(
+        cls,
+        tmp_path: Path,
+        local_body: str,
+        consumer: str,
+    ) -> None:
+        """A local capture and a separate global lazy provider both execute."""
+        project, package = cls._project(tmp_path)
+        cls._lazy_init(package, {"s": ".provider"})
+        (package / "provider.py").write_text(
+            "def s():\n    return 'provider-value'\n\n__all__ = ['s']\n",
+            encoding="utf-8",
+        )
+        module = package / "consumer.py"
+        source = (
+            f"def capture():\n{local_body}\n"
+            f"{consumer}\n"
+            "print(capture())\nprint(consume())\n"
+        )
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=module,
+            source=source,
+        )
+        module.write_text(
+            normalized if normalized is not None else source,
+            encoding="utf-8",
+        )
+        outcome = tm.ok(
+            u.Cli.run(
+                (sys.executable, str(module)),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+        tm.that(outcome.stdout.splitlines(), eq=["local-value", "provider-value"])
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=module,
+                source=module.read_text(encoding="utf-8"),
+            ),
+            eq=None,
+        )
