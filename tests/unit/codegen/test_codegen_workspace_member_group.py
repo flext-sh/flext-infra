@@ -19,16 +19,16 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
     """Tests for ``FlextInfraCodegenWorkspaceMemberGroup``."""
 
     @staticmethod
-    def test_activation_producers_do_not_reinstall_the_declared_graph(
+    def test_physical_runtime_verbs_do_not_reinstall_the_declared_graph(
         tmp_path: Path,
     ) -> None:
-        """Projection repair precedes provenance; only setup provisions dependencies."""
+        """Physical-runtime verbs require an interpreter without reinstalling it."""
         root, _ = u.Tests.render_make_environment(
             tmp_path, c.Infra.MakeProfile.WORKSPACE
         )
         rendered = (root / "Makefile").read_text(encoding="utf-8")
         for verb in config.Infra.codegen.make.verbs:
-            if verb.produces_activation:
+            if not verb.requires_activation:
                 prerequisite = next(
                     line
                     for line in rendered.splitlines()
@@ -52,7 +52,7 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
         tm.that("PROJECT_INFRA_PYTHONPATH" in rendered, eq=False)
         setup = rendered.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
         tm.that(
-            setup.index("--what runtime-bindings") < setup.index("verify-environment"),
+            setup.index("sync-environment") < setup.index("--what runtime-bindings"),
             eq=True,
         )
 

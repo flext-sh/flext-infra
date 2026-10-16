@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import sys
 from pathlib import Path
 
 from flext_infra import c, p, t
@@ -635,22 +634,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             "rope.base.fscommands",
             "FileSystemCommands",
         )
-        # Native source providers outside the interpreter's installation must
-        # precede its package directories, including when a .pth file already
-        # appended their paths to sys.path. Rope stops at the first namespace
-        # directory, whereas Python continues to an initialized source package.
-        native_paths = tuple(
-            dict.fromkeys(
-                str(Path(location).parent)
-                for name, module in tuple(sys.modules.items())
-                if "." not in name
-                and module is not None
-                and (spec := module.__spec__) is not None
-                and spec.submodule_search_locations is not None
-                for location in spec.submodule_search_locations
-                if spec.has_location and not Path(location).is_relative_to(sys.prefix)
-            )
-        )
         project = project_factory(
             root,
             fscommands=fscommands_factory(),
@@ -660,7 +643,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             ignored_resources=list(ignored_resources),
             source_folders=list(source_folders),
             extension_modules=list(extension_modules),
-            python_path=list(native_paths),
         )
         if not isinstance(project, p.Infra.RopeProject):
             msg = "rope Project does not satisfy p.Infra.RopeProject"

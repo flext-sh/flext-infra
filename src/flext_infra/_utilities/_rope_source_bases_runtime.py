@@ -596,10 +596,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         visiting | {target},
                         depth + 1,
                     )
-                u.Cli.info(
-                    f"stage=unresolved-provider module={module.get_name()} "
-                    f"attribute={name} lazy-bindings={len(aliases)}"
-                )
             binding = module.get_attribute(name)
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._provider_imported_name_reference(
@@ -655,14 +651,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             declaring = module.get_module()
-            resource = declaring.get_resource()
             if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
-                u.Cli.info(
-                    f"stage=provider-source module={module.get_name()} "
-                    f"kind={type(declaring).__name__} "
-                    f"path={resource.real_path if resource is not None else None}"
-                )
                 return {}
+            resource = declaring.get_resource()
             if resource is None:
                 return {}
             return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(

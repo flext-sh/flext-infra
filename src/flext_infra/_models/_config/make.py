@@ -155,15 +155,15 @@ class FlextInfraConfigModelsMake(
             t.NonEmptyStr,
             m.Field(description="Operator-facing help text"),
         ]
-        produces_activation: Annotated[
+        requires_activation: Annotated[
             bool,
             m.Field(
                 description=(
-                    "Run the producer in the provisioned physical environment, "
-                    "then activate its generated environment before post hooks"
+                    "Activate the declared environment before consuming it; "
+                    "generation uses its provisioned physical runtime directly"
                 ),
             ),
-        ] = False
+        ] = True
         profiles: Annotated[
             t.VariadicTuple[FlextInfraConfigVocabulary.MakeProfile],
             m.Field(

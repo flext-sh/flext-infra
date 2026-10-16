@@ -46,6 +46,7 @@ class FlextInfraModelsWorkspace:
                 "only consumed candidates enter the sealed native reference"
             ),
         )
+        _source_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             description="Authenticated physical producer membership"
         )
