@@ -40,7 +40,7 @@ class TestsFlextInfraExtendedConfigFixerErrors:
         result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(file_path)
 
         tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.that(result.value, eq=())
 
     @staticmethod
     def test_run_returns_verbose_messages_for_selected_project(

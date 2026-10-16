@@ -33,3 +33,6 @@ class TestsFlextInfraModelsBase:
             default="",
             description="Native warning identities sidecar",
         )
+
+
+__all__: list[str] = ["TestsFlextInfraModelsBase"]

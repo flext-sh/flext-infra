@@ -24,7 +24,9 @@ class TestsNativeCallableAdmission:
             """from pathlib import Path
 from git import Git
 from flext_infra import m, u
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 selection = (m.Infra.SourceClassReference(target="git.cmd", attributes=("Git",)),)
 before = native.capture(selection).unwrap()
 root = Path.cwd()
@@ -46,7 +48,9 @@ assert compared.success, compared.error
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
 from flext_infra import m, u
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 selection = (m.Infra.SourceClassReference(
     target="flext_infra._models.deps",
     attributes=("FlextInfraModelsDeps", "ProjectMetadataState"),
@@ -71,7 +75,9 @@ assert compared.success, compared.error
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
 from flext_infra import m, u
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 selection = (m.Infra.SourceClassReference(
     target="flext_infra._models.codegen_toolchain",
     attributes=("FlextInfraModelsCodegenToolchain", "CodegenParticipantPolicy"),
@@ -148,7 +154,9 @@ class Consumer:
         u.Tests.run_lazy_init_probe(
             f"""from typing import get_args, get_origin
 from flext_infra import m
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 import test_pkg as module
 assert module.Consumer.execute(4) == 7
 assert hasattr(module.Consumer.callback, '__dict__') is ({storage!r} == 'dict')
@@ -160,7 +168,9 @@ annotation = module.Unpack[tuple[int, str]]
 assert get_origin(annotation) is module.Unpack
 assert get_args(annotation) == (tuple[int, str],)
 selection = (
-    m.Infra.SourceClassReference(target=module.__name__, attributes=('Consumer', 'execute')),
+    m.Infra.SourceClassReference(
+        target=module.__name__, attributes=('Consumer', 'execute')
+    ),
     m.Infra.SourceClassReference(target=module.__name__, attributes=('Unpack',)),
 )
 original = native.capture(selection).unwrap()
@@ -192,7 +202,7 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("factory", "replacement", "expression", "expected", "changed"),
+        "behavior",
         [
             (
                 "itemgetter(slice(2, None))",
@@ -226,13 +236,10 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
     )
     def test_native_callable_state_retains_real_behavior(
         real_python_package: t.DirectoryPath,
-        factory: t.StrictStr,
-        replacement: t.StrictStr,
-        expression: t.StrictStr,
-        expected: t.StrictStr,
-        changed: t.StrictStr,
+        behavior: t.StrSequence,
     ) -> None:
         """Observe native callable arguments without invoking their operations."""
+        factory, replacement, expression, expected, changed = behavior
         root = real_python_package / "src"
         u.Tests.write_package_init(
             root / "test_pkg",
@@ -242,10 +249,16 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
         )
         u.Tests.run_lazy_init_probe(
             f"""from flext_infra import m
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 import test_pkg as module
 assert {expression} == {expected}
-selection = (m.Infra.SourceClassReference(target=module.__name__, attributes=('operation',)),)
+selection = (
+    m.Infra.SourceClassReference(
+        target=module.__name__, attributes=('operation',)
+    ),
+)
 original = native.capture(selection).unwrap()
 repeated = native.capture(selection).unwrap()
 assert native.compare(original, repeated).unwrap() is True

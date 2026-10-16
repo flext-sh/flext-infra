@@ -108,13 +108,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         if resolved is None:
             return bases
         header, (_words, first, last) = resolved
-        arguments = tuple(
-            (begin, end)
-            for begin, end in FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
-                header.text, first + 1, last - 1, ","
-            )
-            if "[" in header.text[begin:end]
-        )
+        arguments = cls._specialized_arguments(header.text, first, last)
         if not arguments:
             return bases
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -138,29 +132,9 @@ class FlextInfraUtilitiesDeclarationPayload:
             )
             is not None
         )
-        for begin, end in arguments:
-            argument = header.text[begin:end]
-            regions = tuple(
-                (left, right)
-                for left, right in FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
-                    runtime.build_string_module(None, argument),
-                    "${generic_owner}[${generic_arguments}]",
-                    arguments={},
-                )
-                if not argument[:left].strip("() \t\r\n")
-                and not argument[right:].strip("() \t\r\n")
-            )
-            if len(regions) != 1:
-                continue
-            left, right = regions[0]
-            specialization = argument[left:right]
-            words = cls._worder(specialization)
-            opening, _closing = words.code_finder.get_word_parens_range(0, "[", "]")
-            binding = runtime.expression_name(parent, words.get_primary_at(opening - 1))
-            if binding is None:
-                continue
-            owner = binding.get_object()
-            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
+        for argument in arguments:
+            owner = cls._specialized_base(argument, parent)
+            if owner is None:
                 continue
             subscription = owner.get_attributes().get("__class_getitem__")
             if (
@@ -172,6 +146,60 @@ class FlextInfraUtilitiesDeclarationPayload:
             ):
                 bases.append(owner)
         return bases
+
+    @staticmethod
+    def _specialized_arguments(source: str, first: int, last: int) -> t.StrSequence:
+        """Select the original subscribed class-header arguments.
+
+        Returns:
+            Native header argument text in source order.
+
+        """
+        segments = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
+            source,
+            first + 1,
+            last - 1,
+            ",",
+        )
+        return tuple(
+            source[begin:end] for begin, end in segments if "[" in source[begin:end]
+        )
+
+    @classmethod
+    def _specialized_base(
+        cls,
+        argument: str,
+        parent: p.Infra.RopeScope,
+    ) -> p.Infra.RopePyObject | None:
+        """Resolve one complete subscription through its original native scope.
+
+        Returns:
+            The actual class owner, when the entire argument is one subscription.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        regions = tuple(
+            (left, right)
+            for left, right in FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
+                runtime.build_string_module(None, argument),
+                "${generic_owner}[${generic_arguments}]",
+                arguments={},
+            )
+            if not argument[:left].strip("() \t\r\n")
+            and not argument[right:].strip("() \t\r\n")
+        )
+        if len(regions) != 1:
+            return None
+        left, right = regions[0]
+        words = cls._worder(argument[left:right])
+        opening, _closing = words.code_finder.get_word_parens_range(0, "[", "]")
+        binding = runtime.expression_name(parent, words.get_primary_at(opening - 1))
+        if binding is None:
+            return None
+        owner = binding.get_object()
+        return (
+            owner if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner) else None
+        )
 
     @staticmethod
     def _worder(source: str) -> p.Infra.RopeWorder:

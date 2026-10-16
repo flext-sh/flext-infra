@@ -47,26 +47,66 @@ class FlextInfraImportNormalizationAstMixin:
             key=operator.attrgetter("lineno"),
         )
 
-    @staticmethod
+    @classmethod
     def _enclosing_scope(
+        cls,
         node: ast.AST,
         parents: t.MappingKV[int, ast.AST],
     ) -> ast.AST | None:
-        """Return the function, lambda or class whose body owns one node.
+        """Return the lexical scope that evaluates one node.
+
+        Definition headers and a comprehension's first iterable run in the
+        enclosing scope. Arguments bind in their function; comprehensions
+        bind targets in their own scope.
 
         Returns:
             The innermost enclosing scope, or ``None`` at module level.
 
         """
-        current = parents.get(id(node))
+        child = node
+        current = parents.get(id(child))
         while current is not None:
-            if isinstance(
-                current,
-                ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda | ast.ClassDef,
-            ):
-                return current
+            match current:
+                case ast.FunctionDef() | ast.AsyncFunctionDef():
+                    if isinstance(node, ast.arg) or child in current.body:
+                        return current
+                case ast.Lambda():
+                    if isinstance(node, ast.arg) or child is current.body:
+                        return current
+                case ast.ClassDef():
+                    if child in current.body:
+                        return current
+                case (
+                    ast.ListComp() | ast.SetComp() | ast.DictComp() | ast.GeneratorExp()
+                ):
+                    if cls._comprehension_owns_node(node, current, parents):
+                        return current
+            child = current
             current = parents.get(id(current))
         return None
+
+    @staticmethod
+    def _comprehension_owns_node(
+        node: ast.AST,
+        scope: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp,
+        parents: t.MappingKV[int, ast.AST],
+    ) -> bool:
+        """Keep the first iterable outside its comprehension's lexical bindings.
+
+        Returns:
+            Whether the original node reaches this scope without its first iterable.
+
+        """
+        first = scope.generators[0].iter
+        ancestor = node
+        while ancestor is not scope:
+            if ancestor is first:
+                return False
+            parent = parents.get(id(ancestor))
+            if parent is None:
+                return False
+            ancestor = parent
+        return True
 
     @staticmethod
     def _is_type_checking_test(test: ast.expr) -> bool:

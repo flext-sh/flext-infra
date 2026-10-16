@@ -166,6 +166,12 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
+        owns_workspace_manifest: Annotated[
+            bool,
+            m.Field(
+                description="Whether this repository owns the workspace manifest",
+            ),
+        ] = False
         make: Annotated[
             FlextInfraConfigModelsMake.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -614,3 +620,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             Literal["gitmodules", "none"],
             m.Field(description="repository-local discovery authority"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsContexts"]

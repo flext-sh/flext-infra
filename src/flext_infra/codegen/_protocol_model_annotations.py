@@ -162,10 +162,6 @@ class FlextInfraCodegenProtocolModelAnnotations:
         Returns:
             The resulting ``str``.
 
-        Raises:
-            TypeError: If unsupported protocol annotation; or if forbidden generated
-                protocol annotation; or if annotation has no declared public facade.
-
         """
         if annotation is None or annotation is type(None):
             return "None"
@@ -178,6 +174,14 @@ class FlextInfraCodegenProtocolModelAnnotations:
             )
         if isinstance(annotation, TypeAliasType):
             return self.render(annotation.__value__, scope)
+        origin = get_origin(annotation)
+        if origin is None:
+            return self._class_annotation(annotation)
+        return self._parameterized(annotation, scope)
+
+    def _parameterized(
+        self, annotation: t.TypeFormSpecifier, scope: p.Infra.RopeScope
+    ) -> str:
         origin = get_origin(annotation)
         arguments = get_args(annotation)
         if isinstance(origin, TypeAliasType):
@@ -199,26 +203,42 @@ class FlextInfraCodegenProtocolModelAnnotations:
             return (
                 f"typing.Literal[{', '.join(repr(argument) for argument in arguments)}]"
             )
+        return self._generic_annotation(annotation, scope)
+
+    def _generic_annotation(
+        self,
+        annotation: t.TypeFormSpecifier,
+        scope: p.Infra.RopeScope,
+    ) -> str:
+        origin = get_origin(annotation)
+        arguments = get_args(annotation)
         if origin is Callable:
             parameters, result = arguments
             arguments_text = (
                 "..."
                 if parameters is Ellipsis
-                else f"[{', '.join(self.render(parameter, scope) for parameter in parameters)}]"
+                else (
+                    "["
+                    + ", ".join(
+                        self.render(parameter, scope) for parameter in parameters
+                    )
+                    + "]"
+                )
             )
             self.imports["collections.abc"] = "import collections.abc"
             return (
                 f"collections.abc.Callable[{arguments_text}, "
                 f"{self.render(result, scope)}]"
             )
-        if origin is not None:
-            if origin is tuple and not arguments:
-                return "tuple[()]"
-            rendered = ", ".join(
-                "..." if argument is Ellipsis else self.render(argument, scope)
-                for argument in arguments
-            )
-            return f"{self.render(origin, scope)}[{rendered}]"
+        if origin is tuple and not arguments:
+            return "tuple[()]"
+        rendered = ", ".join(
+            "..." if argument is Ellipsis else self.render(argument, scope)
+            for argument in arguments
+        )
+        return f"{self.render(origin, scope)}[{rendered}]"
+
+    def _class_annotation(self, annotation: t.TypeFormSpecifier) -> str:
         if not isinstance(annotation, type):
             msg = f"unsupported protocol annotation: {annotation!r}"
             raise TypeError(msg)

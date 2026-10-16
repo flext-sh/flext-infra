@@ -283,7 +283,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         project_name: str = "flext-test-project",
         package_name: str = "flext_test_project",
     ) -> t.Pair[Path, Path]:
-        """Provide the typed test helper `create_lazy_init_workspace`.
+        """Create a real workspace with an empty, generation-eligible initializer.
 
         Returns:
             The resulting ``t.Pair[Path, Path]``.
@@ -307,8 +307,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         (package_root / c.Infra.INIT_PY).write_text(
-            f'"""{package_name} package.\n\n'
-            f'{u.Infra.copyright_notice(package_root)}\n"""\n',
+            "",
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(

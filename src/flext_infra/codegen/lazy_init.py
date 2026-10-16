@@ -17,10 +17,10 @@ from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
     FlextInfraCodegenLazyInitGenerationMixin,
+    FlextInfraCodegenLazyInitPlanner,
     FlextInfraCodegenLazyInitProjectionManifest,
 )
-from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_infra.workspace import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 import traceback
+from operator import itemgetter
 from pathlib import Path
 from typing import Literal
 
@@ -238,10 +239,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             c.Infra.CodegenConformSurface.LAZY_INIT,
             c.Infra.CodegenConformSurface.FACADES,
         }:
-            planned = self._plan_single_surface(request, inputs=inputs)
-            if planned.failure:
-                return r[m.Infra.CodegenPlan].from_failure(planned)
-            return r[m.Infra.CodegenPlan].ok(planned.value[0])
+            return self._plan_single_surface(request, inputs=inputs).map(
+                itemgetter(0),
+            )
         config_spec = inputs.spec
         root = request.root.expanduser().resolve()
         targets = self._planning_workspace(request, root, inputs=inputs)
@@ -478,7 +478,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
 
     @staticmethod
-    def _facade_family(source: str) -> p.Result[Literal["c", "t", "u", "p", "m"]]:
+    def _facade_family(
+        source: str, destination: Path
+    ) -> p.Result[Literal["c", "t", "u", "p", "m"]]:
         """Identify the selected renderer from the module's published declaration.
 
         Returns:
@@ -486,7 +488,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         result_type = r[Literal["c", "t", "u", "p", "m"]]
-        match tuple(sorted(u.Infra.facade_letter_names_source(source))):
+        match tuple(
+            sorted(
+                u.Infra.facade_letter_names_source(source, filename=str(destination))
+            )
+        ):
             case ("c",):
                 return result_type.ok("c")
             case ("t",):
@@ -531,7 +537,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if selected.failure:
             return result_type.from_failure(selected)
         state, source = selected.value
-        declared = cls._facade_family(source)
+        declared = cls._facade_family(source, destination)
         if declared.failure:
             return result_type.from_failure(declared)
         family = declared.value
@@ -1388,3 +1394,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         return u.Infra.repository_provider(repository)
+
+
+__all__: list[str] = ["FlextInfraCodegenConformPlan"]

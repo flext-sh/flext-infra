@@ -170,11 +170,14 @@ and again before returning the authenticated reference; the cold import's execut
 code must also match those captured source bytes. Candidate publication still owns
 its staged source view, journal, and fresh consumer checks.
 
-Native dataclass and named-tuple methods require a physical field-layout witness, native
-construction metadata and descriptor identity, and correspondence with code emitted
-by the authenticated generator. A compiler filename or cached field table alone is
-not evidence. A missing physical/native construction witness fails explicitly rather
-than evaluating arbitrary declaration expressions or importing dormant providers.
+Generated module functions require a unique physical factory invocation with closed
+literal inputs. Named-tuple constructors require a physical field-layout witness.
+One source interpreter derives their templates and compiles them without executing
+the factory, generated source, class body or construction hooks. It compares code
+and positions, globals, builtins, annotations, defaults and closure values, and pins
+every consulted physical input before publication. A compiler filename or cached
+field table alone is not evidence. Unsupported grammar or an unproved construction
+recipe, including a dataclass compiler, fails explicitly.
 Source-declared descriptor aliases authenticate the receiver's physical lexical
 declaration and the exact imported supplier binding. Relative imports resolve from
 the declaring module's package; class attributes are read as raw descriptors through
@@ -195,6 +198,14 @@ calling descriptor hooks. Bound methods enter the same supplier/source/code chec
 matching functions with a different bound class are not equivalent. An alias mismatch
 retains its failure and reports bounded receiver/module/attribute, source identifier,
 supplier owner, and raw binding-kind metadata, never operand representations.
+Class and static method wrappers retain their kind and route their underlying target
+through the same class or function admission. Callable operands retain constructor
+state and dictionary insertion order. CPython operator intrinsics use their exact
+native reduction descriptors after supplier, importer and partial-constructor
+authentication; GC references alone cannot prove hidden C scalar state. Python
+callable instances require a source-authenticated effective call implementation and
+native storage observation. Unsupported native state, including an unproved bound
+builtin receiver, fails admission before authored callbacks run.
 An unresolved factory binding reports bounded, escaped identifier, module/package
 registration, receiver/declaration, physical source path, and supplier-kind context.
 Diagnostics never render the operand, its material values, or a source excerpt; they
@@ -223,12 +234,20 @@ supplier evidence, not replayed to construct compiler data. Native assembly uses
 object-rooted data-only class with authenticated declarations and fields; neither
 ABC ancestry nor a supplier namespace authorizes executing a receiver metaclass or
 inherited subclass hook again.
+The source interpreter authenticates the emitted function's correspondence to
+physical source; it does not authorize later invocation of its live compiler
+helpers. Closed string operations are derived from their source declarations.
+Regex patterns and flags alone do not authenticate hidden native regex bytecode,
+and the interpreter never invokes a live regex cache. Module hooks are not used
+to normalize an absent member. Value comparison must not invoke authored equality,
+hashing, formatting or attribute access.
 Source bindings retain null literals inside a typed value; a null annotation or
 default never becomes a successful null `FlextResult` payload or a substituted type.
 Native generated methods are compiled in batches whose starting lines depend on
 other generated methods. Their evidence retains actual compiler filenames, source
 positions, executable metadata and closure checks against the same authenticated
 construction inputs. Authored functions retain exact source positions.
+Generated functions and authored functions retain exact native source positions.
 
 Every phase binds that same captured context to its staged consumer inputs. Journal
 transitions preserve it instead of rediscovering loaded origins after publication.
@@ -433,6 +452,19 @@ When the projection carries no line, a hand-written `project.flext_source` in th
 manifest declares it, and a commit in a hand-written source fails. Fix the setup or
 `upg` owner and regenerate through `make gen`; manual installs do not replace the cycle.
 
+A workspace root preserves declared Git requirements and binds its package members
+through `[tool.uv.sources]` entries containing their declared local `path` and
+`editable` values. No repository declares a native `[tool.uv.workspace]`: each
+repository owns its lock independently. Publishable members retain the same inline
+Git provenance whether attached or standalone; only the containing root owns the
+local source overlay and the shared runtime environment. Regenerate that root with
+`make gen` and reconcile its lock with `make upg` when the local binding changes.
+Every package checkout also overrides transitive requirements for its own
+distribution with its local project identity. A dependency that refers back to
+the checkout through Git must resolve to that checkout rather than introduce a
+second source for the same distribution. Generation derives this identity from
+the repository declaration in both workspace and standalone contexts.
+
 A package preserves its declared Git requirements and authored native UV policy.
 Generation places local package bindings in the configured resolution views.
 Each view has a distinct non-package identity; the real root's runtime requirements
@@ -466,6 +498,7 @@ distribution. Dependency-floor updates rewrite only the selected target's PEP 62
 requirements and dependency groups, retaining markers, extras, direct sources and
 comments. They never write the installed generator's configuration or another
 checkout's declarations.
+
 Deptry checking and dependency detection consume one capture owner. It records the
 exact settings, native process outcome, fresh report and physical production tree;
 a changed tree, reused report, missing tool or contradictory exit status fails.
@@ -479,6 +512,7 @@ strings retain their markers, extras and sources when promoted from development.
 The target's explicit contract also identifies development-only suppliers. Their
 metadata remains in the index and their native findings stay visible; an illegal
 production import requires a consumer rewire instead of a runtime declaration.
+
 Deptry's generated optional-group setting uses `optional_dependencies_dev_groups`;
 the deprecated key is removed by the declaration phase in the same projection.
 The fixer holds the repository mutation lease, revalidates every metadata, source,
@@ -621,6 +655,13 @@ A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
 
+Dependency modernization and conformance both consume the project's typed
+`config/workspace.yaml` declaration for distribution roots and packaged data.
+Modernization must retain those declarations when rebuilding Hatch targets;
+an empty topology cannot replace a declared one. Wheel and source-distribution
+templates use the same bounded `only-include` selection as modernization, with
+the declared wheel source mappings and explicit file inclusions.
+
 ## SonarCloud exclusions
 
 The committed-lock contract also removes the former SonarCloud exclusion for a missing
@@ -716,6 +757,19 @@ Startup instrumentation, the pytest launcher and the profiling entrypoint share
 one process-local profiler. Nested profiling subprocesses retain their own profiles
 and still execute the original site customization.
 
+Profile reports select the nearest project manifest owning the profile artifact.
+This keeps member reports confined to their member when Make starts at the
+workspace root. Profiling imports the runner through its published validation
+package.
+
+Each authenticated parent, collection and worker profile retains its own full
+view and repository-source view. Source filtering uses the configured scan roots
+and direct repository Python modules, with full filenames preserved. The native
+filter runs before the row limit so startup and waiting functions cannot consume
+the source view's budget. These views expose the captured calls and timings;
+they do not combine independent processes or prove that a timed-out operation
+completed.
+
 Distributed stop requests validate the initialized native controller through
 `p.Infra.PytestStopController` at report time, not during session startup. The
 runner requests a stop through its real `shouldstop` field and leaves shutdown
@@ -771,6 +825,44 @@ catalogs once, then admits each occurrence against its nearest project's electio
 and semantic facts. A library owner's imports remain within its domain; the same
 imports in a consumer remain violations. Reports retain zero counts for every
 governed repository and elected rule.
+
+Generated facades compose declarations published by their current private family.
+Rope resolves existing bases before composition: upstream bases remain, while an
+own provider moved outside that family leaves its MRO and unused imports.
+Unresolved providers fail before publication. Class-move previews and immutable
+plans leave absent destination directories absent; only an authorized apply
+creates them after source and identifier validation.
+Snapshot resources derive existence, children and observer indicators from the
+authenticated source inventory. External providers keep their native Rope
+identity through a snapshot-owned external project and read the captured bytes.
+Physical file changes remain inputs to publication CAS, rather than changing
+the source graph while a plan is being computed.
+
+Import normalization treats exception targets and structural pattern captures
+as local bindings. These names do not load a package facade or reintroduce an
+unused import removed by `make fix`.
+Imports with the same bound name but different lexical providers cannot be
+hoisted into one global binding. Normalization rejects that collision before
+publishing the candidate.
+
+Layer-zero config/settings obey their own-namespace boundary in every lexical
+scope, including `TYPE_CHECKING`. Private family assembly retains its declared
+role and import-layer contract. Defaults, decorators and a comprehension's first
+iterable resolve in their enclosing scope; a local capture cannot hide a provider
+needed by another scope.
+
+Binding snapshots elect providers from rules actually found by the scan.
+Resolved-symbol and same-binding captures authenticate their complete consumer
+source and carry requested member paths through local dependencies, reexports,
+lazy publications and class ancestry. Module operations derive requested imports
+from their authenticated source bytes through the same capture owner.
+Unrestricted snapshot requests retain the complete closure, including inactive
+import suites. Both scan and check use the same typed admissions and
+authenticated snapshots.
+
+The census refreshes its Rope inventory after constant-consumer publication and
+declaration removal, before collecting the resulting report. Deleted or added
+initializer projections must be reflected in the source inventory it reads.
 
 Typing-alias relocation plans the declaration, destination and consumer changes
 before one protected publication. Explicit imports retain their lexical scopes
@@ -1044,6 +1136,13 @@ uses the primary location, while the SARIF artifact carries the comparison evide
 
 ## Census consumer evidence
 
+Family classification uses the facade catalog and the semantic module's owning
+package. An exported declaration's full class name does not replace its family
+suffix. A containing family directory takes precedence over a facade filename;
+the filename is considered only outside a family directory. Conflicting family
+directories fail before classification instead of selecting by catalog order.
+Package-relative filenames alone cannot identify a nested family.
+
 The public refactor census report retains `Object.all_reference_sites` separately
 from `runtime_reference_sites` and `script_reference_sites`. Each evidence site
 includes the Rope character offset, path, line and surface. Exact path/offset
@@ -1144,6 +1243,19 @@ node without tokenizing and parsing its text again. Local shadows and native
 import identity remain checked. The resolution map does not persist across source
 observations or replace source, producer, or publication proof.
 
+Rule `files` and `ignores` globs are relative to the elected `sgconfig.yml`,
+not the consumer's working directory. A source-only rule must therefore cover
+`**/src/**/*.py` for standalone and workspace members outside the provider's
+configuration directory. Single-class export repair derives publication from
+the declared project stem, source shape and governed scanner scope, including
+internal Python tiers; a different file stem does not
+justify renaming the class or adding exports by hand.
+
+An admitted AST report carries its source inventory, rule-plan digest and policy
+inputs. Reuse requires unchanged membership and authenticated states before
+publication; the transaction checks those inputs under its lock and validates
+membership again before accepting the published candidate. Parsing associates
+findings with captured states between complete physical verification barriers.
 AST replacements publish through the authenticated file-plan boundary, then reuse
 the import normalizer on only the rewritten files. Unused imports and formatting
 are normalized before the next mod check; normalization failures remain blocking.
@@ -1173,6 +1285,24 @@ as publication. Authorization observes the current journal under that lease;
 an earlier read-only snapshot does not become a global generation precondition.
 Planning releases the lease, then reports a newly authorized observation. Recovery
 and publication retain their own exact journal receipts and physical-state guards.
+
+Documentation generation publishes one scope batch before capturing and rendering
+the next scope. A member batch captures its own sources, the shared root guides and
+configuration, and the renderer templates; the aggregate root captures its complete
+workspace inputs. File plans carry those authenticated inputs to the existing guarded
+journal writer. Changed current-batch inputs reject the affected publication without
+discarding accepted earlier batches. Generation does not re-render the full workspace
+at commit or run formatting, linting, or test gates; the corresponding Make verbs own
+those operations.
+
+Read-only Make verbs never invoke conform, generation, repairs, formatting, or
+codemod application. Audit checks installed dependency and environment provenance;
+verify-clean checks the documentation and Git state without rendering replacements.
+Generation retains the setup-owned environment policy: local workspace setup binds
+the declared subprojects as editable, and local generation may publish their managed
+artifacts. CI setup installs its locked noneditable dependencies, and generation in
+that context publishes only the invoked repository. The dependency and editable
+declarations remain owned by the established setup and provenance contracts.
 
 Protected compilation and pytest validation use the same environment boundary as
 lint validation: the child keeps its project's working directory and configured

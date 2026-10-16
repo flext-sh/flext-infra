@@ -12,7 +12,7 @@ from pathlib import Path
 from types import UnionType
 from typing import TypeAliasType, Union, get_args, get_origin, override
 
-from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra import FlextInfra, FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenProtocolModelRender
 
 
@@ -27,8 +27,6 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        from flext_infra import FlextInfra
-
         outcome = FlextInfra(repository_root=self.repository_root).codegen_conform(
             m.Infra.CodegenConformRequest(
                 root=self.repository_root,
@@ -55,30 +53,10 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         Returns:
             The resulting ``p.Result[t.MappingKV[Path, str]]``.
 
-        Raises:
-            ValueError: If indexed module unavailable.
-
         """
-        facades: dict[str, p.Infra.RopePyName] = {}
-        runtime_facades: dict[str, p.ModuleOwned] = {}
-        package_dir: Path | None = None
-        for entry in workspace.modules():
-            if entry.package_name != project.package_name:
-                continue
-            resource = workspace.resource(entry.file_path)
-            if resource is None:
-                msg = f"indexed module unavailable: {entry.file_path}"
-                raise ValueError(msg)
-            owner = u.Infra.published_facade_owner(workspace.rope_project, resource)
-            if owner is None:
-                continue
-            facades[owner[0]] = u.Infra.resolve_pymodule(
-                workspace.rope_project, resource
-            ).get_attribute(owner[1])
-            runtime_facades[owner[0]] = getattr(
-                import_module(entry.module_name), owner[1]
-            )
-            package_dir = entry.package_dir
+        package_dir, facades, runtime_facades = cls._facade_inventory(
+            project, workspace
+        )
         if package_dir is None or not {"m", "p"}.issubset(facades):
             return r[t.MappingKV[Path, str]].fail(
                 f"project has no declared model/protocol facade: {project.package_name}"
@@ -99,68 +77,111 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             manual = cls._member(facades["p"], name)
             if manual is not None:
                 module = manual.get_object().get_module()
-                if (
-                    module is not None
-                    and module.get_resource() is not None
-                    and (
-                        not module
-                        .get_resource()
-                        .read()
-                        .startswith(c.Infra.AUTOGEN_HEADERS)
-                    )
+                resource = module.get_resource() if module is not None else None
+                if resource is not None and not resource.read().startswith(
+                    c.Infra.AUTOGEN_HEADERS
                 ):
                     continue
-            declared = cls._member(facades["m"], name)
-            if declared is None:
+            if cls._member(facades["m"], name) is None:
                 return r[t.MappingKV[Path, str]].fail(
                     f"referenced protocol p.{name} resolves to no declared model"
                 )
             candidate = runtime_facades["m"]
             for component in name.split("."):
                 candidate = getattr(candidate, component)
-            value = (
-                candidate.__value__
-                if isinstance(candidate, TypeAliasType)
-                else candidate
-            )
-            leaves = (
-                get_args(value) if get_origin(value) in {UnionType, Union} else (value,)
-            )
-            routes: list[str] = []
-            for leaf in leaves:
-                module = workspace.rope_project.get_module(leaf.__module__)
-                first, separator, tail = leaf.__qualname__.partition(".")
-                binding = module.get_attribute(first)
-                if separator:
-                    binding = cls._member(binding, tail)
-                if binding is None or base not in u.Infra.class_ancestry(
-                    binding.get_object()
-                ):
-                    return r[t.MappingKV[Path, str]].fail(
-                        f"referenced protocol p.{name} is not a model declaration"
-                    )
-                prefix, separator, _last = name.rpartition(".")
-                route = (
-                    (f"{prefix}.{leaf.__name__}" if separator else leaf.__name__)
-                    if isinstance(candidate, TypeAliasType)
-                    else name
-                )
-                models[route] = leaf
+            resolved = cls._model_routes(workspace, base, name, candidate)
+            if resolved.failure:
+                return r[t.MappingKV[Path, str]].from_failure(resolved)
+            for route, model, binding in resolved.value:
+                models[route] = model
                 declarations[route] = binding
-                routes.append(route)
             if isinstance(candidate, TypeAliasType):
-                aliases[name] = tuple(routes)
+                aliases[name] = tuple(
+                    route for route, _model, _binding in resolved.value
+                )
         return r[t.MappingKV[Path, str]].ok(
-            FlextInfraCodegenProtocolModelRender.render_member_modules(
-                models,
+            FlextInfraCodegenProtocolModelRender(
                 project,
                 workspace,
                 runtime_facades,
                 declarations,
+            ).render_member_modules(
+                models,
                 directory,
                 aliases,
             )
         )
+
+    @staticmethod
+    def _facade_inventory(
+        project: p.Infra.ProjectSpec, workspace: p.Infra.RopeWorkspaceDsl
+    ) -> tuple[
+        Path | None,
+        t.DictKV[str, p.Infra.RopePyName],
+        t.DictKV[str, p.ModuleOwned],
+    ]:
+        facades: dict[str, p.Infra.RopePyName] = {}
+        runtime_facades: dict[str, p.ModuleOwned] = {}
+        package_dir: Path | None = None
+        for entry in workspace.modules():
+            if entry.package_name != project.package_name:
+                continue
+            resource = workspace.resource(entry.file_path)
+            if resource is None:
+                msg = f"indexed module unavailable: {entry.file_path}"
+                raise ValueError(msg)
+            owner = u.Infra.published_facade_owner(workspace.rope_project, resource)
+            if owner is None:
+                continue
+            facades[owner[0]] = u.Infra.resolve_pymodule(
+                workspace.rope_project, resource
+            ).get_attribute(owner[1])
+            runtime_facades[owner[0]] = getattr(
+                import_module(entry.module_name), owner[1]
+            )
+            package_dir = entry.package_dir
+        return package_dir, facades, runtime_facades
+
+    @classmethod
+    def _model_routes(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        base: p.Infra.RopePyObject,
+        name: str,
+        candidate: p.ModuleOwned,
+    ) -> p.Result[t.VariadicTuple[t.Triple[str, p.ModelType, p.Infra.RopePyName]]]:
+        result_type = r[t.VariadicTuple[t.Triple[str, p.ModelType, p.Infra.RopePyName]]]
+        routes: list[t.Triple[str, p.ModelType, p.Infra.RopePyName]] = []
+        value = (
+            candidate.__value__ if isinstance(candidate, TypeAliasType) else candidate
+        )
+        leaves = (
+            get_args(value) if get_origin(value) in {UnionType, Union} else (value,)
+        )
+        for leaf in leaves:
+            if not isinstance(leaf, type) or not u.model_type(leaf):
+                return result_type.fail(
+                    f"referenced protocol p.{name} is not a model declaration"
+                )
+            module = workspace.rope_project.get_module(leaf.__module__)
+            first, separator, tail = leaf.__qualname__.partition(".")
+            binding = module.get_attribute(first)
+            if separator:
+                binding = cls._member(binding, tail)
+            if binding is None or base not in u.Infra.class_ancestry(
+                binding.get_object()
+            ):
+                return result_type.fail(
+                    f"referenced protocol p.{name} is not a model declaration"
+                )
+            prefix, separator, _last = name.rpartition(".")
+            route = (
+                (f"{prefix}.{leaf.__name__}" if separator else leaf.__name__)
+                if isinstance(candidate, TypeAliasType)
+                else name
+            )
+            routes.append((route, leaf, binding))
+        return result_type.ok(tuple(routes))
 
     @staticmethod
     def _member(

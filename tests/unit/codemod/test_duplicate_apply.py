@@ -16,6 +16,7 @@ from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
     FlextInfraDuplicateApplyPhase,
+    FlextInfraModGateEngine,
 )
 from tests import c, m, tm, u
 
@@ -228,10 +229,14 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
         with infra.rope_workspace(root) as rope:
             first = tm.ok(
-                FlextInfraDuplicateApplyPhase.apply(root, _PREFLIGHT, rope),
+                FlextInfraDuplicateApplyPhase.apply(
+                    root, tm.ok(FlextInfraModGateEngine.scan(root, fix=False)), rope
+                ),
             )
             second = tm.ok(
-                FlextInfraDuplicateApplyPhase.apply(root, _PREFLIGHT, rope),
+                FlextInfraDuplicateApplyPhase.apply(
+                    root, tm.ok(FlextInfraModGateEngine.scan(root, fix=False)), rope
+                ),
             )
         tm.that(first, eq=True)
         tm.that(second, eq=False)
@@ -561,8 +566,3 @@ class TestsFlextInfraCodemodDuplicateApply:
             json.dumps(report),
             encoding=c.DEFAULT_ENCODING,
         )
-
-
-_PREFLIGHT = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
-    files=frozenset(), entries=()
-)

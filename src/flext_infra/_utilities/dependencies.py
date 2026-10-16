@@ -191,7 +191,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         completed = u.Cli.run_raw(
             (
                 str(venv_bin / c.Infra.DEPTRY),
-                str(c.Infra.DEFAULT_SRC_DIR),
+                c.Infra.DEFAULT_SRC_DIR,
                 "--config",
                 str(config_path),
                 "--json-output",

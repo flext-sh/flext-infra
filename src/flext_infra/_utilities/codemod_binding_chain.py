@@ -18,6 +18,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, Protocol
 
+from flext_cli import cli
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
@@ -92,7 +94,7 @@ class _ChainDeclarationSpec(Protocol):
     def sources(self) -> t.MappingKV[Path, str]: ...
 
 
-class FlextInfraFlextUtilitiesCodemodBindingChain:
+class FlextInfraUtilitiesCodemodBindingChain:
     """Canonical namespace owner."""
 
     class FlextInfraUtilitiesCodemodBindingChain(FlextInfraUtilitiesCodemodRules):
@@ -489,7 +491,32 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             expected = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
                 scope, target
             )
-            return cls._binding_symbols_match(expected, actual)
+            holds = cls._binding_symbols_match(expected, actual)
+            if not holds:
+                cli.display_text(
+                    "mod: binding rejection resolved-symbol "
+                    f"target={target_module}.{target} "
+                    f"actual={cls._binding_identity(actual)} "
+                    f"expected={cls._binding_identity(expected)}",
+                )
+            return holds
+
+        @staticmethod
+        def _binding_identity(binding: p.Infra.RopePyName | None) -> str:
+            """Describe native identity without substituting an inferred value.
+
+            Returns:
+                The native binding kind, original owner and object kind.
+
+            """
+            if binding is None:
+                return "unresolved"
+            holder, line = binding.get_definition_location()
+            owner = holder.get_name() if holder is not None else "<no-owner>"
+            return (
+                f"{type(binding).__name__}@{owner}:{line} "
+                f"object={type(binding.get_object()).__name__}"
+            )
 
         @staticmethod
         def _binding_symbols_match(
@@ -937,12 +964,18 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 Whether the import statement's module scope defines the
                 expression.
 
+            Raises:
+                TypeError: If the parsed module lacks its native source graph.
+
             """
             if row.category not in {
                 c.Infra.StatementCategory.IMPORT,
                 c.Infra.StatementCategory.FROM_IMPORT,
             }:
                 return False
+            if not isinstance(module, p.Infra.RopeSourceModule):
+                msg = "native import occurrence has no source-module graph"
+                raise TypeError(msg)
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             imported_module = runtime.build_string_module(
                 module.pycore.project, row.text.strip()
@@ -1122,4 +1155,4 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             )
 
 
-__all__: list[str] = ["FlextInfraFlextUtilitiesCodemodBindingChain"]
+__all__: list[str] = ["FlextInfraUtilitiesCodemodBindingChain"]

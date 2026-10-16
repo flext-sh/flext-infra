@@ -261,7 +261,9 @@ class TestsFlextInfraTransactionDirectoryJournal:
                     current,
                     "docs",
                     (planned,),
-                    staged_validator=reject_journal,
+                    publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                        directories=(), staged_validator=reject_journal
+                    ),
                 ),
             )
 
@@ -946,9 +948,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
                     owner.publish_prepared_locked(
                         session,
                         lambda current: owner.append_phase_locked(
-                            current,
-                            "docs",
-                            (planned,),
+                            current, "docs", (planned,)
                         ),
                     ),
                     has="journal changed",

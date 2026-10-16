@@ -14,7 +14,7 @@ import pytest
 
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraMiseArtifactsVerification
-from flext_infra.workspace import FlextInfraFlextBindingService
+from flext_infra.workspace import FlextInfraBindingService
 from tests import c, m, p, tm, u
 
 
@@ -176,7 +176,7 @@ class TestsMakeBootstrapPublication:
         root, members = self._workspace(tmp_path)
         package = u.Infra.project_package_name(members[0])
         facts = tm.ok(
-            FlextInfraFlextBindingService.consumer_package_environment(
+            FlextInfraBindingService.consumer_package_environment(
                 consumer_root=root,
                 python=u.Infra.runtime_python(root),
                 packages=(package,),
@@ -220,7 +220,7 @@ class TestsMakeBootstrapPublication:
         """A second actual installed metadata directory remains a duplicate."""
         root, members = self._workspace(tmp_path)
         facts = tm.ok(
-            FlextInfraFlextBindingService.consumer_package_environment(
+            FlextInfraBindingService.consumer_package_environment(
                 consumer_root=root,
                 python=u.Infra.runtime_python(root),
                 packages=(u.Infra.project_package_name(members[0]),),
@@ -254,7 +254,7 @@ class TestsMakeBootstrapPublication:
         """Metadata directory links cannot borrow an external installation."""
         root, members = self._workspace(tmp_path)
         facts = tm.ok(
-            FlextInfraFlextBindingService.consumer_package_environment(
+            FlextInfraBindingService.consumer_package_environment(
                 consumer_root=root,
                 python=u.Infra.runtime_python(root),
                 packages=(u.Infra.project_package_name(members[0]),),

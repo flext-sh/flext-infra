@@ -97,3 +97,6 @@ class FlextInfraOrphanImport(cst.CSTTransformer):
         if not kept:
             return cst.RemoveFromParent()
         return updated_node.with_changes(names=kept)
+
+
+__all__: list[str] = ["FlextInfraOrphanImport"]

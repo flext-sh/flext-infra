@@ -11,7 +11,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from yaml.parser import ParserError
 
 from flext_infra import config, infra
 from flext_infra.codegen import (
@@ -588,7 +587,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         original = second_declaration.read_text(encoding="utf-8")
         second_declaration.write_text("invalid: [\n", encoding="utf-8")
 
-        with pytest.raises(ParserError):
+        with pytest.raises(u.Yaml.YAMLError):
             infra.bootstrap_candidate(
                 m.Infra.CandidateBootstrapCommand(repository_root=source),
             )
@@ -759,11 +758,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = TestsFlextInfraConformSupport.project_tree(candidate)
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
-        destinations = FlextInfraCodegenConform.surface_contract(
-            c.Infra.CodegenConformSurface.PYPROJECT,
-            codegen=inputs.spec,
-        ).destinations
-        assert destinations is not None
+        destinations = tm.not_none(
+            FlextInfraCodegenConform.surface_contract(
+                c.Infra.CodegenConformSurface.PYPROJECT,
+                codegen=inputs.spec,
+            ).destinations,
+        )
 
         tm.ok(infra.bootstrap_candidate(command))
         first = tm.ok(u.Cli.atomic_read_binary_file_state(projection, required=True))
@@ -813,4 +813,55 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             tm.ok(u.Cli.atomic_read_binary_file_state(projection, required=True)),
             eq=first,
         )
+        tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=after)
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_dependencies_bootstrap_projects_resolution_inputs(
+        tmp_path: Path,
+    ) -> None:
+        """A candidate without resolution inputs regains them through dependencies.
+
+        A consumer crossing the generator generation has no resolution
+        pyprojects yet; ``make upg`` refuses to lock without them and
+        ``make setup`` refuses to run without their locks, so the provider's
+        dependencies surface is the only route that can project them.
+        """
+        source, candidate = _declared_candidate_campaign(
+            tmp_path,
+            c.Infra.CodegenConformSurface.DEPENDENCIES,
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
+        resolution = tuple(inputs.spec.uv_resolution_pyprojects)
+        tm.that(resolution, empty=False)
+        for relative in resolution:
+            (candidate / relative).unlink(missing_ok=True)
+        before = TestsFlextInfraConformSupport.project_tree(candidate)
+        destinations = tm.not_none(
+            FlextInfraCodegenConform.surface_contract(
+                c.Infra.CodegenConformSurface.DEPENDENCIES,
+                codegen=inputs.spec,
+            ).destinations,
+        )
+        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
+
+        tm.ok(infra.bootstrap_candidate(command))
+        after = TestsFlextInfraConformSupport.project_tree(candidate)
+        for relative in resolution:
+            view = candidate / relative
+            tm.that(view.is_file(), eq=True)
+            tm.that(
+                u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8"))
+                is not None,
+                eq=True,
+            )
+        tm.that(
+            tuple(item for item in after if item[0] not in destinations),
+            eq=tuple(item for item in before if item[0] not in destinations),
+            msg=TestsFlextInfraConformSupport.project_tree_diff(
+                tuple(item for item in before if item[0] not in destinations),
+                tuple(item for item in after if item[0] not in destinations),
+            ),
+        )
+        tm.ok(infra.bootstrap_candidate(command))
         tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=after)

@@ -237,7 +237,11 @@ class TestsNativeCompilerAdmission:
     ) -> None:
         """Cold authentication preserves the original construction callbacks."""
         options = "slots=True, unsafe_hash=True"
-        declaration = "class Payload:\n"
+        declaration = (
+            "class Payload(metaclass=Meta):\n"
+            if feature == "metaclass"
+            else "class Payload:\n"
+        )
         decorator = f"@attrs({options})\n"
         field = "    _value = attrib()\n"
         extra = ""
@@ -245,8 +249,6 @@ class TestsNativeCompilerAdmission:
             field = "    _value = make_field()\n"
         elif feature == "class-decorator":
             decorator = "@decorate\n"
-        elif feature == "metaclass":
-            declaration = "class Payload(metaclass=Meta):\n"
         elif feature == "set-name":
             extra = "    marker = Descriptor()\n"
         elif feature == "validator":
@@ -471,6 +473,81 @@ class TestsNativeCompilerAdmission:
             "authenticate(module.__name__).unwrap()\n"
         )
         native_consumer(consumer, str(tmp_path))
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "shadow"])
+    def test_dataclass_native_slot_class_value_is_authenticated(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """A class slot borrowed from a native type proves only the native owner."""
+        shadow = "object = int\n" if defect == "shadow" else ""
+        u.Tests.write_package_init(
+            tmp_path / "slot_provider",
+            "from dataclasses import dataclass\n" + shadow + "@dataclass\n"
+            "class Reference:\n"
+            "    name: str\n"
+            "    __hash__ = object.__hash__\n",
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('slot_provider')\n"
+            "reference = module.Reference('loop')\n"
+            "assert reference == module.Reference('loop')\n"
+            "observed = authenticate(module.__name__)\n"
+            "if sys.argv[2] == 'none':\n"
+            "    assert hash(reference) == object.__hash__(reference)\n"
+            "    observed.unwrap()\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        native_consumer(consumer, str(tmp_path), defect)
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "marker"])
+    def test_abstract_dataclass_methods_are_authenticated(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """An abstract dataclass proves its marked methods; a forged marker fails."""
+        u.Tests.write_package_init(
+            tmp_path / "abstract_provider",
+            "from abc import ABC, abstractmethod\n"
+            "from dataclasses import dataclass\n"
+            "@dataclass(frozen=True)\n"
+            "class Node(ABC):\n"
+            '    """Abstract node."""\n'
+            "    name: str\n"
+            "    @abstractmethod\n"
+            "    def render(self) -> str: ...\n"
+            "    def label(self) -> str:\n"
+            "        return self.name\n"
+            "@dataclass(frozen=True)\n"
+            "class Leaf(Node):\n"
+            '    """Concrete leaf inheriting the abstract fields."""\n'
+            "    weight: int = 1\n"
+            "    def render(self) -> str:\n"
+            "        return self.name\n",
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('abstract_provider')\n"
+            "assert module.Node.__abstractmethods__ == frozenset({'render'})\n"
+            "assert module.Leaf('leaf').render() == 'leaf'\n"
+            "assert module.Leaf('leaf') == module.Leaf('leaf', 1)\n"
+            "if sys.argv[2] == 'marker':\n"
+            "    module.Node.label.__isabstractmethod__ = True\n"
+            "observed = authenticate(module.__name__)\n"
+            "if sys.argv[2] == 'none':\n"
+            "    observed.unwrap()\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize("location", ["workspace", "site-packages"])

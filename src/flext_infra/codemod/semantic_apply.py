@@ -471,10 +471,10 @@ class FlextInfraCodemodSemanticApply:
         cli.display_text(f"mod: Rope transaction paths changed_files={len(changed)}")
 
     @classmethod
-    def apply(
+    def apply[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         source_preview: p.Infra.SourcePreview,
@@ -603,11 +603,11 @@ class FlextInfraCodemodSemanticApply:
         return residue
 
     @classmethod
-    def _validate_candidate(
+    def _validate_candidate[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
         *,
-        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
         reports_root: Path,
     ) -> p.Result[bool]:
@@ -621,10 +621,10 @@ class FlextInfraCodemodSemanticApply:
             return cls._validate_published(root, preflight, workspace, reports_root)
 
     @classmethod
-    def _validate_published(
+    def _validate_published[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         reports_root: Path,
     ) -> p.Result[bool]:
@@ -713,9 +713,9 @@ class FlextInfraCodemodSemanticApply:
         )
 
     @staticmethod
-    def _phase_future_annotations(
+    def _phase_future_annotations[FindingT: m.Infra.ModOccurrence](
         root: Path,
-        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         working: MutableMapping[Path, str],
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan the future-annotations phase; the pipeline applies the edits.
@@ -813,11 +813,11 @@ class FlextInfraCodemodSemanticApply:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _verify_fixed_point(
+    def _verify_fixed_point[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
         working: MutableMapping[Path, str],
-        preflight: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Replan every phase against the proposed or reread published sources.
@@ -1039,8 +1039,10 @@ class FlextInfraCodemodSemanticApply:
         return FlextInfraSemanticPublication.publish_semantic_file_plans(
             semantic_plans,
             repository_root=root,
-            projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
-            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
+                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            ),
         ).map(lambda _: True)
 
     @staticmethod
