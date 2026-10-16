@@ -15,6 +15,7 @@ from importlib.machinery import (
     SourceFileLoader,
 )
 from importlib.metadata import packages_distributions
+from operator import itemgetter
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
@@ -177,8 +178,27 @@ class FlextInfraCodegenPreconditions:
             The authenticated immutable producer closure.
 
         """
-        result_type = r[m.Infra.CodegenSourceAuthority]
-        names = tuple(nominated)
+        return cls._observed_source_authority(repository_root, tuple(nominated)).map(
+            itemgetter(0)
+        )
+
+    @classmethod
+    def _observed_source_authority(
+        cls,
+        repository_root: Path,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
+    ) -> p.Result[
+        t.Pair[m.Infra.CodegenSourceAuthority, m.Infra.NativeImportObservation]
+    ]:
+        """Seal the producer authority together with the observation it elected.
+
+        Returns:
+            The sealed authority and the loaded-producer observation it rests on.
+
+        """
+        result_type = r[
+            t.Pair[m.Infra.CodegenSourceAuthority, m.Infra.NativeImportObservation]
+        ]
         rooted = cls._elected_source_roots(repository_root, names)
         if rooted.failure:
             return result_type.from_failure(rooted)
@@ -1056,7 +1076,7 @@ class FlextInfraCodegenPreconditions:
         )
         roots = tuple(root for _, root in authority.generator_modules)
         pinned = {receipt.path: receipt for receipt in authority.inputs}
-        executed: dict[Path, m.Cli.AtomicFileReceipt] = {}
+        executed: t.MutableMappingKV[Path, m.Cli.AtomicFileReceipt] = {}
         for receipt in receipts:
             path = receipt.path
             physical = path.resolve()

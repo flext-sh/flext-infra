@@ -11,8 +11,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-from flext_cli import u
-
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
