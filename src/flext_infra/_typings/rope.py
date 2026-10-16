@@ -13,11 +13,11 @@ from flext_core import t
 from libcst import (
     Arg,
     BaseStatement,
+    ClassDef as CstClassDef,
     ImportAlias,
+    ImportFrom as CstImportFrom,
     Module,
 )
-from libcst import ClassDef as CstClassDef
-from libcst import ImportFrom as CstImportFrom
 from libcst.metadata import MetadataWrapper
 from rope.refactor.restructure import _ChangeComputer
 
