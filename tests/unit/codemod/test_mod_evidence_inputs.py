@@ -45,6 +45,16 @@ class TestsFlextInfraModEvidenceInputs:
                 ),
                 ((4, 5), (4, 5)),
             ),
+            (
+                (
+                    "def load():\n"
+                    "    message = 'café'; from first_owner import (\n"
+                    "        Value as selected,\n"
+                    "    )\n"
+                    "    import second_owner\n"
+                ),
+                ((4, 7), (7, 8)),
+            ),
         ],
     )
     def test_binding_snapshot_captures_all_native_import_scopes(

@@ -23,6 +23,7 @@ from libcst.metadata import MetadataWrapper, PositionProvider
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
@@ -35,9 +36,6 @@ from flext_infra._utilities.codegen_facade_syntax import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
 )
 from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
-from flext_infra._utilities.iteration_workspace import (
-    FlextInfraUtilitiesIterationWorkspace,
-)
 
 
 class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
@@ -65,17 +63,28 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         """
         root = root.resolve()
         if not source_states:
-            paths = FlextInfraUtilitiesIterationWorkspace.iter_python_files(
-                m.Infra.SourceScanRequest(project_roots=(root,)),
-            ).unwrap()
+            paths = FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
+                root,
+            )
             source_states = tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in paths
             )
+        source_states = m.Infra.CodemodBindingSnapshot(
+            states=(
+                *source_states,
+                *(
+                    plan.before
+                    for plan in declared_files
+                    if isinstance(plan.before, m.Cli.AtomicFileState)
+                ),
+            ),
+        ).states
         member_paths = tuple(
             state.path
             for state in source_states
             if state.path.is_relative_to(root)
+            and state.content is not None
             and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
         )
         captured = FlextInfraUtilitiesCodemodProject.codemod_binding_snapshot(
@@ -89,13 +98,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 m.Infra.CodemodBindingProject(
                     root=root,
                     source_paths=member_paths,
-                    modules=tuple(
-                        ".".join((
-                            root.name,
-                            *path.relative_to(root).with_suffix("").parts,
-                        ))
-                        for path in member_paths
-                    ),
+                    modules=(),
                 ),
             ),
         )
@@ -118,6 +121,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                         plan
                         for plan in declared_files
                         if plan.desired_content is not None
+                        and (
+                            isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+                            or plan.before.content is None
+                        )
                     ),
                 )
             ) as project,

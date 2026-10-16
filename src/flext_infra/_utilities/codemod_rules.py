@@ -456,6 +456,14 @@ class FlextInfraUtilitiesCodemodRules(
                     f"codemod provider disappeared from resolved graph: {name}",
                 )
             providers.append((name, provider_config))
+        local_config = root / c.Infra.CODEMOD_CONFIG_RELPATH
+        if local_config.is_file():
+            providers = [
+                (name, local_config if name == root_name else provider_config)
+                for name, provider_config in providers
+            ]
+            if all(name != root_name for name, _config in providers):
+                providers.append((root_name, local_config))
         return cls._compose(tuple(providers), root_name, runtime_closure, root)
 
     @staticmethod

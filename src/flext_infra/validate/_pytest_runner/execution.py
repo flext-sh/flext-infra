@@ -750,10 +750,16 @@ class FlextInfraPytestRunnerExecution(
             )
         )
         self._cache_publication = None
+        lease_started = time.monotonic()
+        sys.stderr.write(f"pytest cache lease: acquiring {self.testmon_db}\n")
         with u.Infra.codegen_transaction_lease(
             self.testmon_db,
             wait_seconds=wait_seconds,
         ):
+            sys.stderr.write(
+                "pytest cache lease: acquired "
+                f"after {time.monotonic() - lease_started:.3f}s\n",
+            )
             result = self._execute_testmon_leased(
                 complete=complete,
                 execution_mode=execution_mode,

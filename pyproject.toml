@@ -515,6 +515,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models._config.workspace.DependencyGroupDeclarations",
   "flext_infra._models._config.workspace.FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations",
   "flext_infra._models.base.FlextInfraModelsBase.FrozenArbitrary",
+  "flext_infra._models.base.FrozenArbitrary",
   "flext_infra._models.codegen_render.MkdocsRenderContext",
   "flext_infra._models.gates.GateExecutionFacts",
   "flext_infra._models.git.GitRemoteRequest",

@@ -19,6 +19,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteScaffold
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.validate import FlextInfraValidateFreshImport
 
 
 class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteScaffold):
