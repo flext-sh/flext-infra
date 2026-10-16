@@ -127,7 +127,8 @@ class TestsNativeCompilerAdmission:
         native_consumer(consumer, str(tmp_path), module_name)
 
     @staticmethod
-    def test_source_proof_never_replays_an_absolute_import_effect(
+    @pytest.mark.parametrize("defect", ["absent", "missing-spec", "broken-origin"])
+    def test_imported_class_preserves_its_supplier_failure(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
@@ -472,6 +473,39 @@ class TestsNativeCompilerAdmission:
             "authenticate(module.__name__).unwrap()\n"
         )
         native_consumer(consumer, str(tmp_path))
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "shadow"])
+    def test_dataclass_native_slot_class_value_is_authenticated(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """A class slot borrowed from a native type proves only the native owner."""
+        shadow = "object = int\n" if defect == "shadow" else ""
+        u.Tests.write_package_init(
+            tmp_path / "slot_provider",
+            "from dataclasses import dataclass\n"
+            + shadow
+            + "@dataclass\n"
+            "class Reference:\n"
+            "    name: str\n"
+            "    __hash__ = object.__hash__\n",
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('slot_provider')\n"
+            "reference = module.Reference('loop')\n"
+            "assert reference == module.Reference('loop')\n"
+            "observed = authenticate(module.__name__)\n"
+            "if sys.argv[2] == 'none':\n"
+            "    assert hash(reference) == object.__hash__(reference)\n"
+            "    observed.unwrap()\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize("location", ["workspace", "site-packages"])
