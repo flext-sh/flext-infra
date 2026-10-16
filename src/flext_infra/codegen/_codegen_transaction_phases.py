@@ -1063,11 +1063,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             files.
 
         """
-        if journal is not None:
-            original = self._live_producer_journal(journal)
-            if original.failure:
-                return r[m.Infra.CodegenPhaseOutcome].from_failure(original)
-            journal = original.value
         published = FlextInfraMisePublication.publish(
             staged,
             batch_admission=batch_admission,

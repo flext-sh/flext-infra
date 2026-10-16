@@ -879,6 +879,39 @@ class FlextInfraCodegenPreconditions:
                 f"producer runtime is not a physical managed environment: {environment}"
             )
         runtime_root = environment.parent
+        reference = cls._capture_producer_reference(
+            repository_root, runtime_root, names
+        )
+        if reference.failure:
+            return result_type.from_failure(reference)
+        consumed = cls.authority_inputs(reference.value.source_authority)
+        if consumed.failure:
+            return result_type.from_failure(consumed)
+        authority = reference.value.source_authority
+        snapshot = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+            files=(),
+            inputs=consumed.value,
+            generator_trees=authority.generator_trees,
+            generator_modules=authority.generator_modules,
+            generator_reference=reference.value,
+        )
+        return cls.producer_current(snapshot).map(lambda _current: snapshot)
+
+    @classmethod
+    def _capture_producer_reference(
+        cls,
+        repository_root: Path,
+        runtime_root: Path,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Bind one elected source epoch to its independent native import.
+
+        Returns:
+            The live admitted reference or the first source/import failure.
+
+        """
+        result_type = r[m.Infra.NativeImportReference]
         cold = cls.capture_source_authority(
             runtime_root,
             nominated=names,
@@ -888,7 +921,7 @@ class FlextInfraCodegenPreconditions:
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        reference = cls.capture_native_reference(
+        return cls.capture_native_reference(
             m.Infra.NativeImportRequest(
                 repository_root=repository_root,
                 runtime_root=runtime_root,
@@ -902,20 +935,6 @@ class FlextInfraCodegenPreconditions:
                 ),
             ),
         )
-        if reference.failure:
-            return result_type.from_failure(reference)
-        consumed = cls.authority_inputs(reference.value.source_authority)
-        if consumed.failure:
-            return result_type.from_failure(consumed)
-        snapshot = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-            files=(),
-            inputs=consumed.value,
-            generator_trees=cold.value.generator_trees,
-            generator_modules=cold.value.generator_modules,
-            generator_reference=reference.value,
-        )
-        return cls.producer_current(snapshot).map(lambda _current: snapshot)
 
     @classmethod
     def _distribution_providers(
