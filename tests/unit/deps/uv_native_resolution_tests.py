@@ -519,7 +519,7 @@ class TestsFlextInfraUvNativeResolution:
                 "package",
             )
             tm.that(
-                set(packages).issubset({package["name"] for package in locked}),
+                all(name in tuple(package["name"] for package in locked) for name in packages),
                 eq=True,
             )
         tm.that(
@@ -1464,6 +1464,9 @@ class TestsFlextInfraUvNativeResolution:
                 )
                 if identity == "scoped-self":
                     policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
+            case _:
+                msg = f"Unknown native resolution fixture identity: {identity}"
+                raise ValueError(msg)
         u.Tests.write_native_resolution_project(
             root,
             root_name,

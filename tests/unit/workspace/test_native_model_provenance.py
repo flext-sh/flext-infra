@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from flext_core import m
 from pydantic import RootModel
-from ruamel.yaml.compat import check_namespace_char
+from ruamel.yaml import YAML
 from typing_inspection.introspection import AnnotationSource, inspect_annotation
 
 from flext_infra.codegen import (
@@ -29,15 +29,13 @@ class TestsFlextInfraNativeModelProvenance:
     @staticmethod
     def test_real_namespace_provider_retains_authenticated_native_sources() -> None:
         """An installed namespace is not duplicated by the cold import roots."""
-        tm.that(check_namespace_char("a"), eq=True)
-        tm.that(check_namespace_char("\0"), eq=False)
         admission = tm.ok(
             FlextInfraCodegenPreconditions.capture_producer(
-                Path.cwd(), entrypoint=check_namespace_char
+                Path.cwd(), entrypoint=YAML
             )
         )
         sources = tm.not_none(admission.generator_reference).sources
-        expected_source = Path(getfile(check_namespace_char)).resolve()
+        expected_source = Path(getfile(YAML)).resolve()
         tm.that(
             any(Path(source).resolve() == expected_source for _, source, _ in sources),
             eq=True,
@@ -105,7 +103,7 @@ assert changed.read_text(encoding='utf-8') == replacement
     @pytest.mark.parametrize(
         "entrypoint",
         [
-            RootModel.model_construct,
+            RootModel[str].model_construct,
             inspect_annotation,
             m.ContractModel.model_validate,
             u.Infra.docs_scope_artifacts,

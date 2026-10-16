@@ -8,7 +8,12 @@ from __future__ import annotations
 
 import sys
 from functools import partial
-from importlib.machinery import PathFinder
+from importlib.machinery import (
+    ExtensionFileLoader,
+    ModuleSpec,
+    PathFinder,
+    SourceFileLoader,
+)
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
@@ -200,8 +205,9 @@ class FlextInfraCodegenPreconditions:
             return result_type.from_failure(owned)
         return cls._sealed_source_authority(names, roots, trees, states)
 
-    @staticmethod
+    @classmethod
     def _loaded_provider_sources(
+        cls,
         roots: t.MappingKV[str, Path],
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
@@ -223,28 +229,65 @@ class FlextInfraCodegenPreconditions:
             namespace = name.partition(".")[0]
             if name == "__main__":
                 continue
-            if namespace not in roots and namespace not in sys.stdlib_module_names:
-                storage = vars(ModuleType)["__dict__"].__get__(module, type(module))
-                declared = storage.get("__file__")
-                if not isinstance(declared, str) or type(declared) is not str:
+            if namespace in roots:
+                elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(name)
+                if elected.failure:
+                    return r[bool].from_failure(elected)
+                source = elected.value
+            else:
+                source = cls._runtime_bootstrap_file(module, standard, packages)
+                if source is None:
                     continue
-                physical = Path(declared).resolve()
-                if not physical.is_relative_to(standard) or any(
-                    physical.is_relative_to(root) for root in packages
-                ):
-                    continue
-            elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(name)
-            if elected.failure:
-                return r[bool].from_failure(elected)
-            if elected.value in states or elected.value.is_dir():
+            if source in states or source.is_dir():
                 continue
-            captured = FlextInfraMiseArtifactsFiles.read_state(
-                elected.value, required=True
-            )
+            captured = FlextInfraMiseArtifactsFiles.read_state(source, required=True)
             if captured.failure:
                 return r[bool].from_failure(captured)
-            states[elected.value] = captured.value
+            states[source] = captured.value
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _runtime_bootstrap_file(
+        module: t.Infra.NativeOperand,
+        standard: Path,
+        packages: t.SequenceOf[Path],
+    ) -> Path | None:
+        """Locate a resident runtime file without authenticating its module.
+
+        Returns:
+            The original physical stdlib input path, when native file storage
+            agrees with its source or extension loader.
+
+        """
+        if not isinstance(module, ModuleType):
+            return None
+        storage = vars(ModuleType)["__dict__"].__get__(module, type(module))
+        native = storage.get("__spec__")
+        declared = storage.get("__file__")
+        loader = storage.get("__loader__")
+        if (
+            type(native) is not ModuleSpec
+            or not isinstance(declared, str)
+            or type(declared) is not str
+        ):
+            return None
+        if not isinstance(loader, (SourceFileLoader, ExtensionFileLoader)):
+            return None
+        if (
+            type(loader) not in {SourceFileLoader, ExtensionFileLoader}
+            or type(native.origin) is not str
+            or native.origin != declared
+            or native.loader is not loader
+            or loader.path != declared
+        ):
+            return None
+        source = Path(declared).absolute()
+        physical = source.resolve()
+        if not physical.is_relative_to(standard) or any(
+            physical.is_relative_to(root) for root in packages
+        ):
+            return None
+        return source
 
     @classmethod
     def _elected_source_roots(
