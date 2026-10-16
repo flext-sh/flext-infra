@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import tm
 
 
@@ -29,7 +29,7 @@ class TestsFlextInfraNativeProducerBudget:
         budget proof.
         """
         admission = tm.ok(
-            FlextInfraCodegenPreconditions.capture_producer(
+            FlextInfraValidateFreshImport.capture_producer(
                 Path.cwd(),
                 entrypoint=FlextInfraCodegenConform.execute_request,
             )

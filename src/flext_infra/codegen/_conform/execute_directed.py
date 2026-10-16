@@ -35,7 +35,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             The verified publication result, or the verification failure.
 
         """
-        verifier = FlextInfraCodegenPreconditions.capture_producer(
+        verifier = FlextInfraValidateFreshImport.capture_producer(
             request.root,
             entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
         )

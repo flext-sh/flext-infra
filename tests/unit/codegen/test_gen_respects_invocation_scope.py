@@ -127,9 +127,13 @@ class TestsFlextInfraGenRespectsInvocationScope:
         tm.that(any("codegen conform" in line for line in init_lines), eq=False)
         rendered_lines = rendered_makefile.splitlines()
         for verb in config.Infra.codegen.make.verbs:
-            if verb.name in {"setup", "upg", "help", "clean"} or (
-                verb.profiles and c.Infra.MakeProfile.WORKSPACE not in verb.profiles
-            ) or not verb.requires_activation:
+            if (
+                verb.name in {"setup", "upg", "help", "clean"}
+                or (
+                    verb.profiles and c.Infra.MakeProfile.WORKSPACE not in verb.profiles
+                )
+                or not verb.requires_activation
+            ):
                 continue
             activation_target = f"_activated-{verb.name}"
             expected_route = f"{activation_target}: _builtin_require_environment"

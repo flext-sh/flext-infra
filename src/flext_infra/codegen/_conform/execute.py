@@ -21,6 +21,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
+from flext_infra.validate import FlextInfraValidateFreshImport
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 # The surfaces a partial apply plan may publish; every other non-ALL surface is
@@ -102,7 +103,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 f"operation={operation} stage=authenticate root={root} "
                 f"scope={request.scope} surface={request.what}"
             )
-            producer = FlextInfraCodegenPreconditions.capture_producer(
+            producer = FlextInfraValidateFreshImport.capture_producer(
                 root,
                 entrypoint=(
                     cls.generate_request if generation_only else cls.execute_request
@@ -328,7 +329,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         if self.producer is None:
-            producer = FlextInfraCodegenPreconditions.capture_producer(
+            producer = FlextInfraValidateFreshImport.capture_producer(
                 self.repository_root,
                 entrypoint=self.execute,
             )
@@ -1288,7 +1289,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 projects=owned,
                 include_root=True,
             )
-            captured = FlextInfraCodegenPreconditions.capture_producer(
+            captured = FlextInfraValidateFreshImport.capture_producer(
                 request.root,
                 entrypoint=planner.prepare_batches,
                 collaborators=(planner.publish_batch, ports.docs_planner),

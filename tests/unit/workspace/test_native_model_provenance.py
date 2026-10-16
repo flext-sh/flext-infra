@@ -16,11 +16,9 @@ from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 from typing_inspection.introspection import AnnotationSource, inspect_annotation
 
-from flext_infra.codegen import (
-    FlextInfraCodegenPreconditions,
-    FlextInfraMiseArtifactsFiles,
-)
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 from flext_infra.docs import FlextInfraDocGenerator
+from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import p, tm, u
 
 
@@ -35,7 +33,7 @@ class TestsFlextInfraNativeModelProvenance:
         with pytest.raises(YAMLError):
             consumer.load("\0")
         admission = tm.ok(
-            FlextInfraCodegenPreconditions.capture_producer(Path.cwd(), entrypoint=YAML)
+            FlextInfraValidateFreshImport.capture_producer(Path.cwd(), entrypoint=YAML)
         )
         sources = tm.not_none(admission.generator_reference).sources
         expected_source = Path(getfile(YAML)).resolve()
@@ -97,7 +95,8 @@ elif mutation == 'source':
     source.write_text(
         source.read_text(encoding='utf-8').replace('RootModel[str]', 'RootModel[int]'),
         encoding='utf-8')
-admission = preconditions.capture_producer(runtime_root, entrypoint=module.construct)
+admission = FlextInfraValidateFreshImport.capture_producer(
+    runtime_root, entrypoint=module.construct)
 if mutation == 'none':
     producer = admission.unwrap()
     reference = producer.generator_reference
@@ -153,7 +152,7 @@ assert module.construct('wire-value').model_dump() == 'wire-value'
             """sys.path.insert(0, sys.argv[1])
 module = importlib.import_module('source_provider')
 assert module.operation() == 'original'
-admission = preconditions.capture_producer(
+admission = FlextInfraValidateFreshImport.capture_producer(
     runtime_root, entrypoint=module.operation).unwrap()
 assert admission.generator_reference is not None
 sources = {
@@ -200,7 +199,7 @@ assert changed.read_text(encoding='utf-8') == replacement
         assert isclass(entrypoint) or isfunction(entrypoint) or ismethod(entrypoint)
         expected_source = Path(getfile(entrypoint)).resolve()
         admission = tm.ok(
-            FlextInfraCodegenPreconditions.capture_producer(
+            FlextInfraValidateFreshImport.capture_producer(
                 Path.cwd(), entrypoint=entrypoint
             )
         )

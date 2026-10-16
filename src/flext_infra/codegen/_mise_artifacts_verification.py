@@ -42,9 +42,11 @@ class FlextInfraMiseArtifactsVerification(
         cls,
         request: m.Infra.CodegenConformRequest,
         *,
-        verifier: m.Infra.CodegenPhaseAnalysis | None = None,
+        verifier: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate a completed publication without planning or rendering.
+
+        The caller supplies the authenticated live checker before receipt reads.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
@@ -125,7 +127,7 @@ class FlextInfraMiseArtifactsVerification(
         root: Path,
         surface: c.Infra.CodegenConformSurface,
         *,
-        verifier: m.Infra.CodegenPhaseAnalysis | None = None,
+        verifier: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate the stored native receipt before testing request coverage.
 
@@ -210,9 +212,11 @@ class FlextInfraMiseArtifactsVerification(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
         *,
-        verifier: m.Infra.CodegenPhaseAnalysis | None = None,
+        verifier: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[bool]:
         """Verify the terminal frontier of the actual ordered journal batches.
+
+        Historical receipts never create or replace their live checker.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -220,7 +224,7 @@ class FlextInfraMiseArtifactsVerification(
         """
         if outcome.root is None:
             return r[bool].fail("publication receipt lacks its actual root")
-        verifier_current = cls._publication_verifier_current(outcome.root, verifier)
+        verifier_current = cls._publication_verifier_current(verifier)
         if verifier_current.failure:
             return verifier_current
         history = cls._publication_history_current((outcome,))
@@ -236,8 +240,7 @@ class FlextInfraMiseArtifactsVerification(
     @classmethod
     def _publication_verifier_current(
         cls,
-        root: Path,
-        verifier: m.Infra.CodegenPhaseAnalysis | None,
+        verifier: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[bool]:
         """Authenticate the live checker before consuming historical data.
 
@@ -245,14 +248,6 @@ class FlextInfraMiseArtifactsVerification(
             Its current native proof, never authority issued to recorded data.
 
         """
-        if verifier is None:
-            captured = codegen.FlextInfraCodegenPreconditions.capture_producer(
-                root,
-                entrypoint=cls.publication_states_current,
-            )
-            if captured.failure:
-                return r[bool].from_failure(captured)
-            verifier = captured.value
         current_verifier = codegen.FlextInfraCodegenPreconditions.producer_current(
             verifier,
         )

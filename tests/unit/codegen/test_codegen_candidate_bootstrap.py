@@ -15,10 +15,10 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, p, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -172,9 +172,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         destination = root / "publication-output.txt"
         before = tm.ok(u.Infra.codegen_target_snapshot(destination))
         producer = tm.ok(
-            FlextInfraCodegenPreconditions.capture_producer(
+            FlextInfraValidateFreshImport.capture_producer(
                 Path.cwd(),
-                entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+                entrypoint=FlextInfraValidateFreshImport.capture_producer,
             )
         )
         planner = FlextInfraCodegenConform(

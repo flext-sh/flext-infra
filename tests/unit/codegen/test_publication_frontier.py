@@ -30,7 +30,6 @@ class TestsPublicationFrontier:
 from flext_infra import r
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
 )
 from tests import c, m, p, t, tm, u
@@ -48,7 +47,7 @@ before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
 owner = FlextInfraCodegenTransaction(
     FlextInfraCodegenMiseArtifacts(repository_root=root),
     producer=tm.ok(
-        FlextInfraCodegenPreconditions.capture_producer(
+        FlextInfraValidateFreshImport.capture_producer(
             runtime_root, entrypoint=FlextInfraCodegenTransaction
         )
     ),
@@ -126,7 +125,6 @@ tm.that(
         native_consumer(
             r"""sys.path.insert(0, sys.argv[1])
 from flext_infra.codegen import (
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
@@ -145,8 +143,14 @@ generator = FlextInfraDocGenerator(
     selected_projects=["flext-a"],
     include_root=False,
 )
+verifier = tm.ok(
+    FlextInfraValidateFreshImport.capture_producer(
+        runtime_root,
+        entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
+    )
+)
 producer = tm.ok(
-    FlextInfraCodegenPreconditions.capture_producer(
+    FlextInfraValidateFreshImport.capture_producer(
         runtime_root,
         entrypoint=generator.prepare_batches,
         collaborators=(generator.publish_batch,),
@@ -187,7 +191,7 @@ published = tm.ok(
 if mutation == "input-only":
     guide.write_text("# Changed guide\n", encoding="utf-8")
     observed = FlextInfraMiseArtifactsVerification.publication_states_current(
-        published
+        published, verifier=verifier
     )
     tm.fail(observed)
     tm.that(guide.read_text(encoding="utf-8"), eq="# Changed guide\n")
@@ -200,7 +204,7 @@ else:
     )
     injected = published.model_copy(update={"outputs": (output,)})
     observed = FlextInfraMiseArtifactsVerification.publication_states_current(
-        injected
+        injected, verifier=verifier
     )
     tm.fail(observed)
     tm.that(unowned.read_bytes(), eq=b"No publishing batch\n")
@@ -240,7 +244,6 @@ else:
 from flext_infra import infra, r
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
 )
 from tests import c, m, p, t, tm, u
@@ -252,7 +255,7 @@ tm.ok(u.Cli.atomic_write_text_file(target, "VALUE := initial\n"))
 owner = FlextInfraCodegenTransaction(
     FlextInfraCodegenMiseArtifacts(repository_root=root),
     producer=tm.ok(
-        FlextInfraCodegenPreconditions.capture_producer(
+        FlextInfraValidateFreshImport.capture_producer(
             runtime_root, entrypoint=FlextInfraCodegenTransaction
         )
     ),

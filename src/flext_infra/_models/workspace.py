@@ -319,6 +319,7 @@ class FlextInfraModelsWorkspace:
             default=(),
             description="Sources authenticated before compilation in the cold import",
         )
+        _import_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
 
     class NativeImportReference(NativeImportObservation):
         """One loaded epoch authenticated against its cold physical source."""

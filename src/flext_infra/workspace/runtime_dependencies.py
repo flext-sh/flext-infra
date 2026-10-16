@@ -183,11 +183,13 @@ class FlextInfraRuntimeDependencyCollector:
                 and receipt.dir_info.editable
             )
             extra_inputs = package.flat_map(
-                lambda locked_package: self._editable_inputs(
-                    context, distribution, locked_package, repository, receipt
-                )
-                if editable and receipt is not None
-                else r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(()),
+                lambda locked_package: (
+                    self._editable_inputs(
+                        context, distribution, locked_package, repository, receipt
+                    )
+                    if editable and receipt is not None
+                    else r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(())
+                ),
             )
             if extra_inputs.failure:
                 return selected.from_failure(extra_inputs)

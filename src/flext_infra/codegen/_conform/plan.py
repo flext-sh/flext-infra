@@ -20,6 +20,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
+from flext_infra.validate import FlextInfraValidateFreshImport
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -147,7 +148,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             verification or currency failure.
 
         """
-        captured = FlextInfraCodegenPreconditions.capture_producer(
+        captured = FlextInfraValidateFreshImport.capture_producer(
             self.repository_root,
             entrypoint=self.plan,
         )
@@ -189,7 +190,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         if self.producer is None:
-            captured = FlextInfraCodegenPreconditions.capture_producer(
+            captured = FlextInfraValidateFreshImport.capture_producer(
                 self.repository_root,
                 entrypoint=self.plan,
             )

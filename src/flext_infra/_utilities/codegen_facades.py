@@ -1295,9 +1295,10 @@ class FlextInfraUtilitiesCodegenFacades:
                         FlextInfraUtilitiesRopeRuntime.scope_at(pymodule, offset),
                         receiver,
                     )
-                    if not isinstance(
-                        binding, p.Infra.RopeImportedName
-                    ) or binding.imported_name != family:
+                    if (
+                        not isinstance(binding, p.Infra.RopeImportedName)
+                        or binding.imported_name != family
+                    ):
                         continue
                     imported = binding.imported_module
                     if (

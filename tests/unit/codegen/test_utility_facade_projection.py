@@ -1,4 +1,4 @@
-"""Public evidence for discovery-driven utility-facade projection.
+"""Public evidence for declared utility-facade projection.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -17,7 +17,7 @@ from tests import t, tm, u
 
 
 class TestsFlextInfraUtilityFacadeProjection:
-    """Exercise consumer-driven owner projection only through ``u.Infra``."""
+    """Exercise declared owner projection only through ``u.Infra``."""
 
     @pytest.mark.parametrize("length_delta", [0, 16])
     @pytest.mark.parametrize("parenthesized", [False, True])
@@ -1143,25 +1143,27 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.that(output.stdout.strip(), eq="read")
         tm.that(facade.read_text(), eq=rendered)
 
-    def test_rejects_ambiguous_method_ownership(self, tmp_path: Path) -> None:
-        """Fail before projection when two local owners claim one method."""
-        package = tmp_path / "src" / "flext_sample"
-        self._write(package / "__init__.py", "")
-        self._write(
-            package / "codemod" / "batch_apply.py",
-            "from flext_sample import u\n\nu.Sample.plan_cutover()\n",
+    def test_rejects_competing_declared_owners(self, tmp_path: Path) -> None:
+        """Fail before projection when two publishers claim one public name."""
+        _, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
         )
-        for module, class_name in (("first", "First"), ("second", "Second")):
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        self._write(package / "__init__.py", "")
+        for module in ("first", "second"):
             self._write(
-                package / "_utilities" / f"{module}.py",
-                f"class {class_name}:\n"
+                package / family.directory / f"{module}.py",
+                "class Owner:\n"
                 "    @staticmethod\n"
                 "    def plan_cutover() -> None:\n"
-                "        pass\n",
+                "        pass\n"
+                "__all__ = ['Owner']\n",
             )
-        facade = package / "utilities.py"
+        facade = package / c.Infra.UTILITIES_PY
         original = (
-            "from upstream import u\n\n"
+            "from flext_cli import u\n\n"
             "class FlextSampleUtilities(u):\n"
             "    class Sample(u):\n"
             "        pass\n\n"
@@ -1170,7 +1172,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         self._write(facade, original)
 
-        with pytest.raises(ValueError, match=r"ambiguous u\.Sample owner"):
+        with pytest.raises(ValueError, match="Competing declared facade owner names"):
             u.Infra.render_utility_facade(package)
         tm.that(facade.read_text(), eq=original)
 
