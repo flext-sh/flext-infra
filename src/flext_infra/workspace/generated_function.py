@@ -2281,6 +2281,36 @@ class FlextInfraWorkspaceGeneratedFunction:
             case _:
                 return None
 
+    def _dataclass_forged_markers(
+        self,
+        owner: p.AttributeProbe,
+        declaration: ast.ClassDef,
+        module: t.MappingKV[str, p.AttributeProbe],
+    ) -> t.VariadicTuple[str]:
+        """Name methods whose abstract marker no physical decorator declares.
+
+        Returns:
+            The methods carrying ``__isabstractmethod__`` without the decorator.
+
+        """
+        storage = vars(type)["__dict__"].__get__(owner, type(owner))
+        spellings = self._decorator_spellings("abstractmethod", module) or frozenset()
+        forged: list[str] = []
+        for node in declaration.body:
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            chain = self.function_chain(storage.get(node.name))
+            marked = bool(chain) and (
+                self._function_attributes(chain[0]).get("__isabstractmethod__")
+                is True
+            )
+            declared = any(
+                ast.unparse(decorator) in spellings for decorator in node.decorator_list
+            )
+            if marked and not declared:
+                forged.append(node.name)
+        return tuple(forged)
+
     def _compile_dataclass(
         self,
         value: FunctionType,
@@ -2315,6 +2345,12 @@ class FlextInfraWorkspaceGeneratedFunction:
             # module leaves the builtin type unbound.
             return r[m.Infra.NativeGeneratedFunctionProof].fail(
                 f"native dataclass class value names a rebound builtin: {shadowed}"
+            )
+        forged = self._dataclass_forged_markers(owner, declaration, module)
+        if forged:
+            return r[m.Infra.NativeGeneratedFunctionProof].fail(
+                f"native dataclass method carries an undeclared abstract marker: "
+                f"{forged}"
             )
         self._dataclass_sdk(factory[0])
         namespace = self._dataclass_inputs(owner, declaration)
