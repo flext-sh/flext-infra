@@ -500,11 +500,17 @@ comments. They never write the installed generator's configuration or another
 checkout's declarations.
 
 Deptry checking and dependency detection consume one capture owner. It records the
-exact settings, native process outcome, fresh report and physical production tree;
-a changed tree, reused report, missing tool or contradictory exit status fails.
+exact settings, native process outcome, fresh report and one physical production
+tree per scanned root. Every directory the settings' wheel target ships, through
+its `only-include` entries and `sources` prefixes, contributes one root: a source
+remapped to its own trailing name (`"src/<pkg>" = "<pkg>"`) roots at `src`, and a
+namespace or relocated data directory roots at itself. A target declaring neither
+keeps `src`. A changed tree, reused report, missing tool or contradictory exit
+status fails.
 The import extractor's own coverage receipt must report a positive, unambiguous
-executed file count. Empty source trees and exclusions that prevent all execution
-therefore remain failures even when the native findings array is empty.
+executed file count over all roots. Empty source trees and exclusions that prevent
+all execution therefore remain failures even when the native findings array is
+empty.
 Repairs receive the elected interpreter's import suppliers and its native lock
 through typed injection. Missing or ambiguous suppliers remain native findings;
 installed package names never establish applicability. The existing requirement
