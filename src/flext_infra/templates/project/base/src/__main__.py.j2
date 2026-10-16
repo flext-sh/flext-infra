@@ -1,4 +1,4 @@
-"""``python -m {{ package_name }}`` entry point — delegates to ``cli.main``.
+"""``python -m {{ package_name }}`` entry point.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,7 +8,20 @@ from __future__ import annotations
 
 from flext_cli import cli
 
-from {{ package_name }}.cli import main
+from {{ package_name }}.cli import {{ class_stem }}Cli
+
+
+class {{ class_stem }}Main:
+    """Execute the same CLI transport as the installed console script."""
+
+    @staticmethod
+    def main() -> None:
+        """Propagate the CLI process outcome through its public exit owner."""
+        cli.exit({{ class_stem }}Cli.main())
+
+
+__all__: list[str] = ["{{ class_stem }}Main"]
+
 
 if __name__ == "__main__":
-    cli.exit(main())
+    {{ class_stem }}Main.main()

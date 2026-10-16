@@ -40,7 +40,7 @@ from {{ package_name }}._models.config import (
     """
 
 {{ namespace_field }}
-        {{ class_stem }}ConfigModels.ConfigRoot.ConfigNamespace,
+        {{ class_stem }}ConfigModels.ConfigNamespace,
         m.Field(
             description="Open namespace exposing ``config/*.yaml`` under ``{{ ns }}``."
         ),

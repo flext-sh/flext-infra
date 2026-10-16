@@ -9,6 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_core import FlextRuntime
+
 from flext_infra import c, config, m, t, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -488,7 +490,9 @@ class FlextInfraEnsurePyrightConfigPhase:
             toml.SetOp(
                 key="executionEnvironments",
                 value=[
-                    u.normalize_to_json_value(self._environment_payload(expected_env))
+                    FlextRuntime.normalize_to_json_value(
+                        self._environment_payload(expected_env)
+                    )
                     for expected_env in expected_envs
                 ],
             ),

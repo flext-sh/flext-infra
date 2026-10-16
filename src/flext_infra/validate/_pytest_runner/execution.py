@@ -869,8 +869,8 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
-        # A declared file always executes under forceselect, so an empty testmon
-        # selection over a restored cache is never a cache hit for it.
+        # A declared file executes its complete collected inventory, so an empty
+        # incremental suite selection never grants a cache hit to a file request.
         cache_hit = (
             self.target_file is None
             and not complete
