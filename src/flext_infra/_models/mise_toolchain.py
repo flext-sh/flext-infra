@@ -288,14 +288,20 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = None
+        bin: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description="Native backend executable name for single-file artifacts"
+            ),
+        ] = None
         form: Annotated[
             Literal["scalar", "table"],
             m.Field(
                 default="scalar",
                 description=(
                     "Rendered [tools] shape; the projection byte contract. "
-                    "scalar (default) is the bare assignment, table carries "
-                    "version_prefix"
+                    "scalar (default) is the bare assignment; table carries "
+                    "native backend options"
                 ),
             ),
         ] = "scalar"

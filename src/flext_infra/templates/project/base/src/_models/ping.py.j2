@@ -9,24 +9,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar
+from typing import Annotated
 
-from flext_core import m
+from flext_core import m, t
 
 
 class {{ class_stem }}ModelsPing:
     """{{ ns }} ping-command models (Pydantic v2, built the 2-way)."""
 
-    class PingInput(m.BaseModel):
+    class PingInput(m.ContractModel):
         """Input model for the ``ping`` health-check command (no fields)."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-    class PingResult(m.BaseModel):
+    class PingResult(m.ImmutableValueModel):
         """Result model for the ``ping`` health-check command."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-        message: Annotated[str, m.Field(description="Health-check reply message.")]
+        message: Annotated[
+            t.StrictStr,
+            m.Field(description="Health-check reply message."),
+        ]
 
 
 __all__: list[str] = ["{{ class_stem }}ModelsPing"]

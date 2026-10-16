@@ -22,9 +22,11 @@ class TestsFlextInfraRopeContracts:
     """Prove runtime values, failure contracts and the shared fixed point."""
 
     @staticmethod
-    def test_catalog_phases_roundtrip_and_reject_unknown_values() -> None:
+    def test_catalog_phases_roundtrip_and_reject_unknown_values(
+        tmp_path: Path,
+    ) -> None:
         """Configured rules retain enum identities, never an unvalidated phase."""
-        for rule in u.Infra.declared_contract_rules():
+        for rule in u.Infra.declared_contract_rules(tmp_path):
             payload = rule.model_dump(round_trip=True)
             restored = m.Infra.RopeContractRule.model_validate_json(
                 rule.model_dump_json(round_trip=True)
@@ -35,6 +37,45 @@ class TestsFlextInfraRopeContracts:
                 m.Infra.RopeContractRule.model_validate(payload)
 
     @staticmethod
+    def test_repository_overlay_composes_after_packaged_rules(
+        tmp_path: Path,
+    ) -> None:
+        """A repository's own rules extend the universal catalogue, in order."""
+        packaged = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
+        overlay = tmp_path / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        overlay.parent.mkdir(parents=True)
+        overlay.write_text(
+            "rules:\n"
+            "  - id: consumer-own-helper\n"
+            "    pattern: '${helper}(${value})'\n"
+            "    goal: 'str(${value})'\n"
+            "    arguments:\n"
+            "      helper: name=consumer.helpers.Helpers.render\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        composed = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
+        tm.that(composed, eq=(*packaged, "consumer-own-helper"))
+
+    @staticmethod
+    def test_repository_overlay_cannot_redeclare_a_packaged_rule(
+        tmp_path: Path,
+    ) -> None:
+        """A rule identity has one owner; an overlay redeclaration fails loud."""
+        packaged = u.Infra.declared_contract_rules(tmp_path)[0]
+        overlay = tmp_path / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        overlay.parent.mkdir(parents=True)
+        overlay.write_text(
+            "rules:\n"
+            f"  - id: {packaged.id}\n"
+            f"    pattern: {packaged.pattern!r}\n"
+            f"    goal: {packaged.goal!r}\n"
+            "    arguments: {}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with pytest.raises(ValueError, match="duplicate Rope contract rule"):
+            u.Infra.declared_contract_rules(tmp_path)
+
+    @staticmethod
     @pytest.mark.parametrize(
         "declaration",
         [
@@ -42,6 +83,18 @@ class TestsFlextInfraRopeContracts:
             "values: dict[str, list[int]] = Field(default_factory=dict)",
             "values: Meta[list[str], Field(default_factory=list)]",
             "values: Meta[int, Field(default=3)]",
+            "values: set[str] = Field(default_factory=set)",
+            "values: tuple[str, ...] = Field(default_factory=tuple)",
+            "values: list[str] = Field(default_factory=list, description='d')",
+            "values: dict[str, int] = Field(default_factory=dict, description='d')",
+            (
+                "values: Meta[list[str], Field(description='d')] = "
+                "Field(default_factory=list)"
+            ),
+            (
+                "values: Meta[dict[str, int], Field(min_length=0)] = "
+                "Field(default_factory=dict)"
+            ),
         ],
     )
     def test_real_defaults_preserve_runtime_and_converge(
@@ -123,10 +176,9 @@ class TestsFlextInfraRopeContracts:
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
-    @pytest.mark.parametrize(
-        "namespace",
-        ["flext_tap_ldif", "flext_target_ldif", "flext_dbt_ldif"],
-    )
+    # Outer facades from this project's own declared FLEXT dependencies; a
+    # library test never imports a downstream consumer it does not install.
+    @pytest.mark.parametrize("namespace", ["flext_core", "flext_cli"])
     def test_outer_facades_preserve_nested_contracts(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         namespace: str,

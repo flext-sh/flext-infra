@@ -2,6 +2,18 @@ id: ban-family-base-own-import
 snapshots:
   ? |
     if TYPE_CHECKING:
+        from flext_infra import t
+  : labels:
+    - source: from flext_infra import t
+      style: primary
+      start: 22
+      end: 47
+    - source: flext_infra
+      style: secondary
+      start: 27
+      end: 38
+  ? |
+    if TYPE_CHECKING:
         import flext_infra._models
   : labels:
     - source: flext_infra._models
@@ -47,19 +59,5 @@ snapshots:
       end: 28
     - source: import flext_infra._settings
       style: secondary
-      start: 5
-      end: 26
-  ? |
-    import typing
-
-    if typing.TYPE_CHECKING:
-        from flext_infra import t
-  : labels:
-    - source: from flext_infra import t
-      style: primary
-      start: 44
-      end: 69
-    - source: flext_infra
-      style: secondary
-      start: 49
-      end: 60
+      start: 0
+      end: 28

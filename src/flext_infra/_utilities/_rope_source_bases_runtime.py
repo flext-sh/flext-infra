@@ -73,7 +73,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def __init__(
             self,
-            project: t.Infra.RopeProject,
+            project: p.Infra.RopeProject,
             sources: t.MappingKV[str, t.Pair[Path, str]],
             roots: t.StrSequence,
             extra_module_aliases: t.MappingKV[str, str] | None,
@@ -1211,7 +1211,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     @classmethod
     def source_class_order(
         cls,
-        project: t.Infra.RopeProject,
+        project: p.Infra.RopeProject,
         sources: t.MappingKV[str, t.Pair[Path, str]],
         declarations: t.SequenceOf[m.Infra.SourceClassReference],
     ) -> t.StrTuple:

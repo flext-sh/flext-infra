@@ -80,6 +80,18 @@ snapshots:
       start: 60
       end: 84
   ? |
+    if TYPE_CHECKING:
+        from flext_infra._models import FlextInfraModelsBase
+  : labels:
+    - source: from flext_infra._models import FlextInfraModelsBase
+      style: primary
+      start: 22
+      end: 74
+    - source: flext_infra._models
+      style: secondary
+      start: 27
+      end: 46
+  ? |
     import flext_infra
   : labels:
     - source: flext_infra

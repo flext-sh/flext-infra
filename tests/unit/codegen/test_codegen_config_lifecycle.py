@@ -115,6 +115,8 @@ class TestsFlextInfraCodegenConfigLifecycle:
                 msg=output.stdout + output.stderr,
             )
         script = """
+import sys
+from importlib.metadata import distribution
 from importlib.resources import files
 from pathlib import Path
 
@@ -136,7 +138,67 @@ else:
 adjusted = settings.clone(debug=not settings.debug)
 assert adjusted.debug != settings.debug
 assert config.model_dump() == before
-print("generated config: frozen YAML, subclass identity, independent settings")
+message = f"  {config.Demo.ping_reply}\\n"
+reply = m.Demo.PingResult(message=message)
+assert reply.message == message
+for schema, payload in (
+    (m.Demo.ConfigNamespace, config.Demo.model_dump()),
+    (m.Demo.SettingsNamespace, settings.Demo.model_dump()),
+    (m.Demo.PingInput, {}),
+    (m.Demo.PingResult, {"message": message}),
+):
+    value = schema.model_validate(payload)
+    assert schema.model_validate_json(value.model_dump_json()) == value
+    try:
+        schema.model_validate({**payload, "__unexpected__": True})
+    except m.ValidationError as error:
+        assert all(item["type"] == "extra_forbidden" for item in error.errors())
+    else:
+        raise AssertionError(f"Generated schema accepts undeclared input: {schema}")
+for schema, payload, error_type in (
+    (m.Demo.PingResult, {"message": message.encode()}, "string_type"),
+    (m.Demo.SettingsNamespace, {"enabled": "false"}, "bool_type"),
+):
+    try:
+        schema.model_validate(payload)
+    except m.ValidationError as error:
+        assert all(item["type"] == error_type for item in error.errors())
+    else:
+        raise AssertionError(f"Generated schema coerces an incompatible input: {schema}")
+enabled = not settings.Demo.enabled
+prefix = type(settings).model_config["env_prefix"]
+native = u.Cli.run_raw(
+    [
+        sys.executable, "-c",
+        "from flext_demo import settings; "
+        f"assert settings.Demo.enabled is {enabled!r}",
+    ],
+    cwd=Path.cwd(),
+    options=m.Cli.ProcessOptions(
+        env={f"{prefix}Demo__enabled": str(enabled).lower()},
+    ),
+)
+assert native.success, native.error
+assert u.Cli.process_succeeded(native.value.outcome), native.value.stderr
+entry = next(
+    item for item in distribution(config.Demo.name).entry_points
+    if item.group == "console_scripts" and item.name == config.Demo.name
+)
+expected_reply = (
+    config.Demo.ping_reply if settings.Demo.enabled else config.Demo.disabled_reply
+)
+for argv in (
+    [sys.executable, "-m", "flext_demo", config.Demo.ping_command_name],
+    [str(Path(sys.executable).parent / entry.name), config.Demo.ping_command_name],
+):
+    called = u.Cli.run_raw(argv, cwd=Path.cwd())
+    assert called.success, called.error
+    assert u.Cli.process_succeeded(called.value.outcome), called.value.stderr
+    assert expected_reply in called.value.stdout
+print(
+    "generated config: frozen YAML, subclass identity, "
+    "independent settings, typed payloads, native CLI entrypoints"
+)
 """
         process = tm.ok(
             u.Cli.run_raw(
