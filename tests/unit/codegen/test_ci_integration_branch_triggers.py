@@ -328,7 +328,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                     "github.event_name == 'push'",
                     "startsWith(github.ref, 'refs/heads/')",
                     "github.event_name == 'pull_request'",
-                    "github.event.pull_request.head.repo.full_name == github.repository",
+                    "github.event.pull_request.head.repo.full_name "
+                    "== github.repository",
                 ],
             )
             tm.that(
@@ -337,7 +338,9 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             )
             cache_input = u.Cli.json_as_mapping(saves[0]["with"])
             restore = next(
-                step for step in steps if step.get("name") == "Restore testmon database"
+                step
+                for step in steps
+                if step.get("name") == "Restore testmon database"
             )
             test_step = next(
                 step
@@ -359,7 +362,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 eq=[
                     (
                         "${{ steps.testmon_path.outputs.namespace }}"
-                        "${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}-"
+                        "${{ hashFiles('uv.lock', 'mise.lock', "
+                        "'pyproject.toml', 'config/**') }}-"
                     ),
                     "${{ steps.testmon_path.outputs.namespace }}",
                     "${{ steps.testmon_path.outputs.seed_namespace }}",

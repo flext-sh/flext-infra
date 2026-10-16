@@ -105,7 +105,12 @@ class TestsFlextInfraCodemodContextComposeModule:
 
     @staticmethod
     def _admits(root: Path, module: str) -> bool:
-        """Admit one probe finding through the compose-module predicate."""
+        """Admit one probe finding through the compose-module predicate.
+
+        Returns:
+            Whether the real binding owner admits the probe finding.
+
+        """
         package = u.Infra.project_package_name(root)
         path = root / c.Infra.DEFAULT_SRC_DIR / package / "consumer.py"
         path.parent.mkdir(parents=True, exist_ok=True)

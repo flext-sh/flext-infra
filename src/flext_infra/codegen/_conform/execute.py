@@ -935,16 +935,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             participant_policy=policy,
             producer=producer,
         )
-        prepared = transaction.run_locked(
+        planned = transaction.run_locked(
             prepare=True,
             operation=lambda scope_root: self._execute_managed_locked(
                 request,
                 scope_root,
             ),
-        )
-        if prepared.failure:
-            return r[m.Infra.CodegenResult].from_failure(prepared)
-        planned = self._prepare_managed_plan(request)
+        ).flat_map(lambda _: self._prepare_managed_plan(request))
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
         batches: list[m.Infra.CodegenPhaseOutcome] = []
