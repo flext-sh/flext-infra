@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsMixins
 from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
@@ -64,7 +64,7 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Apply the complete candidate campaign"),
         ] = True
 
-    class CodegenPhaseAnalysis(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenPhaseAnalysis(FlextInfraModelsBase.FrozenArbitrary):
         """Immutable planner receipt reused for publication verification."""
 
         phase: Annotated[
@@ -133,7 +133,7 @@ class FlextInfraModelsCodegenPipelineModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenPhaseOutcome(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenPhaseOutcome(FlextInfraModelsBase.FrozenArbitrary):
         """One fleet worker's phase analysis, or its failure as data."""
 
         _publication_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)

@@ -13,7 +13,11 @@ from typing import Annotated, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
+from flext_infra._models import (
+    FlextInfraModelsBase,
+    FlextInfraModelsCodegenToolchain,
+    FlextInfraModelsRope,
+)
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
 from flext_infra._models.check import FlextInfraModelsCheck
@@ -23,7 +27,7 @@ from flext_infra._models.workspace import FlextInfraModelsWorkspace
 class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
 
-    class StagePackagePlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class StagePackagePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned package/dependency inputs and the declared public facade contract."""
 
         package: str = m.Field(description="Selected canonical package namespace")
@@ -46,7 +50,7 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Workspace namespaces requiring sealed origins"
         )
 
-    class StageSourcePlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class StageSourcePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned project closure and desired bytes for effect-free validation."""
 
         workspace: Path = m.Field(description="Canonical source workspace root")
@@ -66,7 +70,7 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Declared workspace namespaces with sealed candidate origins",
         )
 
-    class StagePackageView(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class StagePackageView(FlextInfraModelsBase.FrozenArbitrary):
         """Journal-owned materialized package view, never another source of truth."""
 
         plan: FlextInfraModelsCodegenTransactionModels.StagePackagePlan = m.Field(
@@ -85,7 +89,7 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact desired facade bytes and physical identity"
         )
 
-    class CodegenTransactionJournal(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenTransactionJournal(FlextInfraModelsBase.FrozenArbitrary):
         """Persisted recovery contract for one workspace-wide generation."""
 
         version: Annotated[
@@ -345,7 +349,7 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact journal observation retained for revalidation",
         )
 
-    class CodegenFileSessionPlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenFileSessionPlan(FlextInfraModelsBase.FrozenArbitrary):
         """File-only transaction topology; contains no Mise artifact snapshot."""
 
         layout: Annotated[
@@ -360,7 +364,7 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenTransactionSession(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenTransactionSession(FlextInfraModelsBase.FrozenArbitrary):
         """Immutable cursor for one live prepared generation transaction."""
 
         plan: Annotated[
@@ -409,7 +413,7 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenPhasePublicationPolicy(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenPhasePublicationPolicy(FlextInfraModelsBase.FrozenArbitrary):
         """Caller-owned directories and native admission for one publication."""
 
         directories: t.VariadicTuple[Path] = m.Field(

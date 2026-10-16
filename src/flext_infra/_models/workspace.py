@@ -14,6 +14,7 @@ from typing_extensions import TypeForm
 
 from flext_infra import c, p, t
 from flext_infra._models import (
+    FlextInfraModelsBase,
     FlextInfraModelsCheck,
     FlextInfraModelsMixins,
     FlextInfraModelsRope,
@@ -329,7 +330,7 @@ class FlextInfraModelsWorkspace:
         )
         _native_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
 
-    class NativeImportRequest(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class NativeImportRequest(FlextInfraModelsBase.FrozenArbitrary):
         """Loaded producer identities and pinned inputs for source authentication."""
 
         repository_root: Path = m.Field(
