@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     from flext_infra._config import FlextInfraConfig, config
     from flext_infra._conform_wiring import FlextInfraConformWiring
     from flext_infra._preview_wiring import FlextInfraPreviewWiring
+    from flext_infra._pytest_clock import FlextInfraPytestClock
     from flext_infra._pytest_collection import FlextInfraPytestCollection
     from flext_infra._settings import FlextInfraSettings, settings
     from flext_infra.api import FlextInfra, infra
@@ -87,6 +88,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraPromoted",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
+    "FlextInfraPytestClock",
     "FlextInfraPytestCollection",
     "FlextInfraPytestProfile",
     "FlextInfraServiceBase",
@@ -158,6 +160,7 @@ install_lazy_exports(
         "FlextInfraPromoted": ".promoted",
         "FlextInfraProtocols": ".protocols",
         "FlextInfraProtocolsBase": ".protocols",
+        "FlextInfraPytestClock": "._pytest_clock",
         "FlextInfraPytestCollection": "._pytest_collection",
         "FlextInfraPytestProfile": ".pytest_profile",
         "FlextInfraServiceBase": ".base",

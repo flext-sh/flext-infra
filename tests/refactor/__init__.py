@@ -8,14 +8,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
 
-__all__: tuple[str, ...] = ()
+if TYPE_CHECKING:
+    from tests.refactor.test_rope_stubs import TestsFlextInfraRefactorRopeStubs
+
+
+__all__: tuple[str, ...] = ("TestsFlextInfraRefactorRopeStubs",)
 
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({}),
+    MappingProxyType({"TestsFlextInfraRefactorRopeStubs": ".test_rope_stubs"}),
     public_exports=__all__,
 )

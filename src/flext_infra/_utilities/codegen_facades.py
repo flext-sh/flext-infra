@@ -901,6 +901,17 @@ class FlextInfraUtilitiesCodegenFacades:
                 if FlextInfraUtilitiesCodegenFacades._base_name(base) in declared_names:
                     continue
                 expression = base.value if isinstance(base, ast.Subscript) else base
+                head = expression
+                while isinstance(head, ast.Attribute):
+                    head = head.value
+                if head is not expression and (
+                    FlextInfraUtilitiesCodegenFacades._upstream_binding(
+                        project,
+                        snapshot,
+                        FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, head),
+                    )
+                ):
+                    continue
                 binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
                     scope,
                     expression,
@@ -914,9 +925,14 @@ class FlextInfraUtilitiesCodegenFacades:
                 provider = holder.get_resource() if holder is not None else None
                 if provider is None:
                     value = binding.get_object()
-                    if FlextInfraUtilitiesRopeRuntime.abstract_class(
-                        value
-                    ) and not FlextInfraUtilitiesRopeRuntime.py_class(value):
+                    if (
+                        FlextInfraUtilitiesRopeRuntime.abstract_class(value)
+                        and not FlextInfraUtilitiesRopeRuntime.py_class(value)
+                    ) or FlextInfraUtilitiesCodegenFacades._upstream_binding(
+                        project,
+                        snapshot,
+                        binding,
+                    ):
                         continue
                     message = (
                         f"Facade base has no source owner: "
@@ -931,6 +947,42 @@ class FlextInfraUtilitiesCodegenFacades:
             return frozenset(retired)
         finally:
             snapshot.close()
+
+    @staticmethod
+    def _upstream_binding(
+        project: t.Infra.RopeProject,
+        snapshot: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName | None,
+    ) -> bool:
+        """Return whether a facade base binding is upstream inheritance.
+
+        The facade snapshot captures only the project's own sources, so a
+        name imported from an installed upstream package has no source holder
+        there and its module is absent from the snapshot. Its import
+        provenance still resolves through the full import project; such a
+        base, and any attribute reached through it (``Upstream.Nested``), is
+        inherited and never retired. An import whose module the import project
+        cannot resolve raises.
+
+        Returns:
+            Whether the binding is an absolute import of a module the snapshot
+            does not capture.
+
+        """
+        if (
+            not isinstance(binding, p.Infra.RopeImportedName)
+            or binding.get_definition_location()[0] is not None
+        ):
+            return False
+        imported = binding.imported_module
+        if (
+            imported.level
+            or imported.module_name is None
+            or snapshot.find_module(imported.module_name) is not None
+        ):
+            return False
+        FlextInfraUtilitiesRopeRuntime.imported_module_path(project, binding)
+        return True
 
     @staticmethod
     def _rebind_declared_imports(

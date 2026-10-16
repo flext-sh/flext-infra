@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
+    from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
     from flext_infra.codemod._extract_duplicate import FlextInfraExtractDuplicatePhase
     from flext_infra.codemod._loop_phase_accessor_rename import (
         FlextInfraAccessorRenamePhase,
@@ -51,6 +53,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCodemodSnapshotRefresh",
+    "FlextInfraDeadScaffold",
     "FlextInfraDuplicateApplyPhase",
     "FlextInfraExtractDuplicatePhase",
     "FlextInfraImportNormalizationPhase",
@@ -58,6 +61,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModReplacements",
     "FlextInfraModTextGateEngine",
     "FlextInfraNamespaceRelocationPhase",
+    "FlextInfraOrphanImport",
     "FlextInfraRenameSources",
     "FlextInfraRenameSymbols",
 )
@@ -74,6 +78,7 @@ install_lazy_exports(
         "FlextInfraCodemodSemanticApply": ".semantic_apply",
         "FlextInfraCodemodSnapshotReconciler": ".snapshot_reconciler",
         "FlextInfraCodemodSnapshotRefresh": ".snapshot_refresh",
+        "FlextInfraDeadScaffold": "._batch_dead_scaffold",
         "FlextInfraDuplicateApplyPhase": "._loop_phase_duplicate_apply",
         "FlextInfraExtractDuplicatePhase": "._extract_duplicate",
         "FlextInfraImportNormalizationPhase": "._loop_phase_import_normalization",
@@ -81,6 +86,7 @@ install_lazy_exports(
         "FlextInfraModReplacements": ".batch_replacements",
         "FlextInfraModTextGateEngine": ".text_gates",
         "FlextInfraNamespaceRelocationPhase": "._loop_phase_namespace_relocation",
+        "FlextInfraOrphanImport": "._batch_orphan_import",
         "FlextInfraRenameSources": "._rename_sources",
         "FlextInfraRenameSymbols": "._rename_symbols",
     }),
