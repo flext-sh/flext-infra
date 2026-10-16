@@ -37,7 +37,8 @@ management
 
 ## Collection Rules
 
-Read [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
+Read
+[`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/upload-20261007/AGENTS.md)
 §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent
 FLEXT chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry
 verification).
@@ -66,17 +67,18 @@ verification).
 Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, `docs`) execute their declared
 operations directly.
 
-See [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
+See
+[`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/upload-20261007/AGENTS.md)
 for the build, test, and Python quality gates.
 
 ## Governance Pointer
 
 - Engineering law:
-  [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
+  [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/upload-20261007/AGENTS.md)
 - Governance + ADRs:
-  [`/flext/docs/GOVERNANCE.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/GOVERNANCE.md)
+  [`/flext/docs/GOVERNANCE.md`](https://github.com/flext-sh/flext/blob/upload-20261007/docs/GOVERNANCE.md)
 - Skills index:
-  [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/0.12.0-dev/.agents/skills/)
+  [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/upload-20261007/.agents/skills/)
 - Onboarding:
-  [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/guides/onboarding.md)
+  [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/upload-20261007/docs/guides/onboarding.md)
 - Full project portal: [`docs/index.md`](docs/index.md).

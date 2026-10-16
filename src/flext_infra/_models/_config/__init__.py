@@ -24,6 +24,9 @@ if TYPE_CHECKING:
     from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
     from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
     from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
+    from flext_infra._models._config.refactor_campaigns import (
+        FlextInfraConfigModelsRefactorCampaigns,
+    )
     from flext_infra._models._config.release import FlextInfraConfigModelsRelease
     from flext_infra._models._config.render import FlextInfraConfigModelsRender
     from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
@@ -44,6 +47,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsMakeClean",
     "FlextInfraConfigModelsMakeDocs",
     "FlextInfraConfigModelsProvider",
+    "FlextInfraConfigModelsRefactorCampaigns",
     "FlextInfraConfigModelsRelease",
     "FlextInfraConfigModelsRender",
     "FlextInfraConfigModelsRepository",
@@ -68,6 +72,7 @@ install_lazy_exports(
         "FlextInfraConfigModelsMakeClean": ".make_clean",
         "FlextInfraConfigModelsMakeDocs": ".make_docs",
         "FlextInfraConfigModelsProvider": ".provider",
+        "FlextInfraConfigModelsRefactorCampaigns": ".refactor_campaigns",
         "FlextInfraConfigModelsRelease": ".release",
         "FlextInfraConfigModelsRender": ".render",
         "FlextInfraConfigModelsRepository": ".repository",

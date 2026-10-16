@@ -145,6 +145,11 @@ Infra:
           binary: uv
           arguments: [ --version ]
           pattern: "^uv {version} "
+      # direnv v2.38.1 publishes its Windows builds as direnv.windows-*.exe;
+      # the aqua registry entry (complete_windows_ext: false, unchanged since
+      # v2.37.0) still asks for the old extensionless name, so the default
+      # aqua resolver cannot lock windows-x64. The GitHub release backend
+      # selects assets by OS/arch and strips the suffix of raw binaries.
       - name: direnv
         selector: github:direnv/direnv
         version: latest

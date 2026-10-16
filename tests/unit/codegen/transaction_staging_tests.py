@@ -31,6 +31,32 @@ class TestsFlextInfraTransactionStaging:
     """Exercise durable staging authority before publishing live destinations."""
 
     @staticmethod
+    def test_capability_roots_bind_through_the_file_participant_contract(
+        tmp_path: Path,
+    ) -> None:
+        """Roots keyed by the transaction's selector owner bind every participant.
+
+        A caller that keyed roots by a repository name instead of the owner's
+        selector grammar failed participant validation during ``make gen``.
+        """
+        root = u.Tests.git_repository(tmp_path / "flext-demo")
+        member = root / "flext-demo-member"
+        member.mkdir()
+        roots = transaction.FlextInfraCodegenTransaction.capability_roots(
+            "lazy-init",
+            (root, member),
+        )
+        layout = tm.ok(
+            FlextInfraMiseWorkspacePlanner(
+                FlextInfraCodegenMiseArtifacts(repository_root=root),
+            ).file_layout(root, roots, transaction_id="e" * 32),
+        )
+        tm.that(
+            {item.selector: item.root for item in layout.file_participants},
+            eq=dict(roots),
+        )
+
+    @staticmethod
     def test_missing_required_member_manifest_rejects_source_planning(
         tmp_path: Path,
     ) -> None:
