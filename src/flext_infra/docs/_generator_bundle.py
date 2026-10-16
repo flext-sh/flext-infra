@@ -15,6 +15,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsVerification,
 )
+from flext_infra.validate import FlextInfraValidateFreshImport
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 if TYPE_CHECKING:
@@ -93,7 +94,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         """
         if producer is None:
-            captured_producer = FlextInfraCodegenPreconditions.capture_producer(
+            captured_producer = FlextInfraValidateFreshImport.capture_producer(
                 request.repository_root,
                 entrypoint=entrypoint,
                 collaborators=collaborators,
@@ -353,7 +354,7 @@ class FlextInfraDocGeneratorBundleMixin:
 
         """
         if producer is None:
-            captured_producer = FlextInfraCodegenPreconditions.capture_producer(
+            captured_producer = FlextInfraValidateFreshImport.capture_producer(
                 request.repository_root,
                 entrypoint=entrypoint,
                 collaborators=collaborators,

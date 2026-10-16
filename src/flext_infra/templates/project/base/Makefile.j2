@@ -30,12 +30,14 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
 			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
 			exit 2; \
 		fi; \
-		$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"
+		$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"; \
+		$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run(gates_csv(make.fmt_gates), " --apply") }}
 {%- endmacro -%}
 {%- macro fix_body() -%}
+{{ "\t" }}@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode apply
 {{ "\t" }}@{{ check_run(gates_csv(make.check_gates_fixable), " --apply") }}
 {%- endmacro -%}
 {#- A local workspace run carries a mutating verb to every governed member
@@ -543,7 +545,7 @@ SETUP_ENVIRONMENT_RECIPE = $(INSTALL_RUNTIME_RECIPE); \
 	if [ "$(strip $({{ make.uv_resolution.hosted_variable }}))" = "{{ make.uv_resolution.hosted_value }}" ]; then setup_scope=self; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only --scope "$$setup_scope"; \
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)" --scope "$$setup_scope"; \
-	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope" --mode apply
+	$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope"
 
 # Reject borrowed environments before bootstrap, activation or custom hooks.
 # Members may use their containing workspace, never an unrelated checkout.
@@ -593,32 +595,22 @@ export {{ make.ci.variable }}
 override TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
 endif
 override SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
-# Compare the parsed dispatcher with the one published by generation.
-override SELF_MAKEFILE_DIGEST := $(shell sha256sum "$(SELF_MAKEFILE)")
 
 define RUN_PUBLIC_POST
 	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
 endef
 
-# A public verb is its producer half (pre hook plus handler) followed by its
-# activation half. An activation producer re-enters the environment its
-# producer just rendered; `upg` runs the two halves apart so the toolchain
-# lock is resolved from that rendered manifest before activation demands it.
+# Every public operation invokes its declared hooks and handler once.
+# Environment activation is an input prerequisite, never a second operation
+# after a generator has published a new .envrc.
 define RUN_PUBLIC_PRODUCE
 	$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) pre-$(1))
 	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) _custom-$(1),+@$(SELF_MAKE) _builtin-$(1))
 endef
 
-# Activation follows the same context rule as every public verb: CI runs the
-# activated target directly in its provisioned environment; elsewhere direnv
-# activates the checkout first.
-define RUN_PUBLIC_ACTIVATE
-	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _activated-$(1),direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$(1))
-endef
-
 define RUN_PUBLIC
 $(call RUN_PUBLIC_PRODUCE,$(1))
-	$(if $(2),$(call RUN_PUBLIC_ACTIVATE,$(1)),$(call RUN_PUBLIC_POST,$(1)))
+$(call RUN_PUBLIC_POST,$(1))
 endef
 
 {% if script_dispatch %}
@@ -658,22 +650,19 @@ endef
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
 .PHONY: _builtin_gen_init _builtin_gen_all
 
-{# Provisioning creates the physical environment. Activation producers use that
-   existing environment to regenerate activation inputs before consuming them.
-   All other operational verbs activate before their handlers and hooks. -#}
+{# Generation can repair activation inputs using its declared physical runtime.
+   Operations that consume activation enter direnv before their handlers. -#}
 {% macro public_verb_entry(verb) -%}
-{% if verb.produces_activation %}
-# The pre hook and selected producer run once before activation. The producer
-# owns the complete generation transaction; activation adds no second writer.
+{% if not verb.requires_activation %}
+# This operation consumes the declared physical runtime without activating the
+# environment file it may itself regenerate.
 {{ verb.name }}: _builtin_require_workspace _builtin_require_interpreter
-	$(call RUN_PUBLIC,{{ verb.name }},1)
-
-.PHONY: _activated-{{ verb.name }}
-_activated-{{ verb.name }}: _builtin_require_environment
-	$(call RUN_PUBLIC_POST,{{ verb.name }})
+	@printf '==> %s | project=%s | profile=%s\n' '{{ verb.name }}' "$(PROJECT_ROOT)" '{{ make_profile }}'
+	$(call RUN_PUBLIC,{{ verb.name }})
 {% else %}
 {% if verb.name not in ("help", "clean") %}
 {{ verb.name }}: _builtin_require_workspace{% if verb.name == "examples" %} _builtin_require_examples{% endif %}
+	@printf '==> %s | project=%s | profile=%s\n' '{{ verb.name }}' "$(PROJECT_ROOT)" '{{ make_profile }}'
 {% if verb.name == "status" %}
 	@$(GITHUB_AUTH_DIAGNOSTICS)
 {% endif %}
@@ -716,7 +705,7 @@ setup: _builtin_require_workspace
 endif
 
 _builtin-pre-commit: _builtin_require_environment
-	@{{ check_run(gates_csv(make.check_gates_ci)) }}
+	+@{{ make.ci.variable }}={{ make.ci.value }} $(SELF_MAKE) check
 	+@{{ make.ci.variable }}={{ make.ci.value }} $(SELF_MAKE) test
 
 # `upg` builds the environment from the locks it writes, so like `setup` it
@@ -879,52 +868,37 @@ _upg_lifecycle: _builtin_setup_submodules
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
+	@$(SELF_MAKE) _builtin_require_upg_lock_owner
 	@set -eu; \
 	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
 	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
 		$(UV) lock --project "$$resolution" --python "$$desired_python" --upgrade --refresh; \
 	done
 	@$(SELF_MAKE) _upg_install_runtime
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what pyproject --scope all --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what mise-config --scope self
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --projects .
 	$(call RUN_PUBLIC_PRODUCE,gen)
-	+@set -eu; \
-	published="$$(sha256sum "$(SELF_MAKEFILE)")"; \
-	if [ "$$published" = "$(SELF_MAKEFILE_DIGEST)" ]; then \
-		$(SELF_MAKE) _upg_converge; \
-	elif [ "$(UPG_HANDOFF)" = "Y" ]; then \
-		printf 'ERROR: upg: gen republished %s inside the hand-off; gen is not a fixed point\n' "$(SELF_MAKEFILE)" >&2; \
-		exit 1; \
-	else \
-		printf 'upg: gen published a new %s; handing off to make upg on it\n' "$(SELF_MAKEFILE)"; \
-		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)" upg UPG_HANDOFF=Y; \
-	fi
+	+@$(SELF_MAKE) _upg_converge
 
-# Convergence runs the complete gen verb, whose activation half checks the
-# receipt gen itself just republished. A separate activation before it would
-# read the runtime-bindings receipt _builtin_setup_environment leaves behind,
-# which never covers the gen request.
+# Complete the upgrade against the projections just published. Re-reading the
+# current Makefile selects the new recipes without restarting the upgrade or
+# repeating generation and installation.
 _upg_converge:
 	@$(SELF_MAKE) _upg_reconcile_locks
-	@mise -C "$(PROJECT_ROOT)" lock --bump
-	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(SELF_MAKE) _builtin_require_mise
-	@$(SELF_MAKE) gen
-	@$(SELF_MAKE) _upg_reconcile_locks
-	@$(SELF_MAKE) _builtin_setup_environment
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
 
 .PHONY: _upg_reconcile_locks
-_upg_reconcile_locks:
+_upg_reconcile_locks: _builtin_require_upg_lock_owner
 	@set -eu; \
 	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
 	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
@@ -1048,8 +1022,8 @@ profile-gen: _builtin_require_environment
 	scope=all; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
 	$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
-		"$(PROFILE_REPORTS_DIR)/conform.pstats" codegen conform \
-		--root "$(PROJECT_ROOT)" --scope "$$scope" --mode apply
+		"$(PROFILE_REPORTS_DIR)/conform.pstats" codegen generate \
+		--root "$(PROJECT_ROOT)" --scope "$$scope"
 
 .PHONY: profile-gen-report
 profile-gen-report: _builtin_require_environment
@@ -1225,10 +1199,9 @@ _builtin_release_build: _builtin_require_environment
 _builtin_release_publish: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) release run --phase publish --apply $(if $(filter Y,$(INDEX)),--index)
 
-# Generation has one transaction owner. Conform covers this root and all declared
-# members and journals ordinary, Mise, lazy-init, and documentation phases through
-# one fixed point. Only `upg` resolves and rewrites the locks; gen installs
-# nothing and never runs another writer before or after conform's journal.
+# Generation uses the shared planner and transaction publisher for the declared
+# projections. It never repairs authored declarations or resolves dependencies.
+# Only `upg` resolves and rewrites locks; `fix` owns conformance repairs.
 export KIND
 _builtin_gen_init:
 	@set -eu; set --; \
@@ -1246,13 +1219,13 @@ _builtin-project-new: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen new --apply{% for argument in project_new.arguments %} --{{ argument | lower | replace("_", "-") }} "$$FLEXT_NEW_{{ argument }}"{% endfor %}
 {% endfor %}
 
-_builtin_gen_all:
+_builtin_gen_all: _builtin_require_environment
 	@set -eu; \
 	scope=all; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
-	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$$scope" --mode apply
+	$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"
 
-_builtin-gen-footprint:
+_builtin-gen-footprint: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen footprint --root "$(PROJECT_ROOT)" --scope all
 
 _builtin-bootstrap-candidate: _builtin_require_environment
@@ -1341,7 +1314,6 @@ endif
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-environment --repository-root "$(RUNTIME_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(RUNTIME_ROOT)" --uv-executable "$$(command -v $(UV))"
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 _builtin-status: _builtin_status_diagnostics
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} signing-identity --repo-root "$(PROJECT_ROOT)"
 _builtin-verify-clean: _builtin_require_environment

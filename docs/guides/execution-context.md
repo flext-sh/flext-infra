@@ -74,6 +74,15 @@ Native checker caches remain owned by their existing runtime/cache owners. Nativ
 execution and malformed-report failures stay separate from diagnostic occurrences;
 neither a repeated failure nor an unchanged finding count proves validation success.
 
+Facade projection composes constants, utilities and models from the exports and
+base order declared in their configured private family. Protocol projection keeps
+its consumer-based ownership resolution. The utility path delegates directly to
+the declaration planner. Static and runtime consumer checks retain their own
+import-failure verdicts.
+Rendering a facade returns source only. Package-form imports require publishing
+the owning family's initializer through the existing lazy-init planner before a
+fresh consumer loads the generated facade.
+
 ## New projects
 
 `make project-new` delegates to the same typed `codegen new` service exposed by
@@ -93,16 +102,16 @@ belongs to the generated repository.
 ## Environment activation
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.
-Operational Make verbs activate that environment before handlers and hooks, except the
-activation producer declared in `make.verbs`. For `gen`, the pin and the provisioned
-physical environment are required before `pre-gen` and the selected handler. The default
-handler runs one conform transaction, which includes generating the `.envrc`; a declared
-`_custom-gen` still replaces that handler. Only then does Make activate the generated
-environment and run `post-gen`. A producer or activation failure prevents the later hook
-and keeps the command red, so `make gen` can repair a broken generated activation
-without another writer outside the journal. Initial provisioning remains the
-responsibility of `make setup`. Real commands work without wrapping each call in
-`direnv exec`.
+Make verbs declare their activation requirement in `make.verbs`; activation is
+required by default before handlers and hooks. Generation and its footprint
+inspection consume the declared physical interpreter and verify its environment
+directly, so they can repair generated activation inputs. The `gen` handler
+delegates to the existing `codegen generate` projection owner, including its
+guarded `.envrc` publication. A declared `_custom-gen` replaces that handler.
+Each invocation runs its pre hook, handler and post hook once, and a failure
+prevents later effects. Initial provisioning remains the responsibility of
+`make setup`. Public Make commands own the activation boundary and can be
+invoked directly.
 
 Library defaults resolve through the concrete config class's import-package resource,
 not its declaration file's depth or the checkout's `config/` directory. Editable and
@@ -182,6 +191,13 @@ and runtime inputs. It accepts source-backed generated functions without interpr
 their factory grammar or replaying imports, decorators, class bodies or callbacks in
 that process. An authored-code mismatch proved directly from pinned source can fail
 before the child import.
+
+Provider election includes the installed runtime dependency closure of the
+observer SDK and the selected producers. Active installed requirements determine
+that closure. Native distribution metadata supplies import names; editable
+providers retain their PEP 610 and project-declaration proof. The same physical
+ownership and source checks apply to these providers before the isolated import
+loads their package initializers.
 
 Full authentication imports the elected sources in an isolated native interpreter.
 The child records the physical source receipts used by that import and passively

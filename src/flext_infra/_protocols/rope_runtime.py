@@ -507,22 +507,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         matched_count: int
         admitted_count: int
 
-        def __init__(
-            self,
-            project: FlextInfraProtocolsRopeRuntime.RopeProject,
-            pattern: str,
-            goal: str,
-            *,
-            args: t.MappingKV[str, str | tuple[str, t.StrSequence]] | None = None,
-            imports: t.StrSequence | None = None,
-            wildcards: t.MappingKV[
-                str,
-                FlextInfraProtocolsRopeRuntime.RopeWildcard[str]
-                | FlextInfraProtocolsRopeRuntime.RopeWildcard[t.StrSequence],
-            ]
-            | None = None,
-        ) -> None: ...
-
         def get_changes(
             self,
             *,

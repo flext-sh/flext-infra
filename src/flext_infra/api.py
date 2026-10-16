@@ -26,7 +26,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenFixer,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenPipeline,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsFiles,
 )
@@ -41,7 +40,10 @@ from flext_infra.codemod import (
     FlextInfraNamespaceRelocationPhase,
 )
 from flext_infra.services import FlextInfraCandidateBootstrapService
-from flext_infra.validate import FlextInfraNamespaceValidator
+from flext_infra.validate import (
+    FlextInfraNamespaceValidator,
+    FlextInfraValidateFreshImport,
+)
 from flext_infra.workspace import (
     FlextInfraRopeWorkspace,
     FlextInfraWorkspaceDetector,
@@ -97,7 +99,7 @@ class FlextInfra(
                 repository_root=source_root,
                 ports=None,
             )
-            producer = FlextInfraCodegenPreconditions.capture_producer(
+            producer = FlextInfraValidateFreshImport.capture_producer(
                 source_root,
                 entrypoint=planner.plan_repositories,
                 collaborators=(
@@ -202,6 +204,21 @@ class FlextInfra(
             output_format=request.output_format,
             conform_collaborators=self.codegen_conform_collaborators(),
         ).execute()
+
+    def codegen_generate(
+        self,
+        request: m.Infra.CodegenGenerateRequest,
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Generate managed projections through the shared transactional owner.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
+        return FlextInfraCodegenConform.generate_request(
+            request,
+            ports=self.codegen_conform_collaborators(),
+        )
 
     def codegen_conform(
         self,

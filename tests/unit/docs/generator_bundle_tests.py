@@ -34,7 +34,7 @@ def producer_for(
     operation: p.AttributeProbe,
 ) -> m.Infra.CodegenPhaseAnalysis:
     return tm.ok(
-        FlextInfraCodegenPreconditions.capture_producer(
+        FlextInfraValidateFreshImport.capture_producer(
             runtime_root,
             entrypoint=operation,
             collaborators=(generator.publish_batch,),
@@ -118,6 +118,12 @@ tm.that(
     tmp_path, project_names=("flext-a",)
 )
 generator = case._generator(workspace)
+verifier = tm.ok(
+    FlextInfraValidateFreshImport.capture_producer(
+        runtime_root,
+        entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
+    )
+)
 prepared = tm.ok(generator.prepare_bundle(
     producer=producer_for(generator, generator.prepare_bundle)
 ))
@@ -174,11 +180,15 @@ tm.that(
 tm.that(receipts[0].generator_trees, eq=prepared.producer.generator_trees)
 tm.that(receipts[0].generator_modules, eq=prepared.producer.generator_modules)
 tm.ok(
-    FlextInfraMiseArtifactsVerification.publication_states_current(receipts[0]),
+    FlextInfraMiseArtifactsVerification.publication_states_current(
+        receipts[0], verifier=verifier
+    ),
 )
 added = workspace / "flext-a/src/flext_a/new_source.py"
 added.write_text('"""Source added after publication."""\n', encoding="utf-8")
-changed = FlextInfraMiseArtifactsVerification.publication_states_current(receipts[0])
+changed = FlextInfraMiseArtifactsVerification.publication_states_current(
+    receipts[0], verifier=verifier
+)
 tm.fail(changed)
 tm.that(changed.error or "", has=str(added))
 ''',
@@ -356,7 +366,7 @@ analysis = m.Infra.CodegenPhaseAnalysis(
     ),
 )
 producer = tm.ok(
-    FlextInfraCodegenPreconditions.capture_producer(
+    FlextInfraValidateFreshImport.capture_producer(
         runtime_root, entrypoint=FlextInfraCodegenTransaction
     )
 )

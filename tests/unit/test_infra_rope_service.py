@@ -560,6 +560,26 @@ class TestsFlextInfraInfraRopeService:
             project_layout = tm.not_none(convention.project_layout)
             tm.that(project_layout.class_stem, eq="FlextDemo")
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        "exports",
+        ['__all__ = ["m"]', '__all__: list[str] = ["m"]'],
+    )
+    def test_facade_layout_resolves_namespace_exports(
+        tmp_path: Path,
+        exports: str,
+    ) -> None:
+        """Composed utilities use the namespace parser for both export forms."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        (package_root / "models.py").write_text(
+            f"{exports}\n",
+            encoding="utf-8",
+        )
+
+        layout = tm.not_none(flext_infra.u.Infra.layout(repository_root))
+
+        tm.that(layout.runtime_aliases, eq=("m",))
+
     def test_api_module_alias_comes_only_from_declared_exports(
         self,
         tmp_path: Path,

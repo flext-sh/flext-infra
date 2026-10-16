@@ -18,6 +18,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
     FlextInfraStagedPackage,
 )
+from flext_infra.validate import FlextInfraValidateFreshImport
 
 
 class FlextInfraSemanticPublication:
@@ -249,7 +250,7 @@ class FlextInfraSemanticPublication:
             analysis.files,
             (*options.projection_roots, *options.input_roots),
         )
-        producer = FlextInfraCodegenPreconditions.capture_producer(
+        producer = FlextInfraValidateFreshImport.capture_producer(
             repository_root,
             entrypoint=cls.publish_source_candidate,
         )

@@ -416,7 +416,7 @@ class FlextInfraUtilitiesRefactor:
             The lexical occurrence text standing in for the absent module.
 
         Raises:
-            TypeError: When the native byte offsets are not integers.
+            TypeError: When a native byte offset is not an integer.
             ValueError: When the module occurrence is not the native root.
 
         """

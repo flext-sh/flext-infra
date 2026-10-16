@@ -22,6 +22,7 @@ from flext_infra.codegen import (
     FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.validate import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -62,7 +63,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 "cold source authority cannot authorize project publication",
             )
             if source_authority is not None
-            else FlextInfraCodegenPreconditions.capture_producer(
+            else FlextInfraValidateFreshImport.capture_producer(
                 owner.repository_root,
                 entrypoint=type(self).__init__,
             )

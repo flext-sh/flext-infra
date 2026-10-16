@@ -18,6 +18,7 @@ from typing import Annotated, ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
@@ -26,6 +27,7 @@ from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsSta
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
@@ -201,6 +203,173 @@ _native_atomic = (
 )
 """
 
+    @classmethod
+    def capture_producer(
+        cls,
+        repository_root: Path,
+        *,
+        entrypoint: p.AttributeProbe,
+        collaborators: t.SequenceOf[p.AttributeProbe] = (),
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Authenticate the loaded producer against its cold physical authority.
+
+        Returns:
+            The authenticated producer phase analysis snapshot.
+
+        """
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
+        selection = FlextInfraWorkspaceNativeReference.producer_selections(
+            entrypoint,
+            collaborators,
+        )
+        if selection.failure:
+            return result_type.from_failure(selection)
+        names = selection.value
+        environment = Path(sys.prefix).absolute()
+        if (
+            environment.name != c.Infra.ENVIRONMENT_DIRECTORY
+            or environment.is_symlink()
+        ):
+            return result_type.fail(
+                f"producer runtime is not a physical managed environment: {environment}"
+            )
+        runtime_root = environment.parent
+        reference = cls._capture_producer_reference(
+            repository_root, runtime_root, names
+        )
+        if reference.failure:
+            return result_type.from_failure(reference)
+        consumed = FlextInfraCodegenPreconditions.authority_inputs(
+            reference.value.source_authority
+        )
+        if consumed.failure:
+            return result_type.from_failure(consumed)
+        authority = reference.value.source_authority
+        snapshot = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+            files=(),
+            inputs=consumed.value,
+            generator_trees=authority.generator_trees,
+            generator_modules=authority.generator_modules,
+            generator_reference=reference.value,
+        )
+        return FlextInfraCodegenPreconditions.producer_current(snapshot).map(
+            lambda _current: snapshot
+        )
+
+    @classmethod
+    def _capture_producer_reference(
+        cls,
+        repository_root: Path,
+        runtime_root: Path,
+        names: t.VariadicTuple[m.Infra.SourceClassReference],
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Bind one elected source epoch to its independent native import.
+
+        Returns:
+            The live admitted reference or the first source/import failure.
+
+        """
+        result_type = r[m.Infra.NativeImportReference]
+        u.Cli.info(
+            f"stage=native-source-authority selections={len(names)} "
+            f"runtime={runtime_root}",
+        )
+        cold = FlextInfraCodegenPreconditions.capture_source_authority(
+            runtime_root,
+            nominated=names,
+        )
+        if cold.failure:
+            return result_type.from_failure(cold)
+        u.Cli.info(
+            f"stage=native-source-authority-complete "
+            f"providers={len(cold.value.generator_modules)} "
+            f"inputs={len(cold.value.inputs)}",
+        )
+        inputs = FlextInfraCodegenPreconditions.authority_inputs(cold.value)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        return cls.capture_native_reference(
+            m.Infra.NativeImportRequest(
+                repository_root=repository_root,
+                runtime_root=runtime_root,
+                modules=names,
+                inputs=inputs.value,
+                source_authority=cold.value,
+                import_roots=tuple(
+                    dict.fromkeys(
+                        root.parent for _name, root in cold.value.generator_modules
+                    )
+                ),
+            ),
+        )
+
+    @classmethod
+    def capture_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Authenticate the loaded producer against a cold native import.
+
+        Returns:
+            The sealed reference, or the first source or runtime failure.
+
+        """
+        result_type = r[m.Infra.NativeImportReference]
+        observed = FlextInfraWorkspaceNativeReference.capture(request.modules).flat_map(
+            lambda snapshot: (
+                FlextInfraWorkspaceNativeReference.authored_sources_current(
+                    snapshot, request.source_authority.inputs
+                ).map(lambda _: snapshot)
+            )
+        )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        cold = cls._cold_native_observation(request)
+        if cold.failure:
+            return result_type.from_failure(cold)
+        return FlextInfraCodegenPreconditions.admit_native_reference(
+            request, observed.value, cold.value
+        )
+
+    @classmethod
+    def _cold_native_observation(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportObservation]:
+        """Read the complete original child outcome before decoding its evidence.
+
+        Returns:
+            The original native import observation or process failure.
+
+        """
+        result_type = r[m.Infra.NativeImportObservation]
+        consumer = cls(
+            repository_root=request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        output = consumer.native_reference_probe(request)
+        if output.failure:
+            return result_type.from_failure(output)
+        if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
+            return result_type.fail(
+                f"cold native source import failed: {output.value.outcome}\n"
+                f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}",
+            )
+        imported = m.Infra.NativeImportObservation.model_validate_json(
+            output.value.stdout
+        )
+        private = imported.__pydantic_private__
+        if private is None:
+            return result_type.fail(
+                "native observation has no Pydantic private storage"
+            )
+        private["_import_birth"] = (
+            id(imported),
+            u.Cli.sha256_bytes(imported.model_dump_json().encode(c.DEFAULT_ENCODING)),
+        )
+        return result_type.ok(imported)
+
     def native_reference_probe(
         self,
         request: m.Infra.NativeImportRequest,
@@ -211,6 +380,9 @@ _native_atomic = (
             The real native import output, preserving its original failure.
 
         """
+        admitted = FlextInfraCodegenPreconditions.native_inputs_current(request)
+        if admitted.failure:
+            return r[p.Cli.CommandOutput].from_failure(admitted)
         roots = tuple(dict.fromkeys(request.import_roots))
         imports = tuple(map(str, roots))
         selections = tuple(item.model_dump_json() for item in request.modules)

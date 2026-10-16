@@ -22,6 +22,7 @@ from flext_infra.codegen._codegen_transaction_phases import (
     FlextInfraCodegenTransactionPhases,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.validate import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -58,7 +59,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             # Self-serve the pre-planning producer authority: every transaction
             # publication journals the generator's own source states, and the
             # recovery guard rejects authority-less journals.
-            captured = FlextInfraCodegenPreconditions.capture_producer(
+            captured = FlextInfraValidateFreshImport.capture_producer(
                 owner.repository_root,
                 entrypoint=type(self).__init__,
             )

@@ -63,6 +63,13 @@ class FlextInfraCodegenRoutes:
                 success_message="candidate bootstrap complete",
             ),
             m.Cli.ResultCommandRoute(
+                name="generate",
+                help_text="Generate managed projections without declaration repair",
+                model_cls=m.Infra.CodegenGenerateRequest,
+                handler=infra.codegen_generate,
+                success_message="managed projection generation complete",
+            ),
+            m.Cli.ResultCommandRoute(
                 name="conform",
                 help_text="Conform generated project and workspace files",
                 model_cls=m.Infra.CodegenConformRequest,

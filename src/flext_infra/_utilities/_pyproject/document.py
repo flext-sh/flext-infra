@@ -12,7 +12,7 @@ from typing import Annotated
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDependencyRequirements,
@@ -814,6 +814,24 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
         """
         cls._remove_legacy_tooling(source)
+        project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
+        optional = (
+            u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
+            if project is not None
+            else None
+        )
+        deptry = u.Cli.toml_ensure_path(source, (c.Infra.TOOL, c.Infra.DEPTRY))
+        u.Cli.toml_sync_string_list(
+            deptry,
+            "optional_dependencies_dev_groups",
+            [
+                group
+                for group in (
+                    config.Infra.tooling.tools.deptry.optional_dependencies_dev_groups
+                )
+                if optional is not None and group in optional
+            ],
+        )
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
             return r[bool].from_failure(typecheck_paths)

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from flext_infra.codegen import FlextInfraCodegenPreconditions
+from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import tm
 
 
@@ -25,7 +25,7 @@ class TestsFlextInfraNativeYamlProvenance:
         rendered = yaml.dump(payload, Dumper=yaml.CSafeDumper)
         tm.that(yaml.load(rendered, Loader=yaml.CSafeLoader), eq=payload)
         admission = tm.ok(
-            FlextInfraCodegenPreconditions.capture_producer(
+            FlextInfraValidateFreshImport.capture_producer(
                 Path.cwd(), entrypoint=yaml.CSafeDumper
             )
         )
