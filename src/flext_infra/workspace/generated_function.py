@@ -2281,6 +2281,57 @@ class FlextInfraWorkspaceGeneratedFunction:
             case _:
                 return None
 
+    def _dataclass_hooked_annotations(
+        self, owner: p.AttributeProbe
+    ) -> t.VariadicTuple[str]:
+        """Name stored field annotations built over types with authored hooks.
+
+        ``Union[...]`` and other typing forms hash and compare their operands
+        while the class body runs; an operand whose metaclass defines those
+        hooks ran authored code, so its stored annotation is not closed data.
+
+        Returns:
+            The fields whose stored annotation graph reaches such an operand.
+
+        """
+        storage = vars(type)["__dict__"].__get__(owner, type(owner))
+        fields = storage.get("__dataclass_fields__")
+        if type(fields) is not dict:
+            return ()
+        hooks = frozenset({"__hash__", "__eq__"})
+        hooked: list[str] = []
+        for name, field in fields.items():
+            pending: list[p.AttributeProbe] = [self._field_slot(field, "type")]
+            seen: set[int] = set()
+            while pending:
+                item = pending.pop()
+                if id(item) in seen:
+                    continue
+                seen.add(id(item))
+                kind = type(item)
+                if type in vars(type)["__mro__"].__get__(kind, type(kind)):
+                    if not self._attrs_plain(kind, hooks):
+                        hooked.append(str(name))
+                        break
+                    continue
+                if vars(type)["__module__"].__get__(kind, type(kind)) == "typing":
+                    instance = next(
+                        (
+                            body["__dict__"]
+                            for base in vars(type)["__mro__"].__get__(kind, type(kind))
+                            if "__dict__"
+                            in (body := vars(type)["__dict__"].__get__(base, type(base)))
+                        ),
+                        None,
+                    )
+                    arguments = (
+                        instance.__get__(item, kind).get("__args__", ())
+                        if type(instance) is GetSetDescriptorType
+                        else ()
+                    )
+                    pending.extend(arguments if type(arguments) is tuple else ())
+        return tuple(hooked)
+
     def _dataclass_forged_markers(
         self,
         owner: p.AttributeProbe,
@@ -2329,6 +2380,19 @@ class FlextInfraWorkspaceGeneratedFunction:
             TypeError: If the SDK returns a receiver of a foreign native type.
 
         """
+        sdk = vars(self._module("dataclasses"))
+        rebound = tuple(
+            name
+            for name in c.Infra.NATIVE_DATACLASS_SDK_CLASSES
+            if type(sdk.get(name)) is not type
+            or vars(type)["__name__"].__get__(sdk[name], type) != name
+            or vars(type)["__module__"].__get__(sdk[name], type) != "dataclasses"
+        )
+        if rebound:
+            # A rebound SDK class would be instantiated by the emission itself.
+            return r[m.Infra.NativeGeneratedFunctionProof].fail(
+                f"native dataclass SDK class binding is rebound: {rebound}"
+            )
         module = vars(self._module(self._witness.module.get_name()))
         shadowed = sorted(
             f"{node.value.id}.{node.attr}"
@@ -2351,6 +2415,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             return r[m.Infra.NativeGeneratedFunctionProof].fail(
                 f"native dataclass method carries an undeclared abstract marker: "
                 f"{forged}"
+            )
+        hooked = self._dataclass_hooked_annotations(owner)
+        if hooked:
+            return r[m.Infra.NativeGeneratedFunctionProof].fail(
+                f"native dataclass annotation operand has an authored hook: {hooked}"
             )
         self._dataclass_sdk(factory[0])
         namespace = self._dataclass_inputs(owner, declaration)
@@ -2675,7 +2744,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             processor, source_name="_process_class", source_namespace=namespace
         )
         _source, tree = self._source(compiler)
-        for name in ("Field", "_DataclassParams", "_FuncBuilder"):
+        for name in c.Infra.NATIVE_DATACLASS_SDK_CLASSES:
             self._sdk_class(namespace.get(name), namespace, tree)
         for name in (
             "field",
