@@ -31,6 +31,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
     CODEGEN_CLI_MODULE_FILENAME: ClassVar[str] = "cli.py"
+    GITHUB_WORKFLOWS_RELATIVE_PATH: ClassVar[str] = ".github/workflows"
 
     # These enums define the
     # one public conform contract shared by new and existing repositories. The

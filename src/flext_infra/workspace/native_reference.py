@@ -4848,7 +4848,16 @@ class FlextInfraWorkspaceNativeReference:
             ):
                 return r[bool].fail(
                     f"authored producer code differs from pinned native source: "
-                    f"{binding.binding}",
+                    f"{binding.binding}; supplier={binding.supplier}; "
+                    f"qualname={binding.qualname}; filename={executed.filename!r}; "
+                    f"name={executed.name!r}; firstlineno={executed.firstlineno}; "
+                    f"source_candidates={
+                        tuple(
+                            (code.co_qualname, code.co_firstlineno)
+                            for code in compiled[key]
+                            if code.co_name == executed.name
+                        )
+                    }",
                 )
             admitted += 1
         if not admitted:

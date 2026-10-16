@@ -11,9 +11,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, t, u
+from flext_infra import c, u
 from flext_infra._utilities import (
-    FlextInfraRopeProject,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
 )
@@ -32,13 +31,15 @@ class TestsFlextInfraRopeRuntimePymodule:
         """A later disk edit cannot change the closed Rope source view."""
         captured = tmp_path / "captured.py"
         captured.write_text("VALUE = 42\n", encoding=c.Infra.ENCODING_DEFAULT)
-        with closing(
-            FlextInfraRopeProject.from_snapshot(
-                str(tmp_path),
-                {captured: captured.read_bytes()},
-                source_folders=["."],
-            ),
-        ) as project:
+        with (
+            closing(u.Infra.init_rope_project(tmp_path)) as original,
+            closing(
+                u.Infra.snapshot_project(
+                    original,
+                    {captured: captured.read_text(encoding=c.Infra.ENCODING_DEFAULT)},
+                ),
+            ) as project,
+        ):
             captured.unlink()
             (tmp_path / "uncaptured.py").write_text(
                 "VALUE = 99\n", encoding=c.Infra.ENCODING_DEFAULT
@@ -64,13 +65,19 @@ class TestsFlextInfraRopeRuntimePymodule:
         source = "class PublishedContract:\n    pass\n"
         package.mkdir()
         initializer.write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
-        with closing(
-            FlextInfraRopeProject.from_snapshot(
-                str(tmp_path),
-                {initializer: source.encode(c.Infra.ENCODING_DEFAULT)},
-                source_folders=[package.name],
-            ),
-        ) as project:
+        with (
+            closing(
+                u.Infra.new_project(
+                    str(tmp_path),
+                    ropefolder="",
+                    save_objectdb=False,
+                    filter_lists=((), (package.name,), ()),
+                ),
+            ) as original,
+            closing(
+                u.Infra.snapshot_project(original, {initializer: source}),
+            ) as project,
+        ):
             resource = project.find_module(package.name)
             tm.that(resource, none=False)
             if resource is None:
@@ -141,28 +148,26 @@ class TestsFlextInfraRopeRuntimePymodule:
         plain_module = tmp_path / "plain.py"
         plain_module.write_text("VALUE = 2\n")
         sources = {
-            init_module: init_module.read_bytes(),
-            plain_module: plain_module.read_bytes(),
+            init_module: init_module.read_text(),
+            plain_module: plain_module.read_text(),
         }
-        project = FlextInfraRopeProject.from_snapshot(
-            str(tmp_path),
-            sources,
-            source_folders=["."],
-        )
-        rope_project: t.Infra.RopeProject = project
-        plain_resource = project.find_module("plain")
-        pkg_resource = project.find_module("pkg")
-        if plain_resource is None or pkg_resource is None:
-            msg = "fixture modules missing from the snapshot project"
-            raise ValueError(msg)
-        pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-            rope_project,
-            plain_resource,
-        )
-        pypackage = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-            rope_project,
-            pkg_resource,
-        )
-        assert FlextInfraUtilitiesRopeRuntime.pymodule(pymodule)
-        assert FlextInfraUtilitiesRopeRuntime.pymodule(pypackage)
-        assert pypackage.get_attribute("VALUE") is not None
+        with (
+            closing(u.Infra.init_rope_project(tmp_path)) as original,
+            closing(u.Infra.snapshot_project(original, sources)) as project,
+        ):
+            plain_resource = project.find_module("plain")
+            pkg_resource = project.find_module("pkg")
+            if plain_resource is None or pkg_resource is None:
+                msg = "fixture modules missing from the snapshot project"
+                raise ValueError(msg)
+            pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project,
+                plain_resource,
+            )
+            pypackage = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project,
+                pkg_resource,
+            )
+            assert FlextInfraUtilitiesRopeRuntime.pymodule(pymodule)
+            assert FlextInfraUtilitiesRopeRuntime.pymodule(pypackage)
+            assert pypackage.get_attribute("VALUE") is not None

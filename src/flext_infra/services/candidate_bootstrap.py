@@ -295,8 +295,8 @@ class FlextInfraCandidateBootstrapService:
                 f"candidate bootstrap destination is outside its surface: {file.path}"
             )
         for state in file.source_states:
-            previous = inputs.setdefault(state.path, state)
-            if previous != state:
+            previous = inputs.get(state.path)
+            if previous is not None and previous != state:
                 return f"candidate bootstrap observed two states for {state.path}"
         return None
 

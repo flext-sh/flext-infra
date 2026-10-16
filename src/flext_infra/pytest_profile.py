@@ -25,9 +25,31 @@ class FlextInfraPytestProfile:
         self.output = output
         self.context: m.Infra.PytestRunContext | None = None
 
-    def _record_context(self, context: m.Infra.PytestRunContext) -> None:
-        """Receive the runner's actual context, never a latest-run pointer."""
-        self.context = context
+    def _record_context(
+        self, reports_root: Path, preexisting: frozenset[Path]
+    ) -> None:
+        """Bind only the context produced by this profiling invocation.
+
+        Args:
+            reports_root: The runner's declared report tree.
+            preexisting: Context receipts observed before the runner started.
+
+        Raises:
+            RuntimeError: The invocation produced more than one matching context.
+
+        """
+        owned = [
+            receipt
+            for receipt in reports_root.glob(f"*-{os.getpid()}/run-context.json")
+            if receipt not in preexisting
+        ]
+        if len(owned) > 1:
+            msg = f"profiled run published more than one run context: {owned}"
+            raise RuntimeError(msg)
+        if owned:
+            self.context = m.Infra.PytestRunContext.model_validate_json(
+                owned[0].read_text(encoding=c.DEFAULT_ENCODING),
+            )
 
     def run_parent(
         self, *, started_at_monotonic: float, profile: cProfile.Profile
@@ -39,7 +61,6 @@ class FlextInfraPytestProfile:
 
         Raises:
             ValueError: If the profile destination escapes the runner's reports tree.
-            RuntimeError: If the invocation publishes ambiguous run receipts.
 
         """
         # The entry has already started profiling before importing this adapter.
@@ -69,70 +90,70 @@ class FlextInfraPytestProfile:
         reports_root = runner.root / runner.reports
         preexisting = frozenset(reports_root.glob("*/run-context.json"))
 
-        def owned_receipts() -> list[Path]:
-            return [
-                receipt
-                for receipt in reports_root.glob(f"*-{os.getpid()}/run-context.json")
-                if receipt not in preexisting
-            ]
-
-        def bind(owned: list[Path]) -> None:
-            if owned:
-                self._record_context(
-                    m.Infra.PytestRunContext.model_validate_json(
-                        owned[0].read_text(encoding="utf-8"),
-                    ),
-                )
-
         outcome: int | None = None
         try:
             outcome = runner.execute().unwrap()
             return outcome
         finally:
             failure = sys.exception()
+            publication_failure: BaseException | None = None
             try:
-                owned = owned_receipts()
-                if len(owned) > 1:
-                    msg = f"profiled run published more than one run context: {owned}"
-                    raise RuntimeError(msg)
-                bind(owned)
+                self._record_context(reports_root, preexisting)
+            except BaseException as binding_failure:
+                publication_failure = binding_failure
+            try:
                 self._finish(profile)
-            except BaseException as publication_failure:
+            except BaseException as finish_failure:
+                if publication_failure is None:
+                    publication_failure = finish_failure
+                else:
+                    publication_failure.add_note(
+                        "profile finalization failed:\n"
+                        + "".join(traceback.format_exception(finish_failure)),
+                    )
+            if publication_failure is not None:
                 if failure is None and outcome in {None, 0}:
-                    raise
+                    raise publication_failure
                 if failure is not None:
                     failure.add_note(
-                        f"profile publication failed: {publication_failure}"
+                        "profile publication failed:\n"
+                        + "".join(traceback.format_exception(publication_failure)),
                     )
-                # Publication diagnostics remain visible without replacing the
-                # first runner exception or native child failure status.
-                traceback.print_exception(publication_failure)
+                else:
+                    try:
+                        traceback.print_exception(publication_failure)
+                    except (OSError, ValueError) as diagnostic_failure:
+                        publication_failure.add_note(
+                            f"profile diagnostic emission failed: {diagnostic_failure}",
+                        )
 
     def _finish(self, profile: cProfile.Profile) -> None:
         """Keep raw profiles on early failure, but publish only this run's receipt."""
-        FlextInfraPytestClock.publish_profile(profile, self.output)
-
         policy = config.Infra.tooling.tools.pytest
+        process_dir = self.output.parent / policy.profile_process_directory
+        process_dir.mkdir(parents=True, exist_ok=True)
+        process_profile = process_dir / f"{os.getpid()}{self.output.suffix}"
+        FlextInfraPytestClock.publish_profile(
+            profile,
+            self.output,
+            immutable_output=process_profile,
+        )
         receipt_json: str | None = None
         if self.context is not None:
             receipt = self.context.model_copy(
-                update={"profile_sha256": u.Cli.sha256_bytes(self.output.read_bytes())},
+                update={
+                    "profile_sha256": u.Cli.sha256_bytes(process_profile.read_bytes())
+                },
             )
             receipt_json = receipt.model_dump_json(indent=2) + "\n"
+            u.Cli.atomic_write_text_file(
+                process_profile.with_suffix(".pstats.json"),
+                receipt_json,
+            ).unwrap()
             u.Cli.atomic_write_text_file(
                 self.output.with_suffix(".pstats.json"),
                 receipt_json,
             ).unwrap()
-        if self.output.name == policy.profile_suite_filename:
-            process_dir = self.output.parent / policy.profile_process_directory
-            process_dir.mkdir(parents=True, exist_ok=True)
-            process_profile = process_dir / f"{os.getpid()}{self.output.suffix}"
-            process_profile.hardlink_to(self.output)
-            if receipt_json is not None:
-                u.Cli.atomic_write_text_file(
-                    process_profile.with_suffix(".pstats.json"),
-                    receipt_json,
-                ).unwrap()
         if self.context is not None:
             directory = self.context.report_directory
             if directory is not None:

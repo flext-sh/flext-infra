@@ -30,6 +30,11 @@ worktree may appear only once per invocation. Recover a conflicted pyproject wit
 Makefile and `make gen` to complete conformance. The bootstrap authenticates the
 consulted codegen declarations through publication; it requires no retired
 `config/workspace.yaml`.
+Use `what: workflows` to regenerate only the declared GitHub Actions workflows.
+This surface derives its destinations from the template manifest and preserves
+the candidate's other projections and dependency declarations.
+It resolves workflow rendering inputs without loading the candidate's Python
+analyzer context. Surfaces that render tooling still require that context.
 For regexes that may match several identifiers, declare a named group and
 `capture_equals: {keyword: expected_name}` in the rule. The engine validates
 that the group exists and rejects a different captured value before publishing

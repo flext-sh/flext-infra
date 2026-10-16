@@ -316,6 +316,20 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                     pyproject=False,
                     custom=False,
                 )
+            case c.Infra.CodegenConformSurface.WORKFLOWS:
+                contract = m.Infra.CodegenConformSurfaceContract(
+                    destinations=frozenset(
+                        entry.destination
+                        for entry in codegen.templates.entries
+                        if Path(entry.destination).is_relative_to(
+                            c.Infra.GITHUB_WORKFLOWS_RELATIVE_PATH,
+                        )
+                    ),
+                    delegates=False,
+                    pyproject=False,
+                    tooling=False,
+                    custom=False,
+                )
             case c.Infra.CodegenConformSurface.ENVRC:
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.Infra.ENVRC_FILENAME}),

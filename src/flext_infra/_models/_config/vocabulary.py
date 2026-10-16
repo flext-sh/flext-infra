@@ -197,6 +197,7 @@ class FlextInfraConfigVocabulary:
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
         RUNTIME_BINDINGS = "runtime-bindings"
+        WORKFLOWS = "workflows"
 
 
 __all__: list[str] = ["FlextInfraConfigVocabulary"]
