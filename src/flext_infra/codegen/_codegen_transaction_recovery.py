@@ -324,7 +324,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
     @staticmethod
     def _admitted_operation_receipt(
         request: m.Infra.CodegenConformRequest,
-        root: Path,
         batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         *,
         scope_roots: t.VariadicTuple[Path],
@@ -341,6 +340,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             Success, or the first admission failure.
 
         """
+        root = request.root.expanduser().resolve()
         if operation is not None:
             original = FlextInfraMiseArtifactsVerification.publication_birth_current(
                 operation,
@@ -406,7 +406,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         root = request.root.expanduser().resolve()
         admitted = cls._admitted_operation_receipt(
             request,
-            root,
             batches,
             scope_roots=scope_roots,
             operation=operation,
