@@ -110,9 +110,7 @@ class FlextInfraPytestProfile:
                 finished = self._finish(profile)
             publication_failure = self._publication_failure(binding, finished)
             if publication_failure is not None:
-                self._settle_publication_failure(
-                    publication_failure, failure, outcome
-                )
+                self._settle_publication_failure(publication_failure, failure, outcome)
 
     @staticmethod
     def _publication_failure(
