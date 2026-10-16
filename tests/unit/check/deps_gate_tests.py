@@ -295,7 +295,7 @@ class TestsFlextInfraDepsGate:
         ).unwrap()
 
         tm.that(
-            tuple(source.root.path for source in scan.sources),
+            tuple(source.root.path for source in scan.source),
             eq=tuple(root / item for item in roots),
         )
         # Each root holds exactly one module; the unshipped sibling is not one.

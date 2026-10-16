@@ -406,7 +406,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         )
         return result_type.ok(
             m.Infra.RuntimeDependencyPlan(
-                sources=scan.sources,
+                source=scan.source,
                 before=scan.settings,
                 dependencies=tuple(selected),
                 unresolved_modules=tuple(dict.fromkeys(unresolved)),
