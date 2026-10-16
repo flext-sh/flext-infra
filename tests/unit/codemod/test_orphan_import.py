@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import libcst as cst
+import pytest
 
 from flext_infra.codemod._batch_orphan_import import (
     FlextInfraOrphanImport,
@@ -25,12 +26,13 @@ class TestsFlextInfraOrphanImport:
             FlextInfraOrphanImport(guarded=type_checking_guarded(module))
         ).code
 
-    def test_guarded_import_survives_a_populated_block(self) -> None:
+    @pytest.mark.parametrize("guard", ["TYPE_CHECKING", "typing.TYPE_CHECKING"])
+    def test_guarded_import_survives_a_populated_block(self, guard: str) -> None:
         """A populated TYPE_CHECKING block keeps its guarded import intact."""
         source = (
             "from typing import TYPE_CHECKING\n"
             "\n"
-            "if TYPE_CHECKING:\n"
+            f"if {guard}:\n"
             "    from collections.abc import Sequence\n"
             "\n"
             "def read() -> Sequence[int]:\n"
@@ -66,3 +68,11 @@ class TestsFlextInfraOrphanImport:
         orphan = cst.parse_module("from typing import TYPE_CHECKING\n")
         tm.that(type_checking_guarded(guarded), eq=True)
         tm.that(type_checking_guarded(orphan), eq=False)
+
+    def test_unrelated_qualified_guard_does_not_retain_orphan_import(self) -> None:
+        """Only typing owns the qualified guard recognized by the cleaner."""
+        source = (
+            "from typing import TYPE_CHECKING\nif unrelated.TYPE_CHECKING:\n    pass\n"
+        )
+        tm.that(type_checking_guarded(cst.parse_module(source)), eq=False)
+        tm.that(self._render(source), lacks="from typing import TYPE_CHECKING")

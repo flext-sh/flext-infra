@@ -217,6 +217,13 @@ class FlextInfraConstantsRefactor:
         ``family-base-file`` proves that the finding is the immediate base
         leaf of a private family with a declared sibling facade.
 
+        ``compose-module``: the captured module path is one canonical public
+        family compose module (``<package>.<leaf>`` with ``leaf`` in
+        ``CODEMOD_COMPOSE_MODULE_LEAVES``): the static compose surface the
+        family-shape contract sanctions (bead flext-6e72w). The own package
+        admits the leaf only when it declares the module file; a runtime
+        package of the dependency closure admits the canonical leaf name.
+
         ``layer-zero-file`` uses the import-law role classifier: the first
         architectural segment owns the role, so a family's nested config
         declarations are not settings/config singleton modules.
@@ -239,6 +246,7 @@ class FlextInfraConstantsRefactor:
         FACADE_PACKAGE = "facade-package"
         RUNTIME_ALIAS = "runtime-alias"
         LOCAL_ALIAS = "local-alias"
+        COMPOSE_MODULE = "compose-module"
         MODULE_EXPORT = "module-export"
         PACKAGE_EXPORT = "package-export"
         FILE_FAMILY = "file-family"
@@ -252,7 +260,6 @@ class FlextInfraConstantsRefactor:
         FAMILY_BASE = "family-base"
         FAMILY_BASE_FILE = "family-base-file"
         LAYER_ZERO_FILE = "layer-zero-file"
-        COMPOSE_MODULE = "compose-module"
         PAYLOAD_DECLARATION = "payload-declaration"
         PROTOCOL_DECLARATION = "protocol-declaration"
         RESOLVED_SYMBOL = "resolved-symbol"
@@ -291,6 +298,15 @@ class FlextInfraConstantsRefactor:
         })
     )
     "Package predicates consume one declared namespace per admission pass."
+
+    CODEMOD_COMPOSE_MODULE_LEAVES: ClassVar[frozenset[str]] = frozenset({
+        "constants",
+        "models",
+        "protocols",
+        "typings",
+        "utilities",
+    })
+    "Canonical public family compose leaf names (the static compose surface)."
 
     @unique
     class SemanticCutoverPhase(StrEnum):
@@ -392,11 +408,6 @@ class FlextInfraConstantsRefactor:
     # metavariable, the context predicate the engine checks on each finding
     # (`metadata.context: {VAR: {is|not: predicate}}`).
     CODEMOD_RULE_CONTEXT_KEY: ClassVar[str] = "context"
-    # A rule whose applied rewrites reference names the rewritten file must
-    # bind declares them under `metadata.ensure-imports` as
-    # `[{module: <dotted module>, name: <top-level name>}]`; the publisher
-    # completes the module imports after the fix bytes are applied.
-    CODEMOD_RULE_ENSURE_IMPORTS_KEY: ClassVar[str] = "ensure-imports"
     CODEMOD_CONTEXT_HOLDS_KEY: ClassVar[str] = "is"
     CODEMOD_CONTEXT_FAILS_KEY: ClassVar[str] = "not"
     CODEMOD_CONTEXT_OF_KEY: ClassVar[str] = "of"

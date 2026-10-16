@@ -338,7 +338,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         root = target.root
         repository = target.repository
-        _project, _metadata = identity
         managed_started = time.monotonic()
         u.Cli.info(f"  stage=managed-artifacts repository={repository.name}")
         managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
@@ -354,9 +353,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             if contract.custom
             else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
         )
-        if custom_result.failure:
-            return result_type.from_failure(custom_result)
-        lazy_result = self._planned_lazy_init_files(root)
+        lazy_result = custom_result.flat_map(
+            lambda _: self._planned_lazy_init_files(root)
+        )
         if lazy_result.failure:
             return result_type.from_failure(lazy_result)
         tooling_context = self._existing_tooling_context(

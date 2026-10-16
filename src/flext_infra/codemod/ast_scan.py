@@ -22,7 +22,6 @@ from uuid import uuid4
 from flext_cli import cli
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
-from flext_infra._utilities.refactor import _RuleDeltaOptions
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 
 
@@ -225,7 +224,9 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             deltas = u.Infra.rule_deltas(
                 before,
                 after,
-                options=_RuleDeltaOptions(publication_chain=tuple(published_plans)),
+                options=m.Infra.RuleDeltaOptions(
+                    publication_chain=tuple(published_plans)
+                ),
             )
         except ValueError as exc:
             sys.stderr.write(

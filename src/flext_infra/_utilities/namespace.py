@@ -39,6 +39,22 @@ class FlextInfraUtilitiesCodegenNamespace:
     ] = {}
 
     @staticmethod
+    def isort_member_key(name: str) -> t.Pair[int, str]:
+        """Order an imported member name like Ruff isort (``order-by-type``).
+
+        Constants (all upper case) precede CamelCase classes, which precede
+        lower-case names; within a type group names compare case-insensitively
+        (``TEST_FACADE_BASES`` < ``TESTS_ROOT``). Every generated import block
+        sorts by this one key, so ``make gen`` and ``make fix`` agree.
+
+        Returns:
+            The type group and the case-folded name.
+
+        """
+        category = 0 if name.isupper() else 1 if name[:1].isupper() else 2
+        return category, name.casefold()
+
+    @staticmethod
     @cache
     def facade_families() -> t.MappingKV[str, m.Infra.FacadeFamily]:
         """Derive the facade families from the core package's declarations.

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -243,10 +244,8 @@ class FlextInfraUtilitiesDeclarationPayload:
             ),
             path,
         )
-        module = project.get_pymodule(resource)
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         scope = module.get_scope()
-        if scope is None:
-            return ()
         declaration_lines = (
             frozenset(
                 statement.line
@@ -389,7 +388,7 @@ class FlextInfraUtilitiesDeclarationPayload:
             ),
             path,
         )
-        module = project.get_pymodule(resource)
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         owner = module.get_attributes()
         binding: p.Infra.RopePyName | None = None
         for name in qualified_name.split("."):

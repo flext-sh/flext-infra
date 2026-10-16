@@ -252,16 +252,17 @@ class FlextInfraUtilitiesRopeClassMove:
         )
         try:
             source_resource = cls._resource(original, root, source)
-            source_module_name = original.get_pymodule(source_resource).get_name()
+            source_module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                original, source_resource
+            )
+            source_module_name = source_module.get_name()
             tools = FlextInfraUtilitiesRopeRuntime.runtime_callable(
                 "rope.refactor.importutils", "ImportTools"
             )(original)
             if not isinstance(tools, p.Infra.RopeImportTools):
                 msg = "native Rope import tools violate their contract"
                 raise TypeError(msg)
-            canonical = tools.relatives_to_absolutes(
-                original.get_pymodule(source_resource)
-            )
+            canonical = tools.relatives_to_absolutes(source_module)
             reexports = cls._module_reexport_packages(
                 original,
                 sources,
@@ -464,17 +465,27 @@ class FlextInfraUtilitiesRopeClassMove:
         Returns:
             The original packages exposing the declaration's native identity.
 
+        Raises:
+            TypeError: A package lacks the native semantic module interface.
+
         """
         root = Path(project.root.real_path).resolve()
-        expected = project.get_pymodule(source).get_attribute(name)
+        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            project, source
+        ).get_attribute(name)
         owners: list[str] = []
         for path in sorted(sources):
             if path.name != c.Infra.INIT_PY:
                 continue
-            module_name = project.get_pymodule(
+            module_name = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                project,
                 cls._resource(project, root, path),
             ).get_name()
-            published = project.get_module(module_name).get_attributes().get(name)
+            published_module = project.get_module(module_name)
+            if not FlextInfraUtilitiesRopeRuntime.semantic_module(published_module):
+                message = "Package reexports require a native semantic module"
+                raise TypeError(message)
+            published = published_module.get_attributes().get(name)
             if published is not None and FlextInfraUtilitiesRopeRuntime.same_name(
                 expected,
                 published,

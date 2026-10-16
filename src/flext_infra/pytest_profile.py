@@ -9,6 +9,7 @@ from __future__ import annotations
 import cProfile
 import os
 import sys
+import traceback
 from pathlib import Path
 
 from flext_infra import c, config, m, u
@@ -83,36 +84,55 @@ class FlextInfraPytestProfile:
                     ),
                 )
 
+        outcome: int | None = None
         try:
-            try:
-                outcome = runner.execute().unwrap()
-            except BaseException as failure:
-                owned = owned_receipts()
-                if len(owned) > 1:
-                    failure.add_note(f"profile left unbound: run contexts {owned}")
-                else:
-                    bind(owned)
-                raise
-            owned = owned_receipts()
-            if len(owned) > 1:
-                msg = f"profiled run published more than one run context: {owned}"
-                raise RuntimeError(msg)
-            bind(owned)
+            outcome = runner.execute().unwrap()
             return outcome
         finally:
-            self._finish(profile)
+            failure = sys.exception()
+            try:
+                owned = owned_receipts()
+                if len(owned) > 1:
+                    msg = f"profiled run published more than one run context: {owned}"
+                    raise RuntimeError(msg)
+                bind(owned)
+                self._finish(profile)
+            except BaseException as publication_failure:
+                if failure is None and outcome in {None, 0}:
+                    raise
+                if failure is not None:
+                    failure.add_note(
+                        f"profile publication failed: {publication_failure}"
+                    )
+                # Publication diagnostics remain visible without replacing the
+                # first runner exception or native child failure status.
+                traceback.print_exception(publication_failure)
 
     def _finish(self, profile: cProfile.Profile) -> None:
         """Keep raw profiles on early failure, but publish only this run's receipt."""
         FlextInfraPytestClock.publish_profile(profile, self.output)
 
         policy = config.Infra.tooling.tools.pytest
+        receipt_json: str | None = None
+        if self.context is not None:
+            receipt = self.context.model_copy(
+                update={"profile_sha256": u.Cli.sha256_bytes(self.output.read_bytes())},
+            )
+            receipt_json = receipt.model_dump_json(indent=2) + "\n"
+            u.Cli.atomic_write_text_file(
+                self.output.with_suffix(".pstats.json"),
+                receipt_json,
+            ).unwrap()
         if self.output.name == policy.profile_suite_filename:
             process_dir = self.output.parent / policy.profile_process_directory
             process_dir.mkdir(parents=True, exist_ok=True)
-            (process_dir / f"{os.getpid()}{self.output.suffix}").hardlink_to(
-                self.output,
-            )
+            process_profile = process_dir / f"{os.getpid()}{self.output.suffix}"
+            process_profile.hardlink_to(self.output)
+            if receipt_json is not None:
+                u.Cli.atomic_write_text_file(
+                    process_profile.with_suffix(".pstats.json"),
+                    receipt_json,
+                ).unwrap()
         if self.context is not None:
             directory = self.context.report_directory
             if directory is not None:
@@ -139,13 +159,6 @@ class FlextInfraPytestProfile:
                         child.with_suffix(".pstats.json"),
                         child_receipt.model_dump_json(indent=2) + "\n",
                     ).unwrap()
-            receipt = self.context.model_copy(
-                update={"profile_sha256": u.Cli.sha256_bytes(self.output.read_bytes())},
-            )
-            u.Cli.atomic_write_text_file(
-                self.output.with_suffix(".pstats.json"),
-                receipt.model_dump_json(indent=2) + "\n",
-            ).unwrap()
 
 
 __all__: list[str] = ["FlextInfraPytestProfile"]

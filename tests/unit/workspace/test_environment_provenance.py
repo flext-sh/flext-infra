@@ -130,14 +130,14 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     @staticmethod
     @pytest.mark.parametrize("supplier_kind", ["absent", "function", "class", "value"])
     @pytest.mark.parametrize("installed_layout", [False, True])
-    def test_unknown_factory_diagnostics_preserve_private_values(
+    def test_changed_factory_source_preserves_private_values(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         supplier_kind: str,
         *,
         installed_layout: bool,
     ) -> None:
-        """Unproven bindings report declaration context without operand contents."""
+        """Changed factory source fails with its identity and no operand contents."""
         import_root = tmp_path / "site-packages" if installed_layout else tmp_path
         u.Tests.write_package_init(
             import_root / "diagnostic_provider",
@@ -149,7 +149,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    class unproven: pass\n",
         )
         consumer = (
-            "import json\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('diagnostic_provider')\n"
             "authenticate(module.__name__).unwrap()\n"
@@ -167,21 +166,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "result = authenticate(module.__name__)\n"
             "assert result.failure, result\n"
             "error = result.error\n"
-            "assert module.__name__ in error, error\n"
-            "assert error.startswith('construction factory has no authenticated source "
-            "binding:'), error\n"
-            "assert 'identifier=' + json.dumps('unproven') in error, error\n"
-            "assert 'module=' + json.dumps(module.__name__) in error, error\n"
-            "assert 'package=' + json.dumps(module.__package__) in error, error\n"
-            "assert 'registered=True' in error, error\n"
-            "assert 'receiver=' + json.dumps(module.Payload.__qualname__) in error, "
-            "error\n"
-            "assert 'declaration=' + json.dumps(module.Payload.__name__) in error, "
-            "error\n"
-            "assert 'source=' + json.dumps(str(source)) in error, error\n"
-            "assert 'supplier_kind=' + kind in error, error\n"
+            "assert str(source) in error, error\n"
             "assert 'private-material-must-not-appear' not in error\n"
             "assert not effects\n"
+            "assert module.Payload('native').value == 'native'\n"
         )
         native_consumer(consumer, str(import_root), supplier_kind)
 
@@ -829,13 +817,15 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tmp_path: Path,
         defect: str,
     ) -> None:
-        """Source preflight preserves effects of the actual imported construction."""
+        """Passive preflight and cold authentication preserve original effects."""
         u.Tests.write_package_init(
             tmp_path / "effect_provider",
             "from dataclasses import dataclass\n"
             "from pathlib import Path\n"
+            "import os\n"
             "effects = []\n"
-            "marker = Path(__file__).with_suffix('.effects')\n"
+            "marker = (Path(__file__).parent.parent / "
+            "f'{__name__}.{os.getpid()}.effects')\n"
             "def track(cls):\n"
             "    effects.append('decorator')\n"
             "    return cls\n"
@@ -865,7 +855,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "if sys.argv[2] == 'code':\n"
             "    module.Payload.__init__.__code__ = "
             "module.Payload.__init__.__code__.replace(co_name='replaced')\n"
-            "observed = source_preflight(module.__name__)\n"
+            "source_preflight(module.__name__).unwrap()\n"
+            "assert tuple(module.effects) == before\n"
+            "assert module.marker.read_bytes() == marker\n"
+            "observed = authenticate(module.__name__)\n"
             "assert observed.success == (sys.argv[2] == 'none'), observed\n"
             "assert tuple(module.effects) == before\n"
             "assert module.marker.read_bytes() == marker\n"
@@ -1132,7 +1125,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
-        """Static provenance fails generated admission without replaying import."""
+        """Source preflight pins generated providers without replaying their import."""
         u.Tests.write_package_init(
             tmp_path / "import_effect_provider",
             "from dataclasses import dataclass\n"
@@ -1149,7 +1142,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "assert effect.read_text() == 'imported'\n"
             "effect.unlink()\n"
             "observed = source_preflight(module.__name__)\n"
-            "assert observed.failure, observed\n"
+            "observed.unwrap()\n"
             "assert not effect.exists(), 'source admission replayed the module'\n"
         )
         native_consumer(consumer, str(tmp_path))

@@ -1,4 +1,4 @@
-"""Public evidence for callback admission before native compiler operations.
+"""Public evidence for passive capture and authenticated native imports.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -686,12 +686,12 @@ class TestsNativeCompilerAdmission:
 
     @staticmethod
     @pytest.mark.parametrize("hook", ["hash", "equality", "getattribute"])
-    def test_annotation_operand_rejection_preserves_original_callbacks(
+    def test_annotation_operand_authentication_preserves_original_callbacks(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         hook: str,
     ) -> None:
-        """Reject operand hooks while preserving original process callback effects."""
+        """Import native annotations while preserving original callback effects."""
         operation = {
             "hash": (
                 "    def __hash__(cls):\n"
@@ -738,7 +738,7 @@ class TestsNativeCompilerAdmission:
             "assert module.Payload(value).value is value\n"
             "before = tuple(module.effects)\n"
             "marker = module.marker.read_bytes()\n"
-            "assert authenticate(module.__name__).failure\n"
+            "authenticate(module.__name__).unwrap()\n"
             "assert tuple(module.effects) == before\n"
             "assert module.marker.read_bytes() == marker\n"
         )
@@ -788,3 +788,138 @@ class TestsNativeCompilerAdmission:
             "assert module.marker.read_bytes() == marker\n"
         )
         native_consumer(consumer, str(tmp_path), supplier)
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "code", "defaults"])
+    def test_dynamic_generated_defaults_use_the_authenticated_native_import(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """Dynamic defaults retain real behavior and reject generated tampering."""
+        marker = tmp_path / "dynamic-import-pids"
+        u.Tests.write_package_init(
+            tmp_path / "dynamic_default_provider",
+            "import os\n"
+            "from pathlib import Path\n"
+            "from dataclasses import dataclass\n"
+            f"marker = Path({str(marker)!r})\n"
+            "with marker.open('a', encoding='utf-8') as stream:\n"
+            "    stream.write(str(os.getpid()) + '\\n')\n"
+            "effects = []\n"
+            "class Policy:\n"
+            "    def __init__(self, label='native'):\n"
+            "        effects.append(label)\n"
+            "        self.label = label\n"
+            "default = Policy()\n"
+            "@dataclass\n"
+            "class Payload:\n"
+            "    policy: Policy = type(default)()\n",
+        )
+        native_consumer(
+            "import os\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('dynamic_default_provider')\n"
+            "assert module.Payload().policy.label == 'native'\n"
+            "defect = sys.argv[2]\n"
+            "method = module.Payload.__init__\n"
+            "if defect == 'code':\n"
+            "    method.__code__ = method.__code__.replace(co_name='foreign')\n"
+            "elif defect == 'defaults':\n"
+            "    method.__defaults__ = (module.Policy('foreign'),)\n"
+            "before_effects = tuple(module.effects)\n"
+            "before_imports = module.marker.read_text(encoding='utf-8')\n"
+            "assert tuple(map(int, before_imports.splitlines())) == (os.getpid(),)\n"
+            "source_preflight(module.__name__).unwrap()\n"
+            "assert tuple(module.effects) == before_effects\n"
+            "assert module.marker.read_text(encoding='utf-8') == before_imports\n"
+            "observed = authenticate(module.__name__)\n"
+            "assert observed.success == (defect == 'none'), observed.error\n"
+            "assert tuple(module.effects) == before_effects\n"
+            "imported = tuple(map(int, module.marker.read_text("
+            "encoding='utf-8').splitlines()))\n"
+            "assert len(imported) == 2\n"
+            "assert imported[0] == os.getpid()\n"
+            "assert imported[1] > 0 and imported[1] != imported[0]\n"
+            "assert module.Payload().policy.label == "
+            "('foreign' if defect == 'defaults' else 'native')\n",
+            str(tmp_path),
+            defect,
+        )
+
+    @staticmethod
+    def test_native_import_uses_current_source_with_timestamp_valid_old_bytecode(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """Old bytecode cannot replace the current source consumed by cold import."""
+        marker = tmp_path / "bytecode-import-effect"
+        u.Tests.write_package_init(
+            tmp_path / "bytecode_provider",
+            "from pathlib import Path\n"
+            f"marker = Path({str(marker)!r})\n"
+            "marker.write_text('old', encoding='utf-8')\n"
+            "def operation():\n    return 'source-one'\n",
+        )
+        native_consumer(
+            "import os, py_compile\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('bytecode_provider')\n"
+            "assert module.operation() == 'source-one'\n"
+            "source = Path(module.__file__)\n"
+            "bytecode = Path(module.__cached__)\n"
+            "py_compile.compile(str(source), cfile=str(bytecode), doraise=True)\n"
+            "assert bytecode.is_file()\n"
+            "authenticate(module.__name__).unwrap()\n"
+            "before = source.stat()\n"
+            "source.write_text(source.read_text(encoding='utf-8').replace("
+            "'source-one', 'source-two').replace(\"'old'\", \"'new'\"), "
+            "encoding='utf-8')\n"
+            "os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))\n"
+            "assert source.stat().st_size == before.st_size\n"
+            "exec(compile(source.read_bytes(), str(source), 'exec'), vars(module))\n"
+            "assert module.operation() == 'source-two'\n"
+            "assert module.marker.read_text(encoding='utf-8') == 'new'\n"
+            "module.marker.unlink()\n"
+            "source_preflight(module.__name__).unwrap()\n"
+            "assert not module.marker.exists()\n"
+            "observed = authenticate(module.__name__)\n"
+            "observed.unwrap()\n"
+            "assert module.marker.read_text(encoding='utf-8') == 'new'\n"
+            "assert source.read_text(encoding='utf-8').endswith("
+            "\"return 'source-two'\\n\")\n"
+            "assert module.operation() == 'source-two'\n",
+            str(tmp_path),
+        )
+
+    @staticmethod
+    def test_cold_import_preserves_its_first_native_traceback(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A failed independent import retains the original source and exception."""
+        marker = tmp_path / "first-import-effect"
+        u.Tests.write_package_init(
+            tmp_path / "failing_import_provider",
+            "from pathlib import Path\n"
+            f"marker = Path({str(marker)!r})\n"
+            "if marker.exists():\n"
+            "    raise ValueError('cold import original cause')\n"
+            "marker.write_text('original effect', encoding='utf-8')\n"
+            "def operation():\n"
+            "    return 'native'\n",
+        )
+        native_consumer(
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('failing_import_provider')\n"
+            "assert module.operation() == 'native'\n"
+            "source_preflight(module.__name__).unwrap()\n"
+            "observed = authenticate(module.__name__)\n"
+            "assert observed.failure\n"
+            "assert 'Traceback (most recent call last):' in observed.error\n"
+            "assert str(Path(module.__file__)) in observed.error\n"
+            "assert 'ValueError: cold import original cause' in observed.error\n"
+            "assert module.marker.read_text(encoding='utf-8') == 'original effect'\n"
+            "assert module.operation() == 'native'\n",
+            str(tmp_path),
+        )

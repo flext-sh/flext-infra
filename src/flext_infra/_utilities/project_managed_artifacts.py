@@ -364,14 +364,14 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 None,
             )
             values = (
-                FlextStrictYamlConfigSource.merge_values(
+                u.config_merge(
                     dict(payload),
                     dict(projected.values),
                 )
                 if projected is not None
                 else dict(payload)
             )
-            merged = FlextStrictYamlConfigSource.merge_values(merged, values)
+            merged = u.config_merge(merged, values)
         return merged
 
     @staticmethod

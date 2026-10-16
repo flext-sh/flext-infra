@@ -369,7 +369,12 @@ class TestsFlextInfraModEvidenceInputs:
             ):
                 tm.that(sources is epoch.sources)
                 consumer = selection.source_paths[0]
-                module = project.get_pymodule(project.get_resource(consumer.name))
+                module = u.Infra.resolve_pymodule(
+                    project,
+                    u.Infra.require_file_resource(
+                        project.get_resource(consumer.name), consumer
+                    ),
+                )
                 offset = sources[consumer].rindex("Public")
                 tm.that(
                     u.Infra.name_definition_resource_path(module, offset),
@@ -480,7 +485,12 @@ class TestsFlextInfraModEvidenceInputs:
         ) as (project, sources):
             tm.that(
                 u.Infra.name_definition_resource_path(
-                    project.get_pymodule(project.get_resource(source.name)),
+                    u.Infra.resolve_pymodule(
+                        project,
+                        u.Infra.require_file_resource(
+                            project.get_resource(source.name), source
+                        ),
+                    ),
                     sources[source].rindex("Public"),
                 ),
                 eq=str(owner),

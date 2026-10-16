@@ -19,6 +19,9 @@ from flext_infra._utilities.rope_runtime_modules import (
 from flext_infra._utilities.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
+from flext_infra._utilities.rope_runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
 
 
 class FlextInfraUtilitiesRopeSourceBasesAliases:
@@ -61,7 +64,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         source: str,
         *,
         project: p.Infra.RopeProject | None = None,
-        pymodule: p.Infra.RopePyModule | None = None,
+        pymodule: p.Infra.RopeSemanticModule | None = None,
     ) -> t.StrDict:
         """Read the ``install_lazy_exports`` namespace alias map of one module.
 
@@ -89,18 +92,18 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             return {}
         # A required initializer that does not parse remains a real input error.
         parsed = (
-            pymodule
+            pymodule.get_module()
             if pymodule is not None
             else FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
                 project, source
             )
         )
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(parsed):
+            message = "Lazy aliases require a native Rope source module"
+            raise TypeError(message)
         if parsed.source_code != source:
             message = "Lazy aliases differ from their native Rope snapshot"
             raise ValueError(message)
-        if not isinstance(parsed, p.Infra.RopeSourceModule):
-            message = "Lazy aliases require a native Rope source module"
-            raise TypeError(message)
         finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
             parsed.pycore.project, "install_lazy_exports"
         )

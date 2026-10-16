@@ -45,7 +45,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
         """
         fixer = cls(repository_root=params.repository_root)
         fix_result = fixer.run(
-            projects=params.project_names or [],
+            projects=u.Infra.normalize_sequence_values(params.projects) or [],
             dry_run=params.dry_run,
             verbose=params.verbose,
         )
