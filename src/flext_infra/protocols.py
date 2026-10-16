@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Protocol definitions for flext-infra utilities and services.
 
 Defines structural contracts (runtime-checkable Protocols) for orchestration,

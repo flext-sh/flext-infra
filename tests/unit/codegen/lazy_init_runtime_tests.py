@@ -130,6 +130,33 @@ class TestsFlextInfraLazyInitRuntime:
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
 
     @staticmethod
+    def test_upstream_attribute_base_stays_inherited(tmp_path: Path) -> None:
+        """A namespace base reached through an installed upstream class is kept.
+
+        The facade snapshot captures only the project's own sources, so the
+        upstream package is absent from it; the base is inherited, never an
+        unresolved own base.
+        """
+        _, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_families()["m"]
+        sources = {
+            package / family.directory / "owner.py": (
+                "class PublishedOwner: pass\n__all__ = ['PublishedOwner']\n"
+            ),
+            package / f"{family.module}.py": (
+                "from flext_tests import FlextTestsModels\n"
+                "class Facade(FlextTestsModels):\n"
+                "    class Tests(FlextTestsModels.Tests): pass\n"
+                "m = Facade\n__all__ = ['Facade', 'm']\n"
+            ),
+        }
+        for path, content in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, content))
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        tm.that(rendered, has="FlextTestsModels.Tests")
+
+    @staticmethod
     @pytest.mark.parametrize("family", ["c", "m"])
     def test_competing_declared_publishers_keep_their_exact_diagnostic(
         tmp_path: Path,

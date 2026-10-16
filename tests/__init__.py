@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     )
     from tests.utilities_gates import TestsFlextInfraUtilitiesGatesMixin
     from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
+    from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGitMixin
     from tests.utilities_promoted import TestsFlextInfraUtilitiesPromotedMixin
     from tests.utilities_release import TestsFlextInfraUtilitiesReleaseMixin
     from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
@@ -55,6 +56,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesDocsFixtureMixin",
     "TestsFlextInfraUtilitiesGatesMixin",
     "TestsFlextInfraUtilitiesGitMixin",
+    "TestsFlextInfraUtilitiesHermeticGitMixin",
     "TestsFlextInfraUtilitiesProjectFixtureMixin",
     "TestsFlextInfraUtilitiesPromotedMixin",
     "TestsFlextInfraUtilitiesReleaseMixin",
@@ -96,6 +98,7 @@ install_lazy_exports(
         "TestsFlextInfraUtilitiesDocsFixtureMixin": ".utilities_fixture_docs",
         "TestsFlextInfraUtilitiesGatesMixin": ".utilities_gates",
         "TestsFlextInfraUtilitiesGitMixin": ".utilities_git",
+        "TestsFlextInfraUtilitiesHermeticGitMixin": ".utilities_hermetic_git",
         "TestsFlextInfraUtilitiesProjectFixtureMixin": ".utilities_fixture_project",
         "TestsFlextInfraUtilitiesPromotedMixin": ".utilities_promoted",
         "TestsFlextInfraUtilitiesReleaseMixin": ".utilities_release",
