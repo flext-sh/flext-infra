@@ -5088,6 +5088,12 @@ class FlextInfraWorkspaceNativeReference:
                 f"first_code_field={field}; "
                 f"witness_bytes={tuple(map(len, witnesses))}; "
                 f"first_witness_byte={offset}; "
+                f"witness_windows={
+                    tuple(
+                        witness[max((offset or 0) - 24, 0) : (offset or 0) + 24]
+                        for witness in witnesses
+                    )
+                }; "
                 f"observed_filename={actual_code.filename!r}; "
                 f"reference_filename={expected_code.filename!r}; "
                 f"observed_name={actual_code.name!r}; "
