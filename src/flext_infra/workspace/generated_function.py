@@ -646,12 +646,19 @@ class FlextInfraWorkspaceGeneratedFunction:
                 f"fields: {unstored[:8]}"
             )
             raise ValueError(msg)
+        sdk = vars(self._module("dataclasses"))
         ordered: t.DictKV[str, p.AttributeProbe] = {}
         for name in observed_fields:
             if name in annotations:
                 ordered[name] = annotations[name]
                 continue
-            ordered[name] = self._stored_field(name, namespace).type
+            stored = self._stored_field(name, namespace)
+            ordered[name] = stored.type
+            if stored._field_type is not sdk.get("_FIELD"):
+                # ClassVar/InitVar pseudo-fields are plain class values to the SDK.
+                if stored.default is not sdk.get("MISSING"):
+                    result[name] = stored.default
+                continue
             result[name] = self._rebuilt_field(name, namespace)
         annotations.clear()
         annotations.update(ordered)
@@ -707,6 +714,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise ValueError(msg)
         self._physical_function(factory)
         observed = self._stored_field(name, namespace)
+        empty = vars(self._module("dataclasses")).get("_EMPTY_METADATA")
         return factory(
             default=observed.default,
             default_factory=observed.default_factory,
@@ -714,6 +722,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             repr=observed.repr,
             hash=observed.hash,
             compare=observed.compare,
+            metadata=None if observed.metadata is empty else observed.metadata,
             kw_only=observed.kw_only,
         )
 
