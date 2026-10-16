@@ -12,8 +12,8 @@ from typing import override
 
 from flext_cli import FlextCliConfig
 
+from flext_infra import c
 from flext_infra._models._config import FlextInfraConfigModels
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 
 class FlextInfraConfig(FlextCliConfig):
@@ -38,7 +38,7 @@ class FlextInfraConfig(FlextCliConfig):
         if not isinstance(package, Path):
             msg = "packaged config source requires a filesystem package"
             raise TypeError(msg)
-        return package / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
+        return package / c.Infra.CODEGEN_CONFIG_DIR
 
     @classmethod
     @override
@@ -109,7 +109,7 @@ class FlextInfraConfig(FlextCliConfig):
         ):
             msg = f"config requires an absolute root and one YAML filename: {filename}"
             raise ValueError(msg)
-        directory = repository_root / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
+        directory = repository_root / c.Infra.CODEGEN_CONFIG_DIR
         library = cls.ssot_config_dir() / relative
         project = directory / relative
         if project.resolve() == library.resolve():

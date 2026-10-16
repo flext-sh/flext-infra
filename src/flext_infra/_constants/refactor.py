@@ -121,12 +121,14 @@ class FlextInfraConstantsRefactor:
         NON_ACTIONABLE_WITH_FIX = "non_actionable_with_fix"
         DEFERRED_SOURCE_DRIFT = "deferred_source_drift"
 
-    MOD_SCAN_CLASS_COUNT_FIELDS: ClassVar[Mapping[ModScanFindingClass, str]] = {
-        ModScanFindingClass.ACTIONABLE: "actionable",
-        ModScanFindingClass.DETECTION_ONLY: "detection_only",
-        ModScanFindingClass.NON_ACTIONABLE_WITH_FIX: "non_actionable_with_fix",
-        ModScanFindingClass.DEFERRED_SOURCE_DRIFT: "deferred",
-    }
+    MOD_SCAN_CLASS_COUNT_FIELDS: ClassVar[Mapping[ModScanFindingClass, str]] = (
+        MappingProxyType({
+            ModScanFindingClass.ACTIONABLE: "actionable",
+            ModScanFindingClass.DETECTION_ONLY: "detection_only",
+            ModScanFindingClass.NON_ACTIONABLE_WITH_FIX: "non_actionable_with_fix",
+            ModScanFindingClass.DEFERRED_SOURCE_DRIFT: "deferred",
+        })
+    )
     """Sole authority mapping one finding class to its report count field.
 
     Every count writer and validator derives from this map; adding a class

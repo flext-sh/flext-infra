@@ -13,6 +13,7 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m, t
 
+from flext_infra import c
 from flext_infra._config_make_contract import FlextInfraMakeContract
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.external_cache import (
@@ -133,7 +134,7 @@ class FlextInfraConfigModelsMake(
                 ValueError: If make.ci.local_check_gates contains unknown gates.
 
             """
-            allowed = set(FlextInfraConfigVocabulary.CANONICAL_GATE_IDS)
+            allowed = set(c.Infra.CANONICAL_GATE_IDS)
             unknown = sorted(set(self.local_check_gates) - allowed)
             if unknown:
                 msg = (
@@ -412,10 +413,10 @@ class FlextInfraConfigModelsMake(
                 ValueError: If make.ruff.lint_fix lacks the mandatory flag.
 
             """
-            if FlextInfraConfigVocabulary.RUFF_UNSAFE_FIXES_FLAG not in self.lint_fix:
+            if c.Infra.RUFF_UNSAFE_FIXES_FLAG not in self.lint_fix:
                 msg = (
                     "make.ruff.lint_fix must carry "
-                    f"{FlextInfraConfigVocabulary.RUFF_UNSAFE_FIXES_FLAG} (operator"
+                    f"{c.Infra.RUFF_UNSAFE_FIXES_FLAG} (operator"
                     " law 2026-10-05: the unsafe repair channel is mandatory"
                     " and never disabled again)"
                 )
@@ -811,7 +812,7 @@ class FlextInfraConfigModelsMake(
                     "references, agents, census and waza ended up outside the "
                     "gate matrix in consuming repositories. Each id must have a "
                     "`_custom_check_<id>` handler in the project's "
-                    f"{FlextInfraConfigVocabulary.CUSTOM_MAKE_FILENAME}."
+                    f"{c.Infra.CUSTOM_MAKE_FILENAME}."
                 ),
             ),
         ] = ()
@@ -840,7 +841,7 @@ class FlextInfraConfigModelsMake(
             if len(set(self.project_check_gates)) != len(self.project_check_gates):
                 msg = "make project_check_gates must be unique"
                 raise ValueError(msg)
-            builtin = set(FlextInfraConfigVocabulary.CANONICAL_GATE_IDS)
+            builtin = set(c.Infra.CANONICAL_GATE_IDS)
             shadowed = sorted(set(self.project_check_gates) & builtin)
             if shadowed:
                 msg = (
@@ -1017,8 +1018,8 @@ class FlextInfraConfigModelsMake(
             approval = self.approval_verbs
             milestones = (
                 "audit",
-                FlextInfraConfigVocabulary.VERB_CHECK,
-                FlextInfraConfigVocabulary.VERB_TEST,
+                c.Infra.VERB_CHECK,
+                c.Infra.VERB_TEST,
             )
             if (
                 approval[:1] != ("setup",)
@@ -1047,7 +1048,7 @@ class FlextInfraConfigModelsMake(
 
             """
             unknown_fmt_gates = set(self.fmt_gates) - set(
-                FlextInfraConfigVocabulary.SARIF_TOOL_INFO,
+                c.Infra.SARIF_TOOL_INFO,
             )
             if unknown_fmt_gates:
                 msg = (
@@ -1087,7 +1088,7 @@ class FlextInfraConfigModelsMake(
 
             """
             return (
-                *FlextInfraConfigVocabulary.CANONICAL_GATE_IDS,
+                *c.Infra.CANONICAL_GATE_IDS,
                 *self.project_check_gates,
             )
 
@@ -1136,7 +1137,7 @@ class FlextInfraConfigModelsMake(
                 The resulting ``t.VariadicTuple[str]``.
 
             """
-            return FlextInfraConfigVocabulary.CANONICAL_FIXABLE_GATE_IDS
+            return c.Infra.CANONICAL_FIXABLE_GATE_IDS
 
         @m.computed_field
         @property

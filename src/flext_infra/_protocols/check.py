@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
 
+    @runtime_checkable
     class NativeStorageSlot[ValueT](Protocol):
         """Read one interpreter-owned slot with its precise native result."""
 
