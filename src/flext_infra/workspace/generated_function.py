@@ -944,24 +944,21 @@ class FlextInfraWorkspaceGeneratedFunction:
     def _dataclass_accessor(
         self,
         value: p.AttributeProbe | None,
-        decorator: str | t.Pair[FunctionType, bool] | None,
+        decorator: str | None,
     ) -> None:
         """Prove one method body and its raw ``__wrapped__`` chain.
 
-        A ``functools.wraps`` wrapper (e.g. ``contextlib.contextmanager``'s
-        ``helper``) is declared inside its factory under ``@wraps(...)``; the
-        function it wraps is the authored declaration, decorated by exactly
-        that factory.
-
         Raises:
             TypeError: If storage can invoke an authored accessor.
-            ValueError: If the raw wrapper chain is cyclic, stacks decorators
-                around a wrapper, or lacks physical code.
+            ValueError: If the raw wrapper chain is cyclic or lacks physical code.
 
         """
         if type(value) is not FunctionType:
             msg = "native dataclass accessor is not an exact Python function"
             raise TypeError(msg)
+        if decorator is None and vars(value).get("__isabstractmethod__") is True:
+            # ``abc.abstractmethod`` marks the function in place and returns it.
+            decorator = "abstractmethod"
         seen: set[int] = set()
         wrapper: FunctionType | None = None
         while type(value) is FunctionType:
@@ -969,56 +966,13 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = "native dataclass method has a cyclic raw wrapper"
                 raise ValueError(msg)
             seen.add(id(value))
-            wrapped = self._function_attributes(value).get("__wrapped__")
-            if wrapped is None:
-                self._physical_function(value, decorator=decorator)
-                decorator = None
-            else:
-                if decorator is not None:
-                    msg = (
-                        "native dataclass method stacks a decorator over a wrapper: "
-                        f"{value.__code__.co_qualname}"
-                    )
-                    raise ValueError(msg)
-                wraps = vars(self._module("functools")).get("wraps")
-                if type(wraps) is not FunctionType:
-                    msg = "native wrapper factory functools.wraps is not a function"
-                    raise TypeError(msg)
-                self._physical_function(value, decorator=(wraps, True))
-                decorator = (self._wrapper_factory(value), False)
-            value = wrapped
+            self._physical_function(value, decorator=decorator, wrapper=wrapper)
+            decorator = None
+            wrapper = value
+            value = self._function_attributes(value).get("__wrapped__")
         if value is not None:
             msg = "native dataclass method has callback-bearing descriptor storage"
             raise TypeError(msg)
-
-    def _wrapper_factory(self, wrapper: FunctionType) -> FunctionType:
-        """Return the module function whose body physically declares ``wrapper``.
-
-        Returns:
-            The factory (e.g. ``contextlib.contextmanager``) owning the wrapper code.
-
-        Raises:
-            ValueError: If the wrapper is not a direct local of a module function.
-
-        """
-        components = wrapper.__code__.co_qualname.split(".")
-        module = self._module(wrapper.__module__)
-        factory = vars(module).get(components[0])
-        if (
-            len(components) != 3
-            or components[1] != "<locals>"
-            or type(factory) is not FunctionType
-            or not any(
-                type(constant) is CodeType and constant == wrapper.__code__
-                for constant in factory.__code__.co_consts
-            )
-        ):
-            msg = (
-                "native wrapper has no physical factory: "
-                f"{wrapper.__module__}.{wrapper.__code__.co_qualname}"
-            )
-            raise ValueError(msg)
-        return factory
 
     def _dataclass_class_values(
         self,
@@ -1110,9 +1064,8 @@ class FlextInfraWorkspaceGeneratedFunction:
         namespace = self._dataclass_inputs(owner, declaration)
         self._dataclass_hash_action(factory[1], namespace)
         self._dataclass_sdk_state()
-        bases = self._dataclass_bases(owner)
         self._inputs_current("native dataclass compiler input changed")
-        receiver = type(declaration.name, bases, namespace)
+        receiver = type(declaration.name, (object,), namespace)
         emitted = factory[0](receiver, **factory[1])
         if type(emitted) is not type:
             msg = "native dataclass SDK returned a foreign receiver"
@@ -1137,47 +1090,6 @@ class FlextInfraWorkspaceGeneratedFunction:
                 inputs=tuple(self._inputs.values()),
             )
         )
-
-    def _dataclass_bases(self, owner: p.AttributeProbe) -> t.VariadicTuple[type]:
-        """Mirror the owner's dataclass ancestors as data-only receiver bases.
-
-        The SDK collects inherited fields by walking the receiver's MRO and
-        reading each base's ``__dataclass_fields__`` and ``__dataclass_params__``.
-        Each real dataclass ancestor contributes exactly its stored native
-        ``Field`` records and params (data, never invoked) to a fresh base, in
-        the owner's own MRO order, so the SDK merges inherited fields as it did
-        for the real class; no ancestor method or descriptor is carried.
-
-        Returns:
-            The single data-only base chain for the receiver (``object`` when the
-            owner inherits no dataclass fields).
-
-        Raises:
-            TypeError: If an ancestor's dataclass storage has foreign types.
-
-        """
-        sdk = vars(self._module("dataclasses"))
-        base: type = object
-        ancestors = vars(type)["__mro__"].__get__(owner, type(owner))[1:]
-        for ancestor in reversed(ancestors):
-            storage = vars(type)["__dict__"].__get__(ancestor, type(ancestor))
-            fields = storage.get("__dataclass_fields__")
-            if fields is None:
-                continue
-            params = storage.get("__dataclass_params__")
-            if type(fields) is not dict or type(params) is not sdk.get(
-                "_DataclassParams"
-            ):
-                msg = "native dataclass ancestor has foreign field storage"
-                raise TypeError(msg)
-            for name in fields:
-                self._stored_field(name, storage)
-            base = type(
-                vars(type)["__name__"].__get__(ancestor, type(ancestor)),
-                (base,),
-                {"__dataclass_fields__": dict(fields), "__dataclass_params__": params},
-            )
-        return (base,)
 
     def _dataclass_hash_action(
         self,
@@ -2407,7 +2319,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         self,
         function: p.AttributeProbe | None,
         *,
-        decorator: str | t.Pair[FunctionType, bool] | None = None,
+        decorator: str | None = None,
         wrapper: FunctionType | None = None,
     ) -> t.Triple[ast.FunctionDef, ast.Module, t.MappingKV[str, p.AttributeProbe]]:
         if type(function) is not FunctionType:
@@ -2420,7 +2332,6 @@ class FlextInfraWorkspaceGeneratedFunction:
         ):
             msg = "closed compiler function has foreign globals"
             raise ValueError(msg)
-        spellings = self._decorator_spellings(decorator, namespace)
         path, tree = self._source(self._module(module_name))
         # _decorator_spellings is the single owner that authenticates the
         # expected decorator (native descriptor type or abc.abstractmethod).
@@ -2604,45 +2515,40 @@ class FlextInfraWorkspaceGeneratedFunction:
 
     def _decorator_spellings(
         self,
-        decorator: str | t.Pair[FunctionType, bool] | None,
+        decorator: str | None,
         namespace: t.MappingKV[str, p.AttributeProbe],
     ) -> frozenset[str] | None:
         """Return the source spellings that bind the expected sole decorator.
 
         A native descriptor type (``classmethod``, ``staticmethod``,
         ``property``) must be the builtin itself; a property's own
-        ``<name>.setter``/``.deleter`` is spelled as such. A Python decorator
-        function (``abc.abstractmethod``, ``contextlib.contextmanager``, or
-        ``functools.wraps`` applied as a call) is every module binding of that
-        function or of its module; a called form is spelled with ``()``.
+        ``<name>.setter``/``.deleter`` is spelled as such; ``abstractmethod``
+        is every module binding of ``abc.abstractmethod`` or of ``abc``.
 
         Returns:
             The accepted decorator spellings, or ``None`` for an undecorated body.
 
         Raises:
-            TypeError: If a decorator function is not an exact Python function.
+            TypeError: If ``abc.abstractmethod`` is not its physical function.
 
         """
         if decorator is None:
             return None
         if decorator == "abstractmethod":
-            decorator = (vars(self._module("abc")).get("abstractmethod"), False)
-        if type(decorator) is str:
-            if "." not in decorator:
-                self._builtin(decorator, namespace)
-            return frozenset((decorator,))
-        factory, called = decorator
-        if type(factory) is not FunctionType:
-            msg = "native decorator is not an exact Python function"
-            raise TypeError(msg)
-        self._function(factory)
-        owner = self._module(factory.__module__)
-        suffix = "()" if called else ""
-        return frozenset(
-            (name if value is factory else f"{name}.{factory.__name__}") + suffix
-            for name, value in namespace.items()
-            if value is factory or value is owner
-        )
+            abc = self._module("abc")
+            marker = vars(abc).get("abstractmethod")
+            if type(marker) is not FunctionType:
+                msg = "native abstract method marker is not a Python function"
+                raise TypeError(msg)
+            self._function(marker)
+            return frozenset(
+                name if value is marker else f"{name}.abstractmethod"
+                for name, value in namespace.items()
+                if value is marker or value is abc
+            )
+        if "." not in decorator:
+            self._builtin(decorator, namespace)
+        return frozenset((decorator,))
 
     @staticmethod
     def _function_declarations(
@@ -2666,15 +2572,6 @@ class FlextInfraWorkspaceGeneratedFunction:
 
         """
         components = function.__code__.co_qualname.split(".")
-        for index, component in enumerate(components[:-1]):
-            if component == "<locals>":
-                # The enclosing function's body was selected by the previous
-                # component; a local declaration is one of its statements.
-                continue
-            enclosing = (
-                ast.FunctionDef
-                if components[index + 1] == "<locals>"
-                else ast.ClassDef
         nodes = FlextInfraWorkspaceGeneratedFunction._qualified_scope(components, tree)
         return tuple(
             node
@@ -2719,28 +2616,6 @@ class FlextInfraWorkspaceGeneratedFunction:
             nodes = parents[0].body
         return nodes
 
-        def spelled(expression: ast.expr, suffix: str) -> bool:
-            match expression:
-                case ast.Name(id=name):
-                    return spellings is not None and f"{name}{suffix}" in spellings
-                case ast.Attribute(value=ast.Name(id=owner), attr=member):
-                    return (
-                        spellings is not None
-                        and f"{owner}.{member}{suffix}" in spellings
-                    )
-                case _:
-                    return False
-
-        def decorated(node: ast.FunctionDef) -> bool:
-            match node.decorator_list:
-                case []:
-                    return spellings is None
-                case [ast.Call(func=target)]:
-                    return spelled(target, "()")
-                case [single]:
-                    return spelled(single, "")
-                case _:
-                    return False
     @staticmethod
     def _declared_decorator(
         decorators: t.SequenceOf[ast.expr],
@@ -2884,14 +2759,6 @@ class FlextInfraWorkspaceGeneratedFunction:
                 and statement.targets[0].id == node.id
             ]
             match assignments:
-                case [ast.Constant() | ast.Tuple() as literal] if (
-                    # A module constant bound once to a closed literal
-                    # (``functools.WRAPPER_ASSIGNMENTS``) is its literal value.
-                    self._same_default(
-                        self._default(literal, namespace, tree), namespace[node.id]
-                    )
-                ):
-                    return namespace[node.id]
                 case [ast.Call(func=ast.Name(id="object"), args=[], keywords=[])] if (
                     namespace.get("object", vars(builtins).get("object")) is object
                     and type(namespace[node.id]) is object
