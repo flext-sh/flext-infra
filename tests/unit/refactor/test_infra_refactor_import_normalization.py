@@ -226,7 +226,7 @@ class TestsFlextInfraRefactorImportNormalization:
             FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=project,
-                projection_roots=(project,),
+                options=m.Infra.SemanticPublicationOptions(projection_roots=(project,)),
             ),
         )
         result = tm.ok(

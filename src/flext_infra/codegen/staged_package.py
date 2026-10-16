@@ -407,7 +407,7 @@ class FlextInfraStagedPackage:
     def _pin_layout(
         cls,
         layout: m.Infra.RopeProjectLayout,
-        states: dict[Path, m.Cli.AtomicFileState],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
         *,
         updates: t.MappingKV[Path, str] | None = None,
     ) -> p.Result[tuple[str, ...]]:
@@ -456,7 +456,7 @@ class FlextInfraStagedPackage:
         local: m.Infra.RopeProjectLayout,
         layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
         selected: list[m.Infra.RopeProjectLayout],
-        states: dict[Path, m.Cli.AtomicFileState],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
         *,
         updates: t.MappingKV[Path, str] | None = None,
     ) -> p.Result[bool]:

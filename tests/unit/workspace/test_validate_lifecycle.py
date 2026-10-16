@@ -164,7 +164,8 @@ class TestsFlextInfraWorkspaceLifecycle:
                 str(root),
                 "--projects",
                 ".",
-            ]) != 0,
+            ])
+            != 0,
             eq=True,
         )
         tm.that((root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).exists(), eq=False)

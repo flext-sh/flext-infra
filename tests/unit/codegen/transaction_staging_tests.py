@@ -552,7 +552,7 @@ class TestsFlextInfraTransactionStaging:
         outcome = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (plan,),
             repository_root=root,
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(validator=validate),
         )
         if mutation == "unchanged":
             tm.ok(outcome)

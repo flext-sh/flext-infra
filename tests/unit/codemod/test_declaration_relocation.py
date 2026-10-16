@@ -788,7 +788,9 @@ class TestsFlextInfraDeclarationRelocation:
                 started.value,
                 c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 tuple(plans),
-                staged_validator=refuse_destination,
+                publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(), staged_validator=refuse_destination
+                ),
             )
             if admitted.failure:
                 return r[t.VariadicTuple[Path]].from_failure(admitted)
@@ -900,9 +902,11 @@ class TestsFlextInfraDeclarationRelocation:
         result = FlextInfraSemanticPublication.publish_semantic_file_plans(
             plans,
             repository_root=root,
-            projection_roots=(root,),
-            dependency_group=package.name,
-            validator=consume,
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(root,),
+                dependency_group=package.name,
+                validator=consume,
+            ),
         )
         if accepted:
             tm.ok(result)

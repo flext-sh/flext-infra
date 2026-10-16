@@ -146,14 +146,14 @@ class FlextInfraApplyRenames:
         publication = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (*plans, driver_plan),
             repository_root=Path(commonpath(roots)),
-            validator=verify,
+            options=m.Infra.SemanticPublicationOptions(validator=verify),
         )
         if publication.failure:
             return cls._compensate_refused_campaign(publication, plans)
         changed = publication.value
         # Empty transactions do not invoke the publisher's validator.
         if not changed:
-            verify().unwrap()
+            verify(Path(commonpath(roots))).unwrap()
         return r[t.Pair[t.SequenceOf[Path], int]].ok((changed, pending))
 
     @staticmethod

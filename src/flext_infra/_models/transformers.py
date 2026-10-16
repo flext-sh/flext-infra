@@ -7,17 +7,42 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsTransformers:
     """Models for source transformers — exposed through the ``m.Infra`` facade."""
+
+    class SemanticPublicationOptions(m.FrozenModel):
+        """Caller-controlled gates and scope roots for one joint publication."""
+
+        validator: Callable[[Path], p.Result[bool]] | None = m.Field(
+            default=None,
+            description="Consumer acceptance gate over the previewed view root",
+        )
+        source_guard: Callable[[], p.Result[bool]] | None = m.Field(
+            default=None,
+            description="Pre-publication guard over the governed source inputs",
+        )
+        dependency_group: str | None = m.Field(
+            default=None,
+            description="Dependency group owning composed projection exposure",
+        )
+        projection_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Generated projection roots composed into the publication",
+        )
+        input_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Additional read-only driver roots namespaced as pseudo-roots",
+        )
 
     class AliasMigrationContext(m.ContractModel):
         """Resolved ownership and import-root context for one alias migration."""

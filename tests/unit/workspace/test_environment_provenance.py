@@ -829,7 +829,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tmp_path: Path,
         defect: str,
     ) -> None:
-        """Authentication preserves effects of the actual imported construction."""
+        """Source preflight preserves effects of the actual imported construction."""
         u.Tests.write_package_init(
             tmp_path / "effect_provider",
             "from dataclasses import dataclass\n"
@@ -861,11 +861,11 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "before = tuple(module.effects)\n"
             "marker = module.marker.read_bytes()\n"
             "assert set(before) == {'body', 'decorator', 'metaclass', 'subclass'}\n"
-            "authenticate(module.__name__).unwrap()\n"
+            "source_preflight(module.__name__).unwrap()\n"
             "if sys.argv[2] == 'code':\n"
             "    module.Payload.__init__.__code__ = "
             "module.Payload.__init__.__code__.replace(co_name='replaced')\n"
-            "observed = authenticate(module.__name__)\n"
+            "observed = source_preflight(module.__name__)\n"
             "assert observed.success == (sys.argv[2] == 'none'), observed\n"
             "assert tuple(module.effects) == before\n"
             "assert module.marker.read_bytes() == marker\n"
@@ -1148,7 +1148,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "effect = pathlib.Path(module.__file__).with_name('effect')\n"
             "assert effect.read_text() == 'imported'\n"
             "effect.unlink()\n"
-            "observed = authenticate(module.__name__)\n"
+            "observed = source_preflight(module.__name__)\n"
             "assert observed.failure, observed\n"
             "assert not effect.exists(), 'source admission replayed the module'\n"
         )
@@ -1683,7 +1683,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             wheel["include"] = [f"/{declaration}/**" for declaration in declarations]
             wheel["sources"] = dict(zip(declarations, package_names, strict=True))
         else:
-            wheel["packages"] = t.JsonValueList(declarations)
+            boundary_packages: t.JsonValueList = list(declarations)
+            wheel["packages"] = boundary_packages
         tm.ok(u.Cli.toml_write_mapping(pyproject, payload))
 
     @pytest.mark.parametrize(

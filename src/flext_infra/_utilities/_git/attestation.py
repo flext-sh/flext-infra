@@ -100,14 +100,11 @@ class FlextInfraUtilitiesGitAttestationMixin(
         inline = ssh and key is not None and key.startswith(("key::", "ssh-"))
         if inline and key is not None:
             try:
-                kind, encoded, *_ = key.removeprefix("key::").split(maxsplit=2)
-                blob = b64decode(encoded, validate=True)
-                size = int.from_bytes(blob[:4], "big")
-                if len(blob) <= 4 + size or blob[4 : 4 + size] != kind.encode("ascii"):
-                    raise ValueError
-            except (ValueError, UnicodeError):
+                cls._validate_inline_ssh_key(key)
+            except ValueError as error:
                 return r[m.Infra.GitSigningIdentityReport].fail(
                     "native Git signing configuration declares a malformed public key",
+                    exception=error,
                 )
         return r[m.Infra.GitSigningIdentityReport].ok(
             m.Infra.GitSigningIdentityReport(
@@ -1075,7 +1072,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
             policy=predicate.commands[0].policy,
             policy_digest=predicate.commands[0].policy_digest,
         )
-        return cls._publish_gate_tag(verification_request, predicate, serialized.value)
+        return cls._publish_gate_tag(
+            verification_request, predicate, serialized.value, context
+        )
 
     @classmethod
     def _publish_gate_tag(
@@ -1083,6 +1082,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateAttestationVerifyRequest,
         predicate: m.Infra.GateAttestationPredicate,
         serialized: str,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()
@@ -1095,6 +1095,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                     repo_root,
                     allowed,
                     tag,
+                    context,
                 )
                 if existing.failure:
                     return r[m.Infra.GateAttestationReport].from_failure(existing)
@@ -1121,6 +1122,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             repo_root,
             allowed,
             tag,
+            context,
         )
         if verified.failure:
             return r[m.Infra.GateAttestationReport].from_failure(verified)

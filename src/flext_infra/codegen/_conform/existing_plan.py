@@ -210,15 +210,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         artifacts = u.Infra.snapshot_committed_project_managed_artifacts(target.root)
         if artifacts.failure:
             return result_type.from_failure(artifacts)
-        collected = cls._member_declaration_states(target.root, workspace)
-        if collected.failure:
-            return result_type.from_failure(collected)
-        sources = FlextInfraCodegenPreconditions.unique_states((
-            *artifacts.value.sources,
-            *collected.value[0],
-        ))
-        if sources.failure:
-            return result_type.from_failure(sources)
+        captured = cls._bootstrap_member_sources(
+            target.root,
+            workspace,
+            artifacts.value.sources,
+        )
+        if captured.failure:
+            return result_type.from_failure(captured)
+        sources, declarations = captured.value
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=target.root,
             skip_check=True,
@@ -229,7 +228,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             target=target,
             workspace=workspace,
             codegen=codegen,
-            member_declarations=collected.value[1],
+            member_declarations=declarations,
         )
         if conformed.failure:
             return result_type.from_failure(conformed)
@@ -245,6 +244,65 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         )
         if rendered.failure:
             return result_type.from_failure(rendered)
+        return cls._bootstrap_file_plan(
+            target,
+            codegen,
+            (before, rendered.value, sources),
+        )
+
+    @classmethod
+    def _bootstrap_member_sources(
+        cls,
+        root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        artifact_sources: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[
+        t.Pair[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
+        """Combine the authenticated artifact and actual member declarations.
+
+        Returns:
+            The complete source evidence and original member declarations.
+
+        """
+        result = r[
+            t.Pair[
+                t.VariadicTuple[m.Cli.AtomicFileState],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+            ]
+        ]
+        collected = cls._member_declaration_states(root, workspace)
+        if collected.failure:
+            return result.from_failure(collected)
+        sources = FlextInfraCodegenPreconditions.unique_states((
+            *artifact_sources,
+            *collected.value[0],
+        ))
+        if sources.failure:
+            return result.from_failure(sources)
+        return result.ok((sources.value, collected.value[1]))
+
+    @staticmethod
+    def _bootstrap_file_plan(
+        target: m.Infra.RepositoryConformTarget,
+        codegen: m.Infra.CodegenConfigSpec,
+        material: t.Triple[
+            m.Cli.AtomicFileState,
+            str,
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ],
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Bind the conformed bytes and evidence to their declared managed owner.
+
+        Returns:
+            The complete bootstrap file plan, or an ambiguous-owner failure.
+
+        """
+        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        before, source, sources = material
         managed = tuple(
             item
             for item in codegen.managed_file_specs
@@ -254,11 +312,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.fail("pyproject bootstrap requires one managed owner")
         planned = m.Infra.CodegenFilePlan(
             project=target.root,
-            path=path,
+            path=target.root / c.PYPROJECT_FILENAME,
             before=before,
-            desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
+            desired_content=source.encode(c.DEFAULT_ENCODING),
             desired_mode=managed[0].mode,
-            source_states=sources.value,
+            source_states=sources,
         )
         return result_type.ok((planned,))
 

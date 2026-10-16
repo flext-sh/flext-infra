@@ -76,8 +76,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         t.VariadicTuple[m.Infra.SemanticMigrationEdit],
         t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
     ]:
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        project = runtime.snapshot_project(workspace.rope_project, sources)
+        project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+            workspace.rope_project, sources
+        )
         working = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
         unresolved: set[t.Triple[Path, str, str]] = set()
@@ -88,7 +89,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             findings.extend(import_findings)
             if working != sources:
                 project.close()
-                project = runtime.snapshot_project(workspace.rope_project, working)
+                project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                    workspace.rope_project, working
+                )
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
                     continue
@@ -138,7 +141,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
-                    project = runtime.snapshot_project(workspace.rope_project, working)
+                    project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                        workspace.rope_project, working
+                    )
             cls._preflight_declaration_graph(workspace, sources, working)
             return (
                 tuple(
@@ -508,8 +513,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project.get_resource(path.relative_to(root).as_posix()),
         )
         module_scope = module.get_scope()
-        if module_scope is None:
-            return None
         for outer in module_scope.get_scopes():
             if outer.get_kind() != "Class":
                 continue
@@ -810,7 +813,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         if not orphaned:
             return proposed
-        rewrites = []
+        rewrites: list[m.Infra.SourceRewrite] = []
         lines = cls._source_lines(proposed)
         for statement in runtime.module_imports_for_pymodule(project, after).imports:
             information = statement.import_info
@@ -855,7 +858,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             for information in imports
             for name, alias in information.names_and_aliases
         }
-        used = set()
+        used: set[str] = set()
         for name in names:
             binding = module.get_scope().get_names().get(name)
             if binding is None:
@@ -943,7 +946,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 m.Infra.SourceRewrite(
                     start=start,
                     end=end,
-                    text=cls._checked_type_reference(
+                    text=cls._checked_relocation_reference(
                         runtime.scope_at(module, start),
                         expression,
                     ),
@@ -966,7 +969,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
 
     @classmethod
-    def _checked_type_reference(cls, scope: p.Infra.RopeScope, expression: str) -> str:
+    def _checked_relocation_reference(
+        cls, scope: p.Infra.RopeScope, expression: str
+    ) -> str:
         root = expression.partition(".")[0]
         if not all(part.isidentifier() for part in expression.split(".")):
             msg = f"quoted type destination is not an identifier chain: {expression}"
@@ -993,12 +998,12 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         types = FlextInfraUtilitiesSemanticFamilyTypeReferences
         module = project.get_pymodule(resource)
         lines = cls._source_lines(source)
-        edits = []
+        edits: list[m.Infra.SourceRewrite] = []
 
         def replace(lexical: p.Infra.RopeScope, value: str) -> str | None:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             return (
-                cls._checked_type_reference(lexical, expression)
+                cls._checked_relocation_reference(lexical, expression)
                 if runtime.same_name(binding, runtime.expression_name(lexical, value))
                 else None
             )
@@ -1047,7 +1052,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         scope = project.get_pymodule(resource).get_scope()
-        existing = scope.get_names().get("m") if scope is not None else None
+        existing = scope.get_names().get("m")
         expected = project.get_pymodule(
             project.get_resource(
                 (target.parent.parent / c.Infra.MODELS_PY)
@@ -1164,6 +1169,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             imports: Required imports added to the destination module.
             transplanted: Payload text and indentation from the origin cut.
 
+        Raises:
+            TypeError: The destination owner lacks its native source scope.
+
         """
         transferred, indentation = transplanted
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1232,11 +1240,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project.get_resource(origin.relative_to(root).as_posix()),
         )
         scope = module.get_scope()
-        if scope is None or destination is None:
-            msg = (
-                f"declaration-relocation: missing module scope for {origin} or {target}"
-            )
-            raise ValueError(msg)
         imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo] = {}
         for information in cls.native_import_infos(project, module):
             for name, alias in information.names_and_aliases:
@@ -1303,19 +1306,18 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project,
             module.source_code,
         )
+        finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+            project, "import"
+        )
         tokens = tuple(
-            occurrence.offset
-            for occurrence in FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-                project,
-                "import",
-            ).find_occurrences(pymodule=module)
+            occurrence.offset for occurrence in finder.find_occurrences(pymodule=module)
         )
         if len(tokens) != len(records):
             msg = "native import records differ from their lexical occurrences"
             raise ValueError(msg)
         guard = project.get_module("typing").get_attribute("TYPE_CHECKING")
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(module.source_code)
-        selected = []
+        selected: list[p.Infra.RopeImportInfo] = []
         conditions: list[t.Pair[int, bool]] = []
         position = 0
         for statement in facts:
@@ -1355,8 +1357,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 if offset < statement.start_offset:
                     msg = "native import token has no enclosing logical statement"
                     raise ValueError(msg)
-                lexical = runtime.scope_at(module, offset)
-                if lexical.get_kind() == "Module" and all(
+                if runtime.scope_at(module, offset).get_kind() == "Module" and all(
                     condition for _indent, condition in conditions
                 ):
                     selected.append(record.import_info)
@@ -1463,6 +1464,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         Returns:
             Attribute replacements and required direct owner imports.
+
+        Raises:
+            TypeError: The dependency scope lacks its native source module.
 
         """
         dependencies: t.MutableMappingKV[t.Pair[int, int], str] = {}

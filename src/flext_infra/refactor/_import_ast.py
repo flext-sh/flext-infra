@@ -47,8 +47,9 @@ class FlextInfraImportNormalizationAstMixin:
             key=operator.attrgetter("lineno"),
         )
 
-    @staticmethod
+    @classmethod
     def _enclosing_scope(
+        cls,
         node: ast.AST,
         parents: t.MappingKV[int, ast.AST],
     ) -> ast.AST | None:
@@ -78,20 +79,34 @@ class FlextInfraImportNormalizationAstMixin:
                 case (
                     ast.ListComp() | ast.SetComp() | ast.DictComp() | ast.GeneratorExp()
                 ):
-                    first = current.generators[0].iter
-                    ancestor = node
-                    while ancestor is not current:
-                        if ancestor is first:
-                            break
-                        parent = parents.get(id(ancestor))
-                        if parent is None:
-                            break
-                        ancestor = parent
-                    else:
+                    if cls._comprehension_owns_node(node, current, parents):
                         return current
             child = current
             current = parents.get(id(current))
         return None
+
+    @staticmethod
+    def _comprehension_owns_node(
+        node: ast.AST,
+        scope: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp,
+        parents: t.MappingKV[int, ast.AST],
+    ) -> bool:
+        """Keep the first iterable outside its comprehension's lexical bindings.
+
+        Returns:
+            Whether the original node reaches this scope without its first iterable.
+
+        """
+        first = scope.generators[0].iter
+        ancestor = node
+        while ancestor is not scope:
+            if ancestor is first:
+                return False
+            parent = parents.get(id(ancestor))
+            if parent is None:
+                return False
+            ancestor = parent
+        return True
 
     @staticmethod
     def _is_type_checking_test(test: ast.expr) -> bool:
