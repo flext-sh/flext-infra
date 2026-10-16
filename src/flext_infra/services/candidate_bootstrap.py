@@ -146,14 +146,15 @@ class FlextInfraCandidateBootstrapService:
             planned = self._planned_target(root, target, inputs)
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            for file in planned.value:
-                sources = FlextInfraCodegenPreconditions.unique_states((
-                    *file.source_states,
-                    *declaration_states,
-                ))
-                if sources.failure:
-                    return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
-                files.append(file.model_copy(update={"source_states": sources.value}))
+            if not contract.destinations and not planned.value.files:
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    f"candidate bootstrap has no declared destinations: {root}",
+                )
+            for file in planned.value.files:
+                admitted = self._admit(root, contract, file, inputs)
+                if admitted.failure:
+                    return r[m.Infra.CodegenPhaseAnalysis].from_failure(admitted)
+                files.append(file)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
@@ -162,6 +163,23 @@ class FlextInfraCandidateBootstrapService:
             ),
         )
 
+    @staticmethod
+    def _admit(
+        root: Path,
+        contract: m.Infra.CodegenConformSurfaceContract,
+        file: m.Infra.CodegenFilePlan,
+        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Admit one planned file into its target surface and record its inputs.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        if file.project != root or not file.path.is_relative_to(root):
+            return r[bool].fail(
+                f"candidate bootstrap destination has a foreign owner: {file.path}",
+            )
     def _planned_target(
         self,
         root: Path,
@@ -300,14 +318,17 @@ class FlextInfraCandidateBootstrapService:
             contract.destinations is not None
             and file.path.relative_to(root).as_posix() not in contract.destinations
         ):
-            return (
-                f"candidate bootstrap destination is outside its surface: {file.path}"
+            return r[bool].fail(
+                f"candidate bootstrap destination is outside its surface: {file.path}",
             )
         for state in file.source_states:
             previous = inputs.get(state.path)
             if previous is not None and previous != state:
-                return f"candidate bootstrap observed two states for {state.path}"
-        return None
+                return r[bool].fail(
+                    f"candidate bootstrap observed two states for {state.path}",
+                )
+            inputs[state.path] = state
+        return r[bool].ok(value=True)
 
     def _verify(
         self,
