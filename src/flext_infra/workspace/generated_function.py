@@ -613,7 +613,48 @@ class FlextInfraWorkspaceGeneratedFunction:
                 result[field.target.id] = self._rebuilt_field(
                     field.target.id, namespace
                 )
+        self._dataclass_inherited_fields(namespace, observed_fields, result)
         return result
+
+    def _dataclass_inherited_fields(
+        self,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        observed_fields: t.MappingKV[str, p.AttributeProbe],
+        result: t.MutableMappingKV[str, p.AttributeProbe],
+    ) -> None:
+        """Lay out inherited fields in the SDK's own stored order.
+
+        The stored ``__dataclass_fields__`` already holds the final order (base
+        fields first, redefinitions in place). Declared fields keep their
+        physical data; inherited ones are rebuilt from their stored SDK
+        ``Field``, never invoked.
+
+        Raises:
+            ValueError: If an own annotation is not a stored field beside inherited
+                fields, so the stored order cannot place it.
+
+        """
+        annotations = result["__annotations__"]
+        if type(annotations) is not dict or all(
+            name in annotations for name in observed_fields
+        ):
+            return
+        unstored = [name for name in annotations if name not in observed_fields]
+        if unstored:
+            msg = (
+                "native dataclass annotation has no stored field beside inherited "
+                f"fields: {unstored[:8]}"
+            )
+            raise ValueError(msg)
+        ordered: t.DictKV[str, p.AttributeProbe] = {}
+        for name in observed_fields:
+            if name in annotations:
+                ordered[name] = annotations[name]
+                continue
+            ordered[name] = self._stored_field(name, namespace).type
+            result[name] = self._rebuilt_field(name, namespace)
+        annotations.clear()
+        annotations.update(ordered)
 
     def _dataclass_field(
         self,
@@ -751,9 +792,6 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise ValueError(msg)
         for ancestor in vars(type)["__mro__"].__get__(owner, type(owner))[1:]:
             inherited = vars(type)["__dict__"].__get__(ancestor, type(ancestor))
-            if "__dataclass_fields__" in inherited:
-                msg = "native dataclass inherited fields need physical declarations"
-                raise ValueError(msg)
             if "__post_init__" in inherited and "__post_init__" not in result:
                 self._dataclass_method(inherited["__post_init__"])
                 result["__post_init__"] = inherited["__post_init__"]
