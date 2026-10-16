@@ -524,6 +524,12 @@ class TestsNativeCompilerAdmission:
             "    @abstractmethod\n"
             "    def render(self) -> str: ...\n"
             "    def label(self) -> str:\n"
+            "        return self.name\n"
+            "@dataclass(frozen=True)\n"
+            "class Leaf(Node):\n"
+            '    """Concrete leaf inheriting the abstract fields."""\n'
+            "    weight: int = 1\n"
+            "    def render(self) -> str:\n"
             "        return self.name\n",
         )
         consumer = (
@@ -531,6 +537,8 @@ class TestsNativeCompilerAdmission:
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('abstract_provider')\n"
             "assert module.Node.__abstractmethods__ == frozenset({'render'})\n"
+            "assert module.Leaf('leaf').render() == 'leaf'\n"
+            "assert module.Leaf('leaf') == module.Leaf('leaf', 1)\n"
             "if sys.argv[2] == 'marker':\n"
             "    module.Node.label.__isabstractmethod__ = True\n"
             "observed = authenticate(module.__name__)\n"
