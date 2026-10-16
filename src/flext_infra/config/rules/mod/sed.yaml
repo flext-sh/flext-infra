@@ -1,0 +1,9 @@
+rules:
+  - id: retire-own-facet-import-shadowed-by-parent
+    description: >-
+      Drop an own-namespace facet alias that the very next line re-imports from
+      the parent package, so the parent's facade is the single binding and no
+      self-namespace cycle is introduced. Applies to every project.
+    find: '^from (?P<own>\w+(?:\.\w+)*) import (?P<names>(?:\w+, )*\w+), (?P<facet>[ctpmu])\nfrom (?P<parent>\w+(?:\.\w+)*) import (?P=facet)$'
+    replace: 'from \g<own> import \g<names>\nfrom \g<parent> import \g<facet>'
+    flags: [MULTILINE]

@@ -1,0 +1,91 @@
+id: ban-settings-own-letter-import
+snapshots:
+  ? |
+    def load() -> None:
+        from ai_hub import settings
+  : labels:
+    - source: settings
+      style: primary
+      start: 43
+      end: 51
+    - source: ai_hub
+      style: secondary
+      start: 29
+      end: 35
+    - source: from ai_hub import settings
+      style: secondary
+      start: 24
+      end: 51
+  ? |
+    from ai_hub import settings
+  : labels:
+    - source: settings
+      style: primary
+      start: 19
+      end: 27
+    - source: ai_hub
+      style: secondary
+      start: 5
+      end: 11
+    - source: from ai_hub import settings
+      style: secondary
+      start: 0
+      end: 27
+  ? |
+    from ai_hub import settings as aliased
+  : labels:
+    - source: settings
+      style: primary
+      start: 19
+      end: 27
+    - source: ai_hub
+      style: secondary
+      start: 5
+      end: 11
+    - source: from ai_hub import settings as aliased
+      style: secondary
+      start: 0
+      end: 38
+  ? |
+    from ai_hub import settings, m
+  : labels:
+    - source: settings
+      style: primary
+      start: 19
+      end: 27
+    - source: ai_hub
+      style: secondary
+      start: 5
+      end: 11
+    - source: from ai_hub import settings, m
+      style: secondary
+      start: 0
+      end: 30
+  ? |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import settings
+  : labels:
+    - source: settings
+      style: primary
+      start: 74
+      end: 82
+    - source: ai_hub
+      style: secondary
+      start: 60
+      end: 66
+    - source: from ai_hub import settings
+      style: secondary
+      start: 55
+      end: 82
+  ? |
+    import ai_hub.settings
+  : labels:
+    - source: ai_hub.settings
+      style: primary
+      start: 7
+      end: 22
+    - source: import ai_hub.settings
+      style: secondary
+      start: 0
+      end: 22

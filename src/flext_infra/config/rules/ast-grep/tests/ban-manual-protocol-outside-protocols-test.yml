@@ -1,0 +1,43 @@
+id: ban-manual-protocol-outside-protocols
+# Native ast-grep fixtures validate syntactic preselection, not metadata.context.
+# The same-rule native scan in test_rule_fixture_snapshots.py verifies that
+# Service(Base) and other non-protocol candidates produce no admitted finding.
+valid:
+  - |
+    class Plain:
+        pass
+  - |
+    def build() -> type:
+        class Local(Protocol):
+            def run(self) -> None: ...
+        return Local
+  - |
+    class Metadata:
+        class Field:
+            label: str
+        @property
+        def protocol(self) -> str:
+            return "Protocol"
+invalid:
+  - |
+    class Service(Base):
+        pass
+  - |
+    class Reader(Protocol):
+        def read(self) -> str: ...
+  - |
+    class Box(Protocol[T]):
+        def get(self) -> T: ...
+  - |
+    class Writer(typing.Protocol):
+        def write(self, data: str) -> None: ...
+  - |
+    from typing import Protocol as Contract
+    class Reader(Contract):
+        def read(self) -> str: ...
+  - |
+    from typing import Protocol as Contract
+    class Root:
+        class Input(Contract):
+            @property
+            def value(self) -> str: ...

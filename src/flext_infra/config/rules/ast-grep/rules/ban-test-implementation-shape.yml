@@ -1,0 +1,43 @@
+# Test law: a test observes behavior, never the shape of the module.
+#
+# Asserting an owner's internal construction — its method-resolution order, its
+# base tuple, or its attribute dictionary — couples the test to how the module
+# is assembled instead of what it does. The test then fails on every harmless
+# refactor (moving a mixin, flattening a wrapper, renaming an intermediate base)
+# while proving nothing about runtime behavior.
+#
+# This rule is the single owner of the implementation-shape law and covers the
+# direct introspection probes a test can reach for:
+#
+#   * `SomeFacade.__mro__` / `cls.__mro__` — the composed base order;
+#   * `SomeFacade.__bases__` — the direct base tuple.
+#
+# Legitimate homonyms keep their contract: `__all__` is the public export
+# contract (not shape) and is never matched; the Python data-model dunders
+# (`__class__`, `__name__`, `__module__`) are not shape of the owner under
+# test; and `module.__dict__[...] = ...` used to install a synthetic binding
+# while exercising the lazy-import machinery is test scaffolding, not a shape
+# assertion, so it stays legal.
+#
+# Detection-only: the replacement is a behavioral assertion over the public
+# facade, which a rewrite cannot author. A violating test is deleted and its
+# behavior re-covered through the public surface.
+id: ban-test-implementation-shape
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/examples/**/*.py"
+  - "**/conftest.py"
+rule:
+  any:
+    - all:
+        - kind: attribute
+        - regex: '\.__mro__$'
+    - all:
+        - kind: attribute
+        - regex: '\.__bases__$'
+message: >-
+  Tests must observe behavior, not implementation shape. `__mro__`/`__bases__`
+  probes assert how the module is built and break on every harmless refactor.
+  Assert the public facade's observable behavior instead.

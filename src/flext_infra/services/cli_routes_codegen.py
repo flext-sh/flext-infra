@@ -19,7 +19,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseToolchainProof,
     FlextInfraCodegenProjectNew,
     FlextInfraCodegenPyTyped,
-    FlextInfraCodegenQualityGate,
     FlextInfraCodegenScaffolder,
     FlextInfraCodegenVersionFile,
 )
@@ -94,7 +93,7 @@ class FlextInfraCodegenRoutes:
                     ),
                     (
                         "init",
-                        "Bootstrap only the canonical generated Makefile",
+                        "Bootstrap the target's own declaration and canonical Makefile",
                         FlextInfraCodegenMakeBootstrap,
                         FlextInfraCodegenMakeBootstrap.execute,
                         "Makefile bootstrap complete",
@@ -149,8 +148,8 @@ class FlextInfraCodegenRoutes:
                     (
                         "constants-quality-gate",
                         "Run constants migration quality gate",
-                        FlextInfraCodegenQualityGate,
-                        FlextInfraCodegenQualityGate.execute,
+                        m.Infra.CodegenCommand,
+                        infra.constants_quality_gate,
                         "constants quality gate passed",
                     ),
                     (

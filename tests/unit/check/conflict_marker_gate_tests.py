@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGateRegistry, c, m
+from flext_infra import c, m
+from flext_infra.check import FlextInfraGateRegistry
 from tests import tm, u
 
 

@@ -86,7 +86,7 @@ class FlextInfraConstantsCodegenLazy:
     "Dotted depth of a namespace package under a governed wrapper surface."
     LAZY_BOOTSTRAP_ROOT_PACKAGE: ClassVar[str] = "flext_core"
     LAZY_BOOTSTRAP_MODULE: ClassVar[str] = "flext_core.lazy"
-    "Module defining the lazy helpers; only the bootstrap owner imports it directly."
+    "Defining module imported directly by every generated lazy initializer."
 
     BARE_IMPORT_FROM_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^from\s+import\s",

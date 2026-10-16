@@ -239,17 +239,19 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
 
     @staticmethod
     def _integration_branch(root: Path) -> p.Result[str]:
-        """Resolve the published integration branch this repository releases from.
+        """Resolve the integration branch this repository releases from.
+
+        The repository's own declaration (``repository.integration.branch``
+        in its codegen layers) wins over the workspace policy line: a consumer
+        integrating on ``dev`` releases from ``dev``, never from the fleet line.
 
         Returns:
             The resulting ``p.Result[str]``.
 
         """
-        return u.Infra.repository_baseline_branch(
+        return u.Infra.resolve_integration_branch(
             root,
-            preference=tuple(
-                config.Infra.codegen.branch_policy.integration_branch_preference,
-            ),
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
 
     @staticmethod

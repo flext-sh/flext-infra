@@ -183,11 +183,11 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
             The resulting ``p.Result[bool]``.
 
         """
-        tool_table = doc[c.Infra.TOOL]
-        if not isinstance(tool_table, MutableMapping):
+        tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
+        if tool_table is None:
             return r[bool].fail(f"invalid {path} [tool] table")
-        pyrefly_table = tool_table[c.Infra.PYREFLY]
-        if not isinstance(pyrefly_table, MutableMapping):
+        pyrefly_table = u.Cli.toml_table_child(tool_table, c.Infra.PYREFLY)
+        if pyrefly_table is None:
             return r[bool].fail(f"invalid {path} [tool.pyrefly] table")
         # Reassign only changed keys so an untouched
         # nested table retains adjacent managed comments and TOML trivia.

@@ -30,14 +30,17 @@ class FlextInfraConformWiring:
         root: Path,
         *,
         initial_workspace: m.Infra.WorkspaceSpec | None,
+        producer: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
         """Authorize the actual physical coordination root and declared members.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
+
         """
         return FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
+            producer=producer,
         ).participant_policy(initial_workspace=initial_workspace)
 
     @staticmethod
@@ -48,6 +51,7 @@ class FlextInfraConformWiring:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
@@ -73,18 +77,22 @@ class FlextInfraConformWiring:
         authorized = bounded.validate_footprint(footprint)
         if authorized.failure:
             return r[str].from_failure(authorized)
+        footprint = authorized.value
         planned = FlextInfraCodegenConform(
             repository_root=request.root,
             ports=None,
         ).plan(request)
         if planned.failure:
             return r[str].from_failure(planned)
-        unchanged = bounded.validate_footprint(footprint)
-        if unchanged.failure:
-            return r[str].from_failure(unchanged)
+        current = bounded.validate_footprint(footprint)
+        if current.failure:
+            return r[str].from_failure(current)
         return r[str].ok(
-            footprint.model_copy(
+            current.value.model_copy(
                 update={
+                    "authorized_roots": tuple(
+                        root.target for root in policy.value.roots
+                    ),
                     "planned_roots": tuple(
                         dict.fromkeys((
                             *(

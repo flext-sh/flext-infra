@@ -201,7 +201,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         parsed = cli_u.Cli.yaml_roundtrip_load_map_text(metadata).unwrap()
         selected = next((field for field in fields if field in parsed), None)
         updated = m.Infra.PlanCollectionTimestamp.model_validate(
-            {"value": parsed.get(selected) if selected is not None else None},
+            {"value": parsed[selected] if selected is not None else None},
             strict=True,
         ).value
         if updated is None:

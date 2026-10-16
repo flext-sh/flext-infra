@@ -1,0 +1,17 @@
+id: rewire-test-assert-eq
+valid:
+  - assert left == right
+  - "assert result.count == 3, 'count must match'"
+  - |
+    from tests import tm
+    assert alpha == alpha
+  - |
+    from tests import tm
+    assert len(items) == 3
+invalid:
+  - |
+    from tests import tm
+    assert result.count == 3
+  - |
+    from flext_tests import tm
+    assert payload.name == expected

@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraToolTablesPhase, config
+from flext_infra import config
+from flext_infra.deps import FlextInfraToolTablesPhase
 from tests import t, tm, u
 
 if TYPE_CHECKING:
@@ -70,7 +71,7 @@ class TestsFlextInfraPytestFailClosedConfig:
         )
         tm.that(
             set(u.Tests.strings(ini["addopts"])),
-            eq={*policy.standard_addopts, f"--timeout={policy.case_timeout_seconds}"},
+            eq=set(policy.standard_addopts),
         )
         tm.that(
             set(u.Tests.strings(ini["markers"])),

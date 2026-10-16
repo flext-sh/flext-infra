@@ -20,9 +20,6 @@ if TYPE_CHECKING:
     from flext_infra.refactor._accessor_rewrite import (
         FlextInfraAccessorMigrationRewriteMixin,
     )
-    from flext_infra.refactor._census_apply_formatting import (
-        FlextInfraRefactorCensusApplyFormattingMixin,
-    )
     from flext_infra.refactor._census_collect import (
         FlextInfraRefactorCensusCollectMixin,
     )
@@ -93,7 +90,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraProjectClassifierDepsMixin",
     "FlextInfraProjectClassifierFamilyMixin",
     "FlextInfraRefactorCensus",
-    "FlextInfraRefactorCensusApplyFormattingMixin",
     "FlextInfraRefactorCensusCollectHelpersMixin",
     "FlextInfraRefactorCensusCollectMixin",
     "FlextInfraRefactorCensusFiltersMixin",
@@ -125,7 +121,6 @@ install_lazy_exports(
         "FlextInfraProjectClassifierDepsMixin": "._project_classifier_deps",
         "FlextInfraProjectClassifierFamilyMixin": "._project_classifier_family",
         "FlextInfraRefactorCensus": ".census",
-        "FlextInfraRefactorCensusApplyFormattingMixin": "._census_apply_formatting",
         "FlextInfraRefactorCensusCollectHelpersMixin": "._census_collect_helpers",
         "FlextInfraRefactorCensusCollectMixin": "._census_collect",
         "FlextInfraRefactorCensusFiltersMixin": "._census_filters",

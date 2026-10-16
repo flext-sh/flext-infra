@@ -169,6 +169,7 @@ class FlextInfraModelsMixins:
 
             Returns:
                 The resulting ``bool``.
+
             """
             return not self.apply
 

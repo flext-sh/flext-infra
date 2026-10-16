@@ -12,6 +12,7 @@ import sys
 from mypy import api
 
 from flext_infra import m
+from flext_infra._pytest_clock import FlextInfraPytestClock
 from flext_infra._utilities import FlextInfraUtilitiesResourceLimits
 
 
@@ -41,7 +42,7 @@ class FlextInfraMypyProfiler:
             )
         finally:
             # Preserve partial evidence when the bounded checker is interrupted.
-            profile.dump_stats(str(destination.resolve()))
+            FlextInfraPytestClock.publish_profile(profile, destination.resolve())
         sys.stdout.write(stdout)
         sys.stderr.write(stderr)
         return status

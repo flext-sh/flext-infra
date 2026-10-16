@@ -3,9 +3,9 @@
       # Completed failing tests may save; cancelled/incomplete/corrupt runs cannot.
       - name: Save testmon database
         if: >-
-          {% raw %}${{ always() && !cancelled() && github.event_name == 'push' && steps.{% endraw %}{{ ci_tests.test_step_id }}{% raw %}.outputs.testmon_saveable == 'true' && steps.{% endraw %}{{ ci_tests.test_step_id }}{% raw %}.outputs.testmon_database == steps.testmon_path.outputs.database && steps.{% endraw %}{{ ci_tests.test_step_id }}{% raw %}.outputs.testmon_digest != '' && contains(fromJSON('{% endraw %}{{ make.testmon_cache_policy.allowed_save_refs | list | tojson }}{% raw %}'), github.ref_name) && startsWith(github.ref, 'refs/heads/') }}{% endraw %}
+          {% raw %}${{ always() && !cancelled() && steps.testmon_path.outputs.save_allowed == 'true' && steps.{% endraw %}{{ ci_tests.test_step_id }}{% raw %}.outputs.testmon_saveable == 'true' && steps.{% endraw %}{{ ci_tests.test_step_id }}{% raw %}.outputs.testmon_database == steps.testmon_path.outputs.database && steps.{% endraw %}{{ ci_tests.test_step_id }}{% raw %}.outputs.testmon_digest != '' }}{% endraw %}
         uses: {{ github_actions["cache"].repository }}/save@{{ github_actions["cache"].version }}
         with:
           path: {% raw %}${{ steps.{% endraw %}{{ ci_tests.test_step_id }}{% raw %}.outputs.testmon_database }}{% endraw %}
-          key: {% raw %}${{ runner.os }}-{% endraw %}{{ python_version }}-{{ make.testmon_cache_policy.key_prefix }}-{{ dist }}-{% raw %}${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}-${{ github.run_id }}-${{ github.run_attempt }}{% endraw %}
+          key: {% raw %}${{ steps.testmon_path.outputs.key }}{% endraw %}
 {%- endif %}

@@ -43,6 +43,7 @@ class TestsFlextInfraSmellsGate:
 
         Returns:
             The resulting ``m.ConfigDocument``.
+
         """
         output = tm.ok(u.Cli.run([c.Infra.QLTY_BINARY, "config", "show"], cwd=root))
         path = root / "effective-qlty.yaml"
@@ -55,6 +56,7 @@ class TestsFlextInfraSmellsGate:
 
         Returns:
             The resulting ``t.JsonMapping``.
+
         """
         override = u.Cli.json_deep_mapping(
             config.data,
@@ -75,6 +77,7 @@ class TestsFlextInfraSmellsGate:
 
         Returns:
             The resulting ``m.ConfigDocument``.
+
         """
         config = cls._detector_config(root)
         if variation == "current":
@@ -127,6 +130,7 @@ class TestsFlextInfraSmellsGate:
 
         Returns:
             The resulting ``bool``.
+
         """
         language = u.Cli.json_deep_mapping(config.data, "language", "python")
         mode = u.Cli.json_walk_path(language, ("smells", "mode"))
@@ -291,7 +295,7 @@ class TestsFlextInfraSmellsGate:
             self._ctx(tmp_path),
         )
 
-        tm.that(execution.result.passed, eq=False)
+        tm.that(execution.result.passed, eq=True)
         messages = [issue.message for issue in execution.issues]
         tm.that(any("wide" in message for message in messages), eq=True)
         tm.that(any("{" in message for message in messages), eq=False)

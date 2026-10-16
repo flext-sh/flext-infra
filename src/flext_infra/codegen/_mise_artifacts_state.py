@@ -13,9 +13,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen import (
+from flext_infra.codegen._mise_artifacts_files import (
     FlextInfraMiseArtifactsFiles as files,
-    FlextInfraMiseArtifactsVerification as verify,
+)
+from flext_infra.codegen._mise_artifacts_verification_manifest import (
+    FlextInfraMiseArtifactsVerificationManifest as manifest,
+)
+from flext_infra.codegen._mise_artifacts_verification_topology import (
+    FlextInfraMiseArtifactsVerificationTopology as topology,
 )
 
 if TYPE_CHECKING:
@@ -24,6 +29,31 @@ if TYPE_CHECKING:
 
 class FlextInfraMiseArtifactsState:
     """Journaled directory state for Mise artifact transactions."""
+
+    @classmethod
+    def unchanged_journal(
+        cls,
+        session: m.Infra.CodegenTransactionSession,
+        changed_error: str,
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Authenticate the full session receipt through the journal state owner.
+
+        Returns:
+            The session only when its complete native journal snapshot is current.
+
+        """
+        result_type = r[m.Infra.CodegenTransactionSession]
+        observed = cls.journal_state(session.plan.layout)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        if cls.journal_snapshot(observed.value) != session.journal_state:
+            return result_type.fail(
+                changed_error,
+                error_data={
+                    "cleanup_error": "journal authority mismatch vs session receipt"
+                },
+            )
+        return result_type.ok(session)
 
     @classmethod
     def _hosting_device(cls, path: Path) -> int:
@@ -588,9 +618,9 @@ class FlextInfraMiseArtifactsState:
             The resulting ``p.Result[bool]``.
 
         """
-        topology = verify.journal_topology(layout, journal)
-        if topology.failure:
-            return topology
+        bound = topology.journal_topology(layout, journal)
+        if bound.failure:
+            return bound
         validated = cls.validate_transaction_roots(layout, journal)
         if validated.failure:
             return validated
@@ -647,7 +677,7 @@ class FlextInfraMiseArtifactsState:
                     continue
                 removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
             else:
-                observed = verify.authorized_cleanup_manifest(layout, journal, entry)
+                observed = manifest.authorized_cleanup_manifest(layout, journal, entry)
                 if observed.failure:
                     return result_type.from_failure(observed)
                 removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
@@ -815,15 +845,10 @@ class FlextInfraMiseArtifactsState:
             )
             if authenticated.failure:
                 return authenticated
-        # Foreign residents inside recorded temporary trees never block the
-        # restore itself. The journal receipt authenticates the destinations;
-        # staging residue revokes only the cleanup, which still fails closed
-        # after the rollback (guarded deletion refuses unmanifested or
-        # non-empty trees), so a mixed recovery retains the journal and the
-        # foreign bytes instead of stranding published destinations behind
-        # them. Pre-restore authentication of every recorded tree and resident
-        # aborted the rollback before it started, which replaced the tested
-        # mixed outcome with a lost publication.
+        # The receipt authenticates publication destinations independently of
+        # staging cleanup. Guarded deletion refuses foreign or unmanifested
+        # residents and retains their bytes and journal for owner correction.
+        # Recovery preserves files already published.
         return r[bool].ok(value=True)
 
     @classmethod
@@ -879,7 +904,7 @@ class FlextInfraMiseArtifactsState:
 
         """
         if recorded.manifest is not None:
-            authorized = verify.authorized_cleanup_manifest(layout, journal, recorded)
+            authorized = manifest.authorized_cleanup_manifest(layout, journal, recorded)
             if authorized.failure:
                 return r[bool].from_failure(authorized)
             return r[bool].ok(value=True)

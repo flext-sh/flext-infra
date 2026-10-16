@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_cli import u as cli_u
-
 from flext_core import u as core_u
+
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, t, tm, u
@@ -24,6 +24,50 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraSemanticPhaseContract:
     """Require planned and published sources to reach the same fixed point."""
+
+    @staticmethod
+    def test_declaring_model_factory_preserves_public_empty_roundtrips(
+        tmp_path: Path,
+    ) -> None:
+        """The model primitive and projected utility preserve real consumer defaults."""
+        consumer = tmp_path / "declaration_factory_consumer.py"
+        consumer.write_text(
+            "from flext_core import m, t, u\n"
+            "from typing_extensions import TypeForm\n"
+            "type Bag[T] = t.MutableSequenceOf[T]\n"
+            "class ModelOwned(m.ContractModel):\n"
+            "    values: Bag[str] = m.Field(default_factory=m.empty("
+            'TypeForm(Bag[str])), description="Consumer values")\n'
+            "class UtilityProjected(m.ContractModel):\n"
+            "    values: Bag[str] = m.Field(default_factory=u.empty("
+            'TypeForm(Bag[str])), description="Consumer values")\n'
+            "def verify():\n"
+            "    model_default = ModelOwned()\n"
+            "    utility_default = UtilityProjected()\n"
+            "    assert model_default.model_dump_json() == "
+            "utility_default.model_dump_json()\n"
+            "    for model in (ModelOwned, UtilityProjected):\n"
+            "        first, second = model(), model()\n"
+            "        explicit = model.model_validate_json('{\"values\": []}')\n"
+            "        first.values.append('consumer value')\n"
+            "        assert second.model_dump_json() == explicit.model_dump_json()\n"
+            "        restored = model.model_validate_json(first.model_dump_json())\n"
+            "        assert restored.values == first.values\n"
+            "verify()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        specification = importlib.util.spec_from_file_location(
+            consumer.stem,
+            consumer,
+        )
+        if specification is None or specification.loader is None:
+            pytest.fail("real declaration consumer has no import loader")
+        module = importlib.util.module_from_spec(specification)
+        sys.modules[specification.name] = module
+        try:
+            specification.loader.exec_module(module)
+        finally:
+            sys.modules.pop(specification.name)
 
     @staticmethod
     @pytest.mark.parametrize("shadowed", [False, True])
@@ -558,7 +602,7 @@ class TestsFlextInfraSemanticPhaseContract:
         tmp_path: Path,
         inherited_import: bool,
     ) -> None:
-        """Typing facade imports are removed while the utility behavior runs."""
+        """Repeated typing references relocate while the real utility runs."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         typing_family = u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY)
         utility_family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
@@ -592,7 +636,7 @@ class TestsFlextInfraSemanticPhaseContract:
             ),
             package / "consumer.py": (
                 f"from {package.name}.typings import {typing_owner}\n"
-                f"value = {typing_owner}.parse('aligned')\n"
+                f"value = {typing_owner}.parse({typing_owner}.parse('aligned'))\n"
             ),
             package / "unrelated.py": (
                 f"from {package.name}.typings import {typing_owner}\n"
@@ -613,7 +657,7 @@ class TestsFlextInfraSemanticPhaseContract:
             sources[package / "consumer.py"] = (
                 f"from {consumer_package.name} import u\n"
                 f"from {package.name}.typings import {typing_owner}\n"
-                f"value = {typing_owner}.parse('aligned')\n"
+                f"value = {typing_owner}.parse({typing_owner}.parse('aligned'))\n"
                 "existing = u.parse('existing')\n"
             )
         for path, source in sources.items():
@@ -791,9 +835,6 @@ class TestsFlextInfraSemanticPhaseContract:
     ) -> None:
         """Test annotations and nesting complete in one atomic cutover."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        # Publication runs through the codegen transaction, which coordinates
-        # only inside an exact Git worktree root, exactly as in production.
-        u.Tests.initialize_git_repo(root)
         family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
         owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
         path = package / "constants.py"
@@ -803,15 +844,13 @@ class TestsFlextInfraSemanticPhaseContract:
             alias="c",
             extra_class_names=(f"{owner}Member",),
         )
+        tm.ok(u.Tests.provision_python_project_environment(root))
         source = path.read_text(encoding="utf-8").replace(
             "from __future__ import annotations\n",
             "",
         )
         path.write_text(source, encoding="utf-8")
-        # Semantic publication runs inside a codegen transaction, which only
-        # coordinates through a real repository rooted at the project.
-        u.Tests.initialize_git_repo(root)
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="require-future-annotations.yml",
             rule_id="require-future-annotations",
             repository=root.name,
@@ -820,23 +859,34 @@ class TestsFlextInfraSemanticPhaseContract:
             text=source,
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
-        report = m.Infra.ModScanReport(
-            findings=1,
-            actionable=0,
-            detection_only=1,
-            non_actionable_with_fix=0,
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({path}),
             entries=(finding,),
         )
         with infra.rope_workspace(root) as rope:
-            tm.ok(FlextInfraCodemodSemanticApply.apply(root, report, rope))
+            tm.ok(
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    rope,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            )
         published = path.read_text(encoding="utf-8")
         tm.that(published, has="from __future__ import annotations")
         tm.that(published, has=f"    class {owner}Member")
         with infra.rope_workspace(root) as rope:
-            tm.ok(FlextInfraCodemodSemanticApply.apply(root, report, rope))
+            tm.ok(
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    rope,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            )
         tm.that(path.read_text(encoding="utf-8"), eq=published)
 
     @staticmethod

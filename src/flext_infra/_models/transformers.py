@@ -6,16 +6,43 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsTransformers:
     """Models for source transformers — exposed through the ``m.Infra`` facade."""
+
+    class SemanticPublicationOptions(m.FrozenModel):
+        """Caller-controlled gates and scope roots for one joint publication."""
+
+        validator: Callable[[Path], p.Result[bool]] | None = m.Field(
+            default=None,
+            description="Consumer acceptance gate over the previewed view root",
+        )
+        source_guard: Callable[[], p.Result[bool]] | None = m.Field(
+            default=None,
+            description="Pre-publication guard over the governed source inputs",
+        )
+        dependency_group: str | None = m.Field(
+            default=None,
+            description="Dependency group owning composed projection exposure",
+        )
+        projection_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Generated projection roots composed into the publication",
+        )
+        input_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Additional read-only driver roots namespaced as pseudo-roots",
+        )
 
     class AliasMigrationContext(m.ContractModel):
         """Resolved ownership and import-root context for one alias migration."""
@@ -88,6 +115,34 @@ class FlextInfraModelsTransformers:
             m.Field(description="Recorded migration operations"),
         ] = ()
 
+    class SemanticBehaviorRewriteRequest(m.ArbitraryTypesModel):
+        """One consumer rewrite over its declared behavior owner facts."""
+
+        path: Annotated[Path, m.Field(description="Consumer source identity")]
+        source: Annotated[str, m.Field(description="Consumer source text")]
+        modules: Annotated[
+            t.MappingKV[str, t.Pair[str, bool]],
+            m.Field(description="Qualified source text and package identities"),
+        ]
+        ownership: Annotated[
+            t.Pair[
+                t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
+                frozenset[t.Quad[str, str, str, str]],
+            ],
+            m.Field(description="Declared utility owners and facade dispatch needs"),
+        ]
+        utility_imports: Annotated[
+            frozenset[t.Pair[str, str]],
+            m.Field(description="Elected self-facade import identities"),
+        ] = m.Field(default_factory=frozenset)
+        declaration_imports: Annotated[
+            frozenset[t.Pair[str, str]],
+            m.Field(
+                description="External declaration receivers eligible for proven lower "
+                "binding"
+            ),
+        ] = m.Field(default_factory=frozenset)
+
     class DeclarationRelocationFinding(m.ContractModel):
         """One payload declaration whose relocation owner cannot be resolved."""
 
@@ -108,10 +163,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Why that owner did not resolve"),
         ]
 
-    class CompatibilityAliasRewritePlan(m.ArbitraryTypesModel):
+    class CompatibilityAliasRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven rewrites planned for one compatibility-alias cutover file."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         local_aliases: Annotated[
             t.StrMapping,
@@ -134,10 +187,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Module-level names the file already binds"),
         ]
 
-    class NestingModuleAliasScan(m.ArbitraryTypesModel):
+    class NestingModuleAliasScan(FlextInfraModelsBase.FrozenArbitrary):
         """Module bindings one consumer holds on modules whose members nest."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         aliases: Annotated[
             t.StrMapping,
@@ -156,10 +207,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Nested modules whose owner the file imports"),
         ]
 
-    class PrivateImportRewritePlan(m.ArbitraryTypesModel):
+    class PrivateImportRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven import rewrites planned for one private-import file."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         removals: Annotated[
             t.MappingKV[str, frozenset[str]],
@@ -221,13 +270,12 @@ class FlextInfraModelsTransformers:
 
             Returns:
                 The resulting ``bool``.
+
             """
             return bool(self.category_b or self.category_c or self.category_d)
 
-    class SourceRewrite(m.ArbitraryTypesModel):
+    class SourceRewrite(FlextInfraModelsBase.FrozenArbitrary):
         """One source rewrite: replace ``source[start:end]`` with ``text``."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         start: Annotated[int, m.Field(description="Start byte offset in the source")]
         end: Annotated[int, m.Field(description="End byte offset in the source")]
@@ -284,10 +332,8 @@ class FlextInfraModelsTransformers:
             m.Field(description="Wrapper docstring line span"),
         ] = None
 
-    class HeaderInfo(m.ArbitraryTypesModel):
+    class HeaderInfo(FlextInfraModelsBase.FrozenArbitrary):
         """Structural summary of a module header."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         has_future_annotations: Annotated[
             bool,
@@ -301,6 +347,47 @@ class FlextInfraModelsTransformers:
             FlextInfraModelsTransformers.HeaderSpan,
             m.Field(description="Byte offsets for the header sections"),
         ]
+
+    class FacadeNamespaceCutover(m.ArbitraryTypesModel):
+        """Shared planning state for one duplicate facade-namespace cutover.
+
+        Replaces the untyped parameter bundle the nesting planner threaded
+        through its helpers: the Rope project, the physical root, the editable
+        sources, the prospective bytes and the accumulated consumer rewrites
+        travel as one resolved contract.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        project: Annotated[
+            t.Infra.RopeProject,
+            m.Field(description="Rope project snapshot holding the editable sources"),
+        ]
+        root: Annotated[Path, m.Field(description="Physical project root")]
+        sources: Annotated[
+            t.MappingKV[Path, str],
+            m.Field(description="Editable source bytes per path"),
+        ]
+        working: Annotated[
+            t.MutableMappingKV[Path, str],
+            m.Field(description="Prospective source bytes per path"),
+        ]
+
+    class FacadeNamespaceSite(FlextInfraModelsBase.FrozenArbitrary):
+        """Resolved duplicate-facade site for one editable source module."""
+
+        path: Annotated[Path, m.Field(description="Source path holding the facade")]
+        source: Annotated[str, m.Field(description="Source bytes holding the facade")]
+        facade: Annotated[ast.ClassDef, m.Field(description="Facade composition class")]
+        namespace: Annotated[
+            ast.ClassDef,
+            m.Field(description="Single composed namespace class"),
+        ]
+        children: Annotated[
+            tuple[ast.ClassDef, ...],
+            m.Field(description="Facade body classes"),
+        ]
+        tree: Annotated[ast.Module, m.Field(description="Parsed source module")]
 
 
 __all__: list[str] = ["FlextInfraModelsTransformers"]

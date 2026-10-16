@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, u
-from flext_infra.refactor import FlextInfraImportNormalization
-from flext_infra.refactor.namespace_relocations import (
+from flext_infra.refactor import (
+    FlextInfraImportNormalization,
     FlextInfraNamespaceRelocationCascade,
 )
 
@@ -33,8 +33,8 @@ class FlextInfraImportNormalizationPhase:
     @staticmethod
     def apply(
         root: Path,
-        _preflight: m.Infra.ModScanReport,
-        _rope_workspace: p.Infra.RopeWorkspaceDsl,
+        preflight: m.Infra.ModScanReport,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Normalize every governed project's source imports.
 
@@ -42,6 +42,7 @@ class FlextInfraImportNormalizationPhase:
             The resulting ``p.Result[bool]`` — ``True`` marks changed sources.
 
         """
+        del preflight, rope_workspace
         changed = False
         for project_root in u.Infra.governed_project_roots(root):
             if not u.Infra.namespace_enabled(project_root):

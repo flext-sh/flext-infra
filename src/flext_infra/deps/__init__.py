@@ -21,7 +21,6 @@ if TYPE_CHECKING:
         FlextInfraDependencyDetectorRuntimeSteps,
     )
     from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
-    from flext_infra.deps._floor_profile_writer import FlextInfraDepsFloorProfileWriter
     from flext_infra.deps._modernizer.base import FlextInfraPyprojectModernizerBase
     from flext_infra.deps._modernizer.document import (
         FlextInfraPyprojectModernizerDocument,
@@ -65,7 +64,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDependencyDetectorRuntimeSteps",
-    "FlextInfraDepsFloorProfileWriter",
     "FlextInfraEnsurePackagingPhase",
     "FlextInfraEnsurePyreflyConfigPhase",
     "FlextInfraEnsurePyrightConfigPhase",
@@ -97,7 +95,6 @@ install_lazy_exports(
         "FlextInfraDependencyDetectionService": ".detection",
         "FlextInfraDependencyDetectorRuntime": ".detector_runtime",
         "FlextInfraDependencyDetectorRuntimeSteps": "._detector_runtime_steps",
-        "FlextInfraDepsFloorProfileWriter": "._floor_profile_writer",
         "FlextInfraEnsurePackagingPhase": ".phases.ensure_packaging",
         "FlextInfraEnsurePyreflyConfigPhase": ".phases.ensure_pyrefly",
         "FlextInfraEnsurePyrightConfigPhase": ".phases.ensure_pyright",

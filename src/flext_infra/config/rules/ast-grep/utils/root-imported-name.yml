@@ -1,0 +1,20 @@
+# Imported identity in an absolute root import, not its module or local alias.
+# An aliased import adds a parent node, so traverse to the from statement.
+# Scope/TYPE_CHECKING and namespace ownership belong to the consuming rule.
+id: root-imported-name
+language: python
+rule:
+  all:
+    - kind: dotted_name
+    - not:
+        inside:
+          kind: import_from_statement
+          field: module_name
+    - inside:
+        stopBy: end
+        kind: import_from_statement
+        has:
+          field: module_name
+          kind: dotted_name
+          not:
+            regex: "\\."

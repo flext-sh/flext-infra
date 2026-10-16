@@ -58,7 +58,7 @@ verification).
   classes listed under Module Map above.
 - Public extensions exposed by this project: `FlextInfra`, `FlextInfraCli`,
   `FlextInfraCommandPayloadMixin`, `FlextInfraConfig`, `FlextInfraConformWiring`,
-  `FlextInfraConstants` (+16 more).
+  `FlextInfraConstants` (+17 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates

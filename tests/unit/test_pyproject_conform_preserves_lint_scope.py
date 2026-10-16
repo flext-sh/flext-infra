@@ -83,4 +83,4 @@ class TestsFlextInfraPyprojectConformPreservesLintScope:
         """No governed lint exemption is missing from the tooling SSOT."""
         missing = self._live_per_file_ignores() - self._ssot_per_file_ignores()
 
-        tm.that(missing, eq=frozenset())
+        tm.that(missing, empty=True)

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, ClassVar, override
@@ -21,7 +22,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
@@ -43,7 +44,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         default_factory=lambda: type(settings).fetch_global().Infra.runtime_root
     )
 
-    _PRELUDE: ClassVar[str] = (
+    PRELUDE: ClassVar[str] = (
         "import importlib, sys\n"
         "from importlib.metadata import EntryPoint\n"
         "from pathlib import Path\n"
@@ -61,24 +62,59 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     )
     # Synthetic concat keeps the placeholder out of one plain literal: the
     # marker is template text substituted at render time, never an f-string.
-    _ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
+    ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
     # The origin gate runs inside the same probe namespace as the export
     # resolution, so its loop names must never rebind the probed ``module``.
-    _ORIGIN_CODE: ClassVar[str] = (
-        "for loaded_name, loaded_module in tuple(sys.modules.items()):\n"
+    ORIGIN_CODE: ClassVar[str] = (
+        "from flext_infra.workspace.environment_provenance import "
+        "FlextInfraWorkspaceEnvironmentProvenance as native_origins\n"
+        "for loaded_name in tuple(sys.modules):\n"
         "    for package, directory in {origins!r}:\n"
         "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
-        "            origin = getattr(loaded_module, '__file__', None)\n"
-        "            if (\n"
-        "                origin is None\n"
-        "                or not Path(origin).resolve()\n"
-        "                .is_relative_to(Path(directory))\n"
-        "            ):\n"
+        "            origin = native_origins.module_source(loaded_name).unwrap()\n"
+        "            if not origin.resolve().is_relative_to(Path(directory)):\n"
         "                raise ImportError(\n"
         "                    f'{loaded_name}: origin {origin!r} '\n"
         "                    f'is outside {directory}'\n"
         "                )\n"
     )
+
+    def native_reference_probe(
+        self,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Consume the authenticated import selections in the isolated interpreter.
+
+        Returns:
+            The real native import output, preserving its original failure.
+
+        """
+        roots = tuple(dict.fromkeys(request.import_roots))
+        imports = tuple(map(str, roots))
+        selections = tuple(item.model_dump_json() for item in request.modules)
+        origins = tuple(
+            (namespace, str(source))
+            for namespace, source in request.source_authority.generator_modules
+            if source.is_dir()
+        )
+        code = (
+            self.PRELUDE + f"sys.path[:0] = tuple(root for root in {imports!r} "
+            "if root not in sys.path)\n" + "from flext_infra import m\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as native\n" + "selections = tuple("
+            "m.Infra.SourceClassReference.model_validate_json(item)"
+            f" for item in {selections!r})\n"
+            "for item in selections: importlib.import_module(item.target)\n"
+            + self.ORIGIN_CODE.replace(self.ORIGINS_PLACEHOLDER, repr(origins))
+            + "reference = native.capture(selections).unwrap()\n"
+            "sys.stdout.write(reference.model_dump_json())\n"
+        )
+        return self.execute_probe(
+            m.Infra.FreshImportProbe(subject="native reference", code=code),
+            cwd=request.repository_root,
+            source_roots=roots,
+            isolated=True,
+        )
 
     def build_report(
         self,
@@ -127,8 +163,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The destination proof or the first journal authority failure.
+
         """
-        authority = FlextInfraCodegenPreconditions.unchanged_journal(
+        authority = FlextInfraMiseArtifactsState.unchanged_journal(
             session, "staged view journal authority changed"
         )
         if authority.failure:
@@ -168,6 +205,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only for the matching destination journal entry.
+
         """
         original_layout = next(
             (
@@ -210,6 +248,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success or the first missing, unreadable or changed source authority.
+
         """
         for source in plan.inputs:
             previous = next(
@@ -240,6 +279,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The unchanged view only after every pre-consumer proof succeeds.
+
         """
         authority = self._stage_journal_authority(view, session)
         if authority.failure:
@@ -272,6 +312,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only after authentication, import and post-consumer barriers.
+
         """
         authenticated = self._authenticate_stage_view(view, session)
         if authenticated.failure:
@@ -279,7 +320,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         view = authenticated.value
         plan = view.plan
         code = (
-            self._PRELUDE
+            self.PRELUDE
             + (
                 "from hashlib import sha256\n"
                 f"if {plan.package!r} in sys.modules "
@@ -351,13 +392,14 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only if the consumer changed none of its authenticated inputs.
+
         """
         after = u.Cli.atomic_inventory_physical_tree(view.root)
         if after.failure:
             return r[bool].from_failure(after)
         if after.value != view.manifest:
             return r[bool].fail("candidate tree identity changed during public import")
-        journal_barrier = FlextInfraCodegenPreconditions.unchanged_journal(
+        journal_barrier = FlextInfraMiseArtifactsState.unchanged_journal(
             session, "staged view journal changed during consumer"
         )
         if journal_barrier.failure:
@@ -370,6 +412,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             Success only when source states and every inventory remain pinned.
+
         """
         states = FlextInfraMiseArtifactsVerification.states_current(plan.inputs)
         if states.failure:
@@ -400,6 +443,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The observed inventory or the first symlink failure.
+
         """
         actual: set[Path] = set()
         for root in roots:
@@ -421,6 +465,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
 
         Returns:
             The directory's files outside bytecode caches, or the first symlink.
+
         """
         files: set[Path] = set()
         for path in root.rglob("*"):
@@ -466,8 +511,8 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             (layout.package_name, str(layout.package_dir.resolve()))
             for layout in layouts
         )
-        return FlextInfraValidateFreshImport._ORIGIN_CODE.replace(
-            FlextInfraValidateFreshImport._ORIGINS_PLACEHOLDER,
+        return FlextInfraValidateFreshImport.ORIGIN_CODE.replace(
+            FlextInfraValidateFreshImport.ORIGINS_PLACEHOLDER,
             repr(origins),
         )
 
@@ -525,7 +570,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                     m.Infra.FreshImportProbe(
                         subject=f"{layout.package_name}: {group}/{name}={value}",
                         code=(
-                            self._PRELUDE + f"EntryPoint(name={name!r}, "
+                            self.PRELUDE + f"EntryPoint(name={name!r}, "
                             f"value={value!r}, group={group!r}).load()\n" + origin_code
                         ),
                     ),
@@ -548,7 +593,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         own self-scoped runs). A layout no plan claims is therefore verified
         against its real on-disk contract: import it in the fresh runtime and
         resolve the exports it declares. A plan that does claim the layout
-        must still carry a usable importable WRITE/SKIP contract, and a
+        must still carry an importable, non-removal contract, and a
         broken live package fails on its import or on a declared name that
         cannot resolve.
 
@@ -566,8 +611,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 plan
                 for plan in layout_plans
                 if plan.context.importable
-                and plan.action
-                in {c.Infra.LazyInitAction.WRITE, c.Infra.LazyInitAction.SKIP}
+                and plan.action is not c.Infra.LazyInitAction.REMOVE
             )
             if not any(plan.context.pkg_dir == layout.package_dir for plan in owned):
                 return r[m.Infra.FreshImportProbe].fail(
@@ -588,7 +632,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         return r[m.Infra.FreshImportProbe].ok(
             m.Infra.FreshImportProbe(
                 subject=layout.package_name,
-                code=self._PRELUDE + body + origin_code,
+                code=self.PRELUDE + body + origin_code,
             ),
         )
 
@@ -612,7 +656,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             probes.append(
                 m.Infra.FreshImportProbe(
                     subject=package,
-                    code=self._PRELUDE
+                    code=self.PRELUDE
                     + self._EXPORT_IMPORT_CODE.format(package=package)
                     + origin_code
                     + self._EXPORT_RESOLVE_CODE.format(exports=()),
@@ -637,16 +681,6 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             The resulting ``p.Result[m.Infra.ValidationReport]``.
 
         """
-        interpreter = u.Infra.runtime_python(
-            self.repository_root,
-            runtime_root=self.runtime_root,
-        )
-        if not interpreter.is_file():
-            return r[m.Infra.ValidationReport].fail(
-                f"fresh-import target interpreter is missing: {interpreter}; "
-                "make setup provisions it",
-            )
-        env = self._workspace_import_env(tuple(layout.src_dir for layout in layouts))
         workers = config.Infra.codegen.fresh_import_workers
         u.Cli.info(f"fresh-import: running {len(probes)} probes with {workers} workers")
 
@@ -655,11 +689,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         # ``-B``: a validator never writes into the checkout it validates, so
         # the probed sources leave no bytecode cache behind.
         def run_probe(probe: m.Infra.FreshImportProbe) -> p.Result[p.Cli.CommandOutput]:
-            return u.Cli.run_raw(
-                [str(interpreter), "-B", "-W", "error", "-"],
-                cwd=self.repository_root,
-                timeout=c.Infra.TIMEOUT_SHORT,
-                options=m.Cli.ProcessOptions(env=env, input_data=probe.code),
+            return self.execute_probe(
+                probe,
+                source_roots=tuple(layout.src_dir for layout in layouts),
             )
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -688,6 +720,57 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         summary = f"{len(probes)} fresh-import probe(s) passed"
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(passed=True, violations=(), summary=summary),
+        )
+
+    def execute_probe(
+        self,
+        probe: m.Infra.FreshImportProbe,
+        *,
+        cwd: Path | None = None,
+        source_roots: t.SequenceOf[Path] = (),
+        isolated: bool = False,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Run the selected native consumer in its declared physical runtime.
+
+        Returns:
+            Result carrying the consumer's command output, or a failure when
+            the runtime is not a physical directory or the interpreter is
+            missing.
+
+        """
+        interpreter = u.Infra.runtime_python(
+            self.repository_root,
+            runtime_root=self.runtime_root,
+        )
+        environment = u.Infra.runtime_environment_dir(
+            self.repository_root,
+            runtime_root=self.runtime_root,
+        )
+        if environment.is_symlink() or not environment.is_dir():
+            return r[p.Cli.CommandOutput].fail(
+                f"fresh-import runtime must be physical: {environment}",
+            )
+        if not interpreter.is_file():
+            return r[p.Cli.CommandOutput].fail(
+                f"fresh-import target interpreter is missing: {interpreter}; "
+                "make setup provisions it",
+            )
+        return u.Cli.run_raw(
+            [
+                str(interpreter),
+                *("-O",) * sys.flags.optimize,
+                *(("-I",) if isolated else ()),
+                "-B",
+                "-W",
+                "error",
+                "-",
+            ],
+            cwd=self.repository_root if cwd is None else cwd,
+            timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(
+                env=self._workspace_import_env(source_roots),
+                input_data=probe.code,
+            ),
         )
 
     def _workspace_import_env(

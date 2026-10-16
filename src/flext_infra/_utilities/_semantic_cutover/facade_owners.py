@@ -337,7 +337,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         The lazy publication IS a binding statement: every name the
         ``install_lazy_exports`` map lists resolves through its provider
         module, exactly as it resolves at runtime. The map has one reader
-        (``FlextInfraUtilitiesRopeSourceBases.lazy_module_aliases``),
+        (``FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases``),
         which understands the generated shape; the key is the exact source
         text, so an edited module is a new key.
 

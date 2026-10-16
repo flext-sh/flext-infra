@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
-    from flext_infra import FlextInfraExtraPathsManager
+    from flext_infra.deps import FlextInfraExtraPathsManager
 
 
 class FlextInfraEnsurePyreflyConfigPhase:
@@ -102,8 +102,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 ),
                 (
                     toml.SetOp(key=c.Infra.PROJECT_INCLUDES, value=[])
-                    if context.declared_python_dirs_are_complete
-                    and not expected_includes
+                    if not expected_includes
                     else toml.ListOp(
                         key=c.Infra.PROJECT_INCLUDES,
                         values=expected_includes,

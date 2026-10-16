@@ -8,16 +8,173 @@ from __future__ import annotations
 
 import pstats
 import signal
+import sys
 from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCProfileReport, FlextInfraPytestRunner, config
+from flext_infra import config
+from flext_infra.validate import FlextInfraCProfileReport, FlextInfraPytestRunner
 from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPytestProfile:
     """Exercise the real profiling child transport and its receipt binding."""
+
+    @staticmethod
+    def test_interrupted_publication_preserves_the_previous_readable_profile(
+        tmp_path: Path,
+    ) -> None:
+        """A real SIGINT during serialization cannot truncate an earlier profile."""
+        output = tmp_path / "checkpoint.pstats"
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, signal, sys, pstats\n"
+            "output = Path(sys.argv[1])\n"
+            "profile.runcall(sum, range(10))\n"
+            "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "before = output.read_bytes()\n"
+            "before_modified = output.stat().st_mtime_ns\n"
+            "def interrupt(event, arguments):\n"
+            "    if event == 'marshal.dumps':\n"
+            "        assert output.read_bytes() == before\n"
+            "        os.kill(os.getpid(), signal.SIGINT)\n"
+            "sys.addaudithook(interrupt)\n"
+            "try:\n"
+            "    clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "except KeyboardInterrupt:\n"
+            "    pass\n"
+            "else:\n"
+            "    raise AssertionError('native SIGINT did not escape publication')\n"
+            "assert output.read_bytes() == before\n"
+            "assert output.stat().st_mtime_ns == before_modified\n"
+            "assert pstats.Stats(str(output)).get_stats_profile().func_profiles\n"
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(output)),
+                cwd=tmp_path,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("interruption", ["signal", "timeout"])
+    def test_native_termination_keeps_a_readable_profile_checkpoint(
+        tmp_path: Path,
+        interruption: str,
+    ) -> None:
+        """Preserve native SIGTERM and timeout outcomes alongside measured progress."""
+        deadline = config.Infra.tooling.tools.pytest.termination_grace_seconds
+        probe = tmp_path / "termination_probe.py"
+        action = (
+            "os.kill(os.getpid(), signal.SIGTERM)"
+            if interruption == "signal"
+            else f"time.sleep({deadline * 2!r})"
+        )
+        probe.write_text(
+            "import os\nimport signal\nimport time\n"
+            "def interrupt_import():\n"
+            f"    {action}\n"
+            "interrupt_import()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        output = tmp_path / "terminated.pstats"
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    c.Infra.PYTEST_PROFILE_LAUNCHER,
+                    str(output),
+                    "-p",
+                    probe.stem,
+                    "--version",
+                ),
+                cwd=tmp_path,
+                timeout=deadline,
+            ),
+        )
+        tm.that(result.outcome.raw_return_code, eq=-signal.SIGTERM)
+        tm.that(result.outcome.timed_out, eq=interruption == "timeout")
+        tm.that(result.outcome.forwarded_signal, eq=None)
+        measured = pstats.Stats(str(output)).get_stats_profile().func_profiles
+        tm.that(
+            any(Path(function.file_name) == probe for function in measured.values()),
+            eq=True,
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_native_profiler_owns_workload_after_startup_handoff(
+        cached_runner_project: Path,
+    ) -> None:
+        """Native cProfile and automatic startup publish distinct real segments."""
+        cache = config.Infra.codegen.make.testmon_cache
+        policy = config.Infra.tooling.tools.pytest
+        workload = cached_runner_project / "native_profile_workload.py"
+        workload.write_text(
+            "import os\n"
+            "def workload():\n    return sum(range(4))\n"
+            "if __name__ == '__main__':\n"
+            "    print(os.getpid())\n    print(workload())\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        native = cached_runner_project / "native-workload.pstats"
+        target = Path(cache.target_directory) / "test_runtime.py"
+        (cached_runner_project / target).write_text(
+            "import os, pstats, subprocess, sys\n"
+            "from pathlib import Path\n"
+            "import pytest\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
+            "def test_runtime():\n"
+            f"    root = Path({str(cached_runner_project)!r})\n"
+            "    completed = subprocess.run((sys.executable, '-m', 'cProfile', "
+            f"'-o', {str(native)!r}, {str(workload)!r}), "
+            "cwd=root, capture_output=True, text=True)\n"
+            "    assert completed.returncode == 0, completed.stderr\n"
+            "    native_pid, value = completed.stdout.splitlines()\n"
+            "    assert value == '6'\n"
+            f"    assert 'workload' in pstats.Stats({str(native)!r})"
+            ".get_stats_profile().func_profiles\n"
+            "    malformed = subprocess.run((sys.executable, '-m', 'cProfile', "
+            "'--flext-invalid-profile-option'), cwd=root, capture_output=True)\n"
+            "    assert malformed.returncode == 2\n"
+            "    ordinary = subprocess.run((sys.executable, '-m', "
+            "'native_profile_workload', '-m', 'cProfile'), cwd=root, "
+            "capture_output=True, text=True)\n"
+            "    assert ordinary.returncode == 0, ordinary.stderr\n"
+            "    ordinary_pid, value = ordinary.stdout.splitlines()\n"
+            "    assert value == '6'\n"
+            "    children = Path(os.environ["
+            f"{c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
+            "    startup = children / f'{native_pid}.pstats'\n"
+            "    assert pstats.Stats(str(startup)).get_stats_profile().func_profiles\n"
+            "    automatic = children / f'{ordinary_pid}.pstats'\n"
+            "    assert 'workload' in pstats.Stats(str(automatic))"
+            ".get_stats_profile().func_profiles\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project,
+            target_file=target,
+        )
+        output = (
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / policy.profile_suite_filename
+        )
+        tm.that(
+            u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
+        )
+        tm.that(
+            "workload" in pstats.Stats(str(native)).get_stats_profile().func_profiles,
+            eq=True,
+        )
 
     @staticmethod
     @pytest.mark.slow
@@ -425,8 +582,8 @@ class TestsFlextInfraPytestProfile:
         command = tm.ok(
             u.Cli.files_read_text(reports_root / latest_name / "command.txt"),
         )
-        # A complete selection runs the whole target; the collection plugin
-        # enforces exactly the selected node ids in the recorded order.
+        # Selection runs once before workers record dependencies; the collection
+        # plugin enforces exactly the selected node ids in the recorded order.
         tm.that(selection.splitlines(), has="tests/test_runtime.py::test_runtime")
         tm.that(command, has=c.Infra.PYTEST_SELECTED_COLLECTION_OPTION)
         tm.that(command, has="--no-cov")

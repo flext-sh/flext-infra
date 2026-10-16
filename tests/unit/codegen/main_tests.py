@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCliRouteService, c, config, main
+from flext_infra import c, config, main
+from flext_infra.services import FlextInfraCliRouteService
 from tests import m, t, tm, u
 
 
@@ -35,9 +36,7 @@ class TestsFlextInfraCodegenMain:
         """
         repository = u.Tests.repository_ref(repo.name)
         infra = u.Tests.repository_ref("flext-infra")
-        integration = config.Infra.codegen.branch_policy.integration_branch_preference[
-            0
-        ]
+        integration = config.Infra.codegen.branch_policy.integration_branch
         (repo / "pyproject.toml").write_text(
             f'[project]\nname = "{repository.distribution}"\nversion = "0.1.0"\n'
             'requires-python = "'
@@ -333,9 +332,7 @@ class TestsFlextInfraCodegenMain:
             )
             tm.that(
                 ini_options["addopts"],
-                has=(
-                    f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"
-                ),
+                eq=list(config.Infra.tooling.tools.pytest.standard_addopts),
             )
             tm.that(journal.exists(), eq=False)
             tm.that(transaction.exists(), eq=False)

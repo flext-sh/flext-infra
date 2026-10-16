@@ -59,7 +59,11 @@ class TestsFlextInfraLazyInitRuntime:
         if ownership == "rebound":
             sources[owner] = source.replace("value: int", "value: str") + source
         facade = package / f"{family.module}.py"
-        sources[facade] = "class Facade: pass\nm = Facade\n__all__ = ['Facade', 'm']\n"
+        sources[facade] = (
+            "from flext_core import m as parent\n"
+            "class Facade(parent): pass\n"
+            "m = Facade\n__all__ = ['Facade', 'm']\n"
+        )
         if ownership == "standalone":
             sources[owners / "standalone.py"] = (
                 "from flext_core import m as parent\n"
@@ -73,7 +77,8 @@ class TestsFlextInfraLazyInitRuntime:
             )
         if ownership == "entities":
             sources[facade] = (
-                "class Facade:\n"
+                "from flext_core import m as parent\n"
+                "class Facade(parent):\n"
                 "    class First: value = 'first'\n"
                 "    class Second: value = 'second'\n"
                 "m = Facade\n__all__ = ['Facade', 'm']\n"
@@ -222,6 +227,73 @@ class TestsFlextInfraLazyInitRuntime:
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that(u.Infra.runtime_evaluated_base_classes(repository, {}, roots), eq=first)
         tm.that({path: path.read_bytes() for path in published}, eq=published)
+
+    @staticmethod
+    def test_planned_lazy_init_resolves_bases_behind_a_stale_initializer(
+        tmp_path: Path,
+    ) -> None:
+        """Base derivation over the planned projection converges in one pass.
+
+        The family module declares its owner in ``__all__`` after its package
+        initializer was generated, so the on-disk projection no longer
+        publishes the owner the facade imports in package form. Conform
+        derives tooling from the initializer bytes the same generation
+        publishes, so the stale projection cannot block its own regeneration.
+        """
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-stale-bases",
+            package_name="flext_stale_bases",
+        )
+        family = package / "_models"
+        family.mkdir()
+        family.joinpath("base.py").write_text(
+            "class FlextStaleBase: pass\n__all__ = ('FlextStaleBase',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        declaration = family / "errors.py"
+        declaration_source = (
+            "from flext_core import m\n"
+            "class FlextStaleErrors:\n"
+            "    class Payload(m.ContractModel):\n"
+            '        message: str = m.Field(description="Error message.")\n'
+        )
+        declaration.write_text(declaration_source, encoding=c.DEFAULT_ENCODING)
+        package.joinpath("models.py").write_text(
+            "from flext_core import m as parent\n"
+            "from ._models import FlextStaleErrors\n"
+            "class FlextStaleModels(FlextStaleErrors):\n"
+            "    class Response(FlextStaleErrors.Payload):\n"
+            '        code: int = parent.Field(description="Response code.")\n'
+            "m = FlextStaleModels\n"
+            "__all__ = ('FlextStaleModels', 'm')\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        declaration.write_text(
+            declaration_source + "__all__ = ('FlextStaleErrors',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        roots = u.Tests.runtime_evaluated_roots()
+        with pytest.raises(ValueError, match="Unresolved planned base"):
+            u.Infra.runtime_evaluated_base_classes(repository, {}, roots)
+        analysis = tm.ok(u.Tests.plan_lazy_init(repository))
+        planned = {
+            plan.path.resolve(): plan.desired_content.decode(c.DEFAULT_ENCODING)
+            for plan in analysis.files
+            if plan.path.suffix == c.Infra.EXT_PYTHON
+            and plan.desired_content is not None
+        }
+        exports = u.Infra.public_export_names_source(
+            planned[(family / c.Infra.INIT_PY).resolve()],
+        )
+        tm.that("FlextStaleErrors" in exports, eq=True)
+        derived = u.Infra.runtime_evaluated_base_classes(repository, planned, roots)
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        tm.that(
+            u.Infra.runtime_evaluated_base_classes(repository, {}, roots),
+            eq=derived,
+        )
 
     @staticmethod
     def test_explicit_hook_exports_follow_their_source_declaration(
@@ -463,6 +535,10 @@ class TestsFlextInfraLazyInitRuntime:
             encoding=c.DEFAULT_ENCODING,
         )
         initializer = package_root / c.Infra.INIT_PY
+        initializer.write_text(
+            '"""Authored package without published declarations."""\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
         original = initializer.read_text(encoding=c.DEFAULT_ENCODING)
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that(initializer.read_text(encoding=c.DEFAULT_ENCODING), eq=original)

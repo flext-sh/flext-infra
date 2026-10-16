@@ -19,6 +19,20 @@ if TYPE_CHECKING:
     from tests import p, t
 
 
+def expect_read_only_drift(
+    service: FlextInfraCodegenLazyInit,
+    result: p.Result[bool],
+    init_path: Path,
+    original_init: bytes,
+) -> None:
+    """Assert one read-only pass reported drift without writing the initializer."""
+    package_root = init_path.parent
+    tm.that(result.success, eq=False)
+    tm.that(init_path.read_bytes(), eq=original_init)
+    tm.that((package_root / "__unit__.py").exists(), eq=False)
+    tm.that(service.modified_files, eq=(str(init_path),))
+
+
 # NOTE (multi-agent, flext-wkii.17.15): prove scoped writes and read-only drift
 # publicly.
 class TestsFlextInfraCodegenLazyInitService:
@@ -336,12 +350,8 @@ class TestsFlextInfraCodegenLazyInitService:
                 *u.Tests.create_lazy_init_workspace(tmp_path),
             )
         )
-        package_root = init_path.parent
 
-        tm.that(result.success, eq=False)
-        tm.that(init_path.read_bytes(), eq=original_init)
-        tm.that((package_root / "__unit__.py").exists(), eq=False)
-        tm.that(service.modified_files, eq=(str(init_path),))
+        expect_read_only_drift(service, result, init_path, original_init)
 
     @staticmethod
     def test_dry_run_is_read_only_even_when_apply_is_requested(
@@ -355,12 +365,8 @@ class TestsFlextInfraCodegenLazyInitService:
                 dry_run=True,
             )
         )
-        package_root = init_path.parent
 
-        tm.that(result.success, eq=False)
-        tm.that(init_path.read_bytes(), eq=original_init)
-        tm.that((package_root / "__unit__.py").exists(), eq=False)
-        tm.that(service.modified_files, eq=(str(init_path),))
+        expect_read_only_drift(service, result, init_path, original_init)
 
     @staticmethod
     def test_second_check_is_byte_idempotent(tmp_path: Path) -> None:

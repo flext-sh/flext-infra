@@ -96,12 +96,20 @@ class FlextInfraConsolidateGroupsPhase:
             ):
                 changes.append(f"tool.poetry.group.{old_group} removed")
         deptry = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.DEPTRY))
+        if u.Cli.toml_mapping_remove_key_if_present(
+            deptry, "pep621_dev_dependency_groups"
+        ):
+            changes.append(
+                "removed deprecated tool.deptry.pep621_dev_dependency_groups"
+            )
         if u.Cli.toml_mapping_sync_string_list(
             deptry,
-            "pep621_dev_dependency_groups",
+            "optional_dependencies_dev_groups",
             [c.Infra.DEV],
         ):
-            changes.append("tool.deptry.pep621_dev_dependency_groups set to ['dev']")
+            changes.append(
+                f"tool.deptry.optional_dependencies_dev_groups set to {[c.Infra.DEV]!r}"
+            )
         return changes
 
 

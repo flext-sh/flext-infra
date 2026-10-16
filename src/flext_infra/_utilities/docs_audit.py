@@ -176,6 +176,7 @@ class FlextInfraUtilitiesDocsAudit(
                     line_number=number,
                     raw=raw,
                     target=target,
+                    repository_root=md_file.parent,
                 ),
             )
             return

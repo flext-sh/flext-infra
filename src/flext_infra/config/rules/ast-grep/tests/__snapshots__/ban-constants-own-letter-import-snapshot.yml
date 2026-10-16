@@ -1,0 +1,119 @@
+id: ban-constants-own-letter-import
+snapshots:
+  ? |
+    def load() -> None:
+        from ai_hub import c
+  : labels:
+    - source: c
+      style: primary
+      start: 43
+      end: 44
+    - source: ai_hub
+      style: secondary
+      start: 29
+      end: 35
+    - source: from ai_hub import c
+      style: secondary
+      start: 24
+      end: 44
+  ? |
+    from ai_hub import c
+  : labels:
+    - source: c
+      style: primary
+      start: 19
+      end: 20
+    - source: ai_hub
+      style: secondary
+      start: 5
+      end: 11
+    - source: from ai_hub import c
+      style: secondary
+      start: 0
+      end: 20
+  ? |
+    from ai_hub import c as aliased
+  : labels:
+    - source: c
+      style: primary
+      start: 19
+      end: 20
+    - source: ai_hub
+      style: secondary
+      start: 5
+      end: 11
+    - source: from ai_hub import c as aliased
+      style: secondary
+      start: 0
+      end: 31
+  ? |
+    from ai_hub import c, t
+  : labels:
+    - source: c
+      style: primary
+      start: 19
+      end: 20
+    - source: ai_hub
+      style: secondary
+      start: 5
+      end: 11
+    - source: from ai_hub import c, t
+      style: secondary
+      start: 0
+      end: 23
+  ? |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import c
+  : labels:
+    - source: c
+      style: primary
+      start: 74
+      end: 75
+    - source: ai_hub
+      style: secondary
+      start: 60
+      end: 66
+    - source: from ai_hub import c
+      style: secondary
+      start: 55
+      end: 75
+  ? |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import c as aliased
+  : labels:
+    - source: c
+      style: primary
+      start: 74
+      end: 75
+    - source: ai_hub
+      style: secondary
+      start: 60
+      end: 66
+    - source: from ai_hub import c as aliased
+      style: secondary
+      start: 55
+      end: 86
+  ? |
+    import ai_hub.c
+  : labels:
+    - source: ai_hub.c
+      style: primary
+      start: 7
+      end: 15
+    - source: import ai_hub.c
+      style: secondary
+      start: 0
+      end: 15
+  ? |
+    import ai_hub.constants
+  : labels:
+    - source: ai_hub.constants
+      style: primary
+      start: 7
+      end: 23
+    - source: import ai_hub.constants
+      style: secondary
+      start: 0
+      end: 23

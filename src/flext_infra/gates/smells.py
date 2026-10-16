@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, r, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -118,7 +118,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
         """
         _ = ctx, check_dirs
-        binary = self._resolve_binary()
+        binary = self.resolve_binary()
         if binary is None:
             raise FileNotFoundError(c.Infra.QLTY_BINARY)
         return self._scan_command(binary, project_dir)
@@ -198,7 +198,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             The resulting ``p.Cli.CommandOutput``.
 
         """
-        binary = self._resolve_binary()
+        binary = self.resolve_binary()
         if binary is None:
             return self._unrunnable_scan_output(
                 f"{c.Infra.QLTY_BINARY} binary not found on PATH",

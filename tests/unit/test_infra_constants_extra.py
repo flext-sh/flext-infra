@@ -32,7 +32,7 @@ class TestsFlextInfraInfraConstantsExtra:
             )
         tm.ok(u.Cli.atomic_write_text_file(staged / "constants.py", projected))
         expected_mro = tuple(
-            (base.__module__, base.__qualname__) for base in c.Infra.__mro__
+            (base.__module__, base.__qualname__) for base in inspect.getmro(c.Infra)
         )
         digest = hashlib.sha256(projected.encode()).hexdigest()
         output = tm.ok(
@@ -50,7 +50,7 @@ class TestsFlextInfraInfraConstantsExtra:
                         f"assert artifact == Path({str(staged / 'constants.py')!r}), "
                         "str(artifact)\n"
                         "assert tuple((base.__module__, base.__qualname__) "
-                        f"for base in c.Infra.__mro__) == {expected_mro!r}\n"
+                        f"for base in inspect.getmro(c.Infra)) == {expected_mro!r}\n"
                         "assert c.Infra.PytestExecutionMode is "
                         "FlextInfraConstantsMake.PytestExecutionMode\n"
                         "assert c.Infra.ALIAS_NAMES is "

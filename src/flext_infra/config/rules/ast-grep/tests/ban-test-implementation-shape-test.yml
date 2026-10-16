@@ -1,0 +1,31 @@
+id: ban-test-implementation-shape
+valid:
+  # Behavioral assertions over the public surface.
+  - assert svc.run(payload).success
+  - tm.that(facade.execute(), eq=expected)
+  - assert result.value == entity.name
+  - assert FlextLdap in (FlextLdap, FlextLdapModels)
+  # The public export contract is not shape.
+  - assert "u" in flext_ldap.__all__
+  - tm.that(flext_target_oracle_wms.u.TargetOracleWms.Client, is_=type)
+  # The Python data-model dunders are the public contract, not owner shape.
+  - assert obj.__class__ is Service
+  - assert module.__name__ == "flext_ldap"
+  # Installing a synthetic binding while exercising the lazy machinery is
+  # scaffolding, not a shape assertion.
+  - |
+    child.__dict__["Alpha"] = Alpha
+    assert child.Alpha is Alpha
+  # A typed serialization surface, not a raw probe.
+  - assert model.model_dump()["name"] == expected
+invalid:
+  # Method-resolution order asserted directly.
+  - assert FlextLdapService in FlextLdap.__mro__
+  - tm.that(p.Grpc.__mro__, has=FlextGrpcProtocols.Grpc)
+  - |
+    def test_mro(self) -> None:
+        assert cls.__mro__[1] is Base
+  - tm.that(Service in Facade.__mro__, eq=True)
+  # Direct base tuple asserted.
+  - assert FlextLdap.__bases__ == (FlextLdapModels,)
+  - tm.that(Widget.__bases__, eq=(Base,))

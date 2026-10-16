@@ -287,8 +287,12 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         return m.Infra.MypyInvocation(targets=(source,), config_file=config_file)
 
     @staticmethod
-    def create_python_environment(root: Path) -> p.Result[bool]:
-        """Provision a physical fixture environment with the current interpreter.
+    def create_python_environment(
+        root: Path,
+        *,
+        dependency_projects: t.SequenceOf[Path] = (),
+    ) -> p.Result[bool]:
+        """Provision a physical fixture environment and declared local dependencies.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -296,8 +300,21 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         """
         environment = u.Infra.runtime_environment_dir(root)
         environment.parent.mkdir(parents=True, exist_ok=True)
-        return u.Cli.run_checked(
+        created = u.Cli.run_checked(
             ["uv", "venv", "--python", sys.executable, str(environment)],
+            cwd=root,
+        )
+        if created.failure or not dependency_projects:
+            return created
+        return u.Cli.run_checked(
+            (
+                c.Infra.UV,
+                "pip",
+                "install",
+                "--python",
+                str(environment),
+                *(str(project) for project in dependency_projects),
+            ),
             cwd=root,
         )
 
@@ -307,6 +324,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
         Returns:
             The installation result or the original environment failure.
+
         """
         created = cls.create_python_environment(root)
         if created.failure:
@@ -432,6 +450,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 config_path,
+                f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
                 f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\ntestConfigs: []\n",
             ),
         )
