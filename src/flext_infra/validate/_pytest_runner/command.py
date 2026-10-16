@@ -295,6 +295,32 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             )
         return (sys.executable, "-m", "pytest", *pytest_arguments)
 
+    @staticmethod
+    def _testmon_selection_mode(
+        selection_plan: m.Infra.PytestSelectionPlan | None,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode,
+    ) -> t.StrTuple:
+        """Elect how testmon selects inside the suite run.
+
+        A nonempty plan or a full run executes exactly its manifest, so testmon
+        only records (noselect). An empty plan selection over the restored
+        cache must execute nothing: testmon selects itself and deselects the
+        unchanged suite, the typed cache hit. Without a plan the declared file
+        executes regardless of the cache (forceselect).
+
+        Returns:
+            The testmon selection flag for the suite argv.
+
+        """
+        if execution_mode == c.Infra.PytestExecutionMode.FULL:
+            return ("--testmon-noselect",)
+        if selection_plan is None:
+            return ("--testmon-forceselect",)
+        if not selection_plan.node_ids:
+            return ()
+        return ("--testmon-noselect",)
+
     def build_command(
         self,
         report_dir: Path,
@@ -359,11 +385,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     else ()
                 ),
                 "--testmon",
-                *(
-                    ("--testmon-noselect",)
-                    if selection_plan is not None
-                    or execution_mode == c.Infra.PytestExecutionMode.FULL
-                    else ("--testmon-forceselect",)
+                *self._testmon_selection_mode(
+                    selection_plan,
+                    execution_mode=execution_mode,
                 ),
                 "--testmon-env",
                 f"'{self.testmon_environment(execution_mode)}'",
