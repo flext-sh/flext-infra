@@ -14,6 +14,7 @@ from collections.abc import Generator, Mapping
 from contextlib import ExitStack, contextmanager
 from itertools import chain
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
 
@@ -21,8 +22,6 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
-
-_EMPTY_RULE_DELTA_OPTIONS = m.Infra.RuleDeltaOptions()
 
 
 class FlextInfraUtilitiesRefactor:
@@ -34,6 +33,10 @@ class FlextInfraUtilitiesRefactor:
 
         methods = u.Infra.extract_public_methods_from_dir(package_dir)
     """
+
+    _EMPTY_RULE_DELTA_OPTIONS: ClassVar[m.Infra.RuleDeltaOptions] = (
+        m.Infra.RuleDeltaOptions()
+    )
 
     @staticmethod
     def publish_mod_native_artifact(
@@ -132,11 +135,7 @@ class FlextInfraUtilitiesRefactor:
         if u.Cli.sha256_bytes(content) != record.sha256:
             msg = "mod native record digest differs from its captured evidence"
             raise ValueError(msg)
-        payload = u.Cli.json_loads(content).unwrap()
-        hydrated = isinstance(payload, Mapping)
-        if not hydrated:
-            msg = "mod native record is not a JSON object"
-            raise ValueError(msg)
+        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_json(content)
         identity_admitted = (
             payload.get("ruleId") == finding.rule_id
             and payload.get("text") == finding.text
@@ -178,7 +177,7 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def _indexed_source_states[FindingT: m.Infra.ModOccurrence](
         report: m.Infra.ModOccurrenceReport[FindingT],
-    ) -> dict[Path, m.Cli.AtomicFileState]:
+    ) -> t.MappingKV[Path, m.Cli.AtomicFileState]:
         """Index one report's captured source states by path.
 
         Args:
@@ -195,7 +194,7 @@ class FlextInfraUtilitiesRefactor:
         if report.source_states is None:
             msg = "semantic correspondence lacks complete source inventory"
             raise ValueError(msg)
-        indexed: dict[Path, m.Cli.AtomicFileState] = {}
+        indexed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for state in report.source_states:
             if indexed.setdefault(state.path, state) != state:
                 msg = f"scan inventory identity disagrees: {state.path}"
@@ -205,8 +204,8 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def _admit_scan_entry(
         entry: m.Infra.ModOccurrence,
-        catalog: dict[tuple[str, str], tuple[str | None, bool]],
-        indexed: dict[Path, m.Cli.AtomicFileState],
+        catalog: t.MutableMappingKV[t.Pair[str, str], t.Pair[str | None, bool]],
+        indexed: t.MappingKV[Path, m.Cli.AtomicFileState],
     ) -> None:
         """Admit one scan finding against the established catalog correspondence.
 
@@ -238,7 +237,7 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def _publication_endpoints(
         publication_chain: tuple[m.Infra.CodegenStagedFile, ...],
-    ) -> dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]]:
+    ) -> t.MappingKV[Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]]:
         """Fold the publication chain into per-path before/after endpoints.
 
         Args:
@@ -252,7 +251,9 @@ class FlextInfraUtilitiesRefactor:
                 receipt is not an admitted destination.
 
         """
-        endpoints: dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]] = {}
+        endpoints: t.MutableMappingKV[
+            Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
+        ] = {}
         for receipt in publication_chain:
             path = receipt.before.path
             previous = endpoints.get(path)
@@ -270,8 +271,10 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _admit_publication_identity(
-        sources: t.SequenceOf[dict[Path, m.Cli.AtomicFileState]],
-        endpoints: dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]],
+        sources: t.SequenceOf[t.MappingKV[Path, m.Cli.AtomicFileState]],
+        endpoints: t.MappingKV[
+            Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
+        ],
     ) -> None:
         """Prove each path's original and final source identity.
 
@@ -311,8 +314,8 @@ class FlextInfraUtilitiesRefactor:
         after: m.Infra.ModOccurrenceReport[FindingT],
         publication_chain: tuple[m.Infra.CodegenStagedFile, ...],
     ) -> t.Pair[
-        list[dict[Path, m.Cli.AtomicFileState]],
-        dict[Path, tuple[m.Cli.AtomicFileState, m.Cli.AtomicFileState]],
+        t.ListOf[t.MappingKV[Path, m.Cli.AtomicFileState]],
+        t.MappingKV[Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]],
     ]:
         """Authenticate scan inventories and the staged publication chain.
 
@@ -325,8 +328,8 @@ class FlextInfraUtilitiesRefactor:
             The indexed source inventories and the publication endpoints.
 
         """
-        sources: list[dict[Path, m.Cli.AtomicFileState]] = []
-        catalog: dict[tuple[str, str], tuple[str | None, bool]] = {}
+        sources: t.ListOf[t.MappingKV[Path, m.Cli.AtomicFileState]] = []
+        catalog: t.MutableMappingKV[t.Pair[str, str], t.Pair[str | None, bool]] = {}
         for report in (before, after):
             indexed = cls._indexed_source_states(report)
             for entry in report.entries:
@@ -476,7 +479,10 @@ class FlextInfraUtilitiesRefactor:
         positions: t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]] = defaultdict(
             list
         )
-        for index, entry in enumerate(report.entries):
+        entries: t.SequenceOf[m.Infra.ModOccurrence | m.Infra.ModTextFinding] = (
+            report.entries
+        )
+        for index, entry in enumerate(entries):
             repository = cls._finding_repository(entry, repository_root, topology)
             text = entry.text
             if (
