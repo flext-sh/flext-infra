@@ -10,6 +10,7 @@ import dataclasses
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import infra
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from tests import c, m, t, tm
@@ -243,13 +244,17 @@ class TestsFlextInfraUtilitiesGatesMixin:
             resolved = dataclasses.replace(resolved, kinds=kinds)
         TestsFlextInfraUtilitiesToolingFixtureMixin.provision_checkout(workspace)
         result = FlextInfraRefactorCensus(
+            workspace_factory=infra.rope_workspace,
+            source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=resolved.apply_changes,
             dry_run=resolved.dry_run,
-            impact_map_output=resolved.impact_map_output,
-            include_local_scopes=resolved.include_local_scopes,
-            kinds=resolved.kinds,
-            rules=rules,
+            options=m.Infra.CensusOptions(
+                impact_map_output=resolved.impact_map_output,
+                include_local_scopes=resolved.include_local_scopes,
+                kinds=resolved.kinds,
+                rules=rules,
+            ),
         ).execute()
         tm.ok(result)
         report: m.Infra.WorkspaceReport = result.unwrap()

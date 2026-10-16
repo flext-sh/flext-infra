@@ -28,6 +28,28 @@ class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
 
     @staticmethod
+    def test_snapshot_project_uses_only_captured_sources(tmp_path: Path) -> None:
+        """A later disk edit cannot change the closed Rope source view."""
+        captured = tmp_path / "captured.py"
+        captured.write_text("VALUE = 42\n", encoding=c.Infra.ENCODING_DEFAULT)
+        with closing(
+            FlextInfraRopeProject.from_snapshot(
+                str(tmp_path),
+                {captured: captured.read_bytes()},
+                source_folders=["."],
+            ),
+        ) as project:
+            captured.unlink()
+            (tmp_path / "uncaptured.py").write_text(
+                "VALUE = 99\n", encoding=c.Infra.ENCODING_DEFAULT
+            )
+            resource = u.Infra.require_file_resource(
+                tm.not_none(project.find_module("captured")), captured
+            )
+            tm.that(resource.read(), eq="VALUE = 42\n")
+            tm.that(project.find_module("uncaptured"), none=True)
+
+    @staticmethod
     def test_declared_package_root_resolves_its_qualified_name(
         tmp_path: Path,
     ) -> None:
@@ -35,6 +57,7 @@ class TestsFlextInfraRopeRuntimePymodule:
 
         Raises:
             AssertionError: If declared package root did not resolve its qualified name.
+
         """
         package = tmp_path / "qualified_package"
         initializer = package / c.Infra.INIT_PY
@@ -44,7 +67,7 @@ class TestsFlextInfraRopeRuntimePymodule:
         with closing(
             FlextInfraRopeProject.from_snapshot(
                 str(tmp_path),
-                {initializer: source},
+                {initializer: source.encode(c.Infra.ENCODING_DEFAULT)},
                 source_folders=[package.name],
             ),
         ) as project:
@@ -58,6 +81,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                 module.get_attribute("PublishedContract").get_object().get_name(),
                 eq="PublishedContract",
             )
+            tm.not_none(u.Infra.resolve_module_imports(project, resource))
 
     @staticmethod
     @pytest.mark.parametrize("regular_package", [False, True])
@@ -70,6 +94,7 @@ class TestsFlextInfraRopeRuntimePymodule:
 
         Raises:
             AssertionError: If Native Rope finder did not resolve the fixture module.
+
         """
         root = tmp_path / "consumer"
         source = root / "src"
@@ -116,8 +141,8 @@ class TestsFlextInfraRopeRuntimePymodule:
         plain_module = tmp_path / "plain.py"
         plain_module.write_text("VALUE = 2\n")
         sources = {
-            init_module: init_module.read_text(),
-            plain_module: plain_module.read_text(),
+            init_module: init_module.read_bytes(),
+            plain_module: plain_module.read_bytes(),
         }
         project = FlextInfraRopeProject.from_snapshot(
             str(tmp_path),

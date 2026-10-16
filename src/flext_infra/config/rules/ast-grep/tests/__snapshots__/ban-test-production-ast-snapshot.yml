@@ -1,0 +1,140 @@
+id: ban-test-production-ast
+snapshots:
+  ? |
+    assert ast.dump(ast.parse(Path("cli.py").read_text()))
+  : labels:
+    - source: ast.dump(ast.parse(Path("cli.py").read_text()))
+      style: primary
+      start: 7
+      end: 54
+    - source: ast.dump
+      style: secondary
+      start: 7
+      end: 15
+    - source: ast.parse
+      style: secondary
+      start: 16
+      end: 25
+    - source: Path("cli.py").read_text()
+      style: secondary
+      start: 26
+      end: 52
+    - source: (Path("cli.py").read_text())
+      style: secondary
+      start: 25
+      end: 53
+    - source: ast.parse(Path("cli.py").read_text())
+      style: secondary
+      start: 16
+      end: 53
+    - source: (ast.parse(Path("cli.py").read_text()))
+      style: secondary
+      start: 15
+      end: 54
+  ast.walk(ast.parse(Path("cli.py").read_text())):
+    labels:
+    - source: ast.walk(ast.parse(Path("cli.py").read_text()))
+      style: primary
+      start: 0
+      end: 47
+    - source: ast.walk
+      style: secondary
+      start: 0
+      end: 8
+    - source: ast.parse
+      style: secondary
+      start: 9
+      end: 18
+    - source: Path("cli.py").read_text()
+      style: secondary
+      start: 19
+      end: 45
+    - source: (Path("cli.py").read_text())
+      style: secondary
+      start: 18
+      end: 46
+    - source: ast.parse(Path("cli.py").read_text())
+      style: secondary
+      start: 9
+      end: 46
+    - source: (ast.parse(Path("cli.py").read_text()))
+      style: secondary
+      start: 8
+      end: 47
+  ? |
+    from ai_hub import cli
+    ast.parse(inspect.getsource(cli))
+  : labels:
+    - source: ast.parse(inspect.getsource(cli))
+      style: primary
+      start: 23
+      end: 56
+    - source: ast.parse
+      style: secondary
+      start: 23
+      end: 32
+    - source: inspect.getsource(cli)
+      style: secondary
+      start: 33
+      end: 55
+    - source: (inspect.getsource(cli))
+      style: secondary
+      start: 32
+      end: 56
+  ? |
+    source = Path("src/ai_hub/cli.py").read_text()
+    ast.parse(source)
+  : labels:
+    - source: ast.parse(source)
+      style: primary
+      start: 47
+      end: 64
+    - source: ast.parse
+      style: secondary
+      start: 47
+      end: 56
+    - source: source
+      style: secondary
+      start: 0
+      end: 6
+    - source: Path("src/ai_hub/cli.py").read_text()
+      style: secondary
+      start: 9
+      end: 46
+    - source: source = Path("src/ai_hub/cli.py").read_text()
+      style: secondary
+      start: 0
+      end: 46
+    - source: |
+        source = Path("src/ai_hub/cli.py").read_text()
+        ast.parse(source)
+      style: secondary
+      start: 0
+      end: 65
+    - source: source
+      style: secondary
+      start: 57
+      end: 63
+    - source: (source)
+      style: secondary
+      start: 56
+      end: 64
+  ? |
+    tree = ast.parse(Path("src/ai_hub/cli.py").read_text())
+  : labels:
+    - source: ast.parse(Path("src/ai_hub/cli.py").read_text())
+      style: primary
+      start: 7
+      end: 55
+    - source: ast.parse
+      style: secondary
+      start: 7
+      end: 16
+    - source: Path("src/ai_hub/cli.py").read_text()
+      style: secondary
+      start: 17
+      end: 54
+    - source: (Path("src/ai_hub/cli.py").read_text())
+      style: secondary
+      start: 16
+      end: 55

@@ -858,6 +858,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
         Yields:
             Nodes whose bindings can capture a public module facade.
+
         """
         pending: list[tuple[ast.AST, bool]] = [(tree, False)]
         deferred_annotations = any(
@@ -894,6 +895,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
         Returns:
             Whether a rewritten binding is evaluated in the class body.
+
         """
         pending: list[ast.AST] = list(declaration.body)
         while pending:
@@ -918,6 +920,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
         Yields:
             Definition expressions, excluding bodies and postponed annotations.
+
         """
         if isinstance(node, ast.ClassDef):
             yield from node.decorator_list

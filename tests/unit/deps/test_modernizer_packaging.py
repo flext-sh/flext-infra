@@ -160,8 +160,8 @@ class TestsFlextInfraDepsModernizerPackaging:
         }
         module_path = f"{c.Infra.DEFAULT_SRC_DIR}/{root_module}.py"
         tm.that(
-            set(u.Tests.toml_list(wheel["include"])),
-            eq={f"/{path}/**" for path in package_paths},
+            set(u.Tests.toml_list(wheel["only-include"])),
+            eq=package_paths,
         )
         tm.that(
             u.Tests.toml_mapping(wheel["force-include"]),
@@ -172,8 +172,8 @@ class TestsFlextInfraDepsModernizerPackaging:
             u.Tests.toml_mapping(wheel["force-include"])[module_path],
             eq=f"{root_module}.py",
         )
-        included = set(u.Tests.toml_list(sdist["include"]))
-        tm.that({f"/{path}/**" for path in package_paths} <= included, eq=True)
+        included = set(u.Tests.toml_list(sdist["only-include"]))
+        tm.that(package_paths <= included, eq=True)
         tm.that(u.Tests.toml_mapping(sdist["force-include"]), has=module_path)
         tm.that(
             u.Tests.toml_mapping(sdist["force-include"])[module_path],

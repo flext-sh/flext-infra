@@ -38,8 +38,8 @@
 .gemini/*.agents-governance.json
 .claude/settings.local.json
 
-# Private local config overrides
-/config/codegen-overrides.local.yaml
+# Private local config layers
+/config/*.local.yaml
 
 # Gas City skill projections (runtime state, never source)
 .agents/skills/.gc-skill-ownership.json
@@ -363,3 +363,14 @@ CLAUDE.local.md
 !.vscode/settings.json
 !config/
 !config/gitleaks-release.toml
+!.flext/
+!.flext/uv/
+!.flext/uv/local/
+!.flext/uv/local/pyproject.toml
+!.flext/uv/standalone/
+!.flext/uv/standalone/pyproject.toml
+!.flext/uv/local/uv.lock
+!.flext/uv/standalone/uv.lock
+
+# RUNTIME: local projections (derived)
+/.vscode/settings.json

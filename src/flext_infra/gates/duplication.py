@@ -7,14 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import shutil
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -53,8 +52,8 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         started = time.monotonic()
         overrides = self._read_project_config(project_dir)
         fleet_enabled = overrides.success and overrides.value.fleet
-        scan = self._scan_project(project_dir, fleet_enabled)
-        parsed = self._issues_from_report(scan, project_dir, fleet=fleet_enabled)
+        scan = self._scan_project(project_dir, fleet_enabled=fleet_enabled)
+        parsed = self._issues_from_report(scan, project_dir)
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
@@ -83,7 +82,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             ValueError: If jscpd report target is not a physical file.
 
         """
-        binary = shutil.which(c.Infra.JSCPD_BINARY)
+        binary = self.resolve_binary()
         if binary is None:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -277,30 +276,17 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return r[m.Infra.ProjectDuplicationOverrides].ok(validated.value)
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
-        """Read ``repository.duplication_trees`` from the governed manifest.
+        """Read duplication scope from the target's selected repository delta.
 
         Returns:
             The resulting ``p.Result[t.StrSequence]``.
 
         """
-        manifest_path = u.Infra.workspace_manifest_path(self._repository_root)
-        if not manifest_path.is_file():
-            return r[t.StrSequence].ok(())
-        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        loaded = u.Infra.load_codegen_inputs(self._repository_root)
         if loaded.failure:
-            return r[t.StrSequence].fail(
-                f"invalid workspace manifest ({manifest_path}): {loaded.error}",
-            )
-        validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
-            m.Infra.WorkspaceManifestSpec,
-            loaded.value.data,
-        )
-        if validated.failure:
-            return r[t.StrSequence].fail_op(
-                f"workspace manifest model validation ({manifest_path})",
-                validated.error,
-            )
-        return r[t.StrSequence].ok(tuple(validated.value.repository.duplication_trees))
+            return r[t.StrSequence].from_failure(loaded)
+        repository = loaded.value.spec.repository
+        return r[t.StrSequence].ok(repository.duplication_trees)
 
     def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
@@ -393,8 +379,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         cls,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
-        *,
-        fleet: bool = False,
     ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
         """Extract one Issue per clone side that falls inside ``project_dir``.
 
@@ -419,12 +403,15 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):
             first = u.Cli.json_deep_mapping(duplicate, "firstFile")
             second = u.Cli.json_deep_mapping(duplicate, "secondFile")
-            first_name = cls._report_file_name(first)
-            second_name = cls._report_file_name(second)
-            if not fleet and not cls._is_semantic_clone(duplicate, first, second):
+            first_name = cls.report_file_name(first)
+            second_name = cls.report_file_name(second)
+            # The semantic classifier owns the verdict in both scopes: the
+            # fleet union only widens WHICH clones are visible, never what
+            # counts as one.
+            if not cls.is_semantic_clone(duplicate, first, second):
                 continue
-            first_span = cls._side_span_key(first)
-            second_span = cls._side_span_key(second)
+            first_span = cls.side_span_key(first)
+            second_span = cls.side_span_key(second)
             # The two sides of a clone are the same span only when the same
             # directory reached jscpd twice (the double-scan artifact): that is
             # never an owned clone. The same file with two different spans is
@@ -490,7 +477,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return raw, None
 
     @classmethod
-    def _report_file_name(cls, side: t.JsonMapping) -> str:
+    def report_file_name(cls, side: t.JsonMapping) -> str:
         """Return one jscpd clone side's on-disk file name.
 
         Returns:
@@ -500,14 +487,14 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return cls._report_name_parts(side)[0]
 
     @classmethod
-    def _side_span_key(cls, side: t.JsonMapping) -> str:
+    def side_span_key(cls, side: t.JsonMapping) -> str:
         """Return one clone side's on-disk span identity.
 
         Returns:
             The clone side's ``<file>:<start-line>:<end-line>`` identity.
 
         """
-        name = cls._report_file_name(side)
+        name = cls.report_file_name(side)
         start = u.Cli.json_nested_int(side, "startLoc", "line", default=0)
         end = u.Cli.json_nested_int(side, "endLoc", "line", default=start)
         return f"{name}:{start}:{end}"
@@ -542,7 +529,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         )
 
     @classmethod
-    def _is_semantic_clone(
+    def is_semantic_clone(
         cls,
         duplicate: t.JsonMapping,
         first: t.JsonMapping,

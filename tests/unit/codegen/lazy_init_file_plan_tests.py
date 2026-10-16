@@ -11,9 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra
-from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra import config, infra
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, tm, u
 
@@ -124,6 +123,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         before = {
             path: path.read_bytes() for path in package.rglob(c.Infra.EXT_PYTHON_GLOB)
         }
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.FACADES,
@@ -149,7 +149,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(source, has="retained = 'unchanged'")
         tm.that(
             {state.path for state in file.source_states},
-            eq=set(before),
+            eq=set(before) | {state.path for state in inputs.sources},
         )
         tm.that({path: path.read_bytes() for path in before}, eq=before)
 
@@ -163,6 +163,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         Returns:
             The resulting ``tuple[Path, Path, list[Path]]`` of the workspace
             root, the member repository and the seeded package paths.
+
         """
         root = tmp_path / "flext-scope-root"
         member = root / "apps" / "flext-scope-member"
@@ -331,10 +332,11 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
         init_path = package_root / c.Infra.INIT_PY
         unit_path = package_root / "__unit__.py"
-        unit_path.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
+        for path in (init_path, unit_path):
+            path.write_text(
+                f"{c.Infra.AUTOGEN_HEADER}\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
         before = {path: path.read_bytes() for path in (init_path, unit_path)}
         service = u.Tests.create_lazy_init_service(repository_root)
 
@@ -350,7 +352,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             tm.ok(u.Infra.codegen_file_before_state(init_plan)).content,
             eq=before[init_path],
         )
-        tm.that(init_plan.desired_mode, eq=0o644)
+        tm.that(init_plan.desired_mode, eq=config.Infra.codegen.modes.file_default)
         tm.that(u.Tests.codegen_file_text(init_plan), contains="FlextTestsModels")
         tm.that(u.Infra.codegen_file_requires_effect(init_plan), eq=True)
         source_paths = {state.path for state in init_plan.source_states}
@@ -384,6 +386,9 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             alias="m",
         )
         generated_header = f"{c.Infra.AUTOGEN_HEADER}\n"
+        (package_root / c.Infra.INIT_PY).write_text(
+            generated_header, encoding=c.DEFAULT_ENCODING
+        )
         stub_path = package_root / c.Infra.INIT_PYI
         stub_path.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
         root_sidecar = package_root / "_exports.py"

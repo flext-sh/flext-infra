@@ -213,6 +213,7 @@ class FlextInfraModelsLayout:
 
             Returns:
                 The resulting ``t.VariadicTuple[FlextInfraModelsLayout.LayoutFinding]``.
+
             """
             return tuple(
                 finding for finding in self.findings if finding.rule != "review"
@@ -225,6 +226,7 @@ class FlextInfraModelsLayout:
 
             Returns:
                 The resulting ``int``.
+
             """
             return sum(1 for finding in self.findings if finding.status == "applied")
 

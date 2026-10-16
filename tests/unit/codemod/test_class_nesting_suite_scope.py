@@ -255,16 +255,18 @@ class TestsFlextInfraClassNestingSuiteScope:
         )
         path.write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
         u.Tests.initialize_git_repo(root)
-        report = m.Infra.ModScanReport(
-            findings=0,
-            actionable=0,
-            detection_only=0,
-            non_actionable_with_fix=0,
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset(),
             entries=(),
         )
         with flext_infra.infra.rope_workspace(root) as rope:
-            applied = FlextInfraCodemodSemanticApply.apply(root, report, rope)
+            applied = FlextInfraCodemodSemanticApply.apply(
+                root,
+                report,
+                rope,
+                source_preview=flext_infra.infra.source_preview(root),
+                workspace_factory=flext_infra.infra.rope_workspace,
+            )
         tm.fail(applied, has=f"{owner_name}: LIMIT")
         tm.that(path.read_text(encoding=c.Infra.ENCODING_DEFAULT), eq=source)
 

@@ -331,27 +331,16 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         """
         if not FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_node(node):
             return ()
-        node_kind = FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node)
-        if node_kind == "AnnAssign":
-            target = getattr(node, "target", None)
-            if (
-                target is not None
-                and FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_node(target)
-            ):
-                target_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(target)
-                return (target_name,) if target_name else ()
-            return ()
-        if node_kind != "Assign":
-            return ()
-        targets = getattr(node, "targets", ())
-        if not isinstance(targets, (list, tuple)):
+        if isinstance(node, ast.AnnAssign):
+            target_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(node.target)
+            return (target_name,) if target_name else ()
+        if not isinstance(node, ast.Assign):
             return ()
         names: list[str] = []
-        for target in targets:
-            if FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_node(target):
-                target_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(target)
-                if target_name:
-                    names.append(target_name)
+        for target in node.targets:
+            target_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(target)
+            if target_name:
+                names.append(target_name)
         return tuple(names)
 
     @staticmethod
@@ -363,14 +352,13 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
 
         """
         pymodule = FlextInfraUtilitiesRopeAnalysisAstHelpers.parse_string_module(source)
-        body = getattr(pymodule.get_ast(), "body", ())
-        if not isinstance(body, (list, tuple)):
+        tree = pymodule.get_ast()
+        if not isinstance(tree, ast.Module):
             return ()
         return tuple(
             class_info
-            for node in body
-            if FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_node(node)
-            and (
+            for node in tree.body
+            if (
                 class_info
                 := FlextInfraUtilitiesRopeAnalysisAstHelpers._class_info_from_ast(node)
             )
@@ -385,23 +373,16 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
             ClassInfo for one top-level ClassDef AST node.
 
         """
-        if not FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_node(node):
+        if not isinstance(node, ast.ClassDef):
             return None
-        if FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node) != "ClassDef":
+        if not node.name:
             return None
-        name = getattr(node, "name", "")
-        if not isinstance(name, str) or not name:
-            return None
-        line = getattr(node, "lineno", 1)
-        raw_bases = getattr(node, "bases", ())
-        if not isinstance(raw_bases, (list, tuple)):
-            raw_bases = ()
         return m.Infra.ClassInfo(
-            name=name,
-            line=line if isinstance(line, int) and line > 0 else 1,
+            name=node.name,
+            line=node.lineno if node.lineno > 0 else 1,
             bases=tuple(
                 base_name
-                for base in raw_bases
+                for base in node.bases
                 if (
                     base_name
                     := FlextInfraUtilitiesRopeAnalysisAstHelpers._class_base_name(base)
@@ -442,3 +423,6 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
                 subscript_value,
             )
         return ""
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisAstHelpers"]

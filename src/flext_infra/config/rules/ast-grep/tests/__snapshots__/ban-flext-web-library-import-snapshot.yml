@@ -1,0 +1,14 @@
+id: ban-flext-web-library-import
+snapshots:
+  from fastapi import FastAPI:
+    labels:
+    - source: fastapi
+      style: primary
+      start: 5
+      end: 12
+  import fastapi:
+    labels:
+    - source: fastapi
+      style: primary
+      start: 7
+      end: 14

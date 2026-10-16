@@ -1,4 +1,4 @@
-"""Concrete-syntax ownership moves for automatic class nesting.
+"""Native region ownership moves for automatic class nesting.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,39 +6,35 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
-
-import libcst as cst
-from libcst.codemod import CodemodContext
-from libcst.codemod.visitors import AddImportsVisitor
-
-from flext_infra import t
+from flext_infra import c, m, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeStructure,
+)
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverNestingReferences,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
 class FlextInfraUtilitiesSemanticCutoverNestingCst(
     FlextInfraUtilitiesSemanticCutoverNestingReferences,
 ):
-    """Move proven top-level class nodes under one existing owner class."""
+    """Move identity-proven members using one native source graph and regions."""
 
     @classmethod
     def _rewrite_class_nesting_source(
         cls,
         source: str,
         *,
-        module_name: str,
-        is_package_init: bool,
+        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        scope: t.Pair[str, bool],
         bindings_by_module: t.MappingKV[str, t.StrMapping],
         definitions: t.StrMapping,
     ) -> str:
-        """Return a binding-proven structural rewrite without filesystem effects.
-
-        Returns:
-            A binding-proven structural rewrite without filesystem effects.
-
-        """
+        project, resource = native
+        module_name, is_package_init = scope
         rewritten = cls._rewrite_class_nesting_references(
             source,
             module_name=module_name,
@@ -46,227 +42,312 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             bindings_by_module=bindings_by_module,
             definitions=definitions,
         )
-        return cls._nest_definitions(rewritten, definitions)
-
-    @staticmethod
-    def _annotation_tail(annotation: cst.BaseExpression) -> str:
-        """Return an annotation's qualifier name (``ClassVar[int]``: ``ClassVar``).
-
-        Returns:
-            The trailing identifier of the annotation's qualifier, or ``""``.
-
-        """
-        qualifier = (
-            annotation.value if isinstance(annotation, cst.Subscript) else annotation
-        )
-        if isinstance(qualifier, cst.Attribute):
-            return qualifier.attr.value
-        if isinstance(qualifier, cst.Name):
-            return qualifier.value
-        return ""
+        return cls._nest_definitions(project, resource, rewritten, definitions)
 
     @classmethod
-    def _class_variable_type(
+    def _nesting_selection(
         cls,
-        statement: cst.BaseSmallStatement,
-    ) -> cst.BaseExpression | None:
-        """Return the type a moved binding declares as its ``ClassVar``.
-
-        An annotated binding keeps its annotation (unless it already is a
-        ``ClassVar`` or ``Final``); a plain binding of a number or string
-        literal declares the literal's builtin type. Anything else stays a
-        plain class attribute.
+        module: p.Infra.RopePyModule,
+        facts: t.SequenceOf[m.Infra.LogicalStatement],
+        definitions: t.StrMapping,
+    ) -> t.Pair[
+        t.SequenceOf[m.Infra.LogicalStatement],
+        t.MappingKV[str, p.Infra.RopeScope],
+    ]:
+        """Elect source statements and native scope identities from one parsed module.
 
         Returns:
-            The type expression to wrap in ``ClassVar``, or ``None``.
+            The original ordered top-level members and actual native scopes.
 
         """
-        if isinstance(statement, cst.AnnAssign):
-            annotation = statement.annotation.annotation
-            if cls._annotation_tail(annotation) in {"ClassVar", "Final"}:
-                return None
-            return annotation
-        if isinstance(statement, cst.Assign) and isinstance(
-            statement.value,
-            cst.Integer | cst.Float | cst.SimpleString,
-        ):
-            return cst.Name(type(ast.literal_eval(statement.value.value)).__name__)
-        return None
+        selected = [
+            item
+            for item in facts
+            if item.indent == 0 and cls._native_member_name(item) in definitions
+        ]
+        scopes = {
+            scope.pyobject.get_name(): scope
+            for scope in module.get_scope().get_scopes()
+        }
+        return selected, scopes
 
     @classmethod
-    def _class_member(
+    def _nested_member_body(
         cls,
-        node: cst.BaseStatement,
-    ) -> t.Pair[cst.BaseStatement, bool]:
-        """Return a module member in its owner-body form.
-
-        A function becomes a static method; a constant binding becomes a
-        ``ClassVar`` (its own annotation, or the literal's builtin type) so the
-        owner never mistakes it for an instance field. The flag reports whether
-        the member now names ``ClassVar``.
+        item: m.Infra.LogicalStatement,
+        body: str,
+        native: t.Pair[p.Infra.RopePyModule, p.Infra.RopePyModule],
+        classvar_name: str,
+    ) -> str:
+        """Render the original member category through its real native annotation.
 
         Returns:
-            The member statement for the owner body and its ``ClassVar`` flag.
+            The unchanged class, static function or source-derived ClassVar body.
 
-        Raises:
-            TypeError: If class-nesting cannot move.
         """
-        if not isinstance(
-            node,
-            cst.ClassDef | cst.FunctionDef | cst.SimpleStatementLine,
-        ):
-            msg = f"class-nesting cannot move {type(node).__name__} members"
-            raise TypeError(msg)
-        # Comments that documented the member move with it; the blank
-        # separator carries no indentation (W293).
-        leading: tuple[cst.EmptyLine, ...] = (
-            cst.EmptyLine(indent=False),
-            *(line for line in node.leading_lines if line.comment is not None),
-        )
-        if isinstance(node, cst.FunctionDef):
-            static = cst.Decorator(decorator=cst.Name("staticmethod"))
+        if item.category == c.Infra.StatementCategory.FUNC_DEF:
+            return "@staticmethod\n" + body
+        annotation = cls._member_annotation(item, *native)
+        if annotation is not None:
+            parts = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
+                item.text, 0, len(item.text), "="
+            )
+            value = item.text[parts[-1][0] : parts[-1][1]]
             return (
-                node.with_changes(
-                    leading_lines=leading,
-                    decorators=(static, *node.decorators),
-                ),
-                False,
+                f"{cls._native_member_name(item)}: "
+                f"{classvar_name}[{annotation}] = {value}\n"
             )
-        statement = node.body[0] if isinstance(node, cst.SimpleStatementLine) else None
-        declared = (
-            cls._class_variable_type(statement) if statement is not None else None
-        )
-        if not isinstance(statement, cst.AnnAssign | cst.Assign) or declared is None:
-            return node.with_changes(leading_lines=leading), False
-        classvar = cst.AnnAssign(
-            target=cls._assignment_targets(statement)[0],
-            annotation=cst.Annotation(
-                annotation=cst.Subscript(
-                    value=cst.Name("ClassVar"),
-                    slice=(cst.SubscriptElement(slice=cst.Index(value=declared)),),
-                ),
-            ),
-            value=statement.value,
-        )
-        return node.with_changes(leading_lines=leading, body=(classvar,)), True
+        return body
+
+    @classmethod
+    def _nested_member_edits(
+        cls,
+        source: str,
+        module: p.Infra.RopePyModule,
+        typing: p.Infra.RopePyModule,
+        selection: t.Triple[
+            t.SequenceOf[m.Infra.LogicalStatement],
+            t.MappingKV[str, p.Infra.RopeScope],
+            str,
+        ],
+        indentation: int,
+    ) -> t.Pair[list[m.Infra.SourceRewrite], str]:
+        """Retain native member regions while rendering their ordered nested bodies.
+
+        Returns:
+            Actual source-removal edits and their ordered reindented member bodies.
+
+        """
+        selected, scopes = selection[0], selection[1]
+        edits: list[m.Infra.SourceRewrite] = []
+        members: list[str] = []
+        for item in selected:
+            name = cls._native_member_name(item)
+            scope = scopes.get(name)
+            begin = item.start_offset
+            end = min(item.end_offset + 1, len(source))
+            if scope is not None:
+                begin = module.lines.get_line_start(
+                    module.lines.get_line_number(scope.get_region()[0])
+                )
+                end = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
+            members.append(
+                FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
+                    cls._nested_member_body(
+                        item, source[begin:end], (module, typing), selection[2]
+                    ).rstrip()
+                    + "\n",
+                    indentation,
+                )
+            )
+            edits.append(m.Infra.SourceRewrite(start=begin, end=end, text=""))
+        return edits, "\n".join(members)
 
     @staticmethod
-    def _module_with_owner(
-        module: cst.Module,
+    def _new_nesting_owner(
+        module: p.Infra.RopePyModule,
+        owner: t.Triple[str, str, int],
+        edits: t.SequenceOf[m.Infra.SourceRewrite],
+    ) -> list[m.Infra.SourceRewrite]:
+        """Build a real owner declaration at the first moved member's source region.
+
+        Returns:
+            Original removal edits with the first owner declaration substituted.
+
+        Raises:
+            TypeError: The actual module has no required docstring summary.
+
+        """
+        owner_name, nested, indentation = owner
+        doc = module.get_doc()
+        summary = doc.splitlines()[0].strip() if doc else ""
+        if not summary:
+            msg = f"class-nesting owner {owner_name} needs a module docstring summary"
+            raise TypeError(msg)
+        position = min(edit.start for edit in edits)
+        replacement = (
+            f"class {owner_name}:\n"
+            + " " * indentation
+            + repr(summary)
+            + "\n\n"
+            + nested
+        )
+        return [
+            edit.model_copy(update={"text": replacement})
+            if edit.start == position
+            else edit
+            for edit in edits
+        ]
+
+    @staticmethod
+    def _existing_owner_edits(
+        source: str,
+        module: p.Infra.RopePyModule,
+        facts: t.SequenceOf[m.Infra.LogicalStatement],
+        owner: p.Infra.RopeScope,
+        contents: t.Pair[str, int],
+    ) -> t.SequenceOf[m.Infra.SourceRewrite]:
+        """Extend the exact existing native owner body without rediscovering regions.
+
+        Returns:
+            Real replacement or insertion edits for the original owner scope.
+
+        Raises:
+            ValueError: An inline owner has no single native body region.
+
+        """
+        nested, indentation = contents
+        header = next(item for item in facts if item.line == owner.get_start())
+        first = module.lines.get_line_start(owner.get_body_start())
+        last = min(module.lines.get_line_end(owner.get_end()) + 1, len(source))
+        if owner.get_body_start() == owner.get_start():
+            regions = (
+                FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
+                    header.text, 0, len(header.text), ":"
+                )
+            )
+            match regions:
+                case [_, body_region]:
+                    first = header.start_offset + body_region[0]
+                case _:
+                    msg = "native inline owner has no single body region"
+                    raise ValueError(msg)
+            body = source[first:last].strip()
+            retained = (
+                ""
+                if body == "pass"
+                else FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
+                    body + "\n", indentation
+                )
+            )
+            return (
+                m.Infra.SourceRewrite(
+                    start=first, end=last, text="\n" + retained + nested
+                ),
+            )
+        own_body = [
+            item
+            for item in facts
+            if owner.get_body_start() <= item.line <= owner.get_end()
+        ]
+        if len(own_body) == 1 and own_body[0].text.strip() == "pass":
+            return (m.Infra.SourceRewrite(start=first, end=last, text=nested),)
+        if (
+            own_body
+            and FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(
+                own_body[0].text.strip()
+            )
+            is not None
+        ):
+            first = min(own_body[0].end_offset + 1, len(source))
+        return (
+            m.Infra.SourceRewrite(start=first, end=first, text="\n" + nested + "\n"),
+        )
+
+    @classmethod
+    def _owner_nesting_edits(
+        cls,
+        source: str,
+        module: p.Infra.RopePyModule,
+        structure: t.Pair[
+            t.SequenceOf[m.Infra.LogicalStatement],
+            t.MappingKV[str, p.Infra.RopeScope],
+        ],
+        contents: t.Triple[str, str, int],
+        edits: t.SequenceOf[m.Infra.SourceRewrite],
+    ) -> list[m.Infra.SourceRewrite]:
+        """Choose the actual existing owner or create its source-defined declaration.
+
+        Returns:
+            Original removals plus the exact owner insertion/replacement edits.
+
+        """
+        owner = structure[1].get(contents[0])
+        if owner is None:
+            return cls._new_nesting_owner(module, contents, edits)
+        return [
+            *edits,
+            *cls._existing_owner_edits(
+                source, module, structure[0], owner, (contents[1], contents[2])
+            ),
+        ]
+
+    @staticmethod
+    def _nested_exports(value: str, owner_name: str, definitions: t.StrMapping) -> str:
+        """Retain original public names while replacing moved members by their owner.
+
+        Returns:
+            The original tuple/list export shape with stable surviving name order.
+
+        """
+        names = [owner_name]
+        for (
+            start,
+            stop,
+            _metadata,
+        ) in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(value):
+            if value[start] != "#":
+                name = FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(
+                    value[start:stop]
+                )
+                if name is not None and name not in definitions and name not in names:
+                    names.append(name)
+        rendered = ", ".join(map(repr, names))
+        return f"({rendered},)" if value.startswith("(") else f"[{rendered}]"
+
+    @classmethod
+    def _nesting_export_edits(
+        cls,
+        source: str,
+        facts: t.SequenceOf[m.Infra.LogicalStatement],
         owner_name: str,
-        moved: t.VariadicTuple[cst.BaseStatement],
-    ) -> t.Pair[cst.Module, t.VariadicTuple[cst.ClassDef]]:
-        """Return the module holding its owner class, creating it before the moves.
-
-        A created owner states the module's own responsibility: its docstring
-        is the summary line of the module docstring.
+        definitions: t.StrMapping,
+    ) -> t.SequenceOf[m.Infra.SourceRewrite]:
+        """Rewrite the actual top-level export statements after nesting the owner.
 
         Returns:
-            The module and every top-level class named as the owner.
-
-        Raises:
-            TypeError: If the module has no docstring summary or the owner
-                declaration cannot be built.
+            Exact native source edits preserving existing export statement order.
 
         """
-        owner_nodes = tuple(
-            node
-            for node in module.body
-            if isinstance(node, cst.ClassDef) and node.name.value == owner_name
-        )
-        if owner_nodes:
-            return module, owner_nodes
-        docstring = module.get_docstring()
-        summary = docstring.splitlines()[0].strip() if docstring else ""
-        if not summary or '"' in summary or "\\" in summary:
-            msg = (
-                f"class-nesting owner {owner_name} needs a plain module "
-                f"docstring summary line, found {summary!r}"
+        exports = [
+            item
+            for item in facts
+            if item.indent == 0
+            and FlextInfraUtilitiesRopeStructure.target_name(item) == "__all__"
+        ]
+        if not exports:
+            return (
+                m.Infra.SourceRewrite(
+                    start=len(source),
+                    end=len(source),
+                    text=f"\n__all__: list[str] = [{owner_name!r}]\n",
+                ),
             )
-            raise TypeError(msg)
-        owner = cst.parse_statement(
-            f'class {owner_name}:\n    """{summary}"""\n',
-        )
-        if not isinstance(owner, cst.ClassDef):
-            msg = f"class-nesting could not create owner {owner_name}"
-            raise TypeError(msg)
-        index = next(index for index, node in enumerate(module.body) if node in moved)
-        body = (*module.body[:index], owner, *module.body[index:])
-        return module.with_changes(body=body), (owner,)
+        edits: list[m.Infra.SourceRewrite] = []
+        for item in exports:
+            parts = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
+                item.text, 0, len(item.text), "="
+            )
+            begin, end = parts[-1]
+            edits.append(
+                m.Infra.SourceRewrite(
+                    start=item.start_offset + begin,
+                    end=item.start_offset + end,
+                    text=cls._nested_exports(
+                        item.text[begin:end], owner_name, definitions
+                    ),
+                )
+            )
+        return edits
 
     @classmethod
-    def _owner_holding(
+    def _nest_definitions(
         cls,
-        owner: cst.ClassDef,
-        nested: t.VariadicTuple[cst.BaseStatement],
-    ) -> cst.ClassDef:
-        """Return the owner class whose body leads with the moved members.
-
-        A moved class was defined before the owner at module level, so a class
-        body member may already use it as a definition-time base. Appending
-        would place the definition after that use and break import; the
-        docstring keeps position and the moves lead the rest.
-
-        Returns:
-            The owner class with the moved members in its body.
-
-        Raises:
-            TypeError: If the owner body shape is unsupported.
-
-        """
-        if isinstance(owner.body, cst.IndentedBlock):
-            existing = owner.body.body
-            if (
-                len(existing) == 1
-                and isinstance(existing[0], cst.SimpleStatementLine)
-                and len(existing[0].body) == 1
-                and isinstance(existing[0].body[0], cst.Pass)
-            ):
-                existing = ()
-            docstring, remainder = cls._split_docstring(existing)
-            return owner.with_changes(
-                body=owner.body.with_changes(body=(*docstring, *nested, *remainder)),
-            )
-        if isinstance(owner.body, cst.SimpleStatementSuite):
-            # A simple suite can only hold small statements; narrow before
-            # promoting the remaining ones into an IndentedBlock line.
-            statements = tuple(
-                statement
-                for statement in owner.body.body
-                if not isinstance(statement, cst.Pass)
-            )
-            existing_lines = (
-                (cst.SimpleStatementLine(body=statements),) if statements else ()
-            )
-            docstring, remainder = cls._split_docstring(existing_lines)
-            return owner.with_changes(
-                body=cst.IndentedBlock(body=(*docstring, *nested, *remainder)),
-            )
-        msg = (
-            f"unsupported class body for {owner.name.value}: "
-            f"{type(owner.body).__name__}"
-        )
-        raise TypeError(msg)
-
-    @classmethod
-    def _module_statement(
-        cls,
-        node: cst.BaseStatement,
-        owner: cst.ClassDef,
-        nested_owner: cst.ClassDef,
-    ) -> cst.BaseStatement:
-        """Return one kept module statement after the owner absorbed its members.
-
-        Returns:
-            The rewritten export list, the nested owner, or the node itself.
-
-        """
-        if cls._declares_exports(node):
-            return cls._rewritten_exports(node, owner.name.value)
-        return nested_owner if node is owner else node
-
-    @classmethod
-    def _nest_definitions(cls, source: str, definitions: t.StrMapping) -> str:
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        source: str,
+        definitions: t.StrMapping,
+    ) -> str:
         if not definitions:
             return source
         owners = frozenset(definitions.values())
@@ -274,137 +355,98 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             msg = f"class-nesting file has multiple owners: {sorted(owners)}"
             raise ValueError(msg)
         owner_name = next(iter(owners))
-        module = cst.parse_module(source)
-        moved = tuple(
-            node for node in module.body if cls._member_name(node) in definitions
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project, source, resource=resource
         )
-        moved_names = {cls._member_name(node) for node in moved}
-        module, owner_nodes = cls._module_with_owner(module, owner_name, moved)
-        if len(owner_nodes) != 1 or moved_names != set(definitions):
-            msg = (
-                f"class-nesting structure mismatch for {owner_name}: "
-                f"owner_count={len(owner_nodes)} moved={sorted(map(str, moved_names))}"
+        facts = FlextInfraUtilitiesRopeStructure.logical_statements(source)
+        typing = project.get_module("typing")
+        selection = cls._nesting_selection(module, facts, definitions)
+        if any(
+            item.category
+            in {c.Infra.StatementCategory.ASSIGN, c.Infra.StatementCategory.ANN_ASSIGN}
+            and cls._member_annotation(item, module, typing) is not None
+            for item in selection[0]
+        ):
+            source, classvar_name = (
+                FlextInfraUtilitiesRopeRuntimeModules.import_binding(
+                    project, module, "typing", "ClassVar"
+                )
             )
+            module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project, source, resource=resource
+            )
+            facts = FlextInfraUtilitiesRopeStructure.logical_statements(source)
+            selection = cls._nesting_selection(module, facts, definitions)
+        else:
+            classvar_name = ""
+        if {cls._native_member_name(item) for item in selection[0]} != set(definitions):
+            msg = f"class-nesting structure mismatch for {owner_name}"
             raise ValueError(msg)
-        owner = owner_nodes[0]
-        # CST indentation moves code without changing the values of data
-        # literals or docstrings carried by the original declaration; members
-        # keep their module order, so a binding still follows what it reads.
-        members = tuple(cls._class_member(node) for node in moved)
-        nested_owner = cls._owner_holding(owner, tuple(member for member, _ in members))
-        exports = (
-            ()
-            if any(cls._declares_exports(node) for node in module.body)
-            else (cst.parse_statement(f'__all__: list[str] = ["{owner_name}"]\n'),)
+        indentation = FlextInfraUtilitiesRopeRuntimeRefactors.runtime_callable(
+            "rope.refactor.sourceutils", "get_indent"
+        )(project)
+        if type(indentation) is not int or indentation <= 0:
+            msg = "native Rope project has no positive indentation policy"
+            raise TypeError(msg)
+        edits, nested = cls._nested_member_edits(
+            source, module, typing, (*selection, classvar_name), indentation
         )
-        module = module.with_changes(
-            body=(
-                *(
-                    cls._module_statement(node, owner, nested_owner)
-                    for node in module.body
-                    if node not in moved
-                ),
-                *exports,
-            ),
+        edits = cls._owner_nesting_edits(
+            source,
+            module,
+            (facts, selection[1]),
+            (owner_name, nested, indentation),
+            edits,
         )
-        if any(flag for _, flag in members):
-            context = CodemodContext()
-            AddImportsVisitor.add_needed_import(context, "typing", "ClassVar")
-            module = AddImportsVisitor(context).transform_module(module)
-        return module.code
-
-    @classmethod
-    def _binds_exports(cls, statement: cst.BaseSmallStatement) -> bool:
-        """Whether one small statement assigns the module ``__all__``.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        return any(
-            isinstance(target, cst.Name) and target.value == "__all__"
-            for target in cls._assignment_targets(statement)
-        )
-
-    @classmethod
-    def _declares_exports(cls, node: cst.BaseStatement) -> bool:
-        """Whether one module-level statement declares ``__all__``.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        return isinstance(node, cst.SimpleStatementLine) and any(
-            cls._binds_exports(statement) for statement in node.body
-        )
-
-    @classmethod
-    def _rewritten_exports(
-        cls,
-        node: cst.BaseStatement,
-        owner_name: str,
-    ) -> cst.BaseStatement:
-        """Declare the owner first in the export list, keeping the node's shape.
-
-        Parsing a fresh statement discarded two things the original carried:
-        its ``leading_lines``, so the rebuilt declaration lost the blank lines
-        separating it from the preceding block (E305 on every moved module),
-        and its declared annotation, so a module using a tuple annotation was
-        silently rewritten to a list. Only the value changes here. Names that
-        stay at module level (the facade alias, a typing declaration) stay
-        declared after the owner; moved names were already dropped.
-
-        Returns:
-            The resulting ``cst.BaseStatement``.
-
-        """
-        if not isinstance(node, cst.SimpleStatementLine):
-            return node
-        body: list[cst.BaseSmallStatement] = []
-        for statement in node.body:
-            if not (
-                isinstance(statement, cst.AnnAssign | cst.Assign)
-                and statement.value is not None
-                and cls._binds_exports(statement)
-            ):
-                body.append(statement)
-                continue
-            declared = ast.literal_eval(
-                cst.Module(body=()).code_for_node(statement.value),
-            )
-            names = list(dict.fromkeys((owner_name, *declared)))
-            rendered = ", ".join(f'"{name}"' for name in names)
-            value = cst.parse_expression(
-                f"({rendered},)" if isinstance(declared, tuple) else f"[{rendered}]",
-            )
-            body.append(statement.with_changes(value=value))
-        return node.with_changes(body=tuple(body))
+        edits.extend(cls._nesting_export_edits(source, facts, owner_name, definitions))
+        return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource, source, edits
+        ).new_contents
 
     @staticmethod
-    def _split_docstring(
-        body: t.SequenceOf[cst.BaseStatement],
-    ) -> t.Pair[t.VariadicTuple[cst.BaseStatement], t.VariadicTuple[cst.BaseStatement]]:
-        """Split one class body into its leading docstring and the remainder.
+    def _native_member_name(statement: m.Infra.LogicalStatement) -> str:
+        if statement.category in {
+            c.Infra.StatementCategory.CLASS_DEF,
+            c.Infra.StatementCategory.FUNC_DEF,
+        }:
+            return FlextInfraUtilitiesRopeStructure.header_name(statement.text)
+        return FlextInfraUtilitiesRopeStructure.target_name(statement)
 
-        Returns:
-            The resulting ``t.Pair[t.VariadicTuple[cst.BaseStatement],
-                t.VariadicTuple[cst.BaseStatement]]``.
-
-        """
-        if not body:
-            return ((), ())
-        head = body[0]
-        if (
-            isinstance(head, cst.SimpleStatementLine)
-            and len(head.body) == 1
-            and isinstance(head.body[0], cst.Expr)
-            and isinstance(
-                head.body[0].value,
-                cst.SimpleString | cst.ConcatenatedString,
-            )
-        ):
-            return ((head,), tuple(body[1:]))
-        return ((), tuple(body))
+    @staticmethod
+    def _member_annotation(
+        statement: m.Infra.LogicalStatement,
+        module: p.Infra.RopePyModule,
+        typing: p.Infra.RopePyModule,
+    ) -> str | None:
+        if statement.category not in {
+            c.Infra.StatementCategory.ANN_ASSIGN,
+            c.Infra.StatementCategory.ASSIGN,
+        }:
+            return None
+        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        parts = types.expression_segments(statement.text, 0, len(statement.text), ":=")
+        match parts:
+            case [_, annotation_region, _]:
+                annotation = statement.text[annotation_region[0] : annotation_region[1]]
+                qualifier = annotation.partition("[")[0].strip()
+                binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                    module.get_scope(), qualifier
+                )
+                if any(
+                    FlextInfraUtilitiesRopeRuntimeModules.same_name(
+                        typing.get_attribute(name), binding
+                    )
+                    for name in ("ClassVar", "Final")
+                ):
+                    return None
+                return annotation
+            case [_, value_region]:
+                constant = FlextInfraUtilitiesRopeRuntimeRefactors.compiled_constant(
+                    statement.text[value_region[0] : value_region[1]]
+                )
+                if constant.success:
+                    return type(constant.value).__name__
+        return None
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverNestingCst"]

@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, config, m, u
-from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.codegen import FlextInfraCodegenFileLeases
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -190,7 +190,7 @@ class FlextInfraGate:
         return self._parsed_gate_execution(project_dir, ctx, result, started)
 
     @classmethod
-    def _resolve_binary(cls) -> str | None:
+    def resolve_binary(cls) -> str | None:
         """Locate the provisioned scanner on PATH; None when absent.
 
         Returns:

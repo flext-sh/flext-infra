@@ -21,6 +21,31 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesProjectDiscoveryShapeMixin:
     """Private project-shape predicates for workspace project discovery."""
 
+    @classmethod
+    def _is_nonparticipant(
+        cls,
+        candidate: Path,
+        repository_root: Path,
+        nonparticipants: frozenset[str],
+    ) -> bool:
+        """Return whether one candidate lies under a declared non-participant.
+
+        Returns:
+            Whether the candidate is excluded by the current declaration.
+
+        """
+        resolved = candidate.resolve()
+        root = repository_root.resolve()
+        if not resolved.is_relative_to(root):
+            return False
+        posix = resolved.relative_to(root).as_posix()
+        if posix in {".", ""}:
+            return False
+        return any(
+            posix == declared or posix.startswith(f"{declared}/")
+            for declared in nonparticipants
+        )
+
     @staticmethod
     def _looks_like_project(
         path: Path,

@@ -200,3 +200,6 @@ class FlextInfraConfigModelsRelease:
             t.VariadicTuple[str],
             m.Field(description="Ordered dependency groups synchronized by setup"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsRelease"]

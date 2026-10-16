@@ -1,0 +1,20 @@
+# One owner for the library module-name reference the facade boundary rules filter:
+# the module of a live `import ...` or `from ... import ...`, never an imported name
+# (`from x import pydantic`) and never inside an `if TYPE_CHECKING:` block. Each
+# library rule is then just this matcher plus its owning-distribution regex.
+id: library-import-name
+language: python
+rule:
+  any:
+    - all:
+        - kind: dotted_name
+        - inside:
+            stopBy: end
+            kind: import_statement
+    - all:
+        - kind: dotted_name
+        - inside:
+            field: module_name
+            kind: import_from_statement
+  not:
+    matches: inside-type-checking-guard

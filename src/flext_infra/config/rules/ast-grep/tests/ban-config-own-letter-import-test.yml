@@ -1,0 +1,43 @@
+# Shape only: the engine admits a finding when the imported module's root is
+# the scanned project's own package (context own-package). The law is per
+# letter: this document detects its own `config` alias. The companion
+# settings-config-boundary rule rejects ALL other own-namespace imports at
+# layer zero, even when this narrower document does not match them.
+id: ban-config-own-letter-import
+valid:
+  - |
+    from ai_hub import configextra as config
+  # Not the config alias; the stronger boundary owns this finding.
+  - |
+    from ai_hub import m
+  # The canonical producer form: the sibling through its private submodule.
+  - |
+    from ai_hub._config.base import AiHubConfigModels
+  # A non-letter root binding is the public class export, not a letter.
+  - |
+    from ai_hub import AiHubSettings
+  # The letter regex is anchored: a name that merely starts with the letter is
+  # a different binding.
+  - |
+    from ai_hub import configextra
+  # A root binding without a letter component reaches no family facade.
+  - |
+    import ai_hub
+invalid:
+  - |
+    from ai_hub import config as aliased
+  - |
+    def load() -> None:
+        from ai_hub import config
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import config
+  # The producer binds its own letter from the own root.
+  - |
+    from ai_hub import config
+  - |
+    from ai_hub import config, m
+  # The plain-import form reaches the letter as a submodule of the root.
+  - |
+    import ai_hub.config

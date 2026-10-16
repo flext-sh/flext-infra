@@ -6,25 +6,273 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import TypeForm
 
-from flext_infra import c, config, infra, m, p, r, u
+from flext_infra import c, config, infra, m, p, r, t
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraModTextGateEngine
-from tests import tm
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from tests import tm, u
 
 
 class TestsFlextInfraModTextGateEngine:
     """Exercise the declarative sed-by-list engine through its public scan."""
+
+    @staticmethod
+    def test_unsupported_declared_input_is_red_and_preserves_valid_publication(
+        mod_workspace: Path,
+    ) -> None:
+        """An unhandled configured input cannot masquerade as a zero-match run."""
+        selected = mod_workspace / "selected.py"
+        unsupported = mod_workspace / "declared.toml"
+        tm.ok(u.Cli.atomic_write_text_file(selected, 'value = "before"\n'))
+        tm.ok(u.Cli.atomic_write_text_file(unsupported, 'value = "before"\n'))
+        before = unsupported.read_bytes()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                "rules:\n"
+                "  - id: unhandled-declaration\n"
+                "    include: ['declared.toml']\n"
+                "    find: 'before'\n"
+                "    replace: 'after'\n"
+                "  - id: supported-sibling\n"
+                "    include: ['selected.py']\n"
+                "    find: 'before'\n"
+                "    replace: 'after'\n",
+            ),
+        )
+        result = infra.mod_text(
+            m.Infra.ModTextCommand(repository_root=mod_workspace, apply=True),
+        )
+        tm.fail(result)
+        assert result.error_data is not None
+        wire = u.type_adapter(TypeForm(tuple[t.JsonMapping, ...])).validate_json(
+            tm.ok(u.Cli.json_dumps(result.error_data["issues"])),
+        )
+        issues = u.type_adapter(TypeForm(tuple[m.Infra.Issue, ...])).validate_json(
+            tm.ok(
+                u.Cli.json_dumps(
+                    [
+                        {
+                            key: value
+                            for key, value in issue.items()
+                            if key not in m.Infra.Issue.model_computed_fields
+                        }
+                        for issue in wire
+                    ],
+                ),
+            ),
+        )
+        tm.that(
+            any(
+                issue.file == str(unsupported)
+                and issue.code == c.Infra.ToolOutcome.ERROR.value
+                for issue in issues
+            ),
+            eq=True,
+        )
+        tm.that(isinstance(result.exception, ValueError), eq=True)
+        assert "unsupported input" in str(result.error)
+        assert selected.read_text(encoding=c.DEFAULT_ENCODING) == 'value = "after"\n'
+        assert unsupported.read_bytes() == before
+        tm.fail(FlextInfraModTextGateEngine.source_paths(mod_workspace))
+
+    @staticmethod
+    def test_yaml_method_replacement_preserves_public_class_behavior(
+        mod_workspace: Path,
+    ) -> None:
+        """A real YAML rewrite retains class binding in a fresh Python process."""
+        target = mod_workspace / "public_behavior.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                target,
+                "class PublicUtility:\n"
+                "    @staticmethod\n"
+                "    def transform(value: str) -> str:\n"
+                "        return value\n\n"
+                "    @staticmethod\n"
+                "    def downstream(value: str) -> str:\n"
+                "        return PublicUtility.transform(value)\n\n"
+                'if __name__ == "__main__":\n'
+                '    print(PublicUtility.downstream("input"))\n',
+            ),
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                "rules:\n"
+                "  - id: replace-public-behavior\n"
+                "    include: ['public_behavior.py']\n"
+                "    find: '(?m)^(    )@staticmethod\\n"
+                "    def transform\\(value: str\\) -> str:\\n"
+                "        return value\\n\\n'\n"
+                "    replace: |+\n"
+                "      \\g<1>@staticmethod\n"
+                "          def transform(value: str) -> str:\n"
+                '              return value + "!"\n\n',
+            ),
+        )
+
+        tm.ok(
+            infra.mod_text(
+                m.Infra.ModTextCommand(
+                    repository_root=mod_workspace,
+                    apply=True,
+                ),
+            ),
+        )
+        output = tm.ok(
+            u.Cli.capture([sys.executable, str(target)], cwd=mod_workspace),
+        )
+        tm.that(output.strip(), eq="input!")
+        before = target.read_bytes()
+        tm.ok(
+            infra.mod_text(
+                m.Infra.ModTextCommand(
+                    repository_root=mod_workspace,
+                    apply=True,
+                ),
+            ),
+        )
+        tm.that(target.read_bytes(), eq=before)
+
+    @staticmethod
+    def test_failed_project_catalog_does_not_abort_a_valid_member(
+        tmp_path: Path,
+    ) -> None:
+        """An invalid dependency is reported while an independent member is repaired."""
+        root = tmp_path / "projects"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
+        catalogue = root / c.Infra.CODEMOD_TEXT_RULES_RELPATH
+        tm.ok(u.Cli.atomic_write_text_file(catalogue, "rules: [\n"))
+        original = catalogue.read_bytes()
+        target = member / "selected.py"
+        tm.ok(u.Cli.atomic_write_text_file(target, 'value = "before"\n'))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                member / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                "rules:\n"
+                "  - id: member-repair\n"
+                "    include: ['selected.py']\n"
+                "    find: 'before'\n"
+                "    replace: 'after'\n",
+            )
+        )
+        result = FlextInfraModTextGateEngine.scan(root, fix=True)
+        tm.fail(result)
+        tm.that(target.read_text(encoding="utf-8"), eq='value = "after"\n')
+        tm.that(catalogue.read_bytes(), eq=original)
+
+    @staticmethod
+    def test_invalid_target_keeps_its_first_cause_and_publishes_valid_sibling(
+        mod_workspace: Path,
+    ) -> None:
+        """One malformed target stays red while an independent target is repaired."""
+        package = mod_workspace / "src" / "mod_workspace"
+        invalid = package / "a_invalid.py"
+        valid = package / "z_valid.py"
+        malformed = 'value = ("before"\n'
+        tm.ok(u.Cli.atomic_write_text_file(invalid, malformed))
+        tm.ok(u.Cli.atomic_write_text_file(valid, 'value = "before"\n'))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                "rules:\n"
+                "  - id: independent-targets\n"
+                "    include: ['src/**']\n"
+                "    find: 'before'\n"
+                "    replace: 'after'\n",
+            )
+        )
+        diagnostic = FlextInfraModTextGateEngine.scan(mod_workspace, fix=False)
+        tm.fail(diagnostic)
+        tm.that(isinstance(diagnostic.exception, SyntaxError), eq=True)
+        tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
+        result = infra.mod_text(
+            m.Infra.ModTextCommand(repository_root=mod_workspace, apply=True)
+        )
+        tm.fail(result)
+        exception = result.exception
+        assert isinstance(exception, SyntaxError)
+        tm.that(exception.filename, eq=str(invalid))
+        tm.that(invalid.read_text(encoding="utf-8"), eq=malformed)
+        tm.that(valid.read_text(encoding="utf-8"), eq='value = "after"\n')
+        metadata = result.error_data
+        assert metadata is not None
+        tm.that(
+            u.type_adapter(TypeForm(t.StrTuple)).validate_python(
+                metadata["written_files"]
+            ),
+            eq=(str(valid),),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("change", ["remove", "change", "add"])
+    def test_foreign_source_changes_do_not_veto_owned_publication(
+        mod_workspace: Path, change: str
+    ) -> None:
+        """A real unrelated filesystem edit cannot reject the selected target."""
+        package = mod_workspace / "src" / "mod_workspace"
+        foreign = package / "a_foreign.py"
+        target = package / "z_selected.py"
+        added = package / "new_foreign.py"
+        tm.ok(u.Cli.atomic_write_text_file(foreign, 'value = "foreign"\n'))
+        tm.ok(u.Cli.atomic_write_text_file(target, 'value = "before"\n'))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                "rules:\n"
+                "  - id: owned-publication\n"
+                f"    include: ['{target.relative_to(mod_workspace).as_posix()}']\n"
+                "    find: 'before'\n"
+                "    replace: 'after'\n",
+            )
+        )
+        active = True
+        armed = True
+
+        def alter_foreign_source() -> None:
+            """Apply one independent physical edit during the selected read."""
+            nonlocal armed
+            armed = False
+            if change == "remove":
+                foreign.unlink()
+            elif change == "change":
+                foreign.write_text('value = "independent"\n', encoding="utf-8")
+            else:
+                added.write_text('value = "independent"\n', encoding="utf-8")
+
+        sys.addaudithook(
+            lambda event, arguments: (
+                alter_foreign_source()
+                if active
+                and armed
+                and event == "open"
+                and arguments
+                and isinstance(arguments[0], str)
+                and Path(arguments[0]).name == target.name
+                else None
+            )
+        )
+        try:
+            tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))
+        finally:
+            active = False
+        tm.that(armed, eq=False)
+        tm.that(target.read_text(encoding="utf-8"), eq='value = "after"\n')
+        if change == "remove":
+            tm.that(foreign.exists(), eq=False)
+        elif change == "change":
+            tm.that(foreign.read_text(encoding="utf-8"), eq='value = "independent"\n')
+        else:
+            tm.that(added.read_text(encoding="utf-8"), eq='value = "independent"\n')
 
     @staticmethod
     def test_external_consumer_inherits_provider_and_composes_local_rules(
@@ -246,8 +494,9 @@ class TestsFlextInfraModTextGateEngine:
         )
         before = source.read_bytes()
 
-        with pytest.raises(ValueError, match="capture keyword expected"):
-            FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
+        rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
+        tm.fail(rejected, has="capture keyword expected")
+        tm.that(isinstance(rejected.exception, ValueError), eq=True)
 
         tm.that(source.read_bytes(), eq=before)
 
@@ -347,46 +596,45 @@ class TestsFlextInfraModTextGateEngine:
             u.Cli.atomic_write_text_file(path, 'value = "before"\n').unwrap()
         return first, second
 
-    def test_generated_destination_rejects_the_entire_text_batch(
+    def test_generated_destination_rejects_only_its_own_text_rewrite(
         self,
         mod_workspace: Path,
     ) -> None:
-        """An authored earlier file stays unchanged when a generator owns a target."""
+        """An authored target is repaired while the generated target stays rejected."""
         first, second = self._publication_inputs(mod_workspace)
         generated = f'{c.Infra.AUTOGEN_HEADERS[0]}\nvalue = "before"\n'
         u.Cli.atomic_write_text_file(second, generated).unwrap()
-        original = first.read_bytes()
-
-        scanned = FlextInfraModTextGateEngine.scan(mod_workspace, fix=False).unwrap()
-        tm.that(scanned.actionable, eq=2)
+        tm.fail(
+            FlextInfraModTextGateEngine.scan(mod_workspace, fix=False),
+            has="canonical generator repair",
+        )
         result = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
 
         tm.fail(result, has="canonical generator repair")
-        tm.that(first.read_bytes(), eq=original)
+        tm.that(first.read_bytes(), eq=b'value = "after"\n')
         tm.that(second.read_text(encoding="utf-8"), eq=generated)
 
-    def test_invalid_later_source_never_publishes_an_earlier_rewrite(
+    def test_invalid_later_source_retains_its_cause_and_valid_rewrite(
         self,
         mod_workspace: Path,
     ) -> None:
-        """Decoding failure escapes before any file in the prepared batch is written."""
+        """A decoding failure is reported beside the successfully repaired sibling."""
         first, second = self._publication_inputs(mod_workspace)
         second.write_bytes(b"\xff")
-        original = first.read_bytes()
+        result = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
+        tm.fail(result)
+        tm.that(isinstance(result.exception, UnicodeDecodeError), eq=True)
 
-        with pytest.raises(UnicodeDecodeError):
-            FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
-
-        tm.that(first.read_bytes(), eq=original)
+        tm.that(first.read_bytes(), eq=b'value = "after"\n')
         tm.that(second.read_bytes(), eq=b"\xff")
 
-    def test_invalid_python_replacement_rejects_entire_batch(
+    def test_invalid_python_replacement_preserves_valid_sibling_publication(
         self,
         mod_workspace: Path,
     ) -> None:
-        """A malformed multiline rewrite never publishes any source file."""
+        """A malformed rewrite cannot prevent the independent valid publication."""
         first, second = self._publication_inputs(mod_workspace)
-        original_first, original_second = first.read_bytes(), second.read_bytes()
+        original_second = second.read_bytes()
         tm.ok(
             u.Cli.atomic_write_text_file(
                 mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
@@ -400,24 +648,31 @@ class TestsFlextInfraModTextGateEngine:
                     "    include: ['src/mod_workspace/second.py']\n"
                     "    find: 'value = \"before\"'\n"
                     "    replace: |2-\n"
-                    "        value = (\n"
+                    "      value = (\n"
                 ),
             ),
         )
 
+        malformed_rule = next(
+            rule
+            for rule in tm.ok(FlextInfraModTextGateEngine.load_rules(mod_workspace))
+            if rule.rule_id == "malformed-second"
+        )
+        with pytest.raises(SyntaxError) as expected:
+            compile(f"{malformed_rule.replace}\n", str(second), "exec")
         rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.fail(rejected, has=str(second))
-        native = tm.not_none(rejected.exception)
-        tm.that(isinstance(native, SyntaxError), eq=True)
-        if isinstance(native, SyntaxError):
-            tm.that(native.filename, eq=str(second))
-            tm.that(native.text, has="value = (")
+        native = rejected.exception
+        assert isinstance(native, SyntaxError)
+        tm.that(native.args, eq=expected.value.args)
+        tm.that(native.filename, eq=expected.value.filename)
         tm.that(native.__traceback__ is not None, eq=True)
+        tm.that(expected.value.__traceback__ is not None, eq=True)
 
-        tm.that(first.read_bytes(), eq=original_first)
+        tm.that(first.read_bytes(), eq=b'value = "after"\n')
         tm.that(second.read_bytes(), eq=original_second)
 
-    def test_linked_destination_identity_never_publishes_the_batch(
+    def test_linked_destination_failure_preserves_valid_sibling_and_link(
         self,
         mod_workspace: Path,
     ) -> None:
@@ -431,7 +686,8 @@ class TestsFlextInfraModTextGateEngine:
         result = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.fail(result, has="regular file")
 
-        tm.that(first.read_bytes(), eq=original)
+        tm.that(first.read_bytes(), eq=b'value = "after"\n')
+        tm.that(second.is_symlink(), eq=True)
         tm.that(second.read_bytes(), eq=original)
         tm.that(alias.read_bytes(), eq=original)
 
@@ -439,12 +695,13 @@ class TestsFlextInfraModTextGateEngine:
         self,
         mod_workspace: Path,
     ) -> None:
-        """A writer changing [project].name cannot publish the planned batch."""
-        first, _second = self._publication_inputs(mod_workspace)
+        """A changed dependency rejects its target and preserves an independent gain."""
+        first, second = self._publication_inputs(mod_workspace)
         original_source = first.read_bytes()
         document = mod_workspace / c.PYPROJECT_FILENAME
         identity = tm.ok(u.Cli.atomic_read_binary_file_state(document, required=True))
         source = tm.ok(u.Cli.atomic_read_binary_file_state(first, required=True))
+        sibling = tm.ok(u.Cli.atomic_read_binary_file_state(second, required=True))
         distribution = u.Infra.project_name_from_payload(
             document,
             u.Infra.pyproject_payload(document),
@@ -459,24 +716,102 @@ class TestsFlextInfraModTextGateEngine:
             FlextInfraCodegenMiseArtifacts(repository_root=mod_workspace),
         )
         roots = {"@mod-text": mod_workspace}
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
+            files=(
+                m.Infra.CodegenFilePlan(
+                    project=mod_workspace,
+                    path=first,
+                    before=source,
+                    desired_content=b'value = "after"\n',
+                    desired_mode=source.mode,
+                    source_states=(identity, source),
+                    owner="mod-text",
+                ),
+                m.Infra.CodegenFilePlan(
+                    project=mod_workspace,
+                    path=second,
+                    before=sibling,
+                    desired_content=b'value = "after"\n',
+                    desired_mode=sibling.mode,
+                    source_states=(sibling,),
+                    owner="mod-text",
+                ),
+            ),
+            inputs=(identity, source, sibling),
+        )
 
-        def publish(scope: Path) -> p.Result[m.Infra.CodegenTransactionSession]:
+        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
             tm.ok(u.Cli.atomic_write_text_file(document, changed_document))
-            return transaction.begin_files_locked(scope, roots, (identity, source))
+            return transaction.publish_file_phase_locked(
+                scope,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(),
+                ),
+            )
 
         rejected = transaction.run_files_locked(roots, publish)
         tm.fail(rejected, has="generation authenticated state changed")
         tm.that(first.read_bytes(), eq=original_source)
+        tm.that(second.read_bytes(), eq=sibling.content)
         tm.that(document.read_text(encoding="utf-8"), eq=changed_document)
 
+    def test_same_phase_dependency_uses_the_accepted_publication_receipt(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """A later target can consume an earlier target's authenticated new state."""
+        first, second = self._publication_inputs(mod_workspace)
+        first_state = tm.ok(u.Cli.atomic_read_binary_file_state(first, required=True))
+        second_state = tm.ok(u.Cli.atomic_read_binary_file_state(second, required=True))
+        plans = tuple(
+            m.Infra.CodegenFilePlan(
+                project=mod_workspace,
+                path=state.path,
+                before=state,
+                desired_content=b'value = "after"\n',
+                desired_mode=state.mode,
+                source_states=(first_state,)
+                if state.path == first
+                else (first_state, second_state),
+                owner="mod-text",
+            )
+            for state in (first_state, second_state)
+        )
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
+            files=plans,
+            inputs=(first_state, second_state),
+        )
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=mod_workspace)
+        )
+        roots = {"@mod-text": mod_workspace}
+
+        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
+            return transaction.publish_file_phase_locked(
+                scope,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(),
+                ),
+            )
+
+        tm.ok(transaction.run_files_locked(roots, publish))
+        for path in (first, second):
+            tm.that(path.read_bytes(), eq=b'value = "after"\n')
+
     @pytest.mark.parametrize("raise_failure", [False, True])
-    def test_text_phase_validation_failure_recovers_published_files(
+    def test_text_phase_validation_failure_preserves_original_files(
         self,
         mod_workspace: Path,
         *,
         raise_failure: bool,
     ) -> None:
-        """The public transaction owner restores its batch after validator failure."""
+        """A complete staged consumer fails before any live target is modified."""
         paths = self._publication_inputs(mod_workspace)
         states = tuple(
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
@@ -505,27 +840,48 @@ class TestsFlextInfraModTextGateEngine:
         roots = {"@mod-text": mod_workspace}
         failure = RuntimeError("text publication acceptance rejected")
 
-        def reject_published() -> p.Result[bool]:
-            for path in paths:
-                tm.that(path.read_bytes(), eq=b'value = "after"\n')
+        def reject_candidate(
+            session: m.Infra.CodegenTransactionSession,
+            staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            candidates = tuple(
+                tm.not_none(publication.replacement).path for publication in staged
+            )
+            consumed = tm.ok(
+                u.Cli.run_raw(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            "import runpy, sys; "
+                            "assert all(runpy.run_path(path)['value'] == 'after' "
+                            "for path in sys.argv[1:])"
+                        ),
+                        *(str(candidate) for candidate in candidates),
+                    ),
+                    cwd=session.plan.layout.scope_root,
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(consumed.outcome), eq=True)
+            for state in states:
+                tm.that(state.path.read_bytes(), eq=state.content)
             if raise_failure:
                 raise failure
-            return r[bool].fail("text publication acceptance rejected")
+            return r[m.Infra.CodegenTransactionSession].fail(
+                str(failure),
+                exception=failure,
+            )
 
         def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
-            session = transaction.begin_files_locked(scope, roots, states).unwrap()
-
-            def apply(
-                active: m.Infra.CodegenTransactionSession,
-            ) -> p.Result[t.VariadicTuple[Path]]:
-                updated = transaction.append_phase_locked(
-                    active,
-                    analysis.phase,
-                    plans,
-                ).unwrap()
-                return transaction.commit_locked(updated, reject_published)
-
-            return transaction.publish_prepared_locked(session, apply)
+            return transaction.publish_file_phase_locked(
+                scope,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(),
+                    staged_validator=reject_candidate,
+                ),
+            )
 
         if raise_failure:
             with pytest.raises(RuntimeError) as raised:
@@ -590,15 +946,13 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(final.findings, eq=0)
         # This optional migration precondition deliberately does not promise
         # idempotence once the invocation has consumed its exact matches.
-        with pytest.raises(
-            RuntimeError,
-            match="expected 1 finding\\(s\\), scan produced 0",
-        ):
-            FlextInfraModTextGateEngine.scan(
-                mod_workspace,
-                fix=True,
-                validate_receipts=True,
-            )
+        rejected = FlextInfraModTextGateEngine.scan(
+            mod_workspace,
+            fix=True,
+            validate_receipts=True,
+        )
+        tm.fail(rejected, has="expected 1 finding(s), scan produced 0")
+        tm.that(isinstance(rejected.exception, RuntimeError), eq=True)
         # The rewrite is proven by what changed, not by freezing the fixture's
         # whole text: the elected call carries the replacement and the original
         # argument list is gone.
@@ -627,12 +981,13 @@ class TestsFlextInfraModTextGateEngine:
             ),
         )
         original = (mod_workspace / "sample.py").read_bytes()
-        with pytest.raises(RuntimeError, match="expected 2 finding\\(s\\), scan"):
-            FlextInfraModTextGateEngine.scan(
-                mod_workspace,
-                fix=fix,
-                validate_receipts=True,
-            )
+        rejected = FlextInfraModTextGateEngine.scan(
+            mod_workspace,
+            fix=fix,
+            validate_receipts=True,
+        )
+        tm.fail(rejected, has="expected 2 finding(s), scan")
+        tm.that(isinstance(rejected.exception, RuntimeError), eq=True)
         tm.that((mod_workspace / "sample.py").read_bytes(), eq=original)
 
     @staticmethod

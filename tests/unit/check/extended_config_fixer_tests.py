@@ -83,7 +83,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 "pyrefly",
             )
             tm.that(
-                pyrefly["search-path"],
+                tuple(u.Tests.strings(pyrefly["search-path"])),
                 eq=TestsFlextInfraExtendedConfigFixer._extra_paths_manager(
                     tmp_path,
                 ).pyrefly_search_paths(project_dir=tmp_path, is_root=True),
@@ -280,4 +280,4 @@ class TestsFlextInfraExtendedConfigFixer:
             items = ["a", "b", "c"]
             arr = u.Cli.toml_array(items)
             tm.that(len(arr), eq=3)
-            tm.that(list(arr), has="a")
+            tm.that(u.Cli.toml_as_string_list(arr), eq=items)

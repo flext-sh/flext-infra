@@ -85,6 +85,7 @@ class FlextInfraCodegenFileLeases:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         policy = self._participant_policy
         if policy is None:

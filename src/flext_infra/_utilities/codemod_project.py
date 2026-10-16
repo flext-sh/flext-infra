@@ -15,32 +15,31 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import sys
-from collections import deque
 from collections.abc import Generator, Mapping, MutableMapping
 from contextlib import closing, contextmanager
 from functools import cache, lru_cache
 from importlib.metadata import packages_distributions
 from importlib.util import find_spec
 from pathlib import Path
+from time import monotonic
 from types import MappingProxyType
 
-from flext_cli import u
+from flext_cli import settings, u
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraFlextUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope_analysis.asthelpers import (
@@ -56,11 +55,28 @@ from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
+# A sanctioned compose module name is exactly ``<package>.<leaf>``.
+_COMPOSE_MODULE_SEGMENT_COUNT = 2
+
 
 class FlextInfraUtilitiesCodemodProject(
-    FlextInfraFlextUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+    FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
 ):
     """Evaluate rule context over project facts: packages, layers, graphs."""
+
+    @staticmethod
+    def codemod_progress(message: str, due: float = 0) -> float:
+        """Report active source work at the configured heartbeat interval.
+
+        Returns:
+            The next monotonic deadline for an interval progress row.
+
+        """
+        now = monotonic()
+        if now < due:
+            return due
+        u.Cli.info(f"mod: {message}")
+        return now + settings.cli_process_heartbeat_seconds
 
     @classmethod
     def project_import_graph(
@@ -94,11 +110,18 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If rope could not name module.
+
         """
         raw: MutableMapping[str, set[str]] = {}
         modules: MutableMapping[Path, str] = {}
         aliases: MutableMapping[str, str] = {}
+        cls.codemod_progress("import graph start")
+        due = 0.0
         for resource in FlextInfraUtilitiesRopeCore.python_resources(project):
+            due = cls.codemod_progress(
+                f"import graph modules={len(modules)} file={resource.path}",
+                due,
+            )
             pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             name = pymodule.get_name()
             if not name:
@@ -130,6 +153,7 @@ class FlextInfraUtilitiesCodemodProject(
                 for export, provider in provider_aliases.items()
             })
         known = frozenset(raw)
+        cls.codemod_progress(f"import graph finish modules={len(modules)}")
         graph = {
             name: frozenset(
                 target
@@ -354,6 +378,7 @@ class FlextInfraUtilitiesCodemodProject(
         modules: t.MappingKV[Path, str] = {}
         if c.Infra.CodemodContextPredicate.IMPORT_CYCLE in predicates:
             graph, modules = cls.project_import_graph(resolved)
+        binding_rule_ids, binding_modules = cls.codemod_binding_requirements(rules)
         return m.Infra.CodemodProjectFacts(
             own_package=(
                 FlextInfraUtilitiesPyproject.project_package_name(resolved)
@@ -361,6 +386,8 @@ class FlextInfraUtilitiesCodemodProject(
                 else None
             ),
             predicates=predicates,
+            binding_rule_ids=binding_rule_ids,
+            binding_modules=binding_modules,
             import_graph=graph,
             import_modules=modules,
             import_cycles=cls.project_import_cycles(graph),
@@ -381,13 +408,56 @@ class FlextInfraUtilitiesCodemodProject(
         """
         return (file_path if file_path.is_absolute() else root / file_path).resolve()
 
+    @staticmethod
+    def codemod_binding_requirements(
+        rules: t.SequenceOf[m.Infra.CodemodRule],
+    ) -> t.Pair[frozenset[str], t.StrSequence]:
+        """Elect binding inputs only for the rules that actually found code.
+
+        Returns:
+            Rule identities requiring inference and their declared symbol owners.
+
+        """
+        predicates = {
+            c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+            c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
+            c.Infra.CodemodContextPredicate.SAME_BINDING,
+            c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
+            c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
+            c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
+            c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
+        }
+        selected = tuple(
+            rule
+            for rule in rules
+            if any(condition.predicate in predicates for condition in rule.context)
+        )
+        modules = tuple(
+            dict.fromkeys(
+                condition.arg[
+                    1
+                    if condition.predicate
+                    is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL
+                    else 0
+                ]
+                for rule in selected
+                for condition in rule.context
+                if condition.predicate
+                in {
+                    c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                    c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
+                }
+            ),
+        )
+        return frozenset(rule.id for rule in selected), modules
+
     @classmethod
     def codemod_context_admits(
         cls,
         admission: m.Infra.CodemodAdmission,
         *,
-        project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        project: p.Infra.RopeProject | None = None,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> bool:
         """Return whether one finding satisfies its rule's project context.
 
@@ -420,15 +490,30 @@ class FlextInfraUtilitiesCodemodProject(
         source = cls.codemod_source_path(root, admission.file_path)
         for condition in rule.context:
             if condition.predicate in {
+                c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
+                c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
+            }:
+                if (
+                    cls._declaration_condition_admits(
+                        admission, condition, source, project, sources
+                    )
+                    is not condition.holds
+                ):
+                    return False
+                continue
+            if condition.predicate in {
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
                 c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
                 c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
             }:
-                holds = cls._occurrence_binding_holds(
-                    (root, source, project), condition, captures, sources
-                )
-                if holds is not condition.holds:
+                if (
+                    cls._binding_condition_admits(
+                        admission, condition, source, project, sources
+                    )
+                    is not condition.holds
+                ):
                     return False
                 continue
             # A condition binds the capture of the branch that matched: a rule
@@ -453,27 +538,152 @@ class FlextInfraUtilitiesCodemodProject(
                 return False
         return True
 
+    @classmethod
+    def _declaration_condition_admits(
+        cls,
+        admission: m.Infra.CodemodAdmission,
+        condition: m.Infra.CodemodContextCondition,
+        source: Path,
+        project: p.Infra.RopeProject | None,
+        sources: t.MappingKV[Path, str] | None,
+    ) -> bool:
+        """Grade one declaration context condition against its payload project.
+
+        Args:
+            admission: The admission under evaluation.
+            condition: The declaration predicate condition to grade.
+            source: The resolved occurrence source path.
+            project: The active Rope project of the admission.
+            sources: The captured admission sources keyed by path.
+
+        Returns:
+            Whether the declaration condition holds for the finding.
+
+        Raises:
+            ValueError: If the declaration context lacks its binding snapshot.
+
+        """
+        rule = admission.rule
+        if condition.variable not in admission.captures:
+            return True
+        if admission.snapshot is None or project is None or sources is None:
+            msg = f"{rule.id}: declaration context requires its binding snapshot"
+            raise ValueError(msg)
+        capture = m.Infra.AstGrepCapture.model_validate(
+            admission.captures[condition.variable],
+        )
+        _text, start, _end = cls._validated_capture_span(
+            source,
+            capture,
+            sources[source].encode("utf-8"),
+        )
+        declarations = FlextInfraUtilitiesDeclarationPayload.declaration_names(
+            project,
+            source,
+            capture.text,
+            offset=start,
+        )
+        resolve = (
+            FlextInfraUtilitiesDeclarationPayload.payload_declaration
+            if condition.predicate
+            is c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
+            else FlextInfraUtilitiesDeclarationPayload.protocol_declaration
+        )
+        return (
+            len(declarations) == 1
+            and resolve(
+                project,
+                source,
+                declarations[0],
+            )
+            is not None
+        )
+
+    @classmethod
+    def _binding_condition_admits(
+        cls,
+        admission: m.Infra.CodemodAdmission,
+        condition: m.Infra.CodemodContextCondition,
+        source: Path,
+        project: p.Infra.RopeProject | None,
+        sources: t.MappingKV[Path, str] | None,
+    ) -> bool:
+        """Grade one binding context condition against the active project.
+
+        Args:
+            admission: The admission under evaluation.
+            condition: The binding predicate condition to grade.
+            source: The resolved occurrence source path.
+            project: The active Rope project of the admission.
+            sources: The captured admission sources keyed by path.
+
+        Returns:
+            Whether the binding condition holds for the finding.
+
+        Raises:
+            ValueError: If the binding context lacks its snapshot or sources.
+
+        """
+        snapshot = admission.snapshot
+        if snapshot is None or project is None or sources is None:
+            msg = (
+                f"{admission.rule.id}: binding context requires its captured snapshot "
+                "and active project sources: "
+                f"snapshot={snapshot is not None} "
+                f"project={project is not None} sources={sources is not None}"
+            )
+            raise ValueError(msg)
+        return cls._occurrence_binding_holds(
+            (admission.root, source, project),
+            condition,
+            admission.captures,
+            sources,
+        )
+
+    @staticmethod
+    def codemod_source_epoch(
+        snapshot: m.Infra.CodemodBindingSnapshot,
+    ) -> m.Infra.CodemodSourceEpoch:
+        """Decode each captured source once for the complete selected-project pass.
+
+        Args:
+            snapshot: The binding snapshot whose captured states are decoded.
+
+        Returns:
+            The immutable capture epoch shared by the complete pass.
+
+        """
+        contents = {
+            state.path: state.content
+            for state in snapshot.states
+            if state.content is not None
+        }
+        return m.Infra.CodemodSourceEpoch(
+            snapshot=snapshot,
+            sources=MappingProxyType({
+                path: content.decode("utf-8") for path, content in contents.items()
+            }),
+            contents=MappingProxyType(contents),
+        )
+
     @staticmethod
     @contextmanager
     def codemod_binding_project(
         root: Path,
-        snapshot: m.Infra.CodemodBindingSnapshot,
+        epoch: m.Infra.CodemodSourceEpoch,
     ) -> Generator[t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]]]:
         """Own one immutable binding graph for the complete admission pass.
 
         Yields:
             The frozen Rope graph and its complete authenticated source closure.
+
         """
-        sources = MappingProxyType({
-            state.path.resolve(): state.content.decode("utf-8")
-            for state in snapshot.states
-            if state.content is not None
-        })
+        sources = epoch.sources
         with (
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
                 FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    live, sources, captured=snapshot
+                    live, sources, captured=epoch
                 )
             ) as project,
             project.frozen_layout(),
@@ -486,64 +696,114 @@ class FlextInfraUtilitiesCodemodProject(
         root: Path,
         source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         modules: t.StrSequence = (),
+        *,
+        projects: t.SequenceOf[m.Infra.CodemodBindingProject] | None = None,
     ) -> m.Infra.CodemodBindingSnapshot:
-        """Capture Python owners and their static import closure before inference.
+        """Capture every selected project's owners once before inference.
+
+        Args:
+            root: The root path of the project to capture.
+            source_states: A tuple of atomic file states representing the source files.
+            modules: A sequence of module names to include in the snapshot.
+            projects: An optional sequence of codemod binding projects to consider.
 
         Returns:
-            The resulting ``m.Infra.CodemodBindingSnapshot``.
+            The resulting ``m.Infra.CodemodBindingSnapshot``..
 
-        Raises:
-            ValueError: If binding source snapshots disagree.
         """
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        for state in source_states:
-            if states.setdefault(state.path.resolve(), state) != state:
-                msg = f"binding source snapshots disagree: {state.path}"
-                raise ValueError(msg)
-        with (
-            FlextInfraUtilitiesRopeCore.open_project(root) as project,
-            project.frozen_layout(),
-        ):
-            modules_by_name: t.MutableMappingKV[
-                t.Triple[str, str | None, int], t.Infra.RopeResource | None
-            ] = {}
-            pending = [
-                project.get_resource(path.relative_to(root.resolve()).as_posix())
-                for path in states
-            ]
-            pending.extend(
-                resource
-                for name in modules
-                if (resource := project.find_module(name)) is not None
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
+            state.path.resolve(): state
+            for state in m.Infra.CodemodBindingSnapshot(states=source_states).states
+        }
+        selections = (
+            projects
+            if projects is not None
+            else (
+                m.Infra.CodemodBindingProject(
+                    root=root, source_paths=tuple(states), modules=modules
+                ),
             )
-            visited: set[Path] = set()
-            while pending:
-                fetched = cls._snapshot_module_tree(
-                    states,
-                    visited,
-                    pending.pop(),
+        )
+        imports: t.MutableMappingKV[
+            Path, t.VariadicTuple[p.Infra.RopeImportStatement]
+        ] = {}
+        python_modules: t.MutableMappingKV[
+            t.Pair[str, str], t.Infra.RopeResource | None
+        ] = {}
+        for selection in selections:
+            with (
+                FlextInfraUtilitiesRopeCore.open_project(selection.root) as project,
+                project.frozen_layout(),
+            ):
+                lookup = m.Infra.CodemodImportResources(
+                    modules={},
+                    source_folders=tuple(
+                        folder
+                        for folder in project.get_source_folders()
+                        if isinstance(folder, p.Infra.RopeRoot)
+                    ),
+                    python_folders=tuple(
+                        folder
+                        for folder in project.get_python_path_folders()
+                        if isinstance(folder, p.Infra.RopeRoot)
+                    ),
+                    python_modules=python_modules,
                 )
-                if fetched is None:
-                    continue
-                path, resource, tree = fetched
-                visited.add(path)
-                pending.extend(
-                    cls._snapshot_import_resources(
-                        project, resource, tree, modules_by_name
+                for name in dict.fromkeys(selection.modules):
+                    cls._snapshot_imported_resource(
+                        project,
+                        project.root,
+                        name,
+                        level=0,
+                        lookup=lookup,
                     )
+                pending = [
+                    project.get_resource(
+                        path.relative_to(selection.root.resolve()).as_posix()
+                    )
+                    for path in selection.source_paths
+                ]
+                pending.extend(
+                    resource
+                    for resource in lookup.modules.values()
+                    if resource is not None
                 )
+                scheduled = {resource.real_path for resource in pending}
+                visited: set[Path] = set()
+                while pending:
+                    fetched = cls._snapshot_module_imports(
+                        project, states, imports, visited, pending.pop()
+                    )
+                    if fetched is None:
+                        continue
+                    path, resource, statements = fetched
+                    visited.add(path)
+                    for imported in cls._snapshot_import_resources(
+                        project, resource, statements, lookup
+                    ):
+                        if imported.real_path not in scheduled:
+                            scheduled.add(imported.real_path)
+                            pending.append(imported)
+                python_modules = lookup.python_modules
         return m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
 
     @staticmethod
-    def _snapshot_module_tree(
+    def _snapshot_module_imports(
+        project: p.Infra.RopeProject,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        imports: t.MutableMappingKV[Path, t.VariadicTuple[p.Infra.RopeImportStatement]],
         visited: set[Path],
         resource: t.Infra.RopeResource,
-    ) -> t.Triple[Path, t.Infra.RopeResource, ast.Module] | None:
-        """Authenticate one pending module and parse its snapshot source.
+    ) -> (
+        t.Triple[
+            Path, t.Infra.RopeResource, t.VariadicTuple[p.Infra.RopeImportStatement]
+        ]
+        | None
+    ):
+        """Authenticate one module and retain only its static import statements.
 
         Returns:
-            The resolved path, live resource, and parsed tree, or ``None``
+            The resolved path, live resource, and native imports, or ``None``
             when the resource carries no governable Python source.
 
         Raises:
@@ -580,162 +840,64 @@ class FlextInfraUtilitiesCodemodProject(
             return None
         state = states.get(path)
         if state is None:
+            u.Cli.info(
+                f"mod: binding capture sources={len(states)} path={path}",
+            )
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             states[path] = state
         if state.content is None:
             msg = f"binding source is absent: {path}"
             raise ValueError(msg)
-        return (
-            path,
-            resource,
-            ast.parse(state.content.decode("utf-8"), filename=str(path)),
-        )
+        if path not in imports:
+            imports[path] = FlextInfraUtilitiesRopeImports.source_import_statements(
+                project,
+                state.content.decode("utf-8"),
+            )
+        return path, resource, imports[path]
 
     @classmethod
     def _snapshot_import_resources(
         cls,
         project: p.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        tree: ast.Module,
-        modules_by_name: t.MutableMappingKV[
-            t.Triple[str, str | None, int], t.Infra.RopeResource | None
-        ],
+        imports: t.SequenceOf[p.Infra.RopeImportStatement],
+        lookup: m.Infra.CodemodImportResources,
     ) -> list[t.Infra.RopeResource]:
-        """Collect the Rope resources of every import inside one module tree.
+        """Resolve native import targets through the shared resource cache.
 
         Returns:
             The pending resources named by the module's import statements.
 
         """
         found: list[t.Infra.RopeResource] = []
-        pending = deque[ast.stmt | ast.ExceptHandler | ast.match_case](tree.body)
-        while pending:
-            node = pending.popleft()
-            if isinstance(node, ast.Import | ast.ImportFrom):
-                found.extend(
-                    cls._snapshot_node_import_resources(
-                        project, resource, node, modules_by_name
+        for node in imports:
+            declared = FlextInfraUtilitiesRopeImports.import_statement_module_name(node)
+            names = FlextInfraUtilitiesRopeImports.import_statement_names_and_aliases(
+                node
+            )
+            level = (
+                len(declared) - len(declared.lstrip(".")) if declared is not None else 0
+            )
+            module_name = declared[level:] if declared is not None else ""
+            targets = (
+                (
+                    module_name,
+                    *(
+                        f"{module_name}.{name}" if module_name else name
+                        for name, _alias in names
+                        if name != "*"
                     ),
                 )
-            # Imports are statements. Exception handlers and match cases are
-            # the two non-statement owners of statement suites; expression and
-            # annotation trees cannot contain an import.
-            pending.extend(
-                child
-                for child in ast.iter_child_nodes(node)
-                if isinstance(child, ast.stmt | ast.ExceptHandler | ast.match_case)
+                if declared is not None
+                else tuple(name for name, _alias in names)
             )
-        return found
-
-    @classmethod
-    def _snapshot_node_import_resources(
-        cls,
-        project: p.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        node: ast.AST,
-        modules_by_name: t.MutableMappingKV[
-            t.Triple[str, str | None, int], t.Infra.RopeResource | None
-        ],
-    ) -> list[t.Infra.RopeResource]:
-        """Collect the Rope resources of one import statement's targets.
-
-        Returns:
-            The pending resources named by the statement, possibly empty.
-
-        """
-        found: list[t.Infra.RopeResource] = []
-        imports = (
-            tuple(alias.name for alias in node.names)
-            if isinstance(node, ast.Import)
-            else (node.module or "",)
-            if isinstance(node, ast.ImportFrom)
-            else ()
-        )
-        level = node.level if isinstance(node, ast.ImportFrom) else 0
-        for name in imports:
-            imported = cls._snapshot_imported_resource(
-                project,
-                resource,
-                name,
-                level=level,
-                modules_by_name=modules_by_name,
-            )
-            if imported is not None:
-                found.append(imported)
-        if not isinstance(node, ast.ImportFrom):
-            return found
-        for alias in node.names:
-            if alias.name == "*":
-                continue
-            child = cls._snapshot_child_imported_resource(
-                (project, resource),
-                (node.module or "", alias.name),
-                level=level,
-                modules_by_name=modules_by_name,
-            )
-            if child is not None:
-                found.append(child)
-        return found
-
-    @staticmethod
-    def _snapshot_child_imported_resource(
-        frame: t.Pair[p.Infra.RopeProject, t.Infra.RopeResource],
-        names: t.Pair[str, str],
-        *,
-        level: int,
-        modules_by_name: t.MutableMappingKV[
-            t.Triple[str, str | None, int], t.Infra.RopeResource | None
-        ],
-    ) -> t.Infra.RopeResource | None:
-        """Resolve descendants in the SDK's complete search-root order.
-
-        The SDK elects a same-named directory before a module file. Only an
-        elected folder can contain descendants in that search root; later
-        roots retain their independent package and namespace resolution.
-
-        Returns:
-            The first real child module in the native resolution order.
-
-        """
-        project, resource = frame
-        parent_name, child_name = names
-        qualified = f"{parent_name}.{child_name}" if parent_name else child_name
-        key = (qualified, resource.parent.real_path, level)
-        if key in modules_by_name:
-            return modules_by_name[key]
-        folders = (
-            (resource.parent,)
-            if level
-            else (
-                *project.get_source_folders(),
-                *project.get_python_path_folders(),
-                resource.parent,
-            )
-        )
-        modules_by_name[key] = None
-        for folder in (
-            candidate
-            for candidate in folders
-            if isinstance(candidate, p.Infra.RopeRoot)
-        ):
-            parent_key = (parent_name, folder.real_path, level or 1)
-            if parent_key not in modules_by_name:
-                modules_by_name[parent_key] = project.find_relative_module(
-                    parent_name, folder, level or 1
+            for name in targets:
+                imported = cls._snapshot_imported_resource(
+                    project, resource, name, level=level, lookup=lookup
                 )
-            parent = modules_by_name[parent_key]
-            if not isinstance(parent, p.Infra.RopeRoot):
-                continue
-            child_key = (child_name, parent.real_path, 1)
-            if child_key not in modules_by_name:
-                modules_by_name[child_key] = project.find_relative_module(
-                    child_name, parent, 1
-                )
-            child = modules_by_name[child_key]
-            if child is not None:
-                modules_by_name[key] = child
-                break
-        return modules_by_name[key]
+                if imported is not None:
+                    found.append(imported)
+        return found
 
     @staticmethod
     def _snapshot_imported_resource(
@@ -744,9 +906,7 @@ class FlextInfraUtilitiesCodemodProject(
         name: str,
         *,
         level: int,
-        modules_by_name: t.MutableMappingKV[
-            t.Triple[str, str | None, int], t.Infra.RopeResource | None
-        ],
+        lookup: m.Infra.CodemodImportResources,
     ) -> t.Infra.RopeResource | None:
         """Resolve one imported module name relative to the importing package.
 
@@ -754,26 +914,14 @@ class FlextInfraUtilitiesCodemodProject(
             The imported module resource, or ``None`` when Rope cannot find it.
 
         """
-        folder = resource.parent
-        key = (name, folder.real_path, level)
-        if key in modules_by_name:
-            return modules_by_name[key]
-        if level:
-            modules_by_name[key] = project.find_relative_module(name, folder, level)
-            return modules_by_name[key]
-        # Source and Python-path folders are frozen for this snapshot. Their
-        # absolute-module lookup is shared by every importing module; only the
-        # final importing-folder lookup is local to the occurrence.
-        absolute = (name, None, 0)
-        if absolute not in modules_by_name:
-            modules_by_name[absolute] = project.find_module(name)
-        imported = modules_by_name[absolute]
-        modules_by_name[key] = (
-            imported
-            if imported is not None
-            else project.find_relative_module(name, folder, 1)
-        )
-        return modules_by_name[key]
+        key = (name, resource.parent.real_path, level)
+        if key not in lookup.modules:
+            lookup.modules[key] = (
+                project.find_relative_module(name, resource.parent, level)
+                if level
+                else project.find_module(name, resource.parent)
+            )
+        return lookup.modules[key]
 
     @staticmethod
     def _captured_text(
@@ -829,42 +977,14 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         predicate = condition.predicate
+        own = FlextInfraUtilitiesPyproject.project_package_name(root)
         match predicate:
-            case c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION:
-                with FlextInfraUtilitiesRopeCore.open_project(root) as project:
-                    resource = FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                        project.get_resource(
-                            file_path.relative_to(root).as_posix(),
-                        ),
-                        file_path,
-                    )
-                    declarations = tuple(
-                        node
-                        for node in ast.walk(ast.parse(resource.read()))
-                        if isinstance(node, ast.ClassDef) and node.name == captured[0]
-                    )
-                    return (
-                        len(declarations) == 1
-                        and FlextInfraUtilitiesDeclarationPayload.payload_declaration(
-                            project,
-                            file_path,
-                            declarations[0],
-                        )
-                        is not None
-                    )
             case _ if predicate in c.Infra.CODEMOD_PACKAGE_CONTEXT_PREDICATES:
-                own = facts.own_package
-                if own is None:
-                    message = "package predicates require the admission namespace"
-                    raise ValueError(message)
-                if predicate is c.Infra.CodemodContextPredicate.OWN_PACKAGE:
-                    owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                        root, file_path
+                own = cls._resolved_package_own(root, predicate, file_path, facts)
+                if predicate is c.Infra.CodemodContextPredicate.COMPOSE_MODULE:
+                    return cls._compose_module_holds(
+                        root, captured[0], own, facts, file_path
                     )
-                    if owner is None:
-                        message = f"project owner is unresolved: {file_path}"
-                        raise ValueError(message)
-                    own = FlextInfraUtilitiesPyproject.project_package_name(owner)
                 return cls._context_package_holds(
                     root,
                     predicate,
@@ -893,6 +1013,7 @@ class FlextInfraUtilitiesCodemodProject(
                 c.Infra.CodemodContextPredicate.PACKAGE_ROOT_INIT
                 | c.Infra.CodemodContextPredicate.FAMILY_BASE
                 | c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE
+                | c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
                 | c.Infra.CodemodContextPredicate.IMPORT_CYCLE
                 | c.Infra.CodemodContextPredicate.COMPOSES_FAMILY
             ):
@@ -917,6 +1038,44 @@ class FlextInfraUtilitiesCodemodProject(
             case _:
                 message = f"predicate is not registered in project facts: {predicate}"
                 raise ValueError(message)
+
+    @classmethod
+    def _resolved_package_own(
+        cls,
+        root: Path,
+        predicate: c.Infra.CodemodContextPredicate,
+        file_path: Path,
+        facts: m.Infra.CodemodProjectFacts,
+    ) -> str:
+        """Resolve the owning package name of one package-scope predicate.
+
+        Args:
+            root: The repository root of the admission.
+            predicate: The package-scope predicate under evaluation.
+            file_path: The file whose owning project names the package.
+            facts: The admission project facts.
+
+        Returns:
+            The owning package name.
+
+        Raises:
+            ValueError: If the admission namespace or project owner is
+                unresolved.
+
+        """
+        own = facts.own_package
+        if own is None:
+            message = "package predicates require the admission namespace"
+            raise ValueError(message)
+        if predicate is c.Infra.CodemodContextPredicate.OWN_PACKAGE:
+            owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                root, file_path
+            )
+            if owner is None:
+                message = f"project owner is unresolved: {file_path}"
+                raise ValueError(message)
+            own = FlextInfraUtilitiesPyproject.project_package_name(owner)
+        return own
 
     @classmethod
     def _context_package_holds(
@@ -967,6 +1126,49 @@ class FlextInfraUtilitiesCodemodProject(
             case _:
                 message = f"predicate is not package-scoped: {predicate}"
                 raise ValueError(message)
+
+    @classmethod
+    def _compose_module_holds(
+        cls,
+        root: Path,
+        value: str,
+        own: str,
+        facts: m.Infra.CodemodProjectFacts,
+        file_path: Path,
+    ) -> bool:
+        """Evaluate the ``compose-module`` predicate (the family-shape amendment).
+
+        The captured dotted module is a sanctioned public family compose
+        module when it is exactly ``<package>.<leaf>`` for a canonical
+        compose leaf: the own package must declare the leaf module file
+        beside its private family packages, and a foreign package must belong
+        to the project's runtime closure, where the family shape is the
+        fleet-wide contract.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        parts = value.split(".")
+        if (
+            len(parts) != _COMPOSE_MODULE_SEGMENT_COUNT
+            or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES
+        ):
+            return False
+        top, leaf = parts
+        if top == own:
+            owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                root,
+                file_path,
+            )
+            layout = (
+                FlextInfraUtilitiesCodegenNamespace.layout(owner) if owner else None
+            )
+            return (
+                layout is not None
+                and (layout.package_dir / f"{leaf}{c.Infra.EXT_PYTHON}").is_file()
+            )
+        return top in facts.runtime_modules
 
     @classmethod
     def _context_module_holds(
@@ -1036,6 +1238,12 @@ class FlextInfraUtilitiesCodemodProject(
                 return cls._family_package_has_base(file_path)
             case c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE:
                 return cls._family_base_file(root, file_path)
+            case c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE:
+                located = FlextInfraUtilitiesImportLaw.import_namespace(root, file_path)
+                return located is not None and (
+                    FlextInfraUtilitiesImportLaw.import_module_role(located[1])
+                    == "layer0"
+                )
             case c.Infra.CodemodContextPredicate.IMPORT_CYCLE:
                 return cls.import_closes_cycle(root, file_path, value, of, facts)
             case c.Infra.CodemodContextPredicate.COMPOSES_FAMILY:
@@ -1053,6 +1261,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the project's layout cannot be resolved.
+
         """
         owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
             root, file_path
@@ -1113,15 +1322,40 @@ class FlextInfraUtilitiesCodemodProject(
         project = FlextInfraUtilitiesCodemodRules.codemod_project_requirements(
             root,
         ).unwrap()
+        if not project[1]:
+            return frozenset()
+        cls.codemod_progress(
+            f"runtime distributions start requirements={len(project[1])} root={root}",
+        )
+        distributions = FlextInfraUtilitiesCodemodRules.codemod_distributions()
+        cls.codemod_progress(
+            f"runtime distributions finish distributions={len(distributions)}",
+        )
+        cls.codemod_progress("runtime dependency closure start")
         closure = FlextInfraUtilitiesCodemodRules.codemod_runtime_closure(
             project[1],
-            FlextInfraUtilitiesCodemodRules.codemod_distributions(),
+            distributions,
         )
-        return frozenset(
-            module
-            for module, providers in cls._installed_import_packages().items()
-            if providers & closure
+        cls.codemod_progress(
+            f"runtime dependency closure finish distributions={len(closure)}",
         )
+        cls.codemod_progress("runtime import package metadata start")
+        packages = cls._installed_import_packages()
+        cls.codemod_progress(
+            f"runtime import package metadata finish packages={len(packages)}",
+        )
+        selected: set[str] = set()
+        due = 0.0
+        for index, (module, providers) in enumerate(packages.items(), start=1):
+            due = cls.codemod_progress(
+                f"runtime imports package={index}/{len(packages)} "
+                f"module={module} selected={len(selected)}",
+                due,
+            )
+            if providers & closure:
+                selected.add(module)
+        cls.codemod_progress(f"runtime imports finish modules={len(selected)}")
+        return frozenset(selected)
 
     @staticmethod
     @cache

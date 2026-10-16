@@ -11,7 +11,7 @@ from pathlib import PurePosixPath
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.release import FlextInfraReleaseSourceMixin
 
 
@@ -29,6 +29,8 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         versions: t.StrMapping,
+        *,
+        dependency_group: bool = False,
     ) -> p.Result[bool]:
         """Pin every internal requirement of one TOML array; others pass verbatim.
 
@@ -36,44 +38,104 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         range would be a silent contract.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            Whether a rendered requirement retains a direct reference.
 
         """
         raw = u.Cli.toml_value(container, key)
         if raw is None:
-            return r[bool].ok(value=True)
-        items: p.Result[t.StrSequence] = u.validate_value(
+            return r[bool].ok(value=False)
+        entries = cls._release_requirement_entries(
+            raw,
+            dependency_group=dependency_group,
+        )
+        if entries.failure:
+            return r[bool].from_failure(entries)
+        rendered: list[str | m.Infra.DependencyGroupInclude] = []
+        has_direct_references = False
+        for requirement in entries.value:
+            if not isinstance(requirement, str):
+                rendered.append(requirement)
+                continue
+            pinned = cls._pinned_requirement(requirement, versions)
+            if pinned.failure:
+                return r[bool].from_failure(pinned)
+            text, has_direct_url = pinned.value
+            rendered.append(text)
+            has_direct_references |= has_direct_url
+        u.Cli.toml_sync_value(container, key, u.Infra.dependency_group_wire(rendered))
+        return r[bool].ok(has_direct_references)
+
+    @classmethod
+    def _release_requirement_entries(
+        cls,
+        raw: t.JsonValue,
+        *,
+        dependency_group: bool,
+    ) -> p.Result[t.SequenceOf[str | m.Infra.DependencyGroupInclude]]:
+        """Parse one TOML requirement array into its declared entries.
+
+        Args:
+            raw: The unwrapped TOML array value of the requirement field.
+            dependency_group: Whether the array follows the PEP 735 schema.
+
+        Returns:
+            The declared requirement entries, or the parse failure.
+
+        """
+        result_type = r[t.SequenceOf[str | m.Infra.DependencyGroupInclude]]
+        if dependency_group:
+            parsed_group = u.validate_value(
+                m.Infra.DependencyGroupEntries,
+                u.Cli.toml_unwrap_item(raw),
+            )
+            if parsed_group.failure:
+                return result_type.from_failure(parsed_group)
+            return result_type.ok(parsed_group.value.root)
+        strings = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
-            u.Cli.json_as_sequence(raw),
+            u.Cli.toml_unwrap_item(raw),
             strict=True,
         )
-        if items.failure:
-            return r[bool].fail_op(
-                f"validate release dependency group {key}",
-                items.error,
+        if strings.failure:
+            return result_type.from_failure(strings)
+        return result_type.ok(strings.value)
+
+    @classmethod
+    def _pinned_requirement(
+        cls,
+        requirement: str,
+        versions: t.StrMapping,
+    ) -> p.Result[t.Pair[str, bool]]:
+        """Render one requirement, pinning internal dependencies to their versions.
+
+        Args:
+            requirement: The unpinned requirement string.
+            versions: Internal distribution versions declared by their repos.
+
+        Returns:
+            The rendered requirement text with whether it retains a direct
+            reference, or a failure when the requirement is unparseable or
+            an internal dependency version is unknown to this release.
+
+        """
+        result_type = r[t.Pair[str, bool]]
+        try:
+            parsed = Requirement(requirement)
+        except InvalidRequirement as exc:
+            return result_type.fail_op("parse release requirement", exc)
+        name = canonicalize_name(parsed.name)
+        if not name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
+            return result_type.ok((requirement.strip(), parsed.url is not None))
+        if name not in versions:
+            return result_type.fail(
+                f"internal dependency version unknown to this release: {name}",
             )
-        rendered: t.MutableSequenceOf[str] = []
-        for requirement in items.value:
-            try:
-                parsed = Requirement(requirement)
-            except InvalidRequirement as exc:
-                return r[bool].fail_op("parse release requirement", exc)
-            name = canonicalize_name(parsed.name)
-            if not name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
-                rendered.append(requirement.strip())
-                continue
-            if name not in versions:
-                return r[bool].fail(
-                    f"internal dependency version unknown to this release: {name}",
-                )
-            pin = cls._release_specifier(versions[name])
-            if pin.failure:
-                return r[bool].from_failure(pin)
-            extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
-            marker = f"; {parsed.marker}" if parsed.marker is not None else ""
-            rendered.append(f"{parsed.name}{extras}{pin.value}{marker}")
-        u.Cli.toml_sync_string_list(container, key, rendered)
-        return r[bool].ok(value=True)
+        pin = cls._release_specifier(versions[name])
+        if pin.failure:
+            return result_type.from_failure(pin)
+        extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
+        marker = f"; {parsed.marker}" if parsed.marker is not None else ""
+        return result_type.ok((f"{parsed.name}{extras}{pin.value}{marker}", False))
 
     @classmethod
     def _release_pyproject(
@@ -98,41 +160,110 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             return r[str].fail(
                 "release pyproject must be valid TOML defining [project]",
             )
+        groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        pinned_fields = cls._pin_release_groups(
+            document, project, groups, version, versions
+        )
+        if pinned_fields.failure:
+            return r[str].from_failure(pinned_fields)
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        hatch = u.Cli.toml_table_child(tool, "hatch") if tool is not None else None
+        if tool is None or hatch is None:
+            return r[str].fail("release pyproject must define [tool.hatch]")
+        released = cls._release_hatch(
+            tool, hatch, has_direct_references=pinned_fields.value
+        )
+        if released.failure:
+            return r[str].from_failure(released)
+        rendered = u.Cli.toml_dumps(document)
+        if u.Cli.toml_parse_text(rendered) is None:
+            return r[str].fail("release pyproject rendering produced invalid TOML")
+        return r[str].ok(rendered)
+
+    @classmethod
+    def _pin_release_groups(
+        cls,
+        document: t.Cli.TomlDocument,
+        project: t.Cli.TomlTable,
+        groups: t.Cli.TomlTable | None,
+        version: str,
+        versions: t.StrMapping,
+    ) -> p.Result[bool]:
+        """Validate declared groups and pin every release requirement field.
+
+        Args:
+            document: The parsed release pyproject document.
+            project: The document's project table receiving the version.
+            groups: The document's dependency-groups table, or ``None``.
+            version: The release version stamped into the project table.
+            versions: Internal distribution versions declared by their repos.
+
+        Returns:
+            Whether a rendered requirement retains a direct reference.
+
+        """
+        validated_groups = u.validate_value(
+            m.Infra.DependencyGroupDeclarations,
+            {
+                "dependency-groups": (
+                    {} if groups is None else u.Cli.toml_unwrap_item(groups)
+                ),
+            },
+        )
+        if validated_groups.failure:
+            return r[bool].from_failure(validated_groups)
         project[c.Infra.VERSION] = version
         fields = (
             (project, c.Infra.DEPENDENCIES),
             *u.Infra.requirement_group_fields(document, project),
         )
+        has_direct_references = False
         for container, key in fields:
-            pinned = cls._release_requirements(container, key, versions)
+            pinned = cls._release_requirements(
+                container,
+                key,
+                versions,
+                dependency_group=container is groups,
+            )
             if pinned.failure:
-                return r[str].from_failure(pinned)
-        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
-        hatch = u.Cli.toml_table_child(tool, "hatch") if tool is not None else None
-        if tool is None or hatch is None:
-            return r[str].fail("release pyproject must define [tool.hatch]")
+                return r[bool].from_failure(pinned)
+            has_direct_references |= pinned.value
+        return r[bool].ok(has_direct_references)
+
+    @classmethod
+    def _release_hatch(
+        cls,
+        tool: t.Cli.TomlTable,
+        hatch: t.Cli.TomlTable,
+        *,
+        has_direct_references: bool,
+    ) -> p.Result[bool]:
+        """Bound the sdist targets and sync Hatch metadata for publication.
+
+        Args:
+            tool: The release document's tool table.
+            hatch: The tool table's hatch table.
+            has_direct_references: Whether a rendered requirement retains one.
+
+        Returns:
+            Whether the bounded Hatch targets rendered successfully.
+
+        """
         u.Cli.toml_remove_key_if_present(tool, "uv")
         bounded = cls._sdist_boundary(hatch)
         if bounded.failure:
-            return r[str].from_failure(bounded)
+            return r[bool].from_failure(bounded)
         metadata = u.Cli.toml_table_child(hatch, "metadata")
         if metadata is not None:
             # Direct references survive only when a rendered requirement still
             # carries one: the flag is deduced, never configured.
-            if any(
-                Requirement(str(item)).url is not None
-                for container, key in fields
-                for item in container.get(key) or ()
-            ):
+            if has_direct_references:
                 metadata["allow-direct-references"] = True
             else:
                 u.Cli.toml_remove_key_if_present(metadata, "allow-direct-references")
             if not metadata:
                 u.Cli.toml_remove_key_if_present(hatch, "metadata")
-        rendered = u.Cli.toml_dumps(document)
-        if u.Cli.toml_parse_text(rendered) is None:
-            return r[str].fail("release pyproject rendering produced invalid TOML")
-        return r[str].ok(rendered)
+        return r[bool].ok(value=True)
 
     @classmethod
     def _sdist_boundary(cls, hatch: t.Cli.TomlTable) -> p.Result[t.StrSequence]:
@@ -257,11 +388,17 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             if wheel_forced is not None
             else ()
         )
-        if (sdist_forced is None and sources) or (
-            sdist_forced is not None
-            and {str(source): str(target) for source, target in sdist_forced.items()}
-            != {source: source for source in sources}
-        ):
+        retained: t.StrMapping = {}
+        if sdist_forced is not None:
+            parsed: p.Result[t.StrMapping] = u.validate_value(
+                t.Infra.STR_MAPPING_ADAPTER,
+                u.Cli.toml_value(sdist, "force-include"),
+                strict=True,
+            )
+            if parsed.failure:
+                return r[t.StrSequence].from_failure(parsed)
+            retained = parsed.value
+        if retained != {source: source for source in sources}:
             return r[t.StrSequence].fail(
                 "Hatch sdist must retain every forced wheel source",
             )

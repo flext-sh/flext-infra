@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import io
+import os
 import pstats
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
@@ -154,10 +156,7 @@ class FlextInfraCProfileReport(s[bool]):
             return r[bool].fail(f"cProfile artifact does not exist: {self.profile}")
         try:
             stream = io.StringIO()
-            for profile in self._run_profiles():
-                stream.write(f"Profile: {profile}\n")
-                stats = pstats.Stats(str(profile), stream=stream)
-                stats.strip_dirs().sort_stats(self.sort).print_stats(self.limit)
+            self._render_profiles(stream)
             self.output.parent.mkdir(parents=True, exist_ok=True)
         except (OSError, ValueError, TypeError) as exc:
             return r[bool].fail(f"render cProfile report failed: {exc}", exception=exc)
@@ -165,6 +164,24 @@ class FlextInfraCProfileReport(s[bool]):
         if written.failure:
             return r[bool].from_failure(written)
         return r[bool].ok(value=True)
+
+    def _render_profiles(self, stream: io.StringIO) -> None:
+        """Render every cProfile artifact into the shared stream."""
+        root = self.repository_root.resolve()
+        root_prefix = re.escape(str(root) + os.sep)
+        source_prefixes = tuple(
+            re.escape(str(root / name) + os.sep)
+            for name in config.Infra.source_scan.roots
+        )
+        root_module = root_prefix + rf"[^{re.escape(os.sep)}]+\.py:"
+        source_filter = "^(?:" + "|".join((*source_prefixes, root_module)) + ")"
+        for profile in self._run_profiles():
+            stream.write(f"Profile: {profile}\n")
+            stream.write(f"Project scope: {root}\n")
+            stats = pstats.Stats(str(profile), stream=stream)
+            stats.sort_stats(self.sort).print_stats(self.limit)
+            stream.write("Repository source functions:\n")
+            stats.print_stats(source_filter, self.limit)
 
 
 __all__: list[str] = ["FlextInfraCProfileReport"]

@@ -578,14 +578,14 @@ class TestsFlextInfraPrivateImportCutover:
             self._plan(tmp_path, sources, consumer, statement)
 
     @staticmethod
-    def _finding(file_path: Path, text: str) -> m.Infra.ModScanFinding:
+    def _finding(file_path: Path, text: str) -> m.Infra.ModOccurrence:
         """Build one authenticated-shape semantic finding.
 
         Returns:
-            The resulting ``m.Infra.ModScanFinding``.
+            The resulting ``m.Infra.ModOccurrence``.
 
         """
-        return m.Infra.ModScanFinding(
+        return m.Infra.ModOccurrence(
             rule_file="ban-private-import.yml",
             rule_id="ban-private-import",
             repository="flext-sample",
@@ -594,7 +594,6 @@ class TestsFlextInfraPrivateImportCutover:
             text=text,
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
 
     @staticmethod

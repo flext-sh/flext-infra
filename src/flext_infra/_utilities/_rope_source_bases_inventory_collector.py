@@ -102,7 +102,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             )
             return
         visible = {**spec.lexical, **bindings}
-        bases = tuple(cls._reference(base, visible, spec.module) for base in node.bases)
+        bases = tuple(cls._reference(base, visible, spec) for base in node.bases)
         if node.type_params:
             bases = (
                 *bases,
@@ -257,6 +257,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return
         if cls._opaque_attribute_mutation(targets, node):
             return
+        if cls._subscript_mutation(targets):
+            return
         message = cls._mutation_message(spec, node)
         raise ValueError(message)
 
@@ -276,11 +278,31 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         Returns:
             ``True`` if the mutation is an opaque computed attribute rebind,
             ``False`` otherwise.
+
         """
         if not isinstance(node.value, ast.Call):
             return False
         return bool(targets) and all(
             isinstance(target, ast.Attribute) for target in targets
+        )
+
+    @staticmethod
+    def _subscript_mutation(targets: t.SequenceOf[ast.expr]) -> bool:
+        """Whether every target writes through an already-declared container.
+
+        A ``name[...] = ...`` statement mutates a binding the class body
+        declared earlier; it can never introduce a new class-attribute
+        binding, so the inventory records nothing and stays silent. The
+        stdlib ships this shape (``http.server``'s
+        ``_control_char_table[ord(...)] = ...``), and a captured stdlib
+        module must inventory, not fail.
+
+        Returns:
+            ``True`` if the mutation is a pure subscript write.
+
+        """
+        return bool(targets) and all(
+            isinstance(target, ast.Subscript) for target in targets
         )
 
     @staticmethod
@@ -373,6 +395,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             True when every target writes a module table or non-class root.
+
         """
         return all(
             isinstance(target, ast.Subscript)
@@ -412,6 +435,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             True when the target shape permits an exact class-member update.
+
         """
         value = node.value
         if len(targets) != 1 or not isinstance(value, ast.Name | ast.Call):
@@ -438,6 +462,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             True when the store updated a known definition, otherwise False.
+
         """
         visible = {**spec.lexical, **bindings}
         if not spec.allow_conditional or not cls._completes_class_namespace(
@@ -447,7 +472,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         target = targets[0]
         if not isinstance(target, ast.Attribute):
             return False
-        receiver = cls._reference(target.value, visible, spec.module)
+        receiver = cls._reference(target.value, visible, spec)
         owner = cls._nested_class_receiver(receiver, spec.definitions)
         if owner is None:
             return False
@@ -480,6 +505,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Raises:
             ValueError: If a cyclic class namespace receiver is detected.
+
         """
         current = reference
         visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
@@ -513,6 +539,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             The captured reference, or None for a non-class value.
+
         """
         value = node.value
         if value is None:
@@ -532,7 +559,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return None
         if head.id in visible and visible[head.id] is None:
             return None
-        return cls._reference(value, visible, spec.module)
+        return cls._reference(value, visible, spec)
 
     @classmethod
     def _aug_assign(
@@ -669,6 +696,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             The proven runtime truth value, or None for an unknown guard.
+
         """
         match test:
             case ast.Compare(
@@ -689,7 +717,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         visible = {**spec.lexical, **bindings}
         if head.id not in visible or visible[head.id] is None:
             return None
-        guard = cls._reference(test, visible, spec.module)
+        guard = cls._reference(test, visible, spec)
         selected: bool | None = None
         match (guard.target, guard.attributes):
             case ("typing" | "typing_extensions", ("TYPE_CHECKING",)):
@@ -732,7 +760,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def _reference(
         expression: ast.expr,
         bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
-        module: str,
+        spec: m.Infra.SourceBindingCollectorSpec,
     ) -> m.Infra.SourceClassReference:
         """Capture the binding visible when a base expression is evaluated.
 
@@ -741,10 +769,11 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Raises:
             TypeError: If the expression is not a supported class reference.
-            ValueError: If its lexical binding is not a class.
+            ValueError: If a governed lexical binding is not a class.
 
         """
         # Unwrap interleaved attributes and subscriptions before resolving the root.
+        module = spec.module
         attributes: list[str] = []
         while isinstance(expression, ast.Subscript | ast.Attribute):
             if isinstance(expression, ast.Attribute):
@@ -760,8 +789,22 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         if name in bindings:
             binding = bindings[name]
             if binding is None:
-                message = f"Non-class binding used as a base in {module}: {name}"
-                raise ValueError(message)
+                # Why (fleet-automation 2026-10-12): external modules (the
+                # stdlib above all) legitimately bind classes under runtime
+                # conditionals the lexical walk cannot prove
+                # (socketserver.ForkingMixIn under ``hasattr(os, "fork")``);
+                # a governed module doing the same stays fail-loud.
+                governed = bool(spec.package) and module.startswith(
+                    f"{spec.package}.",
+                )
+                if governed:
+                    message = f"Non-class binding used as a base in {module}: {name}"
+                    raise ValueError(message)
+                binding = m.Infra.SourceClassReference(
+                    target=module,
+                    attributes=(name,),
+                    qualified_base=f"{module}.{name}",
+                )
         elif star_module is not None and not hasattr(builtins, name):
             binding = m.Infra.SourceClassReference(
                 target=star_module.target,
@@ -779,3 +822,6 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             attributes=(*binding.attributes, *attributes),
             qualified_base=".".join((binding.qualified_base, *attributes)),
         )
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeSourceBindingCollector"]

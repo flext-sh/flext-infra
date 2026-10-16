@@ -11,7 +11,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import config, t
+from flext_infra import c, config, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
@@ -119,9 +119,12 @@ class FlextInfraUtilitiesRopeCore(
 
         Raises:
             ValueError: If the containing workspace declaration is invalid.
+
         """
         resolved = source_root.resolve()
         for parent in (resolved, *resolved.parents):
+            if not (parent / c.Infra.GITMODULES).exists():
+                continue
             declarations = FlextInfraUtilitiesGit.git_submodule_declarations(parent)
             if declarations.failure:
                 raise ValueError(declarations.error or "invalid .gitmodules")
@@ -145,6 +148,7 @@ class FlextInfraUtilitiesRopeCore(
 
         Yields:
             A source-scoped project or its declared workspace import graph.
+
         """
         roots = FlextInfraUtilitiesRopeCore.import_project_roots(source_root)
         with FlextInfraUtilitiesRopeCore.open_project(

@@ -15,9 +15,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
+import flext_core
 from flext_cli import u
 
-import flext_core
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
@@ -242,11 +242,11 @@ class FlextInfraUtilitiesCodegenNamespace:
         return root
 
     @classmethod
-    def _runtime_aliases(cls, package_dir: Path) -> t.StrSequence:
+    def _runtime_aliases(cls, package_dir: Path) -> t.VariadicTuple[str]:
         """Read root aliases from declarations, never from initializer outputs.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The canonical immutable alias tuple.
 
         """
         return tuple(

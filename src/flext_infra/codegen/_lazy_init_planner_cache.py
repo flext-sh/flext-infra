@@ -169,3 +169,6 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             }
             resolved = self._module_file_by_name.get(module_path)
         return resolved
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerCacheMixin"]

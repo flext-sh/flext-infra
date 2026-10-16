@@ -130,7 +130,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     @classmethod
     def _cross_owner_statements(
         cls,
-        live_findings: t.SequenceOf[m.Infra.ModScanFinding],
+        live_findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> t.VariadicTuple[str]:
         """Return the cross-owner private import texts among live findings.
 
@@ -242,7 +242,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     def _finding_import_specs(
         cls,
         root: Path,
-        live_findings: t.SequenceOf[m.Infra.ModScanFinding],
+        live_findings: t.SequenceOf[m.Infra.ModOccurrence],
         facades: t.MappingKV[
             str,
             t.VariadicTuple[t.Quad[ast.Module, str, str, str]],
@@ -323,7 +323,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> t.Infra.PrivateImportReferences:
         """Resolve every reported cross-owner private import to its public owner.
 
@@ -354,7 +354,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        finding: m.Infra.ModScanFinding,
+        finding: m.Infra.ModOccurrence,
     ) -> bool:
         """Reject a preflight import already moved by an earlier semantic phase.
 
@@ -387,7 +387,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan binding-aware public import rewrites.
 
