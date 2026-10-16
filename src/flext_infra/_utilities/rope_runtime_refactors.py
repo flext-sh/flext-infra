@@ -14,9 +14,6 @@ from flext_cli import u
 from flext_infra import m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
-_NATIVE_REGION_SPAN = 2
-"""Character-region tuples carry exactly one begin and one end coordinate."""
-
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
     """Load Rope refactor helpers behind protocols."""
@@ -386,14 +383,12 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             "rope.refactor.patchedast",
             "node_region",
         )(captured)
-        if not isinstance(region, tuple) or len(region) != _NATIVE_REGION_SPAN:
-            message = "Rope capture does not expose its native character region"
-            raise TypeError(message)
-        begin, end = region
-        if not isinstance(begin, int) or not isinstance(end, int):
-            message = "Rope capture region contains non-integer coordinates"
-            raise TypeError(message)
-        return begin, end
+        match region:
+            case tuple((int(begin), int(end))):
+                return begin, end
+            case _:
+                message = "Rope capture does not expose its native character region"
+                raise TypeError(message)
 
     @classmethod
     def create_move(

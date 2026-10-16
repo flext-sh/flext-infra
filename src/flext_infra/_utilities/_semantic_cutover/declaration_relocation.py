@@ -513,8 +513,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project.get_resource(path.relative_to(root).as_posix()),
         )
         module_scope = module.get_scope()
-        if module_scope is None:
-            return None
         for outer in module_scope.get_scopes():
             if outer.get_kind() != "Class":
                 continue
@@ -1054,7 +1052,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         scope = project.get_pymodule(resource).get_scope()
-        existing = scope.get_names().get("m") if scope is not None else None
+        existing = scope.get_names().get("m")
         expected = project.get_pymodule(
             project.get_resource(
                 (target.parent.parent / c.Infra.MODELS_PY)
@@ -1242,11 +1240,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project.get_resource(origin.relative_to(root).as_posix()),
         )
         scope = module.get_scope()
-        if scope is None or destination is None:
-            msg = (
-                f"declaration-relocation: missing module scope for {origin} or {target}"
-            )
-            raise ValueError(msg)
         imports: t.MutableMappingKV[str, p.Infra.RopeImportInfo] = {}
         for information in cls.native_import_infos(project, module):
             for name, alias in information.names_and_aliases:

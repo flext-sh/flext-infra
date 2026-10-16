@@ -573,7 +573,6 @@ class FlextInfraWorkspaceGeneratedFunction:
         """Retain source-defined methods without invoking their descriptors or bodies.
 
         Raises:
-            TypeError: If a source method or wrapper is not exact native storage.
             ValueError: If inherited fields or abstract state need unproved inputs.
 
         """
@@ -633,14 +632,16 @@ class FlextInfraWorkspaceGeneratedFunction:
 
         """
         for target in assignment.targets:
-            if not isinstance(target, ast.Name):
-                msg = "native dataclass class value has no closed source name"
-                raise ValueError(msg)
-            result[target.id] = self._source_scalar(
-                assignment.value,
-                vars(self._module(self._witness.module.get_name())),
-                self._trees[self._witness.source],
-            )
+            match target:
+                case ast.Name(id=name):
+                    result[name] = self._source_scalar(
+                        assignment.value,
+                        vars(self._module(self._witness.module.get_name())),
+                        self._trees[self._witness.source],
+                    )
+                case _:
+                    msg = "native dataclass class value has no closed source name"
+                    raise ValueError(msg)
 
     def _compile_dataclass(
         self,
@@ -805,7 +806,10 @@ class FlextInfraWorkspaceGeneratedFunction:
                         raise ValueError(msg)
                     self._sdk_class(owner, namespace, tree)
                 case _:
-                    msg = f"native dataclass marker lacks its physical constructor: {name}"
+                    msg = (
+                        "native dataclass marker lacks its physical constructor: "
+                        f"{name}"
+                    )
                     raise ValueError(msg)
 
     def _dataclass_records(self, owner: p.AttributeProbe, emitted: type) -> None:
@@ -1930,8 +1934,11 @@ class FlextInfraWorkspaceGeneratedFunction:
                 type(observed) is tuple
                 and len(expected) == len(observed)
                 and all(
-                    FlextInfraWorkspaceGeneratedFunction._same_default(left, right)
-                    for left, right in zip(expected, observed, strict=True)
+                    map(
+                        FlextInfraWorkspaceGeneratedFunction._same_default,
+                        expected,
+                        observed,
+                    )
                 )
             )
         return observed is expected
@@ -3371,29 +3378,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             and isinstance(statement.targets[0], ast.Name)
             and statement.targets[0].id == name
         ]
-        match assignments:
-            case [
-                ast.Call(
-                    func=ast.Attribute(value=ast.Name(id=module_name), attr="compile"),
-                    args=[ast.Constant(value=literal)],
-                    keywords=[],
-                )
-            ] if type(literal) is str:
-                flag_name = None
-            case [
-                ast.Call(
-                    func=ast.Attribute(value=ast.Name(id=module_name), attr="compile"),
-                    args=[
-                        ast.Constant(value=literal),
-                        ast.Attribute(value=ast.Name(id=flag_module), attr=flag_name),
-                    ],
-                    keywords=[],
-                )
-            ] if type(literal) is str and flag_module == module_name:
-                pass
-            case _:
-                msg = "dedent regex has no closed physical constructor"
-                raise ValueError(msg)
+        module_name, literal, flag_name = self._regex_constructor(assignments)
         supplier = self._global(module_name, namespace, tree)
         if type(supplier) is not ModuleType or vars(supplier).get(
             "Pattern"
@@ -3403,7 +3388,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         self._function(vars(supplier)["compile"])
         native = type(pattern)
         storage = vars(type)["__dict__"].__get__(native, type(native))
-        for operation in ("sub", "findall"):
+        for operation in ("sub", "findall", "match"):
             descriptor = storage.get(operation)
             if (
                 type(descriptor) is not MethodDescriptorType
@@ -3435,6 +3420,43 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "dedent regex state differs from its physical constructor"
             raise ValueError(msg)
         self._patterns[id(pattern)] = literal
+
+    @staticmethod
+    def _regex_constructor(
+        assignments: t.SequenceOf[ast.expr],
+    ) -> t.Triple[str, str, str | None]:
+        """Read either native regex constructor's literal pattern and flag binding.
+
+        Returns:
+            The imported module name, literal pattern and optional flag attribute.
+
+        Raises:
+            ValueError: If no unique physical regex constructor owns the binding.
+
+        """
+        match assignments:
+            case [
+                ast.Call(
+                    func=ast.Attribute(value=ast.Name(id=module_name), attr="compile"),
+                    args=[ast.Constant(value=literal)],
+                    keywords=[],
+                )
+            ] if type(literal) is str:
+                return module_name, literal, None
+            case [
+                ast.Call(
+                    func=ast.Attribute(value=ast.Name(id=module_name), attr="compile"),
+                    args=[
+                        ast.Constant(value=literal),
+                        ast.Attribute(value=ast.Name(id=flag_module), attr=flag_name),
+                    ],
+                    keywords=[],
+                )
+            ] if type(literal) is str and flag_module == module_name:
+                return module_name, literal, flag_name
+            case _:
+                msg = "dedent regex has no closed physical constructor"
+                raise ValueError(msg)
 
 
 __all__: t.VariadicTuple[str] = ("FlextInfraWorkspaceGeneratedFunction",)

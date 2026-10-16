@@ -45,7 +45,6 @@ class FlextInfraUtilitiesRopeInventory:
             All same-file defined objects for one workspace module.
 
         Raises:
-            TypeError: If rope inventory scope unavailable for.
             ValueError: If path is outside the active rope workspace.
 
         """
@@ -67,9 +66,6 @@ class FlextInfraUtilitiesRopeInventory:
         constant_bindings = cls._constant_bindings(pymodule)
         items: t.MutableSequenceOf[m.Infra.Object] = []
         module_scope = pymodule.get_scope()
-        if module_scope is None:
-            msg = f"rope inventory scope unavailable for {resource.path}"
-            raise TypeError(msg)
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
             record_options = m.Infra.RopeInventoryRecordInput(
@@ -604,15 +600,11 @@ class FlextInfraUtilitiesRopeInventory:
             Parameter lines keyed by function definition line and parameter name.
 
         Raises:
-            TypeError: If the immutable module has no native Rope scope.
             ValueError: If a declared parameter has no native source occurrence.
 
         """
         positions: t.MutableMappingKV[t.Pair[int, str], int] = {}
         module_scope = pymodule.get_scope()
-        if module_scope is None:
-            message = "Rope parameter inventory has no module scope"
-            raise TypeError(message)
         scopes = list(module_scope.get_scopes())
         while scopes:
             scope = scopes.pop()
