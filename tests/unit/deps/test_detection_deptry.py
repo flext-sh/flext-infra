@@ -19,6 +19,90 @@ class TestsFlextInfraDepsDetectionDeptry:
     """Exercise native deptry against real project declarations and sources."""
 
     @staticmethod
+    @pytest.mark.parametrize("namespace", ["infra", "deployment_support"])
+    def test_shipped_namespace_imports_establish_runtime_usage(
+        tmp_path: Path,
+        namespace: str,
+    ) -> None:
+        """Native deptry consumes every shipped namespace alongside source."""
+        name = "namespace-consumer"
+        project = u.Tests.mk_project(
+            tmp_path,
+            name,
+            with_src=True,
+            pyproject=(
+                f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
+                'dependencies = ["pydantic"]\n'
+            ),
+        )
+        u.Tests.write_standalone_workspace_manifest(
+            project,
+            name,
+            declaration=u.Tests.StandaloneManifestDeclaration(
+                cli_module=False,
+                repository_namespace_packages=(namespace,),
+            ),
+        )
+        (project / c.Infra.DEFAULT_SRC_DIR / "consumer.py").write_text(
+            "from pathlib import Path\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        source = project / namespace / "runtime.py"
+        source.parent.mkdir()
+        source.write_text(
+            "from pydantic import BaseModel\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        service = FlextInfraDependencyDetectionService()
+
+        issues, exit_code = tm.ok(
+            service.run_deptry(project, Path(sys.executable).parent),
+        )
+
+        tm.that(exit_code, eq=0)
+        tm.that(issues, empty=True)
+        source.write_text("from pathlib import Path\n", encoding=c.DEFAULT_ENCODING)
+
+        issues, exit_code = tm.ok(
+            service.run_deptry(project, Path(sys.executable).parent),
+        )
+
+        tm.that(exit_code, eq=1)
+        tm.that(
+            service.build_project_report(project.name, issues).deptry.unused,
+            has="pydantic",
+        )
+
+    @staticmethod
+    def test_missing_shipped_namespace_is_a_failure(tmp_path: Path) -> None:
+        """An absent declared production root cannot yield a partial green scan."""
+        name = "missing-namespace"
+        project = u.Tests.mk_project(
+            tmp_path,
+            name,
+            with_src=True,
+            pyproject=(
+                f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
+                "dependencies = []\n"
+            ),
+        )
+        u.Tests.write_standalone_workspace_manifest(
+            project,
+            name,
+            declaration=u.Tests.StandaloneManifestDeclaration(
+                cli_module=False,
+                repository_namespace_packages=("deployment_support",),
+            ),
+        )
+
+        tm.fail(
+            FlextInfraDependencyDetectionService().run_deptry(
+                project,
+                Path(sys.executable).parent,
+            ),
+        )
+
+    @staticmethod
     def test_unused_requirement_remains_a_finding(tmp_path: Path) -> None:
         """No policy profile may discard an unused runtime requirement."""
         project = u.Tests.mk_project(

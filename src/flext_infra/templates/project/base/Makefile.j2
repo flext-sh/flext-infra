@@ -295,6 +295,7 @@ override PYTEST_DIAG_ARGS :={% for item in pytest.diagnostic_args %} {{ item }}{
 override PYTEST_PARALLEL_WORKERS := {{ pytest.parallel_workers }}
 override PYTEST_PARALLEL_WORKER_MEMORY_GB := {{ pytest.parallel_worker_memory_gb }}
 override PYTEST_PARALLEL_DISTRIBUTION := {{ pytest.parallel_distribution }}
+override PYTEST_LOADSCOPE_REORDER := {{ pytest.loadscope_reorder | lower }}
 override PYTEST_PARALLEL_SCHEDULE_CHUNK := {{ pytest.parallel_schedule_chunk }}
 override PYTEST_PROFILE_SORT := {{ pytest.profile_sort }}
 override PYTEST_PROFILE_LIMIT := {{ pytest.profile_limit }}
@@ -399,7 +400,7 @@ DOCS_ACTIONS :={% for action in make.docs.actions %} {{ action }}{% endfor %}
 
 # === SECTION: lint/type paths (managed) ===
 # Source: template + computed (script_dispatch conditional)
-RUFF_PATHS := $(shell for directory in src tests examples{% if script_dispatch %} scripts{% endif %}; do if [ -d "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
+RUFF_PATHS := $(shell for directory in {{ analysis_python_roots | join(' ') }}; do if [ -d "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
 MYPY_PATHS := $(RUFF_PATHS)
 # End SECTION: lint/type paths
 

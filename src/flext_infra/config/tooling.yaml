@@ -811,6 +811,9 @@ Infra:
         parallel-worker-memory-gb: 2
         # Keep scheduling centralized within the measured worker budget.
         parallel-distribution: load
+        # Preserve xdist's native scope-size ordering unless a project declares
+        # collection order as part of its loadscope execution contract.
+        loadscope-reorder: true
         # xdist queues the shutdown marker behind each worker's pre-dispatched
         # chunk, so a larger chunk delays the declared max-failures stop until
         # every worker drains its assigned items. One test per dispatch step
