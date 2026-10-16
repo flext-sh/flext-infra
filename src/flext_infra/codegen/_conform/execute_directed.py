@@ -19,7 +19,6 @@ from flext_infra.codegen import (
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteScaffold
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.validate import FlextInfraValidateFreshImport
 
 
 class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteScaffold):
@@ -29,22 +28,13 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
     def _observe_publication(
         request: m.Infra.CodegenConformRequest,
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Consume authenticated publication evidence without invoking a planner.
+        """Observe physical publication evidence without a general code audit.
 
         Returns:
             The verified publication result, or the verification failure.
 
         """
-        verifier = FlextInfraValidateFreshImport.capture_producer(
-            request.root,
-            entrypoint=FlextInfraMiseArtifactsVerification.publication_current,
-        )
-        if verifier.failure:
-            return r[m.Infra.CodegenResult].from_failure(verifier)
         with FlextInfraCodegenFileLeases.mutation_lease(request.root):
-            current = FlextInfraCodegenPreconditions.producer_current(verifier.value)
-            if current.failure:
-                return r[m.Infra.CodegenResult].from_failure(current)
             observed = FlextInfraMiseArtifactsVerification.publication_current(
                 request,
             )

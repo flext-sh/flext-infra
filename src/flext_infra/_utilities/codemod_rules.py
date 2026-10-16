@@ -744,15 +744,16 @@ class FlextInfraUtilitiesCodemodRules(
         """
         if parsed.failure:
             return parsed
-        payload = u.Cli.json_dumps([
-            rule.model_dump(mode="json") for rule in parsed.value
-        ])
-        if payload.failure:
-            return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(payload)
+        payload = u.type_adapter(tuple[m.Infra.CodemodRule, ...]).dump_json(
+            tuple(parsed.value),
+        )
         directory = u.Cli.ensure_dir(cache_file.parent)
         if directory.failure:
             return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(directory)
-        written = u.Cli.atomic_write_text_file(cache_file, payload.value)
+        written = u.Cli.atomic_write_text_file(
+            cache_file,
+            payload.decode(c.DEFAULT_ENCODING),
+        )
         if written.failure:
             return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(written)
         return parsed
@@ -788,18 +789,9 @@ class FlextInfraUtilitiesCodemodRules(
             / f"{u.Cli.sha256_content(identity.value)}.json"
         )
         if cache_file.is_file():
-            loaded = u.Cli.json_loads(
-                cache_file.read_text(encoding=c.DEFAULT_ENCODING),
-            )
-            if loaded.failure:
-                return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(loaded)
-            if not isinstance(loaded.value, list):
-                return r[t.SequenceOf[m.Infra.CodemodRule]].fail(
-                    f"codemod rule cache is not a rule list: {cache_file}",
-                )
             return r[t.SequenceOf[m.Infra.CodemodRule]].ok(
-                tuple(
-                    m.Infra.CodemodRule.model_validate(item) for item in loaded.value
+                u.type_adapter(tuple[m.Infra.CodemodRule, ...]).validate_json(
+                    cache_file.read_text(encoding=c.DEFAULT_ENCODING),
                 ),
             )
         parsed = cls._parse_rules(provider, sources)

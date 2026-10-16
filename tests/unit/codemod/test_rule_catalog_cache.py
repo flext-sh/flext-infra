@@ -14,6 +14,8 @@ from tests import tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import p
+
 
 class TestsFlextInfraRuleCatalogCache:
     """Drive the public rule plan against a real local provider."""
@@ -91,3 +93,23 @@ class TestsFlextInfraRuleCatalogCache:
         local = {rule.id: rule.digest for rule in first.rules}
         edited = {rule.id: rule.digest for rule in second.rules}
         tm.that(edited["cache-only"], ne=local["cache-only"])
+
+    def test_a_fresh_consumer_recovers_typed_rules_from_disk(
+        self,
+        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
+    ) -> None:
+        """Persistent JSON retains the exact public plan across native processes."""
+        project, _ = self._project(tmp_path, "native")
+        expected = tm.ok(u.Infra.codemod_rule_plan(project))
+        native_consumer(
+            """
+from flext_infra import m, u
+
+expected = m.Infra.CodemodRulePlan.model_validate_json(sys.argv[2])
+observed = u.Infra.codemod_rule_plan(Path(sys.argv[1])).unwrap()
+assert observed == expected, (observed, expected)
+""",
+            str(project),
+            expected.model_dump_json(),
+        )
