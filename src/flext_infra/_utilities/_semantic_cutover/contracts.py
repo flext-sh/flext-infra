@@ -40,31 +40,46 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             sources,
             tuple(
                 rule
-                for rule in cls.declared_contract_rules()
+                for rule in cls.declared_contract_rules(
+                    Path(workspace.rope_project.root.real_path)
+                )
                 if rule.phase == c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
             ),
         )
 
     @staticmethod
-    def declared_contract_rules() -> t.SequenceOf[m.Infra.RopeContractRule]:
+    def declared_contract_rules(
+        repository_root: Path,
+    ) -> t.SequenceOf[m.Infra.RopeContractRule]:
         """Load typed policy; reject duplicate identities and undeclared families.
 
+        The packaged catalogue holds only universal rules. A governed repository
+        declares rules about its own symbols in the same relative path under its
+        root; that overlay is optional, and its absence declares no rule.
+
         Returns:
-            Declared Rope contract rules in configuration order.
+            Packaged rules, then the repository's own rules, in file order.
 
         Raises:
             ValueError: If two rules share an identity or a rule names an
                 undeclared facade family.
 
-
         """
-        rules = m.Infra.RopeContractRules.model_validate(
-            u.Cli.yaml_safe_load(
-                type(config).ssot_config_dir().parent
-                / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                / "contracts.yaml"
-            ).unwrap()
-        ).rules
+        packaged = (
+            type(config).ssot_config_dir().parent
+            / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        )
+        overlay = repository_root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        catalogues = (packaged,) + (
+            (overlay,) if overlay != packaged and overlay.exists() else ()
+        )
+        rules = tuple(
+            rule
+            for catalogue in catalogues
+            for rule in m.Infra.RopeContractRules.model_validate(
+                u.Cli.yaml_safe_load(catalogue).unwrap()
+            ).rules
+        )
         ids = [rule.id for rule in rules]
         if len(ids) != len(set(ids)):
             message = "duplicate Rope contract rule identities"

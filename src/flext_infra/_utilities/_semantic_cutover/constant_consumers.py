@@ -96,7 +96,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             sources,
             tuple(
                 rule
-                for rule in contracts.declared_contract_rules()
+                for rule in contracts.declared_contract_rules(
+                    Path(workspace.rope_project.root.real_path)
+                )
                 if rule.phase == c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
             ),
         )
