@@ -1154,20 +1154,11 @@ class FlextInfraUtilitiesCodemodRules:
         declared_metadata: t.JsonMapping = (
             metadata if isinstance(metadata, Mapping) else {}
         )
-        declared_fields = (
-            cls._declared_context(
-                declared_metadata.get(c.Infra.CODEMOD_RULE_CONTEXT_KEY),
-            ),
-            cls._declared_ensure_imports(
-                declared_metadata.get(c.Infra.CODEMOD_RULE_ENSURE_IMPORTS_KEY),
-            ),
+        context = cls._declared_context(
+            declared_metadata.get(c.Infra.CODEMOD_RULE_CONTEXT_KEY),
         )
-        for declared_field in declared_fields:
-            if declared_field.failure:
-                return r[m.Infra.CodemodRule].fail(
-                    f"{declared_field.error}: {resource}"
-                )
-        context, ensure_imports = declared_fields
+        if context.failure:
+            return r[m.Infra.CodemodRule].fail(f"{context.error}: {resource}")
         binding = cls._rule_binding_result(parsed_rule, context.value, rule_id)
         if binding.failure:
             return r[m.Infra.CodemodRule].fail(f"{binding.error}: {resource}")
@@ -1215,70 +1206,8 @@ class FlextInfraUtilitiesCodemodRules:
                     c.Infra.CODEMOD_RULE_RELOCATION_KEY,
                 ),
                 "context": context.value,
-                "ensure_imports": ensure_imports.value,
             }),
         )
-
-    @staticmethod
-    def _validated_ensure_import_entry(
-        item: t.JsonValue,
-    ) -> p.Result[m.Infra.CodemodEnsureImport]:
-        """Validate one declared ``{module, name}`` ensure-imports entry.
-
-        Returns:
-            The validated ensure-import record, or the first entry failure.
-
-        """
-        failure = r[m.Infra.CodemodEnsureImport]
-        if not isinstance(item, Mapping):
-            return failure.fail(
-                f"ensure-imports entry must be a {{module, name}} mapping, "
-                f"got {type(item).__name__}",
-            )
-        entry: t.JsonMapping = item
-        unknown: list[str] = sorted(set(entry) - {"module", "name"})
-        if unknown:
-            return failure.fail(f"ensure-imports entry has unknown keys {unknown}")
-        module = entry.get("module")
-        name = entry.get("name")
-        if not isinstance(module, str) or not module.strip():
-            return failure.fail("ensure-imports entry requires a non-empty module")
-        if not isinstance(name, str) or not name.strip():
-            return failure.fail("ensure-imports entry requires a non-empty name")
-        return failure.ok(
-            m.Infra.CodemodEnsureImport.model_validate({
-                "module": module,
-                "name": name,
-            }),
-        )
-
-    @classmethod
-    def _declared_ensure_imports(
-        cls,
-        declared: t.JsonValue | None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]:
-        """Validate the rule's declared required module imports.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodemodEnsureImport]]``.
-
-        """
-        failure = r[t.VariadicTuple[m.Infra.CodemodEnsureImport]]
-        if declared is None:
-            return failure.ok(value=())
-        if not isinstance(declared, Sequence) or isinstance(declared, str):
-            return failure.fail(
-                f"ensure-imports must be a list of {{module, name}} mappings, "
-                f"got {type(declared).__name__}",
-            )
-        declared_items: t.SequenceOf[t.JsonValue] = declared
-        entries: list[m.Infra.CodemodEnsureImport] = []
-        for item in declared_items:
-            model = cls._validated_ensure_import_entry(item)
-            if model.failure:
-                return failure.from_failure(model)
-            entries.append(model.value)
-        return failure.ok(value=tuple(entries))
 
     @classmethod
     def _parse_rules(

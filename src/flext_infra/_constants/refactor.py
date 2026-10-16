@@ -392,11 +392,6 @@ class FlextInfraConstantsRefactor:
     # metavariable, the context predicate the engine checks on each finding
     # (`metadata.context: {VAR: {is|not: predicate}}`).
     CODEMOD_RULE_CONTEXT_KEY: ClassVar[str] = "context"
-    # A rule whose applied rewrites reference names the rewritten file must
-    # bind declares them under `metadata.ensure-imports` as
-    # `[{module: <dotted module>, name: <top-level name>}]`; the publisher
-    # completes the module imports after the fix bytes are applied.
-    CODEMOD_RULE_ENSURE_IMPORTS_KEY: ClassVar[str] = "ensure-imports"
     CODEMOD_CONTEXT_HOLDS_KEY: ClassVar[str] = "is"
     CODEMOD_CONTEXT_FAILS_KEY: ClassVar[str] = "not"
     CODEMOD_CONTEXT_OF_KEY: ClassVar[str] = "of"
