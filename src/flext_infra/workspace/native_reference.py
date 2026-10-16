@@ -3007,18 +3007,27 @@ class FlextInfraWorkspaceNativeReference:
     ) -> t.Infra.NativeCode:
         """Name process-local hash constants inside a code tree.
 
+        The decimal width of such a constant also moves the column positions of
+        its source line, so a code object that carried one keeps no location
+        table; the in-process proof still compares its full locations.
+
         Returns:
             The code with each declared hash constant replaced by its marker.
 
         """
+        original = cls._native_code_constants(code)
         constants = tuple(
             cls._code_hash_markers(item, markers)
             if type(item) is CodeType
             else markers.get(item, item)
             if type(item) is int
             else item
-            for item in cls._native_code_constants(code)
+            for item in original
         )
+        if any(
+            type(item) is int and item in markers for item in original
+        ):
+            return code.replace(co_consts=constants, co_linetable=b"")
         return code.replace(co_consts=constants)
 
     @staticmethod
