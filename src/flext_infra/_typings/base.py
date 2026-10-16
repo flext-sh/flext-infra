@@ -7,36 +7,26 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast as _ast
-from collections.abc import (
-    Callable,
-    Container as _Container,
-    MutableMapping,
-    MutableSet as _MutableSet,
-)
+from collections import abc
+from collections.abc import Callable, MutableMapping, MutableSet
 from datetime import date, datetime
-from dis import Instruction as _Instruction
-from pathlib import Path as _Path
+from dis import Instruction
+from pathlib import Path
 from types import (
-    BuiltinFunctionType as _BuiltinFunctionType,
-    ClassMethodDescriptorType as _ClassMethodDescriptorType,
-    CodeType as _CodeType,
-    FunctionType as _FunctionType,
-    GetSetDescriptorType as _GetSetDescriptorType,
-    MemberDescriptorType as _MemberDescriptorType,
-    MethodDescriptorType as _MethodDescriptorType,
-    MethodWrapperType as _MethodWrapperType,
-    UnionType as _UnionType,
-    WrapperDescriptorType as _WrapperDescriptorType,
+    BuiltinFunctionType,
+    ClassMethodDescriptorType,
+    CodeType,
+    FunctionType,
+    GetSetDescriptorType,
+    MemberDescriptorType,
+    MethodDescriptorType,
+    MethodWrapperType,
+    UnionType,
+    WrapperDescriptorType,
 )
 from typing import Annotated, Literal
 
-# Why: flext_cli owns the pipeline models/result contract; flext_core's m/p
-# have no nested Cli namespace, so the pipeline handler alias below needs
-# flext_cli's own m/p under a distinct name. The import stays at runtime on
-# purpose: flext-cli's lazy __init__ keeps it cheap, flext-cli never imports
-# flext-infra (no cycle), and the runtime census gate evaluates every alias's
-# __value__, so a TYPE_CHECKING-only import would explode as NameError.
-from flext_cli import m, m as _cli_m, p as _cli_p, t
+from flext_cli import m, p, t
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
@@ -50,7 +40,7 @@ type CliResultValue = t.Cli.ResultValue
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
-    type MutableSetOf[ItemT] = _MutableSet[ItemT]
+    type MutableSetOf[ItemT] = MutableSet[ItemT]
     "An explicitly mutable set contract for operation-owned native state."
 
     @staticmethod
@@ -90,7 +80,7 @@ class FlextInfraTypesBase:
 
     type PlanSourceTimestamp = str | date | datetime | None
     "Native YAML timestamp ingress; dates retain their original precision."
-    type DocsRenderedArtifactTuple = t.Triple[_Path, _Path, str | None]
+    type DocsRenderedArtifactTuple = t.Triple[Path, Path, str | None]
     "Rendered document destination, source, and optional project owner."
 
     type RegexPattern = t.RegexPattern
@@ -101,28 +91,28 @@ class FlextInfraTypesBase:
     "Jinja2 template rendering environment."
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
-    type NativeCode = _CodeType
+    type NativeCode = CodeType
     "Exact interpreter code identity accepted by disassembly and native encoding."
-    type NativeFunction = _FunctionType
+    type NativeFunction = FunctionType
     "Exact interpreter function identity retaining its actual executable storage."
-    type NativeBuiltinCallable = _BuiltinFunctionType | _MethodWrapperType
+    type NativeBuiltinCallable = BuiltinFunctionType | MethodWrapperType
     "The two interpreter callable types with native receiver metadata."
     type NativeDescriptor = (
-        _GetSetDescriptorType
-        | _MemberDescriptorType
-        | _ClassMethodDescriptorType
-        | _MethodDescriptorType
-        | _WrapperDescriptorType
+        GetSetDescriptorType
+        | MemberDescriptorType
+        | ClassMethodDescriptorType
+        | MethodDescriptorType
+        | WrapperDescriptorType
     )
     "Exact interpreter descriptor identities accepted by native observation."
-    type NativeOperand = _cli_p.AttributeProbe | type | _UnionType | None
+    type NativeOperand = p.AttributeProbe | type[p.AttributeProbe] | UnionType | None
     "A passively observed value, including native class identities and nulls."
     type NativeFunctionBinding = (
         classmethod[NativeOperand, ..., NativeOperand]
         | staticmethod[..., NativeOperand]
     )
     "Exact interpreter function wrappers with their native readable function slot."
-    type NativeType = type | type[_UnionType]
+    type NativeType = type[p.AttributeProbe | UnionType]
     "Exact native type owners, including the interpreter's union type."
     type NativeClassDeclarations = t.MappingKV[
         str, t.VariadicTuple[t.Pair[int, frozenset[str]]]
@@ -133,7 +123,7 @@ class FlextInfraTypesBase:
     ]
     "Invocation-local class facts keyed by exact source bytes and compiler inputs."
     type NativeInstructionFacts = t.DictKV[
-        int, t.Pair[NativeCode, t.VariadicTuple[_Instruction]]
+        int, t.Pair[NativeCode, t.VariadicTuple[Instruction]]
     ]
     "Immutable instructions indexed by strong native code identity."
     type NativeInvocationFacts = t.Pair[NativeCompilationFacts, NativeInstructionFacts]
@@ -148,18 +138,18 @@ class FlextInfraTypesBase:
     "Facade family identifier for FLEXT chain resolution."
     type ExpectedBase = type | str
     "Expected FLEXT base: a class or its qualified name."
-    type MetricValue = t.Scalar | _Path | None
+    type MetricValue = t.Scalar | Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
     type ChangeCallback = Callable[[str], None] | None
     "Optional callback invoked on transformer changes."
     # Why: upstream flext_core.FlextTypingContainers is an empty stub (no
     # `Container` alias shipped in the pinned release); flext-infra's own
     # LibCST residue-matching consumer needs a membership-testable generic.
-    type Container[ItemT] = _Container[ItemT]
+    type Container[ItemT] = abc.Container[ItemT]
     "Generic membership-testable collection (supports ``in``)."
     type PipelineHandler = Callable[
-        [_cli_p.Cli.PipelineStageContext],
-        _cli_p.Result[_cli_m.Cli.PipelineStageResult],
+        [p.Cli.PipelineStageContext],
+        p.Result[m.Cli.PipelineStageResult],
     ]
     "Stage handler contract for the flext-infra check/codegen DAG pipelines."
     type PipelineHandlerMap = t.MappingKV[str, PipelineHandler]
@@ -198,8 +188,8 @@ class FlextInfraTypesBase:
     type PrivateImportSpec = t.Quint[str, str, str, str, str]
     "(private module, symbol, qualified name, owner package, target reference)."
     type PrivateImportReferences = tuple[
-        t.MappingKV[_Path, t.SequenceOf[PrivateImportSpec]],
-        t.MappingKV[_Path, t.MappingKV[str, t.StrPair]],
+        t.MappingKV[Path, t.SequenceOf[PrivateImportSpec]],
+        t.MappingKV[Path, t.MappingKV[str, t.StrPair]],
         t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
     ]
     "Resolved private-import specs, declared re-export targets, and facade owners."

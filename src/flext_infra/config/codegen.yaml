@@ -960,12 +960,11 @@ Infra:
       - python.analysis.typeCheckingMode
       - python.analysis.diagnosticSeverityOverrides
       # The current Ruff extension always uses its native server.
-      - ruff.nativeServer
 
-    # Declarative project-layout SSOT consumed by
-    # the layout engine (codegen/layout.py) and the layout quality gate. Every
-    # move/archive/gitignore decision derives from this section — the engine
-    # carries zero hardcoded layout knowledge. Every violation fails the check.
+      # Declarative project-layout SSOT consumed by
+      # the layout engine (codegen/layout.py) and the layout quality gate. Every
+      # move/archive/gitignore decision derives from this section — the engine
+      # carries zero hardcoded layout knowledge. Every violation fails the check.
     layout:
       version: 1
       # Archive-not-delete root: archived entries land in <archive_root>/<project>/.
