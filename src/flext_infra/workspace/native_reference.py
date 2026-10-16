@@ -19,7 +19,7 @@ from functools import partial
 from gc import get_referents
 from importlib.machinery import ExtensionFileLoader, FrozenImporter, ModuleSpec
 from inspect import CO_NEWLOCALS, CO_OPTIMIZED
-from json import dumps, loads
+from json import dumps
 from math import isnan
 from pathlib import Path
 from types import (
@@ -446,166 +446,21 @@ class FlextInfraWorkspaceNativeReference:
         Returns:
             The original native cell for every declared free variable.
 
-        """
-        chain = FlextInfraWorkspaceGeneratedFunction.function_chain(
-            cls._class_namespace(receiver).get(attribute)
-        )
-        if not any(candidate is value for candidate in chain):
-            return r[m.Infra.NativeGeneratedFunctionProof].fail(
-                "generated receiver binding differs from its observed function: "
-                f"{witness.source}::{attribute}",
-            )
-        return FlextInfraWorkspaceGeneratedFunction.compile_class_function(
-            value, receiver, attribute, witness
-        )
-
-    @classmethod
-    def _generated_storage_native(
-        cls, expected: m.Infra.NativeGeneratedFunctionProof
-    ) -> bool:
-        """Check that a closed compiler emitted only the original native storage.
-
-        Returns:
-            Whether every emitted construction container has its exact native type.
+        Raises:
+            TypeError: Closure storage or a cell has a foreign native type.
 
         """
-        if (
-            type(expected.code) is not CodeType
-            or type(expected.globals) is not dict
-            or type(expected.annotations) is not dict
-        ):
-            return False
-        return (
-            cls._native_type(expected.defaults, tuple, type(None))
-            and cls._native_type(expected.keyword_defaults, dict, type(None))
-            and type(expected.closure) is tuple
-        )
+        closure = value.__closure__
+        if closure is None:
+            closure = ()
+        elif type(closure) is not tuple:
+            msg = "native function has foreign closure storage"
+            raise TypeError(msg)
+        if any(type(cell) is not CellType for cell in closure):
+            msg = "native function has a foreign closure cell"
+            raise TypeError(msg)
+        return dict(zip(value.__code__.co_freevars, closure, strict=True))
 
-    @classmethod
-    def _generated_function_mismatch(
-        cls, value: FunctionType, expected: m.Infra.NativeGeneratedFunctionProof
-    ) -> str | None:
-        """Compare all immutable executable construction inputs in native order.
-
-        Returns:
-            The first differing construction input, or None when all agree.
-
-        """
-        observed_code = cls._code_evidence(value.__code__)
-        expected_code = cls._code_evidence(expected.code)
-        if not cls._code_matches(observed_code, expected_code):
-            observed_fields = observed_code.model_dump()
-            expected_fields = expected_code.model_dump()
-            fields = sorted(
-                name
-                for name in observed_fields
-                if observed_fields[name] != expected_fields.get(name)
-            )
-            return (
-                f"code {fields} observed={observed_code.filename[:120]}"
-                f" expected={expected_code.filename[:120]}"
-            )
-        observed_globals = value.__globals__
-        differing = sorted(
-            key
-            for key in {*observed_globals, *expected.globals}
-            if key not in observed_globals
-            or key not in expected.globals
-            or not cls._same_construction(observed_globals[key], expected.globals[key])
-        )
-        checks = (
-            ("defaults", value.__defaults__, expected.defaults),
-            ("keyword_defaults", value.__kwdefaults__, expected.keyword_defaults),
-            (
-                "closure",
-                tuple(cell.cell_contents for cell in value.__closure__ or ()),
-                expected.closure,
-            ),
-            (
-                "builtins",
-                vars(FunctionType)["__builtins__"].__get__(value, FunctionType),
-                expected.globals.get("__builtins__"),
-            ),
-            ("annotations", value.__annotations__, expected.annotations),
-        )
-        for name, observed, constructed in checks:
-            if not cls._same_construction(observed, constructed):
-                return name
-        return f"globals {differing[:8]}" if differing else None
-
-    @classmethod
-    def _same_construction(
-        cls,
-        observed: t.Infra.NativeOperand | None,
-        expected: t.Infra.NativeOperand | None,
-    ) -> bool:
-        """Compare construction inputs, identity first, then native encoding.
-
-        The same object is equal under every deterministic encoding, so it is
-        never re-encoded; exact ``dict`` (string keys) and ``tuple`` containers
-        compare item by item; any other pair compares by native encoding.
-
-        Returns:
-            Whether the observed construction input equals the expected one.
-
-        """
-        if observed is expected:
-            return True
-        if (
-            type(observed) is dict
-            and type(expected) is dict
-            and all(type(key) is str for key in (*observed, *expected))
-        ):
-            return set(observed) == set(expected) and all(
-                cls._same_construction(observed[key], expected[key]) for key in expected
-            )
-        if type(observed) is tuple and type(expected) is tuple:
-            return len(observed) == len(expected) and all(
-                itertools.starmap(
-                    cls._same_construction, zip(observed, expected, strict=True)
-                )
-            )
-        return cls._value(observed, construction=True) == cls._value(
-            expected, construction=True
-        )
-
-    @classmethod
-    def _generated_proof(
-        cls,
-        value: FunctionType,
-        source: t.Triple[str, str, p.AttributeProbe | None],
-        project: p.Infra.RopeProject,
-        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
-    ) -> p.Result[t.Triple[str, str, m.Infra.NativeGeneratedFunctionProof]]:
-        """Authenticate source-generated code and every consulted physical input.
-
-        Returns:
-            The defining binding and its complete source-derived function proof.
-
-        """
-        result_type = r[t.Triple[str, str, m.Infra.NativeGeneratedFunctionProof]]
-        compiled = cls._generated_source(value, source, project, witnesses)
-        if compiled.failure:
-            return result_type.from_failure(compiled)
-        supplier, attribute, expected = compiled.value
-        if not cls._generated_storage_native(expected):
-            return result_type.fail("generated compiler returned non-native storage")
-        mismatch = cls._generated_function_mismatch(value, expected)
-        if mismatch is not None:
-            return result_type.fail(
-                f"generated executable differs from its physical compiler: "
-                f"{supplier}::{attribute}; qualname={value.__qualname__[:160]}; "
-                f"differs={mismatch}"
-            )
-        for state in expected.inputs:
-            current = u.Cli.atomic_read_binary_file_state(state.path, required=True)
-            if current.failure:
-                return result_type.from_failure(current)
-            if current.value != state:
-                return result_type.fail(
-                    f"generated compiler source changed: {state.path}"
-                )
-        return result_type.ok((supplier, attribute, expected))
 
     @classmethod
     def _remember_generated_descriptors(
@@ -2683,26 +2538,13 @@ class FlextInfraWorkspaceNativeReference:
         return tuple(rejected)
 
     @classmethod
-    def _code_evidence(
-        cls,
-        code: t.Infra.NativeCode,
-        *,
-        hashed: t.VariadicTuple[str] = (),
-    ) -> m.Infra.NativeCodeEvidence:
-        """Capture complete compiler bytes without reconstructing executable code.
-
-        A generated proof may declare strings whose process-local ``hash`` the
-        emission embeds; those integer constants are named by their string so
-        independent processes record the same witness.
+    def _code_evidence(cls, code: t.Infra.NativeCode) -> m.Infra.NativeCodeEvidence:
+        """Capture complete compiler bytes without changing code or source positions.
 
         Returns:
             Native compiler evidence or explicit nonportable constant markers.
 
         """
-        if hashed:
-            code = cls._code_hash_markers(
-                code, {hash(text): f"<process-hash {text}>" for text in hashed}
-            )
         nonportable = cls._code_nonportable_constants(code)
         return m.Infra.NativeCodeEvidence(
             filename=code.co_filename,
@@ -2713,58 +2555,10 @@ class FlextInfraWorkspaceNativeReference:
                 if nonportable
                 else marshal.dumps(code, c.Infra.NATIVE_CODE_WITNESS_MARSHAL_VERSION)
             ),
-            locations=None if nonportable else tuple(cls._code_locations(code)),
+            locations=None if nonportable else cls._code_locations(code),
             nonportable_constants=nonportable,
         )
 
-    @staticmethod
-    def _generated_hashed(
-        operands: t.SequenceOf[t.Pair[str, str]],
-    ) -> t.VariadicTuple[str]:
-        """Read the hashed strings a generated proof declared for its code.
-
-        Returns:
-            The declared strings, or none for authored code.
-
-        Raises:
-            TypeError: If the declared operand is not a JSON list of strings.
-
-        """
-        declared = dict(operands).get("generated_hashed")
-        if declared is None:
-            return ()
-        parsed = loads(declared)
-        if type(parsed) is not list or any(type(item) is not str for item in parsed):
-            msg = "generated hashed strings are not a JSON list of strings"
-            raise TypeError(msg)
-        return tuple(str(item) for item in parsed)
-
-    @classmethod
-    def _code_hash_markers(
-        cls, code: t.Infra.NativeCode, markers: t.MappingKV[int, str]
-    ) -> t.Infra.NativeCode:
-        """Name process-local hash constants inside a code tree.
-
-        The decimal width of such a constant also moves the column positions of
-        its source line, so a code object that carried one keeps no location
-        table; the in-process proof still compares its full locations.
-
-        Returns:
-            The code with each declared hash constant replaced by its marker.
-
-        """
-        original = cls._native_code_constants(code)
-        constants: t.SequenceOf[t.Infra.NativeCode | int | str] = tuple(
-            cls._code_hash_markers(item, markers)
-            if type(item) is CodeType
-            else markers.get(item, item)
-            if type(item) is int
-            else item
-            for item in original
-        )
-        if any(type(item) is int and item in markers for item in original):
-            return code.replace(co_consts=constants, co_linetable=b"")
-        return code.replace(co_consts=constants)
 
     @staticmethod
     def _code_matches(
@@ -2827,26 +2621,33 @@ class FlextInfraWorkspaceNativeReference:
                 return original / source.relative_to(staged)
         return source
 
-    @staticmethod
-    def _code_locations(code: t.Infra.NativeCode) -> str:
-        """Retain physical locations for every nested native compiler code unit.
+    @classmethod
+    def _code_locations(cls, code: t.Infra.NativeCode) -> t.VariadicTuple[t.JsonValue]:
+        """Retain flat locations for every exact native code unit in co_consts.
 
         Returns:
-            Serialized native locations for the root and all nested code units.
+            Structural constant paths and complete original native positions.
 
         """
-        return dumps((
-            code.co_qualname,
-            code.co_filename,
-            code.co_firstlineno,
-            b64encode(code.co_linetable).decode("ascii"),
-            b64encode(code.co_exceptiontable).decode("ascii"),
-            tuple(
-                FlextInfraWorkspaceNativeReference._code_locations(value)
-                for value in code.co_consts
-                if type(value) is CodeType
-            ),
-        ))
+        pending: list[t.Pair[t.VariadicTuple[int], t.Infra.NativeCode]] = [((), code)]
+        locations: list[t.JsonValue] = []
+        while pending:
+            position, unit = pending.pop()
+            locations.append([
+                list(position),
+                unit.co_qualname,
+                unit.co_filename,
+                unit.co_firstlineno,
+                b64encode(unit.co_linetable).decode("ascii"),
+                b64encode(unit.co_exceptiontable).decode("ascii"),
+            ])
+            pending.extend(
+                ((*position, index), child)
+                for index, child in enumerate(cls._native_code_constants(unit))
+                if cls._is_native(child, CodeType)
+            )
+        return tuple(locations)
+
 
     @classmethod
     def capture(
@@ -3872,11 +3673,6 @@ class FlextInfraWorkspaceNativeReference:
             (
                 ("generated_attribute", attribute),
                 ("generated_receiver", receiver_path.value),
-                (
-                    "generated_inputs",
-                    dumps(tuple(str(state.path) for state in expected.inputs)),
-                ),
-                ("generated_hashed", dumps(expected.hashed)),
             ),
         ))
 
@@ -4184,10 +3980,8 @@ class FlextInfraWorkspaceNativeReference:
                 kind=kind,
                 supplier=facts.supplier,
                 name=facts.value[0].__name__,
-                qualname=qualname,
-                code=cls._code_evidence(
-                    facts.code, hashed=cls._generated_hashed(facts.generated_operands)
-                ).model_dump_json(),
+                qualname=function.__qualname__,
+                code=cls._code_evidence(facts.code).model_dump_json(),
                 operands=(
                     *facts.generated_operands,
                     *generated_storage,
@@ -4935,273 +4729,6 @@ class FlextInfraWorkspaceNativeReference:
                 return code
         return r[bool].ok(value=True)
 
-    @staticmethod
-    def _authorized_outputs_current(
-        outputs: t.SequenceOf[m.Infra.CodegenJournalSource],
-    ) -> p.Result[bool]:
-        """Authenticate every actual publication effect before source substitution.
-
-        Returns:
-            The first physical output failure or the exact recorded effects.
-
-        """
-        for expected in outputs:
-            state = codegen.FlextInfraMiseArtifactsFiles.read_state(
-                expected.path, required=expected.sha256 is not None
-            )
-            if state.failure:
-                return r[bool].from_failure(state)
-            recorded = codegen.FlextInfraMiseArtifactsJournalRelocation.source_record(
-                expected.phase, state.value, previous=expected
-            )
-            if recorded.failure:
-                return r[bool].from_failure(recorded)
-            if recorded.value != expected:
-                return r[bool].fail(
-                    f"native authorized output changed: {expected.path}"
-                )
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def authority_current(
-        authority: m.Infra.CodegenSourceAuthority,
-        *,
-        outputs: t.SequenceOf[m.Infra.CodegenJournalSource] = (),
-    ) -> p.Result[bool]:
-        """Validate cold byte/membership authority without granting publication.
-
-        Returns:
-            Successful authority validation or the first changed input.
-
-        """
-        if not authority.inputs or authority.runtime not in {
-            item.path for item in authority.inputs
-        }:
-            return r[bool].fail(
-                "native source authority lacks its physical interpreter"
-            )
-        output_paths = {item.path for item in outputs}
-        published = FlextInfraWorkspaceNativeReference._authorized_outputs_current(
-            outputs
-        )
-        if published.failure:
-            return published
-        for receipt in authority.inputs:
-            if receipt.path in output_paths and receipt.path != authority.runtime:
-                continue
-            current = u.Cli.atomic_read_binary_file_receipt(
-                receipt.path, required=receipt.device is not None
-            )
-            if current.failure:
-                return r[bool].from_failure(current)
-            if current.value != receipt:
-                return r[bool].fail(f"native source authority changed: {receipt.path}")
-
-        return codegen.FlextInfraCodegenPreconditions.source_trees_current(
-            authority.generator_trees,
-            tuple(outputs),
-            modules=authority.generator_modules,
-        )
-
-    @classmethod
-    def _registered_generated_receiver(
-        cls,
-        module: ModuleType,
-        receiver_name: str,
-    ) -> p.Result[t.VariadicTuple[p.AttributeProbe]]:
-        """Resolve a generated class receiver through its actual lexical namespace.
-
-        Returns:
-            The registered class receiver, or an empty tuple for the original
-            module-level absence (a success payload is never ``None``).
-
-        """
-        result_type = r[t.VariadicTuple[p.AttributeProbe]]
-        if not receiver_name:
-            return result_type.ok(())
-        receiver: p.AttributeProbe = module
-        for component in receiver_name.split("."):
-            if component.startswith("<base:") and component.endswith(">"):
-                bases = (
-                    vars(type)["__bases__"].__get__(receiver, type(receiver))
-                    if cls._is_class(receiver)
-                    else ()
-                )
-                index = component[len("<base:") : -1]
-                if not index.isdigit() or int(index) >= len(bases):
-                    return result_type.fail(
-                        "generated class has no registered physical receiver"
-                    )
-                receiver = bases[int(index)]
-                continue
-            namespace = (
-                vars(receiver)
-                if type(receiver) is ModuleType
-                else cls._class_namespace(receiver)
-                if cls._is_class(receiver)
-                else None
-            )
-            if namespace is None or component not in namespace:
-                return result_type.fail(
-                    "generated class has no registered physical receiver"
-                )
-            receiver = namespace[component]
-        if not cls._is_class(receiver):
-            return result_type.fail("generated receiver is not a native class")
-        return result_type.ok((receiver,))
-
-    @classmethod
-    def _registered_generated_function(
-        cls,
-        binding: m.Infra.NativeBindingEvidence,
-        executed: m.Infra.NativeCodeEvidence,
-    ) -> p.Result[t.Pair[FunctionType, p.AttributeProbe | None]]:
-        """Read the actual generated function and its source-owned receiver.
-
-        A slot may hold a physical wrapper (``reprlib.recursive_repr`` around a
-        dataclass ``__repr__``); the receipt names the generated function at its
-        own depth of the raw ``__wrapped__`` chain.
-
-        Returns:
-            The exact native function/receiver pair or its first registration error.
-
-        """
-        result_type = r[t.Pair[FunctionType, p.AttributeProbe | None]]
-        metadata = dict(binding.operands)
-        attribute = metadata.get("generated_attribute")
-        receiver_name = metadata.get("generated_receiver")
-        if type(attribute) is not str or type(receiver_name) is not str:
-            return result_type.fail(
-                "generated binding lacks its physical compiler receipt: "
-                f"{binding.binding}"
-            )
-        module = sys.modules.get(binding.supplier)
-        if type(module) is not ModuleType:
-            return result_type.fail("generated compiler supplier is not loaded")
-        registered = cls._registered_generated_receiver(module, receiver_name)
-        if registered.failure:
-            return result_type.from_failure(registered)
-        receiver = registered.value[0] if registered.value else None
-        namespace = vars(module) if receiver is None else cls._class_namespace(receiver)
-        slot = namespace.get(attribute)
-        chain = FlextInfraWorkspaceGeneratedFunction.function_chain(slot)
-        selected = [
-            function
-            for function in chain
-            if (
-                function.__code__.co_filename,
-                function.__code__.co_name,
-                function.__code__.co_firstlineno,
-            )
-            == (executed.filename, executed.name, executed.firstlineno)
-        ]
-        if len(selected) != 1:
-            kind = type(slot)
-            return result_type.fail(
-                "generated receipt has no unique native function: "
-                f"{binding.supplier}::{receiver_name}.{attribute}; "
-                f"slot_type={vars(type)['__name__'].__get__(kind, type(kind))}; "
-                f"chain={len(chain)}"
-            )
-        return result_type.ok((selected[0], receiver))
-
-    @classmethod
-    def _generated_binding_current(
-        cls,
-        binding: m.Infra.NativeBindingEvidence,
-        executed: m.Infra.NativeCodeEvidence,
-        states: t.MappingKV[Path, m.Cli.AtomicFileReceipt],
-        project: p.Infra.RopeProject,
-        witnesses: t.MutableMappingKV[str, m.Infra.NativeSourceWitness],
-    ) -> p.Result[bool]:
-        """Re-derive a generated witness against its pinned physical receipts.
-
-        Returns:
-            Whether the generated executable and its physical receipts agree.
-
-        """
-        result_type = r[bool]
-        registered = cls._registered_generated_function(binding, executed)
-        if registered.failure:
-            return result_type.from_failure(registered)
-        value, receiver = registered.value
-        metadata = dict(binding.operands)
-        attribute = metadata["generated_attribute"]
-        proved = cls._generated_proof(
-            value, (binding.supplier, attribute, receiver), project, witnesses
-        )
-        if proved.failure:
-            return result_type.from_failure(proved)
-        _supplier, _attribute, expected = proved.value
-        derived = cls._code_evidence(expected.code, hashed=expected.hashed)
-        differing = tuple(
-            name
-            for name, agrees in (
-                ("code", cls._code_matches(executed, derived)),
-                (
-                    "inputs",
-                    metadata.get("generated_inputs")
-                    == dumps(tuple(str(state.path) for state in expected.inputs)),
-                ),
-                ("hashed", metadata.get("generated_hashed") == dumps(expected.hashed)),
-            )
-            if not agrees
-        )
-        if differing:
-            receipt_fields = executed.model_dump()
-            derived_fields = derived.model_dump()
-            return result_type.fail(
-                "generated receipt differs from its physical compiler: "
-                f"{binding.binding}; differs={differing}; "
-                f"code_fields={
-                    tuple(
-                        name
-                        for name in receipt_fields
-                        if receipt_fields[name] != derived_fields.get(name)
-                    )
-                }; "
-                f"receipt_code={executed.filename[:80]}:{executed.firstlineno} "
-                f"{executed.name}; derived_code={derived.filename[:80]}:"
-                f"{derived.firstlineno} {derived.name}"
-            )
-        return cls._generated_inputs_current(expected, states)
-
-    @staticmethod
-    def _generated_inputs_current(
-        expected: m.Infra.NativeGeneratedFunctionProof,
-        states: t.MappingKV[Path, m.Cli.AtomicFileReceipt],
-    ) -> p.Result[bool]:
-        """Authenticate every source consumed by the closed generated compiler.
-
-        Returns:
-            Whether original receipt identity and descriptor-read contents agree.
-
-        """
-        result_type = r[bool]
-        for state in expected.inputs:
-            receipt = states.get(state.path)
-            if receipt is None:
-                return result_type.fail(
-                    f"generated compiler input is not pinned: {state.path}"
-                )
-            if receipt.size is None:
-                return result_type.fail(
-                    f"generated compiler receipt has no byte count: {state.path}"
-                )
-            measured = u.Cli.atomic_read_binary_file_receipt(state.path, required=True)
-            if measured.failure:
-                return result_type.from_failure(measured)
-            if measured.value != receipt:
-                return result_type.fail(
-                    f"generated compiler receipt changed: {state.path}"
-                )
-            with u.Cli.atomic_binary_file_reader(receipt) as reader:
-                if reader.read_range(0, receipt.size) != state.content:
-                    return result_type.fail(
-                        "generated compiler source differs from its receipt: "
-                        f"{state.path}"
-                    )
-        return result_type.ok(value=True)
 
     @classmethod
     def authored_sources_current(
