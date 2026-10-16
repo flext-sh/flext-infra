@@ -150,7 +150,10 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
             Whether ``value`` is a Rope inferred class instance.
 
         """
-        return type(value) is cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "PyObject")
+        return type(value) is cls.runtime_type(
+            c.Infra.ROPE_PYOBJECTS_MODULE,
+            "PyObject",
+        )
 
     @classmethod
     def py_class(cls, value: t.Infra.RopePyObject) -> bool:
