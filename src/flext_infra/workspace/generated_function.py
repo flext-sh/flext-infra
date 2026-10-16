@@ -210,6 +210,32 @@ class FlextInfraWorkspaceGeneratedFunction:
             local[argument.arg] = literal.value
         return local
 
+    @staticmethod
+    def function_chain(
+        value: t.Infra.NativeOperand | None,
+    ) -> t.VariadicTuple[FunctionType]:
+        """Read a slot function and its raw wrapped functions without hooks.
+
+        Returns:
+            The slot function followed by every raw ``__wrapped__`` function.
+
+        Raises:
+            ValueError: If the raw wrapper chain is cyclic.
+
+        """
+        if type(value) is classmethod or type(value) is staticmethod:
+            value = value.__func__
+        functions: list[FunctionType] = []
+        seen: set[int] = set()
+        while type(value) is FunctionType:
+            if id(value) in seen:
+                msg = "generated receiver function wrapper chain is cyclic"
+                raise ValueError(msg)
+            seen.add(id(value))
+            functions.append(value)
+            value = vars(value).get("__wrapped__")
+        return tuple(functions)
+
     @classmethod
     def compile_class_function(
         cls,
@@ -375,7 +401,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If a compiler option has no physical default.
 
         """
-        physical, tree, namespace = self._function(factory)
+        physical, tree, namespace = self._function(
+            factory,
+            source_name="dataclass",
+            source_namespace=vars(self._module("dataclasses")),
+        )
         options: t.DictKV[str, bool] = {}
         for parameter, default in zip(
             physical.args.kwonlyargs, physical.args.kw_defaults, strict=True
@@ -468,11 +498,16 @@ class FlextInfraWorkspaceGeneratedFunction:
         self,
         field: ast.AnnAssign,
         namespace: t.MappingKV[str, p.AttributeProbe],
+        fields: t.MappingKV[str, p.AttributeProbe],
     ) -> p.AttributeProbe:
         """Read the annotation through its original native compilation semantics.
 
+        Without postponed evaluation a declared field's annotation is the type
+        object its executed SDK ``Field`` stores (read, never invoked); other
+        annotations go through the closed interpreter.
+
         Returns:
-            The exact compiled future string or a closed native annotation value.
+            The exact compiled future string or a native annotation value.
 
         Raises:
             TypeError: If the compiler did not produce native annotation text.
@@ -487,6 +522,10 @@ class FlextInfraWorkspaceGeneratedFunction:
         if not any(
             alias.name == "annotations" for node in future for alias in node.names
         ):
+            name = field.target.id if isinstance(field.target, ast.Name) else ""
+            observed = fields.get(name)
+            if type(observed) is vars(self._module("dataclasses")).get("Field"):
+                return observed.type
             return self._expression(field.annotation, {}, namespace, tree)
         isolated = ast.Module(
             body=[
@@ -537,6 +576,10 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise ValueError(msg)
         source_globals = vars(self._module(module_name))
         qualified = vars(type)["__qualname__"].__get__(owner, type(owner))
+        stored = namespace.get("__dataclass_fields__")
+        observed_fields: t.MappingKV[str, p.AttributeProbe] = (
+            stored if type(stored) is dict else {}
+        )
         annotations: t.DictKV[str, p.AttributeProbe] = {}
         result: t.DictKV[str, p.AttributeProbe] = {
             "__module__": module_name,
@@ -555,13 +598,134 @@ class FlextInfraWorkspaceGeneratedFunction:
             ):
                 continue
             annotations[field.target.id] = self._dataclass_annotation(
-                field, source_globals
+                field, source_globals, observed_fields
             )
-            if field.value is not None:
+            if isinstance(field.value, ast.Call) and self._sdk_field_call(
+                field.value, source_globals
+            ):
+                result[field.target.id] = self._dataclass_field(
+                    field.value, field.target.id, namespace, source_globals
+                )
+            elif isinstance(field.value, ast.Constant | ast.Tuple | ast.List | ast.Name):
                 result[field.target.id] = self._source_scalar(
                     field.value, source_globals, self._trees[self._witness.source]
                 )
+            elif field.value is not None:
+                # Any other physical expression (attribute, operator, a helper
+                # returning a Field) was evaluated by the class body already:
+                # rebuild the SDK field from its stored data.
+                result[field.target.id] = self._rebuilt_field(
+                    field.target.id, namespace
+                )
         return result
+
+    def _dataclass_field(
+        self,
+        call: ast.Call,
+        name: str,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        source_globals: t.MappingKV[str, p.AttributeProbe],
+    ) -> p.AttributeProbe:
+        """Rebuild one physically declared SDK ``field(...)`` from its storage.
+
+        The physical call must bind the SDK ``field`` factory; its executed
+        ``Field`` supplies the data. Defaults and factories are never invoked.
+
+        Returns:
+            A fresh SDK field carrying the observed field data.
+
+        Raises:
+            ValueError: If the call or the executed field storage differs.
+
+        """
+        sdk = vars(self._module("dataclasses"))
+        factory = sdk.get("field")
+        if (
+            self._decorator_binding(
+                call.func, source_globals, self._trees[self._witness.source]
+            )
+            is not factory
+            or type(factory) is not FunctionType
+        ):
+            msg = f"native dataclass default is not an SDK field call: {name}"
+            raise ValueError(msg)
+        self._physical_function(factory)
+        return self._rebuilt_field(name, namespace)
+
+    def _rebuilt_field(
+        self, name: str, namespace: t.MappingKV[str, p.AttributeProbe]
+    ) -> p.AttributeProbe:
+        """Rebuild a fresh SDK field from one stored ``Field``'s data.
+
+        Returns:
+            A fresh SDK field; neither its default nor its factory is invoked.
+
+        Raises:
+            ValueError: If the SDK field factory is not an exact function.
+
+        """
+        factory = vars(self._module("dataclasses")).get("field")
+        if type(factory) is not FunctionType:
+            msg = "native dataclass field factory is not an exact Python function"
+            raise ValueError(msg)
+        self._physical_function(factory)
+        observed = self._stored_field(name, namespace)
+        return factory(
+            default=observed.default,
+            default_factory=observed.default_factory,
+            init=observed.init,
+            repr=observed.repr,
+            hash=observed.hash,
+            compare=observed.compare,
+            kw_only=observed.kw_only,
+        )
+
+    def _sdk_field_call(
+        self, call: ast.Call, source_globals: t.MappingKV[str, p.AttributeProbe]
+    ) -> bool:
+        """Recognize a physical call naming the SDK ``field`` factory.
+
+        Returns:
+            Whether the call target is bound to the SDK factory or its module.
+
+        """
+        sdk = self._module("dataclasses")
+        match call.func:
+            case ast.Name(id=name):
+                return source_globals.get(name) is vars(sdk).get("field")
+            case ast.Attribute(value=ast.Name(id=name), attr="field"):
+                return source_globals.get(name) is sdk
+            case _:
+                return False
+
+    def _stored_field(
+        self, name: str, namespace: t.MappingKV[str, p.AttributeProbe]
+    ) -> p.AttributeProbe:
+        """Read one executed SDK ``Field`` whose default carries no authored hook.
+
+        Returns:
+            The exact stored SDK field.
+
+        Raises:
+            ValueError: If the storage is foreign or the default has a set-name hook.
+
+        """
+        sdk = vars(self._module("dataclasses"))
+        fields = namespace.get("__dataclass_fields__")
+        observed = fields.get(name) if type(fields) is dict else None
+        if type(observed) is not sdk.get("Field"):
+            msg = f"native dataclass field has no native storage: {name}"
+            raise ValueError(msg)
+        default = observed.default
+        if default is not sdk.get("MISSING") and any(
+            "__set_name__" in vars(type)["__dict__"].__get__(ancestor, type(ancestor))
+            for ancestor in vars(type)["__mro__"].__get__(
+                type(default), type(type(default))
+            )
+        ):
+            msg = f"native dataclass default carries an authored __set_name__: {name}"
+            raise ValueError(msg)
+        return observed
 
     def _dataclass_members(
         self,
@@ -576,9 +740,18 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If inherited fields or abstract state need unproved inputs.
 
         """
-        if "__abstractmethods__" in namespace:
-            msg = "native dataclass receiver requires authored abstract-state inputs"
-            raise ValueError(msg)
+        # ABCMeta derives ``__abstractmethods__`` from the authored markers; the
+        # SDK never reads it from the plain ``type`` receiver, so it is only
+        # checked for native storage and never copied into the receiver.
+        abstract = namespace.get("__abstractmethods__", frozenset())
+        if type(abstract) is not frozenset or any(
+            type(name) is not str for name in abstract
+        ):
+            msg = (
+                "native dataclass abstract state has foreign storage: "
+                f"{declaration.name}; source={self._witness.source}"
+            )
+            raise TypeError(msg)
         for ancestor in vars(type)["__mro__"].__get__(owner, type(owner))[1:]:
             inherited = vars(type)["__dict__"].__get__(ancestor, type(ancestor))
             if "__dataclass_fields__" in inherited:
@@ -603,10 +776,59 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If a raw wrapper chain is cyclic or lacks physical code.
 
         """
+        # A native method descriptor names its own source decorator; the
+        # declaration carries exactly that decorator and nothing else.
+        decorator: str | None = None
+        if type(value) is property:
+            getter = value.fget
+            if type(getter) is not FunctionType:
+                msg = "native dataclass property has no exact Python getter"
+                raise TypeError(msg)
+            name = getter.__name__
+            for accessor, expected in (
+                (getter, "property"),
+                (value.fset, f"{name}.setter"),
+                (value.fdel, f"{name}.deleter"),
+            ):
+                if accessor is not None:
+                    self._dataclass_accessor(accessor, expected)
+            return
         if type(value) is classmethod or type(value) is staticmethod:
+            decorator = vars(type)["__name__"].__get__(type(value), type)
             value = value.__func__
         if type(value) is not FunctionType:
-            msg = "native dataclass method is not an exact Python function"
+            msg = (
+                "native dataclass method is not an exact Python function: "
+                f"{type(value).__module__}.{type(value).__qualname__}"
+            )
+            raise TypeError(msg)
+        # ``abc.abstractmethod`` returns the same function after storing an
+        # exact ``True`` marker; the declaration must carry that decorator.
+        marker = self._function_attributes(value).get("__isabstractmethod__")
+        if marker is True and decorator is None:
+            decorator = "abstractmethod"
+        elif marker is not None:
+            msg = (
+                "native dataclass method has a foreign abstract marker: "
+                f"{value.__qualname__}"
+            )
+            raise TypeError(msg)
+        self._dataclass_accessor(value, decorator)
+
+    def _dataclass_accessor(
+        self,
+        value: p.AttributeProbe | None,
+        decorator: str | None,
+    ) -> None:
+        """Prove one method body and its raw ``__wrapped__`` chain.
+
+        Raises:
+            TypeError: If storage can invoke an authored accessor.
+            ValueError: If the raw wrapper chain is cyclic or lacks physical code.
+
+        """
+        if type(value) is not FunctionType:
+            msg = "native dataclass accessor is not an exact Python function"
             raise TypeError(msg)
         seen: set[int] = set()
         while type(value) is FunctionType:
@@ -614,8 +836,9 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = "native dataclass method has a cyclic raw wrapper"
                 raise ValueError(msg)
             seen.add(id(value))
-            self._physical_function(value)
-            value = vars(value).get("__wrapped__")
+            self._physical_function(value, decorator=decorator)
+            decorator = None
+            value = self._function_attributes(value).get("__wrapped__")
         if value is not None:
             msg = "native dataclass method has callback-bearing descriptor storage"
             raise TypeError(msg)
@@ -631,17 +854,63 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If source assigns class state through non-name targets.
 
         """
+        namespace = vars(self._module(self._witness.module.get_name()))
         for target in assignment.targets:
             match target:
                 case ast.Name(id=name):
-                    result[name] = self._source_scalar(
-                        assignment.value,
-                        vars(self._module(self._witness.module.get_name())),
-                        self._trees[self._witness.source],
+                    member = self._native_type_member(assignment.value, namespace)
+                    result[name] = (
+                        member
+                        if member is not None
+                        else self._source_scalar(
+                            assignment.value,
+                            namespace,
+                            self._trees[self._witness.source],
+                        )
                     )
                 case _:
                     msg = "native dataclass class value has no closed source name"
                     raise ValueError(msg)
+
+    def _native_type_member(
+        self,
+        expression: ast.expr,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> p.AttributeProbe | None:
+        """Bind ``<builtin type>.<slot>`` to the native slot it physically names.
+
+        pydantic's ``PydanticRecursiveRef`` declares ``__hash__ = object.__hash__``
+        to keep identity hashing under ``eq=True``; the SDK hash action reads
+        that class value, so it must be the native slot descriptor itself.
+
+        Returns:
+            The native slot descriptor, or ``None`` for any other expression.
+
+        Raises:
+            TypeError: If the named member is not a native slot descriptor.
+
+        """
+        match expression:
+            case ast.Attribute(value=ast.Name(id=owner_name), attr=member) if (
+                owner_name not in namespace
+            ):
+                owner = self._builtin(owner_name, namespace)
+                if type(owner) is not type:
+                    msg = "native dataclass class value owner is not a builtin type"
+                    raise TypeError(msg)
+                value = vars(type)["__dict__"].__get__(owner, type(owner)).get(member)
+                if (
+                    type(value) is not WrapperDescriptorType
+                    and type(value) is not MethodDescriptorType
+                ):
+                    msg = (
+                        "native dataclass class value is not a native slot: "
+                        f"{owner_name}.{member}"
+                    )
+                    raise TypeError(msg)
+                return value
+            case _:
+                return None
 
     def _compile_dataclass(
         self,
@@ -762,8 +1031,12 @@ class FlextInfraWorkspaceGeneratedFunction:
             case ast.Constant(value=None) if action is None:
                 return
             case ast.Name(id=name) if namespace.get(name) is action:
-                self._function(action)
-                self._function(namespace.get("_hash_fn"))
+                # The action reaches its collaborators (``_tuple_str``,
+                # ``_FuncBuilder``) through globals already proved by the SDK
+                # check; the 3.13 compiler has no separate hash builder.
+                self._function(
+                    action, source_name=name, source_namespace=namespace
+                )
             case _:
                 msg = "native dataclass selected hash action is interposed"
                 raise ValueError(msg)
@@ -933,7 +1206,9 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = "native dataclass generated wrapper has a cycle"
                 raise ValueError(msg)
             result.append(value)
-            inner = vars(value).get("__wrapped__")
+            inner = FlextInfraWorkspaceGeneratedFunction._function_attributes(
+                value
+            ).get("__wrapped__")
             if inner is None:
                 return tuple(result)
             cells = dict(
@@ -961,7 +1236,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If the selected entry or processor has a foreign namespace.
 
         """
-        _declaration, _tree, namespace = self._function(factory)
+        _declaration, _tree, namespace = self._function(
+            factory,
+            source_name="dataclass",
+            source_namespace=vars(self._module("dataclasses")),
+        )
         compiler = self._module("dataclasses")
         if namespace is not vars(compiler) or namespace.get("dataclass") is not factory:
             msg = "native dataclass SDK entry has a foreign execution namespace"
@@ -973,7 +1252,9 @@ class FlextInfraWorkspaceGeneratedFunction:
         if processor.__globals__ is not namespace:
             msg = "native dataclass class processor has foreign globals"
             raise ValueError(msg)
-        self._function(processor)
+        self._function(
+            processor, source_name="_process_class", source_namespace=namespace
+        )
         _source, tree = self._source(compiler)
         for name in ("Field", "_DataclassParams", "_FuncBuilder"):
             self._sdk_class(namespace.get(name), namespace, tree)
@@ -996,8 +1277,13 @@ class FlextInfraWorkspaceGeneratedFunction:
             "_add_slots",
             "_get_slots",
             "_update_func_cell_for__class__",
+            "_replace",
+            "_dataclass_getstate",
+            "_dataclass_setstate",
         ):
-            self._function(namespace.get(name))
+            self._function(
+                namespace.get(name), source_name=name, source_namespace=namespace
+            )
         for name in ("_FIELDS", "_PARAMS", "_POST_INIT_NAME"):
             self._source_scalar(ast.Name(id=name, ctx=ast.Load()), namespace, tree)
         pattern = namespace.get("_MODULE_IDENTIFIER_RE")
@@ -1014,8 +1300,16 @@ class FlextInfraWorkspaceGeneratedFunction:
             if type(module) is not ModuleType:
                 msg = "native dataclass collaborator is not its physical module"
                 raise TypeError(msg)
-            self._function(vars(module).get(operation))
-        self._function(self._global("recursive_repr", namespace, tree))
+            self._function(
+                vars(module).get(operation),
+                source_name=operation,
+                source_namespace=vars(module),
+            )
+        self._function(
+            self._global("recursive_repr", namespace, tree),
+            source_name="recursive_repr",
+            source_namespace=vars(self._module("reprlib")),
+        )
 
     def _sdk_class(
         self,
@@ -1067,7 +1361,11 @@ class FlextInfraWorkspaceGeneratedFunction:
         slots: t.VariadicTuple[str] = ()
         for member in declaration.body:
             if isinstance(member, ast.FunctionDef) and not member.decorator_list:
-                self._function(storage.get(member.name))
+                self._function(
+                    storage.get(member.name),
+                    source_name=f"{declaration.name}.{member.name}",
+                    source_namespace=namespace,
+                )
             elif (
                 isinstance(member, ast.Assign)
                 and len(member.targets) == 1
@@ -1316,7 +1614,12 @@ class FlextInfraWorkspaceGeneratedFunction:
             or len(set(names)) != len(names)
             or any(name.startswith("_") for name in names)
         ):
-            msg = "native tuple field layout differs from physical constructor data"
+            module = namespace.get("__module__")
+            msg = (
+                "native tuple field layout differs from physical constructor data: "
+                f"module={module if type(module) is str else '<non-string>'}; "
+                f"declared={names[:16]!r}; observed={observed_fields[:16]!r}"
+            )
             raise ValueError(msg)
 
     def _tuple_code_inputs(
@@ -1500,12 +1803,17 @@ class FlextInfraWorkspaceGeneratedFunction:
             ("export", "invocation"),
             tuple(aliases),
         )
-        if not matches:
-            return None
-        if len(matches) != 1:
+        tree = self._trees[witness.source]
+        if len(matches) > 1:
             msg = "native tuple has competing physical constructor assignments"
             raise ValueError(msg)
-        call = ast.parse(matches[0]["invocation"], mode="eval").body
+        call = (
+            ast.parse(matches[0]["invocation"], mode="eval").body
+            if matches
+            else self._tuple_base_call(owner, namespace, tree)
+        )
+        if call is None:
+            return None
         match call:
             case ast.Call(args=[first, second]) if (
                 not isinstance(first, ast.Starred)
@@ -1518,7 +1826,6 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = "native tuple constructor has unsupported invocation inputs"
                 raise ValueError(msg)
         collections = self._module("collections")
-        tree = self._trees[witness.source]
         if isinstance(call.func, ast.Name):
             factory = self._global(call.func.id, namespace, tree)
         elif (
@@ -1535,9 +1842,13 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "native tuple constructor differs from its physical imported owner"
             raise ValueError(msg)
         self._function(factory)
-        typename, fields = (self._tuple_literal(argument) for argument in call.args)
+        typename, fields = (
+            self._tuple_operand(argument, namespace) for argument in call.args
+        )
         defaults = (
-            self._tuple_literal(call.keywords[0].value) if call.keywords else None
+            self._tuple_operand(call.keywords[0].value, namespace)
+            if call.keywords
+            else None
         )
         if (
             type(typename) is not str
@@ -1556,6 +1867,92 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "native tuple constructor arguments are not closed string data"
             raise ValueError(msg)
         return typename, fields, defaults
+
+    @staticmethod
+    def _tuple_base_call(
+        owner: p.AttributeProbe,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> ast.expr | None:
+        """Elect the module class whose physical base expression built the tuple.
+
+        ``class TokenInfo(collections.namedtuple("TokenInfo", ...))`` binds no
+        alias to the tuple itself: the registered subclass's native base at the
+        same position as the physical base expression is the only owner proof.
+
+        Returns:
+            The unique physical base expression, or None when no class owns it.
+
+        Raises:
+            ValueError: If more than one module class declares the same base.
+
+        """
+        calls: list[ast.expr] = []
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            declared = namespace.get(node.name)
+            if type(declared) is not type:
+                continue
+            bases = vars(type)["__bases__"].__get__(declared, type(declared))
+            if len(bases) != len(node.bases):
+                continue
+            calls.extend(
+                expression
+                for base, expression in zip(bases, node.bases, strict=True)
+                if base is owner
+            )
+        if len(calls) > 1:
+            msg = "native tuple has competing physical base invocations"
+            raise ValueError(msg)
+        return calls[0] if calls else None
+
+    def _tuple_operand(
+        self,
+        node: ast.expr,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> p.AttributeProbe | None:
+        """Read a constructor operand from literals and native tuple field storage.
+
+        ``Name._fields`` reads the exact ``_fields`` storage of a module tuple
+        class, and ``+`` joins two operands of the same sequence type; the
+        normalized layout is still checked against the owner's own fields.
+
+        Returns:
+            The closed operand value.
+
+        Raises:
+            ValueError: If the operand is neither closed data nor tuple storage.
+
+        """
+        match node:
+            case ast.BinOp(op=ast.Add(), left=left, right=right):
+                first, second = (
+                    self._tuple_operand(item, namespace) for item in (left, right)
+                )
+                if (type(first) is tuple or type(first) is list) and type(
+                    first
+                ) is type(second):
+                    return first + second
+            case ast.Attribute(value=ast.Name(id=name), attr="_fields"):
+                owner = namespace.get(name)
+                if type(owner) is type:
+                    fields = next(
+                        (
+                            body["_fields"]
+                            for ancestor in vars(type)["__mro__"].__get__(owner, type)
+                            if "_fields"
+                            in (body := vars(type)["__dict__"].__get__(ancestor, type))
+                        ),
+                        None,
+                    )
+                    if type(fields) is tuple and all(
+                        type(item) is str for item in fields
+                    ):
+                        return fields
+            case _:
+                pass
+        return self._tuple_literal(node)
 
     @staticmethod
     def _tuple_literal(node: ast.expr) -> p.AttributeProbe | None:
@@ -1581,7 +1978,23 @@ class FlextInfraWorkspaceGeneratedFunction:
                 for item in node.elts
             ]
             return items if isinstance(node, ast.List) else tuple(items)
-        msg = "native tuple constructor contains nonliteral data"
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
+            # A literal sequence repeated by a literal count (``[None] * 4``)
+            # is closed data; the count is bounded to native field arity.
+            sequence, count = (
+                FlextInfraWorkspaceGeneratedFunction._tuple_literal(operand)
+                for operand in (node.left, node.right)
+            )
+            if (
+                (type(sequence) is list or type(sequence) is tuple)
+                and type(count) is int
+                and 0 <= count <= c.Infra.NATIVE_TUPLE_REPEAT_LIMIT
+            ):
+                return sequence * count
+        msg = (
+            "native tuple constructor contains nonliteral data: "
+            f"{ast.unparse(node)[:160]}"
+        )
         raise ValueError(msg)
 
     def _tuple_normalization(
@@ -1784,6 +2197,8 @@ class FlextInfraWorkspaceGeneratedFunction:
     def _physical_function(
         self,
         function: p.AttributeProbe | None,
+        *,
+        decorator: str | None = None,
     ) -> t.Triple[ast.FunctionDef, ast.Module, t.MappingKV[str, p.AttributeProbe]]:
         if type(function) is not FunctionType:
             msg = "closed compiler callback is not an exact Python function"
@@ -1796,7 +2211,22 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "closed compiler function has foreign globals"
             raise ValueError(msg)
         path, tree = self._source(self._module(module_name))
-        candidates = self._function_declarations(function, tree)
+        if decorator == "abstractmethod":
+            # The abstract marker is not a builtin: the module's own import
+            # binding must resolve to the exact ``abc.abstractmethod``.
+            if self._global(decorator, namespace, tree) is not vars(
+                self._module("abc")
+            ).get(decorator):
+                msg = (
+                    "closed compiler abstract marker is not abc.abstractmethod: "
+                    f"{module_name}.{function.__code__.co_qualname}"
+                )
+                raise ValueError(msg)
+        elif decorator is not None and "." not in decorator:
+            # The source decorator must be the native descriptor type itself;
+            # ``<name>.setter``/``.deleter`` are the property's own methods.
+            self._builtin(decorator, namespace)
+        candidates = self._function_declarations(function, tree, decorator=decorator)
         pending = [self._codes[path]]
         matched = False
         while pending:
@@ -1809,18 +2239,30 @@ class FlextInfraWorkspaceGeneratedFunction:
             )
             pending.extend(item for item in code.co_consts if type(item) is CodeType)
         if len(candidates) != 1 or not matched:
-            msg = "closed compiler function differs from its physical compilation"
+            msg = (
+                "closed compiler function differs from its physical compilation: "
+                f"{module_name}.{function.__code__.co_qualname} "
+                f"declarations={len(candidates)} compiled_match={matched}"
+            )
             raise ValueError(msg)
         return candidates[0], tree, namespace
 
     def _function(
         self,
         function: p.AttributeProbe | None,
+        *,
+        source_name: str | None = None,
+        source_namespace: t.MappingKV[str, p.AttributeProbe] | None = None,
     ) -> t.Triple[ast.FunctionDef, ast.Module, t.MappingKV[str, p.AttributeProbe]]:
         declaration, tree, namespace = self._physical_function(function)
         if type(function) is not FunctionType:
             msg = "closed compiler callback is not an exact Python function"
             raise TypeError(msg)
+        if source_name is not None:
+            if source_namespace is None:
+                msg = "closed compiler SDK binding has no elected namespace"
+                raise ValueError(msg)
+            self._function_binding(function, source_name, source_namespace)
         if (
             function.__closure__ is not None
             or function.__builtins__ is not vars(builtins)
@@ -1866,19 +2308,86 @@ class FlextInfraWorkspaceGeneratedFunction:
         self._native_globals(function)
         return declaration, tree, namespace
 
+    @staticmethod
+    def _function_attributes(
+        function: FunctionType,
+    ) -> t.MappingKV[str, p.AttributeProbe]:
+        """Read exact function metadata storage before any named key lookup.
+
+        Returns:
+            The native string-keyed function dictionary.
+
+        Raises:
+            TypeError: If function metadata can invoke a mapping callback.
+
+        """
+        attributes = vars(function)
+        if type(attributes) is not dict or any(
+            type(name) is not str for name in attributes
+        ):
+            msg = "closed compiler function metadata has foreign dictionary storage"
+            raise TypeError(msg)
+        return attributes
+
+    def _function_binding(
+        self,
+        function: FunctionType,
+        name: str,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> None:
+        """Bind a consumed SDK name to its exact physical function declaration.
+
+        Raises:
+            ValueError: If a helper is rebound or gains an unproved raw wrapper.
+
+        """
+        if (
+            function.__globals__ is not namespace
+            or not self._same_default(name, function.__code__.co_qualname)
+            or not self._same_default(name, function.__qualname__)
+            or not self._same_default(name.rsplit(".", 1)[-1], function.__name__)
+            or not self._same_default(
+                namespace["__name__"], function.__module__
+            )
+            or "__wrapped__" in self._function_attributes(function)
+        ):
+            msg = f"closed compiler SDK binding differs from its physical name: {name}"
+            raise ValueError(msg)
+
     def _native_globals(self, function: FunctionType) -> None:
         """Prove native builtin lookups without invoking any selected operation.
 
+        A module's own identity attributes (``__name__``, ``__spec__``, ...) are
+        also attributes of the ``builtins`` module, but a global lookup of one
+        resolves to the supplier module's metadata, never to a builtin: the
+        stdlib ``dataclasses._process_class`` reads ``sys.modules[__name__]``.
+        Those names are derived from a fresh module's namespace and proved as
+        the supplier's identity instead of as builtins.
+
         Raises:
-            ValueError: If a builtin lookup is interposed in the SDK namespace.
+            ValueError: If a builtin lookup is interposed in the SDK namespace, or a
+                module identity lookup does not name the function's own module.
 
         """
-        names = {
-            instruction.argval
-            for instruction in get_instructions(function.__code__)
-            if instruction.opname == "LOAD_GLOBAL" and type(instruction.argval) is str
-        }
-        for name in names.intersection(vars(builtins)):
+        names: set[str] = set()
+        pending = [function.__code__]
+        while pending:
+            code = pending.pop()
+            names.update(
+                instruction.argval
+                for instruction in get_instructions(code)
+                if instruction.opname == "LOAD_GLOBAL"
+                and type(instruction.argval) is str
+            )
+            pending.extend(item for item in code.co_consts if type(item) is CodeType)
+        identity = vars(ModuleType(function.__module__)).keys()
+        if (
+            "__name__" in names
+            and function.__globals__.get("__name__") != function.__module__
+        ):
+            msg = "closed compiler module identity is interposed: __name__"
+            raise ValueError(msg)
+        for name in names.intersection(vars(builtins)).difference(identity):
             if (
                 name in function.__globals__
                 and function.__globals__[name] is not vars(builtins)[name]
@@ -1889,12 +2398,20 @@ class FlextInfraWorkspaceGeneratedFunction:
 
     @staticmethod
     def _function_declarations(
-        function: FunctionType, tree: ast.Module
+        function: FunctionType,
+        tree: ast.Module,
+        *,
+        decorator: str | None = None,
     ) -> t.VariadicTuple[ast.FunctionDef]:
         """Locate the physical module or class method without running its body.
 
+        ``decorator`` names the sole native method descriptor (``classmethod``
+        or ``staticmethod``) the declaration may carry; the code's first line
+        is then the decorator line, as CPython records it.
+
         Returns:
-            Undecorated declarations matching the native qualified code identity.
+            Declarations matching the native qualified code identity and carrying
+            exactly the expected decorator, or none.
 
         """
         nodes: t.SequenceOf[ast.stmt] = tree.body
@@ -1908,13 +2425,26 @@ class FlextInfraWorkspaceGeneratedFunction:
             if len(parents) != 1:
                 return ()
             nodes = parents[0].body
+
+        def decorated(node: ast.FunctionDef) -> bool:
+            match node.decorator_list:
+                case []:
+                    return decorator is None
+                case [ast.Name(id=name)]:
+                    return name == decorator
+                case [ast.Attribute(value=ast.Name(id=owner), attr=member)]:
+                    return f"{owner}.{member}" == decorator
+                case _:
+                    return False
+
         return tuple(
             node
             for node in nodes
             if isinstance(node, ast.FunctionDef)
             and node.name == components[-1]
-            and node.lineno == function.__code__.co_firstlineno
-            and not node.decorator_list
+            and (node.decorator_list[0] if node.decorator_list else node).lineno
+            == function.__code__.co_firstlineno
+            and decorated(node)
         )
 
     @staticmethod
@@ -1984,6 +2514,18 @@ class FlextInfraWorkspaceGeneratedFunction:
                     match definitions:
                         case [
                             ast.ClassDef(
+                                decorator_list=[], bases=[], keywords=[], body=[ast.Pass()]
+                            )
+                        ]:
+                            if (
+                                type(owner) is type
+                                and type(sentinel) is owner
+                                and vars(type)["__bases__"].__get__(owner, type(owner))
+                                == (object,)
+                            ):
+                                return sentinel
+                        case [
+                            ast.ClassDef(
                                 decorator_list=[],
                                 bases=[],
                                 keywords=[],
@@ -2014,7 +2556,10 @@ class FlextInfraWorkspaceGeneratedFunction:
                                 and int.__index__(sentinel) == 0
                             ):
                                 return sentinel
-        msg = "closed compiler default has no literal or native sentinel witness"
+        msg = (
+            "closed compiler default has no literal or native sentinel witness: "
+            f"{ast.unparse(node)[:160]}; source={self._witness.source}"
+        )
         raise ValueError(msg)
 
     @staticmethod
