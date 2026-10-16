@@ -922,8 +922,9 @@ class FlextInfraWorkspaceGeneratedFunction:
             case ast.Constant(value=None) if action is None:
                 return
             case ast.Name(id=name) if namespace.get(name) is action:
+                # The selected action emits through the authenticated
+                # _FuncBuilder (_sdk_class); the SDK has no separate hash helper.
                 self._function(action)
-                self._function(namespace.get("_hash_fn"))
             case _:
                 msg = "native dataclass selected hash action is interposed"
                 raise ValueError(msg)
