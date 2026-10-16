@@ -72,9 +72,9 @@ class TestsFlextInfraUtilityFacadeProjection:
             "assert Receiver.read() == 'facade'\n"
             "rendered = tm.not_none(u.Infra.render_utility_facade(package))\n"
             "tm.ok(u.Cli.atomic_write_text_file(facade, rendered))\n"
-            "assert u.Infra.render_utility_facade(package) == rendered\n"
             "service = test_u.Tests.create_lazy_init_service(root)\n"
             "tm.ok(test_u.Tests.materialize_lazy_init(service))\n"
+            "assert u.Infra.render_utility_facade(package) == rendered\n"
             "initializer = package / '__init__.py'\n"
             "published = tm.ok(u.Cli.atomic_read_binary_file_state(\n"
             "    initializer, required=True))\n"
@@ -224,8 +224,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             self._write(path, source)
         rendered = tm.not_none(u.Infra.render_utility_facade(package))
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -602,8 +602,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         rendered = u.Infra.render_utility_facade(package)
         assert rendered is not None
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -652,8 +652,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         rendered = u.Infra.render_utility_facade(package)
         assert rendered is not None
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -738,8 +738,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             self._write(path, source)
         rendered = tm.not_none(u.Infra.render_utility_facade(package))
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -1004,12 +1004,12 @@ class TestsFlextInfraUtilityFacadeProjection:
         assert rendered is not None
         tm.that(facade.read_text(), eq=original)
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         tm.ok(
             u.Tests.materialize_lazy_init(
                 u.Tests.create_lazy_init_service(package.parent.parent),
             ),
         )
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -1126,8 +1126,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         rendered = tm.not_none(u.Infra.render_utility_facade(package))
         tm.that(facade.read_text(), eq=source)
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -1291,9 +1291,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             facade,
             expected_stdout="child",
         )
+        repeated = u.Infra.render_utility_facade(package, family="c")
         tm.that(
-            u.Infra.render_utility_facade(package, family="c"),
+            repeated,
             eq=rendered,
+            msg=f"Initial projection: {rendered!r}\nRepeated projection: {repeated!r}",
         )
 
     @pytest.mark.parametrize("generated", [True, False])
@@ -1730,8 +1732,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         rendered = u.Infra.render_utility_facade(package)
         assert rendered is not None
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -1780,8 +1782,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         rendered = u.Infra.render_utility_facade(package)
         assert rendered is not None
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
         output = tm.ok(
             u.Cli.run_raw(
                 (

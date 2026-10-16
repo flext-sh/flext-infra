@@ -921,6 +921,10 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.NativeImportReference]
+        if imported.modules != request.modules:
+            return result_type.fail(
+                "native observation differs from its requested producer selections"
+            )
         private = imported.__pydantic_private__
         if type(imported) is not m.Infra.NativeImportObservation or (
             private is None
@@ -962,12 +966,46 @@ class FlextInfraCodegenPreconditions:
             The exact reference with its Pydantic-owned private birth storage.
 
         """
-        return r[m.Infra.NativeImportReference].ok(
-            m.Infra.NativeImportReference(
-                **reference.model_dump(),
-                source_authority=authority,
-            ),
+        admitted = m.Infra.NativeImportReference(
+            **reference.model_dump(),
+            source_authority=authority,
         )
+        private = admitted.__pydantic_private__
+        if private is None:
+            return r[m.Infra.NativeImportReference].fail(
+                "native admission has no Pydantic private storage"
+            )
+        private["_native_birth"] = (
+            id(admitted),
+            u.Cli.sha256_bytes(admitted.model_dump_json().encode(c.DEFAULT_ENCODING)),
+        )
+        return r[m.Infra.NativeImportReference].ok(admitted)
+
+    @staticmethod
+    def reference_birth_current(
+        reference: m.Infra.NativeImportReference,
+    ) -> p.Result[bool]:
+        """Require the exact live reference emitted by complete native admission.
+
+        Returns:
+            Its original live identity and payload, never reconstructed authority.
+
+        """
+        private = reference.__pydantic_private__
+        if type(reference) is not m.Infra.NativeImportReference or (
+            private is None
+            or private.get("_native_birth")
+            != (
+                id(reference),
+                u.Cli.sha256_bytes(
+                    reference.model_dump_json().encode(c.DEFAULT_ENCODING)
+                ),
+            )
+        ):
+            return r[bool].fail(
+                "native reference lacks its original admission identity and payload"
+            )
+        return r[bool].ok(value=True)
 
     @classmethod
     def reference_current(
@@ -976,13 +1014,14 @@ class FlextInfraCodegenPreconditions:
     ) -> p.Result[bool]:
         """Re-prove a native reference's admission by value.
 
-        A reference is a value: it stays admitted on every path (live,
-        journaled, recovered) while its sealed authority still names this
-        capturing runtime, compiler optimization and module election. Its
-        pinned input bytes are not re-read here: a transaction legitimately
-        publishes its own producer inputs (a self-hosted pyproject or lazy
-        init), so input currency belongs to ``authority_current``, which
-        authenticates those effects against the journal's recorded outputs.
+        Historical and reconstructed evidence stays admitted while its sealed
+        authority still names this capturing runtime, compiler optimization
+        and module election; only ``reference_birth_current`` grants a live
+        operation's capability. Pinned input bytes are not re-read here: a
+        transaction legitimately publishes its own producer inputs (a
+        self-hosted pyproject or lazy init), so physical currency belongs to
+        ``authority_current``, which authenticates those effects against the
+        journal's recorded outputs.
 
         Returns:
             Success only while the reference's runtime and election hold.
@@ -1342,6 +1381,9 @@ class FlextInfraCodegenPreconditions:
         """
         if not producer.inputs or producer.generator_reference is None:
             return r[bool].fail("producer context lacks authenticated source closure")
+        birth = cls.reference_birth_current(producer.generator_reference)
+        if birth.failure:
+            return birth
         states = cls.unique_states(producer.inputs)
         if states.failure:
             return r[bool].from_failure(states)
@@ -1849,9 +1891,33 @@ class FlextInfraCodegenPreconditions:
         result_type = r[tuple[m.Cli.AtomicFileState, ...]]
         by_path: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         for file_state in states:
-            if by_path.setdefault(file_state.path, file_state) != file_state:
+            previous = by_path.setdefault(file_state.path, file_state)
+            if previous != file_state:
+                first_hash = (
+                    u.Cli.sha256_bytes(previous.content)
+                    if previous.content is not None
+                    else None
+                )
+                observed_hash = (
+                    u.Cli.sha256_bytes(file_state.content)
+                    if file_state.content is not None
+                    else None
+                )
+                details = (
+                    f" first={previous.model_dump_json(exclude={'content'})}"
+                    f" observed={file_state.model_dump_json(exclude={'content'})}"
+                    f" first_sha256={first_hash}"
+                    f" observed_sha256={observed_hash}"
+                )
+                if previous.model_dump() == file_state.model_dump():
+                    details += (
+                        f" first_type={type(previous).__module__}."
+                        f"{type(previous).__qualname__}"
+                        f" observed_type={type(file_state).__module__}."
+                        f"{type(file_state).__qualname__}"
+                    )
                 return result_type.fail(
-                    f"planner observed two states for {file_state.path}"
+                    f"planner observed two states for {file_state.path};{details}"
                 )
         return result_type.ok(tuple(by_path.values()))
 

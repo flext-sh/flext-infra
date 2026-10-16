@@ -230,7 +230,7 @@ class TestsFlextInfraDepsGate:
         tm.that(u.Cli.process_succeeded(scan.native.outcome), eq=True)
         tm.that(scan.report.root, eq=())
         tm.that(
-            tuple(source.root.path for source in scan.sources),
+            tuple(source.root.path for source in scan.source),
             eq=(root / c.Infra.DEFAULT_SRC_DIR,),
         )
         tm.that(scan.report_sha256, eq=u.Cli.sha256_bytes(before))
@@ -295,7 +295,7 @@ class TestsFlextInfraDepsGate:
         ).unwrap()
 
         tm.that(
-            tuple(source.root.path for source in scan.sources),
+            tuple(source.root.path for source in scan.source),
             eq=tuple(root / item for item in roots),
         )
         # Each root holds exactly one module; the unshipped sibling is not one.

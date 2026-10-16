@@ -19,7 +19,6 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
-from flext_infra.validate import FlextInfraValidateFreshImport
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -30,33 +29,19 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         self,
         receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[bool]:
-        """Continue the original producer through its authenticated live effects.
+        """Continue planning through the invocation's authenticated live effects.
 
         Returns:
-            Whether the original producer and its actual outputs remain current.
+            Whether the actual publication inputs and outputs remain current.
 
         """
-        if self.producer is None or not receipts:
+        if not receipts:
             return r[bool].fail(
-                "producer continuation requires its captured publication receipts",
+                "generation continuation requires its publication receipts",
             )
-        if any(
-            receipt.generator_reference is not self.producer.generator_reference
-            for receipt in receipts
-        ):
-            return r[bool].fail(
-                "publication receipt belongs to a different captured producer",
-            )
-        outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
+        return FlextInfraMiseArtifactsVerification.publication_outputs_current(
             receipts,
-            reference=self.producer.generator_reference,
-        )
-        if outputs.failure:
-            return r[bool].from_failure(outputs)
-        return FlextInfraCodegenPreconditions.producer_current(
-            self.producer,
-            outputs=outputs.value,
-        )
+        ).map(lambda _: True)
 
     def plan(
         self,
@@ -68,34 +53,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[m.Infra.CodegenPlan]``.
 
         """
-        producer = self._required_producer()
-        if producer.failure:
-            return r[m.Infra.CodegenPlan].from_failure(producer)
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenPlan].from_failure(inputs)
         return self.plan_repositories(request, inputs.value)
-
-    def _required_producer(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Return the current captured producer, capturing one when absent.
-
-        Returns:
-            The current captured producer, or the first capture or currency
-            failure.
-
-        """
-        if self.producer is None:
-            captured = FlextInfraValidateFreshImport.capture_producer(
-                self.repository_root,
-                entrypoint=self.plan,
-            )
-            if captured.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
-            self.producer = captured.value
-        verified = FlextInfraCodegenPreconditions.producer_current(self.producer)
-        if verified.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(verified)
-        return r[m.Infra.CodegenPhaseAnalysis].ok(self.producer)
 
     def _plan_single_surface(
         self,

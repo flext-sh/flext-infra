@@ -13,7 +13,6 @@ from flext_cli import m as cli_m
 from flext_core import m
 
 from flext_infra import t
-from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
 from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
 from flext_infra._models.base import FlextInfraModelsBase
 
@@ -165,10 +164,6 @@ class FlextInfraModelsDocsGeneration:
     class DocsGenerationBundle(FlextInfraModelsBase.FrozenArbitrary):
         """Single render and source snapshot consumed through publication."""
 
-        producer: Annotated[
-            FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis,
-            m.Field(description="Authenticated producer captured before this render"),
-        ]
         scopes: Annotated[
             t.VariadicTuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts],
             m.Field(min_length=1, description="Ordered selected scope inventories"),

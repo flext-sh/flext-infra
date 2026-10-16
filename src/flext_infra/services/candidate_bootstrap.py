@@ -22,12 +22,10 @@ class FlextInfraCandidateBootstrapService:
         self,
         planner: p.Infra.CandidateBootstrapPlanner,
         transaction: p.Infra.CandidateBootstrapTransaction,
-        producer: m.Infra.CodegenPhaseAnalysis,
     ) -> None:
         """Wire the declared-target planner to its atomic publisher."""
         self._planner = planner
         self._transaction = transaction
-        self._producer = producer
 
     def execute(
         self,
@@ -52,9 +50,6 @@ class FlextInfraCandidateBootstrapService:
             return self._verify(roots.value, targets, declaration_states)
 
         def publish(scope_root: Path) -> p.Result[bool]:
-            producer = FlextInfraCodegenPreconditions.producer_current(self._producer)
-            if producer.failure:
-                return r[bool].from_failure(producer)
             planned = self.plan_candidates(roots.value, targets, declaration_states)
             if planned.failure:
                 return r[bool].from_failure(planned)
@@ -147,12 +142,24 @@ class FlextInfraCandidateBootstrapService:
             planned = self._planned_target(root, target, inputs)
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            files.extend(planned.value)
+            for file in planned.value:
+                sources = FlextInfraCodegenPreconditions.unique_states((
+                    *declaration_states,
+                    *file.source_states,
+                ))
+                if sources.failure:
+                    return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
+                files.append(file.model_copy(update={"source_states": sources.value}))
+        sources = FlextInfraCodegenPreconditions.unique_states(
+            tuple(source for file in files for source in file.source_states),
+        )
+        if sources.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
                 files=tuple(files),
-                inputs=tuple(inputs.values()),
+                inputs=sources.value,
             ),
         )
 
@@ -296,8 +303,8 @@ class FlextInfraCandidateBootstrapService:
                 f"candidate bootstrap destination is outside its surface: {file.path}"
             )
         for state in file.source_states:
-            previous = inputs.get(state.path)
-            if previous is not None and previous != state:
+            previous = inputs.setdefault(state.path, state)
+            if previous != state:
                 return f"candidate bootstrap observed two states for {state.path}"
         return None
 
@@ -320,12 +327,6 @@ class FlextInfraCandidateBootstrapService:
         )
         if outputs.failure:
             return r[bool].from_failure(outputs)
-        producer = FlextInfraCodegenPreconditions.producer_current(
-            self._producer,
-            outputs=outputs.value,
-        )
-        if producer.failure:
-            return r[bool].from_failure(producer)
         declarations = self._verified_declarations(declaration_states, receipts)
         if declarations.failure:
             return r[bool].from_failure(declarations)

@@ -27,7 +27,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenPipeline,
     FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsFiles,
 )
 from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
@@ -40,16 +39,12 @@ from flext_infra.codemod import (
     FlextInfraNamespaceRelocationPhase,
 )
 from flext_infra.services import FlextInfraCandidateBootstrapService
-from flext_infra.validate import (
-    FlextInfraNamespaceValidator,
-    FlextInfraValidateFreshImport,
-)
+from flext_infra.validate import FlextInfraNamespaceValidator
 from flext_infra.workspace import (
     FlextInfraRopeWorkspace,
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentMixin,
 )
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -79,47 +74,30 @@ class FlextInfra(
             The resulting ``p.Result[bool]``.
 
         """
-        with FlextInfraWorkspaceNativeReference.compilation_scope():
-            identity = u.Infra.exact_worktree_root(
-                request.repository_root.expanduser().absolute(),
-            )
-            if identity.failure:
-                return r[bool].from_failure(identity)
-            source_root = identity.value.repo_root
-            inputs = u.Infra.load_codegen_inputs(source_root)
-            if inputs.failure:
-                return r[bool].from_failure(inputs)
-            workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-                source_root,
-                inputs=inputs.value,
-            )
-            if workspace.failure:
-                return r[bool].from_failure(workspace)
-            planner = FlextInfraCodegenConform(
+        identity = u.Infra.exact_worktree_root(
+            request.repository_root.expanduser().absolute(),
+        )
+        if identity.failure:
+            return r[bool].from_failure(identity)
+        source_root = identity.value.repo_root
+        inputs = u.Infra.load_codegen_inputs(source_root)
+        if inputs.failure:
+            return r[bool].from_failure(inputs)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            source_root,
+            inputs=inputs.value,
+        )
+        if workspace.failure:
+            return r[bool].from_failure(workspace)
+        return FlextInfraCandidateBootstrapService(
+            planner=FlextInfraCodegenConform(
                 repository_root=source_root,
                 ports=None,
-            )
-            producer = FlextInfraValidateFreshImport.capture_producer(
-                source_root,
-                entrypoint=planner.plan_repositories,
-                collaborators=(
-                    FlextInfraCandidateBootstrapService.plan_candidates,
-                    FlextInfraCandidateBootstrapService,
-                    FlextInfraMiseArtifactsFiles.write_publication,
-                ),
-            )
-            if producer.failure:
-                return r[bool].from_failure(producer)
-            planner.producer = producer.value
-            return FlextInfraCandidateBootstrapService(
-                # Planning and publication share the invocation's compilation facts.
-                planner=planner,
-                producer=producer.value,
-                transaction=FlextInfraCodegenTransaction(
-                    FlextInfraCodegenMiseArtifacts(repository_root=source_root),
-                    producer=producer.value,
-                ),
-            ).execute(source_root, workspace.value, request, inputs.value.sources)
+            ),
+            transaction=FlextInfraCodegenTransaction(
+                FlextInfraCodegenMiseArtifacts(repository_root=source_root),
+            ),
+        ).execute(source_root, workspace.value, request, inputs.value.sources)
 
     @override
     def rope_workspace(

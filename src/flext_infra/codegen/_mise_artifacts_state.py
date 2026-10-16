@@ -816,10 +816,74 @@ class FlextInfraMiseArtifactsState:
         )
 
     @classmethod
+    def reconcile_pending_directories(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[bool]:
+        """Remove only current empty inputs of interrupted temporary intentions.
+
+        Original creation receipts and manifests remain unchanged. Every root
+        passes its original proof before any captured empty input is removed.
+
+        Returns:
+            The original manifests' currency after guarded empty-only cleanup.
+
+        """
+        inputs: list[m.Cli.AtomicDirectoryState] = []
+        for intent in journal.directories:
+            if intent.disposition != "temporary" or intent.created is not None:
+                continue
+            captured = cls._pending_directory_input(layout, journal, intent)
+            if captured.failure:
+                return r[bool].from_failure(captured)
+            if captured.value.exists:
+                inputs.append(captured.value)
+        if not inputs:
+            return cls.validate_transaction_roots(layout, journal)
+        proven = cls.validate_transaction_roots(
+            layout, journal, reconciliation_inputs=tuple(inputs)
+        )
+        if proven.failure:
+            return proven
+        for current in inputs:
+            removed = u.Cli.atomic_delete_empty_directory_guarded(current)
+            if removed.failure:
+                return removed
+        return cls.validate_transaction_roots(layout, journal)
+
+    @staticmethod
+    def _pending_directory_input(
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        intent: m.Infra.CodegenJournalDirectory,
+    ) -> p.Result[m.Cli.AtomicDirectoryState]:
+        """Capture one empty reconciliation input under its original parent proof.
+
+        Returns:
+            Current input identity, absence, or the first refusal.
+
+        """
+        target = files.resolve_transaction(
+            layout, intent.path, purpose="pending temporary directory"
+        ).unwrap()
+        captured = u.Cli.atomic_read_empty_directory_state(target, required=False)
+        if captured.failure:
+            return captured
+        current = captured.value
+        if not current.exists:
+            return captured
+        return manifest.reconciliation_input_current(
+            layout, journal, intent, current
+        ).map(lambda _: current)
+
+    @classmethod
     def validate_transaction_roots(
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
+        *,
+        reconciliation_inputs: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
     ) -> p.Result[bool]:
         """Authenticate the sole journal-derived staging root in every project.
 
@@ -842,6 +906,7 @@ class FlextInfraMiseArtifactsState:
                 layout,
                 journal,
                 project,
+                reconciliation_inputs=reconciliation_inputs,
             )
             if authenticated.failure:
                 return authenticated
@@ -857,6 +922,8 @@ class FlextInfraMiseArtifactsState:
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         project: (m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant),
+        *,
+        reconciliation_inputs: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
     ) -> p.Result[bool]:
         """Authenticate one project's staging root against its journal receipt.
 
@@ -884,10 +951,31 @@ class FlextInfraMiseArtifactsState:
             or recorded.created is None
             or (recorded.created.device, recorded.created.inode) != transaction.value
         ):
-            return r[bool].fail(
-                (f"Mise transaction root identity is not journaled: {relative.value}"),
+            reason = (
+                "missing entry"
+                if recorded is None
+                else "created absent"
+                if recorded.created is None
+                else "identity mismatch"
             )
-        return cls._validated_root_evidence(layout, journal, transaction_root, recorded)
+            expected = (
+                (recorded.created.device, recorded.created.inode)
+                if recorded is not None and recorded.created is not None
+                else None
+            )
+            return r[bool].fail(
+                f"Mise transaction root identity is not journaled: {relative.value}; "
+                f"journal_path={layout.journal_path}; reason={reason}; "
+                f"expected_device_inode={expected}; "
+                f"observed_device_inode={transaction.value}",
+            )
+        return cls._validated_root_evidence(
+            layout,
+            journal,
+            transaction_root,
+            recorded,
+            reconciliation_inputs=reconciliation_inputs,
+        )
 
     @classmethod
     def _validated_root_evidence(
@@ -896,6 +984,8 @@ class FlextInfraMiseArtifactsState:
         journal: m.Infra.CodegenTransactionJournal,
         transaction_root: Path,
         recorded: m.Infra.CodegenJournalDirectory,
+        *,
+        reconciliation_inputs: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
     ) -> p.Result[bool]:
         """Prove an unmanifested root is intact or authorize its manifest.
 
@@ -904,7 +994,12 @@ class FlextInfraMiseArtifactsState:
 
         """
         if recorded.manifest is not None:
-            authorized = manifest.authorized_cleanup_manifest(layout, journal, recorded)
+            authorized = manifest.authorized_cleanup_manifest(
+                layout,
+                journal,
+                recorded,
+                reconciliation_inputs=reconciliation_inputs,
+            )
             if authorized.failure:
                 return r[bool].from_failure(authorized)
             return r[bool].ok(value=True)

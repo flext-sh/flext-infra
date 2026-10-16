@@ -418,11 +418,11 @@ class FlextInfraMisePublication:
         ordered = tuple(
             sorted(publications, key=lambda item: item.index_before is not None)
         )
-        authority = FlextInfraMisePublication._generator_authority(
-            ordered, journal, prior_publications
+        prior = FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            prior_publications,
         )
-        if authority.failure:
-            return result_type.from_failure(authority)
+        if prior.failure:
+            return result_type.from_failure(prior)
         for index, publication in enumerate(ordered, start=1):
             u.Cli.emit_raw(
                 f"  publish [{index}/{len(publications)}] {publication.before.path}\n"
@@ -689,42 +689,6 @@ class FlextInfraMisePublication:
         if destinations.failure:
             return r[bool].from_failure(destinations)
         return r[bool].ok(value=True)
-
-    @staticmethod
-    def _generator_authority(
-        ordered: t.VariadicTuple[m.Infra.CodegenStagedFile],
-        journal: m.Infra.CodegenTransactionJournal | None,
-        prior_publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[bool]:
-        """Authenticate the executor epoch when publication consumes staged candidates.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if journal is None:
-            return r[bool].ok(value=True)
-        prior = FlextInfraMiseArtifactsVerification.publication_outputs_current(
-            prior_publications, reference=journal.generator_reference
-        )
-        if prior.failure:
-            return r[bool].from_failure(prior)
-        authority = {item.path: item for item in (*prior.value, *journal.outputs)}
-        for staged in ordered:
-            if staged.replacement is None:
-                continue
-            encoded = FlextInfraMiseArtifactsJournal.source_record(
-                "staging", staged.replacement
-            )
-            if encoded.failure:
-                return r[bool].from_failure(encoded)
-            authority[encoded.value.path] = encoded.value
-        return FlextInfraCodegenPreconditions.producer_trees_current(
-            journal.generator_trees,
-            tuple(authority.values()),
-            modules=journal.generator_modules,
-            reference=journal.generator_reference,
-        )
 
     @staticmethod
     def _publication_receipt(

@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 class FlextInfraConstantsWorkspace:
     """Workspace infrastructure constants."""
 
+    WORKSPACE_MANIFEST_VERSION: ClassVar[int] = 3
+
     # CPython Include/object.h: Py_TPFLAGS_IMMUTABLETYPE.
     CPYTHON_IMMUTABLE_TYPE_FLAG: ClassVar[int] = 1 << 8
 

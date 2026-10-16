@@ -327,6 +327,7 @@ class FlextInfraModelsWorkspace:
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority pinned by the capture call",
         )
+        _native_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
 
     class NativeImportRequest(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Loaded producer identities and pinned inputs for source authentication."""

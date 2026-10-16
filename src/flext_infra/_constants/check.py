@@ -20,6 +20,96 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Check infrastructure constants."""
 
+    AST_GREP_DOCS_URL: ClassVar[str] = "https://ast-grep.github.io/"
+    LINT: ClassVar[str] = "lint"
+    FORMAT: ClassVar[str] = "format"
+    MARKDOWN: ClassVar[str] = "markdown"
+    MARKDOWN_FORMAT: ClassVar[str] = "markdown-format"
+    MARKDOWN_CODE: ClassVar[str] = "markdown-code"
+    SMELLS: ClassVar[str] = "smells"
+    RUNTIME_CENSUS: ClassVar[str] = "runtime-census"
+    FRESH_IMPORT: ClassVar[str] = "fresh-import"
+    CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
+    DEPS: ClassVar[str] = "deps"
+
+    GATE_TOOLS_BY_KIND: ClassVar[
+        t.MappingKV[
+            FlextInfraConfigVocabulary.GateKind,
+            t.MappingKV[str, t.StrPair],
+        ]
+    ] = MappingProxyType({
+        FlextInfraConfigVocabulary.GateKind.EXTERNAL: MappingProxyType({
+            "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
+            "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
+            "security": ("Bandit", "https://bandit.readthedocs.io/"),
+            "markdown": ("rumdl", "https://rumdl.dev/"),
+            "markdown-format": ("rumdl", "https://rumdl.dev/"),
+            "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/"),
+            "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
+        }),
+        FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER: MappingProxyType({
+            "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),
+            "mypy": ("Mypy", "https://mypy.readthedocs.io/"),
+            "pyright": ("Pyright", "https://github.com/microsoft/pyright"),
+        }),
+        FlextInfraConfigVocabulary.GateKind.INFRA: MappingProxyType({
+            CONFLICT_MARKERS: (
+                "Git Conflict Markers",
+                "internal://flext-infra/conflict-markers",
+            ),
+            "loc-cap": ("scc", "https://github.com/boyter/scc"),
+            "runtime-census": (
+                "Flext Runtime Enforcement Census",
+                "internal://flext-infra/runtime-census",
+            ),
+            FRESH_IMPORT: (
+                "Flext Fresh-Process Import Gate",
+                "internal://flext-infra/fresh-import",
+            ),
+            DEPS: (
+                "Flext Dependency Declaration Gate",
+                "internal://flext-infra/deps",
+            ),
+            "index-declarations": (
+                "Flext Index Declarations Gate",
+                "internal://flext-infra/index-declarations",
+            ),
+            SMELLS: ("Flext Code Smell Detector", "internal://flext-infra/smells"),
+            "codemod": ("ast-grep", AST_GREP_DOCS_URL),
+            "layout": (
+                "Flext Project Layout Gate",
+                "internal://flext-infra/layout",
+            ),
+            "direnv": (
+                "Flext Direnv Environment Contract Gate",
+                "internal://flext-infra/direnv",
+            ),
+        }),
+    })
+    """Sole gate registry; each gate is declared once under its catalog owner."""
+    GATE_KINDS: ClassVar[t.MappingKV[str, FlextInfraConfigVocabulary.GateKind]] = (
+        MappingProxyType({
+            gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
+        })
+    )
+    TYPE_CHECKER_GATES: ClassVar[frozenset[str]] = frozenset(
+        GATE_TOOLS_BY_KIND[FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER],
+    )
+    SARIF_TOOL_INFO: ClassVar[t.MappingKV[str, t.StrPair]] = MappingProxyType({
+        gate: tool
+        for tools in GATE_TOOLS_BY_KIND.values()
+        for gate, tool in tools.items()
+    })
+    ALLOWED_GATES: ClassVar[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
+    CANONICAL_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(SARIF_TOOL_INFO)
+    CANONICAL_FIXABLE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = (
+        "lint",
+        "markdown",
+        "markdown-code",
+        "deps",
+    )
+    """Independent repair policy; formatting remains owned by Make fmt."""
+
     CHECK_FAIL_FAST_DEFAULT: ClassVar[bool] = False
     """Run every independent quality gate unless fail-fast is requested."""
     SERVICE_FAIL_FAST: ClassVar[bool] = True

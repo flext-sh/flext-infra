@@ -22,7 +22,6 @@ from flext_infra.codegen._codegen_transaction_phases import (
     FlextInfraCodegenTransactionPhases,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.validate import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -45,31 +44,11 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         Args:
             owner: The configured Mise artifact owner of the transaction.
             participant_policy: The declared participant authorization policy.
-            producer: The bound producer analysis, or ``None`` to self-serve
-                the pre-planning producer authority.
+            producer: An explicitly supplied validation analysis, when needed.
             source_authority: The cold source authority, when publishing.
             prior_publications: Actual completed receipts preceding this participant.
 
-        Raises:
-            RuntimeError: When the self-served producer authority capture
-                fails.
-
         """
-        if producer is None and source_authority is None:
-            # Self-serve the pre-planning producer authority: every transaction
-            # publication journals the generator's own source states, and the
-            # recovery guard rejects authority-less journals.
-            captured = FlextInfraValidateFreshImport.capture_producer(
-                owner.repository_root,
-                entrypoint=type(self).__init__,
-            )
-            if captured.failure:
-                raise RuntimeError(
-                    "transaction producer authority capture failed: "
-                    + str(captured.error)
-                    + f"; details={captured.error_data}"
-                )
-            producer = captured.value
         super().__init__(
             owner,
             participant_policy=participant_policy,
@@ -128,7 +107,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
                 inputs=sources.value,
                 files=file_plans,
             ),
-            producer=self._producer.value,
+            producer=self._producer,
         )
         if destinations.failure:
             return result_type.from_failure(destinations)
@@ -165,10 +144,6 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             plans differ from the complete file plan.
 
         """
-        if self._producer.failure:
-            return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
-                self._producer
-            )
         by_path = {item.path: item for item in file_plans}
         if any(by_path.get(item.path) != item for item in config_plans):
             return r[t.VariadicTuple[m.Cli.AtomicFileState]].fail(
@@ -300,7 +275,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
             transaction_id=transaction_id,
             sources=all_sources,
             directories=transaction_directories,
-            producer=self._producer.value,
+            producer=self._producer,
         )
         if staging_journal.failure:
             return result_type.from_failure(staging_journal)

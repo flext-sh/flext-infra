@@ -1291,8 +1291,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
 
         """
-        if self._producer.failure:
-            return r[t.VariadicTuple[Path]].from_failure(self._producer)
         try:
             evidence = self.record_publication(session)
             if evidence.failure:
