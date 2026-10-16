@@ -25,8 +25,8 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
 
+    @staticmethod
     def continue_after_publication(
-        self,
         receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[bool]:
         """Continue planning through the invocation's authenticated live effects.

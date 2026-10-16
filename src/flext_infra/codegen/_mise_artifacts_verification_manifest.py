@@ -223,20 +223,22 @@ class FlextInfraMiseArtifactsVerificationManifest:
             return result_type.fail(
                 f"temporary tree contains an unregistered alias: {directory.path}",
             )
-        comparison = cls._reconciliation_comparison(
-            layout, journal, directory, observed.value, reconciliation_inputs
+        authorized = directory.manifest
+        return (
+            cls
+            ._reconciliation_comparison(
+                layout, journal, directory, observed.value, reconciliation_inputs
+            )
+            .flat_map(
+                lambda compared: cls._validate_manifest_transition(
+                    layout,
+                    journal,
+                    authorized,
+                    compared,
+                ),
+            )
+            .map(lambda _: observed.value)
         )
-        if comparison.failure:
-            return result_type.from_failure(comparison)
-        transition = cls._validate_manifest_transition(
-            layout,
-            journal,
-            directory.manifest,
-            comparison.value,
-        )
-        if transition.failure:
-            return result_type.from_failure(transition)
-        return result_type.ok(observed.value)
 
     @classmethod
     def _reconciliation_comparison(

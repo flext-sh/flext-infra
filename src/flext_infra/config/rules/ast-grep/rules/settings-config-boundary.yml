@@ -104,13 +104,14 @@ metadata:
     - not: compose-module
 rule:
   any:
-  - kind: import_from_statement
-    has:
-      field: module_name
-      kind: dotted_name
-      pattern: $MODULE
-      not:
-        regex: "\\._[a-z]+\\._base_parts(\\.|$)"
+  - all:
+    - kind: import_from_statement
+    - has:
+        field: module_name
+        kind: dotted_name
+        pattern: $MODULE
+        not:
+          regex: "\\._[a-z]+\\._base_parts(\\.|$)"
   - kind: dotted_name
     pattern: $MODULE
     not:

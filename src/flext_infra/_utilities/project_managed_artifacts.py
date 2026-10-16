@@ -332,6 +332,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     ) -> t.JsonMapping:
         """Merge ordered captured F.yaml bytes and explicitly projected layers.
 
+        Projections replace values within their source layer. Distinct layers
+        use the strict YAML source's recursive mapping and list composition.
+
         Returns:
             The composed document; schema consumers validate their owned section.
 

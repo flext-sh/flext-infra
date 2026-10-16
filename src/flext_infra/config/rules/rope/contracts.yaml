@@ -1,54 +1,8 @@
+# Universal contract rules only. A rule about one repository's own symbols
+# belongs in that repository's overlay at the same relative path
+# (config/rules/rope/contracts.yaml under its root), never here: a packaged
+# rule naming a project identity fails every consumer that cannot import it.
 rules:
-  - id: ldif-helper-internal-oid
-    families: [u]
-    pattern: '${extractor}(${definition})'
-    goal: 'FlextLdifUtilitiesOID.extract_from_definition(${definition}, patterns=(c.Ldif.SCHEMA_OID_LEADING_RE,), empty_error=c.Ldif.SCHEMA_OID_EMPTY_ERROR)'
-    arguments:
-      extractor: name=flext_ldif._utilities._parser_schema_fields.FlextLdifParserSchemaFields.extract_oid
-    imports:
-      FlextLdifUtilitiesOID: from flext_ldif._utilities.oid import FlextLdifUtilitiesOID
-      c: from flext_ldif import c
-    bindings:
-      FlextLdifUtilitiesOID.extract_from_definition: flext_ldif._utilities.oid.FlextLdifUtilitiesOID.extract_from_definition
-  - id: ldif-helper-must-may
-    pattern: '${extractor}(${definition})'
-    goal: 'u.Ldif.extract_objectclass_must_may(${definition}, must_separator=c.Ldif.SCHEMA_MUST_SEPARATOR, may_separator=c.Ldif.SCHEMA_MAY_SEPARATOR)'
-    arguments:
-      extractor: name=flext_ldif.servers.relaxed_schema.FlextLdifServersRelaxedSchema._extract_must_may_from_objectclass
-    imports: {u: 'from flext_ldif import u', c: 'from flext_ldif import c'}
-    bindings:
-      u.Ldif.extract_objectclass_must_may: flext_ldif._utilities.schema_extract.FlextLdifUtilitiesSchemaExtract.extract_objectclass_must_may
-  - id: ldif-helper-oid
-    pattern: '${extractor}(${definition})'
-    goal: 'u.Ldif.extract_from_definition(${definition}, patterns=(c.Ldif.SCHEMA_OID_LEADING_RE,), empty_error=c.Ldif.SCHEMA_OID_EMPTY_ERROR)'
-    arguments:
-      extractor: name=flext_ldif._utilities._parser_schema_fields.FlextLdifParserSchemaFields.extract_oid
-    imports: {u: 'from flext_ldif import u', c: 'from flext_ldif import c'}
-    bindings:
-      u.Ldif.extract_from_definition: flext_ldif._utilities.oid.FlextLdifUtilitiesOID.extract_from_definition
-  - id: ldif-helper-acl
-    pattern: '${splitter}(${line})'
-    goal: 'u.Ldif.split_acl_line(${line})'
-    arguments:
-      splitter: name=flext_ldif.servers.novell.FlextLdifServersNovell.Acl.splitacl_line
-    imports: {u: 'from flext_ldif import u'}
-    bindings:
-      u.Ldif.split_acl_line: flext_ldif._utilities._acl_format.FlextLdifACLFormatting.split_acl_line
-  - id: ldif-helper-relaxed-oid
-    pattern: |
-      oid = ${extractor}(${definition})
-      if not oid:
-          return ${failure}
-    goal: |
-      oid_result = u.Ldif.extract_from_definition(${definition}, patterns=c.Ldif.OID_EXTRACTION_PATTERNS)
-      if oid_result.failure:
-          return ${failure}
-      oid = oid_result.value
-    arguments:
-      extractor: name=flext_ldif.servers.relaxed_schema.FlextLdifServersRelaxedSchema._extract_oid_with_fallback_patterns
-    imports: {u: 'from flext_ldif import u', c: 'from flext_ldif import c'}
-    bindings:
-      u.Ldif.extract_from_definition: flext_ldif._utilities.oid.FlextLdifUtilitiesOID.extract_from_definition
   - id: namespace-final-constant
     phase: constant-consumers
     families: [c]
@@ -93,33 +47,84 @@ rules:
     arguments:
       annotated: name=typing.Annotated
       field: *pydantic_field_bindings
-  - id: pydantic-empty-list-factory
+  # An empty collection factory derives from the field's own contract through
+  # u.empty(TypeForm(...)), so the default's static type and runtime value
+  # both come from the annotation. Annotated metadata stays where it is; only
+  # its first argument, the contract, is evaluated again. ``dict`` is matched
+  # as an unshadowed builtin: inside a model body Rope can resolve the name to
+  # the inherited ``BaseModel.dict`` method.
+  - id: pydantic-annotated-empty-factory
     phase: contract-normalization
-    repeats_annotation: true
+    repeats: contract
     model_bases: [pydantic.BaseModel]
-    pattern: '${name}: ${collection}[${element}] = ${field}(default_factory=${collection})'
-    goal: '${name}: ${collection}[${element}] = ${field}(default_factory=u.empty(TypeForm(${collection}[${element}])))'
+    pattern: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=${collection})'
+    goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(TypeForm(${contract})))'
     arguments:
-      collection: name=__builtin__.list
+      annotated: name=typing.Annotated
+      collection: &empty_collections
+        - name=__builtin__.list
+        - name=__builtin__.set
+        - name=__builtin__.tuple
       field: *pydantic_field_bindings
-    imports:
+    imports: &empty_imports
       u: from flext_core import u
       TypeForm: from typing_extensions import TypeForm
-    bindings:
+    bindings: &empty_bindings
       u.empty: flext_core._models.pydantic.FlextModelsPydantic.empty
       TypeForm: typing_extensions.TypeForm
-  - id: pydantic-empty-dict-factory
+  - id: pydantic-annotated-empty-dict-factory
     phase: contract-normalization
-    repeats_annotation: true
+    repeats: contract
     model_bases: [pydantic.BaseModel]
     unshadowed_builtins: [dict]
-    pattern: '${name}: dict[${parameters}] = ${field}(default_factory=dict)'
-    goal: '${name}: dict[${parameters}] = ${field}(default_factory=u.empty(TypeForm(dict[${parameters}])))'
+    pattern: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=dict)'
+    goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(TypeForm(${contract})))'
+    arguments:
+      annotated: name=typing.Annotated
+      field: *pydantic_field_bindings
+    imports: *empty_imports
+    bindings: *empty_bindings
+  - id: pydantic-empty-factory
+    phase: contract-normalization
+    repeats: contract
+    model_bases: [pydantic.BaseModel]
+    pattern: '${name}: ${contract} = ${field}(default_factory=${collection})'
+    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(TypeForm(${contract})))'
+    arguments:
+      collection: *empty_collections
+      field: *pydantic_field_bindings
+    imports: *empty_imports
+    bindings: *empty_bindings
+  - id: pydantic-empty-dict-factory
+    phase: contract-normalization
+    repeats: contract
+    model_bases: [pydantic.BaseModel]
+    unshadowed_builtins: [dict]
+    pattern: '${name}: ${contract} = ${field}(default_factory=dict)'
+    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(TypeForm(${contract})))'
     arguments:
       field: *pydantic_field_bindings
-    imports:
-      u: from flext_core import u
-      TypeForm: from typing_extensions import TypeForm
-    bindings:
-      u.empty: flext_core._models.pydantic.FlextModelsPydantic.empty
-      TypeForm: typing_extensions.TypeForm
+    imports: *empty_imports
+    bindings: *empty_bindings
+  - id: pydantic-described-empty-factory
+    phase: contract-normalization
+    repeats: contract
+    model_bases: [pydantic.BaseModel]
+    pattern: '${name}: ${contract} = ${field}(default_factory=${collection}, description=${description})'
+    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(TypeForm(${contract})), description=${description})'
+    arguments:
+      collection: *empty_collections
+      field: *pydantic_field_bindings
+    imports: *empty_imports
+    bindings: *empty_bindings
+  - id: pydantic-described-empty-dict-factory
+    phase: contract-normalization
+    repeats: contract
+    model_bases: [pydantic.BaseModel]
+    unshadowed_builtins: [dict]
+    pattern: '${name}: ${contract} = ${field}(default_factory=dict, description=${description})'
+    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(TypeForm(${contract})), description=${description})'
+    arguments:
+      field: *pydantic_field_bindings
+    imports: *empty_imports
+    bindings: *empty_bindings

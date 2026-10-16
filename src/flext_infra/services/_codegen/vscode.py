@@ -21,6 +21,8 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_core import FlextRuntime
+
 from flext_infra import c, config, m, r, t, u
 
 if TYPE_CHECKING:
@@ -298,7 +300,7 @@ class FlextInfraCodegenVscodeMixin:
         if read_result.failure:
             return r[str].from_failure(read_result)
         settings: t.MutableJsonMapping = {
-            key: u.normalize_to_json_value(value)
+            key: FlextRuntime.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
         if spec is None:
@@ -485,7 +487,7 @@ class FlextInfraCodegenVscodeMixin:
         spec = config.Infra.codegen.vscode if spec is None else spec
         additional_changed = False
         for key, value in spec.additional_settings.items():
-            normalized = u.normalize_to_json_value(value)
+            normalized = FlextRuntime.normalize_to_json_value(value)
             if settings.get(key) != normalized:
                 settings[key] = normalized
                 additional_changed = True
@@ -505,7 +507,7 @@ class FlextInfraCodegenVscodeMixin:
         artifacts_changed = False
         for key, canonical_map in artifact_maps.items():
             canonical = {
-                name: u.normalize_to_json_value(value)
+                name: FlextRuntime.normalize_to_json_value(value)
                 for name, value in canonical_map.items()
             }
             if settings.get(key) == canonical:
@@ -575,7 +577,7 @@ class FlextInfraCodegenVscodeMixin:
         """
         changed = False
         for key, value in scalar_settings.items():
-            normalized = u.normalize_to_json_value(value)
+            normalized = FlextRuntime.normalize_to_json_value(value)
             if settings.get(key) == normalized:
                 continue
             settings[key] = normalized
@@ -589,7 +591,7 @@ class FlextInfraCodegenVscodeMixin:
             if entries.failure:
                 return r[bool].from_failure(entries)
             canonical: list[t.JsonValue] = [
-                u.normalize_to_json_value(entry) for entry in entries.value
+                FlextRuntime.normalize_to_json_value(entry) for entry in entries.value
             ]
             if settings.get(key) == canonical:
                 continue
@@ -719,7 +721,7 @@ class FlextInfraCodegenVscodeMixin:
             current = settings.get(key)
             existing: t.MutableJsonMapping = (
                 {
-                    name: u.normalize_to_json_value(value)
+                    name: FlextRuntime.normalize_to_json_value(value)
                     for name, value in current.items()
                 }
                 if isinstance(current, Mapping)
@@ -728,7 +730,7 @@ class FlextInfraCodegenVscodeMixin:
             merged = {
                 **dict(existing),
                 **{
-                    name: u.normalize_to_json_value(value)
+                    name: FlextRuntime.normalize_to_json_value(value)
                     for name, value in canonical_map.items()
                 },
             }
@@ -752,7 +754,7 @@ class FlextInfraCodegenVscodeMixin:
         changed = False
         for key, canonical_map in exact_maps.items():
             exact = {
-                name: u.normalize_to_json_value(value)
+                name: FlextRuntime.normalize_to_json_value(value)
                 for name, value in canonical_map.items()
             }
             if settings.get(key) == exact:

@@ -407,7 +407,7 @@ class FlextInfraMiseArtifactsVerification(
         cls,
         states: t.VariadicTuple[m.Infra.CodegenJournalSource],
     ) -> p.Result[bool]:
-        """Prove each terminal input or output state still matches its live identity.
+        """Prove each terminal output still matches its recorded physical identity.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -674,10 +674,10 @@ class FlextInfraMiseArtifactsVerification(
         frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
         selection: Callable[[Path], bool] | None,
     ) -> p.Result[t.MutableMappingKV[Path, list[m.Infra.CodegenJournalSource]]]:
-        """Prove consumed data snapshots agree with the frontier and each other.
+        """Prove consumed snapshots agree with prior outputs and each other.
 
-        Native producer inputs belong to the original code epoch and are
-        authenticated separately against its physically proven terminal effects.
+        Read-only inputs remain evidence of their completed batch. Only actual
+        output snapshots advance the frontier re-proven by later publications.
 
         Returns:
             The resulting ``p.Result[t.MutableMappingKV[Path,
@@ -710,7 +710,6 @@ class FlextInfraMiseArtifactsVerification(
                 ].fail(
                     f"generation inputs disagree without an owned write: {path}",
                 )
-            frontier[path] = records[0]
         return r[t.MutableMappingKV[Path, list[m.Infra.CodegenJournalSource]]].ok(
             inputs
         )
@@ -734,13 +733,20 @@ class FlextInfraMiseArtifactsVerification(
                     return r[bool].fail(
                         f"generation output has no authenticated preimage: {path}",
                     )
-            elif path in frontier and (
-                frontier[path].model_dump(exclude={"phase", "role"})
-                != output.model_dump(exclude={"phase", "role"})
-            ):
-                return r[bool].fail(
-                    f"generation output changed without an owned write: {path}",
+            else:
+                previous = frontier.get(path)
+                preimages = (
+                    *inputs.get(path, ()),
+                    *((previous,) if previous is not None else ()),
                 )
+                if any(
+                    preimage.model_dump(exclude={"phase", "role"})
+                    != output.model_dump(exclude={"phase", "role"})
+                    for preimage in preimages
+                ):
+                    return r[bool].fail(
+                        f"generation output changed without an owned write: {path}",
+                    )
             frontier[path] = output
         return r[bool].ok(value=True)
 

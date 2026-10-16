@@ -49,9 +49,10 @@ python = "{{ python_version }}"
 "{{ mise_selector }}" = "{{ mise_version }}"
 # Native toolchain (single source: Infra.codegen.toolchain.tools in codegen.yaml).
 {%- macro tool_specifier(entry) -%}
-{%- if entry.form == "table" or entry.http or entry.depends or entry.install_env or entry.postinstall -%}
+{%- if entry.form == "table" or entry.bin or entry.http or entry.depends or entry.install_env or entry.postinstall -%}
 { version = {{ tool_versions[entry.name] | tojson }}
 {%- if entry.version_prefix %}, version_prefix = {{ entry.version_prefix | tojson }}{%- endif -%}
+{%- if entry.bin %}, bin = {{ entry.bin | tojson }}{%- endif -%}
 {%- if entry.http -%}
 {%- for option, value in entry.http.model_dump(exclude_none=true).items() %}, {{ option }} = {{ value | tojson }}{%- endfor -%}
 {%- endif -%}

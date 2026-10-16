@@ -1,7 +1,7 @@
 {# Config and settings expose the same read-only namespace protocol shape. -#}
 {%- macro namespace_protocol(kind) -%}
-{%- set property_line = "        def " ~ ns ~ "(self) -> m." ~ ns ~ "." ~ kind ~ "Root." ~ kind ~ "Namespace:" -%}
-{%- set property_declaration = property_line if property_line | length <= tooling.tools.ruff.line_length else "        def " ~ ns ~ "(\n            self,\n        ) -> m." ~ ns ~ "." ~ kind ~ "Root." ~ kind ~ "Namespace:" -%}
+{%- set property_line = "        def " ~ ns ~ "(self) -> m." ~ ns ~ "." ~ kind ~ "Namespace:" -%}
+{%- set property_declaration = property_line if property_line | length <= tooling.tools.ruff.line_length else "        def " ~ ns ~ "(\n            self,\n        ) -> m." ~ ns ~ "." ~ kind ~ "Namespace:" -%}
 """Structural {{ kind | lower }} declarations for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from {{ package_name }}.models import m
+    from {{ package_name }} import m
 
 
 class {{ class_stem }}Protocols{{ kind }}:
