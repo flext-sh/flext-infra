@@ -430,8 +430,8 @@ class FlextInfraUtilitiesCodegenFacades:
                     body=(
                         node.with_changes(
                             names=names,
-                            lpar=MaybeSentinel.DEFAULT,
-                            rpar=MaybeSentinel.DEFAULT,
+                            lpar=None,
+                            rpar=None,
                         ),
                     ),
                 ),

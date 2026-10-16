@@ -287,10 +287,11 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         u.Tests.provision_checkout(workspace)
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
+            phase = FlextInfraAccessorRenamePhase(
+                source_preview=infra.source_preview(workspace),
+            )
             with pytest.raises(ValueError, match="accessor receiver"):
-                FlextInfraAccessorRenamePhase(
-                    source_preview=infra.source_preview(workspace),
-                ).apply(project, preflight, rope)
+                phase.apply(project, preflight, rope)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
@@ -331,10 +332,11 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             u.Cli.run((sys.executable, "-c", program, str(package.parent))).unwrap()
             with infra.rope_workspace(project) as rope:
                 preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
+                phase = FlextInfraAccessorRenamePhase(
+                    source_preview=infra.source_preview(workspace),
+                )
                 with pytest.raises(ValueError, match="accessor backing field"):
-                    FlextInfraAccessorRenamePhase(
-                        source_preview=infra.source_preview(workspace),
-                    ).apply(project, preflight, rope)
+                    phase.apply(project, preflight, rope)
             tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod

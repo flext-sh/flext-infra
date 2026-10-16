@@ -81,8 +81,6 @@ class FlextInfraImportNormalizationAstMixin:
                 ):
                     if cls._comprehension_owns_node(node, current, parents):
                         return current
-                case _:
-                    pass
             child = current
             current = parents.get(id(current))
         return None
