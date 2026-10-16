@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 import re
 from collections import defaultdict
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable, Iterator, MutableMapping
 from pathlib import Path
 
 import libcst as cst
@@ -28,10 +28,6 @@ from flext_infra._utilities import (
 from flext_infra._utilities.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities.rope_runtime_refactors import (
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesRopeImports:
@@ -45,9 +41,13 @@ class FlextInfraUtilitiesRopeImports:
     ) -> t.VariadicTuple[p.Infra.RopeImportStatement]:
         """Collect imports in every lexical scope through native Rope owners.
 
-        Native token occurrences exclude strings and comments. Native logical
-        regions bound each fragment, and Rope's import tables parse the actual
-        declaration, including inline suites and multiple imports on one line.
+        Rope parses the module once. Every ``import``/``from`` node of that
+        native tree, in any scope, becomes the native statement Rope's own
+        module import table records for a top-level node (``FromImport`` or
+        ``NormalImport`` over 1-based, end-exclusive lines), in source order.
+        Strings and comments are not nodes; ``yield from`` and exception
+        chaining are not import nodes; inline suites and several imports on one
+        line are separate nodes.
 
         Args:
             project: The Rope project instance.
@@ -57,86 +57,50 @@ class FlextInfraUtilitiesRopeImports:
             A tuple of Rope import statements found in the source.
 
         """
-        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-            project,
-            source,
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        tree = runtime.build_string_module(project, source).get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = "Rope string module did not parse to a native module tree"
+            raise TypeError(msg)
+        nodes = sorted(
+            (
+                node
+                for node in cls._statement_nodes(tree.body)
+                if isinstance(node, ast.Import | ast.ImportFrom)
+            ),
+            key=lambda node: (node.lineno, node.col_offset),
         )
-        imports = tuple(
-            occurrence.offset
-            for occurrence in (
-                FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-                    project, "import"
-                ).find_occurrences(pymodule=module)
+        return tuple(
+            runtime.import_statement(
+                runtime.from_import(node.module or "", node.level, names)
+                if isinstance(node, ast.ImportFrom)
+                else runtime.normal_import(names),
+                node.lineno,
+                (node.end_lineno or node.lineno) + 1,
             )
+            for node in nodes
+            for names in (tuple((alias.name, alias.asname) for alias in node.names),)
         )
-        if not imports:
-            return ()
-        froms = tuple(
-            occurrence.offset
-            for occurrence in (
-                FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-                    project, "from"
-                ).find_occurrences(pymodule=module)
-            )
-        )
-        statements: list[p.Infra.RopeImportStatement] = []
-        position = 0
-        from_position = 0
-        preceding: int | None = None
-        for region in FlextInfraUtilitiesRopeStructure.logical_statements(source):
-            while position < len(imports) and imports[position] < region.start_offset:
-                position += 1
-            if position == len(imports):
-                break
-            offset = imports[position]
-            if offset >= region.end_offset:
-                continue
-            start = offset
-            while from_position < len(froms) and froms[from_position] < offset:
-                preceding = froms[from_position]
-                from_position += 1
-            # Only a dotted import module may stand between `from` and
-            # `import`; `yield from` and exception chaining are not imports.
-            if (
-                preceding is not None
-                and preceding >= region.start_offset
-                and cls._from_import_prefix(source, preceding, offset)
-            ):
-                start = preceding
-            fragment = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-                project,
-                source[start : region.end_offset],
-            )
-            table = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
-                project,
-                fragment,
-            )
-            line_offset = module.lines.get_line_number(start) - 1
-            for statement in cls.import_statements(table):
-                # Every table owns its fragment records. Preserve the native
-                # import-info object and project the record's coordinates back
-                # to the complete immutable source before returning it.
-                statement.start_line += line_offset
-                statement.end_line += line_offset
-                statements.append(statement)
-            while position < len(imports) and imports[position] < region.end_offset:
-                position += 1
-        return tuple(statements)
 
-    @staticmethod
-    def _from_import_prefix(source: str, start: int, end: int) -> bool:
-        """Recognize the original dotted prefix between two native tokens.
+    @classmethod
+    def _statement_nodes(
+        cls,
+        nodes: t.SequenceOf[ast.AST],
+    ) -> Iterator[ast.AST]:
+        """Yield every statement of a suite and of its nested suites.
 
-        Returns:
-            Whether the prefix names a relative or absolute import module.
+        An import is a statement, so it only ever appears in a statement suite:
+        a body, an ``else``/``finally`` branch, an exception handler or a
+        ``match`` case. Expression subtrees cannot hold one and are skipped.
+
+        Yields:
+            Each statement-level node, outermost first.
 
         """
-        target = "".join(
-            source[start + len("from") : end].replace("\\\n", "").split(),
-        )
-        return bool(target) and all(
-            not component or component.isidentifier() for component in target.split(".")
-        )
+        for node in nodes:
+            yield node
+            for suite in c.Infra.PYTHON_STATEMENT_SUITE_FIELDS:
+                yield from cls._statement_nodes(getattr(node, suite, ()))
 
     @staticmethod
     def import_statements(

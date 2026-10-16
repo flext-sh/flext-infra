@@ -80,6 +80,15 @@ class FlextInfraConstantsRope:
     ROPE_PYOBJECTS_MODULE: ClassVar[str] = "rope.base.pyobjects"
     "Rope module owning the native semantic object classes."
 
+    PYTHON_STATEMENT_SUITE_FIELDS: ClassVar[t.VariadicTuple[str]] = (
+        "body",
+        "orelse",
+        "finalbody",
+        "handlers",
+        "cases",
+    )
+    "Native AST fields holding nested statement suites (handlers/cases own a body)."
+
     ROPE_IGNORED_RESOURCES: ClassVar[t.VariadicTuple[str]] = (
         ".venv",
         "venv",
