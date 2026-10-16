@@ -5328,8 +5328,13 @@ class FlextInfraWorkspaceNativeReference:
     def _registered_generated_function(
         cls,
         binding: m.Infra.NativeBindingEvidence,
+        executed: m.Infra.NativeCodeEvidence,
     ) -> p.Result[t.Pair[FunctionType, p.AttributeProbe | None]]:
         """Read the actual generated function and its source-owned receiver.
+
+        A slot may hold a physical wrapper (``reprlib.recursive_repr`` around a
+        dataclass ``__repr__``); the receipt names the generated function at its
+        own depth of the raw ``__wrapped__`` chain.
 
         Returns:
             The exact native function/receiver pair or its first registration error.
@@ -5352,17 +5357,27 @@ class FlextInfraWorkspaceNativeReference:
             return result_type.from_failure(registered)
         receiver = registered.value[0] if registered.value else None
         namespace = vars(module) if receiver is None else cls._class_namespace(receiver)
-        value = namespace.get(attribute)
-        if cls._is_function_binding(value):
-            value = value.__func__
-        if type(value) is not FunctionType:
-            kind = type(value)
-            return result_type.fail(
-                "generated receipt has no native function: "
-                f"{binding.supplier}::{receiver_name}.{attribute}; "
-                f"slot_type={vars(type)['__name__'].__get__(kind, type(kind))}"
+        slot = namespace.get(attribute)
+        chain = FlextInfraWorkspaceGeneratedFunction.function_chain(slot)
+        selected = [
+            function
+            for function in chain
+            if (
+                function.__code__.co_filename,
+                function.__code__.co_name,
+                function.__code__.co_firstlineno,
             )
-        return result_type.ok((value, receiver))
+            == (executed.filename, executed.name, executed.firstlineno)
+        ]
+        if len(selected) != 1:
+            kind = type(slot)
+            return result_type.fail(
+                "generated receipt has no unique native function: "
+                f"{binding.supplier}::{receiver_name}.{attribute}; "
+                f"slot_type={vars(type)['__name__'].__get__(kind, type(kind))}; "
+                f"chain={len(chain)}"
+            )
+        return result_type.ok((selected[0], receiver))
 
     @classmethod
     def _generated_binding_current(
@@ -5380,7 +5395,7 @@ class FlextInfraWorkspaceNativeReference:
 
         """
         result_type = r[bool]
-        registered = cls._registered_generated_function(binding)
+        registered = cls._registered_generated_function(binding, executed)
         if registered.failure:
             return result_type.from_failure(registered)
         value, receiver = registered.value

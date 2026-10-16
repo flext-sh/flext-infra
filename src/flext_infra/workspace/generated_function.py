@@ -2292,12 +2292,30 @@ class FlextInfraWorkspaceGeneratedFunction:
         """Invoke the authenticated SDK on closed data and an exact-type receiver.
 
         Returns:
-            Independent native emission and the physical inputs that admitted it.
+            Independent native emission and the physical inputs that admitted it,
+            or a class value that names a builtin type its module rebinds.
 
         Raises:
             TypeError: If the SDK returns a receiver of a foreign native type.
 
         """
+        module = vars(self._module(self._witness.module.get_name()))
+        shadowed = sorted(
+            f"{node.value.id}.{node.attr}"
+            for statement in declaration.body
+            if isinstance(statement, ast.Assign)
+            for node in (statement.value,)
+            if isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id in module
+            and node.value.id in vars(builtins)
+        )
+        if shadowed:
+            # ``__hash__ = object.__hash__`` names a native slot only while the
+            # module leaves the builtin type unbound.
+            return r[m.Infra.NativeGeneratedFunctionProof].fail(
+                f"native dataclass class value names a rebound builtin: {shadowed}"
+            )
         self._dataclass_sdk(factory[0])
         namespace = self._dataclass_inputs(owner, declaration)
         self._dataclass_hash_action(factory[1], namespace)
