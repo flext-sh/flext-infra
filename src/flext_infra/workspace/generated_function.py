@@ -34,26 +34,32 @@ class FlextInfraWorkspaceGeneratedFunction:
     """Interpret a closed compiler's data without invoking its Python callbacks."""
 
     # Process-wide memo of exact physical sources (flext-zd80z).
-    _PARSED: ClassVar[dict[t.Pair[str, str | bytes], ast.Module]] = {}
-    _COMPILED: ClassVar[dict[t.Triple[str, bytes, int], CodeType]] = {}
+    _parsed_sources: ClassVar[
+        t.MutableMappingKV[t.Pair[str, str | bytes], ast.Module]
+    ] = {}
+    _compiled_sources: ClassVar[
+        t.MutableMappingKV[t.Triple[str, bytes, int], CodeType]
+    ] = {}
 
     def __init__(self, witness: m.Infra.NativeSourceWitness) -> None:
         """Keep all observations local to the current immutable source witness."""
         self._witness = witness
-        self._inputs: dict[Path, m.Cli.AtomicFileState] = {
+        self._inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
             witness.source: witness.state,
         }
-        self._trees: dict[Path, ast.Module] = {
+        self._trees: t.MutableMappingKV[Path, ast.Module] = {
             witness.source: self._parsed(
                 str(witness.source), witness.module.source_code
             ),
         }
-        self._codes: dict[Path, p.Infra.NativeCodeIdentity] = {
+        self._codes: t.MutableMappingKV[Path, p.Infra.NativeCodeIdentity] = {
             witness.source: witness.code,
         }
-        self._emitted: dict[int, m.Infra.NativeGeneratedFunctionProof] = {}
+        self._emitted: t.MutableMappingKV[
+            int, m.Infra.NativeGeneratedFunctionProof
+        ] = {}
         self._dictionaries: set[int] = set()
-        self._patterns: dict[int, str] = {}
+        self._patterns: t.MutableMappingKV[int, str] = {}
 
     @classmethod
     def _parsed(cls, filename: str, content: str | bytes) -> ast.Module:
@@ -72,10 +78,10 @@ class FlextInfraWorkspaceGeneratedFunction:
 
         """
         key = (filename, content)
-        tree = cls._PARSED.get(key)
+        tree = cls._parsed_sources.get(key)
         if tree is None:
             tree = ast.parse(content, filename=filename)
-            cls._PARSED[key] = tree
+            cls._parsed_sources[key] = tree
         return tree
 
     @classmethod
@@ -87,12 +93,12 @@ class FlextInfraWorkspaceGeneratedFunction:
 
         """
         key = (filename, content, optimize)
-        code = cls._COMPILED.get(key)
+        code = cls._compiled_sources.get(key)
         if code is None:
             code = builtins.compile(
                 content, filename, "exec", dont_inherit=True, optimize=optimize
             )
-            cls._COMPILED[key] = code
+            cls._compiled_sources[key] = code
         return code
 
     @classmethod

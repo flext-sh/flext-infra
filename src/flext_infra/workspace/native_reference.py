@@ -55,7 +55,7 @@ class FlextInfraWorkspaceNativeReference:
         ContextVar("native_compilation_facts", default=None)
     )
     # Last module-file index and the exact registry state it derives from.
-    _MODULE_FILE_INDEX: ClassVar[
+    _module_file_index: ClassVar[
         t.Pair[
             t.Pair[str, t.VariadicTuple[t.Pair[str, int]]],
             t.MappingKV[str, t.VariadicTuple[str]],
@@ -4014,18 +4014,19 @@ class FlextInfraWorkspaceNativeReference:
             (name, id(module)) for name, module in tuple(sys.modules.items())
         )
         cwd = str(Path.cwd())
-        cached = cls._MODULE_FILE_INDEX
+        cached = cls._module_file_index
         if cached is not None and cached[0] == (cwd, registry):
             return cached[1]
-        index: dict[str, list[str]] = {}
+        index: t.MutableMappingKV[str, t.VariadicTuple[str]] = {}
         for name, module in tuple(sys.modules.items()):
             if name == "__main__" or type(module) is not ModuleType:
                 continue
             declared = cls._module_namespace(module).get("__file__")
-            if type(declared) is str:
-                index.setdefault(str(Path(cwd, declared)), []).append(name)
-        frozen = {key: tuple(names) for key, names in index.items()}
-        cls._MODULE_FILE_INDEX = ((cwd, registry), frozen)
+            if isinstance(declared, str):
+                key = str(Path(cwd, declared))
+                index[key] = (*index.get(key, ()), name)
+        frozen = dict(index)
+        cls._module_file_index = ((cwd, registry), frozen)
         return frozen
 
     @classmethod
