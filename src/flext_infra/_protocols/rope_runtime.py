@@ -512,6 +512,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             project: FlextInfraProtocolsRopeRuntime.RopeProject,
             pattern: str,
             goal: str,
+            *,
             args: t.MappingKV[str, str | tuple[str, t.StrSequence]] | None = None,
             imports: t.StrSequence | None = None,
             wildcards: t.MappingKV[
@@ -521,13 +522,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             ]
             | None = None,
         ) -> None: ...
-
-        def _add_imports(
-            self,
-            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
-            source: str,
-            imports: t.StrSequence,
-        ) -> str: ...
 
         def get_changes(
             self,

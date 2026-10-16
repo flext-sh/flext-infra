@@ -147,9 +147,12 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
     class RuntimeDependencyPlan(m.Value):
         """Calculated target requirements and unchanged diagnostic identities."""
 
-        source: Annotated[
-            m.Cli.AtomicPhysicalTreeManifest,
-            m.Field(description="Exact production tree establishing applicability"),
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            m.Field(
+                min_length=1,
+                description="Exact production trees establishing applicability",
+            ),
         ]
         before: Annotated[
             m.Cli.AtomicFileState,

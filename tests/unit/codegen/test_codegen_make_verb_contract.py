@@ -46,6 +46,7 @@ class TestsFlextInfraCodegenMakeVerbContract:
             ("check", "HELP=1"),
             ("profile-mod", "OPTIONS=Y"),
             ("profile-mod-report", "OPTIONS=Y"),
+            ("project-new", "OPTIONS=Y"),
         ],
     )
     def test_contract_selector_displays_the_verb_without_effects(

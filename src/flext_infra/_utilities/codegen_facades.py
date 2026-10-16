@@ -430,8 +430,8 @@ class FlextInfraUtilitiesCodegenFacades:
                     body=(
                         node.with_changes(
                             names=names,
-                            lpar=MaybeSentinel.DEFAULT,
-                            rpar=MaybeSentinel.DEFAULT,
+                            lpar=None,
+                            rpar=None,
                         ),
                     ),
                 ),
@@ -981,7 +981,6 @@ class FlextInfraUtilitiesCodegenFacades:
             ValueError: If an existing base has no resolved source identity.
 
         """
-        pkg_dir, owners_dir = roots
         facade_path, namespace = facade
         snapshot = FlextInfraUtilitiesRopeRuntime.snapshot_project(
             project,
@@ -1038,8 +1037,8 @@ class FlextInfraUtilitiesCodegenFacades:
                     )
                     raise ValueError(message)
                 path = Path(provider.real_path).resolve()
-                if path.is_relative_to(pkg_dir.resolve()) and not path.is_relative_to(
-                    owners_dir.resolve(),
+                if path.is_relative_to(roots[0].resolve()) and not path.is_relative_to(
+                    roots[1].resolve(),
                 ):
                     retired.add(ast.unparse(base))
             return frozenset(retired)

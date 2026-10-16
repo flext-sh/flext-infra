@@ -23,6 +23,12 @@ class TestsMakeBootstrapPublication:
 
     @staticmethod
     def workspace(tmp_path: Path) -> tuple[Path, tuple[Path, ...]]:
+        """Create real governed members installed in their workspace environment.
+
+        Returns:
+            The workspace root and its attached, installed member paths.
+
+        """
         root = tmp_path / "workspace"
         identity = u.Tests.BeadsIdentity(
             workspace="bootstrap-workspace",

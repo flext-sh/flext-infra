@@ -195,12 +195,11 @@ class FlextInfraCodegenPreconditions:
         observed = cls._observed_source_roots(names, roots, owners)
         if observed.failure:
             return result_type.from_failure(observed)
-        dependencies = cls._runtime_dependency_roots(roots, owners, states)
-        if dependencies.failure:
-            return result_type.from_failure(dependencies)
         trees: t.MutableMappingKV[Path, m.Cli.AtomicPhysicalTreeManifest] = {}
-        captured = cls._captured_authority_states(
-            names, roots, observed.value, trees, states
+        captured = cls._runtime_dependency_roots(roots, owners, states).flat_map(
+            lambda _: cls._captured_authority_states(
+                names, roots, observed.value, trees, states
+            )
         )
         if captured.failure:
             return result_type.from_failure(captured)
@@ -241,52 +240,92 @@ class FlextInfraCodegenPreconditions:
         for namespace, providers in packages.items():
             if not any(canonicalize_name(name) in closure for name in providers):
                 continue
-            selected = cls._elect_namespace(namespace)
+            selected = cls._elect_runtime_namespace(namespace, roots, owners)
             if selected.failure:
                 return r[bool].from_failure(selected)
-            previous = roots.setdefault(namespace, selected.value)
-            if previous != selected.value:
-                return r[bool].fail(f"runtime dependency election changed: {namespace}")
-            owners.setdefault(namespace, set())
         for name in sorted(closure):
-            declared = indexed[name].files
-            if declared is None:
-                return r[bool].fail(
-                    f"runtime distribution has no native file manifest: {name}"
+            editable = cls._runtime_editable_roots(
+                name, indexed[name], roots, owners, states
+            )
+            if editable.failure:
+                return r[bool].from_failure(editable)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _elect_runtime_namespace(
+        cls,
+        namespace: str,
+        roots: t.MutableMappingKV[str, Path],
+        owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+        *,
+        project_root: Path | None = None,
+    ) -> p.Result[bool]:
+        """Bind a runtime namespace to its unchanged physical election.
+
+        Returns:
+            Success or the original election and editable-root failure.
+
+        """
+        selected = cls._elect_namespace(namespace)
+        if selected.failure:
+            return r[bool].from_failure(selected)
+        if project_root is not None and not selected.value.is_relative_to(project_root):
+            return r[bool].fail(
+                "runtime dependency is outside declared editable root: "
+                f"{namespace}"
+            )
+        previous = roots.setdefault(namespace, selected.value)
+        if previous != selected.value:
+            return r[bool].fail(f"runtime dependency election changed: {namespace}")
+        owners.setdefault(namespace, set())
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _runtime_editable_roots(
+        cls,
+        name: str,
+        distribution: Distribution,
+        roots: t.MutableMappingKV[str, Path],
+        owners: t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Elect editable import names and retain the declarations consumed.
+
+        Returns:
+            Success or the first missing, unreadable or inconsistent declaration.
+
+        """
+        declared = distribution.files
+        if declared is None:
+            return r[bool].fail(
+                f"runtime distribution has no native file manifest: {name}"
+            )
+        for entry in declared:
+            path = Path(str(distribution.locate_file(entry))).absolute()
+            if (
+                path.name != c.Infra.DISTRIBUTION_DIRECT_URL_FILE
+                or not path.parent.name.endswith(".dist-info")
+            ):
+                continue
+            observed = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            editable = FlextInfraMiseArtifactsFiles.editable_project_source(
+                observed.value
+            )
+            if editable.failure:
+                return r[bool].from_failure(editable)
+            for project_source, metadata in editable.value:
+                selected = cls._elect_runtime_namespace(
+                    metadata.package_name,
+                    roots,
+                    owners,
+                    project_root=project_source.path.parent,
                 )
-            for entry in declared:
-                path = Path(str(indexed[name].locate_file(entry))).absolute()
-                if (
-                    path.name != c.Infra.DISTRIBUTION_DIRECT_URL_FILE
-                    or not path.parent.name.endswith(".dist-info")
-                ):
-                    continue
-                observed = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
-                if observed.failure:
-                    return r[bool].from_failure(observed)
-                editable = FlextInfraMiseArtifactsFiles.editable_project_source(
-                    observed.value
-                )
-                if editable.failure:
-                    return r[bool].from_failure(editable)
-                for project_source, metadata in editable.value:
-                    namespace = metadata.package_name
-                    selected = cls._elect_namespace(namespace)
-                    if selected.failure:
-                        return r[bool].from_failure(selected)
-                    if not selected.value.is_relative_to(project_source.path.parent):
-                        return r[bool].fail(
-                            "runtime dependency is outside declared editable root: "
-                            f"{namespace}"
-                        )
-                    previous = roots.setdefault(namespace, selected.value)
-                    if previous != selected.value:
-                        return r[bool].fail(
-                            f"runtime dependency election changed: {namespace}"
-                        )
-                    owners.setdefault(namespace, set())
-                    states[path] = observed.value
-                    states[project_source.path] = project_source
+                if selected.failure:
+                    return r[bool].from_failure(selected)
+                states[path] = observed.value
+                states[project_source.path] = project_source
         return r[bool].ok(value=True)
 
     @classmethod

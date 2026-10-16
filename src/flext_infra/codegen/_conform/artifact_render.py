@@ -32,6 +32,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         Returns:
             Render inputs with the source-derived tooling fields reconciled.
 
+        Raises:
+            ValueError: If Python source rendering has no resolved tooling context.
+
         """
         root = render_inputs.target.root
         python_plans = tuple(
