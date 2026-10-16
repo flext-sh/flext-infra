@@ -271,8 +271,7 @@ class FlextInfraCodegenPreconditions:
             return r[bool].from_failure(selected)
         if project_root is not None and not selected.value.is_relative_to(project_root):
             return r[bool].fail(
-                "runtime dependency is outside declared editable root: "
-                f"{namespace}"
+                f"runtime dependency is outside declared editable root: {namespace}"
             )
         previous = roots.setdefault(namespace, selected.value)
         if previous != selected.value:
@@ -324,8 +323,14 @@ class FlextInfraCodegenPreconditions:
                 )
                 if selected.failure:
                     return r[bool].from_failure(selected)
-                states[path] = observed.value
-                states[project_source.path] = project_source
+                sources = cls.unique_states((
+                    *states.values(),
+                    observed.value,
+                    project_source,
+                ))
+                if sources.failure:
+                    return r[bool].from_failure(sources)
+                states.update((item.path, item) for item in sources.value)
         return r[bool].ok(value=True)
 
     @classmethod
@@ -1175,8 +1180,11 @@ class FlextInfraCodegenPreconditions:
         )
         if captured.failure:
             return result_type.from_failure(captured)
+        sources = cls.unique_states((*states.values(), *captured.value[1]))
+        if sources.failure:
+            return result_type.from_failure(sources)
         trees.update((tree.root.path, tree) for tree in captured.value[0])
-        states.update((item.path, item) for item in captured.value[1])
+        states.update((item.path, item) for item in sources.value)
         return result_type.ok(
             dict.fromkeys(namespaces, tuple(tree.root for tree in captured.value[0]))
         )

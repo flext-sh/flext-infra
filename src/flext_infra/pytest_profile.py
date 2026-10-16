@@ -57,7 +57,7 @@ class FlextInfraPytestProfile:
                 return r[bool].fail(
                     str(validation_failure), exception=validation_failure
                 )
-        return r[bool].ok(True)
+        return r[bool].ok(value=True)
 
     def run_parent(
         self, *, started_at_monotonic: float, profile: cProfile.Profile
@@ -131,12 +131,7 @@ class FlextInfraPytestProfile:
                         + "".join(traceback.format_exception(publication_failure)),
                     )
                 else:
-                    try:
-                        traceback.print_exception(publication_failure)
-                    except (OSError, ValueError) as diagnostic_failure:
-                        publication_failure.add_note(
-                            f"profile diagnostic emission failed: {diagnostic_failure}",
-                        )
+                    traceback.print_exception(publication_failure)
 
     def _finish(self, profile: cProfile.Profile) -> p.Result[bool]:
         """Keep raw profiles on early failure, but publish only this run's receipt.
@@ -148,9 +143,7 @@ class FlextInfraPytestProfile:
         try:
             return self._publish_profile(profile)
         except OSError as publication_failure:
-            return r[bool].fail(
-                str(publication_failure), exception=publication_failure
-            )
+            return r[bool].fail(str(publication_failure), exception=publication_failure)
 
     def _publish_profile(self, profile: cProfile.Profile) -> p.Result[bool]:
         """Publish raw stats before the associated run and child receipts.
@@ -216,7 +209,7 @@ class FlextInfraPytestProfile:
                     )
                     if written.failure:
                         return written
-        return r[bool].ok(True)
+        return r[bool].ok(value=True)
 
 
 __all__: list[str] = ["FlextInfraPytestProfile"]

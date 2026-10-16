@@ -9,7 +9,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-from flext_infra import c, p, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities._semantic_cutover.family_type_references import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -66,18 +66,42 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         project: p.Infra.RopeProject | None = None,
         pymodule: p.Infra.RopeSemanticModule | None = None,
     ) -> t.StrDict:
-        """Read the ``install_lazy_exports`` namespace alias map of one module.
-
-        The canonical package facade binds its public namespace names (``m``,
-        ``p``, ``t`` and siblings) to provider modules through a lazy-exports
-        call whose final argument is the alias mapping. Those names are module
-        reexports, not lexical imports, so the lexical inventory cannot see
-        them; base references qualified through the facade (``m.BaseModel``
-        with ``from <pkg> import m``) must rewrite to the provider module
-        before namespace resolution.
+        """Project the provider module of every declared lazy export binding.
 
         Returns:
             Alias name to absolute provider module path.
+
+        """
+        return {
+            name: binding.target
+            for name, binding in cls.lazy_export_bindings(
+                module,
+                path,
+                source,
+                project=project,
+                pymodule=pymodule,
+            ).items()
+        }
+
+    @classmethod
+    def lazy_export_bindings(
+        cls,
+        module: str,
+        path: Path,
+        source: str,
+        *,
+        project: p.Infra.RopeProject | None = None,
+        pymodule: p.Infra.RopeSemanticModule | None = None,
+    ) -> t.MappingKV[str, m.Infra.SourceClassReference]:
+        """Read native lazy routes without losing their exported attributes.
+
+        ``install_lazy_exports`` accepts both a provider string and an explicit
+        ``(provider, attribute)`` pair. An empty attribute elects the module
+        itself. The same typed binding feeds source and upstream resolution;
+        module-only consumers derive their projection from these bindings.
+
+        Returns:
+            The absolute provider and exact attribute of every declared export.
 
         Raises:
             TypeError: The parsed module is not a native Rope source module or
@@ -113,17 +137,21 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         if not isinstance(words, p.Infra.RopeWorder):
             message = "Lazy aliases require Rope's native parameter reader"
             raise TypeError(message)
-        package = module
-        aliases: t.StrDict = {}
+        aliases: dict[str, m.Infra.SourceClassReference] = {}
         for occurrence in finder.find_occurrences(pymodule=parsed):
             mapping = cls._call_alias_source(source, words, occurrence.offset)
             if mapping is None:
                 continue
-            for key, value in cls._literal_mapping(mapping).items():
-                resolved = cls._absolute_alias(package, value)
+            for key, (provider, attribute) in cls._literal_exports(mapping).items():
+                resolved = cls._absolute_alias(module, provider)
                 if resolved is None:
-                    continue
-                aliases[key] = resolved
+                    message = f"Lazy provider escapes its package: {module}.{key}"
+                    raise ValueError(message)
+                aliases[key] = m.Infra.SourceClassReference(
+                    target=resolved,
+                    attributes=(attribute,) if attribute else (),
+                    qualified_base=f"{module}.{key}",
+                )
         return aliases
 
     @staticmethod
@@ -192,18 +220,18 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         return ".".join(part for part in (base, remainder) if part)
 
     @staticmethod
-    def _literal_mapping(source: str) -> t.StrDict:
-        """Read string module routes from native mapping-entry regions.
+    def _literal_exports(source: str) -> t.LazyAliasMap:
+        """Read the current native lazy export encodings from source regions.
 
         Returns:
-            Constant module routes, excluding attribute-valued export entries.
+            Provider and attribute pairs, including explicit module exports.
 
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         source = source.strip()
         if not (source.startswith("{") and source.endswith("}")):
             return {}
-        result: t.StrDict = {}
+        result: dict[str, t.StrPair] = {}
         split = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments
         for begin, end in split(source, 1, len(source) - 1, ","):
             parts = split(source, begin, end, ":")
@@ -214,12 +242,27 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                     return {}
             key = refactors.literal_string(source[key_start:key_end])
             if key is None:
-                return {}
-            value = refactors.literal_string(source[value_start:value_end])
-            if value is None:
-                result.pop(key, None)
-            else:
-                result[key] = value
+                message = "Lazy export names require literal strings"
+                raise ValueError(message)
+            expression = source[value_start:value_end].strip()
+            provider = refactors.literal_string(expression)
+            if provider is not None:
+                result[key] = (provider, key)
+                continue
+            if expression.startswith("(") and expression.endswith(")"):
+                values = tuple(
+                    refactors.literal_string(expression[start:stop])
+                    for start, stop in split(expression, 1, len(expression) - 1, ",")
+                )
+                if len(values) == 2 and all(value is not None for value in values):
+                    first, second = values
+                    if first is not None and second is not None:
+                        result[key] = (first, second)
+                        continue
+            message = (
+                f"Lazy export requires a provider or provider/attribute pair: {key}"
+            )
+            raise ValueError(message)
         return result
 
 

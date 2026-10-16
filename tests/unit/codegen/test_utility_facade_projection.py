@@ -39,6 +39,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         self._write(
             package / family.directory / f"{module}.py",
             f'class {owner}:\n    """Canonical behavior owner."""\n'
+            '    marker = "owner"\n'
             "    @classmethod\n    def read(cls) -> str:\n"
             "        return cls.marker\n"
             f'__all__ = ["{owner}"]\n',
@@ -51,8 +52,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             "Copyright (c) 2026 FLEXT Team. All rights reserved.\n"
             'SPDX-License-Identifier: MIT\n"""\n\n'
             f"from {package.name}.{family.directory}.{module} import {binding}\n\n\n"
-            f'class Utilities({owner}):\n    """Compose the canonical owner."""\n\n'
-            '    marker = "facade"\n\n\n'
+            f'class Utilities({owner}):\n    """Compose the canonical owner."""\n\n\n'
             'u = Utilities\n\n__all__ = ["Utilities", "u"]\n',
         )
         script = (
@@ -67,7 +67,9 @@ class TestsFlextInfraUtilityFacadeProjection:
             "from importlib import import_module\n"
             f"before = import_module({(package.name + '.utilities')!r}).u\n"
             "expected = tuple(item.__name__ for item in before.__mro__)\n"
-            "assert before.read() == 'facade'\n"
+            "class Receiver(before):\n    marker = 'facade'\n"
+            "assert before.read() == 'owner'\n"
+            "assert Receiver.read() == 'facade'\n"
             "rendered = tm.not_none(u.Infra.render_utility_facade(package))\n"
             "tm.ok(u.Cli.atomic_write_text_file(facade, rendered))\n"
             "assert u.Infra.render_utility_facade(package) == rendered\n"
@@ -103,7 +105,9 @@ class TestsFlextInfraUtilityFacadeProjection:
                     "-c",
                     (
                         f"from {package.name} import u\n"
-                        "assert u.read() == 'facade'\n"
+                        "class Receiver(u):\n    marker = 'facade'\n"
+                        "assert u.read() == 'owner'\n"
+                        "assert Receiver.read() == 'facade'\n"
                         "print(repr(tuple(item.__name__ for item in u.__mro__)))\n"
                     ),
                 ),
@@ -533,7 +537,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             package / u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY).directory
         )
         owner = owners / "adapter.py"
-        runtime = package / "runtime.py"
+        runtime = owners / "runtime.py"
         facade = package / "utilities.py"
         consumer = root / "consumer.py"
         sources = {
@@ -564,9 +568,10 @@ class TestsFlextInfraUtilityFacadeProjection:
                 "        first = t.value_adapter().validate_python(value)\n"
                 "        return t.value_adapter().validate_python(first)\n"
                 "def shadowed(t):\n    return t.value_adapter()\n"
+                "__all__ = ['Runtime']\n"
             ),
             facade: (
-                f"from {package.name}.runtime import Runtime\n"
+                f"from {package.name}.{owners.name}.runtime import Runtime\n"
                 "class Utilities(Runtime):\n    pass\n"
                 "u = Utilities\n__all__ = ['Utilities', 'u']\n"
             ),
@@ -627,14 +632,15 @@ class TestsFlextInfraUtilityFacadeProjection:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         sources = self._behavior_package(package, "int")
         directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
-        sources[package / "runtime.py"] = (
+        sources[package / directory / "runtime.py"] = (
             f"from {package.name}.{directory}.adapter import AdapterOwner\n"
             "class Runtime:\n    @staticmethod\n    def parse(value):\n"
             "        return AdapterOwner.value_adapter().validate_python(value)\n"
+            "__all__ = ['Runtime']\n"
         )
         facade = package / "utilities.py"
         sources[facade] = (
-            f"from {package.name}.runtime import Runtime\n"
+            f"from {package.name}.{directory}.runtime import Runtime\n"
             "class Utilities:\n    class Domain(Runtime):\n        pass\n"
             "u = Utilities\n__all__ = ['Utilities', 'u']\n"
         )
@@ -696,7 +702,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             "        return 'second'\n"
             "__all__ = ['FirstUnusedOwner', 'SecondUnusedOwner']\n"
         )
-        sources[package / "runtime.py"] = (
+        sources[package / directory / "runtime.py"] = (
             f"from {package.name}.{directory}.adapter import AdapterOwner as {alias}\n"
             "class Local:\n"
             "    @staticmethod\n"
@@ -717,10 +723,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             "    def local_shadow():\n"
             f"        {alias} = Local()\n"
             f"        prefix = 'caf\u00e9'; return {alias}.shadow_only()\n"
+            "__all__ = ['Runtime']\n"
         )
         facade = package / c.Infra.UTILITIES_PY
         sources[facade] = (
-            f"from {package.name}.runtime import Runtime\n"
+            f"from {package.name}.{directory}.runtime import Runtime\n"
             "class Utilities:\n    class Domain(Runtime):\n        pass\n"
             "u = Utilities\n__all__ = ['Utilities', 'u']\n"
         )
@@ -737,7 +744,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                     "-c",
                     (
                         f"from {package.name} import u\n"
-                        f"from {package.name}.runtime import Local\n"
+                        f"from {package.name}.{directory}.runtime import Local\n"
                         "assert u.Domain.parse('7') == 7\n"
                         "assert u.Domain.default_alias() == 'header'\n"
                         "assert u.Domain.header_adapter().validate_python('header') == "

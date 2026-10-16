@@ -1018,10 +1018,13 @@ class FlextInfraUtilitiesCodegenFacades:
                         f"Unresolved facade base: {facade_path}:{ast.unparse(base)}"
                     )
                     raise ValueError(message)
+                value = binding.get_object()
+                if FlextInfraUtilitiesRopeRuntime.semantic_module(value):
+                    message = f"Module used as a class base: {ast.unparse(base)}"
+                    raise ValueError(message)
                 holder = binding.get_definition_location()[0]
                 provider = holder.get_resource() if holder is not None else None
                 if provider is None:
-                    value = binding.get_object()
                     if (
                         FlextInfraUtilitiesRopeRuntime.abstract_class(value)
                         and not FlextInfraUtilitiesRopeRuntime.py_class(value)
