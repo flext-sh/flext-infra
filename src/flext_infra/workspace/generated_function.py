@@ -2153,7 +2153,12 @@ class FlextInfraWorkspaceGeneratedFunction:
             for instruction in get_instructions(function.__code__)
             if instruction.opname == "LOAD_GLOBAL" and type(instruction.argval) is str
         }
-        for name in names.intersection(vars(builtins)):
+        # Every module namespace defines its own metadata (__name__, __doc__,
+        # __spec__, ...), derived from a fresh module rather than listed: a
+        # global lookup of those names resolves in the module by language
+        # semantics, so it is never a builtin lookup that could be interposed.
+        module_metadata = set(vars(ModuleType("")))
+        for name in names.intersection(vars(builtins)) - module_metadata:
             if (
                 name in function.__globals__
                 and function.__globals__[name] is not vars(builtins)[name]
