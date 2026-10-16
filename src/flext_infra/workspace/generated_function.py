@@ -11,6 +11,7 @@ import builtins
 import sys
 from dis import get_instructions
 from importlib.machinery import FrozenImporter
+from inspect import CO_VARARGS, CO_VARKEYWORDS
 from pathlib import Path
 from types import (
     BuiltinFunctionType,
@@ -20,6 +21,7 @@ from types import (
     MemberDescriptorType,
     MethodDescriptorType,
     ModuleType,
+    NoneType,
     WrapperDescriptorType,
 )
 from typing import TypeIs
@@ -262,6 +264,8 @@ class FlextInfraWorkspaceGeneratedFunction:
         if type(qualified) is not str:
             msg = "generated class has no native qualified source identity"
             raise ValueError(msg)
+        if "__attrs_attrs__" in namespace and "__attrs_props__" in namespace:
+            return engine._compile_attrs(value, owner, attribute, namespace, qualified)
         invocation = engine._tuple_invocation(owner, witness)
         declaration = engine._tuple_declaration(
             qualified, namespace, attribute, invocation
@@ -274,6 +278,780 @@ class FlextInfraWorkspaceGeneratedFunction:
                 value, owner, attribute, declaration, factory
             )
         return engine._compile_named_tuple(owner, attribute)
+
+    def _compile_attrs(
+        self,
+        value: FunctionType,
+        owner: p.AttributeProbe,
+        attribute: str,
+        storage: t.MappingKV[str, p.AttributeProbe],
+        qualified: str,
+    ) -> p.Result[m.Infra.NativeGeneratedFunctionProof]:
+        """Re-run the authenticated attrs script builders on stored class state.
+
+        attrs keeps its final construction inputs on the class: the
+        ``__attrs_attrs__`` records (after any field transformer) and the
+        ``__attrs_props__`` options. The physical builders receive only that
+        native data and fresh plain receivers carrying the class identity; no
+        authored decorator, metaclass, factory, validator, converter or
+        transformer runs.
+
+        Returns:
+            The independent emission of the observed generated method.
+
+        Raises:
+            ValueError: If the method is not its class slot or was not emitted.
+
+        """
+        namespace = vars(self._module("attr._make"))
+        self._attrs_sdk(namespace)
+        module = self._witness.module.get_name()
+        if storage.get(attribute) is not value or not self._same_default(
+            (module, f"{qualified}.{attribute}", attribute),
+            (value.__module__, value.__qualname__, value.__name__),
+        ):
+            msg = f"native attrs generated method is not its class slot: {attribute}"
+            raise ValueError(msg)
+        records = self._attrs_records(storage, namespace, qualified)
+        props = self._attrs_props(storage, namespace)
+        self._attrs_layout(owner, storage, records, props, namespace)
+        identity = type(
+            qualified.rsplit(".", 1)[-1],
+            (object,),
+            {"__module__": module, "__qualname__": qualified},
+        )
+        script, globs, init_name, annotations = self._attrs_script(
+            (identity, owner), records, props, namespace, qualified
+        )
+        local: t.DictKV[str, p.AttributeProbe] = {}
+        self._attrs_builder(namespace, "_compile_and_eval")(
+            script, globs, local, self._attrs_filename(value, identity, namespace)
+        )
+        expected = local.get(attribute)
+        if type(expected) is not FunctionType:
+            msg = f"native attrs builders did not emit the class slot: {attribute}"
+            raise ValueError(msg)
+        if attribute == init_name:
+            expected.__annotations__ = dict(annotations)
+        self._inputs_current("native attrs compiler input changed")
+        return r[m.Infra.NativeGeneratedFunctionProof].ok(
+            m.Infra.NativeGeneratedFunctionProof(
+                code=expected.__code__,
+                globals=expected.__globals__,
+                annotations=expected.__annotations__,
+                defaults=expected.__defaults__,
+                keyword_defaults=expected.__kwdefaults__,
+                closure=(),
+                inputs=tuple(self._inputs.values()),
+            )
+        )
+
+    def _attrs_sdk(self, namespace: t.MappingKV[str, p.AttributeProbe]) -> None:
+        """Authenticate the attrs builders and record classes before any call.
+
+        Raises:
+            TypeError: If a record class has a foreign metaclass or lookup hook.
+
+        """
+        for name in (
+            "_compile_and_eval",
+            "_make_attr_tuple_class",
+            "_generate_unique_filename",
+            "_make_repr_script",
+            "_make_eq_script",
+            "_make_hash_script",
+            "_make_init_script",
+            "_attrs_to_init_script",
+            "_determine_setters",
+            "_setattr",
+            "_setattr_with_converter",
+            "_assign",
+            "_assign_with_converter",
+            "_is_slot_attr",
+        ):
+            self._function(
+                namespace.get(name), source_name=name, source_namespace=namespace
+            )
+        for name in ("Attribute", "ClassProps", "Factory", "Converter"):
+            kind = namespace.get(name)
+            if type(kind) is not type or not self._attrs_plain(
+                kind, frozenset({"__getattribute__", "__getattr__"})
+            ):
+                msg = f"native attrs record class has a lookup hook: {name}"
+                raise TypeError(msg)
+        converter = vars(type)["__dict__"].__get__(namespace["Converter"], type)
+        for name in ("__init__", "_fmt_converter_call"):
+            self._function(
+                converter.get(name),
+                source_name=f"Converter.{name}",
+                source_namespace=namespace,
+            )
+        self._physical_function(
+            vars(staticmethod)["__func__"].__get__(
+                converter.get("_get_global_name"), staticmethod
+            ),
+            decorator="staticmethod",
+        )
+
+    def _attrs_slot(
+        self, record: p.AttributeProbe, kind: type, name: str
+    ) -> p.AttributeProbe:
+        """Read one attrs record slot through its native member descriptor.
+
+        Returns:
+            The exact slot value; no property or lookup hook executes.
+
+        Raises:
+            TypeError: If the record or the slot is not native attrs storage.
+
+        """
+        descriptor = vars(type)["__dict__"].__get__(kind, type).get(name)
+        if type(record) is not kind or type(descriptor) is not MemberDescriptorType:
+            msg = f"native attrs record slot is not native storage: {name}"
+            raise TypeError(msg)
+        slot: p.AttributeProbe = descriptor.__get__(record, kind)
+        return slot
+
+    def _attrs_plain(self, value: p.AttributeProbe, hooks: frozenset[str]) -> bool:
+        """Prove that native type checks of a value run no authored hook.
+
+        Returns:
+            Whether no heap ancestor of the value's type defines one of ``hooks``.
+
+        """
+        kind = value if type(value) is type else type(value)
+        for ancestor in vars(type)["__mro__"].__get__(kind, type(kind)):
+            flags = vars(type)["__flags__"].__get__(ancestor, type(ancestor))
+            if flags & c.Infra.CPYTHON_IMMUTABLE_TYPE_FLAG:
+                continue
+            if not hooks.isdisjoint(
+                vars(type)["__dict__"].__get__(ancestor, type(ancestor))
+            ):
+                return False
+        return True
+
+    def _attrs_records(
+        self,
+        storage: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        qualified: str,
+    ) -> p.AttributeProbe:
+        """Authenticate the stored attrs field tuple and every record operand.
+
+        Returns:
+            The exact stored record tuple the builders consumed.
+
+        Raises:
+            TypeError: If the tuple or a record operand has foreign storage.
+            ValueError: If the tuple accessors differ from the attrs factory.
+
+        """
+        records = storage.get("__attrs_attrs__")
+        holder = type(records)
+        if type(holder) is not type or vars(type)["__bases__"].__get__(
+            holder, type
+        ) != (tuple,):
+            msg = "native attrs records have foreign tuple storage"
+            raise TypeError(msg)
+        maker = self._attrs_builder(namespace, "_make_attr_tuple_class")
+        getter = next(
+            (
+                item
+                for item in maker.__code__.co_consts
+                if type(item) is CodeType and item.co_name == "getter"
+            ),
+            None,
+        )
+        body = vars(type)["__dict__"].__get__(holder, type)
+        items: t.VariadicTuple[p.AttributeProbe] = vars(tuple)["__getitem__"](
+            records, slice(None)
+        )
+        kind = namespace["Attribute"]
+        names = tuple(self._attrs_slot(item, kind, "name") for item in items)
+        name = vars(type)["__name__"].__get__(holder, type)
+        if getter is None or name != f"{qualified.rsplit('.', 1)[-1]}Attributes":
+            msg = "native attrs record tuple is not the attrs accessor class"
+            raise ValueError(msg)
+        for key, accessor in body.items():
+            index = names.index(key) if key in names else None
+            if index is None:
+                if type(accessor) is GetSetDescriptorType or key in {
+                    "__module__",
+                    "__doc__",
+                }:
+                    continue
+                msg = f"native attrs record tuple has authored storage: {key}"
+                raise ValueError(msg)
+            if (
+                type(accessor) is not property
+                or type(accessor.fget) is not FunctionType
+                or accessor.fget.__code__ is not getter
+                or accessor.fget.__defaults__ != (index,)
+                or accessor.fset is not None
+                or accessor.fdel is not None
+            ):
+                msg = f"native attrs record accessor differs from attrs: {key}"
+                raise ValueError(msg)
+        for item in items:
+            self._attrs_record(item, kind, namespace)
+        return records
+
+    def _attrs_record(
+        self,
+        record: p.AttributeProbe,
+        kind: type,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> None:
+        """Admit only record operands whose builder checks run no authored hook.
+
+        Raises:
+            TypeError: If an operand can run an authored hook in the builders.
+            ValueError: If the record is inherited, which needs ancestor proof.
+
+        """
+        lookup = frozenset({"__class__", "__getattribute__", "__getattr__"})
+        truth = frozenset({"__bool__", "__len__"})
+        flags = ("repr", "eq", "order", "hash", "init", "kw_only", "inherited")
+        if any(
+            type(self._attrs_slot(record, kind, name)) not in {bool, NoneType}
+            for name in flags
+        ) or any(
+            type(self._attrs_slot(record, kind, name)) is not str
+            for name in ("name", "alias")
+        ):
+            msg = "native attrs record has foreign flag storage"
+            raise TypeError(msg)
+        if self._attrs_slot(record, kind, "inherited") is not False:
+            msg = "native attrs inherited fields need their ancestor proof"
+            raise ValueError(msg)
+        default = self._attrs_slot(record, kind, "default")
+        converter = self._attrs_slot(record, kind, "converter")
+        if (
+            not self._attrs_plain(default, lookup)
+            or not self._attrs_plain(self._attrs_slot(record, kind, "validator"), truth)
+            or not self._attrs_plain(self._attrs_slot(record, kind, "eq_key"), truth)
+            or not self._attrs_plain(converter, lookup)
+            or not self._attrs_callable(self._attrs_slot(record, kind, "repr"))
+        ):
+            msg = "native attrs record operand can run an authored hook"
+            raise TypeError(msg)
+        if converter is not None and type(converter) is not namespace["Converter"]:
+            self._attrs_callable(converter, required=True)
+
+    def _attrs_callable(
+        self, value: p.AttributeProbe, *, required: bool = False
+    ) -> bool:
+        """Admit a builder-inspected callable whose signature is its own code.
+
+        Returns:
+            Whether the value is a native flag or an unwrapped Python function.
+
+        Raises:
+            TypeError: If a required callable carries signature overrides.
+
+        """
+        if type(value) is bool and not required:
+            return True
+        attributes = (
+            self._function_attributes(value) if type(value) is FunctionType else None
+        )
+        admitted = attributes is not None and not {
+            "__signature__",
+            "__wrapped__",
+        }.intersection(attributes)
+        if required and not admitted:
+            msg = "native attrs converter signature is not its physical code"
+            raise TypeError(msg)
+        return admitted
+
+    def _attrs_props(
+        self,
+        storage: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> t.MappingKV[str, p.AttributeProbe]:
+        """Read the stored attrs class options through their native slots.
+
+        Returns:
+            Every declared option slot by name.
+
+        Raises:
+            TypeError: If an option the builders consume has foreign storage.
+
+        """
+        kind = namespace["ClassProps"]
+        slots = vars(type)["__dict__"].__get__(kind, type).get("__slots__")
+        props = storage.get("__attrs_props__")
+        if type(slots) is not tuple:
+            msg = "native attrs class options have no declared slots"
+            raise TypeError(msg)
+        values = {
+            name: self._attrs_slot(props, kind, name)
+            for name in slots
+            if type(name) is str
+        }
+        hashability = vars(type)["__dict__"].__get__(kind, type).get("Hashability")
+        members = vars(type)["__dict__"].__get__(
+            hashability, type(hashability)
+        ).get("_member_map_")
+        hook = values.get("on_setattr_hook")
+        if (
+            any(
+                type(values.get(name)) is not bool
+                for name in (
+                    "is_exception",
+                    "is_slotted",
+                    "has_weakref_slot",
+                    "is_frozen",
+                    "added_init",
+                    "added_repr",
+                    "added_eq",
+                )
+            )
+            or type(members) is not dict
+            or not any(item is values.get("hashability") for item in members.values())
+            or not (
+                hook is None
+                or hook is vars(self._module("attr.setters")).get("NO_OP")
+                or type(hook) is FunctionType
+            )
+        ):
+            msg = "native attrs class options have foreign storage"
+            raise TypeError(msg)
+        return {**values, "hashability_members": members}
+
+    def _attrs_layout(
+        self,
+        owner: p.AttributeProbe,
+        storage: t.MappingKV[str, p.AttributeProbe],
+        records: p.AttributeProbe,
+        props: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> None:
+        """Prove the class slot layout is the one attrs derives from its records.
+
+        Raises:
+            ValueError: If declared slots or slot descriptors differ.
+
+        """
+        slots = storage.get("__slots__")
+        if props["is_slotted"] is not True:
+            if "__slots__" in storage:
+                msg = "native attrs class declares slots its options do not"
+                raise ValueError(msg)
+            return
+        kind = namespace["Attribute"]
+        names = [
+            self._attrs_slot(item, kind, "name")
+            for item in vars(tuple)["__getitem__"](records, slice(None))
+        ]
+        ancestry = vars(type)["__mro__"].__get__(owner, type(owner))[1:-1]
+        inherited = any(
+            vars(type)["__dict__"].__get__(base, type(base)).get("__weakref__")
+            is not None
+            for base in ancestry
+        )
+        if (
+            props["has_weakref_slot"] is True
+            and "__weakref__" not in names
+            and not inherited
+        ):
+            names.append("__weakref__")
+        if self._attrs_hashability(props)[1]:
+            names.append(namespace["_HASH_CACHE_FIELD"])
+        if type(slots) is not tuple or slots != tuple(names):
+            msg = "native attrs slot layout differs from its records"
+            raise ValueError(msg)
+        for name in names:
+            expected = (
+                GetSetDescriptorType if name == "__weakref__" else MemberDescriptorType
+            )
+            if type(storage.get(name)) is not expected:
+                msg = f"native attrs slot has no native descriptor: {name}"
+                raise ValueError(msg)
+
+    @staticmethod
+    def _attrs_hashability(
+        props: t.MappingKV[str, p.AttributeProbe],
+    ) -> t.Pair[bool, bool]:
+        """Mirror ``ClassProps.is_hashable`` over the stored enum members.
+
+        Returns:
+            Whether attrs writes a ``__hash__`` and whether it caches the hash.
+
+        Raises:
+            TypeError: If the hashability members have foreign storage.
+
+        """
+        members = props["hashability_members"]
+        if type(members) is not dict:
+            msg = "native attrs hashability members have foreign storage"
+            raise TypeError(msg)
+        selected = props["hashability"]
+        cached = members.get("HASHABLE_CACHED") is selected
+        return cached or members.get("HASHABLE") is selected, cached
+
+    @staticmethod
+    def _attrs_builder(
+        namespace: t.MappingKV[str, p.AttributeProbe], name: str
+    ) -> FunctionType:
+        """Return one already authenticated attrs builder by its module binding.
+
+        Returns:
+            The exact Python function bound in the attrs SDK namespace.
+
+        Raises:
+            TypeError: If the binding is not an exact Python function.
+
+        """
+        builder = namespace.get(name)
+        if type(builder) is not FunctionType:
+            msg = f"native attrs builder is not a Python function: {name}"
+            raise TypeError(msg)
+        return builder
+
+    def _attrs_script(
+        self,
+        receivers: t.Pair[type, p.AttributeProbe],
+        records: p.AttributeProbe,
+        props: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        qualified: str,
+    ) -> t.Quad[
+        str,
+        t.DictKV[str, p.AttributeProbe],
+        str,
+        t.MappingKV[str, p.AttributeProbe],
+    ]:
+        """Assemble the snippets in the order the attrs class decorator adds them.
+
+        Returns:
+            Joined script, merged globals, initializer name and its annotations.
+
+        Raises:
+            TypeError: If a builder returns foreign script or globals storage.
+
+        """
+        identity, owner = receivers
+        hashable, cached = self._attrs_hashability(props)
+        snippets: list[p.AttributeProbe] = []
+        if props["added_repr"] is True:
+            builder = self._attrs_builder(namespace, "_make_repr_script")
+            snippets.append(builder(records, None))
+        if props["added_eq"] is True:
+            snippets.append(self._attrs_builder(namespace, "_make_eq_script")(records))
+        if hashable:
+            builder = self._attrs_builder(namespace, "_make_hash_script")
+            snippets.append(
+                builder(identity, records, frozen=props["is_frozen"], cache_hash=cached)
+            )
+        init_name, init_script, annotations = self._attrs_init(
+            owner, records, props, namespace, qualified
+        )
+        snippets.append(init_script)
+        texts: list[str] = []
+        globs: t.DictKV[str, p.AttributeProbe] = {}
+        for snippet in snippets:
+            if (
+                type(snippet) is not tuple
+                or type(snippet[0]) is not str
+                or type(snippet[1]) is not dict
+            ):
+                msg = "native attrs builder returned foreign script storage"
+                raise TypeError(msg)
+            texts.append(snippet[0])
+            globs.update(snippet[1])
+        return "\n".join(texts), globs, init_name, annotations
+
+    def _attrs_init(
+        self,
+        owner: p.AttributeProbe,
+        records: p.AttributeProbe,
+        props: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        qualified: str,
+    ) -> t.Triple[str, p.AttributeProbe, t.MappingKV[str, p.AttributeProbe]]:
+        """Build the initializer snippet with the module globals of its emission.
+
+        The builder merges the live module namespace between its own globals
+        and its trailing keys; a detached receiver keeps it from reading the
+        module, and the namespace as it stood at the class statement is merged
+        at that same position.
+
+        Returns:
+            The initializer name, its ``(script, globals)`` snippet and annotations.
+
+        Raises:
+            TypeError: If the builder output has foreign storage.
+            ValueError: If no detached module name is free.
+
+        """
+        pre_init, pre_init_has_args = self._attrs_hook(owner, "__attrs_pre_init__")
+        post_init, _post_args = self._attrs_hook(owner, "__attrs_post_init__")
+        detached_module = f"{self._witness.module.get_name()}.<attrs-detached>"
+        if detached_module in sys.modules:
+            msg = "native attrs detached receiver module is registered"
+            raise ValueError(msg)
+        detached = type("Detached", (object,), {"__module__": detached_module})
+        init_name = "__init__" if props["added_init"] is True else "__attrs_init__"
+        built = self._attrs_builder(namespace, "_make_init_script")(
+            detached,
+            records,
+            pre_init,
+            pre_init_has_args,
+            post_init,
+            props["is_frozen"],
+            props["is_slotted"],
+            self._attrs_hashability(props)[1],
+            {},
+            props["is_exception"],
+            self._attrs_on_setattr(records, props, namespace),
+            attrs_init=props["added_init"] is not True,
+        )
+        if (
+            type(built) is not tuple
+            or len(built) != len(("script", "globals", "annotations"))
+            or type(built[1]) is not dict
+            or type(built[2]) is not dict
+        ):
+            msg = "native attrs initializer builder returned foreign storage"
+            raise TypeError(msg)
+        script, generated, annotations = built
+        tail = self._attrs_init_tail(namespace)
+        merged: t.DictKV[str, p.AttributeProbe] = {
+            key: item for key, item in generated.items() if key not in tail
+        }
+        merged.update(self._attrs_module_snapshot(qualified))
+        merged.update({key: generated[key] for key in tail if key in generated})
+        return init_name, (script, merged), annotations
+
+    def _attrs_init_tail(
+        self, namespace: t.MappingKV[str, p.AttributeProbe]
+    ) -> frozenset[str]:
+        """Derive the globals the initializer builder writes after the module merge.
+
+        Returns:
+            Keys the physical builder assigns after reading ``sys.modules``.
+
+        Raises:
+            ValueError: If the builder has no physical module merge.
+
+        """
+        declaration, _tree, _namespace = self._function(
+            namespace["_make_init_script"],
+            source_name="_make_init_script",
+            source_namespace=namespace,
+        )
+        merge = next(
+            (
+                index
+                for index, node in enumerate(declaration.body)
+                if any(
+                    isinstance(item, ast.Attribute)
+                    and item.attr == "modules"
+                    and isinstance(item.value, ast.Name)
+                    and item.value.id == "sys"
+                    for item in ast.walk(node)
+                )
+            ),
+            None,
+        )
+        if merge is None:
+            msg = "native attrs initializer builder has no physical module merge"
+            raise ValueError(msg)
+        keys: set[str] = set()
+        for node in declaration.body[merge + 1 :]:
+            for item in ast.walk(node):
+                match item:
+                    case ast.Call(
+                        func=ast.Attribute(attr="update"), args=[ast.Dict(keys=entries)]
+                    ):
+                        keys.update(
+                            entry.value
+                            for entry in entries
+                            if isinstance(entry, ast.Constant)
+                            and type(entry.value) is str
+                        )
+                    case ast.Subscript(
+                        slice=ast.Constant(value=str() as key), ctx=ast.Store()
+                    ):
+                        keys.add(key)
+                    case _:
+                        pass
+        return frozenset(keys)
+
+    def _attrs_module_snapshot(
+        self, qualified: str
+    ) -> t.DictKV[str, p.AttributeProbe]:
+        """Read the defining module namespace as it stood at the class statement.
+
+        Names first bound by the class statement or a later top-level statement
+        did not exist when the decorator ran and are left out.
+
+        Returns:
+            The live module bindings that precede the class statement.
+
+        Raises:
+            ValueError: If the class has no unique top-level declaration.
+
+        """
+        tree = self._trees[self._witness.source]
+        top = qualified.split(".", 1)[0]
+        positions = [
+            index
+            for index, node in enumerate(tree.body)
+            if isinstance(node, ast.ClassDef) and node.name == top
+        ]
+        if len(positions) != 1 or "<locals>" in qualified:
+            msg = f"native attrs class has no unique top-level statement: {qualified}"
+            raise ValueError(msg)
+        early = self._module_bindings(tree.body[: positions[0]])
+        late = self._module_bindings(tree.body[positions[0] :]).difference(early)
+        live = vars(self._module(self._witness.module.get_name()))
+        return {name: item for name, item in live.items() if name not in late}
+
+    @staticmethod
+    def _module_bindings(statements: t.SequenceOf[ast.stmt]) -> frozenset[str]:
+        """Collect the module-scope names bound by top-level statements.
+
+        Returns:
+            Every name a statement binds in module scope.
+
+        Raises:
+            ValueError: If a star import binds names the source does not spell.
+
+        """
+        names: set[str] = set()
+        pending: list[ast.AST] = list(statements)
+        while pending:
+            node = pending.pop()
+            match node:
+                case (
+                    ast.FunctionDef(name=name)
+                    | ast.AsyncFunctionDef(name=name)
+                    | ast.ClassDef(name=name)
+                ):
+                    names.add(name)
+                case ast.Import(names=aliases) | ast.ImportFrom(names=aliases):
+                    for alias in aliases:
+                        if alias.name == "*":
+                            msg = "native attrs module binds names by star import"
+                            raise ValueError(msg)
+                        names.add(alias.asname or alias.name.split(".", 1)[0])
+                case ast.Name(id=name, ctx=ast.Store()) | ast.MatchAs(
+                    name=str() as name
+                ):
+                    names.add(name)
+                case (
+                    ast.Lambda()
+                    | ast.ListComp()
+                    | ast.SetComp()
+                    | ast.DictComp()
+                    | ast.GeneratorExp()
+                ):
+                    continue
+                case _:
+                    pending.extend(ast.iter_child_nodes(node))
+        return frozenset(names)
+
+    def _attrs_hook(self, owner: p.AttributeProbe, name: str) -> t.Pair[bool, bool]:
+        """Resolve an attrs initializer hook through raw class storage.
+
+        Returns:
+            Whether the hook exists and whether it takes more than ``self``.
+
+        Raises:
+            TypeError: If the hook is not an unwrapped Python function.
+
+        """
+        for ancestor in vars(type)["__mro__"].__get__(owner, type(owner)):
+            body = vars(type)["__dict__"].__get__(ancestor, type(ancestor))
+            if name not in body:
+                continue
+            hook = body[name]
+            if type(hook) is not FunctionType or not self._attrs_callable(hook):
+                msg = f"native attrs hook is not an unwrapped Python function: {name}"
+                raise TypeError(msg)
+            code = hook.__code__
+            count = (
+                code.co_argcount
+                + code.co_kwonlyargcount
+                + bool(code.co_flags & CO_VARARGS)
+                + bool(code.co_flags & CO_VARKEYWORDS)
+            )
+            return True, count > 1
+        return False, False
+
+    def _attrs_on_setattr(
+        self,
+        records: p.AttributeProbe,
+        props: t.MappingKV[str, p.AttributeProbe],
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> p.AttributeProbe:
+        """Mirror the class builder's reduction of the default setattr hook.
+
+        A non-frozen class whose hook only validates or converts drops it when
+        no field has a validator or converter to run.
+
+        Returns:
+            The setattr hook the initializer builder receives.
+
+        """
+        hook = props["on_setattr_hook"]
+        setters = vars(self._module("attr.setters"))
+        defaults = (
+            namespace.get("_DEFAULT_ON_SETATTR"),
+            setters.get("validate"),
+            setters.get("convert"),
+        )
+        if props["is_frozen"] is True or not any(hook is item for item in defaults):
+            return hook
+        kind = namespace["Attribute"]
+        items = vars(tuple)["__getitem__"](records, slice(None))
+        validated = any(
+            self._attrs_slot(item, kind, "validator") is not None for item in items
+        )
+        converted = any(
+            self._attrs_slot(item, kind, "converter") is not None for item in items
+        )
+        unused = (
+            (hook is defaults[0] and not (validated or converted))
+            or (hook is defaults[1] and not validated)
+            or (hook is defaults[2] and not converted)
+        )
+        return None if unused else hook
+
+    def _attrs_filename(
+        self,
+        value: FunctionType,
+        identity: type,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> str:
+        """Prove the observed code file is the attrs methods file of this class.
+
+        Returns:
+            The observed file name, possibly carrying its linecache suffix.
+
+        Raises:
+            ValueError: If the observed file name is not the attrs methods file.
+
+        """
+        base = self._attrs_builder(namespace, "_generate_unique_filename")(
+            identity, "methods"
+        )
+        observed = value.__code__.co_filename
+        stem = base[:-1] if type(base) is str else ""
+        suffix = observed[len(stem) + 1 : -1]
+        if not stem or not (
+            observed == base
+            or (
+                observed.startswith(f"{stem}-")
+                and observed.endswith(">")
+                and suffix.isdigit()
+            )
+        ):
+            msg = f"native attrs generated code has a foreign file: {observed[:160]}"
+            raise ValueError(msg)
+        return observed
 
     def _compile_named_tuple(
         self,
@@ -2338,8 +3116,12 @@ class FlextInfraWorkspaceGeneratedFunction:
             function.__closure__ is not None
             or vars(FunctionType)["__builtins__"].__get__(function, FunctionType)
             is not vars(builtins)
+            # Postponed annotations only defer annotation evaluation; the
+            # physical compilation honours them, so code identity still holds.
             or any(
-                isinstance(item, ast.ImportFrom) and item.module == "__future__"
+                isinstance(item, ast.ImportFrom)
+                and item.module == "__future__"
+                and any(alias.name != "annotations" for alias in item.names)
                 for item in tree.body
             )
         ):
