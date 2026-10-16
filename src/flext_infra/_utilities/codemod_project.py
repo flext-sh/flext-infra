@@ -38,9 +38,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._rope_analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
@@ -90,19 +92,47 @@ class FlextInfraUtilitiesCodemodProject(
         imports that run when the module loads can form a cycle. Each target
         is truncated to the longest module the project defines.
 
+        Live nodes use the workspace indexer's governed inventory, not Rope's
+        recursive checkout enumeration. Declared members retain their import
+        roots; unrelated checkouts and managed projections are not graph nodes.
+
         Returns:
             The runtime import graph and the module name of each file.
 
         """
-        with FlextInfraUtilitiesRopeCore.open_project(root) as project:
-            return cls.snapshot_import_graph(project)
+        resolved = root.resolve()
+        with FlextInfraUtilitiesRopeCore.open_project(
+            resolved,
+            project_roots=FlextInfraUtilitiesProjectDiscovery.governed_project_roots(
+                resolved,
+            ),
+        ) as project:
+            resources = tuple(
+                FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    project.get_resource(path.relative_to(resolved).as_posix()),
+                    path,
+                )
+                for path in (
+                    FlextInfraUtilitiesRopeAnalysisWorkspace.python_and_stub_file_paths(
+                        project,
+                        resolved,
+                    )
+                )
+                if path.suffix == c.Infra.EXT_PYTHON
+            )
+            return cls.snapshot_import_graph(project, resources=resources)
 
     @classmethod
     def snapshot_import_graph(
         cls,
         project: p.Infra.RopeProject,
+        *,
+        resources: t.SequenceOf[t.Infra.RopeFile] | None = None,
     ) -> t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path, str]]:
         """Read runtime imports from an immutable proposed-source Rope graph.
+
+        A live caller supplies governed resources. An immutable snapshot keeps
+        its complete captured inventory, including proposed virtual modules.
 
         Returns:
             The resulting ``t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path,
@@ -117,7 +147,11 @@ class FlextInfraUtilitiesCodemodProject(
         aliases: MutableMapping[str, str] = {}
         cls.codemod_progress("import graph start")
         due = 0.0
-        for resource in FlextInfraUtilitiesRopeCore.python_resources(project):
+        for resource in (
+            FlextInfraUtilitiesRopeCore.python_resources(project)
+            if resources is None
+            else resources
+        ):
             due = cls.codemod_progress(
                 f"import graph modules={len(modules)} file={resource.path}",
                 due,

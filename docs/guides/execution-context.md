@@ -74,19 +74,44 @@ Native checker caches remain owned by their existing runtime/cache owners. Nativ
 execution and malformed-report failures stay separate from diagnostic occurrences;
 neither a repeated failure nor an unchanged finding count proves validation success.
 
+Facade projection composes constants, utilities and models from the exports and
+base order declared in their configured private family. Protocol projection keeps
+its consumer-based ownership resolution. The utility path delegates directly to
+the declaration planner. Static and runtime consumer checks retain their own
+import-failure verdicts.
+Rendering a facade returns source only. Package-form imports require publishing
+the owning family's initializer through the existing lazy-init planner before a
+fresh consumer loads the generated facade.
+
+## New projects
+
+`make project-new` delegates to the same typed `codegen new` service exposed by
+the public Infra facade. It consumes explicit `NAME`, `KIND`, `OUTPUT_ROOT`,
+`PROVIDER`, `REPOSITORY_URL`, `REPOSITORY_BRANCH`, `FLEXT_REPOSITORY_URL`,
+`FLEXT_REPOSITORY_REF`, `LICENSE`, `AUTHOR_NAME`, `AUTHOR_EMAIL`, `UPSTREAM`,
+`FLEXT_SOURCE`, and `YEAR` inputs. These are identity declarations for a repository
+that does not exist yet; missing or invalid values fail the service's validation.
+Make transports their literal values through the environment, preserving spaces
+without evaluating the values as shell code.
+
+The generated project owns its declaration, Makefile, CI workflows, package,
+examples, and tests. Provision and validate it through its own `make setup`,
+`make gen`, `make check`, `make test`, and `make build`. Its physical environment
+belongs to the generated repository.
+
 ## Environment activation
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.
-Operational Make verbs activate that environment before handlers and hooks, except the
-activation producer declared in `make.verbs`. For `gen`, the pin and the provisioned
-physical environment are required before `pre-gen` and the selected handler. The default
-handler runs one conform transaction, which includes generating the `.envrc`; a declared
-`_custom-gen` still replaces that handler. Only then does Make activate the generated
-environment and run `post-gen`. A producer or activation failure prevents the later hook
-and keeps the command red, so `make gen` can repair a broken generated activation
-without another writer outside the journal. Initial provisioning remains the
-responsibility of `make setup`. Real commands work without wrapping each call in
-`direnv exec`.
+Make verbs declare their activation requirement in `make.verbs`; activation is
+required by default before handlers and hooks. Generation and its footprint
+inspection consume the declared physical interpreter and verify its environment
+directly, so they can repair generated activation inputs. The `gen` handler
+delegates to the existing `codegen generate` projection owner, including its
+guarded `.envrc` publication. A declared `_custom-gen` replaces that handler.
+Each invocation runs its pre hook, handler and post hook once, and a failure
+prevents later effects. Initial provisioning remains the responsibility of
+`make setup`. Public Make commands own the activation boundary and can be
+invoked directly.
 
 Library defaults resolve through the concrete config class's import-package resource,
 not its declaration file's depth or the checkout's `config/` directory. Editable and
@@ -167,6 +192,13 @@ their factory grammar or replaying imports, decorators, class bodies or callback
 that process. An authored-code mismatch proved directly from pinned source can fail
 before the child import.
 
+Provider election includes the installed runtime dependency closure of the
+observer SDK and the selected producers. Active installed requirements determine
+that closure. Native distribution metadata supplies import names; editable
+providers retain their PEP 610 and project-declaration proof. The same physical
+ownership and source checks apply to these providers before the isolated import
+loads their package initializers.
+
 Full authentication imports the elected sources in an isolated native interpreter.
 The child records the physical source receipts used by that import and passively
 observes the resulting code and bindings. The owner verifies the executed receipts,
@@ -181,6 +213,12 @@ closure values, descriptors and dataclass or attrs metadata. Dynamic factory inp
 remain valid when the authenticated import produces the same native behavior and
 bindings. A generated filename, advertised module name, serialized model or cached
 field table alone supplies no authority.
+
+Bootstrap pins capture resident standard-library files whose physical origin
+agrees with their native loader. That file election supplies bytes for the atomic
+reader bootstrap; it does not nominate a module as an executable producer.
+Producer observation still requires the native module registration and the
+complete independent import comparison to authenticate executable bindings.
 
 The original reference remains an immutable expectation throughout the operation.
 Its in-process birth is recorded only after full authentication. JSON round-trips,
@@ -421,6 +459,13 @@ declared generation and repair verbs; dependency resolution requires a separate,
 explicit `make upg` at the selected workspace or standalone owner.
 Git dependencies follow their declared integration branches, and `APPLY` stays removed.
 
+The toolchain elects the native `github:direnv/direnv` backend for Direnv's
+official release assets. This keeps platform selection with Mise and the
+publisher rather than an intermediate Aqua descriptor that omits the Windows
+executable suffix. The `latest` selector, release cooldown and platform matrix
+remain declared by the same toolchain owner. Qualify changes through native
+generation, `make upg` and the locked-install checks.
+
 One `make upg` run provisions the frozen producer before corrective pyproject
 projection, without requiring final runtime admission. The elected runtime
 owner resolves both native views; attached members delegate that operation
@@ -507,11 +552,17 @@ comments. They never write the installed generator's configuration or another
 checkout's declarations.
 
 Deptry checking and dependency detection consume one capture owner. It records the
-exact settings, native process outcome, fresh report and physical production tree;
-a changed tree, reused report, missing tool or contradictory exit status fails.
+exact settings, native process outcome, fresh report and one physical production
+tree per scanned root. Every directory the settings' wheel target ships, through
+its `only-include` entries and `sources` prefixes, contributes one root: a source
+remapped to its own trailing name (`"src/<pkg>" = "<pkg>"`) roots at `src`, and a
+namespace or relocated data directory roots at itself. A target declaring neither
+keeps `src`. A changed tree, reused report, missing tool or contradictory exit
+status fails.
 The import extractor's own coverage receipt must report a positive, unambiguous
-executed file count. Empty source trees and exclusions that prevent all execution
-therefore remain failures even when the native findings array is empty.
+executed file count over all roots. Empty source trees and exclusions that prevent
+all execution therefore remain failures even when the native findings array is
+empty.
 Repairs receive the elected interpreter's import suppliers and its native lock
 through typed injection. Missing or ambiguous suppliers remain native findings;
 installed package names never establish applicability. The existing requirement
@@ -1051,6 +1102,10 @@ request publication; fork requests and cancelled runs do not. The native cache
 action's effective access mode still governs whether upload occurs. A successful
 save step alone proves no generation was stored: acceptance requires the actual
 saved key or cache record, including when a reserve collision was reported.
+Each workflow declares whether the shared save fragment may emit PR payload
+accesses. Docs accepts push and dispatch only, so its save conditions contain no
+PR payload references. The dispatch-only matrix groups runs by workflow, event
+and ref without accessing a PR number.
 
 CI uploads the reports that the original operations produced on every job outcome,
 including successful checks, completed failures and interrupted runs. The upload also

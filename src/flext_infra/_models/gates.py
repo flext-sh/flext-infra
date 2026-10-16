@@ -127,11 +127,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         source: Annotated[
             t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-            m.Field(min_length=1, description="Production trees consumed by the scanner"),
-        ]
-        declarations: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(description="Configuration states declaring production roots"),
+            m.Field(
+                min_length=1, description="Production trees consumed by the scanner"
+            ),
         ]
         native: Annotated[
             m.Cli.CommandOutput,

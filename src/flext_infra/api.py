@@ -26,9 +26,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenFixer,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenPipeline,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsFiles,
 )
 from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
@@ -91,30 +89,13 @@ class FlextInfra(
         )
         if workspace.failure:
             return r[bool].from_failure(workspace)
-        planner = FlextInfraCodegenConform(
-            repository_root=source_root,
-            ports=None,
-        )
-        producer = FlextInfraCodegenPreconditions.capture_producer(
-            source_root,
-            entrypoint=planner.plan_repositories,
-            collaborators=(
-                FlextInfraCandidateBootstrapService.plan_candidates,
-                FlextInfraCandidateBootstrapService,
-                FlextInfraMiseArtifactsFiles.write_publication,
-            ),
-        )
-        if producer.failure:
-            return r[bool].from_failure(producer)
-        planner.producer = producer.value
         return FlextInfraCandidateBootstrapService(
-            # The campaign only plans through conform; it publishes through its
-            # own transaction and never runs the complete surface.
-            planner=planner,
-            producer=producer.value,
+            planner=FlextInfraCodegenConform(
+                repository_root=source_root,
+                ports=None,
+            ),
             transaction=FlextInfraCodegenTransaction(
                 FlextInfraCodegenMiseArtifacts(repository_root=source_root),
-                producer=producer.value,
             ),
         ).execute(source_root, workspace.value, request, inputs.value.sources)
 
@@ -201,6 +182,21 @@ class FlextInfra(
             output_format=request.output_format,
             conform_collaborators=self.codegen_conform_collaborators(),
         ).execute()
+
+    def codegen_generate(
+        self,
+        request: m.Infra.CodegenGenerateRequest,
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Generate managed projections through the shared transactional owner.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
+        return FlextInfraCodegenConform.generate_request(
+            request,
+            ports=self.codegen_conform_collaborators(),
+        )
 
     def codegen_conform(
         self,

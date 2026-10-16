@@ -99,19 +99,24 @@ class FlextInfraUtilitiesDocsFix:
                 ]
                 fix_outcome = u.Cli.run_raw(
                     (*common, *config.Infra.codegen.make.ruff.lint_fix),
+                    cwd=scope.path,
                     options=m.Cli.ProcessOptions(input_data=body.encode()),
                 )
                 if fix_outcome.failure:
                     raise RuntimeError(
                         fix_outcome.error or f"Ruff could not inspect {rel}",
                     )
-                # ``ruff check --fix`` exits non-zero when it DETECTED
-                # violations even after fixing every one of them; the fence
-                # is accepted only when a second, fix-free check comes back
-                # clean, never on the fix pass's own exit code.
+                if not u.Cli.process_succeeded(fix_outcome.value.outcome):
+                    msg = (
+                        f"Ruff could not fix {rel}: "
+                        f"{fix_outcome.value.stdout}\n{fix_outcome.value.stderr}"
+                    )
+                    raise RuntimeError(msg)
+                # Verify through the same read-only policy as the auditor.
                 fixed_body = fix_outcome.value.stdout
                 verify_outcome = u.Cli.run_raw(
-                    common,
+                    (*common, *config.Infra.codegen.make.ruff.lint_check),
+                    cwd=scope.path,
                     options=m.Cli.ProcessOptions(input_data=fixed_body.encode()),
                 )
                 if verify_outcome.failure:

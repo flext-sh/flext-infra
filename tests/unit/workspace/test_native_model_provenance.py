@@ -13,13 +13,12 @@ import pytest
 from flext_core import m
 from pydantic import RootModel
 from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 from typing_inspection.introspection import AnnotationSource, inspect_annotation
 
-from flext_infra.codegen import (
-    FlextInfraCodegenPreconditions,
-    FlextInfraMiseArtifactsFiles,
-)
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 from flext_infra.docs import FlextInfraDocGenerator
+from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import p, tm, u
 
 
@@ -29,14 +28,93 @@ class TestsFlextInfraNativeModelProvenance:
     @staticmethod
     def test_real_namespace_provider_retains_authenticated_native_sources() -> None:
         """An installed namespace is not duplicated by the cold import roots."""
+        consumer = YAML(typ="safe")
+        tm.that(consumer.load("a\n"), eq="a")
+        with pytest.raises(YAMLError):
+            consumer.load("\0")
         admission = tm.ok(
-            FlextInfraCodegenPreconditions.capture_producer(Path.cwd(), entrypoint=YAML)
+            FlextInfraValidateFreshImport.capture_producer(Path.cwd(), entrypoint=YAML)
         )
         sources = tm.not_none(admission.generator_reference).sources
         expected_source = Path(getfile(YAML)).resolve()
         tm.that(
             any(Path(source).resolve() == expected_source for _, source, _ in sources),
             eq=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("mutation", ["none", "code", "source"])
+    def test_parameterized_model_consumer_retains_authenticated_native_sources(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        mutation: str,
+    ) -> None:
+        """A named source consumer keeps generic behavior and rejects tampering."""
+        package = tmp_path / "parameterized_model_consumer"
+        u.Tests.write_package_init(
+            package,
+            "from pydantic import RootModel\n"
+            "def construct(value):\n"
+            "    return RootModel[str].model_construct(value)\n",
+        )
+        metadata = tmp_path / "parameterized_model_consumer-1.0.dist-info"
+        metadata.mkdir()
+        for name, content in (
+            (
+                "METADATA",
+                (
+                    "Metadata-Version: 2.4\n"
+                    "Name: parameterized-model-consumer\nVersion: 1.0\n"
+                ),
+            ),
+            ("top_level.txt", "parameterized_model_consumer\n"),
+            (
+                "RECORD",
+                (
+                    f"{metadata.name}/METADATA,,\n"
+                    f"{metadata.name}/top_level.txt,,\n"
+                    f"{metadata.name}/RECORD,,\n"
+                    "parameterized_model_consumer/__init__.py,,\n"
+                ),
+            ),
+        ):
+            tm.ok(u.Cli.atomic_write_text_file(metadata / name, content))
+        native_consumer(
+            """sys.path.insert(0, sys.argv[1])
+from inspect import getfile
+from pydantic import RootModel
+module = importlib.import_module('parameterized_model_consumer')
+value = module.construct('wire-value')
+assert isinstance(value, RootModel[str])
+assert value.model_dump() == 'wire-value'
+source = Path(module.__file__)
+mutation = sys.argv[2]
+if mutation == 'code':
+    module.construct.__code__ = module.construct.__code__.replace(co_name='foreign')
+elif mutation == 'source':
+    source.write_text(
+        source.read_text(encoding='utf-8').replace('RootModel[str]', 'RootModel[int]'),
+        encoding='utf-8')
+admission = FlextInfraValidateFreshImport.capture_producer(
+    runtime_root, entrypoint=module.construct)
+if mutation == 'none':
+    producer = admission.unwrap()
+    reference = producer.generator_reference
+    assert reference is not None
+    sources = {
+        Path(origin).resolve() for _, origin, _ in reference.sources
+    }
+    assert source.resolve() in sources
+    assert Path(getfile(RootModel)).resolve() in sources
+    assert source.resolve() in {
+        receipt.path.resolve() for receipt in reference.executed_sources
+    }
+else:
+    assert admission.failure, admission
+assert module.construct('wire-value').model_dump() == 'wire-value'
+""",
+            str(tmp_path),
+            mutation,
         )
 
     @staticmethod
@@ -74,7 +152,7 @@ class TestsFlextInfraNativeModelProvenance:
             """sys.path.insert(0, sys.argv[1])
 module = importlib.import_module('source_provider')
 assert module.operation() == 'original'
-admission = preconditions.capture_producer(
+admission = FlextInfraValidateFreshImport.capture_producer(
     runtime_root, entrypoint=module.operation).unwrap()
 assert admission.generator_reference is not None
 sources = {
@@ -101,7 +179,6 @@ assert changed.read_text(encoding='utf-8') == replacement
     @pytest.mark.parametrize(
         "entrypoint",
         [
-            RootModel[str].model_construct,
             inspect_annotation,
             m.ContractModel.model_validate,
             u.Infra.docs_scope_artifacts,
@@ -122,7 +199,7 @@ assert changed.read_text(encoding='utf-8') == replacement
         assert isclass(entrypoint) or isfunction(entrypoint) or ismethod(entrypoint)
         expected_source = Path(getfile(entrypoint)).resolve()
         admission = tm.ok(
-            FlextInfraCodegenPreconditions.capture_producer(
+            FlextInfraValidateFreshImport.capture_producer(
                 Path.cwd(), entrypoint=entrypoint
             )
         )

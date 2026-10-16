@@ -110,7 +110,11 @@ class FlextInfraRopeProject(Project):
         modname: str,
         folder: p.Infra.RopeRoot | Folder | None = None,
     ) -> File | Folder | None:
-        """Resolve through the SDK with an authenticated native folder.
+        """Resolve native resources without shadowing packages by namespaces.
+
+        Rope's folder query accepts namespace portions before regular packages.
+        Keep its resource and snapshot machinery, but elect a regular package
+        or module before an otherwise matching namespace portion, as Python does.
 
         Returns:
             The native module resource, or no matching module.
@@ -122,7 +126,39 @@ class FlextInfraRopeProject(Project):
         if folder is not None and not isinstance(folder, Folder):
             message = "Rope module lookup requires a native folder"
             raise TypeError(message)
-        return super().find_module(modname, folder)
+        namespace: Folder | None = None
+        roots = (
+            *self.get_source_folders(),
+            *self.get_python_path_folders(),
+            *((folder,) if folder is not None else ()),
+        )
+        for root in roots:
+            resource = super().find_relative_module(modname, root, 1)
+            if resource is None:
+                continue
+            if isinstance(resource, File) or resource.has_child(c.Infra.INIT_PY):
+                return resource
+            module = f"{resource.name}{c.Infra.EXT_PYTHON}"
+            if resource.parent.has_child(module):
+                sibling = resource.parent.get_child(module)
+                if isinstance(sibling, File):
+                    return sibling
+            if namespace is None:
+                namespace = resource
+        return namespace
+
+    @override
+    def validate(self, folder: Folder | p.Infra.RopeRoot | None = None) -> None:
+        """Validate the selected native folder, or the complete project root.
+
+        Raises:
+            TypeError: The supplied folder is not a native Rope folder.
+
+        """
+        if folder is not None and not isinstance(folder, Folder):
+            message = "Rope validation requires a native folder"
+            raise TypeError(message)
+        super().validate(self.root if folder is None else folder)
 
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
@@ -306,7 +342,7 @@ class FlextInfraRopeProject(Project):
                 must read the same captured inventory as project modules.
 
         Returns:
-            The resulting ``Self``.
+            A native project of the requested snapshot owner.
 
         Raises:
             ValueError: If Rope snapshot root must already exist.

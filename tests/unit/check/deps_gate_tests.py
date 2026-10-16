@@ -12,6 +12,7 @@ import venv
 from importlib.metadata import distribution
 from json import dumps
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -24,17 +25,50 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraDepsGate:
     """Undeclared imports fail at check time, never deep inside generation."""
 
+    _SHIPPED_INFRA: ClassVar[str] = (
+        "\n[tool.hatch.build.targets.wheel]\n"
+        'only-include = ["src/fixturepkg", "infra"]\n'
+        "\n[tool.hatch.build.targets.wheel.sources]\n"
+        '"src/fixturepkg" = "fixturepkg"\ninfra = "infra"\n'
+    )
+    _SHIPPED_DATA: ClassVar[str] = (
+        "\n[tool.hatch.build.targets.wheel]\n"
+        'only-include = ["src/fixturepkg", "deploy/infra"]\n'
+        "\n[tool.hatch.build.targets.wheel.sources]\n"
+        '"src/fixturepkg" = "fixturepkg"\n'
+        '"deploy/infra" = "fixturepkg/deploy/infra"\n'
+    )
+
+    @staticmethod
+    def _ship_second_root(
+        root: Path,
+        declaration: str,
+        directory: str,
+        imports: str,
+    ) -> None:
+        """Write a second root and append the wheel declaration shipping it."""
+        pyproject = root / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8") + declaration,
+            encoding="utf-8",
+        )
+        (root / directory).mkdir(parents=True)
+        (root / directory / "deploy.py").write_text(imports, encoding="utf-8")
+
     @staticmethod
     def _project(tmp_path: Path, dependencies: str, imports: str) -> Path:
         root = tmp_path / "repository"
-        (root / "src").mkdir(parents=True)
+        (root / "src" / "fixturepkg").mkdir(parents=True)
         (root / "pyproject.toml").write_text(
             '[project]\nname = "fixture"\nversion = "0.1.0"\n'
             f"dependencies = [{dependencies}]\n"
             '[tool.deptry]\nknown_first_party = ["fixturepkg"]\n',
             encoding="utf-8",
         )
-        (root / "src" / "fixturepkg.py").write_text(imports, encoding="utf-8")
+        (root / "src" / "fixturepkg" / "__init__.py").write_text(
+            imports,
+            encoding="utf-8",
+        )
         return root
 
     @staticmethod
@@ -93,7 +127,7 @@ class TestsFlextInfraDepsGate:
             development_only=(),
             inputs=(
                 u.Cli.atomic_read_binary_file_state(
-                    root / "src" / "fixturepkg.py",
+                    root / "src" / "fixturepkg" / "__init__.py",
                     required=True,
                 ).unwrap(),
             ),
@@ -205,6 +239,79 @@ class TestsFlextInfraDepsGate:
         tm.that(report_path.read_bytes(), eq=before)
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("declaration", "directory", "roots", "unused"),
+        [
+            (
+                "",
+                "infra",
+                (c.Infra.DEFAULT_SRC_DIR,),
+                ("pyyaml", "requests"),
+            ),
+            (
+                _SHIPPED_INFRA,
+                "infra",
+                ("infra", c.Infra.DEFAULT_SRC_DIR),
+                ("pyyaml",),
+            ),
+            (
+                _SHIPPED_DATA,
+                "deploy/infra",
+                ("deploy/infra", c.Infra.DEFAULT_SRC_DIR),
+                ("pyyaml",),
+            ),
+        ],
+        ids=["undeclared", "namespace", "relocated-data"],
+    )
+    def test_native_scan_covers_every_declared_wheel_root(
+        tmp_path: Path,
+        declaration: str,
+        directory: str,
+        roots: t.StrTuple,
+        unused: t.StrTuple,
+    ) -> None:
+        """Imports in every shipped root count; unshipped siblings stay outside."""
+        root = TestsFlextInfraDepsGate._project(
+            tmp_path,
+            '"pyyaml>=6", "requests>=2"',
+            "import os\n",
+        )
+        TestsFlextInfraDepsGate._ship_second_root(
+            root,
+            declaration,
+            directory,
+            "import requests\n",
+        )
+        ((root / directory).parent / "unshipped.py").write_text(
+            "import yaml\n",
+            encoding="utf-8",
+        )
+
+        scan = u.Infra.capture_deptry_scan(
+            root,
+            Path(sys.executable).parent,
+            config_path=root / c.PYPROJECT_FILENAME,
+            json_output_path=tmp_path / "native.json",
+        ).unwrap()
+
+        tm.that(
+            tuple(source.root.path for source in scan.source),
+            eq=tuple(root / item for item in roots),
+        )
+        # Each root holds exactly one module; the unshipped sibling is not one.
+        tm.that(scan.scanned_files, eq=len(roots))
+        tm.that(
+            tuple(
+                sorted(
+                    item.module
+                    for item in scan.report.root
+                    if item.error.code == c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE
+                )
+            ),
+            eq=unused,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("excluded", [False, True])
     def test_native_capture_requires_executed_sources(
         tmp_path: Path, *, excluded: bool
@@ -218,7 +325,7 @@ class TestsFlextInfraDepsGate:
                 encoding="utf-8",
             )
         else:
-            (root / "src" / "fixturepkg.py").unlink()
+            (root / "src" / "fixturepkg" / "__init__.py").unlink()
 
         scan = u.Infra.capture_deptry_scan(
             root,
@@ -306,13 +413,23 @@ class TestsFlextInfraDepsGate:
         tm.that(repaired.raw_output, has="repair-rescan")
 
     @staticmethod
-    @pytest.mark.parametrize("change", ["ambiguous", "source", "wrong-lock"])
+    @pytest.mark.parametrize(
+        "change",
+        ["ambiguous", "source", "shipped-source", "wrong-lock"],
+    )
     def test_dependency_plan_refuses_unevidenced_repair(
         tmp_path: Path,
         change: str,
     ) -> None:
         """Missing identity proof and changed inputs cannot publish a requirement."""
         root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
+        if change == "shipped-source":
+            TestsFlextInfraDepsGate._ship_second_root(
+                root,
+                TestsFlextInfraDepsGate._SHIPPED_INFRA,
+                "infra",
+                "import os\n",
+            )
         inputs = TestsFlextInfraDepsGate._dependency_inputs(root)
         scan = u.Infra.capture_deptry_scan(
             root,
@@ -327,9 +444,13 @@ class TestsFlextInfraDepsGate:
             tm.that(plan.unresolved_modules, has="requests")
             tm.that(plan.dependencies, eq=())
             tm.that(u.Infra.publish_runtime_dependency_plan(plan).unwrap(), eq=False)
-        elif change == "source":
+        elif change in {"source", "shipped-source"}:
             plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
-            (root / "src" / "new_module.py").write_text("import os\n", encoding="utf-8")
+            changed = "infra" if change == "shipped-source" else "src"
+            (root / changed / "new_module.py").write_text(
+                "import os\n",
+                encoding="utf-8",
+            )
             rejected = u.Infra.publish_runtime_dependency_plan(plan)
             tm.that(rejected.failure, eq=True)
             tm.that(rejected.error, has="source changed")

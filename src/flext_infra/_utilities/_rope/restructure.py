@@ -44,8 +44,7 @@ class FlextInfraRopeRestructure(Restructure):
             else ("identity_choices", tuple(value))
             for name, value in request.arguments.items()
         }
-        native: p.Infra.RopeRestructure = super()
-        native.__init__(
+        super().__init__(
             project,
             request.pattern,
             request.goal,
@@ -87,8 +86,7 @@ class FlextInfraRopeRestructure(Restructure):
         )
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
-        native: p.Infra.RopeRestructure = super()
-        return native._compute_changes(selected, pymodule)
+        return super()._compute_changes(selected, pymodule)
 
     @override
     def _add_imports(
@@ -112,8 +110,7 @@ class FlextInfraRopeRestructure(Restructure):
                 for binding, declaration in self.import_policy.items()
                 if binding not in names
             )
-        native: p.Infra.RopeRestructure = super()
-        return native._add_imports(resource, source, list(selected))
+        return super()._add_imports(resource, source, list(selected))
 
 
 __all__: list[str] = ["FlextInfraRopeRestructure"]

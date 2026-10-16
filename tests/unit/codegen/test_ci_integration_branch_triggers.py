@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import t, tm, u
 
 
@@ -107,6 +108,62 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         assert isinstance(activities, list)
 
         tm.that(activities, has="edited")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "template_source",
+        [
+            entry.source
+            for entry in config.Infra.codegen.templates.entries
+            if entry.source is not None
+            and not entry.requires_release_protocol
+            and Path(entry.destination).is_relative_to(
+                c.Infra.GITHUB_WORKFLOWS_RELATIVE_PATH,
+            )
+        ],
+    )
+    def test_event_context_matches_the_rendered_workflow_triggers(
+        template_source: Path,
+    ) -> None:
+        """Only workflows declaring PR events may reference their payload."""
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
+            dist="event-context-consumer",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            repository_branch="integration/event-context-consumer",
+            ci_trigger_branches=(),
+        )
+        template_root = u.Infra.codegen_templates_root(config.Infra.codegen)
+        template = template_root / template_source
+        rendered = tm.ok(u.Cli.template_render(template, spec))
+        document = tm.ok(u.Cli.yaml_parse(rendered))
+        events = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["on"])
+
+        tm.that(
+            "github.event.pull_request" in rendered and "pull_request" not in events,
+            eq=False,
+        )
+
+    @staticmethod
+    def test_workflow_projection_uses_only_manifest_workflows() -> None:
+        """Scoped recovery retains every non-workflow destination."""
+        codegen = config.Infra.codegen
+        contract = FlextInfraCodegenConform.surface_contract(
+            c.Infra.CodegenConformSurface.WORKFLOWS,
+            codegen=codegen,
+        )
+        expected = frozenset(
+            entry.destination
+            for entry in codegen.templates.entries
+            if Path(entry.destination).is_relative_to(
+                c.Infra.GITHUB_WORKFLOWS_RELATIVE_PATH,
+            )
+        )
+
+        tm.that(expected, empty=False)
+        tm.that(contract.destinations, eq=expected)
+        tm.that(contract.pyproject, eq=False)
+        tm.that(contract.tooling, eq=False)
+        tm.that(contract.custom, eq=False)
 
     @staticmethod
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))

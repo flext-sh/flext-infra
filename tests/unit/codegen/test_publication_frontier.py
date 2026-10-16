@@ -30,7 +30,6 @@ class TestsPublicationFrontier:
 from flext_infra import r
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
 )
 from tests import c, m, p, t, tm, u
@@ -47,11 +46,6 @@ tm.ok(u.Cli.atomic_write_text_file(target, payload))
 before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
 owner = FlextInfraCodegenTransaction(
     FlextInfraCodegenMiseArtifacts(repository_root=root),
-    producer=tm.ok(
-        FlextInfraCodegenPreconditions.capture_producer(
-            runtime_root, entrypoint=FlextInfraCodegenTransaction
-        )
-    ),
 )
 roots = {"@unchanged": root}
 validated: p.Result[m.Infra.GitRepoRequest] | None = None
@@ -126,7 +120,6 @@ tm.that(
         native_consumer(
             r"""sys.path.insert(0, sys.argv[1])
 from flext_infra.codegen import (
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
@@ -145,18 +138,11 @@ generator = FlextInfraDocGenerator(
     selected_projects=["flext-a"],
     include_root=False,
 )
-producer = tm.ok(
-    FlextInfraCodegenPreconditions.capture_producer(
-        runtime_root,
-        entrypoint=generator.prepare_batches,
-        collaborators=(generator.publish_batch,),
-    )
-)
 receipts: list[m.Infra.CodegenPhaseOutcome] = []
 bundle = tm.ok(
     next(
         generator.prepare_batches(
-            producer=producer, publication_receipts=receipts
+            publication_receipts=receipts
         )
     )
 )
@@ -240,7 +226,6 @@ else:
 from flext_infra import infra, r
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
 )
 from tests import c, m, p, t, tm, u
@@ -251,11 +236,6 @@ target = root / c.Infra.MAKEFILE_FILENAME
 tm.ok(u.Cli.atomic_write_text_file(target, "VALUE := initial\n"))
 owner = FlextInfraCodegenTransaction(
     FlextInfraCodegenMiseArtifacts(repository_root=root),
-    producer=tm.ok(
-        FlextInfraCodegenPreconditions.capture_producer(
-            runtime_root, entrypoint=FlextInfraCodegenTransaction
-        )
-    ),
 )
 roots = {"@bootstrap-0": root}
 receipts: list[m.Infra.CodegenPhaseOutcome] = []

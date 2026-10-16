@@ -39,6 +39,14 @@ class FlextInfraModelsWorkspace:
         inputs: t.VariadicTuple[m.Cli.AtomicFileReceipt] = m.Field(
             description="Pinned source/resource/distribution/runtime byte identities"
         )
+        bootstrap_sources: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(),
+            description=(
+                "Original buffered source candidates for atomic-reader bootstrap; "
+                "only consumed candidates enter the sealed native reference"
+            ),
+        )
+        _source_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             description="Authenticated physical producer membership"
         )
@@ -311,6 +319,7 @@ class FlextInfraModelsWorkspace:
             default=(),
             description="Sources authenticated before compilation in the cold import",
         )
+        _import_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
 
     class NativeImportReference(NativeImportObservation):
         """One loaded epoch authenticated against its cold physical source."""

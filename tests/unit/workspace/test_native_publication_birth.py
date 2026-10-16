@@ -33,7 +33,7 @@ from flext_infra.codegen import (
 from tests import c, m, tm, u
 root = u.Tests.git_repository(Path(sys.argv[2]))
 transport = sys.argv[3]
-producer = tm.ok(preconditions.capture_producer(
+producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
     runtime_root, entrypoint=FlextInfraCodegenTransaction))
 reference = tm.not_none(producer.generator_reference)
 if transport == "copy":
@@ -107,7 +107,7 @@ metadata.mkdir()
 sys.path.insert(0, str(root))
 module = importlib.import_module("epoch_provider")
 original_content = module.render()
-producer = tm.ok(preconditions.capture_producer(
+producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
     runtime_root,
     entrypoint=module.render,
     collaborators=(FlextInfraCodegenTransaction,)))
@@ -184,7 +184,7 @@ from flext_infra.codegen import (
 from tests import c, m, tm, u
 root = u.Tests.git_repository(Path(sys.argv[2]))
 transport = sys.argv[3]
-producer = tm.ok(preconditions.capture_producer(
+producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
     runtime_root, entrypoint=FlextInfraCodegenTransaction))
 roots = {"@birth": root}
 receipts = []

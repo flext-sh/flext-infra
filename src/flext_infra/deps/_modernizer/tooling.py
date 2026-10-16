@@ -206,6 +206,9 @@ class FlextInfraPyprojectModernizerTooling:
                     FlextInfraToolTablesPhase.deptry_first_party_namespaces(
                         path=project_dir,
                         planned_sources=tuple(request.planned_sources),
+                        repository_namespace_packages=(
+                            request.topology.repository_namespace_packages
+                        ),
                     ),
                 ),
                 "mypy_path": (

@@ -30,6 +30,7 @@ class TestsFlextInfraLazyInitRuntime:
             "module-only",
             "entities",
             "standalone",
+            "parenthesized",
         ],
     )
     def test_declared_model_publication_preserves_symbol_ownership(
@@ -64,6 +65,11 @@ class TestsFlextInfraLazyInitRuntime:
             "class Facade(parent): pass\n"
             "m = Facade\n__all__ = ['Facade', 'm']\n"
         )
+        if ownership == "parenthesized":
+            sources[facade] = sources[facade].replace(
+                "from flext_core import m as parent\n",
+                "from flext_core import (\n    m as parent,\n)\n",
+            )
         if ownership == "standalone":
             sources[owners / "standalone.py"] = (
                 "from flext_core import m as parent\n"
@@ -76,12 +82,11 @@ class TestsFlextInfraLazyInitRuntime:
                 "__all__ = ['Standalone']\n"
             )
         if ownership == "entities":
-            sources[facade] = (
-                "from flext_core import m as parent\n"
-                "class Facade(parent):\n"
+            sources[owner] = source.replace(
+                "__all__ = ['PublishedOwner']\n",
                 "    class First: value = 'first'\n"
                 "    class Second: value = 'second'\n"
-                "m = Facade\n__all__ = ['Facade', 'm']\n"
+                "__all__ = ['PublishedOwner']\n",
             )
         if ownership in {"module", "module-only"}:
             sources[package / "ancestor.py"] = (

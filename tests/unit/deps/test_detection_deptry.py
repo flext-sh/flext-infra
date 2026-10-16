@@ -33,6 +33,10 @@ class TestsFlextInfraDepsDetectionDeptry:
             pyproject=(
                 f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
                 'dependencies = ["pydantic"]\n'
+                "\n[tool.hatch.build.targets.wheel]\n"
+                f'only-include = ["{c.Infra.DEFAULT_SRC_DIR}", "{namespace}"]\n'
+                "\n[tool.hatch.build.targets.wheel.sources]\n"
+                f'{c.Infra.DEFAULT_SRC_DIR} = ""\n'
             ),
         )
         u.Tests.write_standalone_workspace_manifest(
@@ -82,8 +86,11 @@ class TestsFlextInfraDepsDetectionDeptry:
             name,
             with_src=True,
             pyproject=(
-                f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
-                "dependencies = []\n"
+                f'[project]\nname = "{name}"\nversion = "0.1.0"\ndependencies = []\n'
+                "\n[tool.hatch.build.targets.wheel]\n"
+                f'only-include = ["{c.Infra.DEFAULT_SRC_DIR}", "deployment_support"]\n'
+                "\n[tool.hatch.build.targets.wheel.sources]\n"
+                f'{c.Infra.DEFAULT_SRC_DIR} = ""\n'
             ),
         )
         u.Tests.write_standalone_workspace_manifest(

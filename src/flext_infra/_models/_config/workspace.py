@@ -13,6 +13,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, t
 from packaging.utils import canonicalize_name
 
+from flext_infra import c
 from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
@@ -91,10 +92,7 @@ class FlextInfraConfigModelsWorkspace:
             if not self.url.startswith("https://") or not self.url.endswith(".git"):
                 msg = "dependency commit source URL must be canonical HTTPS Git"
                 raise ValueError(msg)
-            if (
-                FlextInfraConfigVocabulary.GIT_COMMIT_OID_RE.fullmatch(self.commit)
-                is None
-            ):
+            if c.Infra.GIT_COMMIT_OID_RE.fullmatch(self.commit) is None:
                 msg = "dependency commit source must pin a full Git OID"
                 raise ValueError(msg)
             return self
@@ -427,7 +425,7 @@ class FlextInfraConfigModelsWorkspace:
                 ],
             ],
             m.Field(
-                validation_alias=FlextInfraConfigVocabulary.DEPENDENCY_GROUPS,
+                validation_alias=c.Infra.DEPENDENCY_GROUPS,
                 description="PEP 735 dependency groups (dev, codegen, ...)",
             ),
         ] = m.Field(
@@ -533,8 +531,8 @@ class FlextInfraConfigModelsWorkspace:
         version: Annotated[
             int,
             m.Field(
-                ge=FlextInfraConfigVocabulary.WORKSPACE_MANIFEST_VERSION,
-                le=FlextInfraConfigVocabulary.WORKSPACE_MANIFEST_VERSION,
+                ge=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                le=c.Infra.WORKSPACE_MANIFEST_VERSION,
                 description="Workspace manifest schema version",
             ),
         ]

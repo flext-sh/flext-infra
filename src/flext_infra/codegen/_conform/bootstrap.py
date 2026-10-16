@@ -27,6 +27,14 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         m.Infra.CodegenConformRequest | None,
         m.Field(default=None, exclude=True, description="Validated conform request"),
     ] = None
+    generation_only: Annotated[
+        bool,
+        m.Field(
+            default=False,
+            exclude=True,
+            description="Project declared outputs without repairing authored inputs",
+        ),
+    ] = False
     repository_root: Annotated[
         Path,
         m.Field(default=Path(), exclude=True, description="Conform repository root"),
@@ -45,7 +53,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             default=None,
             exclude=True,
             description=(
-                "Docs planner and fresh-import probe wired by the facade; the "
+                "Docs planner and participant policy wired by the facade; the "
                 "complete surface fails before any effect without them"
             ),
         ),
@@ -63,18 +71,10 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         exclude=True,
         description="First native file planning cause",
     )
-    producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
-        default=None, exclude=True, description="Producer captured before planning"
-    )
     docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
         default=None,
         exclude=True,
         description="Actual docs planner retained before effects",
-    )
-    docs_producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
-        default=None,
-        exclude=True,
-        description="Original docs producer captured before effects",
     )
 
     def _record_file_failure(
@@ -235,21 +235,6 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         *,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.CodegenConformSurfaceContract:
-        """Resolve the declared conformance surface to its owned contract.
-
-        Returns:
-            The contract owned by the declared conformance surface.
-
-        """
-        return cls._declared_surface_contract(surface, codegen=codegen)
-
-    @classmethod
-    def _declared_surface_contract(
-        cls,
-        surface: c.Infra.CodegenConformSurface,
-        *,
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> m.Infra.CodegenConformSurfaceContract:
         """Resolve one admitted surface into its conformance contract.
 
         Args:
@@ -299,33 +284,49 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                     delegates=False,
                     custom=False,
                 )
-            case c.Infra.CodegenConformSurface.MAKEFILE:
+            case (
+                c.Infra.CodegenConformSurface.MAKEFILE
+                | c.Infra.CodegenConformSurface.DOCS_CONFIG
+            ):
                 # The Makefile's bootstrap runs the generated lock publisher, so
                 # a recovered Makefile without it could never finish make upg.
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
+                    destinations=(
+                        c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS
+                        if surface is c.Infra.CodegenConformSurface.MAKEFILE
+                        else frozenset({
+                            (
+                                Path(c.Infra.DIR_DOCS) / c.Infra.DOCS_CONFIG_FILENAME
+                            ).as_posix()
+                        })
+                    ),
                     pyproject=False,
                     custom=False,
                 )
-            case c.Infra.CodegenConformSurface.DOCS_CONFIG:
-                destination = (
-                    Path(c.Infra.DIR_DOCS) / c.Infra.DOCS_CONFIG_FILENAME
-                ).as_posix()
+            case c.Infra.CodegenConformSurface.WORKFLOWS:
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({destination}),
-                    pyproject=False,
-                    custom=False,
-                )
-            case c.Infra.CodegenConformSurface.ENVRC:
-                contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.Infra.ENVRC_FILENAME}),
+                    destinations=frozenset(
+                        entry.destination
+                        for entry in codegen.templates.entries
+                        if Path(entry.destination).is_relative_to(
+                            c.Infra.GITHUB_WORKFLOWS_RELATIVE_PATH,
+                        )
+                    ),
                     delegates=False,
                     pyproject=False,
+                    tooling=False,
                     custom=False,
                 )
-            case c.Infra.CodegenConformSurface.MISE_CONFIG:
+            case (
+                c.Infra.CodegenConformSurface.ENVRC
+                | c.Infra.CodegenConformSurface.MISE_CONFIG
+            ):
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.Infra.MISE_TOML_FILENAME}),
+                    destinations=frozenset({
+                        c.Infra.ENVRC_FILENAME
+                        if surface is c.Infra.CodegenConformSurface.ENVRC
+                        else c.Infra.MISE_TOML_FILENAME
+                    }),
                     delegates=False,
                     pyproject=False,
                     custom=False,

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TypeGuard, TypeIs
 
-from flext_infra import p, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 
@@ -27,7 +27,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
 
         """
         return isinstance(
-            value, cls.runtime_type("rope.base.pyobjects", "AbstractModule")
+            value, cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractModule")
         ) and isinstance(value, p.Infra.RopeSemanticModule)
 
     @classmethod
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         """
         return isinstance(
             value,
-            cls.runtime_type("rope.base.pyobjects", "AbstractClass"),
+            cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractClass"),
         )
 
     @classmethod
@@ -150,7 +150,10 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
             Whether ``value`` is a Rope inferred class instance.
 
         """
-        return type(value) is cls.runtime_type("rope.base.pyobjects", "PyObject")
+        return type(value) is cls.runtime_type(
+            c.Infra.ROPE_PYOBJECTS_MODULE,
+            "PyObject",
+        )
 
     @classmethod
     def py_class(cls, value: t.Infra.RopePyObject) -> bool:

@@ -136,9 +136,7 @@ class FlextInfraModelsCodegenPipelineModels:
     class CodegenPhaseOutcome(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """One fleet worker's phase analysis, or its failure as data."""
 
-        _publication_birth: t.Triple[int, int, str] | None = m.PrivateAttr(
-            default=None,
-        )
+        _publication_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
 
         analysis: Annotated[
             FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis | None,

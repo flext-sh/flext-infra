@@ -558,15 +558,15 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             return FlextInfraCodegenPreconditions.source_authority_current(
                 self._source_authority,
             )
-        if self._producer.failure:
-            return r[bool].from_failure(self._producer)
-        return FlextInfraMiseArtifactsVerification.publication_outputs_current(
+        outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             self._prior_publications,
-            reference=self._producer.value.generator_reference,
-        ).flat_map(
-            lambda outputs: FlextInfraCodegenPreconditions.producer_current(
-                self._producer.value, outputs=outputs
-            )
+        )
+        if outputs.failure:
+            return r[bool].from_failure(outputs)
+        if self._producer is None:
+            return r[bool].ok(value=True)
+        return FlextInfraCodegenPreconditions.producer_current(
+            self._producer, outputs=outputs.value
         )
 
     def _file_lease_mismatch(
@@ -649,7 +649,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             producer=(
                 self._source_authority
                 if self._source_authority is not None
-                else self._producer.value
+                else self._producer
             ),
         )
         if journal.failure:
@@ -701,11 +701,15 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         result_type = r[t.VariadicTuple[Path]]
-        if self._producer.failure:
-            return result_type.from_failure(self._producer)
+        if not analysis.files and (analysis.issues or analysis.exception is not None):
+            return result_type.fail(
+                "\n".join(issue.formatted for issue in analysis.issues)
+                or "generation planning failed",
+                exception=analysis.exception,
+            )
         admitted = FlextInfraMisePublication.admit_batch(
             analysis,
-            producer=self._producer.value,
+            producer=self._producer,
             admission=policy.admission,
             prior_publications=self._prior_publications,
         )
@@ -817,35 +821,26 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         if prepared.failure:
             return result_type.from_failure(prepared)
         layout = prepared.value
-        outcome = self._file_transaction_guard(layout).flat_map(
-            lambda _guarded: FlextInfraMiseArtifactsJournal.observed_outcome(
-                layout,
-                admission,
-                producer=(
-                    self._source_authority
-                    if self._source_authority is not None
-                    else self._producer.value
-                ),
+        outcome = (
+            self
+            ._file_transaction_guard(layout)
+            .flat_map(
+                lambda _guarded: FlextInfraMiseArtifactsJournal.observed_outcome(
+                    layout,
+                    admission,
+                    producer=(
+                        self._source_authority
+                        if self._source_authority is not None
+                        else self._producer
+                    ),
+                )
             )
+            .flat_map(self._owned_publication_outcome)
         )
         if outcome.failure:
             return result_type.from_failure(outcome)
-        reference = self._producer.value.generator_reference
-        if reference is None:
-            return result_type.fail("observed publication lacks its original producer")
-        storage = outcome.value.__pydantic_private__
-        if storage is None:
-            return result_type.fail(
-                "observed publication lacks its declared private storage",
-            )
-        storage["_publication_birth"] = (
-            id(outcome.value),
-            id(reference),
-            u.Cli.sha256_content(outcome.value.model_dump_json()),
-        )
         current = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             (*self._prior_publications, outcome.value),
-            reference=self._producer.value.generator_reference,
             destinations=tuple(output.path for output in outcome.value.outputs),
         ).flat_map(lambda _current: self.publish_outcome(scope_root, outcome.value))
         if current.failure:

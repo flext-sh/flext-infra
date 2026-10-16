@@ -149,7 +149,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
 
         source: Annotated[
             t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-            m.Field(min_length=1, description="Production trees establishing applicability"),
+            m.Field(
+                min_length=1,
+                description="Production trees establishing applicability",
+            ),
         ]
         before: Annotated[
             m.Cli.AtomicFileState,

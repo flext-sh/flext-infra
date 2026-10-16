@@ -51,8 +51,11 @@ class FlextInfraUtilitiesCodegenNamespace:
             The type group and the case-folded name.
 
         """
-        category = 0 if name.isupper() else 1 if name[:1].isupper() else 2
-        return category, name.casefold()
+        if name.isupper():
+            return 0, name.casefold()
+        if name[:1].isupper():
+            return 1, name.casefold()
+        return 2, name.casefold()
 
     @staticmethod
     @cache
@@ -278,7 +281,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @staticmethod
-    def _literal_exports(
+    def _literal_namespace_exports(
         tree: ast.Module,
         value: ast.expr,
         file_path: Path,
@@ -356,12 +359,12 @@ class FlextInfraUtilitiesCodegenNamespace:
                     isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
                     for target in targets
                 ):
-                    result = cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_namespace_exports(tree, value, file_path)
                     break
                 case ast.AnnAssign(target=ast.Name(id=name), value=value) if (
                     name == c.Infra.DUNDER_ALL and value is not None
                 ):
-                    result = cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_namespace_exports(tree, value, file_path)
                     break
                 case _:
                     continue

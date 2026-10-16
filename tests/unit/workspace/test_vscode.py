@@ -56,8 +56,10 @@ class TestsFlextInfraCodegenVscode:
             eq=config.Infra.codegen.vscode.scalar_settings[interpreter],
         )
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-        tm.that(search_paths_key in config.Infra.codegen.vscode.list_settings, eq=False)
-        tm.that(search_paths_key in doc, eq=False)
+        tm.that(
+            doc[search_paths_key],
+            eq=config.Infra.codegen.vscode.additional_settings[search_paths_key],
+        )
         excludes = u.Tests.toml_mapping(doc["files.exclude"])
         tm.that("**/.retired-cache" in excludes, eq=False)
         tm.that(excludes["**/.mypy_cache"], eq=True)
@@ -134,8 +136,10 @@ class TestsFlextInfraCodegenVscode:
         tm.that(result.value.encode(), eq=standalone.value.encode())
         doc = u.Tests.json_payload(result.value)
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-        tm.that(search_paths_key in config.Infra.codegen.vscode.list_settings, eq=False)
-        tm.that(search_paths_key in doc, eq=False)
+        tm.that(
+            doc[search_paths_key],
+            eq=config.Infra.codegen.vscode.additional_settings[search_paths_key],
+        )
 
     def test_invalid_json_fails_without_producing_a_document(
         self,

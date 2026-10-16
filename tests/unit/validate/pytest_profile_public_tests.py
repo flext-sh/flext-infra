@@ -30,7 +30,7 @@ class TestsFlextInfraPytestProfile:
         script = (
             c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, signal, sys, pstats\n"
             "output = Path(sys.argv[1])\n"
-            "profile.runcall(sum, range(10))\n"
+            "sum(range(10))\n"
             "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
             "before = output.read_bytes()\n"
             "before_modified = output.stat().st_mtime_ns\n"
@@ -52,6 +52,38 @@ class TestsFlextInfraPytestProfile:
         result = tm.ok(
             u.Cli.run_raw(
                 (sys.executable, "-c", script, str(output)),
+                cwd=tmp_path,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+
+    @staticmethod
+    def test_immutable_profile_is_linked_before_public_replacement(
+        tmp_path: Path,
+    ) -> None:
+        """The invocation-owned inode exists before the shared name is replaced."""
+        output = tmp_path / "shared.pstats"
+        immutable = tmp_path / "owned.pstats"
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, pstats\n"
+            "output, immutable = map(Path, sys.argv[1:])\n"
+            "def interleave(event, arguments):\n"
+            "    if event == 'os.rename' and str(arguments[1]) == str(output):\n"
+            "        assert immutable.samefile(Path(arguments[0]))\n"
+            "        output.write_bytes(b'another publisher')\n"
+            "sys.addaudithook(interleave)\n"
+            "clock.FlextInfraPytestClock.publish_profile(\n"
+            "    profile, output, immutable_output=immutable)\n"
+            "assert immutable.samefile(output)\n"
+            "assert pstats.Stats(str(immutable)).get_stats_profile().func_profiles\n"
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(output), str(immutable)),
                 cwd=tmp_path,
             ),
         )
@@ -92,7 +124,7 @@ class TestsFlextInfraPytestProfile:
                     str(output),
                     "-p",
                     probe.stem,
-                    "--version",
+                    "--collect-only",
                 ),
                 cwd=tmp_path,
                 timeout=deadline,
@@ -211,8 +243,10 @@ class TestsFlextInfraPytestProfile:
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.parametrize("publication_error", ["receipt", "context", "stderr"])
     def test_parent_publication_error_preserves_the_child_failure(
         cached_runner_project: Path,
+        publication_error: str,
     ) -> None:
         """A real receipt write error cannot replace a killed suite's exit code."""
         cache = config.Infra.codegen.make.testmon_cache
@@ -224,23 +258,43 @@ class TestsFlextInfraPytestProfile:
             / "profiles"
             / policy.profile_suite_filename
         )
+        damage = (
+            "    (Path(os.environ["
+            f"{c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV!r}]).parent / 'run-context.json')"
+            ".write_text('{')\n"
+            if publication_error == "context"
+            else f"    Path({str(output.with_suffix('.pstats.json'))!r}).mkdir()\n"
+        )
         (cached_runner_project / target).write_text(
             "import os, signal\nfrom pathlib import Path\n"
             "def test_runtime():\n"
-            f"    Path({str(output.with_suffix('.pstats.json'))!r}).mkdir()\n"
-            "    os.kill(os.getpid(), signal.SIGKILL)\n",
+            + damage
+            + "    os.kill(os.getpid(), signal.SIGKILL)\n",
             encoding=c.DEFAULT_ENCODING,
         )
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, target_file=target
         )
+        script = (
+            "import os, runpy, sys\n"
+            "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
+            "def close_diagnostic(event, arguments):\n"
+            "    if event == 'os.rename' and str(arguments[1]) == "
+            f"{str(output.with_suffix('.pstats.json'))!r}:\n"
+            "        sys.stderr.close()\n"
+            + (
+                "sys.addaudithook(close_diagnostic)\n"
+                if publication_error == "stderr"
+                else ""
+            )
+            + "runpy.run_module('flext_infra._pytest_entry', run_name='__main__')\n"
+        )
         result = tm.ok(
             u.Cli.run_raw(
                 (
                     sys.executable,
-                    "-m",
-                    "flext_infra._pytest_entry",
-                    "profile",
+                    "-c",
+                    script,
                     str(output),
                 ),
                 cwd=cached_runner_project,
@@ -248,6 +302,7 @@ class TestsFlextInfraPytestProfile:
                 options=m.Cli.ProcessOptions(
                     env=u.Cli.process_env(
                         overrides={
+                            c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(runner.root),
                             c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                             c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
                             c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
@@ -259,13 +314,21 @@ class TestsFlextInfraPytestProfile:
         )
         tm.that(result.outcome.raw_return_code, eq=(-signal.SIGKILL) % 256)
         tm.that(result.outcome.timed_out, eq=False)
+        tm.that(output.is_file(), eq=True)
         tm.that(
-            result.stderr,
-            has=[
-                f"raw_return_code={-signal.SIGKILL}",
-                "Traceback",
-                str(output.with_suffix(".pstats.json")),
-            ],
+            bool(pstats.Stats(str(output)).get_stats_profile().func_profiles),
+            eq=True,
+        )
+        if publication_error != "stderr":
+            tm.that(
+                result.stderr, has=[f"raw_return_code={-signal.SIGKILL}", "Traceback"]
+            )
+        if publication_error == "context":
+            tm.that(output.with_suffix(".pstats.json").exists(), eq=False)
+        processes = output.parent / policy.profile_process_directory
+        tm.that(
+            len(tuple(processes.glob("*.pstats.json"))),
+            eq=0 if publication_error == "context" else 1,
         )
 
     @staticmethod
@@ -295,8 +358,9 @@ class TestsFlextInfraPytestProfile:
         tm.that(
             u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
         )
-        reports = cached_runner_project / runner.reports
-        contexts = list(reports.glob("*/run-context.json"))
+        contexts = list(
+            (cached_runner_project / runner.reports).glob("*/run-context.json"),
+        )
         tm.that(len(contexts), eq=1)
         context = m.Infra.PytestRunContext.model_validate_json(
             contexts[0].read_text(encoding="utf-8"),

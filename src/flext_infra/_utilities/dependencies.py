@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from base64 import urlsafe_b64encode
 from collections.abc import Callable, Mapping, MutableMapping
-from functools import partial
 from importlib.metadata import Distribution, PackagePath
 from json import dumps
 from pathlib import Path
@@ -22,341 +21,21 @@ from packaging.version import InvalidVersion, Version
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencyRequirements,
-    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
+)
+from flext_infra._utilities._dependency_deptry import (
+    FlextInfraUtilitiesDependencyDeptryMixin,
 )
 
 _EXACT_INSTALL_METADATA_NAMES: frozenset[str] = frozenset({"METADATA", "RECORD"})
 _EXACT_INSTALL_METADATA_COUNT: int = 2
 
 
-class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements):
+class FlextInfraUtilitiesDependencies(
+    FlextInfraUtilitiesDependencyDeptryMixin,
+    FlextInfraUtilitiesDependencyRequirements,
+):
     """Workspace dependency policy composed over independent requirement parsing."""
-
-    @staticmethod
-    def capture_deptry_scan(
-        project_path: Path,
-        venv_bin: Path,
-        *,
-        config_path: Path,
-        json_output_path: Path,
-    ) -> p.Result[m.Infra.DeptryScan]:
-        """Capture one native deptry report against an unchanged production tree.
-
-        Callers elect the interpreter, configuration and fresh report destination.
-
-        Returns:
-            Complete native findings and the states authenticating their inputs.
-
-        """
-        result_type = r[m.Infra.DeptryScan]
-        payload = FlextInfraUtilitiesDependencies._captured_deptry_inputs(
-            project_path,
-            config_path=config_path,
-        )
-        if payload.failure:
-            return result_type.from_failure(payload)
-        settings, source, declarations = payload.value
-        native = FlextInfraUtilitiesDependencies._captured_deptry_native(
-            venv_bin,
-            project_path,
-            source=source,
-            config_path=config_path,
-            json_output_path=json_output_path,
-        )
-        if native.failure:
-            return result_type.from_failure(native)
-        output, report_state, parsed = native.value
-        rechecked = FlextInfraUtilitiesDependencies._rechecked_deptry_states(
-            settings,
-            report_state,
-            source,
-            declarations,
-        )
-        if rechecked.failure:
-            return result_type.from_failure(rechecked)
-        coverage = FlextInfraUtilitiesDependencies._validated_deptry_coverage(
-            output,
-            parsed,
-        )
-        if coverage.failure:
-            return result_type.from_failure(coverage)
-        if report_state.content is None:
-            return result_type.fail(
-                "deptry report state has no captured bytes to authenticate",
-            )
-        return result_type.ok(
-            m.Infra.DeptryScan(
-                scanned_files=coverage.value,
-                venv_bin=venv_bin,
-                source=source,
-                declarations=declarations,
-                native=output,
-                settings=settings,
-                report_state=report_state,
-                report_sha256=u.Cli.sha256_bytes(report_state.content),
-                report=parsed,
-            )
-        )
-
-    @staticmethod
-    def _validated_deptry_coverage(
-        output: m.Cli.CommandOutput,
-        parsed: m.Infra.DeptryNativeReport,
-    ) -> p.Result[int]:
-        """Authenticate the native exit status and its scan coverage line.
-
-        Returns:
-            The single positive coverage count reported by native deptry.
-
-        """
-        result_type = r[int]
-        if output.outcome.raw_return_code != int(bool(parsed.root)):
-            return result_type.fail("deptry exit status contradicts its native report")
-        coverage = tuple(
-            int(match.group("count"))
-            for line in (*output.stdout.splitlines(), *output.stderr.splitlines())
-            if (match := c.Infra.DEPTRY_SCAN_COVERAGE_RE.fullmatch(line)) is not None
-        )
-        if len(coverage) != 1 or coverage[0] < 1:
-            return result_type.fail(
-                "deptry lacks positive unambiguous native scan coverage\n"
-                f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}",
-            )
-        return result_type.ok(coverage[0])
-
-    @staticmethod
-    def _authenticated_deptry_source(
-        project_path: Path,
-        roots: t.StrSequence,
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest]]:
-        """Inventory every declared production tree and authenticate its shape.
-
-        Returns:
-            The exact tree manifests, or the first authentication failure.
-
-        """
-        result_type = r[t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest]]
-        sources: list[m.Cli.AtomicPhysicalTreeManifest] = []
-        for root in roots:
-            directory = project_path / root
-            if root == c.Infra.DEFAULT_SRC_DIR and not directory.exists():
-                continue
-            source = u.Cli.atomic_inventory_physical_tree(directory)
-            if source.failure:
-                return result_type.from_failure(source)
-            if any(entry.kind == "symlink" for entry in source.value.entries):
-                return result_type.fail(
-                    "deptry production source contains unauthenticated symbolic links"
-                )
-            sources.append(source.value)
-        if not sources:
-            return result_type.fail("deptry has no declared production source tree")
-        return result_type.ok(tuple(sources))
-
-    @staticmethod
-    def _captured_deptry_inputs(
-        project_path: Path,
-        *,
-        config_path: Path,
-    ) -> p.Result[
-        t.Triple[
-            m.Cli.AtomicFileState,
-            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-            t.VariadicTuple[m.Cli.AtomicFileState],
-        ]
-    ]:
-        """Read the deptry configuration and authenticate the production tree.
-
-        Returns:
-            The configuration state and the authenticated source manifest.
-
-        """
-        result_type = r[
-            t.Triple[
-                m.Cli.AtomicFileState,
-                t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-                t.VariadicTuple[m.Cli.AtomicFileState],
-            ]
-        ]
-        settings = u.Cli.atomic_read_binary_file_state(config_path, required=True)
-        if settings.failure:
-            return result_type.from_failure(settings)
-        declared = (
-            FlextInfraUtilitiesProjectManagedArtifacts.load_repository_declaration_inputs(
-                project_path,
-            )
-        )
-        if declared.failure:
-            return result_type.from_failure(declared)
-        roots = FlextInfraUtilitiesProjectManagedArtifacts.production_python_roots(
-            declared.value.spec.project,
-        )
-        source = FlextInfraUtilitiesDependencies._authenticated_deptry_source(
-            project_path,
-            roots,
-        )
-        if source.failure:
-            return result_type.from_failure(source)
-        return result_type.ok((settings.value, source.value, declared.value.sources))
-
-    @staticmethod
-    def _run_deptry(
-        venv_bin: Path,
-        project_path: Path,
-        *,
-        source: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-        config_path: Path,
-        json_output_path: Path,
-    ) -> p.Result[m.Cli.CommandOutput]:
-        """Run native deptry once against a fresh report destination.
-
-        Returns:
-            The validated native command output, or the first execution failure.
-
-        """
-        result_type = r[m.Cli.CommandOutput]
-        before = u.Cli.atomic_read_binary_file_state(json_output_path, required=False)
-        if before.failure:
-            return result_type.from_failure(before)
-        if before.value.content is not None:
-            return result_type.fail(
-                f"deptry report destination already exists: {json_output_path}"
-            )
-        completed = u.Cli.run_raw(
-            (
-                str(venv_bin / c.Infra.DEPTRY),
-                *(
-                    tree.root.path.relative_to(project_path.absolute()).as_posix()
-                    for tree in source
-                ),
-                "--config",
-                str(config_path),
-                "--json-output",
-                str(json_output_path),
-                "--no-ansi",
-            ),
-            cwd=project_path,
-            timeout=c.Infra.TIMEOUT_MEDIUM,
-        )
-        if completed.failure:
-            return result_type.from_failure(completed)
-        native = m.Cli.CommandOutput.model_validate(
-            completed.value, from_attributes=True
-        )
-        if (
-            native.outcome.timed_out
-            or native.outcome.forwarded_signal is not None
-            or native.outcome.raw_return_code not in {0, 1}
-        ):
-            return result_type.fail(
-                f"deptry process failed: {native.outcome.model_dump_json()}\n"
-                f"stdout:\n{native.stdout}\nstderr:\n{native.stderr}",
-            )
-        return result_type.ok(native)
-
-    @staticmethod
-    def _parsed_deptry_report(
-        json_output_path: Path,
-    ) -> p.Result[t.Pair[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]:
-        """Read and strictly parse the fresh native deptry report.
-
-        Returns:
-            The report file state and its validated native payload.
-
-        """
-        result_type = r[t.Pair[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]
-        report_state = u.Cli.atomic_read_binary_file_state(
-            json_output_path, required=True
-        )
-        if report_state.failure:
-            return result_type.from_failure(report_state)
-        if report_state.value.content is None:
-            return result_type.fail(
-                f"deptry did not produce its native report: {json_output_path}"
-            )
-        parsed = r[m.Infra.DeptryNativeReport].create_from_callable(
-            partial(
-                m.Infra.DeptryNativeReport.model_validate_json,
-                report_state.value.content,
-                strict=True,
-            ),
-        )
-        if parsed.failure:
-            return result_type.from_failure(parsed)
-        return result_type.ok((report_state.value, parsed.value))
-
-    @staticmethod
-    def _captured_deptry_native(
-        venv_bin: Path,
-        project_path: Path,
-        *,
-        source: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-        config_path: Path,
-        json_output_path: Path,
-    ) -> p.Result[
-        t.Triple[m.Cli.CommandOutput, m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]
-    ]:
-        """Run deptry once and strictly parse its fresh native report.
-
-        Returns:
-            The validated command output, report state, and native report.
-
-        """
-        result_type = r[
-            t.Triple[
-                m.Cli.CommandOutput,
-                m.Cli.AtomicFileState,
-                m.Infra.DeptryNativeReport,
-            ]
-        ]
-        native = FlextInfraUtilitiesDependencies._run_deptry(
-            venv_bin,
-            project_path,
-            source=source,
-            config_path=config_path,
-            json_output_path=json_output_path,
-        )
-        if native.failure:
-            return result_type.from_failure(native)
-        report = FlextInfraUtilitiesDependencies._parsed_deptry_report(
-            json_output_path,
-        )
-        if report.failure:
-            return result_type.from_failure(report)
-        report_state, parsed = report.value
-        return result_type.ok((native.value, report_state, parsed))
-
-    @staticmethod
-    def _rechecked_deptry_states(
-        settings: m.Cli.AtomicFileState,
-        report_state: m.Cli.AtomicFileState,
-        source: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-        declarations: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[bool]:
-        """Re-verify the captured states and the unchanged production tree.
-
-        Returns:
-            Whether every captured state survived the scan unchanged.
-
-        """
-        result_type = r[bool]
-        verified = u.Cli.atomic_verify_binary_file_states((
-            settings,
-            report_state,
-            *declarations,
-        ))
-        if verified.failure:
-            return result_type.from_failure(verified)
-        for tree in source:
-            current_source = u.Cli.atomic_inventory_physical_tree(tree.root.path)
-            if current_source.failure:
-                return result_type.from_failure(current_source)
-            if current_source.value != tree:
-                return result_type.fail(
-                    f"deptry production source changed during scanning: {tree.root.path}"
-                )
-        return result_type.ok(value=True)
 
     @staticmethod
     def runtime_dependency_plan(
@@ -414,7 +93,6 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                     ),
                     scan.settings,
                     scan.report_state,
-                    *scan.declarations,
                 ),
             )
         )
@@ -593,28 +271,32 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             selected.extend(item for item in additions if item not in selected)
         return selected, unresolved
 
-    @staticmethod
+    @classmethod
     def publish_runtime_dependency_plan(
+        cls,
         plan: m.Infra.RuntimeDependencyPlan,
     ) -> p.Result[bool]:
         """Publish only the calculated runtime list against unchanged source states.
 
         The caller owns the repository mutation lease. Locks remain owned by upg.
+        Unresolved import suppliers reject the plan before any publication work.
 
         Returns:
             Whether the original target declaration changed.
 
         """
+        if plan.unresolved_modules:
+            return r[bool].fail(
+                "runtime import requires one authored, installed, locked supplier: "
+                + ", ".join(plan.unresolved_modules),
+            )
         u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
-        for source in plan.source:
-            current_source = u.Cli.atomic_inventory_physical_tree(source.root.path)
-            if current_source.failure:
-                return r[bool].from_failure(current_source)
-            if current_source.value != source:
-                return r[bool].fail(
-                    "deptry production source changed before publication: "
-                    f"{source.root.path}"
-                )
+        unchanged = cls._verified_deptry_sources(
+            plan.source,
+            moment="before publication",
+        )
+        if unchanged.failure:
+            return r[bool].from_failure(unchanged)
         if plan.before.content is None:
             return r[bool].fail(f"dependency declaration is absent: {plan.before.path}")
         document = u.Cli.toml_parse_text(plan.before.content.decode(c.DEFAULT_ENCODING))

@@ -416,21 +416,25 @@ class FlextInfraUtilitiesRefactor:
             The lexical occurrence text standing in for the absent module.
 
         Raises:
+            TypeError: When a native byte offset is not an integer.
             ValueError: When the module occurrence is not the native root.
 
         """
         start, end = byte_offsets.get("start"), byte_offsets.get("end")
         content = state.content
+        msg = f"module occurrence is not the native root: {entry.file}"
         if (
             not isinstance(start, int)
             or isinstance(start, bool)
             or not isinstance(end, int)
             or isinstance(end, bool)
-            or content is None
+        ):
+            raise TypeError(msg)
+        if (
+            content is None
             or not 0 <= start <= end <= len(content)
             or content[start:end] != entry.text.encode(c.DEFAULT_ENCODING)
         ):
-            msg = f"module occurrence is not the native root: {entry.file}"
             raise ValueError(msg)
         proven.add((repository, entry.rule_id))
         return f"module-absence:{entry.catalog_digest}"
