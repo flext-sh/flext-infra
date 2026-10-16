@@ -22,9 +22,11 @@ class TestsFlextInfraRopeContracts:
     """Prove runtime values, failure contracts and the shared fixed point."""
 
     @staticmethod
-    def test_catalog_phases_roundtrip_and_reject_unknown_values() -> None:
+    def test_catalog_phases_roundtrip_and_reject_unknown_values(
+        tmp_path: Path,
+    ) -> None:
         """Configured rules retain enum identities, never an unvalidated phase."""
-        for rule in u.Infra.declared_contract_rules():
+        for rule in u.Infra.declared_contract_rules(tmp_path):
             payload = rule.model_dump(round_trip=True)
             restored = m.Infra.RopeContractRule.model_validate_json(
                 rule.model_dump_json(round_trip=True)
@@ -33,6 +35,49 @@ class TestsFlextInfraRopeContracts:
             payload["phase"] = "".join(c.Infra.SemanticCutoverPhase)
             with pytest.raises(ValueError, match="phase"):
                 m.Infra.RopeContractRule.model_validate(payload)
+
+    @staticmethod
+    def test_repository_overlay_composes_after_packaged_rules(
+        tmp_path: Path,
+    ) -> None:
+        """A repository's own rules extend the universal catalogue, in order."""
+        packaged = tuple(
+            rule.id for rule in u.Infra.declared_contract_rules(tmp_path)
+        )
+        overlay = tmp_path / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        overlay.parent.mkdir(parents=True)
+        overlay.write_text(
+            "rules:\n"
+            "  - id: consumer-own-helper\n"
+            "    pattern: '${helper}(${value})'\n"
+            "    goal: 'str(${value})'\n"
+            "    arguments:\n"
+            "      helper: name=consumer.helpers.Helpers.render\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        composed = tuple(
+            rule.id for rule in u.Infra.declared_contract_rules(tmp_path)
+        )
+        tm.that(composed, eq=(*packaged, "consumer-own-helper"))
+
+    @staticmethod
+    def test_repository_overlay_cannot_redeclare_a_packaged_rule(
+        tmp_path: Path,
+    ) -> None:
+        """A rule identity has one owner; an overlay redeclaration fails loud."""
+        packaged = u.Infra.declared_contract_rules(tmp_path)[0]
+        overlay = tmp_path / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        overlay.parent.mkdir(parents=True)
+        overlay.write_text(
+            "rules:\n"
+            f"  - id: {packaged.id}\n"
+            f"    pattern: {packaged.pattern!r}\n"
+            f"    goal: {packaged.goal!r}\n"
+            "    arguments: {}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with pytest.raises(ValueError, match="duplicate Rope contract rule"):
+            u.Infra.declared_contract_rules(tmp_path)
 
     @staticmethod
     @pytest.mark.parametrize(
