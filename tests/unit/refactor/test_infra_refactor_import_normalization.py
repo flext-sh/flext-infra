@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import t, tm, u
+from tests import tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
 )
@@ -517,4 +517,3 @@ class TestsFlextInfraRefactorImportNormalization(
         tm.that(normalized, has="from demo_pkg import r\n")
         tm.that(normalized, has="from demo_pkg import t\n")
         tm.that(normalized, lacks="from flext_core import r")
-

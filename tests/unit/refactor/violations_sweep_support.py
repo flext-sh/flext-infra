@@ -31,8 +31,6 @@ LOCAL_GROWTH_RULE = (
 )
 
 
-
-
 class TestsFlextInfraRefactorViolationsSweepSupport:
     """Prepare mod workspaces and drive the sweep verb for its behavior contract."""
 

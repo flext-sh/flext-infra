@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m
+from flext_infra import c
 from flext_infra.refactor import FlextInfraImportNormalization
 from tests import t, tm, u
 
@@ -85,4 +85,3 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
         )
         tm.that(normalized is not None, eq=True)
         return normalized or ""
-

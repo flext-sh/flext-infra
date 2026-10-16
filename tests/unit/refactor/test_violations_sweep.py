@@ -15,7 +15,6 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra._utilities.refactor import _RuleDeltaOptions
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, tm, u
 from tests.unit.refactor.violations_sweep_support import (
@@ -500,4 +499,3 @@ class TestsFlextInfraRefactorViolationsSweep(
                     ),
                 )
         tm.that(delta.semantic_correspondence_proven, eq=False)
-

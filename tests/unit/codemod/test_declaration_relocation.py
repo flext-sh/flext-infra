@@ -574,4 +574,3 @@ class TestsFlextInfraDeclarationRelocation:
             ),
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
-

@@ -555,7 +555,9 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
             (root_name, member_name),
             content_only=content_only,
         )
-        view = TestsFlextInfraUvNativeResolutionWorkspace._projected_member_view(inputs, root)
+        view = TestsFlextInfraUvNativeResolutionWorkspace._projected_member_view(
+            inputs, root
+        )
         uv = u.Tests.toml_mapping(
             u.Tests.toml_mapping(u.Tests.toml_doc_mapping(view)["tool"])["uv"],
         )
@@ -626,9 +628,11 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
                 )
             },
         )
-        packages = TestsFlextInfraUvNativeResolutionWorkspace._resolved_member_group_packages(
-            root,
-            view,
+        packages = (
+            TestsFlextInfraUvNativeResolutionWorkspace._resolved_member_group_packages(
+                root,
+                view,
+            )
         )
         for name in leaves:
             tm.that(
@@ -651,6 +655,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
             ),
             eq=original,
         )
-        second = TestsFlextInfraUvNativeResolutionWorkspace._projected_member_view(inputs, root)
+        second = TestsFlextInfraUvNativeResolutionWorkspace._projected_member_view(
+            inputs, root
+        )
         tm.that(u.Cli.toml_dumps(second), eq=u.Cli.toml_dumps(view))
-

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, p, t, u
+from flext_infra import t, u
 from tests import tm
 from tests.unit.codemod.private_import_cutover_support import (
     TestsFlextInfraFacadeNaming,
@@ -545,4 +545,3 @@ class TestsFlextInfraPrivateImportCutover(
 
         with pytest.raises(ValueError, match=expected):
             self._plan(tmp_path, sources, consumer, statement)
-

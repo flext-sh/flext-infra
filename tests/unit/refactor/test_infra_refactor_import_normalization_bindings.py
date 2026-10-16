@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.refactor import FlextInfraImportNormalization
 from tests import tm, u
 from tests.unit.refactor.import_normalization_support import (

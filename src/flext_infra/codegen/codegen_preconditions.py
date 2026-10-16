@@ -178,9 +178,9 @@ class FlextInfraCodegenPreconditions:
             The authenticated immutable producer closure.
 
         """
-        return cls.capture_observed_source_authority(repository_root, tuple(nominated)).map(
-            itemgetter(0)
-        )
+        return cls.capture_observed_source_authority(
+            repository_root, tuple(nominated)
+        ).map(itemgetter(0))
 
     @classmethod
     def capture_observed_source_authority(

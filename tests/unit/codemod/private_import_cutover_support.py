@@ -175,4 +175,3 @@ class TestsFlextInfraPrivateImportCutoverSupport:
         return cls._edits(tmp_path, sources, consumer_path, *private_imports)[
             0
         ].updated_source
-

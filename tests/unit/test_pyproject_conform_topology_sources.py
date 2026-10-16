@@ -662,4 +662,3 @@ class TestsFlextInfraPyprojectConformTopologySources(
             ),
             eq=second,
         )
-

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, p, t, u
+from flext_infra import t, u
 from tests import tm
 from tests.unit.codemod.private_import_cutover_support import (
     TestsFlextInfraFacadeNaming,

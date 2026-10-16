@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, m, t, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraDeclarationRelocationSupport:
@@ -99,4 +99,3 @@ class TestsFlextInfraDeclarationRelocationSupport:
             facade_path.write_text(rendered, encoding="utf-8")
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         return root, sources
-

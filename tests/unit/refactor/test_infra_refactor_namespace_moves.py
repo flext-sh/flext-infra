@@ -469,4 +469,3 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             ),
             eq=["True"],
         )
-
