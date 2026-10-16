@@ -13,19 +13,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen._mise_artifacts_comparison import (
+from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
-from flext_infra.workspace import FlextInfraWorkspaceDetector
-from flext_infra.workspace.environment_provenance import (
+from flext_infra.validate import FlextInfraValidateFreshImport
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
 )
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
-
-_ENGINE_DISTRIBUTION = config.Infra.codegen.infra_repository.distribution
 
 
 class FlextInfraCodegenPreconditions:
@@ -47,9 +48,10 @@ class FlextInfraCodegenPreconditions:
             TypeError: If an elected producer dependency resource is not a
                 file.
 
+
         """
         result_type = r[t.VariadicTuple[t.Pair[str, Path]]]
-        elected: dict[str, Path] = {}
+        elected: t.DictKV[str, Path] = {}
         pending = [item.target for item in nominated]
         visited: set[Path] = set()
         with u.Infra.open_import_project(repository_root) as project:
@@ -203,7 +205,7 @@ class FlextInfraCodegenPreconditions:
         names: t.VariadicTuple[m.Infra.SourceClassReference],
     ) -> p.Result[
         t.Pair[
-            dict[str, Path],
+            t.DictKV[str, Path],
             t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
         ]
     ]:
@@ -215,12 +217,12 @@ class FlextInfraCodegenPreconditions:
         """
         result_type = r[
             t.Pair[
-                dict[str, Path],
+                t.DictKV[str, Path],
                 t.MutableMappingKV[str, set[m.Cli.AtomicPhysicalTreeEntry]],
             ]
         ]
         if all(item.attributes for item in names):
-            roots: dict[str, Path] = {}
+            roots: t.DictKV[str, Path] = {}
             for item in names:
                 namespace = item.target.partition(".")[0]
                 selected = cls._elect_namespace(namespace)
@@ -256,9 +258,6 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.NativeImportObservation]
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
 
         observed = FlextInfraWorkspaceNativeReference.capture(names)
         if observed.failure:
@@ -410,9 +409,6 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
 
         receipts: list[m.Cli.AtomicFileReceipt] = []
         for state in states.values():
@@ -567,6 +563,107 @@ class FlextInfraCodegenPreconditions:
         return result_type.ok(tuple(states))
 
     @classmethod
+    def capture_native_reference(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[m.Infra.NativeImportReference]:
+        """Authenticate the loaded producer against a cold native import.
+
+        Returns:
+            The sealed reference, or the first source or runtime failure.
+
+        """
+        result_type = r[m.Infra.NativeImportReference]
+        current = cls._native_inputs_current(request)
+        if current.failure:
+            return result_type.from_failure(current)
+        observed = FlextInfraWorkspaceNativeReference.capture(request.modules).flat_map(
+            lambda snapshot: (
+                FlextInfraWorkspaceNativeReference.authored_sources_current(
+                    snapshot, request.source_authority.inputs
+                ).map(lambda _: snapshot)
+            )
+        )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        consumer = FlextInfraValidateFreshImport(
+            repository_root=request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        output = consumer.native_reference_probe(request)
+        if output.failure:
+            return result_type.from_failure(output)
+        if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
+            return result_type.fail(
+                f"cold native source import failed: {output.value.outcome}\n"
+                f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}",
+            )
+        reference = m.Infra.NativeImportObservation.model_validate_json(
+            output.value.stdout
+        )
+        proof = (
+            FlextInfraWorkspaceNativeReference
+            .compare(observed.value, reference)
+            .flat_map(
+                lambda _: FlextInfraWorkspaceNativeReference.authored_sources_current(
+                    reference, request.source_authority.inputs
+                )
+            )
+            .flat_map(lambda _: cls._native_inputs_current(request))
+        )
+        return proof.map(
+            lambda _: m.Infra.NativeImportReference(
+                **reference.model_dump(),
+                source_authority=request.source_authority,
+            )
+        )
+
+    @classmethod
+    def _native_inputs_current(
+        cls,
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[bool]:
+        """Recheck the pinned inputs and the executing physical runtime.
+
+        Returns:
+            Success when source, environment and interpreter identities agree.
+
+        """
+        current = cls.source_authority_current(request.source_authority).flat_map(
+            lambda _: FlextInfraMiseArtifactsVerification.states_current(request.inputs)
+        )
+        if current.failure:
+            return current
+        environment = u.Infra.runtime_environment_dir(
+            request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        runtime = u.Infra.runtime_python(
+            request.repository_root,
+            runtime_root=request.runtime_root,
+        )
+        actual_environment = environment.absolute()
+        actual_prefix = Path(sys.prefix).absolute()
+        actual_runtime = runtime.resolve()
+        if (
+            environment.is_symlink()
+            or actual_environment != actual_prefix
+            or not runtime.is_file()
+            or actual_runtime != request.source_authority.runtime
+            or sys.flags.optimize != request.source_authority.optimize
+        ):
+            return r[bool].fail(
+                "native reference runtime authority differs: "
+                f"environment={actual_environment} symlink={environment.is_symlink()} "
+                f"prefix={actual_prefix} runtime={actual_runtime} "
+                f"runtime_file={runtime.is_file()} "
+                f"expected_runtime={request.source_authority.runtime} "
+                f"optimize={sys.flags.optimize} "
+                f"expected_optimize={request.source_authority.optimize}"
+            )
+        return current
+
+    @classmethod
     def capture_producer(
         cls,
         repository_root: Path,
@@ -580,16 +677,7 @@ class FlextInfraCodegenPreconditions:
             The authenticated producer phase analysis snapshot.
 
         """
-        from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-
         result_type = r[m.Infra.CodegenPhaseAnalysis]
-        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
-        if context.failure:
-            return result_type.from_failure(context)
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
-
         selection = FlextInfraWorkspaceNativeReference.producer_selections(
             entrypoint,
             collaborators,
@@ -597,8 +685,17 @@ class FlextInfraCodegenPreconditions:
         if selection.failure:
             return result_type.from_failure(selection)
         names = selection.value
+        environment = Path(sys.prefix).absolute()
+        if (
+            environment.name != c.Infra.ENVIRONMENT_DIRECTORY
+            or environment.is_symlink()
+        ):
+            return result_type.fail(
+                f"producer runtime is not a physical managed environment: {environment}"
+            )
+        runtime_root = environment.parent
         cold = cls.capture_source_authority(
-            context.value.runtime_root,
+            runtime_root,
             nominated=names,
         )
         if cold.failure:
@@ -606,10 +703,10 @@ class FlextInfraCodegenPreconditions:
         inputs = cls.authority_inputs(cold.value)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        reference = FlextInfraValidateFreshImport.capture_native_reference(
+        reference = cls.capture_native_reference(
             m.Infra.NativeImportRequest(
-                repository_root=context.value.runtime_root,
-                runtime_root=context.value.runtime_root,
+                repository_root=repository_root,
+                runtime_root=runtime_root,
                 modules=names,
                 inputs=inputs.value,
                 source_authority=cold.value,
@@ -665,7 +762,38 @@ class FlextInfraCodegenPreconditions:
         namespaces = {
             namespace for namespace, root in roots.items() if root in ownership_prefixes
         }
-        elected: dict[Path, m.Cli.AtomicFileState] = {}
+        editable = cls._editable_distribution_namespaces(paths, roots)
+        if editable.failure:
+            return result_type.from_failure(editable)
+        namespaces.update(editable.value[0])
+        if not namespaces:
+            return result_type.ok(
+                dict[str, t.VariadicTuple[m.Cli.AtomicPhysicalTreeEntry]]()
+            )
+        captured = cls._captured_distribution_inputs(
+            distribution, paths, tuple(editable.value[1].values())
+        )
+        if captured.failure:
+            return result_type.from_failure(captured)
+        trees.update((tree.root.path, tree) for tree in captured.value[0])
+        states.update((item.path, item) for item in captured.value[1])
+        return result_type.ok(
+            dict.fromkeys(namespaces, tuple(tree.root for tree in captured.value[0]))
+        )
+
+    @staticmethod
+    def _editable_distribution_namespaces(
+        paths: t.VariadicTuple[Path], roots: t.MappingKV[str, Path]
+    ) -> p.Result[t.Pair[set[str], t.DictKV[Path, m.Cli.AtomicFileState]]]:
+        """Elect editable namespaces through their physical native metadata.
+
+        Returns:
+            The elected namespaces and every metadata/source input used.
+
+        """
+        result_type = r[t.Pair[set[str], t.DictKV[Path, m.Cli.AtomicFileState]]]
+        namespaces: set[str] = set()
+        elected: t.DictKV[Path, m.Cli.AtomicFileState] = {}
         for path in paths:
             if (
                 path.name != c.Infra.DISTRIBUTION_DIRECT_URL_FILE
@@ -690,10 +818,32 @@ class FlextInfraCodegenPreconditions:
                     namespaces.add(namespace)
                     elected[state.path] = state
                     elected[project_source.path] = project_source
-        if not namespaces:
-            return result_type.ok(
-                dict[str, t.VariadicTuple[m.Cli.AtomicPhysicalTreeEntry]]()
-            )
+        return result_type.ok((namespaces, elected))
+
+    @classmethod
+    def _captured_distribution_inputs(
+        cls,
+        distribution: Distribution,
+        paths: t.VariadicTuple[Path],
+        elected: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[
+        t.Pair[
+            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
+        """Capture one elected distribution and reject conflicting input epochs.
+
+        Returns:
+            Its authenticated manifests and complete physical source states.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+            ]
+        ]
         captured = FlextInfraMiseArtifactsFiles.capture_distribution_sources(
             distribution
         )
@@ -703,14 +853,10 @@ class FlextInfraCodegenPreconditions:
             return result_type.fail(
                 "producer distribution file manifest changed while capturing ownership"
             )
-        sources = cls.unique_states((*elected.values(), *captured.value[1]))
+        sources = cls.unique_states((*elected, *captured.value[1]))
         if sources.failure:
             return result_type.from_failure(sources)
-        trees.update((tree.root.path, tree) for tree in captured.value[0])
-        states.update((item.path, item) for item in sources.value)
-        return result_type.ok(
-            dict.fromkeys(namespaces, tuple(tree.root for tree in captured.value[0]))
-        )
+        return result_type.ok((captured.value[0], sources.value))
 
     @classmethod
     def producer_current(
@@ -744,18 +890,15 @@ class FlextInfraCodegenPreconditions:
             )
         )
         output_paths = {output.path for output in own_outputs}
-        authenticated = cls._authenticated_tree_files(by_path, producer.generator_trees)
+        authenticated = cls._authenticated_receipt_files(by_path, authority.inputs)
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
-        covered, representatives = authenticated.value
-        # Native inventory authenticates every covered file. Keep one complete
-        # file snapshot per tree and every input outside that proof, including
-        # optional absence and editable bindings captured outside package roots.
+        # The native authority physically reauthenticates every matching receipt.
+        # Extra planner inputs retain their own immediate snapshot proof.
         retained = tuple(
             state
             for state in states.value
-            if state.path not in output_paths
-            and (state.path not in covered or state.path in representatives)
+            if state.path not in output_paths and state.path not in authenticated.value
         )
         current = FlextInfraMiseArtifactsComparison.states_current(retained)
         if current.failure:
@@ -768,61 +911,42 @@ class FlextInfraCodegenPreconditions:
         )
 
     @staticmethod
-    def _authenticated_tree_files(
+    def _authenticated_receipt_files(
         by_path: t.MappingKV[Path, m.Cli.AtomicFileState],
-        trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-    ) -> p.Result[t.Pair[set[Path], set[Path]]]:
-        """Authenticate every tree entry against its captured file state.
+        receipts: t.VariadicTuple[m.Cli.AtomicFileReceipt],
+    ) -> p.Result[set[Path]]:
+        """Bind buffered inputs to receipts before their native physical proof.
 
         Args:
             by_path: Captured states indexed by their physical path.
-            trees: The captured physical tree manifests under authentication.
+            receipts: Original authority receipts, including owned output preimages.
 
         Returns:
-            The covered paths and one representative file path per tree.
+            Paths whose exact buffered state agrees with its original receipt.
 
         """
-        result_type = r[t.Pair[set[Path], set[Path]]]
+        result_type = r[set[Path]]
         covered: set[Path] = set()
-        representatives: set[Path] = set()
-        # State and entry share these physical identity fields; state carries
-        # the content pair (sha256, size) the entry stores directly.
-        identity_fields = (
-            "mode",
-            "device",
-            "inode",
-            "link_count",
-            "parent_device",
-            "parent_inode",
-            "file_attributes",
-            "reparse_tag",
-        )
-        for tree in trees:
-            representative: Path | None = None
-            for entry in tree.entries:
-                if entry.kind != "file" or c.Infra.DUNDER_PYCACHE in entry.path.parts:
-                    continue
-                state = by_path.get(entry.path)
-                if state is None or state.content is None:
-                    continue
-                if (
-                    u.Cli.sha256_bytes(state.content),
-                    len(state.content),
-                    *(getattr(state, field) for field in identity_fields),
-                ) != (
-                    entry.sha256,
-                    entry.size,
-                    *(getattr(entry, field) for field in identity_fields),
-                ):
-                    return result_type.fail(
-                        f"producer input differs from captured tree: {state.path}"
-                    )
-                covered.add(state.path)
-                if representative is None:
-                    representative = state.path
-            if representative is not None:
-                representatives.add(representative)
-        return result_type.ok((covered, representatives))
+        identity_fields = set(m.Cli.AtomicFileIdentity.model_fields)
+        for receipt in receipts:
+            state = by_path.get(receipt.path)
+            if state is None:
+                continue
+            content = state.content
+            if (
+                state.model_dump(include=identity_fields),
+                len(content) if content is not None else None,
+                u.Cli.sha256_bytes(content) if content is not None else None,
+            ) != (
+                receipt.model_dump(include=identity_fields),
+                receipt.size,
+                receipt.sha256,
+            ):
+                return result_type.fail(
+                    f"producer input differs from captured receipt: {state.path}"
+                )
+            covered.add(state.path)
+        return result_type.ok(covered)
 
     @staticmethod
     def producer_trees_current(
@@ -846,9 +970,6 @@ class FlextInfraCodegenPreconditions:
             or modules != reference.source_authority.generator_modules
         ):
             return r[bool].fail("producer native epoch belongs to another election")
-        from flext_infra.workspace.native_reference import (
-            FlextInfraWorkspaceNativeReference,
-        )
 
         current = FlextInfraWorkspaceNativeReference.authority_current(
             reference.source_authority, outputs=outputs
@@ -1021,11 +1142,12 @@ class FlextInfraCodegenPreconditions:
         lock_path = context.value.lock_path
         if not lock_path.is_file():
             return result_type.ok(value=True)
-        matches = u.installed_distributions(name=_ENGINE_DISTRIBUTION)
+        distribution_name = config.Infra.codegen.infra_repository.distribution
+        matches = u.installed_distributions(name=distribution_name)
         if len(matches) != 1:
             return result_type.fail(
                 f"rendering engine distribution count mismatch: "
-                f"distribution={_ENGINE_DISTRIBUTION} expected=1 "
+                f"distribution={distribution_name} expected=1 "
                 f"actual={len(matches)}",
             )
         distribution = matches[0]
@@ -1057,6 +1179,7 @@ class FlextInfraCodegenPreconditions:
                     FlextInfraCodegenPreconditions._locked_engine_current,
                     distribution,
                     direct_url,
+                    distribution_name=distribution_name,
                 )
             )
         )
@@ -1066,6 +1189,8 @@ class FlextInfraCodegenPreconditions:
         distribution: Distribution,
         direct_url: str | None,
         locked: m.Infra.LockedEnvironment,
+        *,
+        distribution_name: str,
     ) -> p.Result[bool]:
         """Compare the installed engine to the unique typed committed pin.
 
@@ -1075,7 +1200,7 @@ class FlextInfraCodegenPreconditions:
         """
         result_type = r[bool]
         pinned = tuple(
-            item for item in locked.package if item.name == _ENGINE_DISTRIBUTION
+            item for item in locked.package if item.name == distribution_name
         )
         if not pinned:
             return result_type.ok(value=True)
@@ -1087,14 +1212,14 @@ class FlextInfraCodegenPreconditions:
         if item.source.editable is not None:
             return result_type.ok(value=True)
         origin = FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict(
-            _ENGINE_DISTRIBUTION, item, direct_url
+            distribution_name, item, direct_url
         )
         if origin.failure:
             return origin
         if item.source.registry is not None and distribution.version != item.version:
             return result_type.fail(
-                f"rendering engine {_ENGINE_DISTRIBUTION}@{distribution.version} "
-                f"is not the locked pin {_ENGINE_DISTRIBUTION}@{item.version}: "
+                f"rendering engine {distribution_name}@{distribution.version} "
+                f"is not the locked pin {distribution_name}@{item.version}: "
                 "the environment is stale — cure: make setup (stale environment) "
                 "or make upg (stale pin); never a hand-edited generated file",
             )

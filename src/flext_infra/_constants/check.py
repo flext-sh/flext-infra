@@ -24,6 +24,10 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Run every independent quality gate unless fail-fast is requested."""
     SERVICE_FAIL_FAST: ClassVar[bool] = True
     """Stop mutating service workflows at the first failed project or rule."""
+    NATIVE_CODE_WITNESS_MARSHAL_VERSION: ClassVar[int] = 2
+    """Complete CPython code encoding without reference or interning flags."""
+    NATIVE_TUPLE_REPEAT_LIMIT: ClassVar[int] = 255
+    """Largest literal repeat count read as closed tuple constructor data."""
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
@@ -64,10 +68,16 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         "from importlib.machinery import PathFinder\n"
         "from importlib.util import module_from_spec\n"
         f"output = Path(os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
-        "clock.FlextInfraPytestClock.register_signal_checkpoint("
-        "profile, output / f'{os.getpid()}.pstats')\n"
-        "atexit.register(clock.FlextInfraPytestClock.publish_profile, "
-        "profile, output / f'{os.getpid()}.pstats')\n"
+        "profile_output = output / f'{os.getpid()}.pstats'\n"
+        "entry_index = len(sys.orig_argv) - len(sys.argv)\n"
+        "native_profile = (sys.argv[:1] == ['-m'] and entry_index >= 1 "
+        "and sys.orig_argv[entry_index - 1:entry_index + 1] == "
+        "['-m', 'cProfile'])\n"
+        "if not native_profile:\n"
+        "    clock.FlextInfraPytestClock.register_signal_checkpoint("
+        "profile, profile_output)\n"
+        "    atexit.register(clock.FlextInfraPytestClock.publish_profile, "
+        "profile, profile_output)\n"
         "startup = str(Path(__file__).parent)\n"
         "original = PathFinder.find_spec('sitecustomize', "
         "[path for path in sys.path if path != startup])\n"
@@ -75,6 +85,9 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         "    module = module_from_spec(original)\n"
         "    sys.modules['sitecustomize'] = module\n"
         "    original.loader.exec_module(module)\n"
+        "if native_profile:\n"
+        "    clock.FlextInfraPytestClock.publish_profile(profile, profile_output)\n"
+        "    profile.disable()\n"
     )
     PYTEST_PROFILE_LAUNCHER: ClassVar[str] = (
         PYTEST_PROFILE_BOOTSTRAP + "import os, runpy, sys\n"

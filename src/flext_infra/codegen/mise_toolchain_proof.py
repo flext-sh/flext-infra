@@ -32,14 +32,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class _DeclaredProofOptions(FlextInfraModelsBase.FrozenArbitrary):
+class _DeclaredProofOptions(m.Infra.FrozenArbitrary):
     """Frozen read-only inputs proving one declared tool against Mise.
 
     The frozen model is itself the structural read-only contract every proof
@@ -468,7 +467,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         self.logger.info(
             "mise_proof_inputs",
             lock_path=str(lock_path),
-            lock_sha256=u.Cli.sha256_bytes(source.value.encode(c.DEFAULT_ENCODING)),
+            lock_sha256=u.Cli.sha256_bytes(source.encode(c.DEFAULT_ENCODING)),
             config_sha256=u.Cli.sha256_bytes(
                 config.Infra.codegen.model_dump_json().encode(c.DEFAULT_ENCODING)
             ),

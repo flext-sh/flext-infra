@@ -11,36 +11,36 @@ from pathlib import Path
 from textwrap import dedent, indent
 
 from flext_infra import c, config, p, t, u
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
 from flext_infra.codegen import FlextInfraCodegenProtocolModelAnnotations
 
 
 class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotations):
     """Render structural protocols and their generated-file modules."""
 
-    @classmethod
     def render_member_modules(
-        cls,
+        self,
         models: t.MappingKV[str, p.ModelType],
-        project: p.Infra.ProjectSpec,
-        workspace: p.Infra.RopeWorkspaceDsl,
-        facades: t.MappingKV[str, p.ModuleOwned],
-        declarations: t.MappingKV[str, p.Infra.RopePyName],
         protocol_directory: Path,
         aliases: t.MappingKV[str, t.StrSequence],
     ) -> t.MappingKV[Path, str]:
-        """Render source-bound declarations and their composing owner modules."""
-        renderer = cls(project, workspace, facades, declarations)
+        """Render source-bound declarations and their composing owner modules.
+
+        Returns:
+            The resulting ``t.MappingKV[Path, str]``.
+
+        Raises:
+            ValueError: If model declaration has no native scope; or if protocol
+                declaration exceeds configured LOC cap.
+
+        """
         grouped: dict[str, list[tuple[str, str]]] = defaultdict(list)
         for name, model in sorted(models.items()):
-            declaration = declarations[name].get_object()
+            declaration = self.declarations[name].get_object()
             scope = declaration.get_scope()
             if scope is None:
                 msg = f"model declaration has no native scope: {name}"
                 raise ValueError(msg)
-            body = renderer._render_protocol(name.rpartition(".")[2], model, scope)
+            body = self._render_protocol(name.rpartition(".")[2], model, scope)
             grouped[name.rpartition(".")[0]].append((model.__module__, body))
         modules: dict[Path, str] = {}
         for namespace, bodies in grouped.items():
@@ -49,13 +49,13 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             stem = f"generated_models_{token}" if token else "generated_models"
             chunk = ""
             for _owner, body in bodies:
-                header = cls._module_header(project, renderer.imports)
+                header = self._module_header(self.project, self.imports)
                 if chunk and (
                     header.count("\n") + chunk.count("\n") + body.count("\n") + 1
                     > config.Infra.codegen.loc_cap.max_lines
                 ):
-                    renderer._append_part(
-                        modules, parts, protocol_directory, stem, chunk, header
+                    self._append_part(
+                        modules, parts, protocol_directory / stem, chunk, header
                     )
                     chunk = ""
                 if (
@@ -68,15 +68,17 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                     raise ValueError(msg)
                 chunk += body
             if chunk:
-                renderer._append_part(
+                self._append_part(
                     modules,
                     parts,
-                    protocol_directory,
-                    stem,
+                    protocol_directory / stem,
                     chunk,
-                    cls._module_header(project, renderer.imports),
+                    self._module_header(self.project, self.imports),
                 )
-            aggregate = f"{project.class_stem}{namespace.replace('.', '')}ProtocolsGeneratedModels"
+            aggregate = (
+                f"{self.project.class_stem}{namespace.replace('.', '')}"
+                "ProtocolsGeneratedModels"
+            )
             imports = "\n".join(
                 f"from .{module} import {owner}" for module, owner in parts
             )
@@ -88,7 +90,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 if name.rpartition(".")[0] == namespace
             ]
             modules[protocol_directory / f"{stem}.py"] = (
-                f"{cls._module_header(project, {})}{imports}\n\n"
+                f"{self._module_header(self.project, {})}{imports}\n\n"
                 f"class {aggregate}({bases}):\n"
                 '    """Compose the generated structural declarations."""\n'
                 + "\n".join(alias_lines)
@@ -102,32 +104,23 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         model: p.ModelType,
         scope: p.Infra.RopeScope,
     ) -> str:
-        """Preserve field mutability and the model's authored method signatures."""
-        lines = [
-            "@runtime_checkable",
-            f"class {name}(Protocol):",
-            '    """Structural contract generated from a validated model."""',
-            "",
-        ]
-        for field_name, field in model.model_fields.items():
-            if field.annotation is None:
-                msg = f"field {field_name!r} has no annotation"
-                raise TypeError(msg)
-            rendered = self.render(field.annotation, scope)
-            if model.model_config.get("frozen", False) is True or field.frozen is True:
-                lines.extend((
-                    "    @property",
-                    f"    def {field_name}(self) -> {rendered}: ...",
-                ))
-            else:
-                lines.append(f"    {field_name}: {rendered}")
+        """Preserve field mutability and the model's authored method signatures.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            TypeError: If field; or if public method.
+            ValueError: If model declaration has no source module.
+
+        """
+        lines = self._field_lines(model, scope)
         module = scope.pyobject.get_module()
         if module is None:
             msg = f"model declaration has no source module: {name}"
             raise ValueError(msg)
         statements = u.Infra.logical_statements(module.source_code)
-        regions = FlextInfraUtilitiesSemanticFamilyTypeReferences
-        annotation_regions = regions.annotation_regions(module.source_code, module)
+        annotation_regions = u.Infra.annotation_regions(module.source_code, module)
         for method in scope.get_scopes():
             method_name = method.pyobject.get_name()
             if (
@@ -141,7 +134,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             signature = module.source_code[
                 statement.start_offset : statement.end_offset
             ]
-            _first, last = regions.expression_segments(
+            _first, last = u.Infra.expression_segments(
                 signature, 0, len(signature), ":"
             )[0]
             signature = signature[:last]
@@ -174,24 +167,48 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 lines.append(f"    @{type(descriptor).__name__}")
             self.record_imports(signature, scope)
             lines.append(indent(f"{signature}: ...", "    "))
-        if len(lines) == 4:
+        if not lines:
             lines.append("    pass")
-        return "\n".join(lines) + "\n\n"
+        return (
+            "\n".join((
+                "@runtime_checkable",
+                f"class {name}(Protocol):",
+                '    """Structural contract generated from a validated model."""',
+                "",
+                *lines,
+            ))
+            + "\n\n"
+        )
+
+    def _field_lines(self, model: p.ModelType, scope: p.Infra.RopeScope) -> list[str]:
+        lines: list[str] = []
+        for field_name, field in model.model_fields.items():
+            if field.annotation is None:
+                msg = f"field {field_name!r} has no annotation"
+                raise TypeError(msg)
+            rendered = self.render(field.annotation, scope)
+            if model.model_config.get("frozen", False) is True or field.frozen is True:
+                lines.extend((
+                    "    @property",
+                    f"    def {field_name}(self) -> {rendered}: ...",
+                ))
+            else:
+                lines.append(f"    {field_name}: {rendered}")
+        return lines
 
     def _append_part(
         self,
         modules: t.MutableMappingKV[Path, str],
         parts: list[tuple[str, str]],
-        directory: Path,
-        stem: str,
+        target: Path,
         body: str,
         header: str,
     ) -> None:
         """Append one budgeted part using the existing generated-module boundary."""
         index = len(parts) + 1
-        module = f"{stem}_{index:02d}"
+        module = f"{target.name}_{index:02d}"
         owner = f"{self.project.class_stem}ProtocolsGeneratedPart{len(modules) + 1:02d}"
-        modules[directory / f"{module}.py"] = (
+        modules[target.with_name(f"{module}.py")] = (
             f"{header}class {owner}:\n{indent(body, '    ')}\n__all__: list[str] = []\n"
         )
         parts.append((module, owner))
@@ -201,7 +218,12 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         project: p.Infra.ProjectSpec,
         imports: t.MappingKV[str, str],
     ) -> str:
-        """Import the package object without eagerly reading its composing facade."""
+        """Import the package object without eagerly reading its composing facade.
+
+        Returns:
+            The resulting ``str``.
+
+        """
         return (
             "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
             "from __future__ import annotations\n\n"

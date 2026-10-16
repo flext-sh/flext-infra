@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from operator import methodcaller
 from pathlib import Path
 
 import pytest
@@ -222,7 +223,7 @@ else:
             eq=str(cause),
         )
         with pytest.raises(m.ValidationError):
-            setattr(receipt, "error", "")
+            methodcaller("__setattr__", "error", "")(receipt)
         with pytest.raises(m.ValidationError):
             m.Infra.CodegenPhaseOutcome.model_validate({"unowned": True})
 

@@ -101,9 +101,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
         if inline and key is not None:
             try:
                 cls._validate_inline_ssh_key(key)
-            except ValueError:
+            except ValueError as error:
                 return r[m.Infra.GitSigningIdentityReport].fail(
                     "native Git signing configuration declares a malformed public key",
+                    exception=error,
                 )
         return r[m.Infra.GitSigningIdentityReport].ok(
             m.Infra.GitSigningIdentityReport(
@@ -1014,17 +1015,22 @@ class FlextInfraUtilitiesGitAttestationMixin(
         )
         for path in (context.pyproject_path, context.lock_path):
             relative = path.relative_to(context.runtime_root).as_posix()
-            if relative not in runtime_commit.tree:
-                msg = (
-                    "selected resolver input is absent from the runtime commit: "
-                    f"{relative}"
-                )
-                raise FileNotFoundError(
-                    msg,
-                )
-            tracked.append(
-                f"runtime:{relative}:{(runtime_commit.tree / relative).hexsha}"
-            )
+            # GitPython's ``Tree.__contains__`` matches only the direct entries'
+            # repo-relative paths, so a nested resolver input
+            # (``.flext/uv/local/pyproject.toml``) is located one tree level at
+            # a time by its cumulative path.
+            node = runtime_commit.tree
+            prefix: list[str] = []
+            for part in relative.split("/"):
+                prefix.append(part)
+                if "/".join(prefix) not in node:
+                    msg = (
+                        "selected resolver input is absent from the runtime commit: "
+                        f"{relative}"
+                    )
+                    raise FileNotFoundError(msg)
+                node = node / part
+            tracked.append(f"runtime:{relative}:{node.hexsha}")
         content = "\n".join(tracked)
         return f"sha256:{u.Cli.sha256_content(content)}"
 
@@ -1071,7 +1077,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
             policy=predicate.commands[0].policy,
             policy_digest=predicate.commands[0].policy_digest,
         )
-        return cls._publish_gate_tag(verification_request, predicate, serialized.value)
+        return cls._publish_gate_tag(
+            verification_request, predicate, serialized.value, context
+        )
 
     @classmethod
     def _publish_gate_tag(
@@ -1079,6 +1087,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateAttestationVerifyRequest,
         predicate: m.Infra.GateAttestationPredicate,
         serialized: str,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()
@@ -1091,13 +1100,21 @@ class FlextInfraUtilitiesGitAttestationMixin(
                     repo_root,
                     allowed,
                     tag,
+                    context,
                 )
                 if existing.failure:
                     return r[m.Infra.GateAttestationReport].from_failure(existing)
                 if existing.value != predicate:
+                    stored = existing.value.model_dump(mode="json")
+                    current = predicate.model_dump(mode="json")
+                    fields = sorted(
+                        name
+                        for name in stored.keys() | current.keys()
+                        if stored.get(name) != current.get(name)
+                    )
                     return r[m.Infra.GateAttestationReport].fail(
                         f"existing immutable stage proof differs from original "
-                        f"evidence: {tag}",
+                        f"evidence: {tag}; fields={','.join(fields)}",
                     )
                 return r[m.Infra.GateAttestationReport].ok(
                     cls._attestation_report(tag, predicate, reused=True),
@@ -1117,6 +1134,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             repo_root,
             allowed,
             tag,
+            context,
         )
         if verified.failure:
             return r[m.Infra.GateAttestationReport].from_failure(verified)

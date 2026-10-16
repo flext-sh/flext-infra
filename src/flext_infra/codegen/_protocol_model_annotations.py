@@ -21,12 +21,6 @@ from typing import (
 )
 
 from flext_infra import c, p, t, u
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
-from flext_infra._utilities._semantic_cutover.declaration_relocation import (
-    FlextInfraUtilitiesSemanticDeclarationRelocation,
-)
 
 
 class FlextInfraCodegenProtocolModelAnnotations:
@@ -83,7 +77,12 @@ class FlextInfraCodegenProtocolModelAnnotations:
         return f"{module.get_name()}.{'.'.join(reversed(names))}"
 
     def source(self, annotation: str, scope: p.Infra.RopeScope) -> str:
-        """Rewrite bound type identities without changing literal payloads."""
+        """Rewrite bound type identities without changing literal payloads.
+
+        Returns:
+            The resulting ``str``.
+
+        """
         roots: list[str] = []
 
         def replacement(lexical: p.Infra.RopeScope, expression: str) -> str | None:
@@ -91,7 +90,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
             roots.append((expression if changed is None else changed).partition(".")[0])
             return changed
 
-        rendered = FlextInfraUtilitiesSemanticFamilyTypeReferences.rewrite_type_source(
+        rendered = u.Infra.rewrite_type_source(
             annotation, self.workspace.rope_project, scope, replacement
         )
         self.record_imports(rendered, scope, roots)
@@ -100,7 +99,12 @@ class FlextInfraCodegenProtocolModelAnnotations:
     def _source_reference(
         self, scope: p.Infra.RopeScope, expression: str
     ) -> str | None:
-        """Select the declared replacement through its Rope binding."""
+        """Select the declared replacement through its Rope binding.
+
+        Returns:
+            The resulting ``str | None``.
+
+        """
         binding = u.Infra.expression_name(scope, expression)
         for name, declaration in self.declarations.items():
             if u.Infra.same_name(declaration, binding):
@@ -113,21 +117,24 @@ class FlextInfraCodegenProtocolModelAnnotations:
         scope: p.Infra.RopeScope,
         required: t.SequenceOf[str] = (),
     ) -> None:
-        """Reuse native import records for the names retained in a signature."""
+        """Reuse native import records for the names retained in a signature.
+
+        Raises:
+            ValueError: If protocol annotation has no declaring module.
+
+        """
         module = scope.pyobject.get_module()
         if module is None:
             msg = "protocol annotation has no declaring module"
             raise ValueError(msg)
-        references = FlextInfraUtilitiesSemanticFamilyTypeReferences
         roots = {
             *required,
             *(
                 source[begin:end].partition(".")[0]
-                for begin, end in references.reference_regions(source)
+                for begin, end in u.Infra.reference_regions(source)
             ),
         }
-        owner = FlextInfraUtilitiesSemanticDeclarationRelocation
-        for information in owner.native_import_infos(
+        for information in u.Infra.native_import_infos(
             self.workspace.rope_project, module
         ):
             aliases = tuple(
@@ -140,7 +147,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
             imported = (
                 u.Infra.from_import(information.module_name, information.level, aliases)
                 if isinstance(information, p.Infra.RopeFromImport)
-                else owner.normal_import(aliases)
+                else u.Infra.normal_import(aliases)
             )
             statement = imported.get_import_statement()
             self.imports[statement] = statement
@@ -150,7 +157,12 @@ class FlextInfraCodegenProtocolModelAnnotations:
         annotation: t.TypeFormSpecifier | None,
         scope: p.Infra.RopeScope,
     ) -> str:
-        """Render native annotation forms; unsupported forms fail unchanged."""
+        """Render native annotation forms; unsupported forms fail unchanged.
+
+        Returns:
+            The resulting ``str``.
+
+        """
         if annotation is None or annotation is type(None):
             return "None"
         if isinstance(annotation, ForwardRef | str):
@@ -162,6 +174,14 @@ class FlextInfraCodegenProtocolModelAnnotations:
             )
         if isinstance(annotation, TypeAliasType):
             return self.render(annotation.__value__, scope)
+        origin = get_origin(annotation)
+        if origin is None:
+            return self._class_annotation(annotation)
+        return self._parameterized(annotation, scope)
+
+    def _parameterized(
+        self, annotation: t.TypeFormSpecifier, scope: p.Infra.RopeScope
+    ) -> str:
         origin = get_origin(annotation)
         arguments = get_args(annotation)
         if isinstance(origin, TypeAliasType):
@@ -183,23 +203,42 @@ class FlextInfraCodegenProtocolModelAnnotations:
             return (
                 f"typing.Literal[{', '.join(repr(argument) for argument in arguments)}]"
             )
+        return self._generic_annotation(annotation, scope)
+
+    def _generic_annotation(
+        self,
+        annotation: t.TypeFormSpecifier,
+        scope: p.Infra.RopeScope,
+    ) -> str:
+        origin = get_origin(annotation)
+        arguments = get_args(annotation)
         if origin is Callable:
             parameters, result = arguments
             arguments_text = (
                 "..."
                 if parameters is Ellipsis
-                else f"[{', '.join(self.render(parameter, scope) for parameter in parameters)}]"
+                else (
+                    "["
+                    + ", ".join(
+                        self.render(parameter, scope) for parameter in parameters
+                    )
+                    + "]"
+                )
             )
             self.imports["collections.abc"] = "import collections.abc"
-            return f"collections.abc.Callable[{arguments_text}, {self.render(result, scope)}]"
-        if origin is not None:
-            if origin is tuple and not arguments:
-                return "tuple[()]"
-            rendered = ", ".join(
-                "..." if argument is Ellipsis else self.render(argument, scope)
-                for argument in arguments
+            return (
+                f"collections.abc.Callable[{arguments_text}, "
+                f"{self.render(result, scope)}]"
             )
-            return f"{self.render(origin, scope)}[{rendered}]"
+        if origin is tuple and not arguments:
+            return "tuple[()]"
+        rendered = ", ".join(
+            "..." if argument is Ellipsis else self.render(argument, scope)
+            for argument in arguments
+        )
+        return f"{self.render(origin, scope)}[{rendered}]"
+
+    def _class_annotation(self, annotation: t.TypeFormSpecifier) -> str:
         if not isinstance(annotation, type):
             msg = f"unsupported protocol annotation: {annotation!r}"
             raise TypeError(msg)

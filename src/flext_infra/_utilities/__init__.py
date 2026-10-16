@@ -313,7 +313,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesCodegenPathCutover,
     )
     from flext_infra._utilities.codemod_binding_chain import (
-        FlextInfraFlextUtilitiesCodemodBindingChain,
+        FlextInfraUtilitiesCodemodBindingChain,
     )
     from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
     from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
@@ -476,7 +476,6 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
-    "FlextInfraFlextUtilitiesCodemodBindingChain",
     "FlextInfraRopeProject",
     "FlextInfraRopeRestructure",
     "FlextInfraUtilitiesBase",
@@ -485,6 +484,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodegenPathCutover",
+    "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
@@ -676,7 +676,7 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "FlextInfraFlextUtilitiesCodemodBindingChain": ".codemod_binding_chain",
+        "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraRopeProject": "._rope.project",
         "FlextInfraRopeRestructure": "._rope.restructure",
         "FlextInfraUtilitiesBase": ".base",

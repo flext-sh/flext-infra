@@ -50,6 +50,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
 
+
         """
         if self._source_authority is not None and updates:
             return r[T].fail(
@@ -726,16 +727,15 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 else admitted.value.source_scope,
             }
         )
-        if (
-            analysis.files
-            and not policy.directories
-            and policy.staged_validator is None
+        effect_free = (
+            bool(analysis.files)
             and not analysis.issues
             and analysis.exception is None
             and not any(
                 u.Infra.codegen_file_requires_effect(file) for file in analysis.files
             )
-        ):
+        )
+        if effect_free and not policy.directories and policy.staged_validator is None:
             return self._publish_unchanged_file_phase(
                 scope_root,
                 roots,
@@ -758,9 +758,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             bound = self.bind_publication_proof(
                 started,
                 analysis.files,
-                source_topology=admission.source_topology,
-                scope_roots=admission.scope_roots,
-                source_scope=admission.source_scope,
+                topology=admission,
                 phase=analysis.phase,
                 batch_admission=admission,
             )
@@ -785,8 +783,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 analysis.phase,
                 analysis.files,
                 issues=analysis.issues,
-                staged_validator=policy.staged_validator,
-                batch_admission=admission,
+                publication_policy=policy.model_copy(update={"admission": admission}),
             )
             return published.flat_map(
                 lambda ready: self.commit_locked(
@@ -812,6 +809,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Returns:
             No written paths after the complete admitted observation is proven.
+
 
         """
         result_type = r[t.VariadicTuple[Path]]
@@ -914,6 +912,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     @staticmethod
     def validate_phase_analysis_locked(
         analysis: m.Infra.CodegenPhaseAnalysis,
+        *,
+        session: m.Infra.CodegenTransactionSession | None = None,
     ) -> p.Result[bool]:
         """Validate a published phase from its immutable planning receipt.
 
@@ -921,7 +921,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             The resulting ``p.Result[bool]``.
 
         """
-        return FlextInfraMiseArtifactsVerification.phase_analysis_live(analysis)
+        return FlextInfraMiseArtifactsVerification.phase_analysis_live(
+            analysis, session=session
+        )
 
     def run_locked[T](
         self,

@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import operator
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, codegen, m, r, t, u
 from flext_infra.codegen._mise_artifacts_comparison import (
     FlextInfraMiseArtifactsComparison,
 )
@@ -24,7 +25,6 @@ from flext_infra.codegen._mise_artifacts_verification_manifest import (
 from flext_infra.codegen._mise_artifacts_verification_topology import (
     FlextInfraMiseArtifactsVerificationTopology,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -49,7 +49,8 @@ class FlextInfraMiseArtifactsVerification(
 
         """
         root = request.root.expanduser().resolve()
-        observed = cls._read_publication(root)
+        surface = c.Infra.CodegenConformSurface(request.what)
+        observed = cls._read_publication(root, surface)
         result = r[m.Infra.CodegenPhaseOutcome]
         if observed.failure:
             return result.from_failure(observed)
@@ -57,10 +58,28 @@ class FlextInfraMiseArtifactsVerification(
         if not cls._publication_covers_request(outcome, request, root):
             return result.fail(
                 "generation publication does not cover this request: "
-                f"{root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH}; "
-                "run make gen",
+                f"{root / cls.publication_receipt(surface)}; run make gen",
             )
         return result.ok(outcome)
+
+    @staticmethod
+    def publication_receipt(surface: c.Infra.CodegenConformSurface) -> Path:
+        """Derive the repository-relative slot of one surface's latest receipt.
+
+        The complete ``all`` surface owns the generation receipt; every
+        partial surface owns its own slot inside the publication archive, so
+        a partial publication never evicts the generation receipt.
+
+        Returns:
+            The slot path relative to the repository root.
+
+        """
+        latest = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        if surface is c.Infra.CodegenConformSurface.ALL:
+            return latest
+        return c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH / (
+            f"{surface.value}{latest.suffix}"
+        )
 
     @classmethod
     def _publication_covers_request(
@@ -102,6 +121,7 @@ class FlextInfraMiseArtifactsVerification(
     def _read_publication(
         cls,
         root: Path,
+        surface: c.Infra.CodegenConformSurface,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate the stored native receipt before testing request coverage.
 
@@ -110,11 +130,11 @@ class FlextInfraMiseArtifactsVerification(
 
         """
         root = root.expanduser().resolve()
-        report = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
-        captured = FlextInfraMiseArtifactsFiles.read_state(report, required=False)
+        captured = cls._governing_receipt(root, surface)
         result = r[m.Infra.CodegenPhaseOutcome]
         if captured.failure:
             return result.from_failure(captured)
+        report = captured.value.path
         content = captured.value.content
         if content is None:
             return result.fail(
@@ -135,6 +155,37 @@ class FlextInfraMiseArtifactsVerification(
         if current.failure:
             return result.from_failure(current)
         return cls.states_current((captured.value,)).map(lambda _: outcome)
+
+    @classmethod
+    def _governing_receipt(
+        cls,
+        root: Path,
+        surface: c.Infra.CodegenConformSurface,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Elect the receipt slot that governs one surface's publication.
+
+        A partial surface without its own publication is governed by the
+        generation receipt, which covers every surface; the ``all``
+        publication retires the partial slots it supersedes.
+
+        Returns:
+            The captured state of the governing slot, present or absent.
+
+        """
+        captured = FlextInfraMiseArtifactsFiles.read_state(
+            root / cls.publication_receipt(surface),
+            required=False,
+        )
+        if (
+            captured.failure
+            or captured.value.content is not None
+            or surface is c.Infra.CodegenConformSurface.ALL
+        ):
+            return captured
+        return FlextInfraMiseArtifactsFiles.read_state(
+            root / cls.publication_receipt(c.Infra.CodegenConformSurface.ALL),
+            required=False,
+        )
 
     @classmethod
     def _receipt_incomplete(
@@ -187,7 +238,7 @@ class FlextInfraMiseArtifactsVerification(
         """
         return cls._publication_history_current(
             publications, reference=reference, destinations=destinations
-        ).map(lambda history: history[0])
+        ).map(operator.itemgetter(0))
 
     @classmethod
     def _publication_history_current(
@@ -202,7 +253,13 @@ class FlextInfraMiseArtifactsVerification(
             t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         ]
     ]:
-        """Prove actual effect lineage without executing historical producers again."""
+        """Prove actual effect lineage without executing historical producers again.
+
+        Returns:
+            The terminal outputs and their ordered batch receipts, or the
+            first lineage failure.
+
+        """
         result_type = r[
             t.Pair[
                 t.VariadicTuple[m.Infra.CodegenJournalSource],
@@ -230,9 +287,9 @@ class FlextInfraMiseArtifactsVerification(
                 return path in files or any(path.is_relative_to(root) for root in roots)
 
             selection = relevant
-        terminal: dict[Path, m.Infra.CodegenJournalSource] = {}
+        terminal: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource] = {}
         outcomes: list[m.Infra.CodegenPhaseOutcome] = []
-        frontier: dict[Path, m.Infra.CodegenJournalSource] = {}
+        frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource] = {}
         for publication in publications:
             history = cls._publication_frontier(
                 publication, frontier, terminal, outcomes, selection
@@ -274,7 +331,7 @@ class FlextInfraMiseArtifactsVerification(
         """
         if outcome.batches:
             return r[bool].ok(value=True)
-        return FlextInfraCodegenPreconditions.producer_trees_current(
+        return codegen.FlextInfraCodegenPreconditions.producer_trees_current(
             outcome.generator_trees,
             outputs,
             modules=outcome.generator_modules,
@@ -457,7 +514,7 @@ class FlextInfraMiseArtifactsVerification(
                 or outcome.attempted_files
             )
         reference = outcome.generator_reference
-        return bool(
+        return (
             not outcome.outputs
             or not outcome.generator_sources
             or reference is None
@@ -617,7 +674,7 @@ class FlextInfraMiseArtifactsVerification(
                 list[m.Infra.CodegenJournalSource]]]``.
 
         """
-        inputs: dict[Path, list[m.Infra.CodegenJournalSource]] = {}
+        inputs: t.MutableMappingKV[Path, list[m.Infra.CodegenJournalSource]] = {}
         for source in outcome.sources:
             if selection is None or selection(source.path):
                 inputs.setdefault(source.path, []).append(source)
@@ -775,9 +832,35 @@ class FlextInfraMiseArtifactsVerification(
         return r[bool].ok(value=True)
 
     @classmethod
+    def materialized_directory_chain(
+        cls,
+        journal: m.Infra.CodegenTransactionJournal,
+        witness: m.Cli.AtomicDirectoryChainPlan,
+    ) -> p.Result[bool]:
+        """Prove the declared parent chain was materialized by this journal.
+
+        Returns:
+            The first identity failure or the authenticated physical ancestry.
+
+        """
+        current = u.Cli.atomic_plan_directory_chain(witness.target)
+        if current.failure:
+            return r[bool].from_failure(current)
+        ancestry = cls._verified_parent_ancestry(journal, witness)
+        if ancestry.failure:
+            return r[bool].from_failure(ancestry)
+        if current.value.directories or current.value.anchor_ancestry != ancestry.value:
+            return r[bool].fail(
+                f"generation destination parent identity changed: {witness.target}",
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
     def phase_analysis_live(
         cls,
         analysis: m.Infra.CodegenPhaseAnalysis,
+        *,
+        session: m.Infra.CodegenTransactionSession | None = None,
     ) -> p.Result[bool]:
         """Prove one published phase from its authenticated analysis receipt.
 
@@ -788,34 +871,285 @@ class FlextInfraMiseArtifactsVerification(
         u.Cli.info(
             f"phase={analysis.phase} verify destinations={len(analysis.files)}",
         )
-        for plan in analysis.files:
-            observed = FlextInfraMiseArtifactsFiles.read_state(
-                plan.path,
-                required=plan.desired_content is not None,
+        if session is not None:
+            owned = cls.journal_destinations_live(
+                session.plan.layout,
+                session.journal,
             )
-            if observed.failure:
-                return r[bool].from_failure(observed)
-            current = observed.value
-            if (
-                plan.path.name == c.Infra.INIT_PY
-                and u.Infra.codegen_initializer_is_authored(current.content)
-            ):
-                u.Cli.info(
-                    f"ownership=authored disposition=retained target={plan.path}",
-                )
+            if owned.failure:
+                return owned
+        entries = (
+            {
+                FlextInfraMiseArtifactsFiles.resolve_transaction(
+                    session.plan.layout,
+                    entry.path,
+                    purpose="phase receipt destination",
+                ).unwrap(): entry
+                for entry in session.journal.entries
+            }
+            if session is not None
+            else {}
+        )
+        inputs = cls._phase_inputs_live(analysis, session, entries)
+        if inputs.failure:
+            return inputs
+        for plan in analysis.files:
+            entry = entries.get(plan.path)
+            checked = (
+                cls._journal_phase_destination(analysis.phase, plan, session, entry)
+                if session is not None and entry is not None
+                else cls._unjournaled_phase_destination(analysis.phase, plan, session)
+            )
+            if checked.failure:
+                return checked
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _phase_inputs_live(
+        cls,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        session: m.Infra.CodegenTransactionSession | None,
+        entries: t.MappingKV[Path, m.Infra.CodegenJournalEntry],
+    ) -> p.Result[bool]:
+        """Prove non-destination inputs against live bytes or owned history.
+
+        Returns:
+            The first input failure in original analysis order.
+
+        """
+        destination_paths = frozenset(file.path for file in analysis.files)
+        for source in analysis.inputs:
+            if source.path in destination_paths:
                 continue
+            entry = entries.get(source.path)
+            if entry is None or session is None:
+                checked = cls.states_current((source,))
+            else:
+                if not cls._historical_state_recorded(source, session, entry):
+                    return r[bool].fail(
+                        "published phase input has no historical journal proof: "
+                        f"{source.path}",
+                    )
+                continue
+            if checked.failure:
+                return checked
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _journal_phase_destination(
+        cls,
+        phase: c.Infra.CodegenStagedFilePhase,
+        plan: m.Infra.CodegenFilePlan,
+        session: m.Infra.CodegenTransactionSession,
+        entry: m.Infra.CodegenJournalEntry,
+    ) -> p.Result[bool]:
+        """Bind a phase's destination intent to this session's owned receipt.
+
+        Returns:
+            The matching intent and original-state proof.
+
+        """
+        if entry.phase != phase:
             if (
-                current.content,
-                current.mode,
-            ) != (
-                plan.desired_content,
-                plan.desired_mode,
+                u.Infra.codegen_file_requires_effect(plan)
+                or not isinstance(plan.before, m.Cli.AtomicFileState)
+                or not cls._historical_state_recorded(plan.before, session, entry)
             ):
                 return r[bool].fail(
-                    f"published {analysis.phase} destination differs from receipt: "
+                    "published phase destination has no owned journal receipt: "
                     f"{plan.path}",
                 )
+            return r[bool].ok(value=True)
+        desired_digest = (
+            FlextInfraMiseArtifactsFiles.digest(plan.desired_content)
+            if plan.desired_content is not None
+            else None
+        )
+        if (entry.desired_sha256, entry.desired_mode) != (
+            desired_digest,
+            plan.desired_mode,
+        ):
+            return r[bool].fail(
+                f"published phase destination intent differs from journal: {plan.path}",
+            )
+        return cls._journal_original_destination(plan, session, entry)
+
+    @classmethod
+    def _journal_original_destination(
+        cls,
+        plan: m.Infra.CodegenFilePlan,
+        session: m.Infra.CodegenTransactionSession,
+        entry: m.Infra.CodegenJournalEntry,
+    ) -> p.Result[bool]:
+        """Prove the journal's original identity or materialized absence chain.
+
+        Returns:
+            The original-state proof without rereading an overwritten preimage.
+
+        """
+        if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
+            parent = cls.materialized_directory_chain(session.journal, plan.before)
+            if parent.failure:
+                return parent
+            if entry.original_exists:
+                return r[bool].fail(
+                    f"published absent destination had an original file: {plan.path}",
+                )
+        elif cls._state_receipt_identity(plan.before) != (
+            entry.original_parent_device,
+            entry.original_parent_inode,
+            entry.original_sha256,
+            entry.original_mode,
+            entry.original_device,
+            entry.original_inode,
+            entry.original_link_count,
+            entry.original_file_attributes,
+            entry.original_reparse_tag,
+        ):
+            return r[bool].fail(
+                f"published destination original differs from plan: {plan.path}",
+            )
         return r[bool].ok(value=True)
+
+    @classmethod
+    def _unjournaled_phase_destination(
+        cls,
+        phase: c.Infra.CodegenStagedFilePhase,
+        plan: m.Infra.CodegenFilePlan,
+        session: m.Infra.CodegenTransactionSession | None,
+    ) -> p.Result[bool]:
+        """Require a physical no-effect receipt when no journal entry owns a file.
+
+        Returns:
+            The unchanged preimage and current publication proof.
+
+        """
+        if session is not None and u.Infra.codegen_file_requires_effect(plan):
+            return r[bool].fail(
+                "published phase destination has no owned journal receipt: "
+                f"{plan.path}",
+            )
+        before = u.Infra.codegen_file_before_state(plan)
+        if before.failure:
+            return r[bool].from_failure(before)
+        if session is not None:
+            unchanged = cls.states_current((before.value,))
+            if unchanged.failure:
+                return unchanged
+        return cls._published_destination_bytes(phase, plan)
+
+    @staticmethod
+    def _published_destination_bytes(
+        phase: c.Infra.CodegenStagedFilePhase,
+        plan: m.Infra.CodegenFilePlan,
+    ) -> p.Result[bool]:
+        """Read the destination and apply the existing authored-retention policy.
+
+        Returns:
+            The physical publication verdict with its original first cause.
+
+        """
+        observed = FlextInfraMiseArtifactsFiles.read_state(
+            plan.path,
+            required=plan.desired_content is not None,
+        )
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        current = observed.value
+        if (
+            plan.path.name == c.Infra.INIT_PY
+            and u.Infra.codegen_initializer_is_authored(current.content)
+        ):
+            u.Cli.info(
+                f"ownership=authored disposition=retained target={plan.path}",
+            )
+            return r[bool].ok(value=True)
+        if (current.content, current.mode) != (
+            plan.desired_content,
+            plan.desired_mode,
+        ):
+            return r[bool].fail(
+                f"published {phase} destination differs from receipt: {plan.path}",
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _historical_state_recorded(
+        cls,
+        state: m.Cli.AtomicFileState,
+        session: m.Infra.CodegenTransactionSession,
+        entry: m.Infra.CodegenJournalEntry,
+    ) -> bool:
+        """Match an input only to historical or publisher-produced journal identity.
+
+        Returns:
+            Whether the complete input identity is owned by the durable journal.
+
+        """
+        historical = cls._state_receipt_identity(state)
+        return any(
+            recorded.path == state.path
+            and (
+                recorded.parent_device,
+                recorded.parent_inode,
+                recorded.sha256,
+                recorded.mode,
+                recorded.device,
+                recorded.inode,
+                recorded.link_count,
+                recorded.file_attributes,
+                recorded.reparse_tag,
+            )
+            == historical
+            for recorded in session.journal.sources
+        ) or historical in {
+            (
+                entry.original_parent_device,
+                entry.original_parent_inode,
+                entry.original_sha256,
+                entry.original_mode,
+                entry.original_device,
+                entry.original_inode,
+                entry.original_link_count,
+                entry.original_file_attributes,
+                entry.original_reparse_tag,
+            ),
+            (
+                entry.desired_parent_device,
+                entry.desired_parent_inode,
+                entry.desired_sha256,
+                entry.desired_mode,
+                entry.desired_device,
+                entry.desired_inode,
+                entry.desired_link_count,
+                entry.desired_file_attributes,
+                entry.desired_reparse_tag,
+            ),
+        }
+
+    @staticmethod
+    def _state_receipt_identity(
+        state: m.Cli.AtomicFileState,
+    ) -> tuple[int | str | None, ...]:
+        """Match all recorded physical and byte fields without observing live data.
+
+        Returns:
+            The exact identity represented by a durable journal file receipt.
+
+        """
+        return (
+            state.parent_device,
+            state.parent_inode,
+            FlextInfraMiseArtifactsFiles.digest(state.content)
+            if state.content is not None
+            else None,
+            state.mode,
+            state.device,
+            state.inode,
+            state.link_count,
+            state.file_attributes,
+            state.reparse_tag,
+        )
 
     @classmethod
     def destinations(cls, plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:

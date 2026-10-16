@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.docs import FlextInfraDocGeneratorBundleMixin
-from flext_infra.docs.base import FlextInfraDocServiceBase
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+)
+from flext_infra.docs import FlextInfraDocGeneratorBundleMixin, FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -253,7 +254,7 @@ class FlextInfraDocGenerator(
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Derive target parent chains from the exact prepared render bundle.
 
-        Source-state race verification is owned by ``docs_file_plans``.
+        Publication owns source and destination guards for the current batch.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.

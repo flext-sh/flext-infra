@@ -18,6 +18,29 @@ class FlextInfraConfigVocabulary:
     """Canonical closed contracts required before project facades initialize."""
 
     @unique
+    class RepositoryState(StrEnum):
+        """Lifecycle state used by repository selection."""
+
+        ACTIVE = "active"
+        EXCLUDED = "excluded"
+
+    @unique
+    class CodegenKind(StrEnum):
+        """Code-generation policy applied to one repository."""
+
+        CONFORM = "conform"
+        PYTHON = "python"
+        NONE = "none"
+
+    @unique
+    class ProjectKind(StrEnum):
+        """Own governance profile; external forks retain upstream contracts."""
+
+        INTERNAL_FLEXT = "internal_flext"
+        INTERNAL = "internal"
+        THIRD_PARTY_FORK = "third_party_fork"
+
+    @unique
     class MakeProfile(StrEnum):
         """Generated Make profile proven by the repository checkout topology."""
 
@@ -131,31 +154,9 @@ class FlextInfraConfigVocabulary:
         "lint",
         "markdown",
         "markdown-code",
+        "deps",
     )
     """Independent repair policy; formatting remains owned by Make fmt."""
-
-    @unique
-    class RepositoryState(StrEnum):
-        """Lifecycle state used by repository selection."""
-
-        ACTIVE = "active"
-        EXCLUDED = "excluded"
-
-    @unique
-    class CodegenKind(StrEnum):
-        """Code-generation policy applied to one repository."""
-
-        CONFORM = "conform"
-        PYTHON = "python"
-        NONE = "none"
-
-    @unique
-    class ProjectKind(StrEnum):
-        """Own governance profile; external forks retain upstream contracts."""
-
-        INTERNAL_FLEXT = "internal_flext"
-        INTERNAL = "internal"
-        THIRD_PARTY_FORK = "third_party_fork"
 
     @unique
     class GateAcceptancePolicy(StrEnum):
@@ -178,9 +179,6 @@ class FlextInfraConfigVocabulary:
     CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
     """Local operator override file name, excluded from the tracked baseline."""
 
-    CODEGEN_ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
-    """Governed repository org overrides file name."""
-
     GIT_COMMIT_OID_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$",
     )
@@ -199,3 +197,6 @@ class FlextInfraConfigVocabulary:
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
         RUNTIME_BINDINGS = "runtime-bindings"
+
+
+__all__: list[str] = ["FlextInfraConfigVocabulary"]

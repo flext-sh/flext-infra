@@ -31,18 +31,15 @@ class FlextInfraProtocolsCheck(Protocol):
             /,
         ) -> ValueT: ...
 
-    class NativeFunctionBinding(Protocol):
-        """Exact classmethod or staticmethod storage before function admission."""
-
-        @property
-        def __func__(self) -> t.Infra.NativeOperand: ...
-
     @runtime_checkable
     class NativeModuleSpec(Protocol):
         """Physical source fields supplied by the native import finder."""
 
         @property
         def origin(self) -> str | None: ...
+
+        @property
+        def loader(self) -> p.AttributeProbe | None: ...
 
         @property
         def submodule_search_locations(self) -> t.SequenceOf[str] | None: ...
@@ -102,38 +99,6 @@ class FlextInfraProtocolsCheck(Protocol):
             co_filename: str,
             co_consts: tuple[p.AttributeProbe | None, ...],
         ) -> FlextInfraProtocolsCheck.NativeCodeIdentity: ...
-
-    class NativeClosureCell(Protocol):
-        """Expose the interpreter-owned contents of one closure cell."""
-
-        @property
-        def cell_contents(self) -> p.AttributeProbe | None: ...
-
-    class NativePythonFunction(Protocol):
-        """Read an elected native Python function through precise contracts."""
-
-        @property
-        def __code__(self) -> t.Infra.NativeCode: ...
-
-        @property
-        def __defaults__(self) -> tuple[p.AttributeProbe | None, ...] | None: ...
-
-        @property
-        def __kwdefaults__(
-            self,
-        ) -> t.DictKV[str, p.AttributeProbe | None] | None: ...
-
-        @property
-        def __globals__(self) -> t.DictKV[str, p.AttributeProbe | None]: ...
-
-        @property
-        def __closure__(
-            self,
-        ) -> tuple[FlextInfraProtocolsCheck.NativeClosureCell, ...] | None: ...
-
-        __name__: str
-        __module__: str
-        __qualname__: str
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):

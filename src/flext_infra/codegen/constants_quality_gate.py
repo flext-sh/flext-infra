@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c, m, p, r, s, t, u
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra.refactor import FlextInfraRefactorCensus
 
 
 class FlextInfraCodegenQualityGate(s[bool]):

@@ -40,6 +40,7 @@ class FlextInfraUtilitiesCodemodRules:
         Raises:
             ValueError: If the provider config content is absent.
 
+
         """
         state = u.Cli.atomic_read_binary_file_state(config_path, required=True).unwrap()
         if state.content is None:
@@ -86,6 +87,8 @@ class FlextInfraUtilitiesCodemodRules:
         Raises:
             ValueError: If the directories are not a sequence of existing
                 paths inside the provider owner.
+            TypeError: If codemod utility directories are not a sequence; or if codemod
+                utility directory is not a path.
 
         """
         if not isinstance(raw_directories, Sequence) or isinstance(
@@ -118,6 +121,7 @@ class FlextInfraUtilitiesCodemodRules:
         Raises:
             ValueError: If the utility input is absent or one of its
                 documents lacks a unique native identity and language.
+            TypeError: If codemod utility lacks native identity/language.
 
         """
         observed = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
@@ -174,8 +178,7 @@ class FlextInfraUtilitiesCodemodRules:
         """Project one provider's utilities under qualified global identities.
 
         Raises:
-            ValueError: If a provider config is absent, its native values
-                conflict, or its projected utility is not a mapping.
+            TypeError: If projected codemod utility is not a mapping.
 
         """
         declaration = cls._read_provider_declaration(config_path)
@@ -183,7 +186,7 @@ class FlextInfraUtilitiesCodemodRules:
         global_documents = cls._collect_utility_documents(declaration, config_path)
         namespace = u.Cli.sha256_content(
             u.Cli.json_dumps(
-                [global_documents[key] for key in sorted(global_documents)],
+                [dict(global_documents[key]) for key in sorted(global_documents)],
                 sort_keys=True,
             ).unwrap()
         )

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import flext_infra
 from flext_infra._pytest_clock import FlextInfraPytestClock
-from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
+from flext_infra.validate import FlextInfraPytestRunner
 
 
 class FlextInfraPytestEntry:

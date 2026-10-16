@@ -32,13 +32,13 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraFlextBindingService:
+class FlextInfraBindingService:
     """Resolve and apply one session binding onto a flext worktree."""
 
     @staticmethod
@@ -134,7 +134,7 @@ class FlextInfraFlextBindingService:
 
         """
         result_type = r[m.Infra.PythonEnvironmentObservation]
-        environment = FlextInfraFlextBindingService._consumer_environment(
+        environment = FlextInfraBindingService._consumer_environment(
             consumer_root,
             python,
         )
@@ -152,13 +152,13 @@ class FlextInfraFlextBindingService:
         facts = m.Infra.PythonEnvironmentObservation.model_validate_json(
             outcome.value.stdout,
         )
-        identity = FlextInfraFlextBindingService._validated_package_facts(
+        identity = FlextInfraBindingService._validated_package_facts(
             environment.value,
             facts,
         )
         if identity.failure:
             return result_type.from_failure(identity)
-        stable = FlextInfraFlextBindingService._confirm_stable_environment(
+        stable = FlextInfraBindingService._confirm_stable_environment(
             environment.value,
             physical.value,
         )
@@ -437,4 +437,4 @@ class FlextInfraFlextBindingService:
         return r[int].ok(0)
 
 
-__all__: list[str] = ["FlextInfraFlextBindingService"]
+__all__: list[str] = ["FlextInfraBindingService"]

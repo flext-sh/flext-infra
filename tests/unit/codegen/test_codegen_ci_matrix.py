@@ -427,7 +427,13 @@ class TestsFlextInfraCodegenCiMatrix:
         )
 
         tm.that(workflow, has="concurrency:")
-        tm.that(workflow, has="group: ${{ github.workflow }}-${{ github.ref }}")
+        tm.that(
+            workflow,
+            has=(
+                "group: ${{ github.workflow }}-${{ github.event_name }}-"
+                "${{ github.event.pull_request.number || github.ref }}"
+            ),
+        )
         tm.that(workflow, has="cancel-in-progress: true")
 
     def test_ci_workflow_is_identical_across_fresh_checkouts(

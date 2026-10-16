@@ -981,11 +981,10 @@ class FlextInfraConfigModelsArtifact:
         selected_inputs: Annotated[
             FlextInfraConfigModelsArtifact.CodegenInputs | None,
             m.Field(
-                default=None,
                 exclude=True,
                 description="Invoking repository's already captured configuration",
             ),
-        ]
+        ] = None
         root: Annotated[Path, m.Field(description="Generation scope root")]
         workspace: Annotated[
             FlextInfraConfigModelsWorkspace.WorkspaceSpec,
@@ -1290,3 +1289,6 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsArtifact.SedPatternSpec],
             m.Field(default=(), description="Ordered substitution patterns"),
         ] = ()
+
+
+__all__: list[str] = ["FlextInfraConfigModelsArtifact"]

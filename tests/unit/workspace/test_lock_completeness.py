@@ -15,7 +15,7 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceLockCompleteness,
 )
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraWorkspaceLockCompleteness:
@@ -158,7 +158,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         payload = tm.ok(u.Cli.toml_read_json(lock))
         inventory = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
         supplier = next(item for item in inventory.package if item.source.registry)
-        rows = [
+        rows: t.JsonValueList = [
             {
                 **u.Cli.json_as_mapping(entry),
                 "metadata": {

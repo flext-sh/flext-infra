@@ -172,10 +172,12 @@ class TestsFlextInfraWorkspaceChecker:
         tmp_path: Path,
     ) -> None:
         """Test that lint() returns a GateResult."""
+        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (project_dir / "src" / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
         )
-        result = checker.lint(tmp_path)
+        result = checker.lint(project_dir)
         tm.that(result, is_=r)
         tm.ok(result)
 

@@ -9,9 +9,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, r, s, t, u
-from flext_infra._conform_wiring import FlextInfraConformWiring
-from flext_infra._preview_wiring import FlextInfraPreviewWiring
+from flext_infra import (
+    FlextInfraConformWiring,
+    FlextInfraPreviewWiring,
+    c,
+    m,
+    r,
+    s,
+    t,
+    u,
+)
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,
@@ -21,6 +28,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenPipeline,
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
+    FlextInfraMiseArtifactsFiles,
 )
 from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
@@ -83,20 +91,27 @@ class FlextInfra(
         )
         if workspace.failure:
             return r[bool].from_failure(workspace)
+        planner = FlextInfraCodegenConform(
+            repository_root=source_root,
+            ports=None,
+        )
         producer = FlextInfraCodegenPreconditions.capture_producer(
             source_root,
-            entrypoint=FlextInfra.bootstrap_candidate,
+            entrypoint=planner.plan_repositories,
+            collaborators=(
+                FlextInfraCandidateBootstrapService.plan_candidates,
+                FlextInfraCandidateBootstrapService,
+                FlextInfraMiseArtifactsFiles.write_publication,
+            ),
         )
         if producer.failure:
             return r[bool].from_failure(producer)
+        planner.producer = producer.value
         return FlextInfraCandidateBootstrapService(
             # The campaign only plans through conform; it publishes through its
             # own transaction and never runs the complete surface.
-            planner=FlextInfraCodegenConform(
-                repository_root=source_root,
-                ports=None,
-                producer=producer.value,
-            ),
+            planner=planner,
+            producer=producer.value,
             transaction=FlextInfraCodegenTransaction(
                 FlextInfraCodegenMiseArtifacts(repository_root=source_root),
                 producer=producer.value,

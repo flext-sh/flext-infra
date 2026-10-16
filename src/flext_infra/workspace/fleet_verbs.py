@@ -12,11 +12,11 @@ from typing import Annotated, override
 from flext_core import t
 
 from flext_infra import c, m, p, r, s, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.environment_provenance import (
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
+    FlextInfraWorkspaceLifecycle,
 )
-from flext_infra.workspace.lifecycle import FlextInfraWorkspaceLifecycle
 
 
 class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):

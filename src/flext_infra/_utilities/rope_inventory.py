@@ -45,7 +45,6 @@ class FlextInfraUtilitiesRopeInventory:
             All same-file defined objects for one workspace module.
 
         Raises:
-            TypeError: If rope inventory scope unavailable for.
             ValueError: If path is outside the active rope workspace.
 
         """
@@ -67,9 +66,6 @@ class FlextInfraUtilitiesRopeInventory:
         constant_bindings = cls._constant_bindings(pymodule)
         items: t.MutableSequenceOf[m.Infra.Object] = []
         module_scope = pymodule.get_scope()
-        if module_scope is None:
-            msg = f"rope inventory scope unavailable for {resource.path}"
-            raise TypeError(msg)
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
             record_options = m.Infra.RopeInventoryRecordInput(
@@ -381,6 +377,13 @@ class FlextInfraUtilitiesRopeInventory:
         diagnostic. Only the declaration identifier and proven external alias
         spellings are normalized. The implicit class/schema identity is
         deliberately not treated as permission to merge declarations.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If native payload declaration has no class identifier.
+
         """
         payloads = FlextInfraUtilitiesDeclarationPayload
         binding = payloads.payload_declaration(
@@ -408,10 +411,50 @@ class FlextInfraUtilitiesRopeInventory:
         if not statements:
             return ""
         header = statements[0]
-        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        references = cls._payload_references(options, module, scope, statements)
+        definition_offset = header.start_offset + header.indent
+        definition_offset = options.source.find(
+            options.name,
+            definition_offset + len("class"),
+            header.end_offset,
+        )
+        if definition_offset < 0:
+            msg = "native payload declaration has no class identifier"
+            raise ValueError(msg)
+        references.append((
+            definition_offset,
+            definition_offset + len(options.name),
+            "<payload>",
+        ))
+        shapes = tuple(
+            (
+                statement.indent - header.indent,
+                cls._payload_statement_fingerprint(
+                    statement.text,
+                    statement.start_offset,
+                    references,
+                ),
+            )
+            for statement in statements
+        )
+        return dumps((bases, shapes), ensure_ascii=True, separators=(",", ":"))
+
+    @classmethod
+    def _payload_references(
+        cls,
+        options: m.Infra.RopeInventoryRecordInput,
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScopeDsl,
+        statements: t.SequenceOf[m.Infra.LogicalStatement],
+    ) -> list[t.Triple[int, int, str]]:
         references: list[t.Triple[int, int, str]] = []
         for statement in statements:
-            for begin, end in types.reference_regions(statement.text):
+            for (
+                begin,
+                end,
+            ) in FlextInfraUtilitiesSemanticFamilyTypeReferences.reference_regions(
+                statement.text
+            ):
                 start = statement.start_offset + begin
                 stop = statement.start_offset + end
                 lexical = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
@@ -443,32 +486,7 @@ class FlextInfraUtilitiesRopeInventory:
                 identity = cls._native_binding_identity(value)
                 if identity:
                     references.append((start, stop, f"<native:{identity}>"))
-        definition_offset = header.start_offset + header.indent
-        definition_offset = options.source.find(
-            options.name,
-            definition_offset + len("class"),
-            header.end_offset,
-        )
-        if definition_offset < 0:
-            msg = "native payload declaration has no class identifier"
-            raise ValueError(msg)
-        references.append((
-            definition_offset,
-            definition_offset + len(options.name),
-            "<payload>",
-        ))
-        shapes = tuple(
-            (
-                statement.indent - header.indent,
-                cls._payload_statement_fingerprint(
-                    statement.text,
-                    statement.start_offset,
-                    references,
-                ),
-            )
-            for statement in statements
-        )
-        return dumps((bases, shapes), ensure_ascii=True, separators=(",", ":"))
+        return references
 
     @staticmethod
     def _native_object_identity(value: p.Infra.RopePyObject) -> str:
@@ -478,7 +496,7 @@ class FlextInfraUtilitiesRopeInventory:
             scope = value.get_scope()
             if module is None or scope is None:
                 return ""
-            names = []
+            names: list[str] = []
             while scope.parent is not None:
                 names.append(scope.pyobject.get_name())
                 scope = scope.parent
@@ -505,8 +523,19 @@ class FlextInfraUtilitiesRopeInventory:
         offset: int,
         references: t.SequenceOf[t.Triple[int, int, str]],
     ) -> str:
-        """Keep literal bytes separate from normalized executable whitespace."""
-        edits = []
+        """Keep literal bytes separate from normalized executable whitespace.
+
+        Args:
+            source: The source code of the statement.
+            offset: Starting character offset of the statement in its source.
+            references: Start/end offsets and identities of referenced objects.
+
+        Returns:
+            The statement fingerprint, retaining literal bytes separately from
+            normalized executable whitespace.
+
+        """
+        edits: list[t.Triple[int, int, str]] = []
         cursor = -1
         for begin, end, identity in sorted(
             references, key=lambda item: (item[0], -item[1])
@@ -514,7 +543,7 @@ class FlextInfraUtilitiesRopeInventory:
             if offset <= begin < end <= offset + len(source) and begin >= cursor:
                 edits.append((begin - offset, end - offset, identity))
                 cursor = end
-        pieces = []
+        pieces: list[str] = []
         previous = 0
         literals = FlextInfraUtilitiesRopeRuntime.ignored_regions(source)
         spans = [
@@ -571,15 +600,11 @@ class FlextInfraUtilitiesRopeInventory:
             Parameter lines keyed by function definition line and parameter name.
 
         Raises:
-            TypeError: If the immutable module has no native Rope scope.
             ValueError: If a declared parameter has no native source occurrence.
 
         """
         positions: t.MutableMappingKV[t.Pair[int, str], int] = {}
         module_scope = pymodule.get_scope()
-        if module_scope is None:
-            message = "Rope parameter inventory has no module scope"
-            raise TypeError(message)
         scopes = list(module_scope.get_scopes())
         while scopes:
             scope = scopes.pop()
@@ -1199,12 +1224,46 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _actual_tier(convention: m.Infra.RopeModuleConvention) -> str:
-        """Actual tier.
+        """Classify the containing package before the module filename.
+
+        ``relative_path`` is local to the indexed package and can contain only
+        the basename. The qualified package identity retains its family without
+        admitting unrelated ancestor directories of the checkout.
 
         Returns:
             The resulting ``str``.
 
+        Raises:
+            ValueError: If directory or filename families are ambiguous.
+
         """
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families().values()
+        directory_families = {
+            family.suffix
+            for family in families
+            if family.directories.intersection(convention.package_name.split("."))
+        }
+        if len(directory_families) > 1:
+            msg = (
+                f"ambiguous facade family directories for {convention.relative_path}: "
+                f"{sorted(directory_families)}"
+            )
+            raise ValueError(msg)
+        if directory_families:
+            return next(iter(directory_families))
+        file_families = {
+            family.suffix
+            for family in families
+            if convention.file_path.name in family.file_names
+        }
+        if len(file_families) > 1:
+            msg = (
+                f"ambiguous facade family filename for {convention.relative_path}: "
+                f"{sorted(file_families)}"
+            )
+            raise ValueError(msg)
+        if file_families:
+            return next(iter(file_families))
         policy = convention.module_policy
         expected: str = policy.expected_family or ""
         if expected:
@@ -1226,9 +1285,6 @@ class FlextInfraUtilitiesRopeInventory:
             return FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                 c.Infra.CONSTANTS_PY,
             ).suffix
-        expected: str = convention.module_policy.expected_family or ""
-        if expected:
-            return expected
         return FlextInfraUtilitiesRopeInventory._actual_tier(convention)
 
     @staticmethod

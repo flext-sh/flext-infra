@@ -137,7 +137,9 @@ class FlextInfraUtilitiesCodegenFacades:
             if path.is_relative_to(pkg_dir / directory)
             and path.name != c.Infra.INIT_PY
             and "t"
-            in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(content)
+            in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(
+                content, filename=str(path)
+            )
             and any(
                 isinstance(binding, ast.Assign)
                 and isinstance(binding.value, ast.Name)
@@ -161,7 +163,7 @@ class FlextInfraUtilitiesCodegenFacades:
             owners[0].relative_to(pkg_dir).with_suffix("").as_posix().replace("/", ".")
         )
         alias = f"_{facade.name}"
-        return (
+        rendered = (
             f"{ast.get_source_segment(source, tree.body[0])}\n\n"
             "# Generated type facade; declarations belong to "
             f"{pkg_dir.name}.{module}.\n"
@@ -172,6 +174,7 @@ class FlextInfraUtilitiesCodegenFacades:
             f"t = {facade.name}\n\n"
             f"{ast.get_source_segment(source, exports[0])}\n"
         )
+        return cls._generated_facade(pkg_dir, rendered, family="t")
 
     @staticmethod
     def facade_module_path(pkg_dir: Path, family: str) -> Path | None:
@@ -195,6 +198,7 @@ class FlextInfraUtilitiesCodegenFacades:
             and family
             in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(
                 module.read_text(encoding=c.DEFAULT_ENCODING),
+                filename=str(module),
             )
         )
         if len(owners) > 1:
@@ -257,19 +261,164 @@ class FlextInfraUtilitiesCodegenFacades:
         source: str = facade_path.read_text(encoding=c.DEFAULT_ENCODING)
         match family:
             case "c" | "m":
-                return cls._render_declared_facade(
+                rendered = cls._render_declared_facade(
                     pkg_dir,
                     facade_path,
                     source,
                     family=family,
                 )
             case "u" | "p":
-                return cls._render_interface_facade(
+                rendered = cls._render_interface_facade(
                     pkg_dir,
                     facade_path,
                     source,
                     family=family,
                 )
+        return cls._generated_facade(pkg_dir, rendered, family=family)
+
+    @classmethod
+    def _generated_facade(
+        cls,
+        pkg_dir: Path,
+        source: str,
+        *,
+        family: Literal["c", "t", "u", "p", "m"],
+    ) -> str:
+        """Publish lawful composition and identity-proven lazy-package imports.
+
+        Returns:
+            Generated composition carrying the canonical ownership marker.
+
+        Raises:
+            ValueError: If authored declarations or unpublished imports remain.
+
+        """
+        tree = ast.parse(source)
+        sources, declarations = cls._declared_sources(
+            pkg_dir,
+            pkg_dir
+            / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory,
+        )
+        facade, namespace = cls._facade_classes(tree, pkg_dir)
+        aliases = {declaration.qualified_base for declaration in declarations}
+        cls._facade_module_declarations(tree, facade, pkg_dir)
+        for owner in (facade, namespace) if namespace is not facade else (facade,):
+            cls._facade_owner_declarations(owner, facade, namespace, aliases, pkg_dir)
+        for node in tree.body:
+            if not isinstance(node, ast.ImportFrom) or not node.module:
+                continue
+            module = f"{pkg_dir.name}.{node.module}" if node.level else node.module
+            if not module.startswith(f"{pkg_dir.name}."):
+                continue
+            provider_state = sources.get(module)
+            if provider_state is None:
+                message = f"Generated facade has unresolved owned import: {module}"
+                raise ValueError(message)
+            leaf, provider = provider_state
+            if leaf.name == c.Infra.INIT_PY:
+                continue
+            exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                provider,
+            )
+            for alias in node.names:
+                if alias.name not in exports:
+                    message = (
+                        f"Generated facade imports unpublished owner: "
+                        f"{module}.{alias.name}"
+                    )
+                    raise ValueError(message)
+                source = (
+                    RenameCommand(
+                        CodemodContext(full_package_name=pkg_dir.name),
+                        old_name=f"{module}.{alias.name}",
+                        new_name=f"{module.rpartition('.')[0]}.{alias.name}",
+                    )
+                    .transform_module(parse_module(source))
+                    .code
+                )
+        if source.startswith(c.Infra.AUTOGEN_HEADERS):
+            return source
+        return f"{c.Infra.AUTOGEN_HEADER}\n{source}"
+
+    @staticmethod
+    def _facade_module_declarations(
+        tree: ast.Module, facade: ast.ClassDef, pkg_dir: Path
+    ) -> None:
+        for statement in tree.body:
+            if (
+                statement is facade
+                or isinstance(statement, ast.Import | ast.ImportFrom)
+                or (
+                    isinstance(statement, ast.Expr)
+                    and isinstance(statement.value, ast.Constant)
+                    and isinstance(statement.value.value, str)
+                )
+            ):
+                continue
+            value = (
+                statement.value
+                if isinstance(
+                    statement,
+                    ast.Assign | ast.AnnAssign,
+                )
+                else None
+            )
+            targets = (
+                statement.targets
+                if isinstance(statement, ast.Assign)
+                else (statement.target,)
+                if isinstance(statement, ast.AnnAssign)
+                else ()
+            )
+            if (
+                targets
+                and all(isinstance(target, ast.Name) for target in targets)
+                and (
+                    all(
+                        isinstance(target, ast.Name) and target.id == "__all__"
+                        for target in targets
+                    )
+                    or (isinstance(value, ast.Name) and value.id == facade.name)
+                )
+            ):
+                continue
+            message = (
+                "Facade preserves authored module declaration: "
+                f"{pkg_dir}:{statement.lineno}"
+            )
+            raise ValueError(message)
+
+    @staticmethod
+    def _facade_owner_declarations(
+        owner: ast.ClassDef,
+        facade: ast.ClassDef,
+        namespace: ast.ClassDef,
+        aliases: set[str],
+        pkg_dir: Path,
+    ) -> None:
+        for statement in owner.body:
+            if isinstance(statement, ast.Pass) or (
+                statement is namespace and namespace is not facade
+            ):
+                continue
+            if (
+                isinstance(statement, ast.Expr)
+                and isinstance(statement.value, ast.Constant)
+                and isinstance(statement.value.value, str)
+            ):
+                continue
+            if (
+                isinstance(statement, ast.Assign)
+                and isinstance(statement.value, ast.Name)
+                and statement.value.id in aliases
+                and all(isinstance(target, ast.Name) for target in statement.targets)
+            ):
+                continue
+            message = (
+                f"Facade preserves authored declaration before generation: "
+                f"{pkg_dir}:{owner.name}:{statement.lineno}"
+            )
+            raise ValueError(message)
 
     @classmethod
     def _render_interface_facade(
@@ -403,6 +552,25 @@ class FlextInfraUtilitiesCodegenFacades:
             facade_path,
         )
         independent = cls._independent_publishers(pkg_dir, owners_dir, sources)
+        with FlextInfraUtilitiesRopeCore.open_import_project(pkg_dir.parent) as project:
+            retired = cls._retired_owned_bases(
+                project,
+                sources,
+                (pkg_dir, owners_dir),
+                (facade_path, namespace),
+                {item.qualified_base for item in declarations},
+            )
+        if retired:
+            source, context = cls._retired_facade_projection(
+                pkg_dir, source, namespace, retired
+            )
+            sources[f"{pkg_dir.name}.{facade_path.stem}"] = (facade_path, source)
+            facade, namespace = cls._facade_classes(
+                ast.parse(source, filename=str(facade_path)),
+                facade_path,
+            )
+        else:
+            context = CodemodContext(full_package_name=pkg_dir.name)
         declarations, declared_names, bound_namespace = cls._declared_facade_contract(
             independent,
             declarations,
@@ -412,9 +580,8 @@ class FlextInfraUtilitiesCodegenFacades:
         )
         ordered = cls._declared_facade_order(pkg_dir, sources, declarations)
         existing = tuple(cls._base_name(base) for base in namespace.bases)
-        if existing == ordered:
+        if existing == ordered and not retired:
             return cls._wrap_facade_imports(source)
-        context = CodemodContext()
         if bound_namespace:
             cls._declared_facade_stale_imports(context, source, declared_names)
         cls._declared_facade_declared_imports(
@@ -424,6 +591,34 @@ class FlextInfraUtilitiesCodegenFacades:
             existing,
         )
         return cls._declared_facade_render(context, source, namespace, ordered)
+
+    @classmethod
+    def _retired_facade_projection(
+        cls,
+        pkg_dir: Path,
+        source: str,
+        namespace: ast.ClassDef,
+        retired: frozenset[str],
+    ) -> t.Pair[str, CodemodContext]:
+        wrapper = MetadataWrapper(parse_module(source))
+        owner = cls._facade_namespace_cst(wrapper, namespace)
+        context = CodemodContext(full_package_name=pkg_dir.name, wrapper=wrapper)
+        retained_bases: list[Arg] = []
+        for base in owner.bases:
+            expression = ast.unparse(
+                ast.parse(wrapper.module.code_for_node(base.value), mode="eval").body
+            )
+            if expression in retired:
+                RemoveImportsVisitor.remove_unused_import_by_node(context, base.value)
+            else:
+                retained_bases.append(base)
+        candidate = wrapper.module.deep_replace(
+            owner, owner.with_changes(bases=tuple(retained_bases))
+        )
+        if not isinstance(candidate, Module):
+            message = "Retired facade-base projection did not preserve the module"
+            raise TypeError(message)
+        return candidate.code, context
 
     @classmethod
     def _declared_facade_contract(
@@ -548,22 +743,11 @@ class FlextInfraUtilitiesCodegenFacades:
             The projected facade source.
 
         Raises:
-            ValueError: If the namespace has no unique concrete source span.
             TypeError: If the projection does not preserve the source module.
 
         """
         wrapper = MetadataWrapper(parse_module(source))
-        owners = tuple(
-            node
-            for node, span in wrapper.resolve(PositionProvider).items()
-            if isinstance(node, ClassDef)
-            and span.start.line == namespace.lineno
-            and node.name.value == namespace.name
-        )
-        if len(owners) != 1:
-            message = "Facade namespace has no unique concrete source span"
-            raise ValueError(message)
-        owner = owners[0]
+        owner = cls._facade_namespace_cst(wrapper, namespace)
         updated = wrapper.module.deep_replace(
             owner,
             owner.with_changes(bases=cls._declared_facade_bases(owner, ordered)),
@@ -652,6 +836,101 @@ class FlextInfraUtilitiesCodegenFacades:
             else Arg(parse_expression(name))
             for index, name in enumerate(ordered)
         )
+
+    @staticmethod
+    def _facade_namespace_cst(
+        wrapper: MetadataWrapper,
+        namespace: ast.ClassDef,
+    ) -> ClassDef:
+        """Resolve the unique concrete class span of the projected namespace.
+
+        Returns:
+            The concrete namespace class.
+
+        Raises:
+            ValueError: If the namespace lacks one exact class span.
+
+        """
+        owners = tuple(
+            node
+            for node, span in wrapper.resolve(PositionProvider).items()
+            if isinstance(node, ClassDef)
+            and span.start.line == namespace.lineno
+            and node.name.value == namespace.name
+        )
+        if len(owners) != 1:
+            message = "Facade namespace has no unique concrete source span"
+            raise ValueError(message)
+        return owners[0]
+
+    @staticmethod
+    def _retired_owned_bases(
+        project: t.Infra.RopeProject,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+        roots: t.Pair[Path, Path],
+        facade: t.Pair[Path, ast.ClassDef],
+        declared_names: set[str],
+    ) -> frozenset[str]:
+        """Retire own bases whose source no longer belongs to this family.
+
+        Upstream inheritance and source-proven current family providers remain.
+        Unknown bindings fail instead of being classified by their spelling.
+
+        Returns:
+            Existing base expressions whose providers moved out of the family.
+
+        Raises:
+            ValueError: If an existing base has no resolved source identity.
+
+        """
+        pkg_dir, owners_dir = roots
+        facade_path, namespace = facade
+        snapshot = FlextInfraUtilitiesRopeRuntime.snapshot_project(
+            project,
+            dict(sources.values()),
+        )
+        try:
+            resource = snapshot.get_resource(
+                facade_path.relative_to(Path(snapshot.root.real_path)).as_posix(),
+            )
+            scope = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                snapshot, resource
+            ).get_scope()
+            retired: set[str] = set()
+            for base in namespace.bases:
+                if FlextInfraUtilitiesCodegenFacades._base_name(base) in declared_names:
+                    continue
+                expression = base.value if isinstance(base, ast.Subscript) else base
+                binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                    scope,
+                    expression,
+                )
+                if binding is None:
+                    message = (
+                        f"Unresolved facade base: {facade_path}:{ast.unparse(base)}"
+                    )
+                    raise ValueError(message)
+                holder = binding.get_definition_location()[0]
+                provider = holder.get_resource() if holder is not None else None
+                if provider is None:
+                    value = binding.get_object()
+                    if FlextInfraUtilitiesRopeRuntime.abstract_class(
+                        value
+                    ) and not FlextInfraUtilitiesRopeRuntime.py_class(value):
+                        continue
+                    message = (
+                        f"Facade base has no source owner: "
+                        f"{facade_path}:{ast.unparse(base)}"
+                    )
+                    raise ValueError(message)
+                path = Path(provider.real_path).resolve()
+                if path.is_relative_to(pkg_dir.resolve()) and not path.is_relative_to(
+                    owners_dir.resolve(),
+                ):
+                    retired.add(ast.unparse(base))
+            return frozenset(retired)
+        finally:
+            snapshot.close()
 
     @staticmethod
     def _rebind_declared_imports(
@@ -880,12 +1159,8 @@ class FlextInfraUtilitiesCodegenFacades:
                         .encode(c.DEFAULT_ENCODING)[: receiver.col_offset]
                         .decode(c.DEFAULT_ENCODING),
                     )
-                    scope = FlextInfraUtilitiesRopeRuntime.scope_at(
-                        pymodule,
-                        offset,
-                    )
                     binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                        scope,
+                        FlextInfraUtilitiesRopeRuntime.scope_at(pymodule, offset),
                         receiver,
                     )
                     if not isinstance(

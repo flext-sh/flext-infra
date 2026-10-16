@@ -192,7 +192,8 @@ class FlextInfraPyprojectModernizerRun:
         """Resolve the requested Git reference migration options.
 
         Returns:
-            Zero or one resolved migration, or the first option validation failure.
+            The resolved migration, ``None`` when none is requested, or the
+            first option validation failure.
 
         """
         result_type = r[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]
@@ -412,9 +413,6 @@ class FlextInfraPyprojectModernizerRun:
             The resulting ``int``.
 
         Raises:
-            TypeError: If ``not isinstance(entries, list)``; or if
-                ``isinstance(requirement, Mapping)``; or if ``not
-                isinstance(requirement, str)``.
             ValueError: If the project table is absent or the dependency owner
                 changed between the read and the write.
 

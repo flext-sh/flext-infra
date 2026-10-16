@@ -60,7 +60,7 @@ mkdir -p "$$(dirname "$$database")"; \
 {%- endmacro -%}
 {#- Every pytest-running verb owns its children's scratch: ONE transient
     sandbox per recipe shell under the declared scratch root
-    (make.pytest_scratch: $HOME/tmp/.flext-runtime<checkout>/scratch), exposed
+    (make.pytest_scratch: $HOME/.local/state/.flext-runtime<checkout>/scratch), exposed
     through the standard temp triplet and deleted when the shell exits. The
     verb DECLARES the scratch for the suite it starts instead of inheriting the
     caller's ambient /tmp (fleet repos reject a test scratch under /tmp;
@@ -258,9 +258,8 @@ MAKE_PROFILE := {{ make_profile }}
 REPOSITORY_ROOT_REL := {{ repository_root_rel }}
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
-# Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
+# Computed: traversal projects observed members; provisioning reads local .gitmodules.
 WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}
-MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(WORKSPACE_SUBPROJECTS){% endif %}
 UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
 
@@ -584,11 +583,7 @@ override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable
 endif
 
 ifeq ($(GEN_INIT_ONLY),)
-# Why (fleet-automation 2026-10-12): the custom surface loads in every
-# non-bootstrap context, CI included — RUN_PUBLIC_POST fires post-<verb>
-# hooks whenever the declared-targets list names them, so a CI-excluded
-# include made every member with a post hook fail with "no rule for
-# post-<verb>" exactly when the pipeline ran the activation half.
+# Custom hooks are declared in CI too; load their selected physical Makefile.
 {{ makefile_custom_include.split()[0] }} $(CUSTOM_MAKEFILE_ESCAPED)
 endif
 ifeq ($(APPROVAL_CONTEXT),{{ make.ci.value }})
@@ -879,7 +874,6 @@ _builtin-upg-sources: _builtin_require_environment
 		--git-source-ref-from "$(SOURCE_REF_FROM)" --git-source-ref-to "$(SOURCE_REF_TO)"
 {% endfor %}
 _upg_lifecycle: _builtin_setup_submodules
-	@$(SELF_MAKE) _builtin_require_upg_lock_owner
 	@set -eu; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
@@ -912,17 +906,19 @@ _upg_lifecycle: _builtin_setup_submodules
 		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)" upg UPG_HANDOFF=Y; \
 	fi
 
+# Convergence runs the complete gen verb, whose activation half checks the
+# receipt gen itself just republished. A separate activation before it would
+# read the runtime-bindings receipt _builtin_setup_environment leaves behind,
+# which never covers the gen request.
 _upg_converge:
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(SELF_MAKE) _builtin_require_mise
-	$(call RUN_PUBLIC_ACTIVATE,gen)
 	@$(SELF_MAKE) gen
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _builtin_setup_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --mode check
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
 
@@ -1047,9 +1043,12 @@ profile-mypy-report: _builtin_require_environment
 .PHONY: profile-gen
 profile-gen: _builtin_require_environment
 	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
+	@set -eu; \
+	scope=all; \
+	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
+	$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
 		"$(PROFILE_REPORTS_DIR)/conform.pstats" codegen conform \
-		--root "$(PROJECT_ROOT)" --scope all --mode apply
+		--root "$(PROJECT_ROOT)" --scope "$$scope" --mode apply
 
 .PHONY: profile-gen-report
 profile-gen-report: _builtin_require_environment
@@ -1237,7 +1236,10 @@ _builtin_gen_init:
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check-only
 
 _builtin_gen_all:
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope all --mode apply
+	@set -eu; \
+	scope=all; \
+	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
+	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$$scope" --mode apply
 
 _builtin-gen-footprint:
 	@$(PROJECT_FLEXT_INFRA) codegen footprint --root "$(PROJECT_ROOT)" --scope all

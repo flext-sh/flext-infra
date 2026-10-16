@@ -12,6 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import c, m, main
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
@@ -93,7 +94,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "def build():\n    class Local(Contract):\n        pass\n"
         )
         for declarations, expected in (
-            (negative, []),
+            (negative, list[str]()),
             (
                 negative
                 + "class Reader(Contract):\n    def read(self) -> str: ...\n"
@@ -121,7 +122,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 for finding in report.entries:
                     tm.that(finding.rule_id, eq=elected.id)
                     tm.that(finding.file, eq=sample.relative_to(tmp_path))
-                    mapping = u.type_adapter(t.JsonMapping)
+                    mapping = u.type_adapter(TypeForm(t.JsonMapping))
                     native = u.Infra.mod_native_payload(finding, readers)
                     captures = mapping.validate_python(native["metaVariables"])
                     single = mapping.validate_python(captures["single"])
@@ -847,7 +848,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
         version = project["version"]
         assert isinstance(version, str)
-        dependencies = u.type_adapter(t.StrSequence).validate_python(
+        dependencies = u.type_adapter(TypeForm(t.StrSequence)).validate_python(
             project["dependencies"],
         )
         tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))

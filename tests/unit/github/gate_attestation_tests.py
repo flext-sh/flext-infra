@@ -98,6 +98,12 @@ class TestsFlextInfraGithubGateAttestation:
         u.Tests.WorktreeFixture.write_python_project(root, "fixture")
         source = root / c.Infra.DEFAULT_SRC_DIR
         (source / "consumer.py").write_text("import os\n", encoding="utf-8")
+        # The attested toolchain digest reads the resolver inputs the runtime
+        # context elects from the uv resolution policy; commit them there.
+        context = TestsFlextInfraGithubGateAttestation._context(root)
+        context.resolution_root.mkdir(parents=True, exist_ok=True)
+        context.pyproject_path.write_bytes((root / "pyproject.toml").read_bytes())
+        context.lock_path.write_text("version = 1\n", encoding="utf-8")
         tm.ok(
             u.Infra.git_add_paths(
                 m.Infra.GitPathsRequest(
@@ -107,6 +113,8 @@ class TestsFlextInfraGithubGateAttestation:
                         "pyproject.toml",
                         "tracked.txt",
                         c.Infra.DEFAULT_SRC_DIR,
+                        context.pyproject_path.relative_to(root).as_posix(),
+                        context.lock_path.relative_to(root).as_posix(),
                     ),
                 ),
             ),
@@ -211,6 +219,13 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Public identity queries preserve provenance without exporting key bytes."""
         allowed = signed_repository_factory(tmp_path)
+        key_path = tmp_path / "signing_key"
+        if literal_prefix is not None:
+            public = key_path.with_suffix(".pub").read_text(encoding="utf-8").strip()
+            u.Tests.git_bootstrap(
+                tmp_path,
+                ("config", "user.signingkey", literal_prefix + public),
+            )
         metadata = tm.ok(u.Infra.read_project_metadata_result(tmp_path))
         tm.that(metadata.project.version, eq=config.Infra.initial_project_version)
         tm.that(

@@ -10,15 +10,16 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
+from flext_infra import c, m, p, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
+    FlextInfraMiseArtifactsVerification,
+)
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from flext_infra import p
 
 type _DocsScopeArtifacts = t.Pair[
     m.Infra.DocScope,
@@ -129,8 +130,7 @@ class FlextInfraDocGeneratorBundleMixin:
         return cls._scope_batches(
             root,
             declaration.value,
-            selected,
-            aggregate,
+            (selected, aggregate),
             producer=producer,
             publication_receipts=publication_receipts,
         )
@@ -140,8 +140,10 @@ class FlextInfraDocGeneratorBundleMixin:
         cls,
         root: Path,
         declaration: m.Cli.AtomicFileState,
-        selected: t.VariadicTuple[m.Infra.DocScope],
-        aggregate: t.VariadicTuple[m.Infra.DocScope],
+        scopes: t.Pair[
+            t.VariadicTuple[m.Infra.DocScope],
+            t.VariadicTuple[m.Infra.DocScope],
+        ],
         *,
         producer: m.Infra.CodegenPhaseAnalysis,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
@@ -152,8 +154,7 @@ class FlextInfraDocGeneratorBundleMixin:
         Args:
             root: The authenticated repository root.
             declaration: The frozen ``.gitmodules`` file state.
-            selected: The selected documentation output scopes.
-            aggregate: The aggregate scopes over the complete project catalog.
+            scopes: Selected output scopes and the aggregate project catalog.
             producer: Original authenticated producer retained by the invocation.
             publication_receipts: Actual outcomes accumulated by preceding batches.
 
@@ -161,6 +162,7 @@ class FlextInfraDocGeneratorBundleMixin:
             Results of the documentation generation bundle preparation for each batch.
 
         """
+        selected, aggregate = scopes
         root_scope = next(
             (scope for scope in selected if scope.name == c.Infra.RK_ROOT),
             None,
@@ -253,7 +255,27 @@ class FlextInfraDocGeneratorBundleMixin:
         )
         if paths.failure:
             return result_type.from_failure(paths)
-        sources = cls._captured_source_states(paths.value, source_roots)
+        sources = cls._scope_source_states(declaration, paths.value, source_roots)
+        if sources.failure:
+            return result_type.from_failure(sources)
+        directories = u.Infra.docs_source_directories(
+            source_roots,
+            source_scope=source_scope,
+        )
+        if directories.failure:
+            return result_type.from_failure(directories)
+        states = tuple(sorted(sources.value, key=lambda item: item.path))
+        return result_type.ok((source_roots, states, directories.value))
+
+    @classmethod
+    def _scope_source_states(
+        cls,
+        declaration: m.Cli.AtomicFileState,
+        paths: t.VariadicTuple[Path],
+        source_roots: t.SequenceOf[Path],
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        sources = cls._captured_source_states(paths, source_roots)
         if sources.failure:
             return result_type.from_failure(sources)
         manifest = u.Cli.atomic_read_binary_file_state(
@@ -266,25 +288,10 @@ class FlextInfraDocGeneratorBundleMixin:
             return result_type.fail(
                 "docs scope inventory changed before batch admission",
             )
-        states = tuple(
-            sorted(
-                {
-                    item.path: item
-                    for item in (
-                        *sources.value,
-                        declaration,
-                    )
-                }.values(),
-                key=lambda item: item.path,
-            )
-        )
-        directories = u.Infra.docs_source_directories(
-            source_roots,
-            source_scope=source_scope,
-        )
-        if directories.failure:
-            return result_type.from_failure(directories)
-        return result_type.ok((source_roots, states, directories.value))
+        return FlextInfraCodegenPreconditions.unique_states((
+            *sources.value,
+            declaration,
+        ))
 
     @staticmethod
     def _is_collocated_workspace_project(
@@ -341,12 +348,6 @@ class FlextInfraDocGeneratorBundleMixin:
 
         Publication admits sources and topology once per owning scope batch.
 
-        Args:
-            request: Canonical documentation generation request.
-            entrypoint: Public generation operation whose producer is authenticated.
-            collaborators: Actual public operations participating in the invocation.
-            producer: Original authenticated producer retained by the invocation.
-
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
@@ -369,6 +370,14 @@ class FlextInfraDocGeneratorBundleMixin:
             current = FlextInfraCodegenPreconditions.producer_current(producer)
             if current.failure:
                 return r[m.Infra.DocsGenerationBundle].from_failure(current)
+        return cls._captured_request_bundle(request, producer)
+
+    @classmethod
+    def _captured_request_bundle(
+        cls,
+        request: m.Infra.DocsGenerateRequest,
+        producer: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[m.Infra.DocsGenerationBundle]:
         started_at = perf_counter()
         sources = cls._discovered_sources(request, started_at)
         if sources.failure:
@@ -801,12 +810,18 @@ class FlextInfraDocGeneratorBundleMixin:
             if page.failure:
                 return result_type.from_failure(page)
             if page.value.rstrip("/").removesuffix(".git") == c.Infra.GITHUB_REPO_URL:
-                return u.Infra.resolve_integration_branch(
+                branch = u.Infra.resolve_integration_branch(
                     repository_root,
                     policy_branch=inputs.spec.branch_policy.integration_branch,
                     inputs=inputs,
                 )
-        return cls._family_governance_ref(repository_root, inputs)
+                if branch.failure:
+                    return result_type.from_failure(branch)
+                return result_type.ok(branch.value)
+        family = cls._family_governance_ref(repository_root, inputs)
+        if family.failure:
+            return result_type.from_failure(family)
+        return result_type.ok(family.value)
 
     @classmethod
     def _family_governance_ref(

@@ -308,6 +308,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """Build the testmon suite argv (never the cov plugin).
 
         A resolved plan carries the selected IDs and their manifest together.
+        Workers record dependencies without selecting those IDs a second time.
 
         Returns:
             The resulting ``t.VariadicTuple[str]``.
@@ -358,7 +359,12 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     else ()
                 ),
                 "--testmon",
-                *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
+                *(
+                    ("--testmon-noselect",)
+                    if selection_plan is not None
+                    or execution_mode == c.Infra.PytestExecutionMode.FULL
+                    else ("--testmon-forceselect",)
+                ),
                 "--testmon-env",
                 f"'{self.testmon_environment(execution_mode)}'",
                 *self._NO_COVERAGE,

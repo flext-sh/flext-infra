@@ -260,7 +260,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         ) -> p.Result[bool]:
-            """Advance only through verified effects of the captured producer."""
+            """Continue the original producer through its verified effects."""
             ...
 
         def surface_contract(
@@ -272,11 +272,12 @@ class FlextInfraProtocolsBase(Protocol):
             """Resolve the declared output set for a recovery surface."""
             ...
 
-        def plan(
+        def plan_repositories(
             self,
             request: m.Infra.CodegenConformRequest,
+            inputs: m.Infra.CodegenInputs,
         ) -> p.Result[m.Infra.CodegenPlan]:
-            """Plan one declared target without publishing it."""
+            """Plan one declared target from its captured inputs without publishing."""
             ...
 
     @runtime_checkable

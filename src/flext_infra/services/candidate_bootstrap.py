@@ -9,6 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
+    FlextInfraMiseArtifactsVerification,
+)
 
 
 class FlextInfraCandidateBootstrapService:
@@ -18,10 +22,12 @@ class FlextInfraCandidateBootstrapService:
         self,
         planner: p.Infra.CandidateBootstrapPlanner,
         transaction: p.Infra.CandidateBootstrapTransaction,
+        producer: m.Infra.CodegenPhaseAnalysis,
     ) -> None:
         """Wire the declared-target planner to its atomic publisher."""
         self._planner = planner
         self._transaction = transaction
+        self._producer = producer
 
     def execute(
         self,
@@ -46,7 +52,10 @@ class FlextInfraCandidateBootstrapService:
             return self._verify(roots.value, targets, declaration_states)
 
         def publish(scope_root: Path) -> p.Result[bool]:
-            planned = self._plan(roots.value, targets, declaration_states)
+            producer = FlextInfraCodegenPreconditions.producer_current(self._producer)
+            if producer.failure:
+                return r[bool].from_failure(producer)
+            planned = self.plan_candidates(roots.value, targets, declaration_states)
             if planned.failure:
                 return r[bool].from_failure(planned)
             analysis = planned.value
@@ -82,11 +91,7 @@ class FlextInfraCandidateBootstrapService:
                 roots.value,
                 targets,
                 declaration_states,
-                publications=tuple(
-                    publication
-                    for receipt in receipts
-                    for publication in receipt.published_files
-                ),
+                receipts=tuple(receipts),
             )
 
         return self._transaction.run_files_locked(roots.value, publish)
@@ -121,7 +126,7 @@ class FlextInfraCandidateBootstrapService:
             )
         return r[t.MutableMappingKV[str, Path]].ok(roots)
 
-    def _plan(
+    def plan_candidates(
         self,
         roots: t.MappingKV[str, Path],
         targets: m.Infra.CandidateBootstrapTargets,
@@ -141,7 +146,14 @@ class FlextInfraCandidateBootstrapService:
             planned = self._planned_target(root, target, inputs)
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            files.extend(planned.value)
+            for file in planned.value:
+                sources = FlextInfraCodegenPreconditions.unique_states((
+                    *file.source_states,
+                    *declaration_states,
+                ))
+                if sources.failure:
+                    return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
+                files.append(file.model_copy(update={"source_states": sources.value}))
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
@@ -252,7 +264,7 @@ class FlextInfraCandidateBootstrapService:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        planned = self._planner.plan(request)
+        planned = self._planner.plan_repositories(request, captured)
         if planned.failure:
             return result_type.from_failure(planned)
         if planned.value.exception is not None:
@@ -303,7 +315,7 @@ class FlextInfraCandidateBootstrapService:
         targets: m.Infra.CandidateBootstrapTargets,
         declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
         *,
-        publications: t.VariadicTuple[m.Infra.CodegenStagedFile] = (),
+        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome] = (),
     ) -> p.Result[bool]:
         """Require unchanged declarations and a complete post-publication fixed point.
 
@@ -311,14 +323,52 @@ class FlextInfraCandidateBootstrapService:
             The resulting ``p.Result[bool]``.
 
         """
-        published = {item.before.path: item for item in publications}
+        outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            receipts,
+        )
+        if outputs.failure:
+            return r[bool].from_failure(outputs)
+        producer = FlextInfraCodegenPreconditions.producer_current(
+            self._producer,
+            outputs=outputs.value,
+        )
+        if producer.failure:
+            return r[bool].from_failure(producer)
+        declarations = self._verified_declarations(declaration_states, receipts)
+        if declarations.failure:
+            return r[bool].from_failure(declarations)
+        planned = self.plan_candidates(roots, targets, declarations.value)
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        return u.Infra.codegen_fixed_point(
+            planned.value.files,
+            subject="candidate bootstrap",
+        )
+
+    @staticmethod
+    def _verified_declarations(
+        declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Authenticate each original declaration or its own published replacement.
+
+        Returns:
+            The exact post-publication declaration states, or their first mismatch.
+
+        """
+        result = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        published = {
+            item.before.path: item
+            for receipt in receipts
+            for item in receipt.published_files
+        }
         expected_states: list[m.Cli.AtomicFileState] = []
         for state in declaration_states:
             publication = published.get(state.path)
             expected = state
             if publication is not None:
                 if publication.before != state or publication.replacement is None:
-                    return r[bool].fail(
+                    return result.fail(
                         "candidate bootstrap declaration lacks its "
                         "captured publication",
                     )
@@ -327,19 +377,13 @@ class FlextInfraCandidateBootstrapService:
                 state.path,
             )
             if observed.failure:
-                return r[bool].from_failure(observed)
+                return result.from_failure(observed)
             if observed.value != expected:
-                return r[bool].fail(
+                return result.fail(
                     "candidate bootstrap declaration changed during publication",
                 )
             expected_states.append(expected)
-        planned = self._plan(roots, targets, tuple(expected_states))
-        if planned.failure:
-            return r[bool].from_failure(planned)
-        return u.Infra.codegen_fixed_point(
-            planned.value.files,
-            subject="candidate bootstrap",
-        )
+        return result.ok(tuple(expected_states))
 
 
 __all__: list[str] = ["FlextInfraCandidateBootstrapService"]

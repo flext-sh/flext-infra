@@ -14,9 +14,11 @@ from typing import override
 from uuid import uuid4
 
 from flext_infra import c, config, m, p, r, s, t, u
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
-from flext_infra.codemod.text_gates import FlextInfraModTextGateEngine
+from flext_infra.codemod import (
+    FlextInfraCodemodSnapshotReconciler,
+    FlextInfraModGateEngine,
+    FlextInfraModTextGateEngine,
+)
 
 
 class FlextInfraRefactorViolationsSweep(

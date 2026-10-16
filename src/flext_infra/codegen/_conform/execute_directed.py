@@ -12,14 +12,13 @@ from pathlib import Path
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenFileLeases,
+    FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsVerification,
+    FlextInfraStagedPackage,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteScaffold
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.validate import FlextInfraValidateFreshImport
 
 
@@ -51,7 +50,10 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         request: m.Infra.CodegenConformRequest,
         transaction: FlextInfraCodegenTransaction,
         roots: t.MappingKV[str, Path],
-        publisher: Callable[[Path], p.Result[m.Infra.CodegenResult]],
+        publisher: Callable[
+            [Path, t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]],
+            p.Result[m.Infra.CodegenResult],
+        ],
     ) -> p.Result[m.Infra.CodegenResult]:
         """Bind the request to its actual completed batch outside the batch lease.
 
@@ -74,24 +76,13 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             scope_root: Path,
         ) -> p.Result[t.Pair[m.Infra.CodegenResult, m.Infra.CodegenPhaseOutcome]]:
             result_type = r[t.Pair[m.Infra.CodegenResult, m.Infra.CodegenPhaseOutcome]]
-            result = publisher(scope_root)
+            receipts: list[m.Infra.CodegenPhaseOutcome] = []
+            result = publisher(scope_root, receipts)
             if result.failure:
                 return result_type.from_failure(result)
-            captured = FlextInfraMiseArtifactsFiles.read_state(
-                scope_root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH,
-                required=True,
-            )
-            if captured.failure:
-                return result_type.from_failure(captured)
-            content = captured.value.content
-            if content is None:
+            if not receipts:
                 return result_type.fail("completed batch publication receipt is absent")
-            outcome = r[m.Infra.CodegenPhaseOutcome].create_from_callable(
-                lambda: m.Infra.CodegenPhaseOutcome.model_validate_json(content),
-            )
-            if outcome.failure:
-                return result_type.from_failure(outcome)
-            return result_type.ok((result.value, outcome.value))
+            return result_type.ok((result.value, receipts[-1]))
 
         published = transaction.run_files_locked(roots, publish)
         if published.failure:
@@ -142,11 +133,11 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             request,
             transaction,
             roots.value,
-            lambda scope_root: self._execute_lazy_init_locked(
+            lambda scope_root, receipts: self._execute_lazy_init_locked(
                 request,
                 transaction,
-                roots.value,
-                scope_root,
+                (roots.value, scope_root),
+                receipts,
             ),
         )
 
@@ -190,15 +181,16 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         self,
         request: m.Infra.CodegenConformRequest,
         transaction: FlextInfraCodegenTransaction,
-        roots: t.MappingKV[str, Path],
-        scope_root: Path,
+        scope: t.Pair[t.MappingKV[str, Path], Path],
+        receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Plan after lease acquisition and publish the exact authenticated receipt.
+        """Plan after lease acquisition and collect the exact batch receipt.
 
         Returns:
             The initializer result, retaining any planner or transaction failure.
 
         """
+        roots, scope_root = scope
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         planned = self._plan_single_surface(request)
@@ -219,6 +211,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             transaction,
             (roots, scope_root),
             (plan, analysis, changed),
+            receipts,
         )
 
     def _publish_directed_phase(
@@ -231,6 +224,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             m.Infra.CodegenPhaseAnalysis,
             t.VariadicTuple[m.Infra.CodegenFilePlan],
         ],
+        receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
         """Authenticate staged inputs and publish the selected phase under its lease.
 
@@ -280,6 +274,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
                 ),
                 staged_validator=validate_stage if stage_plan is not None else None,
             ),
+            publication_receipts=receipts,
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
@@ -309,7 +304,9 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         if selected_file.desired_content is None:
             return result_type.ok((analysis, None))
         source = selected_file.desired_content.decode(c.DEFAULT_ENCODING)
-        if "t" not in u.Infra.facade_letter_names_source(source):
+        if "t" not in u.Infra.facade_letter_names_source(
+            source, filename=str(selected_file.path)
+        ):
             return result_type.ok((analysis, None))
         candidate = FlextInfraStagedPackage.plan(request.root, selected_file)
         if candidate.failure:

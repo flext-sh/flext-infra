@@ -14,7 +14,7 @@ from tests import p, tm, u
 
 
 class TestsNativeCompilerAdmission:
-    """Observe native consumers and unchanged effects during provenance rejection."""
+    """Separate passive native observations from isolated import effects."""
 
     @staticmethod
     @pytest.mark.parametrize("defect", ["none", "pattern", "flags"])
@@ -39,7 +39,8 @@ class TestsNativeCompilerAdmission:
             "authenticate(module.__name__).unwrap()\n"
             "defect = sys.argv[2]\n"
             "if defect != 'none':\n"
-            "    pattern, flags = ('foreign', re.I) if defect == 'pattern' else ('native', re.NOFLAG)\n"
+            "    pattern, flags = ('foreign', re.I) if defect == 'pattern' else "
+            "('native', re.NOFLAG)\n"
             "    module.operation.__defaults__ = (re.compile(pattern, flags).match,)\n"
             "observed = authenticate(module.__name__)\n"
             "assert observed.success == (defect == 'none'), observed\n"
@@ -58,14 +59,16 @@ class TestsNativeCompilerAdmission:
         tmp_path: Path,
         module_name: str,
     ) -> None:
-        """Native module storage admits both namespaces without replaying getters."""
+        """Native storage preserves original module getters and attributes."""
         u.Tests.write_package_init(
             tmp_path / module_name,
             "import sys\n"
+            "import os\n"
             "from pathlib import Path\n"
             "from types import ModuleType\n"
             "reads = []\n"
-            "marker = Path(__file__).with_suffix('.getter-effects')\n"
+            "marker = (Path(__file__).parent.parent / "
+            "f'{__name__}.{os.getpid()}.getter-effects')\n"
             "marker.write_bytes(b'')\n"
             "class Payload:\n"
             "    def operation(self):\n"
@@ -89,11 +92,18 @@ class TestsNativeCompilerAdmission:
             "assert module.Payload().operation() == 'native'\n"
             "before = tuple(namespace['reads'])\n"
             "assert before\n"
+            "before_attributes = tuple(namespace.items())\n"
+            "before_type = type(module)\n"
             "marker = namespace['marker']\n"
             "physical = marker.read_bytes()\n"
-            "observed = native.capture((m.Infra.SourceClassReference(target=name),)).unwrap()\n"
+            "observed = "
+            "native.capture((m.Infra.SourceClassReference(target=name),)).unwrap()\n"
             "assert tuple(namespace['reads']) == before\n"
             "assert marker.read_bytes() == physical\n"
+            "assert type(module) is before_type\n"
+            "assert tuple(namespace) == tuple(key for key, _ in before_attributes)\n"
+            "assert all(namespace[key] is value "
+            "for key, value in before_attributes)\n"
             "assert any(item.binding == name and item.kind == 'module' "
             "for item in observed.bindings)\n"
             "bindings = {item.binding: item for item in observed.bindings}\n"
@@ -108,6 +118,10 @@ class TestsNativeCompilerAdmission:
             "result = authenticate(name)\n"
             "assert tuple(namespace['reads']) == before\n"
             "assert marker.read_bytes() == physical\n"
+            "assert type(module) is before_type\n"
+            "assert tuple(namespace) == tuple(key for key, _ in before_attributes)\n"
+            "assert all(namespace[key] is value "
+            "for key, value in before_attributes)\n"
             "result.unwrap()\n"
         )
         native_consumer(consumer, str(tmp_path), module_name)
@@ -148,7 +162,8 @@ class TestsNativeCompilerAdmission:
             "    supplier.__file__ = supplier.__file__ + '.absent'\n"
             "original = native.capture((m.Infra.SourceClassReference(target=name),))\n"
             "assert original.failure\n"
-            "observed = native.capture((m.Infra.SourceClassReference(target=module.__name__),))\n"
+            "observed = "
+            "native.capture((m.Infra.SourceClassReference(target=module.__name__),))\n"
             "assert observed.failure, observed\n"
             "assert observed.error == original.error, (observed, original)\n"
             "assert observed.error_code == original.error_code\n"
@@ -157,30 +172,45 @@ class TestsNativeCompilerAdmission:
         native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
-    def test_source_proof_never_replays_an_absolute_import_effect(
+    def test_source_proof_records_the_isolated_import_before_tamper_rejection(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
-        """A source proof preserves effects even when staging cannot relocate them."""
+        """A real cold import adds one PID; tamper rejection starts no new import."""
         marker = tmp_path / "absolute-import-effects"
         u.Tests.write_package_init(
             tmp_path / "absolute_effect_provider",
+            "import os\n"
             "marker = __import__('pathlib').Path(" + repr(str(marker)) + ")\n"
             "with marker.open('a', encoding='utf-8') as stream:\n"
-            "    stream.write('import\\n')\n"
+            "    stream.write(str(os.getpid()) + '\\n')\n"
             "class Payload:\n"
             "    def operation(self): return 'native'\n",
         )
         consumer = (
+            "import os\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as native\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('absolute_effect_provider')\n"
-            "assert module.marker.read_text(encoding='utf-8') == 'import\\n'\n"
+            "parent_pid = os.getpid()\n"
+            "before = module.marker.read_text(encoding='utf-8')\n"
+            "assert tuple(map(int, before.splitlines())) == (parent_pid,)\n"
+            "native.capture((m.Infra.SourceClassReference("
+            "target=module.__name__),)).unwrap()\n"
+            "assert module.marker.read_text(encoding='utf-8') == before\n"
             "authenticate(module.__name__).unwrap()\n"
-            "assert module.marker.read_text(encoding='utf-8') == 'import\\n'\n"
+            "imported = module.marker.read_text(encoding='utf-8')\n"
+            "import_pids = tuple(map(int, imported.splitlines()))\n"
+            "assert len(import_pids) == 2\n"
+            "assert import_pids[0] == parent_pid\n"
+            "assert import_pids[1] > 0 and import_pids[1] != parent_pid\n"
             "method = module.Payload.operation\n"
+            "assert method(module.Payload()) == 'native'\n"
             "method.__code__ = method.__code__.replace(co_name='foreign')\n"
+            "assert method(module.Payload()) == 'native'\n"
             "assert authenticate(module.__name__).failure\n"
-            "assert module.marker.read_text(encoding='utf-8') == 'import\\n'\n"
+            "assert module.marker.read_text(encoding='utf-8') == imported\n"
         )
         native_consumer(consumer, str(tmp_path))
 
@@ -200,14 +230,18 @@ class TestsNativeCompilerAdmission:
             "field-transformer",
         ],
     )
-    def test_attrs_callback_capabilities_authenticate_without_replay(
+    def test_attrs_callback_capabilities_preserve_original_process_state(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         feature: str,
     ) -> None:
-        """Authenticating native methods preserves legitimate construction callbacks."""
+        """Cold authentication preserves the original construction callbacks."""
         options = "slots=True, unsafe_hash=True"
-        declaration = "class Payload:\n"
+        declaration = (
+            "class Payload(metaclass=Meta):\n"
+            if feature == "metaclass"
+            else "class Payload:\n"
+        )
         decorator = f"@attrs({options})\n"
         field = "    _value = attrib()\n"
         extra = ""
@@ -215,8 +249,6 @@ class TestsNativeCompilerAdmission:
             field = "    _value = make_field()\n"
         elif feature == "class-decorator":
             decorator = "@decorate\n"
-        elif feature == "metaclass":
-            declaration = "class Payload(metaclass=Meta):\n"
         elif feature == "set-name":
             extra = "    marker = Descriptor()\n"
         elif feature == "validator":
@@ -235,8 +267,10 @@ class TestsNativeCompilerAdmission:
             tmp_path / "callback_provider",
             "from attr import attrs, attrib\n"
             "from pathlib import Path\n"
+            "import os\n"
             "effects = []\n"
-            "marker = Path(__file__).with_suffix('.effects')\n"
+            "marker = (Path(__file__).parent.parent / "
+            "f'{__name__}.{os.getpid()}.effects')\n"
             "marker.write_text('', encoding='utf-8')\n"
             "def record(effect):\n"
             "    effects.append(effect)\n"
@@ -270,6 +304,8 @@ class TestsNativeCompilerAdmission:
         )
         consumer = (
             "from attr import attrib\n"
+            "from flext_infra.workspace.native_reference import "
+            "FlextInfraWorkspaceNativeReference as native\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('callback_provider')\n"
             "feature = sys.argv[2]\n"
@@ -280,8 +316,13 @@ class TestsNativeCompilerAdmission:
             "before = tuple(module.effects)\n"
             "marker = module.marker.read_bytes()\n"
             "counter = attrib().counter\n"
-            "observed = authenticate(module.__name__)\n"
+            "native.capture((m.Infra.SourceClassReference("
+            "target=module.__name__),)).unwrap()\n"
             "assert attrib().counter == counter + 1\n"
+            "assert tuple(module.effects) == before\n"
+            "assert module.marker.read_bytes() == marker\n"
+            "observed = authenticate(module.__name__)\n"
+            "assert attrib().counter == counter + 2\n"
             "assert tuple(module.effects) == before\n"
             "assert module.marker.read_bytes() == marker\n"
             "observed.unwrap()\n"
@@ -298,7 +339,7 @@ class TestsNativeCompilerAdmission:
         tmp_path: Path,
         defect: str,
     ) -> None:
-        """Slotted native methods authenticate without replaying field construction."""
+        """Isolated authentication preserves the original field factory counter."""
         u.Tests.write_package_init(
             tmp_path / "attrs_provider",
             "from attr import attrs, attrib\n"
@@ -432,6 +473,81 @@ class TestsNativeCompilerAdmission:
             "authenticate(module.__name__).unwrap()\n"
         )
         native_consumer(consumer, str(tmp_path))
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "shadow"])
+    def test_dataclass_native_slot_class_value_is_authenticated(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """A class slot borrowed from a native type proves only the native owner."""
+        shadow = "object = int\n" if defect == "shadow" else ""
+        u.Tests.write_package_init(
+            tmp_path / "slot_provider",
+            "from dataclasses import dataclass\n" + shadow + "@dataclass\n"
+            "class Reference:\n"
+            "    name: str\n"
+            "    __hash__ = object.__hash__\n",
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('slot_provider')\n"
+            "reference = module.Reference('loop')\n"
+            "assert reference == module.Reference('loop')\n"
+            "observed = authenticate(module.__name__)\n"
+            "if sys.argv[2] == 'none':\n"
+            "    assert hash(reference) == object.__hash__(reference)\n"
+            "    observed.unwrap()\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        native_consumer(consumer, str(tmp_path), defect)
+
+    @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "marker"])
+    def test_abstract_dataclass_methods_are_authenticated(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """An abstract dataclass proves its marked methods; a forged marker fails."""
+        u.Tests.write_package_init(
+            tmp_path / "abstract_provider",
+            "from abc import ABC, abstractmethod\n"
+            "from dataclasses import dataclass\n"
+            "@dataclass(frozen=True)\n"
+            "class Node(ABC):\n"
+            '    """Abstract node."""\n'
+            "    name: str\n"
+            "    @abstractmethod\n"
+            "    def render(self) -> str: ...\n"
+            "    def label(self) -> str:\n"
+            "        return self.name\n"
+            "@dataclass(frozen=True)\n"
+            "class Leaf(Node):\n"
+            '    """Concrete leaf inheriting the abstract fields."""\n'
+            "    weight: int = 1\n"
+            "    def render(self) -> str:\n"
+            "        return self.name\n",
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('abstract_provider')\n"
+            "assert module.Node.__abstractmethods__ == frozenset({'render'})\n"
+            "assert module.Leaf('leaf').render() == 'leaf'\n"
+            "assert module.Leaf('leaf') == module.Leaf('leaf', 1)\n"
+            "if sys.argv[2] == 'marker':\n"
+            "    module.Node.label.__isabstractmethod__ = True\n"
+            "observed = authenticate(module.__name__)\n"
+            "if sys.argv[2] == 'none':\n"
+            "    observed.unwrap()\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
     @pytest.mark.parametrize("location", ["workspace", "site-packages"])
@@ -570,12 +686,12 @@ class TestsNativeCompilerAdmission:
 
     @staticmethod
     @pytest.mark.parametrize("hook", ["hash", "equality", "getattribute"])
-    def test_annotation_operand_is_rejected_before_callbacks_repeat(
+    def test_annotation_operand_rejection_preserves_original_callbacks(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         hook: str,
     ) -> None:
-        """An authenticated stdlib compiler cannot admit authored operand hooks."""
+        """Reject operand hooks while preserving original process callback effects."""
         operation = {
             "hash": (
                 "    def __hash__(cls):\n"
@@ -599,9 +715,11 @@ class TestsNativeCompilerAdmission:
             tmp_path / "operand_provider",
             "from dataclasses import dataclass\n"
             "from pathlib import Path\n"
+            "import os\n"
             "from typing import Union\n"
             "effects = []\n"
-            "marker = Path(__file__).with_suffix('.effects')\n"
+            "marker = (Path(__file__).parent.parent / "
+            "f'{__name__}.{os.getpid()}.effects')\n"
             "marker.write_text('', encoding='utf-8')\n"
             "def record(effect):\n"
             "    effects.append(effect)\n"
@@ -638,8 +756,10 @@ class TestsNativeCompilerAdmission:
             tmp_path / "constructor_provider",
             "from dataclasses import dataclass\n"
             "from pathlib import Path\n"
+            "import os\n"
             "effects = []\n"
-            "marker = Path(__file__).with_suffix('.effects')\n"
+            "marker = (Path(__file__).parent.parent / "
+            "f'{__name__}.{os.getpid()}.effects')\n"
             "marker.write_text('', encoding='utf-8')\n"
             "def record(effect):\n"
             "    effects.append(effect)\n"

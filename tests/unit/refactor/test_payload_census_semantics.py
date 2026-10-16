@@ -42,8 +42,6 @@ class TestsFlextInfraPayloadCensusSemantics:
         """Different holders match only when every native declaration input matches."""
         root = Path(rope_workspace.rope_project.root.real_path)
         path = root / "payloads.py"
-        generic = "[T]" if change == "generic" else ""
-        second_generic = "[T: int]" if change == "generic" else ""
         default = "'a b'"
         second_default = (
             "'different'"
@@ -80,18 +78,19 @@ class TestsFlextInfraPayloadCensusSemantics:
         source = (
             "from __future__ import annotations\n"
             "from pydantic import BaseModel as Model, Field, ConfigDict\n"
-            "from pydantic import BaseModel as AlternateModel, Field as AlternateField\n"
+            "from pydantic import BaseModel as AlternateModel, Field as "
+            "AlternateField\n"
             "from pydantic import field_validator, field_serializer\n"
             "class AlternativeBase(Model):\n"
             "    model_config = ConfigDict(strict=True)\n"
             "class InputHolder:\n"
-            f"    class Input{generic}(Model):\n"
+            f"    class Input{'[T]' if change == 'generic' else ''}(Model):\n"
             "        model_config = ConfigDict(frozen=True)\n"
             f"        value: str = Field(default={default})\n"
             + validator
             + serializer
             + "class OutputHolder:\n"
-            f"    class Output{second_generic}({base}):\n"
+            f"    class Output{'[T: int]' if change == 'generic' else ''}({base}):\n"
             f"        model_config = ConfigDict(frozen={change != 'config'})\n"
             f"        value: str = {field}(default={second_default})\n"
             + second_validator
@@ -126,7 +125,8 @@ class TestsFlextInfraPayloadCensusSemantics:
                             "from payloads import InputHolder, OutputHolder; "
                             "left = InputHolder.Input; right = OutputHolder.Output; "
                             "assert left is not right; "
-                            "assert left.model_json_schema()['title'] != right.model_json_schema()['title']; "
+                            "assert left.model_json_schema()['title'] != "
+                            "right.model_json_schema()['title']; "
                             "assert left().model_dump() == right().model_dump()"
                         ),
                     ),

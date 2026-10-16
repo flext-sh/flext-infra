@@ -14,7 +14,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -264,6 +264,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         sources: t.MappingKV[Path, str],
         *,
         captured: m.Infra.CodemodSourceEpoch | None = None,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Infra.RopeProject:
         """Capture a complete identity graph with proposed sources authoritative.
 
@@ -296,28 +297,30 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             else dict(captured.contents)
         )
         root = Path(project.root.real_path).resolve()
+        declared: dict[Path, str] = {}
+        for plan in declared_files:
+            path, content = cls._snapshot_destination(root, plan)
+            proposed = content.decode("utf-8")
+            if path in declared and declared[path] != proposed:
+                msg = f"Rope virtual destination declarations disagree: {path}"
+                raise ValueError(msg)
+            declared[path] = proposed
+            inventory[path] = proposed
+            contents[path] = content
         for path, source in sources.items():
             resolved = path.resolve()
+            if resolved in declared and declared[resolved] != source:
+                msg = f"Rope virtual destination source disagrees with its plan: {path}"
+                raise ValueError(msg)
             if resolved not in inventory:
                 if captured is not None:
                     msg = f"Rope proposed source is outside its input inventory: {path}"
                     raise ValueError(msg)
-                try:
-                    relative = resolved.relative_to(root)
-                except ValueError as error:
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg) from error
-                candidate_resource = project.get_resource(relative.as_posix())
-                if not FlextInfraUtilitiesRopeRuntimeTypes.file_resource(
-                    candidate_resource,
-                ):
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg)
-                resource = candidate_resource
-                if not Path(resource.real_path).is_file():
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg)
-                inventory[resolved] = resource.read()
+                inventory[resolved] = cls._snapshot_resource_source(
+                    project,
+                    root,
+                    resolved,
+                )
             if resolved not in contents or inventory[resolved] != source:
                 contents[resolved] = source.encode("utf-8")
             inventory[resolved] = source
@@ -334,11 +337,80 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             contents,
             [folder.path for folder in project.get_source_folders()],
             ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
+            python_path_folders=[
+                folder.real_path
+                for folder in project.get_python_path_folders()
+                if folder.is_folder()
+            ],
         )
         if not isinstance(snapshot, p.Infra.RopeProject):
             msg = "Rope snapshot does not satisfy its project contract"
             raise TypeError(msg)
         return snapshot
+
+    @staticmethod
+    def _snapshot_destination(
+        root: Path,
+        plan: m.Infra.CodegenFilePlan,
+    ) -> t.Pair[Path, bytes]:
+        """Authenticate the original absence witness of one virtual destination.
+
+        Returns:
+            Its physical destination and exact declared bytes.
+
+        Raises:
+            ValueError: If the destination is foreign or its absence witness changed.
+
+        """
+        path = plan.path.resolve()
+        if not path.is_relative_to(root) or plan.desired_content is None:
+            msg = f"Rope virtual destination is not a declared source: {path}"
+            raise ValueError(msg)
+        if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
+            directory_state = u.Cli.atomic_plan_directory_chain(
+                plan.before.target,
+            ).unwrap()
+            if directory_state != plan.before:
+                msg = f"Rope virtual destination parent changed: {path}"
+                raise ValueError(msg)
+        else:
+            file_state = u.Cli.atomic_read_binary_file_state(
+                path,
+                required=False,
+            ).unwrap()
+            if file_state != plan.before or file_state.content is not None:
+                msg = f"Rope virtual destination changed or already exists: {path}"
+                raise ValueError(msg)
+        return path, plan.desired_content
+
+    @staticmethod
+    def _snapshot_resource_source(
+        project: p.Infra.RopeProject,
+        root: Path,
+        path: Path,
+    ) -> str:
+        """Read an actual root-owned source absent from the uncaptured inventory.
+
+        Returns:
+            The native physical resource's original source.
+
+        Raises:
+            ValueError: If the proposed source lies outside the physical inventory.
+
+        """
+        try:
+            relative = path.relative_to(root)
+        except ValueError as error:
+            msg = f"Rope proposed source is outside its input inventory: {path}"
+            raise ValueError(msg) from error
+        resource = project.get_resource(relative.as_posix())
+        if not FlextInfraUtilitiesRopeRuntimeTypes.file_resource(resource):
+            msg = f"Rope proposed source is outside its input inventory: {path}"
+            raise ValueError(msg)
+        if not Path(resource.real_path).is_file():
+            msg = f"Rope proposed source is outside its input inventory: {path}"
+            raise ValueError(msg)
+        return resource.read()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeModuleQueries"]

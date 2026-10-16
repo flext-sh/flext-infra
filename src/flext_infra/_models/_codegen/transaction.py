@@ -450,3 +450,6 @@ class FlextInfraModelsCodegenTransactionModels:
             exclude=True,
             description="Real staged consumer required before publishing this batch",
         )
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenTransactionModels"]

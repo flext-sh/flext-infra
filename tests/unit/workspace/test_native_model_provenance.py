@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from inspect import getfile
+from inspect import getfile, isclass, isfunction, ismethod
 from pathlib import Path
 
 import pytest
@@ -81,7 +81,10 @@ assert module.operation() == 'original'
 admission = preconditions.capture_producer(
     runtime_root, entrypoint=module.operation).unwrap()
 assert admission.generator_reference is not None
-sources = {Path(source).resolve() for _, source, _ in admission.generator_reference.sources}
+sources = {
+    Path(source).resolve()
+    for _, source, _ in admission.generator_reference.sources
+}
 helper = Path(sys.argv[1]) / 'source_provider' / 'helper.py'
 unrelated = Path(sys.argv[1]) / 'tests' / 'unconsumed.py'
 assert helper.resolve() in sources
@@ -120,6 +123,7 @@ assert changed.read_text(encoding='utf-8') == replacement
         tm.that(inspection.type, eq=str)
         preset = m.ContractModel.model_validate({})
         tm.that(preset.model_dump(), eq={})
+        assert isclass(entrypoint) or isfunction(entrypoint) or ismethod(entrypoint)
         expected_source = Path(getfile(entrypoint)).resolve()
         admission = tm.ok(
             FlextInfraCodegenPreconditions.capture_producer(

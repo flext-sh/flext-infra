@@ -248,30 +248,21 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # Generated package inits are projections excluded from the class
         # inventory, yet their install_lazy_exports maps own the namespace
         # aliases (m, p, t and siblings) that facade-qualified bases resolve
-        # through. Read those maps from disk so resolution can rewrite
+        # through. Read those captured maps so resolution can rewrite
         # ``<pkg>.<alias>`` targets to their provider modules.
         extra_module_aliases: t.StrDict = {}
-        for init_path in sorted(root.rglob("__init__.py")):
-            if not init_path.is_file():
+        for init_module, (init_path, init_source) in sorted(sources.items()):
+            if init_path.name != c.Infra.INIT_PY:
                 continue
-            # Owned (planned) inits are intentionally INCLUDED here: the
-            # runtime instances that receive a partial captured-source set
-            # (per-repository plan workers) otherwise miss the analyzed
-            # checkout's own barrel aliases and resolve their re-exports
-            # through the builtins fallback (aihub-l42it.11: the services
-            # barrel re-export of AiHubWorkspaceAgentConfigRetirementService
-            # resolved to a BuiltinModule and the plan crashed). setdefault
-            # keeps a captured map authoritative over the disk map.
-            init_module = cls.module_name_for_file(init_path, project_root=root)
-            if not init_module:
-                continue
+            # Include the project's own barrel aliases; planned bytes already
+            # override disk in the captured source mapping.
             for (
                 alias,
                 absolute,
             ) in FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 init_module,
                 init_path,
-                init_path.read_text(encoding=c.DEFAULT_ENCODING),
+                init_source,
             ).items():
                 extra_module_aliases.setdefault(
                     f"{init_module}.{alias}",

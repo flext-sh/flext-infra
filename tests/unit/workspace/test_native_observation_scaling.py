@@ -41,9 +41,15 @@ class TestsNativeObservationScaling:
         )
         u.Tests.run_lazy_init_probe(
             f"""from flext_infra import m
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 import test_pkg as module
-selection = (m.Infra.SourceClassReference(target=module.__name__, attributes=('Consumer', 'execute')),)
+selection = (
+    m.Infra.SourceClassReference(
+        target=module.__name__, attributes=('Consumer', 'execute')
+    ),
+)
 before = native.capture(selection).unwrap()
 assert module.Consumer.execute() == 'original'
 assert module.Consumer.cache == ('populated',)
@@ -75,9 +81,15 @@ assert native.compare(before, native.capture(selection).unwrap()).failure
         )
         u.Tests.run_lazy_init_probe(
             """from flext_infra import m
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 import test_pkg as module
-selection = (m.Infra.SourceClassReference(target=module.__name__, attributes=('execute',)),)
+selection = (
+    m.Infra.SourceClassReference(
+        target=module.__name__, attributes=('execute',)
+    ),
+)
 assert module.execute() == ('original', 'original', 'original')
 before = native.capture(selection).unwrap()
 assert len({item.binding for item in before.bindings}) == len(before.bindings)
@@ -108,9 +120,15 @@ assert native.compare(before, native.capture(selection).unwrap()).failure
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
 from flext_infra import m
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 import test_pkg as module
-selection = (m.Infra.SourceClassReference(target=module.__name__, attributes=('bound',)),)
+selection = (
+    m.Infra.SourceClassReference(
+        target=module.__name__, attributes=('bound',)
+    ),
+)
 assert module.bound() == 'original'
 before = native.capture(selection).unwrap()
 original_root = Path(module.__file__).parent.parent
@@ -121,7 +139,9 @@ function.__code__ = code.replace(
     co_filename=str(staged_root / Path(code.co_filename).relative_to(original_root)))
 assert native.compare(before, native.capture(selection).unwrap()).failure
 mapping = ((staged_root, original_root),)
-assert native.compare(before, native.capture(selection, paths=mapping).unwrap()).unwrap() is True
+assert native.compare(
+    before, native.capture(selection, paths=mapping).unwrap()
+).unwrap() is True
 function.__code__ = function.__code__.replace(co_consts=tuple(
     'modified' if value == 'original' else value for value in code.co_consts))
 module.execute.cache_clear()
@@ -147,9 +167,15 @@ assert native.compare(before, native.capture(selection, paths=mapping).unwrap())
         )
         u.Tests.run_lazy_init_probe(
             """from flext_infra import m
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 import test_pkg as module
-selection = (m.Infra.SourceClassReference(target=module.__name__, attributes=('execute',)),)
+selection = (
+    m.Infra.SourceClassReference(
+        target=module.__name__, attributes=('execute',)
+    ),
+)
 assert module.execute() is None
 before = native.capture(selection).unwrap()
 assert native.compare(before, native.capture(selection).unwrap()).unwrap() is True
@@ -180,7 +206,9 @@ assert native.compare(before, native.capture(selection).unwrap()).unwrap() is Tr
         )
         u.Tests.run_lazy_init_probe(
             f"""from flext_infra import m
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 import test_pkg as module
 small, large = (
     (m.Infra.SourceClassReference(target=module.__name__, attributes=(name,)),)
@@ -218,9 +246,15 @@ assert native.compare(deep, native.capture(large).unwrap()).failure
         u.Tests.run_lazy_init_probe(
             """from types import CodeType
 from flext_infra import m
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference as native
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 import test_pkg as module
-selection = (m.Infra.SourceClassReference(target=module.__name__, attributes=('factory',)),)
+selection = (
+    m.Infra.SourceClassReference(
+        target=module.__name__, attributes=('factory',)
+    ),
+)
 before = native.capture(selection).unwrap()
 assert native.compare(before, native.capture(selection).unwrap()).unwrap() is True
 chain = [module.factory.__code__]

@@ -143,16 +143,16 @@ exclude = [
 {% endfor %}
 ]
 {% endif %}
-include = [
-  "/src/{{ package_name }}/**",
+only-include = [
+  "src/{{ package_name }}",
 {% for package in root_packages %}
-  {{ ("/src/" ~ package ~ "/**") | tojson }},
+  {{ ("src/" ~ package) | tojson }},
 {% endfor %}
 {% for data_path in packaged_data_paths if data_path not in packaged_data_files %}
-  {{ ("/" ~ data_path ~ "/**") | tojson }},
+  {{ data_path | tojson }},
 {% endfor %}
 {% for namespace in repository_namespace_packages %}
-  {{ ("/" ~ namespace ~ "/**") | tojson }},
+  {{ namespace | tojson }},
 {% endfor %}
 ]
 
@@ -189,16 +189,16 @@ exclude = [
 {% endfor %}
 ]
 {% endif %}
-include = [
-  "/src/{{ package_name }}/**",
+only-include = [
+  "src/{{ package_name }}",
 {% for package in root_packages %}
-  {{ ("/src/" ~ package ~ "/**") | tojson }},
+  {{ ("src/" ~ package) | tojson }},
 {% endfor %}
 {% for data_dir in packaged_data_paths if data_dir not in packaged_data_files %}
-  {{ ("/" ~ data_dir ~ "/**") | tojson }},
+  {{ data_dir | tojson }},
 {% endfor %}
 {% for namespace in repository_namespace_packages %}
-  {{ ("/" ~ namespace ~ "/**") | tojson }},
+  {{ namespace | tojson }},
 {% endfor %}
 ]
 {% if packaged_data_files or root_modules or hatch_build_hook_path or project_declaration_resource %}

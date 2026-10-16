@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenFileLeases,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
@@ -21,7 +22,6 @@ from flext_infra.codegen import (
     FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -217,7 +217,14 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         root: Path,
         outcome: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[bool]:
-        """Archive and publish the same typed native receipt through its owner.
+        """Archive every typed native receipt and publish operations by surface.
+
+        ``conform --mode check`` authenticates the latest receipt of its own
+        surface. Each operation receipt therefore occupies only its surface's
+        slot: a partial publication (setup's runtime bindings, upg's
+        pyproject and mise-config) never evicts the generation receipt, and a
+        generation retires the partial slots it supersedes. Batch receipts
+        carry no surface and stay in the transaction archive only.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -230,19 +237,50 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         archived = u.Infra.publish_refactor_report_evidence(
             root,
             outcome,
-            relative_path=path.with_suffix("")
+            relative_path=c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH
             / outcome.transaction_id
             / f"{digest}{path.suffix}",
         )
         if archived.failure:
             return r[bool].from_failure(archived)
+        surface = outcome.surface
+        if surface is None:
+            return r[bool].ok(value=True)
         latest = u.Infra.publish_refactor_report_evidence(
             root,
             outcome,
-            relative_path=path,
+            relative_path=FlextInfraMiseArtifactsVerification.publication_receipt(
+                surface
+            ),
         )
         if latest.failure:
             return r[bool].from_failure(latest)
+        if surface is not c.Infra.CodegenConformSurface.ALL:
+            return r[bool].ok(value=True)
+        return FlextInfraCodegenTransactionRecovery._retire_partial_receipts(root)
+
+    @staticmethod
+    def _retire_partial_receipts(root: Path) -> p.Result[bool]:
+        """Remove partial-surface slots a generation receipt now supersedes.
+
+        Returns:
+            True once no partial slot remains, or the first read/delete failure.
+
+        """
+        for surface in c.Infra.CodegenConformSurface:
+            if surface is c.Infra.CodegenConformSurface.ALL:
+                continue
+            slot = FlextInfraMiseArtifactsFiles.read_state(
+                root / FlextInfraMiseArtifactsVerification.publication_receipt(surface),
+                required=False,
+            )
+            if slot.failure:
+                return r[bool].from_failure(slot)
+            if slot.value.content is None:
+                continue
+            retired = u.Cli.atomic_delete_binary_file_guarded(slot.value)
+            if retired.failure:
+                return r[bool].from_failure(retired)
         return r[bool].ok(value=True)
 
     @classmethod
@@ -326,13 +364,14 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         session: m.Infra.CodegenTransactionSession,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
-        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
-        scope_roots: t.VariadicTuple[Path] = (),
-        source_scope: Path | None = None,
+        topology: m.Infra.CodegenPhaseOutcome | None = None,
         phase: c.Infra.CodegenStagedFilePhase | None = None,
         batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Persist the complete native output set without rendering or byte copies.
+
+        ``topology`` names the receipt whose source topology, scope roots and
+        source scope the journal adopts; without it the journal keeps its own.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
@@ -369,12 +408,14 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return r[m.Infra.CodegenTransactionSession].fail(
                 "publication has no pre-planning producer authority"
             )
+        adopted = topology or session.journal
         journal = session.journal.model_copy(
             update={
                 "outputs": tuple(outputs.values()),
-                "source_topology": source_topology or session.journal.source_topology,
-                "scope_roots": scope_roots or session.journal.scope_roots,
-                "source_scope": source_scope or session.journal.source_scope,
+                "source_topology": adopted.source_topology
+                or session.journal.source_topology,
+                "scope_roots": adopted.scope_roots or session.journal.scope_roots,
+                "source_scope": adopted.source_scope or session.journal.source_scope,
                 "phase": phase or session.journal.phase,
             }
         )
@@ -840,9 +881,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    r[bool].fail(
-                        created.error or f"cannot create directory {intent.path}"
-                    ),
+                    r[bool].from_failure(created),
                 ),
             )
         directories = tuple(
@@ -857,9 +896,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                r[bool].fail(
-                    recorded.error or f"cannot record directory {intent.path}"
-                ),
+                r[bool].from_failure(recorded),
                 journal_write=False,
             )
             return result_type.from_failure(failed)
@@ -872,9 +909,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             failed = self._compensate_directory_persistence(
                 layout,
                 created.value,
-                r[bool].fail(
-                    persisted.error or f"cannot persist directory {intent.path}"
-                ),
+                r[bool].from_failure(persisted),
                 journal_write=True,
             )
             return result_type.from_failure(failed)
@@ -1156,3 +1191,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         if recovered.success:
             self._journal_receipts.pop(layout.journal_path, None)
         return recovered
+
+
+__all__: list[str] = ["FlextInfraCodegenTransactionRecovery"]

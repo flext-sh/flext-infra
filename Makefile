@@ -167,9 +167,8 @@ MAKE_PROFILE := standalone
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
-# Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
+# Computed: traversal projects observed members; provisioning reads local .gitmodules.
 WORKSPACE_SUBPROJECTS :=
-MANAGED_GITLINKS :=
 UV_LINK_MODE := copy
 # End SECTION: project identity
 
@@ -192,7 +191,7 @@ PYTEST_CACHE_HOME = $(if $(strip $(XDG_CACHE_HOME)),$(XDG_CACHE_HOME),$(if $(str
 override FLEXT_PYTEST_TESTMON_DATABASE = $(if $(strip $(PYTEST_CACHE_HOME)),$(PYTEST_CACHE_HOME)/flext/infra/testmon/$(PROJECT_NAME)/.testmondata)
 # Storage law: the pytest scratch root sits under the user home, keyed by the
 # absolute checkout path, never under /tmp and never inside a versioned tree.
-override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $(HOME)),$(HOME)/tmp/.flext-runtime$(PROJECT_ROOT)/scratch)
+override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $(HOME)),$(HOME)/.local/state/.flext-runtime$(PROJECT_ROOT)/scratch)
 # Profiles sit beside the other reports of this checkout (.reports is ignored).
 PROFILE_REPORTS_DIR = $(PROJECT_ROOT)/$(shell dirname -- "$(PYTEST_REPORTS_DIR)")/profiles
 override PYTEST_RUN_TIMEOUT_SECONDS := 1200
@@ -2487,7 +2486,7 @@ _builtin_fmt_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "format,markdown-format" --apply
 
 _builtin_fix_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code" --apply
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code,deps" --apply
 
 # SonarCloud server-side issue exclusions (SSOT: codegen.sonarcloud). The verb
 # writes an external service with SONAR_TOKEN from the environment; it belongs

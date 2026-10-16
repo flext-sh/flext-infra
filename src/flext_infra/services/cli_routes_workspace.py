@@ -10,11 +10,11 @@ from collections.abc import MutableMapping
 from typing import ClassVar
 
 from flext_infra import FlextInfraGitService, c, infra, m, p, r, t, u
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from flext_infra.services.cli_routes_refactor import FlextInfraRefactorRoutes
+from flext_infra.check import FlextInfraGateRegistry
+from flext_infra.release import FlextInfraReleaseOrchestrator
+from flext_infra.services import FlextInfraRefactorRoutes
 from flext_infra.workspace import (
-    FlextInfraFlextBindingService,
+    FlextInfraBindingService,
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentMixin,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -58,7 +58,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             The canonical CLI result view.
 
         """
-        return FlextInfraFlextBindingService.apply(
+        return FlextInfraBindingService.apply(
             consumer_root=params.repository_root,
             flext_root=params.flext_root,
             python=params.python,

@@ -502,7 +502,7 @@ print('physical-provider-proof=' + mutation)
         finally:
             custom.write_bytes(original)
             shutil.rmtree(nested)
-        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stderr)
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=True, msg=process.stderr)
         tm.that(process.stdout, has="controller-owned=True")
         tm.that(process.stdout, has="packaged-config-owned=True")
         tm.that(process.stdout, has="producer-closure-owned=True")

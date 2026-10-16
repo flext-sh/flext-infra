@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -76,6 +76,10 @@ class FlextInfraModReplacements:
         *,
         exact_replacements: bool = False,
         published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
+        verification: t.Pair[
+            Callable[[], p.Result[bool]], Callable[[Path], p.Result[bool]]
+        ]
+        | None = None,
     ) -> p.Result[bool]:
         """Validate byte coordinates and publish complete CAS-owned file plans.
 
@@ -86,6 +90,7 @@ class FlextInfraModReplacements:
                 of recomposed CST output.
             published_plans: Mutable sink receiving every published file
                 plan; publishing proceeds without capture when omitted.
+            verification: Original input proof and candidate/live acceptance callbacks.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -119,6 +124,10 @@ class FlextInfraModReplacements:
             plans,
             repository_root=root,
             published_files=published_plans,
+            options=m.Infra.SemanticPublicationOptions(
+                source_guard=verification[0] if verification is not None else None,
+                validator=verification[1] if verification is not None else None,
+            ),
         )
         if published.failure:
             return r[bool].from_failure(published)
@@ -207,8 +216,8 @@ class FlextInfraModReplacements:
         )
 
     @classmethod
-    def compose(
-        cls, root: Path, report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]
+    def compose[FindingT: m.Infra.ModOccurrence](
+        cls, root: Path, report: m.Infra.ModOccurrenceReport[FindingT]
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticFilePlan]]:
         """Compose authenticated candidate bytes without admission or live effects.
 

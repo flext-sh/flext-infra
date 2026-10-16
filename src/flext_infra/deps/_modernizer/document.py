@@ -10,16 +10,17 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra._models.base import FlextInfraModelsBase
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
-from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
-from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
-from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+from flext_infra.deps import FlextInfraExtraPathsManager
+from flext_infra.deps.phases import (
+    FlextInfraConsolidateGroupsPhase,
+    FlextInfraEnsurePackagingPhase,
+    FlextInfraEnsurePyreflyConfigPhase,
+    FlextInfraEnsurePyrightConfigPhase,
+    FlextInfraEnsureRuffConfigPhase,
+    FlextInfraInjectCommentsPhase,
+    FlextInfraToolTablesPhase,
+)
+from flext_infra.refactor import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,7 +44,7 @@ if TYPE_CHECKING:
         def preserve_layout(self) -> bool: ...
 
 
-class RenderPolicy(FlextInfraModelsBase.FrozenArbitrary):
+class RenderPolicy(m.Infra.FrozenArbitrary):
     """Keyword policy for one document render and optional durable write."""
 
     dry_run: bool = m.Field(description="Skip the durable write when set.")
@@ -284,12 +285,25 @@ class FlextInfraPyprojectModernizerDocument:
                     preserve_layout=True,
                 ),
             )
+        manifests = u.Infra.load_workspace_manifest(state.pyproject_path.parent)
+        if manifests.failure:
+            return r[t.StrSequence].from_failure(manifests)
+        project = manifests.value[0].project if manifests.value else None
+        topology = (
+            m.Infra.PyprojectDeclaredTopology.model_validate(
+                project.model_dump(
+                    include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
+                ),
+            )
+            if project is not None
+            else m.Infra.PyprojectDeclaredTopology()
+        )
         return self._render_document_state(
             state,
             self._apply_document_phases(
                 state,
                 canonical_dev=canonical_dev,
-                topology=m.Infra.PyprojectDeclaredTopology(),
+                topology=topology,
             ),
             policy=RenderPolicy(dry_run=dry_run, skip_comments=skip_comments),
         )

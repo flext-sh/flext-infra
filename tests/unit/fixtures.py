@@ -32,7 +32,12 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.fixture
 def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
-    """Exercise public native authentication against real fixture source trees."""
+    """Exercise public native authentication against real fixture source trees.
+
+    Returns:
+        The resulting ``p.Tests.NativeConsumer``.
+
+    """
     runtime = tm.ok(
         FlextInfraWorkspaceDetector.resolution_context(_PROJECT_ROOT)
     ).runtime_root
@@ -40,20 +45,28 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
         "import importlib, pathlib, sys\n"
         "from pathlib import Path\n"
         "from flext_infra import m\n"
-        "from flext_infra.codegen import FlextInfraCodegenPreconditions as preconditions\n"
-        "from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport as fresh\n"
+        "from flext_infra.codegen import FlextInfraCodegenPreconditions as "
+        "preconditions\n"
+        "from flext_infra.workspace.native_reference import "
+        "FlextInfraWorkspaceNativeReference as native\n"
         f"runtime_root = Path({str(runtime)!r})\n"
         "def authenticate(name, *, source_root=None):\n"
         "    modules = (m.Infra.SourceClassReference(target=name),)\n"
-        "    authority = preconditions.capture_source_authority(runtime_root, nominated=modules)\n"
+        "    authority = preconditions.capture_source_authority(runtime_root, "
+        "nominated=modules)\n"
         "    if authority.failure: return authority\n"
         "    inputs = preconditions.authority_inputs(authority.value)\n"
         "    if inputs.failure: return inputs\n"
-        "    return fresh.capture_native_reference(m.Infra.NativeImportRequest(\n"
+        "    return preconditions.capture_native_reference("
+        "m.Infra.NativeImportRequest(\n"
         "        repository_root=Path.cwd() if source_root is None else source_root,\n"
         "        runtime_root=runtime_root, modules=modules,\n"
-        "        import_roots=tuple(dict.fromkeys(root.parent for _, root in authority.value.generator_modules)),\n"
+        "        import_roots=tuple(dict.fromkeys(root.parent for _, root in "
+        "authority.value.generator_modules)),\n"
         "        source_authority=authority.value, inputs=inputs.value))\n"
+        "def source_preflight(name):\n"
+        "    return preconditions.capture_source_authority(runtime_root,\n"
+        "        nominated=(m.Infra.SourceClassReference(target=name),))\n"
     )
 
     def consume(code: str, *arguments: str, cwd: Path | None = None) -> None:
@@ -69,7 +82,12 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
 
 @pytest.fixture
 def declaration_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
-    """Provide the standard FLEXT workspace fabric for native declarations."""
+    """Provide the standard FLEXT workspace fabric for native declarations.
+
+    Returns:
+        The resulting ``t.Pair[Path, Path]``.
+
+    """
     return u.Tests.create_lazy_init_workspace(tmp_path)
 
 

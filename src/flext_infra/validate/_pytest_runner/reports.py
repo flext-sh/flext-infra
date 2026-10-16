@@ -260,10 +260,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             )
             if (
                 context.execution_mode == c.Infra.PytestExecutionMode.FULL
-                # A whole-target run (the declared single file) executes
-                # under --testmon-noselect with the collection manifest
-                # enforced, so testmon writes no selection receipt: the
-                # enforced manifest IS the executed selection.
+                # Full runs and declared single-file selections use the
+                # centrally enforced manifest as the executed selection.
                 or selection_plan.whole_target
             )
             else m.Infra.PytestCollectionManifest.model_validate_json(

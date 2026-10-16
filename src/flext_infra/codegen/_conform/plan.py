@@ -8,18 +8,19 @@ from __future__ import annotations
 
 import time
 import traceback
+from operator import itemgetter
 from pathlib import Path
 from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
-from flext_infra.codegen._mise_artifacts_journal import FlextInfraMiseArtifactsJournal
-from flext_infra.codegen._mise_artifacts_verification import (
+from flext_infra.codegen import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPreconditions,
+    FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
@@ -177,15 +178,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenPlan].from_failure(inputs)
-        if request.what in {
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-            c.Infra.CodegenConformSurface.FACADES,
-        }:
-            planned = self._plan_single_surface(request, inputs=inputs.value)
-            if planned.failure:
-                return r[m.Infra.CodegenPlan].from_failure(planned)
-            return r[m.Infra.CodegenPlan].ok(planned.value[0])
-        return self._plan_repositories(request, inputs.value)
+        return self.plan_repositories(request, inputs.value)
 
     def _required_producer(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return the current captured producer, capturing one when absent.
@@ -231,17 +224,24 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return self._plan_facade(request, inputs)
         return self._plan_lazy_init(request, inputs)
 
-    def _plan_repositories(
+    def plan_repositories(
         self,
         request: m.Infra.CodegenConformRequest,
         inputs: m.Infra.CodegenInputs,
     ) -> p.Result[m.Infra.CodegenPlan]:
-        """Build the governed plans for the selected repository topology.
+        """Dispatch the declared surface using its captured repository inputs.
 
         Returns:
             The complete repository plan or its first planning failure.
 
         """
+        if request.what in {
+            c.Infra.CodegenConformSurface.LAZY_INIT,
+            c.Infra.CodegenConformSurface.FACADES,
+        }:
+            return self._plan_single_surface(request, inputs=inputs).map(
+                itemgetter(0),
+            )
         config_spec = inputs.spec
         root = request.root.expanduser().resolve()
         targets = self._planning_workspace(request, root, inputs=inputs)
@@ -478,7 +478,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
 
     @staticmethod
-    def _facade_family(source: str) -> p.Result[Literal["c", "t", "u", "p", "m"]]:
+    def _facade_family(
+        source: str, destination: Path
+    ) -> p.Result[Literal["c", "t", "u", "p", "m"]]:
         """Identify the selected renderer from the module's published declaration.
 
         Returns:
@@ -486,7 +488,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         result_type = r[Literal["c", "t", "u", "p", "m"]]
-        match tuple(sorted(u.Infra.facade_letter_names_source(source))):
+        match tuple(
+            sorted(
+                u.Infra.facade_letter_names_source(source, filename=str(destination))
+            )
+        ):
             case ("c",):
                 return result_type.ok("c")
             case ("t",):
@@ -531,7 +537,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if selected.failure:
             return result_type.from_failure(selected)
         state, source = selected.value
-        declared = cls._facade_family(source)
+        declared = cls._facade_family(source, destination)
         if declared.failure:
             return result_type.from_failure(declared)
         family = declared.value
@@ -1388,3 +1394,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         return u.Infra.repository_provider(repository)
+
+
+__all__: list[str] = ["FlextInfraCodegenConformPlan"]

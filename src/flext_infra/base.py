@@ -11,8 +11,7 @@ from typing import Annotated, ClassVar, Self, override
 
 from flext_core import FlextService, t
 
-from flext_infra import c, m, p, r, settings, u
-from flext_infra._base_payload import FlextInfraCommandPayloadMixin
+from flext_infra import FlextInfraCommandPayloadMixin, c, m, p, r, settings, u
 
 
 class FlextInfraServiceBase[TDomainResult: t.JsonPayload](

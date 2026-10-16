@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -110,8 +110,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
         if planned.failure:
             failure = planned.error
             if not failure:
-                msg = "codemod rule planning failed without a diagnostic"
-                raise RuntimeError(msg)
+                failure = "codemod rule planning failed without a diagnostic"
+                raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, failure, started)
 
         rules_by_id = {rule.id: rule for rule in planned.value.rules}
@@ -119,8 +119,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
         if binary.failure:
             failure = binary.error
             if not failure:
-                msg = "managed scanner resolution failed without a diagnostic"
-                raise RuntimeError(msg)
+                failure = "managed scanner resolution failed without a diagnostic"
+                raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, failure, started)
         findings: list[m.Infra.Issue] = []
         failures: list[m.Infra.Issue] = []
@@ -182,6 +182,16 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     )
                 ),
             )
+            admissions = tuple(
+                m.Infra.CodemodAdmission(
+                    root=project_dir,
+                    rule=rules_by_id[finding.rule_id],
+                    file_path=Path(finding.file),
+                    captures={**finding.captures, **finding.transformed},
+                    facts=facts,
+                )
+                for finding in report.root
+            )
             snapshot = (
                 u.Infra.codemod_binding_snapshot(
                     project_dir,
@@ -216,16 +226,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
                         message=finding.message,
                         severity=finding.severity,
                     )
-                    for finding in report.root
+                    for finding, admission in zip(report.root, admissions, strict=True)
                     if u.Infra.codemod_context_admits(
-                        m.Infra.CodemodAdmission(
-                            root=project_dir,
-                            rule=rules_by_id[finding.rule_id],
-                            file_path=Path(finding.file),
-                            captures={**finding.captures, **finding.transformed},
-                            facts=facts,
-                            snapshot=snapshot,
-                        ),
+                        admission.model_copy(update={"snapshot": snapshot}),
                         project=project,
                         sources=sources,
                     )
@@ -365,3 +368,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
             cmd.extend([c.Infra.SG_GLOBS_FLAG, glob])
         cmd.extend(targets)
         return tuple(cmd)
+
+
+__all__: list[str] = ["FlextInfraCodemodGate"]
