@@ -1,0 +1,257 @@
+# The facade letters (c, t, m, p, u) are re-aliases published at the END of
+# each facade module (`t = CosmosChartsTypes`), never inside a class body the
+# consumer can see through. mypy does not propagate that module-level rebind
+# through a PEP-695 subclass and pyright does not resolve the re-alias plus a
+# dynamic nested namespace either, so every `<letter>.CosmosCharts.<member>`
+# use cascades into Unknown diagnostics fleet-wide (10.737 census findings,
+# cosmos-h5y3o). The classes themselves are static, importable objects: the
+# proven zero-error form is the static path
+# `CosmosChartsTypes.CosmosCharts.<member>` (probes: typecensus-nsprobe*.py).
+#
+# These rules rewrite the namespace-USAGE and add the class import next to the
+# facade import it replaces. The duplicated import form is merged by the
+# import-normalization phase of the codemod loop (the same contract
+# facade-import-from-own-package documents). Bare letter uses that do not
+# traverse `CosmosCharts` (for example `t.Pair`) resolve through the class MRO
+# and stay untouched, as does every letter bound from another package, because
+# both rules require the module to bind that exact letter from its facade
+# package AND to reach through `CosmosCharts`.
+id: namespace-static-path-constants-usage
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - pattern: c.CosmosCharts
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          any:
+            - pattern: from cosmos_charts import c
+            - pattern: from cosmos_charts import $$$A, c
+            - pattern: from cosmos_charts import c, $$$B
+            - pattern: from cosmos_charts import $$$A, c, $$$B
+fix: CosmosChartsConstants.CosmosCharts
+message: >-
+  Reach constants through the static CosmosChartsConstants class path; the
+  module re-alias does not propagate to mypy or pyright.
+---
+id: namespace-static-path-constants-import
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          pattern: c.CosmosCharts
+    - any:
+        - pattern: from cosmos_charts import c
+        - pattern: from cosmos_charts import $$$A, c
+        - pattern: from cosmos_charts import c, $$$B
+        - pattern: from cosmos_charts import $$$A, c, $$$B
+fix: |-
+  from cosmos_charts import $$$I
+  from cosmos_charts.constants import CosmosChartsConstants
+message: >-
+  Import the static CosmosChartsConstants class beside the facade letter the
+  module already binds; the import-normalization phase merges the form.
+---
+id: namespace-static-path-typings-usage
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - pattern: t.CosmosCharts
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          any:
+            - pattern: from cosmos_charts import t
+            - pattern: from cosmos_charts import $$$A, t
+            - pattern: from cosmos_charts import t, $$$B
+            - pattern: from cosmos_charts import $$$A, t, $$$B
+fix: CosmosChartsTypes.CosmosCharts
+message: >-
+  Reach typings through the static CosmosChartsTypes class path; the module
+  re-alias does not propagate to mypy or pyright.
+---
+id: namespace-static-path-typings-import
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          pattern: t.CosmosCharts
+    - any:
+        - pattern: from cosmos_charts import t
+        - pattern: from cosmos_charts import $$$A, t
+        - pattern: from cosmos_charts import t, $$$B
+        - pattern: from cosmos_charts import $$$A, t, $$$B
+fix: |-
+  from cosmos_charts import $$$I
+  from cosmos_charts.typings import CosmosChartsTypes
+message: >-
+  Import the static CosmosChartsTypes class beside the facade letter the
+  module already binds; the import-normalization phase merges the form.
+---
+id: namespace-static-path-models-usage
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - pattern: m.CosmosCharts
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          any:
+            - pattern: from cosmos_charts import m
+            - pattern: from cosmos_charts import $$$A, m
+            - pattern: from cosmos_charts import m, $$$B
+            - pattern: from cosmos_charts import $$$A, m, $$$B
+fix: CosmosChartsModels.CosmosCharts
+message: >-
+  Reach models through the static CosmosChartsModels class path; the module
+  re-alias does not propagate to mypy or pyright.
+---
+id: namespace-static-path-models-import
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          pattern: m.CosmosCharts
+    - any:
+        - pattern: from cosmos_charts import m
+        - pattern: from cosmos_charts import $$$A, m
+        - pattern: from cosmos_charts import m, $$$B
+        - pattern: from cosmos_charts import $$$A, m, $$$B
+fix: |-
+  from cosmos_charts import $$$I
+  from cosmos_charts.models import CosmosChartsModels
+message: >-
+  Import the static CosmosChartsModels class beside the facade letter the
+  module already binds; the import-normalization phase merges the form.
+---
+id: namespace-static-path-protocols-usage
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - pattern: p.CosmosCharts
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          any:
+            - pattern: from cosmos_charts import p
+            - pattern: from cosmos_charts import $$$A, p
+            - pattern: from cosmos_charts import p, $$$B
+            - pattern: from cosmos_charts import $$$A, p, $$$B
+fix: CosmosChartsProtocols.CosmosCharts
+message: >-
+  Reach protocols through the static CosmosChartsProtocols class path; the
+  module re-alias does not propagate to mypy or pyright.
+---
+id: namespace-static-path-protocols-import
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          pattern: p.CosmosCharts
+    - any:
+        - pattern: from cosmos_charts import p
+        - pattern: from cosmos_charts import $$$A, p
+        - pattern: from cosmos_charts import p, $$$B
+        - pattern: from cosmos_charts import $$$A, p, $$$B
+fix: |-
+  from cosmos_charts import $$$I
+  from cosmos_charts.protocols import CosmosChartsProtocols
+message: >-
+  Import the static CosmosChartsProtocols class beside the facade letter the
+  module already binds; the import-normalization phase merges the form.
+---
+id: namespace-static-path-utilities-usage
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - pattern: u.CosmosCharts
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          any:
+            - pattern: from cosmos_charts import u
+            - pattern: from cosmos_charts import $$$A, u
+            - pattern: from cosmos_charts import u, $$$B
+            - pattern: from cosmos_charts import $$$A, u, $$$B
+fix: CosmosChartsUtilities.CosmosCharts
+message: >-
+  Reach utilities through the static CosmosChartsUtilities class path; the
+  module re-alias does not propagate to mypy or pyright.
+---
+id: namespace-static-path-utilities-import
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          pattern: u.CosmosCharts
+    - any:
+        - pattern: from cosmos_charts import u
+        - pattern: from cosmos_charts import $$$A, u
+        - pattern: from cosmos_charts import u, $$$B
+        - pattern: from cosmos_charts import $$$A, u, $$$B
+fix: |-
+  from cosmos_charts import $$$I
+  from cosmos_charts.utilities import CosmosChartsUtilities
+message: >-
+  Import the static CosmosChartsUtilities class beside the facade letter the
+  module already binds; the import-normalization phase merges the form.

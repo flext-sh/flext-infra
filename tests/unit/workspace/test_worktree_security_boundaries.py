@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService
-from tests import c, m, p, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraWorktreeSecurityBoundaries:

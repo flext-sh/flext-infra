@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 pytestmark = [pytest.mark.slow]
 
@@ -334,6 +333,29 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that(report, has="flext_infra._cprofile_entry")
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats")
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats.json")
+
+    def test_profile_mod_report_uses_the_selected_project_root(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The report adapter runs in the selected Makefile's root, not caller CWD."""
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(),
+            script_dispatch=None,
+        )
+        report = rendered.split("_builtin-profile-mod-report:", 1)[1].split(
+            "\n\n",
+            1,
+        )[0]
+        tm.that(
+            report,
+            has=(
+                '\t@cd "$(PROJECT_ROOT)" || exit $$?; \\\n'
+                "\t\t$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \\\n"
+                '\t\t"$(PROFILE_REPORTS_DIR)/mod.pstats"'
+            ),
+        )
 
     def test_test_verbs_share_the_persistent_testmon_database(
         self,

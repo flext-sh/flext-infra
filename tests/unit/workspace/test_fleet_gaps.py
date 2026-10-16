@@ -16,11 +16,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import main
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -257,6 +255,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
 
         Returns:
             The published SARIF path and the executed project facts.
+
         """
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -293,8 +292,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 pyproject,
-                pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                + "\n[tool.pyrefly]\n",
+                pyproject.read_text(encoding=c.DEFAULT_ENCODING) + "\n[tool.pyrefly]\n",
             )
         )
         selected, project = self._quality_receipt(

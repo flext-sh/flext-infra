@@ -11,7 +11,7 @@ from typing import override
 import libcst as cst
 
 
-class _DeadScaffold(cst.CSTTransformer):
+class FlextInfraDeadScaffold(cst.CSTTransformer):
     """Remove ``if TYPE_CHECKING:`` blocks whose body is only ``pass``."""
 
     @override
@@ -39,3 +39,6 @@ class _DeadScaffold(cst.CSTTransformer):
                 if len(inner) == 1 and isinstance(inner[0], cst.Pass):
                     return cst.RemoveFromParent()
         return updated_node
+
+
+__all__: list[str] = ["FlextInfraDeadScaffold"]

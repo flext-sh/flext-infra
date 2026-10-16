@@ -9,11 +9,49 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config
 from flext_infra.codegen import FlextInfraCodegenConformBeadsRoutes
-from tests import u
+from tests import m, tm, u
+
+
+def _standalone_governed_plan(root: Path) -> m.Infra.CodegenPlan:
+    """Plan one Gascity-disabled standalone governed fixture project.
+
+    Returns:
+        The governed codegen plan for the standalone project.
+
+    """
+    u.Tests.WorktreeFixture.initialize_governed_project(
+        root,
+        "fixture-project",
+        beads=u.Tests.BeadsIdentity(
+            workspace="fixture-workspace",
+            database="project_database",
+            issue_prefix="project-prefix",
+        ),
+    )
+    project = root
+    u.Tests.write_standalone_workspace_manifest(
+        project,
+        "fixture-project",
+        declaration=u.Tests.StandaloneManifestDeclaration(gascity_enabled=False),
+    )
+    return u.Tests.governed_project_plan(project)
+
+
+def _planned_envrc_local_entry(root: Path) -> m.Infra.CodegenFilePlan | None:
+    """Return the planned ``.envrc.local`` entry of one governed project.
+
+    Returns:
+        The planned ``.envrc.local`` entry, or ``None`` when it is unplanned.
+
+    """
+    plan = u.Tests.governed_project_plan(root)
+    return next(
+        (item for item in plan.files if item.path.name == ".envrc.local"),
+        None,
+    )
 
 
 class TestsFlextInfraCodegenBeadsProjection:
@@ -95,20 +133,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         tmp_path: Path,
     ) -> None:
         """A disabled city never moves runtime ownership into generated config."""
-        root = self._project(
-            tmp_path / "project",
-            database="project_database",
-            issue_prefix="project-prefix",
-        )
-        u.Tests.write_standalone_workspace_manifest(
-            root,
-            "fixture-project",
-            declaration=u.Tests.StandaloneManifestDeclaration(
-                gascity_enabled=False,
-            ),
-        )
-
-        plan = u.Tests.governed_project_plan(root)
+        plan = _standalone_governed_plan(tmp_path / "project")
         rendered_config = u.Tests.planned_text(plan, c.Infra.BEADS_CONFIG_RELPATH)
         rendered_mise = u.Tests.planned_text(plan, ".mise.toml")
 
@@ -158,20 +183,7 @@ class TestsFlextInfraCodegenBeadsProjection:
 
     def test_generated_envrc_excludes_storage_routing(self, tmp_path: Path) -> None:
         """The project activation leaves Beads routing to native discovery."""
-        root = self._project(
-            tmp_path / "project",
-            database="project_database",
-            issue_prefix="project-prefix",
-        )
-        u.Tests.write_standalone_workspace_manifest(
-            root,
-            "fixture-project",
-            declaration=u.Tests.StandaloneManifestDeclaration(
-                gascity_enabled=False,
-            ),
-        )
-
-        plan = u.Tests.governed_project_plan(root)
+        plan = _standalone_governed_plan(tmp_path / "project")
         rendered_envrc = u.Tests.planned_text(plan, ".envrc")
 
         if rendered_envrc is None:
@@ -206,14 +218,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             encoding="utf-8",
         )
 
-        entry = next(
-            (
-                item
-                for item in u.Tests.governed_project_plan(root).files
-                if item.path.name == ".envrc.local"
-            ),
-            None,
-        )
+        entry = _planned_envrc_local_entry(root)
 
         if entry is None or entry.desired_content is None:
             pytest.fail("custom overrides must keep .envrc.local planned")
@@ -241,14 +246,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             encoding="utf-8",
         )
 
-        entry = next(
-            (
-                item
-                for item in u.Tests.governed_project_plan(root).files
-                if item.path.name == ".envrc.local"
-            ),
-            None,
-        )
+        entry = _planned_envrc_local_entry(root)
 
         if entry is None:
             pytest.fail("residue-only .envrc.local must be planned for removal")

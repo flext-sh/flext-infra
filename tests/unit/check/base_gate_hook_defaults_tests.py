@@ -15,12 +15,12 @@ import sys
 from typing import TYPE_CHECKING, ClassVar, override
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -228,8 +228,17 @@ class TestsFlextInfraGateHookDefaults:
         """
         return m.Infra.GateContext(repository_root=project, reports_dir=reports)
 
-    def test_inherited_defaults_still_apply(self, tmp_path: Path) -> None:
-        """A gate that does not override the five hooks keeps the old defaults."""
+    def _check_with_replaced_reports(
+        self,
+        gate_class: type[FlextInfraGate],
+        tmp_path: Path,
+    ) -> tuple[m.Infra.GateExecution, Path, Path]:
+        """Run one gate over a project holding a stale and a kept report.
+
+        Returns:
+            The gate execution and the stale- and kept-report paths.
+
+        """
         project, reports = self._project(tmp_path)
         replaced = reports / f"{project.name}-{self._REPORT_NAME}"
         kept_file = reports / f"{project.name}-kept.json"
@@ -241,10 +250,18 @@ class TestsFlextInfraGateHookDefaults:
                 self._KEPT: self._KEPT_VALUE,
             },
         ):
-            execution = self._Probe(project).check(
+            execution = gate_class(project).check(
                 project,
                 self._context(project, reports),
             )
+        return execution, replaced, kept_file
+
+    def test_inherited_defaults_still_apply(self, tmp_path: Path) -> None:
+        """A gate that does not override the five hooks keeps the old defaults."""
+        execution, replaced, kept_file = self._check_with_replaced_reports(
+            self._Probe,
+            tmp_path,
+        )
         tm.that(execution.result.passed, eq=True)
         tm.that(execution.raw_output, has="NATIVE")
         tm.that(execution.raw_output, has=f"PROBE\t\t{self._KEPT_VALUE}\t")
@@ -257,21 +274,10 @@ class TestsFlextInfraGateHookDefaults:
         tmp_path: Path,
     ) -> None:
         """Replaced class data unlinks the named report and drops the extra key."""
-        project, reports = self._project(tmp_path)
-        replaced = reports / f"{project.name}-{self._REPORT_NAME}"
-        kept_file = reports / f"{project.name}-kept.json"
-        replaced.write_text("stale\n", encoding="utf-8")
-        kept_file.write_text("stay\n", encoding="utf-8")
-        with tm.scope(
-            env={
-                c.Infra.ENV_VAR_FORCE_COLOR: "forced",
-                self._KEPT: self._KEPT_VALUE,
-            },
-        ):
-            execution = self._ClassDataOverride(project).check(
-                project,
-                self._context(project, reports),
-            )
+        execution, replaced, kept_file = self._check_with_replaced_reports(
+            self._ClassDataOverride,
+            tmp_path,
+        )
         tm.that(execution.result.passed, eq=True)
         tm.that(execution.raw_output, has="PROBE\t\t\t")
         tm.that(execution.raw_output, lacks=self._KEPT_VALUE)

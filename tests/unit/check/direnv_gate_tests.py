@@ -9,14 +9,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.gates.direnv import FlextInfraDirenvGate
 from flext_infra.workspace.environment_contracts import (
     FlextInfraWorkspaceEnvironmentContracts,
 )
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -39,6 +38,27 @@ class TestsFlextInfraDirenvGate:
         tm.ok(u.Cli.run_checked(allow, cwd=root))
         execution = FlextInfraDirenvGate(root).check(root, u.Tests.gate_context(root))
         tm.ok(u.Cli.run_checked((c.Infra.CLI_DIRENV, "deny", str(root)), cwd=root))
+        return execution
+
+    @staticmethod
+    def failing_check(
+        root: Path,
+        envrc: str,
+        code: str,
+    ) -> m.Infra.GateExecution:
+        """Write ``envrc``, run the gate, and require it to fail with ``code``.
+
+        Returns:
+            The failing ``m.Infra.GateExecution`` for follow-up assertions.
+
+        """
+        _ = (root / c.Infra.ENVRC_FILENAME).write_text(envrc, encoding="utf-8")
+        execution = FlextInfraDirenvGate(root).check(
+            root,
+            u.Tests.gate_context(root),
+        )
+        tm.that(execution.result.passed, eq=False)
+        tm.that(TestsFlextInfraDirenvGate.issue_codes(execution), eq=[code])
         return execution
 
     @staticmethod
@@ -276,18 +296,10 @@ class TestsFlextInfraDirenvGate:
         @staticmethod
         def test_contract_violation_fails_before_smoke(tmp_path: Path) -> None:
             """The static lint fails the gate before the unapproved smoke runs."""
-            _ = (tmp_path / c.Infra.ENVRC_FILENAME).write_text(
-                'checkout_root="${DIRENV_DIR#-}"\n',
-                encoding="utf-8",
-            )
-            execution = FlextInfraDirenvGate(tmp_path).check(
+            TestsFlextInfraDirenvGate.failing_check(
                 tmp_path,
-                u.Tests.gate_context(tmp_path),
-            )
-            tm.that(execution.result.passed, eq=False)
-            tm.that(
-                TestsFlextInfraDirenvGate.issue_codes(execution),
-                eq=["DIRENV_CONTRACT"],
+                'checkout_root="${DIRENV_DIR#-}"\n',
+                "DIRENV_CONTRACT",
             )
 
         @staticmethod
@@ -304,17 +316,9 @@ class TestsFlextInfraDirenvGate:
         @staticmethod
         def test_activation_smoke_fails_loud(tmp_path: Path) -> None:
             """An unapproved envrc fails real activation with direnv's own error."""
-            _ = (tmp_path / c.Infra.ENVRC_FILENAME).write_text(
-                "export OK=1\n",
-                encoding="utf-8",
-            )
-            execution = FlextInfraDirenvGate(tmp_path).check(
+            execution = TestsFlextInfraDirenvGate.failing_check(
                 tmp_path,
-                u.Tests.gate_context(tmp_path),
-            )
-            tm.that(execution.result.passed, eq=False)
-            tm.that(
-                TestsFlextInfraDirenvGate.issue_codes(execution),
-                eq=["DIRENV_ACTIVATE"],
+                "export OK=1\n",
+                "DIRENV_ACTIVATE",
             )
             tm.that(execution.issues[0].message, ne="")

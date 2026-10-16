@@ -36,10 +36,12 @@ safety boundary, not implemented bounded selection or structured reporting.
 applying either cascade. Scan evidence publication remains part of the scan contract;
 read-only source mode does not mean an artifact-free invocation.
 
-The same semantic pipeline resolves elected self-facade imports before deferring them
-into function bodies. Module/class execution, decorators, defaults and other eager uses
-remain errors. Import identity comes from matched source and qualified bindings, not
-diagnostic prose or a module-name catalog.
+Authored declaration layers cannot import their own namespace at any scope, including
+function bodies and annotation-only guards. The shared import-law owner identifies
+these declarations from the family catalog. Declaration relocation resolves imports
+to identity-proven external public exports through Rope; dependencies without a lawful
+owner remain typed findings. Generated facades alone compose local declarations through
+lazy packages. Moving an import into a method does not repair its ownership.
 
 Dynamic environment reads require a resolved OS import and a config-owned key, either
 directly or through an unambiguous same-function alias. The destination settings source

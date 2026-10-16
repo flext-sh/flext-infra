@@ -7,10 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import c, m
+from tests import c, m, tm
 
 
 class TestsFlextInfraAuditorContract:

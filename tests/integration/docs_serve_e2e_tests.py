@@ -18,10 +18,10 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, r
 from flext_infra.docs.server import FlextInfraDocServer
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,10 +29,8 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 _PYTEST_POLICY = config.Infra.tooling.tools.pytest
-# A real MkDocs dev server cold-starts a fresh interpreter and builds the
-# site; under full-suite xdist contention that legitimately exceeds the
-# per-case budget, so the scenario declares the config-owned slow budget
-# (pytest.mark.slow below) and polls within it.
+# The real MkDocs server cold-starts an interpreter and builds the site. This
+# integration scenario polls within its config-owned slow budget.
 _DEADLINE_SECONDS = float(
     _PYTEST_POLICY.slow_timeout_seconds - _PYTEST_POLICY.termination_grace_seconds,
 )

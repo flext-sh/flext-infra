@@ -23,7 +23,6 @@ from typing import ClassVar
 from warnings import WarningMessage
 
 import pytest
-from flext_cli import u
 from pytest_markdown_docs.definitions import FenceTestDefinition
 from pytest_markdown_docs.plugin import (
     FenceSyntax,
@@ -31,31 +30,29 @@ from pytest_markdown_docs.plugin import (
     MarkdownTextFile,
     extract_fence_tests,
 )
-from xdist.dsession import DSession
 
-from flext_infra import c
-from flext_infra._constants import FlextInfraConstantsMake
-from flext_infra._models import FlextInfraModelsCore
+from flext_infra import c, m, p, u
 
 
 class FlextInfraPytestCollection:
     """Pytest entry-point plugin for the runner's explicit selection contract."""
 
-    _markdown: ClassVar[
-        pytest.StashKey[FlextInfraModelsCore.PytestMarkdownCollection]
-    ] = pytest.StashKey()
+    _markdown: ClassVar[pytest.StashKey[m.Infra.PytestMarkdownCollection]] = (
+        pytest.StashKey()
+    )
 
     @staticmethod
     def _origin(
         definition: FenceTestDefinition,
         root: Path,
-    ) -> FlextInfraModelsCore.PytestMarkdownOrigin:
+    ) -> m.Infra.PytestMarkdownOrigin:
         """Bind the SDK definition without compiling or interpreting its source.
 
         Returns:
-            The resulting ``FlextInfraModelsCore.PytestMarkdownOrigin``.
+            The resulting ``m.Infra.PytestMarkdownOrigin``.
+
         """
-        return FlextInfraModelsCore.PytestMarkdownOrigin(
+        return m.Infra.PytestMarkdownOrigin(
             source_path=definition.source_path.resolve().relative_to(root).as_posix(),
             start_line=definition.start_line,
             source_sha256=sha256(definition.source.encode("utf-8")).hexdigest(),
@@ -92,7 +89,7 @@ class FlextInfraPytestCollection:
         ):
             return
         state = item.config.stash[FlextInfraPytestCollection._markdown]
-        observation = FlextInfraModelsCore.PytestMarkdownItem(
+        observation = m.Infra.PytestMarkdownItem(
             node_id=item.nodeid,
             origin=FlextInfraPytestCollection._origin(
                 item.test_definition,
@@ -126,6 +123,7 @@ class FlextInfraPytestCollection:
 
         Raises:
             RuntimeError: If Markdown execution requires exactly one runner attempt.
+
         """
         if not isinstance(item, MarkdownInlinePythonItem) or not isinstance(
             item.parent,
@@ -160,7 +158,7 @@ class FlextInfraPytestCollection:
                     raise observer.first_error from error
                 raise
             finally:
-                proof = FlextInfraModelsCore.PytestMarkdownAttempt(
+                proof = m.Infra.PytestMarkdownAttempt(
                     node_id=item.nodeid,
                     attempts=observer.attempts,
                     first_exception_type=(
@@ -239,7 +237,7 @@ class FlextInfraPytestCollection:
     def pytest_configure(config: pytest.Config) -> None:
         """Record warnings once, on the controller or in serial execution."""
         config.stash[FlextInfraPytestCollection._markdown] = (
-            FlextInfraModelsCore.PytestMarkdownCollection()
+            m.Infra.PytestMarkdownCollection()
         )
         report_log = config.getoption("report_log")
         if report_log and not hasattr(config, "workerinput"):
@@ -271,10 +269,8 @@ class FlextInfraPytestCollection:
             c.Infra.PYTEST_SELECTED_COLLECTION_OPTION,
         )
         if selected is not None:
-            manifest = (
-                FlextInfraModelsCore.PytestCollectionManifest.model_validate_json(
-                    Path(selected).read_text(encoding="utf-8"),
-                )
+            manifest = m.Infra.PytestCollectionManifest.model_validate_json(
+                Path(selected).read_text(encoding="utf-8"),
             )
             order = {node_id: index for index, node_id in enumerate(manifest.node_ids)}
             collected = [item.nodeid for item in session.items]
@@ -303,7 +299,7 @@ class FlextInfraPytestCollection:
     def _write_collection_manifest(session: pytest.Session, target: Path) -> None:
         """Publish final selected items after testmon and every collection hook."""
         state = session.config.stash[FlextInfraPytestCollection._markdown]
-        manifest = FlextInfraModelsCore.PytestCollectionManifest(
+        manifest = m.Infra.PytestCollectionManifest(
             node_ids=tuple(item.nodeid for item in session.items),
             markdown_eligible=tuple(state.eligible),
             markdown_collected=tuple(state.collected),
@@ -327,14 +323,11 @@ class FlextInfraPytestCollection:
         def __init__(self, *, stop_at_monotonic: float) -> None:
             self.stop_at_monotonic = stop_at_monotonic
             self.session: pytest.Session | None = None
-            self.controller: DSession | None = None
             self.completed_items: set[str] = set()
 
         def pytest_sessionstart(self, session: pytest.Session) -> None:
             """Bind the controller session that owns the stop decision."""
             self.session = session
-            controller = session.config.pluginmanager.getplugin("dsession")
-            self.controller = controller if isinstance(controller, DSession) else None
 
         def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
             """Request the stop once a completed item crosses the instant.
@@ -342,17 +335,21 @@ class FlextInfraPytestCollection:
             The request is suppressed when this item was the last one still
             pending: a suite that already finished must end green instead of
             being interrupted after its own final result.
+
+            Raises:
+                TypeError: If the native distributed controller has no stop port.
+
             """
             session = self.session
             if session is None or report.when != "teardown":
                 return
+            self.completed_items.add(report.nodeid)
             # The instant is computed in the runner parent and handed to this
             # process as a CLI option; a clock skew between the two (or a
             # stale parent clock) must never stop a suite whose deadline has
             # not actually passed on this process's own monotonic clock.
             if time.monotonic() < self.stop_at_monotonic:
                 return
-            self.completed_items.add(report.nodeid)
             total_items = len(session.items)
             if total_items and len(self.completed_items) >= total_items:
                 return
@@ -362,23 +359,27 @@ class FlextInfraPytestCollection:
             if not getattr(report, "nodes_files_lines", None):
                 return
             reason = f"suite stop instant {self.stop_at_monotonic:.3f} reached"
-            controller = self.controller
-            if isinstance(controller, DSession):
-                if not controller.shouldstop:
-                    controller.shouldstop = reason
-            elif not session.shouldstop:
-                session.shouldstop = reason
+            controller = session.config.pluginmanager.getplugin("dsession")
+            if controller is None:
+                if not session.shouldstop:
+                    session.shouldstop = reason
+                return
+            if not isinstance(controller, p.Infra.PytestStopController):
+                msg = "native distributed pytest controller has no stop port"
+                raise TypeError(msg)
+            shouldstop = u.type_adapter(bool | str).validate_python(
+                controller.shouldstop,
+                strict=True,
+            )
+            if not shouldstop:
+                controller.shouldstop = reason
 
     class WarningAccounting:
         """Preserve the real class identity of every recorded warning."""
 
         def __init__(self, report_log: Path) -> None:
-            # Owner modules, never the root facades: this plugin loads in every
-            # consumer test process, and ``m.Infra`` builds the whole model
-            # family (seconds of class construction) to write one JSON line.
-
             self.report = report_log.with_suffix(
-                FlextInfraConstantsMake.PYTEST_WARNING_EVENTS_SUFFIX,
+                c.Infra.PYTEST_WARNING_EVENTS_SUFFIX,
             )
             self.report.parent.mkdir(parents=True, exist_ok=True)
             self.report.write_text("", encoding="utf-8")
@@ -387,7 +388,7 @@ class FlextInfraPytestCollection:
         def pytest_warning_recorded(self, warning_message: WarningMessage) -> None:
             """Record the real warning once before report-log serializes it."""
             category = warning_message.category
-            event = FlextInfraModelsCore.PytestWarningEvent(
+            event = m.Infra.PytestWarningEvent(
                 category=category.__name__,
                 category_module=category.__module__,
                 category_qualname=category.__qualname__,

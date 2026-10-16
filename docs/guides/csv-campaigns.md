@@ -19,9 +19,17 @@ mapping, null, non-string, and blank entries fail before any publication; no
 scope is expanded into characters or coerced into a glob. Omitted scopes retain
 the typed rule defaults, and empty lists remain valid unrestricted selectors.
 When a candidate's Python package cannot import, the healthy Infra provider
-can run `make mod-text-candidate` after its workspace manifest declares exactly
-one `candidate_bootstrap_targets` entry. The same target declaration also
-supports `make bootstrap-candidate` to project the declared recovery surface.
+can run `make mod-text-candidate` after its repository declaration supplies exactly
+one `candidate_bootstrap_targets` entry. Declare targets under
+`Infra.codegen.repository.candidate_bootstrap_targets` in `config/codegen.yaml`,
+with each `path` relative to the healthy provider and a canonical `what` surface.
+The same target declaration supports `make bootstrap-candidate` to project the
+declared recovery surface without importing the candidate package. A candidate
+worktree may appear only once per invocation. Recover a conflicted pyproject with
+`what: pyproject`, then run the candidate's `make initialize` to regenerate its
+Makefile and `make gen` to complete conformance. The bootstrap authenticates the
+consulted codegen declarations through publication; it requires no retired
+`config/workspace.yaml`.
 For regexes that may match several identifiers, declare a named group and
 `capture_equals: {keyword: expected_name}` in the rule. The engine validates
 that the group exists and rejects a different captured value before publishing
@@ -49,6 +57,15 @@ Rope's inferred last assignment as a reaching-definition proof. Its immutable
 source graph carries descriptor-authenticated Python import-owner receipts into
 the guarded semantic publisher. All read-only dependency states must still match
 at the existing source barrier before any candidate is staged or written.
+The workspace elects the rules once per project and captures the selected
+projects' binding inputs in one inventory. File contents and Python parses are
+shared; import resolution retains each project's native lexical roots.
+Finding authentication and ownership are indexed by file within the scan,
+with a final descriptor check before admission. Evidence stores each complete
+input and each ordered binding graph once. Occurrences reference the input
+inventory and graph table. Project, rule and class totals are validated against
+the occurrences, including declared zero rows. The exact schema version comes
+from the infrastructure scan contract.
 Strings, docstrings, `Literal` values and `Annotated` metadata retain their
 contents, including PEP 695 and assignment-style aliases. Actual type operands
 remain distinct from metadata; unrelated runtime assignments are not annotations.
@@ -123,6 +140,15 @@ identity. An overriding destination or an independently owned intermediate names
 blocks the proposed migration. A missing destination blocks the whole campaign before
 publication; historical lists cannot be enabled before their definers publish the
 destination contract.
+
+For a live provider whose own bootstrap calls the method being renamed, the public
+`flext-infra refactor apply-renames --rename-definitions` route renames the existing
+declaration and its references in one authenticated transaction. The declaration must
+belong to the explicit scan roots and the destination must be unoccupied. This uses
+the existing Rope rename owner, preserves unrelated homonyms, and verifies a fresh
+zero-edit scan before publication completes. The default consumer-migration mode
+continues to require an already-declared destination; no compatibility method is
+needed during a declaration cutover.
 
 `text_globs` explicitly selects non-Python documentation and configuration text.
 `python_documentation` selects comments and actual module, class and function

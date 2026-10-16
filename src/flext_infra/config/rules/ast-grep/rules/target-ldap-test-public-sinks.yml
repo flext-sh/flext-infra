@@ -1,0 +1,71 @@
+id: target-ldap-test-public-target-import
+language: Python
+severity: warning
+files:
+  - "tests/**/*.py"
+  - "**/tests/**/*.py"
+message: Consume the public LDAP target API instead of private model wrappers.
+rule:
+  pattern: from flext_target_ldap._models.sinks import FlextTargetLdapModelsSinks as Sinks
+fix: from flext_target_ldap import FlextTargetLdap
+---
+id: target-ldap-test-public-sink-facades
+language: Python
+severity: warning
+files:
+  - "tests/**/*.py"
+  - "**/tests/**/*.py"
+message: Bind the canonical model and protocol facades for sink consumers.
+rule:
+  all:
+    - pattern: from tests import tm
+    - inside:
+        kind: module
+        has:
+          pattern: Sinks.FlextTargetLdapModels.$MEMBER
+          stopBy: end
+        stopBy: end
+fix: from tests import m, p, tm
+---
+id: target-ldap-test-public-target-type
+language: Python
+severity: warning
+files:
+  - "tests/**/*.py"
+  - "**/tests/**/*.py"
+message: Use the public target API for target fixtures.
+rule:
+  pattern: Sinks.FlextTargetLdapModels.Target
+fix: FlextTargetLdap
+---
+id: target-ldap-test-public-sink-constructor
+language: Python
+severity: warning
+files:
+  - "tests/**/*.py"
+  - "**/tests/**/*.py"
+message: Construct LDAP sinks through their canonical public model facade.
+rule:
+  pattern: Sinks.FlextTargetLdapModels.$SINK($$$ARGS)
+constraints:
+  SINK:
+    regex: '^(BaseSink|UsersSink|GroupsSink|OrganizationalUnitsSink)$'
+fix: m.TargetLdap.$SINK($$$ARGS)
+---
+id: target-ldap-test-public-sink-contract
+language: Python
+severity: warning
+files:
+  - "tests/**/*.py"
+  - "**/tests/**/*.py"
+message: Annotate LDAP sink behavior through the public sink protocol.
+rule:
+  all:
+    - pattern: Sinks.FlextTargetLdapModels.$SINK
+    - not:
+        inside:
+          kind: call
+constraints:
+  SINK:
+    regex: '^(BaseSink|UsersSink|GroupsSink|OrganizationalUnitsSink)$'
+fix: p.TargetLdap.Sink

@@ -19,14 +19,12 @@ class FlextInfraModelsGitLaneInputs:
     class GitLaneRef(m.ContractModel):
         """One native reference identity, without a hygiene verdict."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         name: Annotated[t.NonEmptyStr, m.Field(description="Full Git reference name")]
         oid: Annotated[t.NonEmptyStr, m.Field(description="Observed reference commit")]
 
     class GitLaneViolation(m.ContractModel):
         """One lane accumulation offence with its preservation-first instruction."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         kind: Annotated[
             c.Infra.LaneViolationKind,
             m.Field(description="Violation class"),

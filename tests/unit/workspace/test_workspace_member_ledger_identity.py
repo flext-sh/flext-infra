@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraWorkspaceMemberLedgerIdentity:
@@ -135,6 +134,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         )
         declared = observed.repository.model_copy(
             update={
+                "examples_module": "examples.member_runtime",
                 "extra_verbs": (verb,),
                 "script_dispatch": dispatch,
                 "editable": False,
@@ -157,6 +157,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         reference = workspace.subprojects[0]
         tm.that(reference.path, eq=Path("apps/member"))
         tm.that(reference.editable, eq=True)
+        tm.that(reference.examples_module, eq=declared.examples_module)
         tm.that(reference.extra_verbs, eq=(verb,))
         tm.that(reference.script_dispatch, eq=dispatch)
         tm.that(workspace.repository.extra_verbs, empty=True)

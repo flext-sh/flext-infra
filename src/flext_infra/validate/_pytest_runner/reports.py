@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import FlextInfraPytestDiagExtractor, c, m, r, u
+from flext_infra import c, m, r, u
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
+from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -32,6 +33,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
         Returns:
             The resulting ``bool``.
+
         """
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             (report_dir / "selection-plan.json").read_text(encoding="utf-8"),
@@ -258,10 +260,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             )
             if (
                 context.execution_mode == c.Infra.PytestExecutionMode.FULL
-                # A whole-target run (the declared single file) executes
-                # under --testmon-noselect with the collection manifest
-                # enforced, so testmon writes no selection receipt: the
-                # enforced manifest IS the executed selection.
+                # Full runs and declared single-file selections use the
+                # centrally enforced manifest as the executed selection.
                 or selection_plan.whole_target
             )
             else m.Infra.PytestCollectionManifest.model_validate_json(
@@ -295,7 +295,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         extractor = FlextInfraPytestDiagExtractor(
             repository_root=self.root,
             junit=report_dir / "junit.xml",
-            log=report_dir / "pytest.log",
+            log_path=report_dir / "pytest.log",
             report_log=report_dir / "events.jsonl",
         )
         return extractor.extract(

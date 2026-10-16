@@ -12,10 +12,9 @@ import shutil
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, m, p, t, u
+from tests import c, m, p, t, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -36,7 +35,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         )
 
     @staticmethod
-    def _run_setup(workspace: Path, env: dict[str, str]) -> p.Cli.CommandOutput:
+    def _run_setup(workspace: Path, env: t.StrDict) -> p.Cli.CommandOutput:
         return tm.ok(
             u.Cli.run_raw(
                 ["make", "_builtin_setup_submodules"],
@@ -194,6 +193,68 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         # uv syncs the runtime root's project (UV_PROJECT := RUNTIME_ROOT).
         tm.that(rendered, has='$(UV) sync --project "$(UV_PROJECT)"')
         tm.that(rendered, lacks="submodule update --init --recursive")
+
+    def test_setup_discovers_an_absent_member_despite_stale_generated_membership(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The actual Git input provisions a member absent from a projected roster."""
+        rendered = self._render_repository_root_makefile(tmp_path)
+        workspace = self._create_uninitialized_workspace(tmp_path, rendered)
+        env = os.environ.copy()
+        env["GIT_ALLOW_PROTOCOL"] = "file"
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    "make",
+                    "_builtin_setup_submodules",
+                    "WORKSPACE_SUBPROJECTS=",
+                ],
+                cwd=workspace,
+                options=m.Cli.ProcessOptions(env=env),
+            ),
+        )
+
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
+        tm.that(
+            (workspace / "flext-core" / "pyproject.toml").is_file(),
+            eq=True,
+        )
+        declarations = tm.ok(u.Infra.git_submodule_declarations(workspace))
+        tm.that(
+            tuple(declaration.path for declaration in declarations),
+            eq=(Path("flext-core"),),
+        )
+
+    def test_setup_rejects_malformed_management_before_provisioning(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Native Git rejects malformed policy before an absent member is cloned."""
+        rendered = self._render_repository_root_makefile(tmp_path)
+        workspace = self._create_uninitialized_workspace(tmp_path, rendered)
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "config",
+                    "-f",
+                    c.Infra.GITMODULES,
+                    "submodule.flext-core.flext-managed",
+                    "invalid-boolean",
+                ],
+                cwd=workspace,
+            ),
+        )
+        env = os.environ.copy()
+        env["GIT_ALLOW_PROTOCOL"] = "file"
+
+        process = self._run_setup(workspace, env)
+
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(bool(process.stderr), eq=True)
+        tm.that((workspace / "flext-core" / ".git").exists(), eq=False)
 
     def test_make_setup_initializes_once_then_only_validates_present_checkout(
         self,

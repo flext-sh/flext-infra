@@ -15,10 +15,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m, p, t
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraUpgOwnedDependencyPin:
@@ -97,7 +96,6 @@ class TestsFlextInfraUpgOwnedDependencyPin:
             uv_resolution=m.Infra.UvResolutionSpec(
                 link_mode=toolchain.uv_link_mode,
                 constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
-                exclude_dependencies=(),
                 environments=tuple(toolchain.uv_environments),
             ),
             options=u.Infra.PyprojectConformOptions(

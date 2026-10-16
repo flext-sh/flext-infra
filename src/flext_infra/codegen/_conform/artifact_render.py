@@ -9,11 +9,79 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
+from flext_infra.__version__ import __version__
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
     """Governed artifact rendering and project overlay composition."""
+
+    @staticmethod
+    def planned_source_render_inputs(
+        render_inputs: m.Infra.CodegenRenderInputs,
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> m.Infra.CodegenRenderInputs:
+        """Derive tooling from the Python sources the transaction will publish.
+
+        Returns:
+            Render inputs with the source-derived tooling fields reconciled.
+
+        """
+        root = render_inputs.target.root
+        python_plans = tuple(
+            plan
+            for plan in planned
+            if plan.path.suffix == c.Infra.EXT_PYTHON
+            and plan.desired_content is not None
+        )
+        sources = {
+            plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+            for plan in python_plans
+            if plan.desired_content is not None
+        }
+        tooling = render_inputs.tooling_runtime
+        policy = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
+        runtime_bases = (
+            tuple(tooling.ruff_runtime_evaluated_base_classes)
+            if not any(
+                u.Infra.codegen_file_requires_effect(plan) for plan in python_plans
+            )
+            else u.Infra.runtime_evaluated_base_classes(
+                root,
+                sources,
+                policy.runtime_evaluated_roots,
+            )
+        )
+        rebinds = u.Infra.facade_rebind_modules(root, sources)
+        first_party = tuple(
+            FlextInfraToolTablesPhase.first_party_namespaces(
+                path=root,
+                planned_sources=tuple(sources),
+            ),
+        )
+        if (
+            rebinds == tuple(tooling.mypy_facade_rebind_modules)
+            and first_party == tuple(tooling.first_party)
+            and runtime_bases == tuple(tooling.ruff_runtime_evaluated_base_classes)
+        ):
+            return render_inputs
+        return render_inputs.model_copy(
+            update={
+                "tooling_runtime": tooling.model_copy(
+                    update={
+                        "mypy_facade_rebind_modules": rebinds,
+                        "ruff_runtime_evaluated_base_classes": runtime_bases,
+                        "first_party": first_party,
+                    },
+                ),
+            },
+        )
 
     @staticmethod
     def with_planned_pyproject(
@@ -69,6 +137,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         rendered: str,
         *,
         render_inputs: m.Infra.CodegenRenderInputs | None = None,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Apply typed project overlays after canonical template rendering.
 
@@ -88,17 +157,27 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if overlay.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(overlay)
             rendered = overlay.value
-        if destination == c.PYPROJECT_FILENAME:
-            return cls._composed_pyproject_overlay(
-                repository_root,
-                rendered,
-                render_inputs,
-            )
-        if destination != c.Infra.MISE_TOML_FILENAME:
-            return r[m.Infra.CodegenArtifactComposition].ok(
+        composer = {
+            c.PYPROJECT_FILENAME: cls._composed_pyproject_overlay,
+            c.Infra.MISE_TOML_FILENAME: cls._composed_mise_overlay,
+        }.get(destination)
+        composed = (
+            composer(repository_root, rendered, render_inputs)
+            if composer is not None
+            else r[m.Infra.CodegenArtifactComposition].ok(
                 m.Infra.CodegenArtifactComposition(rendered=rendered),
             )
-        return cls._composed_mise_overlay(repository_root, rendered, render_inputs)
+        )
+        if composed.failure:
+            return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
+        captured = FlextInfraCodegenPreconditions.unique_states(
+            (*source_states, *composed.value.source_states),
+        )
+        if captured.failure:
+            return r[m.Infra.CodegenArtifactComposition].from_failure(captured)
+        return r[m.Infra.CodegenArtifactComposition].ok(
+            composed.value.model_copy(update={"source_states": captured.value}),
+        )
 
     @classmethod
     def _composed_gitignore_overlay(
@@ -120,10 +199,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             artifacts = resolved.value.artifacts
         else:
             artifacts = render_inputs.managed_artifacts.resolution.artifacts
+        suffix = u.Infra.gitignore_runtime_suffix(config.Infra.codegen)
+        if suffix.failure:
+            return r[str].from_failure(suffix)
         return u.Infra.preserve_project_gitignore_blocks(
             rendered,
             repository_root,
             artifacts.Gitignore.preserved_blocks,
+            runtime_suffix=suffix.value,
         )
 
     @classmethod
@@ -141,27 +224,27 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         result_type = r[m.Infra.CodegenArtifactComposition]
         live_path = repository_root / c.PYPROJECT_FILENAME
-        live: str | None = None
-        if live_path.is_file():
-            # Overlay reads the live text (managed merge conflicts resolved)
-            # with every owned tool table removed: those tables regenerate
-            # from the owner, so a corrupt owned table never blocks the
-            # render. The live file is never written here.
-            recovered_live = u.Infra.live_pyproject_text(
-                live_path,
-                regenerate_managed_tools=True,
-            )
-            if recovered_live.failure:
-                return result_type.from_failure(recovered_live)
-            live = recovered_live.value
-        overlaid = u.Infra.overlay_preserved(rendered, live)
+        live = cls._live_pyproject_text(repository_root)
+        if live.failure:
+            return result_type.from_failure(live)
+        overlaid = u.Infra.overlay_preserved(rendered, live.value)
         if overlaid.failure:
             return result_type.from_failure(overlaid)
         composed_rendered = overlaid.value
+        source_states: list[m.Cli.AtomicFileState] = []
         if render_inputs is not None:
+            collected = cls._member_declaration_states(
+                repository_root, render_inputs.workspace
+            )
+            if collected.failure:
+                return result_type.from_failure(collected)
+            source_states.extend(collected.value[0])
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
-                render_inputs=render_inputs,
+                target=render_inputs.target,
+                workspace=render_inputs.workspace,
+                codegen=render_inputs.codegen,
+                member_declarations=collected.value[1],
             )
             if conformed.failure:
                 return result_type.from_failure(conformed)
@@ -169,7 +252,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         formatted = u.Infra.format_toml_source(
             composed_rendered,
             path=live_path,
-            toolchain_root=repository_root,
+            toolchain_root=(
+                repository_root
+                if render_inputs is None
+                else render_inputs.target.toolchain_root
+            ),
             taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
         )
         if formatted.failure:
@@ -178,11 +265,118 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         # this composition owner publishes the one generated-file header
         # (owner, adjustment rule, regeneration verb) on the final bytes.
         # A re-run reads the live file as data, so it never accumulates.
+        # The render-provenance line names the running generator's version:
+        # drift reports can then state both sides (rendered-by vs consumed)
+        # instead of a bare byte diff (aihub-l42it.11 consolidation postmortem).
+
         return result_type.ok(
             m.Infra.CodegenArtifactComposition(
-                rendered=f"{c.Infra.BANNER}\n{formatted.value.lstrip()}",
+                rendered=(
+                    f"{c.Infra.BANNER}"
+                    f"{cls.rendered_by_stamp()}\n"
+                    f"{formatted.value.lstrip()}"
+                ),
+                source_states=tuple(source_states),
             ),
         )
+
+    @classmethod
+    def _live_pyproject_text(cls, repository_root: Path) -> p.Result[str | None]:
+        """Read the live pyproject text with owned tool tables regenerated.
+
+        Args:
+            repository_root: The repository root holding the live pyproject.
+
+        Returns:
+            The recovered live text, or ``None`` when no live file exists.
+
+        """
+        live_path = repository_root / c.PYPROJECT_FILENAME
+        if not live_path.is_file():
+            return r[str | None].ok(None)
+        # Overlay reads the live text (managed merge conflicts resolved)
+        # with every owned tool table removed: those tables regenerate
+        # from the owner, so a corrupt owned table never blocks the
+        # render. The live file is never written here.
+        recovered_live = u.Infra.live_pyproject_text(
+            live_path,
+            regenerate_managed_tools=True,
+        )
+        if recovered_live.failure:
+            return r[str | None].from_failure(recovered_live)
+        return r[str | None].ok(recovered_live.value)
+
+    @classmethod
+    def _member_declaration_states(
+        cls,
+        repository_root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> p.Result[
+        t.Pair[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
+        """Collect workspace member declarations for pyproject conforming.
+
+        Args:
+            repository_root: The repository root holding the lock file.
+            workspace: The workspace declaration electing packaged members.
+
+        Returns:
+            The collected source states with their member declarations, or
+            the first read failure. The pair is empty when the repository
+            declares no workspace role or elects no packaged members.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.VariadicTuple[m.Cli.AtomicFileState],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+            ]
+        ]
+        members = (
+            tuple(member for member in workspace.subprojects if member.package)
+            if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
+            else ()
+        )
+        if not members:
+            return result_type.ok(((), ()))
+
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return result_type.from_failure(context)
+        locked = u.Cli.atomic_read_binary_file_state(
+            context.value.lock_path,
+            required=False,
+        )
+        if locked.failure:
+            return result_type.from_failure(locked)
+        source_states: list[m.Cli.AtomicFileState] = [locked.value]
+        declarations: list[m.Cli.AtomicFileState] = []
+        for member in members:
+            declaration = (
+                FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+                    repository_root,
+                    member,
+                    lock_state=locked.value,
+                )
+            )
+            if declaration.failure:
+                return result_type.from_failure(declaration)
+            declarations.append(declaration.value)
+            source_states.append(declaration.value)
+        return result_type.ok((tuple(source_states), tuple(declarations)))
+
+    @classmethod
+    def rendered_by_stamp(cls) -> str:
+        """Return the render-provenance line for the running generator.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        return f"{c.Infra.RENDERED_BY_MARKER}{__version__}"
 
     @classmethod
     def _composed_mise_overlay(
@@ -238,7 +432,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         destination: str,
         failure_prefix: str,
         project_context: m.Infra.ProjectRenderContext | None,
-    ) -> p.Result[str]:
+    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Resolve one artifact render context and render its template source.
 
         ``failure_prefix`` carries the only difference between the scaffold and
@@ -246,7 +440,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         prepends to a render failure.
 
         Returns:
-            The resulting ``p.Result[str]``.
+            Rendered content and the exact templates consumed by Jinja.
 
         """
         artifact_context = self._artifact_render_context(
@@ -255,18 +449,84 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             project_context=project_context,
         )
         if artifact_context.failure:
-            return r[str].from_failure(artifact_context)
-        rendered = u.Cli.template_render(
-            u.Infra.codegen_templates_root(render_inputs.codegen) / template_relpath,
+            return r[m.Infra.CodegenArtifactComposition].from_failure(artifact_context)
+        template_path = (
+            u.Infra.codegen_templates_root(render_inputs.codegen) / template_relpath
+        )
+        rendered = u.Cli.template_render_authenticated(
+            template_path,
             artifact_context.value,
         )
         if rendered.failure:
-            return r[str].fail(
-                f"{failure_prefix}"
-                f"template={template_relpath}: "
-                f"{rendered.error or 'template render failed'}",
+            return r[m.Infra.CodegenArtifactComposition].from_failure(rendered)
+        primary = next(
+            (
+                source
+                for source in rendered.value.source_states
+                if source.path == template_path.expanduser().absolute()
+            ),
+            None,
+        )
+        if primary is None or primary.content is None:
+            return r[m.Infra.CodegenArtifactComposition].fail(
+                f"authenticated template has no captured primary source: "
+                f"{template_path}",
             )
-        return rendered
+        return self._require_rendered_content(
+            rendered.value.rendered,
+            template_relpath=template_relpath,
+            destination=destination,
+            failure_prefix=failure_prefix,
+            template_source=primary.content.decode(c.DEFAULT_ENCODING),
+        ).map(
+            lambda content: m.Infra.CodegenArtifactComposition(
+                rendered=content,
+                source_states=rendered.value.source_states,
+            ),
+        )
+
+    @staticmethod
+    def _require_rendered_content(
+        content: str,
+        *,
+        template_relpath: Path,
+        destination: str,
+        failure_prefix: str = "",
+        template_source: str | None = None,
+    ) -> p.Result[str]:
+        """Refuse to publish a successful render that produced no content.
+
+        A template whose condition renders the whole body away (for example a
+        workflow fragment gated on an undeclared capability layer) would
+        otherwise surface as a 0-byte artifact — indistinguishable from a
+        fragment with nothing to do, silently dropping the steps a consumer
+        believes it selected. An empty render is a declaration error: the
+        consumer must declare the layer or retire the selection, and the
+        generator must fail loud instead of writing the empty file.
+
+        A template that is empty at its source declares a static artifact with
+        no content of its own (the PEP 561 ``py.typed`` marker); there is no
+        condition to render away, so its empty render is the declared content.
+        Only a non-empty source that rendered empty is the declaration error
+        this guard exists to catch.
+
+        Returns:
+            The resulting ``p.Result[str]``.
+
+        """
+        if content.strip():
+            return r[str].ok(content)
+        if template_source is not None and not template_source.strip():
+            return r[str].ok(content)
+        return r[str].fail(
+            f"{failure_prefix}"
+            f"template={template_relpath}: destination={destination}: "
+            "render produced no content: the template condition rendered "
+            "empty, which is a consumer declaration error (a selected "
+            "artifact whose data layer is undeclared); declare the missing "
+            "layer or retire the selection — publishing a 0-byte artifact "
+            "is forbidden",
+        )
 
     def _artifact_render_context(
         self,
@@ -281,21 +541,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The resulting ``p.Result[p.Model]``.
 
         """
-        repository_context = self._repo_config_context(render_inputs, destination)
-        if repository_context is not None:
-            return repository_context
-        static_context = self._static_spec_context(render_inputs, destination)
-        if static_context is not None:
-            return static_context
-        beads_context = self._beads_context(render_inputs, destination)
-        if beads_context is not None:
-            return beads_context
-        github_context = self._github_context(render_inputs, destination)
-        if github_context is not None:
-            return github_context
-        makefile_context = self._makefile_group_context(render_inputs, destination)
-        if makefile_context is not None:
-            return makefile_context
+        for resolver in (
+            self._repo_config_context,
+            self._static_spec_context,
+            self._beads_context,
+            self._github_context,
+            self._makefile_group_context,
+        ):
+            context = resolver(render_inputs, destination)
+            if context is not None:
+                return context
         return self._project_or_pass_context(render_inputs, project_context)
 
     def _repo_config_context(
@@ -366,6 +621,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # A repository without one must not render ledger activation.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
+                    toolchain=codegen.toolchain,
+                    uv_resolution=codegen.make.uv_resolution,
                     repository_root_rel=self._repository_root_rel(workspace),
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends
@@ -531,9 +788,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         return r[p.Model].ok(
             m.Infra.GithubWorkflowRenderSpec(
                 dist=dist,
-                owns_workspace_manifest=(
-                    repository_root / "config/workspace.yaml"
-                ).is_file(),
+                gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
+                setup_operations_report_directory=(
+                    c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
+                ),
                 make_profile=target.make_profile,
                 gascity_enabled=target.gascity_enabled,
                 repository_branch=branch,
@@ -545,6 +803,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 ),
                 python_version=codegen.toolchain.python_version,
                 github_actions=codegen.github_actions,
+                toolchain=codegen.toolchain,
                 make=codegen.make,
                 workspace_repositories=workspace_repositories,
                 # Why: dependabot.yml.j2 branches on this and the model
@@ -632,35 +891,55 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The resulting ``p.Result[m.Infra.MakefileRenderSpec]``.
 
         """
-        gitlinks = self._managed_gitlinks(
-            workspace,
-            codegen,
-            repository_root=target.root,
-        )
-        if gitlinks.failure:
-            return r[m.Infra.MakefileRenderSpec].from_failure(gitlinks)
         pytest = config.Infra.tooling.tools.pytest
         run_timeout_seconds = pytest.run_timeout_overrides.get(
             target.canonical_project_name,
             pytest.run_timeout_seconds,
         )
+        order = (
+            u.Infra.workspace_dependency_order(target.root, workspace.subprojects)
+            if target.make_profile is c.Infra.MakeProfile.WORKSPACE
+            else ()
+        )
         return r[m.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
+                bootstrap_report_shell_literal=(
+                    u.Infra.bootstrap_operation_report_shell_literal()
+                ),
+                bootstrap_report_relative_path=(
+                    c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
+                ),
                 pytest=pytest,
                 dist=target.repository.distribution,
                 infra_cli=config.Infra.name,
+                examples_module=target.repository.examples_module,
                 make_profile=target.make_profile,
                 package=target.repository.package,
+                workspace_repositories=(
+                    tuple(
+                        sorted(
+                            workspace.subprojects,
+                            key=lambda repository: order.index(
+                                repository.distribution,
+                            ),
+                        ),
+                    )
+                    if target.make_profile is c.Infra.MakeProfile.WORKSPACE
+                    else ()
+                ),
+                environment_imports=self._declared_environment_imports(
+                    target, workspace
+                ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 repository_root_rel=self._repository_root_rel(workspace),
                 workspace_subprojects=tuple(
                     item.path.as_posix() for item in workspace.subprojects
                 ),
-                workspace_gitlinks=gitlinks.value,
                 uv_link_mode=self.link_mode(target.repository, codegen.toolchain),
                 mise_selector=codegen.toolchain.mise_selector,
                 mise_version=codegen.toolchain.mise_version,
                 mise_install_tools=codegen.toolchain.mise_install_keys,
+                toolchain=codegen.toolchain,
                 python_version=codegen.toolchain.python_version,
                 make=codegen.make,
                 extra_verbs=(

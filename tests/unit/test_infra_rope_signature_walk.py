@@ -1,4 +1,4 @@
-"""Behavior tests for the rope signature patched-AST handlers.
+"""Behavior tests for native Rope signature and nested expression refactoring.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,30 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
-from flext_tests import tm
-from rope.refactor import patchedast
-
+from flext_infra import m
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-
-class TestsFlextInfraPatchableNode(ast.Name):
-    """AST node carrying the fields the patched-AST writer attaches at runtime.
-
-    The fork's ``patch_ast`` sets ``sorted_children`` as a dynamic field, so
-    the test declares that contract locally instead of reviving the deleted
-    monkeypatch protocols.
-    """
-
-    __test__ = False
-
-    sorted_children: list[ast.expr | str]
 
 
 class TestsFlextInfraRopeSignaturePatch:
@@ -113,7 +97,7 @@ class TestsFlextInfraRopeSignaturePatch:
         )
         module_path = package_root / "quoted.py"
         source = (
-            "def render(values: dict[str, str]) -> str:\n"
+            "def render(values: t.StrDict) -> str:\n"
             '    return f"value={values["name"]}"\n'
         )
         module_path.write_text(source, encoding="utf-8")
@@ -146,11 +130,11 @@ class TestsFlextInfraRopeSignaturePatch:
         )
         module_path = package_root / "quoted_rename.py"
         source = (
-            "def render(values: dict[str, str]) -> str:\n"
+            "def render(values: t.StrDict) -> str:\n"
             '    return f"value={values["name"].upper()}"\n'
         )
         expected = (
-            "def render(items: dict[str, str]) -> str:\n"
+            "def render(items: t.StrDict) -> str:\n"
             '    return f"value={items["name"].upper()}"\n'
         )
         module_path.write_text(source, encoding="utf-8")
@@ -165,7 +149,7 @@ class TestsFlextInfraRopeSignaturePatch:
                 resource,
                 source.index("values["),
                 "items",
-                resources=(resource,),
+                options=m.Infra.RopeRenameOptions(resources=(resource,)),
             )
             rope.rope_project.do(changes)
             rewritten = resource.read()
@@ -206,7 +190,7 @@ class TestsFlextInfraRopeSignaturePatch:
                 resource,
                 source.index("widths:"),
                 "sizes",
-                resources=(resource,),
+                options=m.Infra.RopeRenameOptions(resources=(resource,)),
             )
             rope.rope_project.do(changes)
             rewritten = resource.read()
@@ -214,21 +198,30 @@ class TestsFlextInfraRopeSignaturePatch:
         tm.that(rewritten, eq=expected)
 
     @staticmethod
-    def test_write_ast_keeps_nested_generator_name_mutation() -> None:
-        """Sorted children expose names below positionless comprehension nodes."""
-        source = 'rendered = f"{next(width for width in widths)}"\n'
-        tree = patchedast.get_patched_ast(source, sorted_children=True)
-        widths = next(
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Name) and node.id == "widths"
-        )
-        # The patched AST carries `sorted_children` as a dynamically attached
-        # field: the fork's patch_ast sets it at runtime, so the test writes
-        # it the same way instead of through a typing-only wrapper.
-        patchable = cast("TestsFlextInfraPatchableNode", widths)
-        patchable.sorted_children = ["sizes"]
+    def test_rename_keeps_nested_generator_bindings(tmp_path: Path) -> None:
+        """Native rename follows the iterable without changing the generator local.
 
-        rendered = patchedast.write_ast(tree)
+        Raises:
+            AssertionError: If Rope did not resolve the nested generator resource.
 
-        tm.that(rendered, eq=source.replace("widths", "sizes"))
+        """
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        module_path = package_root / "nested_generator.py"
+        source = 'widths = (1, 2)\nrendered = f"{next(width for width in widths)}"\n'
+        expected = 'sizes = (1, 2)\nrendered = f"{next(width for width in sizes)}"\n'
+        module_path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+            resource = rope.resource(module_path)
+            if resource is None:
+                msg = "Rope did not resolve the nested generator resource"
+                raise AssertionError(msg)
+            changes = u.Infra.rename_changes(
+                rope.rope_project,
+                resource,
+                source.index("widths"),
+                "sizes",
+                options=m.Infra.RopeRenameOptions(resources=(resource,)),
+            )
+            rope.rope_project.do(changes)
+            rendered = resource.read()
+        tm.that(rendered, eq=expected)

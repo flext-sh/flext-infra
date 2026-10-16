@@ -9,11 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import u
+from flext_infra import config
+from flext_infra.workspace import FlextInfraRopeWorkspace
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,6 +20,71 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeSnapshot:
     """Validate the closed snapshot inventory against governed entry files."""
+
+    @staticmethod
+    def test_module_lookup_uses_declared_source_roots(tmp_path: Path) -> None:
+        """Unrelated root packages never expand live or snapshot import roots."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        unrelated = repository_root / "unrelated"
+        module_path = package_root / "declared.py"
+        source = "value = 1\n"
+        module_path.write_text(source, encoding="utf-8")
+        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+            project = rope.rope_project
+            source_roots = tuple(
+                folder.real_path for folder in project.get_source_folders()
+            )
+            unrelated.mkdir()
+            (unrelated / "__init__.py").write_text("", encoding="utf-8")
+            tm.that(
+                tuple(folder.real_path for folder in project.get_source_folders()),
+                eq=source_roots,
+            )
+            tm.that(str(unrelated) in source_roots, eq=False)
+            package = tm.not_none(project.find_module("unrelated"))
+            tm.that(package.is_folder(), eq=True)
+            tm.that(package.real_path, eq=str(unrelated))
+            resource = tm.not_none(project.find_module("flext_demo.declared"))
+            tm.that(resource.real_path, eq=str(module_path))
+            snapshot = u.Infra.snapshot_project(project, {module_path: source})
+            try:
+                tm.that(
+                    tuple(folder.real_path for folder in snapshot.get_source_folders()),
+                    eq=source_roots,
+                )
+                captured_package = tm.not_none(snapshot.find_module("unrelated"))
+                tm.that(captured_package.is_folder(), eq=True)
+                tm.that(captured_package.real_path, eq=package.real_path)
+                captured = u.Infra.require_file_resource(
+                    tm.not_none(snapshot.find_module("flext_demo.declared")),
+                    module_path,
+                )
+                tm.that(captured.read(), eq=source)
+            finally:
+                snapshot.close()
+
+    @staticmethod
+    @pytest.mark.parametrize("root_name", config.Infra.source_scan.roots)
+    def test_declared_package_root_keeps_qualified_imports(
+        tmp_path: Path,
+        root_name: str,
+    ) -> None:
+        """A configured scan root that is itself a package keeps its identity."""
+        repository_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        declared_package = repository_root / root_name
+        declared_package.mkdir(exist_ok=True)
+        (declared_package / "__init__.py").write_text("", encoding="utf-8")
+        module_path = declared_package / "declared.py"
+        module_path.write_text("value = 1\n", encoding="utf-8")
+        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+            resource = tm.not_none(
+                rope.rope_project.find_module(f"{root_name}.declared"),
+            )
+            tm.that(resource.real_path, eq=str(module_path))
 
     @staticmethod
     def test_snapshot_serves_project_root_entry_module(tmp_path: Path) -> None:
@@ -49,7 +113,7 @@ class TestsFlextInfraRopeSnapshot:
             snapshot = u.Infra.snapshot_project(rope.rope_project, sources)
             try:
                 resource = snapshot.get_resource("conftest.py")
-                if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
+                if not u.Infra.file_resource(resource):
                     msg = "expected a Rope file resource: conftest.py"
                     raise TypeError(msg)
                 tm.that(resource.read(), eq=sources[conftest.resolve()])

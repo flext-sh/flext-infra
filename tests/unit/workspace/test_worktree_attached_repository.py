@@ -8,29 +8,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import FlextInfraWorktreeService
-from tests import c, m, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
     """Exercise Git's primary registry for an attached repository."""
 
-    def test_attached_submodule_uses_one_primary_local_container(
+    def test_attached_submodule_keeps_branch_and_registry_admission_distinct(
         self,
         tmp_path: Path,
     ) -> None:
-        """An attached member is its own primary and owns one lane container.
+        """Missing branch authority and missing primary identity remain distinct.
 
         ADD on a member whose ``.gitmodules`` entry declares no branch is
         refused by lane admission (no integration line to bind). The lane is
         therefore registered natively at the canonical path derived from the
-        member's own primary root. REMOVE resolves that lane from the member's
-        registry, then retirement admission, which inspects the registry from
-        the lane itself, fails closed: from a linked lane Git lists the
-        member's storage directory as the primary row and the primary checkout
-        cannot be proven, so the lane stays on disk.
+        member's own primary root. Listing from this linked lane cannot prove
+        the storage-only primary row without ``core.worktree``. REMOVE refuses
+        the absent integration branch before reaching that linked registry
+        boundary. Neither refusal removes the lane.
         """
         child_source = tmp_path / "child-source"
         child_source.mkdir()
@@ -115,12 +112,18 @@ class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
             eq=True,
         )
         tm.fail(
+            u.Infra.git_list_worktrees(
+                m.Infra.GitRepoRequest(repo_root=expected_lane),
+            ),
+            has="primary checkout is unproven for storage-only registry row",
+        )
+        tm.fail(
             FlextInfraWorktreeService(
                 repository_root=attached,
                 operation=c.Infra.WorktreeOperation.REMOVE,
                 branch=branch,
                 apply_changes=True,
             ).execute(),
-            has="primary checkout is unproven for storage-only registry row",
+            has="Git submodule branch is missing: attached",
         )
         tm.that(expected_lane.is_dir(), eq=True)

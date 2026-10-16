@@ -11,8 +11,9 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import config, t
+from flext_infra import c, config, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCorePyModuleMixin,
     FlextInfraUtilitiesRopeCoreResourcesMixin,
@@ -75,13 +76,23 @@ class FlextInfraUtilitiesRopeCore(
             The resulting ``t.Infra.RopeProject``.
 
         """
-        source_folders = sorted({
-            str(scan_path.relative_to(resolved_root))
-            for project_root in project_roots
-            for dir_name in config.Infra.source_scan.roots
-            if (scan_path := project_root / dir_name).is_dir()
-            and scan_path.resolve().is_relative_to(resolved_root)
-        })
+        source_folders = sorted(
+            {
+                str(scan_path.relative_to(resolved_root))
+                for project_root in project_roots
+                for dir_name in config.Infra.source_scan.roots
+                if (scan_path := project_root / dir_name).is_dir()
+                and scan_path.resolve().is_relative_to(resolved_root)
+            }
+            | {
+                ""
+                if project_root == resolved_root
+                else str(project_root.relative_to(resolved_root))
+                for project_root in project_roots
+                if project_root.is_dir()
+                and project_root.resolve().is_relative_to(resolved_root)
+            },
+        )
         return FlextInfraUtilitiesRopeRuntime.new_project(
             str(resolved_root),
             ropefolder="",
@@ -93,12 +104,58 @@ class FlextInfraUtilitiesRopeCore(
                     name
                     for name, module in tuple(sys.modules.items())
                     if name.partition(".")[0] in sys.stdlib_module_names
-                    and module is not None
                     and module.__spec__ is not None
                     and module.__spec__.origin == "frozen"
                 ),
             ),
         )
+
+    @staticmethod
+    def import_project_roots(source_root: Path) -> t.VariadicTuple[Path]:
+        """Resolve the declared source graph containing one import consumer.
+
+        Returns:
+            The containing workspace and its members, or the standalone root.
+
+        Raises:
+            ValueError: If the containing workspace declaration is invalid.
+
+        """
+        resolved = source_root.resolve()
+        for parent in (resolved, *resolved.parents):
+            if not (parent / c.Infra.GITMODULES).exists():
+                continue
+            declarations = FlextInfraUtilitiesGit.git_submodule_declarations(parent)
+            if declarations.failure:
+                raise ValueError(declarations.error or "invalid .gitmodules")
+            members = tuple(parent / item.path for item in declarations.value)
+            if members and (
+                resolved == parent
+                or any(resolved.is_relative_to(member.resolve()) for member in members)
+            ):
+                return (parent, *members)
+        standalone = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            Path(resolved.anchor), resolved
+        )
+        return (standalone if standalone is not None else resolved,)
+
+    @staticmethod
+    @contextmanager
+    def open_import_project(source_root: Path) -> Generator[t.Infra.RopeProject]:
+        """Resolve imports against the containing declared workspace, if attached.
+
+        Invalid workspace declarations propagate from the declaration reader.
+
+        Yields:
+            A source-scoped project or its declared workspace import graph.
+
+        """
+        roots = FlextInfraUtilitiesRopeCore.import_project_roots(source_root)
+        with FlextInfraUtilitiesRopeCore.open_project(
+            roots[0],
+            project_roots=roots,
+        ) as project:
+            yield project
 
     @staticmethod
     @contextmanager

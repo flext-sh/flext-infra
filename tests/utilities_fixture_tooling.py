@@ -9,18 +9,207 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+import time
 from pathlib import Path
 from textwrap import indent
 
-from flext_tests import tm
-
 from flext_infra import config, u
-from tests import c, m, p, t
+from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
+from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
 
 class TestsFlextInfraUtilitiesToolingFixtureMixin:
     """Executable, Make, and toolchain-environment fixture helpers."""
+
+    class PytestRunner:
+        """Own the public runner fixtures shared by runtime validation tests."""
+
+        @staticmethod
+        def runner_for(
+            cached_runner_project: Path,
+            *,
+            ci_context: bool = False,
+            profile_collection: bool = False,
+            slow_phase: bool = False,
+            target_file: Path | None = None,
+        ) -> FlextInfraPytestRunner:
+            """Bind a runner to its config-owned persistent cache and reports.
+
+            Returns:
+                The runner bound to the fixture's own cache and reports.
+
+            """
+            cache = config.Infra.codegen.make.testmon_cache
+            testmon_db = (
+                cached_runner_project.parent
+                / ".testmon-cache"
+                / cached_runner_project.name
+                / cache.database_filename
+            )
+            testmon_db.parent.mkdir(parents=True, exist_ok=True)
+            return FlextInfraPytestRunner(
+                repository_root=cached_runner_project,
+                ci_context=ci_context,
+                collection_command_prefix=(
+                    (sys.executable, "-c", c.Infra.PYTEST_PROFILE_LAUNCHER)
+                    if profile_collection
+                    else ()
+                ),
+                started_at_monotonic=time.monotonic(),
+                target=cache.target_directory,
+                target_file=target_file,
+                reports=cache.reports_directory,
+                testmon_db=testmon_db,
+                slow_phase=slow_phase,
+            )
+
+        @staticmethod
+        def declared_project_runner(
+            project_root: Path,
+            name: str,
+        ) -> FlextInfraPytestRunner:
+            """Declare the fixture identity before constructing its runner.
+
+            Returns:
+                The runner consuming the declared project identity.
+
+            """
+            pyproject = project_root / c.PYPROJECT_FILENAME
+            pyproject.write_text(
+                pyproject.read_text(encoding=c.DEFAULT_ENCODING)
+                + f'\n[project]\nname = "{name}"\nversion = "0.1.0"\n',
+                encoding=c.DEFAULT_ENCODING,
+            )
+            return TestsFlextInfraUtilitiesToolingFixtureMixin.PytestRunner.runner_for(
+                project_root,
+            )
+
+        @staticmethod
+        def declare_parallel_project(project_root: Path) -> None:
+            """Select the fixture identity from the configured worker policy."""
+            policy = config.Infra.tooling.tools.pytest
+            parallel_project = next(
+                name
+                for name, ceiling in policy.parallel_worker_overrides.items()
+                if (isinstance(ceiling, int) and ceiling > 1)
+                or (
+                    not isinstance(ceiling, int)
+                    and ceiling.workers is not None
+                    and ceiling.workers > 1
+                )
+            )
+            pyproject = project_root / c.PYPROJECT_FILENAME
+            pyproject.write_text(
+                f'[project]\nname = "{parallel_project}"\nversion = "0.0.0"\n'
+                + pyproject.read_text(encoding=c.DEFAULT_ENCODING),
+                encoding=c.DEFAULT_ENCODING,
+            )
+            runner = (
+                TestsFlextInfraUtilitiesToolingFixtureMixin.PytestRunner.runner_for(
+                    project_root,
+                )
+            )
+            tm.that(runner.parallel_worker_budget(policy) > 1, eq=True)
+
+        @staticmethod
+        def profile_parent(
+            runner: FlextInfraPytestRunner,
+            output: Path,
+            *,
+            target_file: Path | None = None,
+        ) -> int:
+            """Exercise the real profiling entry with the Make-owned inputs.
+
+            Returns:
+                The native profiling entry's successful return code.
+
+            Raises:
+                RuntimeError: If the profiling entry fails.
+
+            """
+            output.parent.mkdir(parents=True, exist_ok=True)
+            policy = config.Infra.tooling.tools.pytest
+            cache = config.Infra.codegen.make.testmon_cache
+            log = output.with_suffix(".log")
+            outcome = tm.ok(
+                u.Cli.run_to_file(
+                    (
+                        sys.executable,
+                        "-m",
+                        "flext_infra._pytest_entry",
+                        "profile",
+                        str(output),
+                    ),
+                    log,
+                    cwd=runner.root,
+                    options=m.Cli.ProcessOptions(
+                        env=u.Cli.process_env(
+                            overrides={
+                                c.Infra.PYTEST_ENV_TARGET: str(runner.target),
+                                c.Infra.PYTEST_ENV_TARGET_FILE: str(
+                                    target_file
+                                    if target_file is not None
+                                    else runner.target_file or "",
+                                ),
+                                c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
+                                cache.database_environment_variable: str(
+                                    runner.testmon_db,
+                                ),
+                            },
+                        ),
+                        deadline=m.Cli.ProcessDeadline(
+                            expires_at_monotonic=(
+                                runner.started_at_monotonic + policy.run_timeout_seconds
+                            ),
+                            termination_grace_seconds=policy.termination_grace_seconds,
+                        ),
+                    ),
+                ),
+            )
+            if not u.Cli.process_succeeded(outcome):
+                raise RuntimeError(log.read_text(encoding=c.DEFAULT_ENCODING))
+            return outcome.raw_return_code
+
+        @staticmethod
+        def profile_collection(
+            output: Path,
+            arguments: t.StrTuple,
+        ) -> p.Cli.CommandOutput:
+            """Use the real child launcher from the configured profiling runner.
+
+            Returns:
+                The native launcher command output.
+
+            """
+            return tm.ok(
+                u.Cli.run_raw(
+                    (
+                        sys.executable,
+                        "-c",
+                        c.Infra.PYTEST_PROFILE_LAUNCHER,
+                        str(output),
+                        *arguments,
+                    ),
+                    cwd=output.parent,
+                    timeout=config.Infra.tooling.tools.pytest.run_timeout_seconds,
+                ),
+            )
+
+        @staticmethod
+        def summary(reports_root: Path) -> str:
+            """Read the latest native report summary through the files facade.
+
+            Returns:
+                The contents of the latest published summary.
+
+            """
+            latest_name = tm.ok(
+                u.Cli.files_read_text(reports_root / "latest.txt"),
+            ).strip()
+            return tm.ok(
+                u.Cli.files_read_text(reports_root / latest_name / "summary.txt"),
+            )
 
     @staticmethod
     def mypy_deadline_limit() -> m.Infra.MypyResourceLimit:
@@ -53,7 +242,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 snapshot.stderr``.
 
         """
-        pid = pid_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        pid = pid_file.read_text(encoding=c.DEFAULT_ENCODING)
         snapshot = u.Cli.run_raw(
             ("/bin/ps", "-p", str(int(pid)), "-o", "stat="),
             timeout=timeout,
@@ -73,7 +262,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
         """
         source = root / "checked.py"
-        source.write_text("value: int = 1\n", encoding=c.Cli.ENCODING_DEFAULT)
+        source.write_text("value: int = 1\n", encoding=c.DEFAULT_ENCODING)
         config_file = root / "mypy.ini"
         # The workload checks through the governed checker settings, so its
         # crash reporting (show_traceback) matches every managed project.
@@ -91,15 +280,19 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 "def plugin(version: str) -> type[Plugin]:\n"
                 + indent(plugin_body, "    ")
                 + "\n    return Plugin\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             config_source += f"plugins = {plugin}\n"
-        config_file.write_text(config_source, encoding=c.Cli.ENCODING_DEFAULT)
+        config_file.write_text(config_source, encoding=c.DEFAULT_ENCODING)
         return m.Infra.MypyInvocation(targets=(source,), config_file=config_file)
 
     @staticmethod
-    def create_python_environment(root: Path) -> p.Result[bool]:
-        """Provision a physical fixture environment with the current interpreter.
+    def create_python_environment(
+        root: Path,
+        *,
+        dependency_projects: t.SequenceOf[Path] = (),
+    ) -> p.Result[bool]:
+        """Provision a physical fixture environment and declared local dependencies.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -107,8 +300,46 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         """
         environment = u.Infra.runtime_environment_dir(root)
         environment.parent.mkdir(parents=True, exist_ok=True)
-        return u.Cli.run_checked(
+        created = u.Cli.run_checked(
             ["uv", "venv", "--python", sys.executable, str(environment)],
+            cwd=root,
+        )
+        if created.failure or not dependency_projects:
+            return created
+        return u.Cli.run_checked(
+            (
+                c.Infra.UV,
+                "pip",
+                "install",
+                "--python",
+                str(environment),
+                *(str(project) for project in dependency_projects),
+            ),
+            cwd=root,
+        )
+
+    @classmethod
+    def provision_python_project_environment(cls, root: Path) -> p.Result[bool]:
+        """Provision a fixture interpreter and its real editable project.
+
+        Returns:
+            The installation result or the original environment failure.
+
+        """
+        created = cls.create_python_environment(root)
+        if created.failure:
+            return r[bool].from_failure(created)
+        return u.Cli.run_checked(
+            (
+                c.Infra.UV,
+                "pip",
+                "install",
+                "--no-deps",
+                "--python",
+                str(u.Infra.runtime_environment_dir(root)),
+                "--editable",
+                str(root),
+            ),
             cwd=root,
         )
 
@@ -204,7 +435,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
     def write_executable(path: Path, body: str) -> None:
         """Write one executable fixture with deterministic permissions."""
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(body, encoding=c.Cli.ENCODING_DEFAULT)
+        path.write_text(body, encoding=c.DEFAULT_ENCODING)
         path.chmod(0o755)
 
     @staticmethod
@@ -219,6 +450,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 config_path,
+                f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
                 f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\ntestConfigs: []\n",
             ),
         )

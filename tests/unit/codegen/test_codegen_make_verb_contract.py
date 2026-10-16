@@ -9,9 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from tests import c, m, u
+from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
@@ -41,7 +40,13 @@ class TestsFlextInfraCodegenMakeVerbContract:
     @staticmethod
     @pytest.mark.parametrize(
         ("verb", "selector"),
-        [("upg", "OPTIONS=Y"), ("upg", "OPTIONS=yes"), ("check", "HELP=1")],
+        [
+            ("upg", "OPTIONS=Y"),
+            ("upg", "OPTIONS=yes"),
+            ("check", "HELP=1"),
+            ("profile-mod", "OPTIONS=Y"),
+            ("profile-mod-report", "OPTIONS=Y"),
+        ],
     )
     def test_contract_selector_displays_the_verb_without_effects(
         infra_git_repo: Path,

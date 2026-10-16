@@ -9,10 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraEnsureRuffConfigPhase
-from tests import m, t, u
+from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
+from tests import m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -146,7 +145,6 @@ class TestsFlextInfraDepsModernizerTooling:
                 ),
             ),
             eq=sorted({
-                *tool_config_document.tools.deptry.known_first_party,
                 "flext_sample",
             }),
         )

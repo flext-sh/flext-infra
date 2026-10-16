@@ -10,8 +10,11 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import FlextInfraMiseWorkspacePlanner, c, m, r, t, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra import c, m, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
+    FlextInfraMiseWorkspacePlanner,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -30,16 +33,19 @@ class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
             ),
         ),
     ] = False
+    scope: Annotated[
+        c.Infra.CodegenConformScope,
+        m.Field(
+            description="Validate this root or all Git-declared repository roots",
+        ),
+    ] = c.Infra.CodegenConformScope.SELF
 
     @staticmethod
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:
         source = u.Cli.files_read_text(path)
         if source.failure:
             return r[t.JsonMapping].from_failure(source)
-        payload = u.Cli.toml_mapping_from_text(source.value)
-        if payload is None:
-            return r[t.JsonMapping].fail(f"invalid TOML in {path.name}")
-        return r[t.JsonMapping].ok(payload)
+        return u.Cli.toml_mapping_from_text_result(source.value)
 
     @staticmethod
     def _tool_version(raw_tool: t.JsonValue) -> str | None:
@@ -115,6 +121,7 @@ class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
 
         Returns:
             The TOML consumer's first failure or the validated declaration.
+
         """
         config_result = cls._read_toml(path)
         if config_result.failure:
@@ -149,13 +156,39 @@ class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
             The resulting ``p.Result[bool]``.
 
         """
-        declared = self._validate_config(self.repository_root)
+        declared = u.Infra.repository_operation_batch(
+            self.repository_root,
+            self.scope,
+            "mise-artifacts",
+            self._validate_repository,
+        )
         if declared.failure or self.config_only:
-            return declared
+            return (
+                r[bool].from_failure(declared)
+                if declared.failure
+                else r[bool].ok(value=True)
+            )
         runtime_root = FlextInfraMiseWorkspacePlanner(self).scope_root()
         if runtime_root.failure:
             return r[bool].from_failure(runtime_root)
-        return declared
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _validate_repository(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Validate the original declaration and retain its actual file identity.
+
+        Returns:
+            The file read by the native TOML validator, or its original failure.
+
+        """
+        path = repository_root / c.Infra.CONFIG_SPEC[0]
+        validated = cls.validate_config_file(path)
+        if validated.failure:
+            return r[t.SequenceOf[Path]].from_failure(validated)
+        return r[t.SequenceOf[Path]].ok((path,))
 
 
 __all__: list[str] = ["FlextInfraCodegenMiseArtifacts"]

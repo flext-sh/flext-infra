@@ -7,24 +7,58 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import importlib
 import importlib.util
 import sys
 from pathlib import Path
-
-from rope.base import exceptions
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope_source_bases_inventory import (
     FlextInfraUtilitiesRopeSourceBasesInventory,
 )
 
 
 class FlextInfraUtilitiesRopeSourceBasesRuntime:
     """Qualified runtime-base resolution and linearization."""
+
+    @staticmethod
+    def merge_class_lineages[TIdentity: str | t.Pair[str, str]](
+        lineages: t.SequenceOf[t.SequenceOf[TIdentity]],
+        *,
+        message: str,
+    ) -> t.VariadicTuple[TIdentity]:
+        """Merge declared ancestor sequences using their C3 ordering.
+
+        Returns:
+            The consistent ordered ancestors.
+
+        Raises:
+            ValueError: If no consistent ordering exists.
+
+        """
+        sequences = [list(lineage) for lineage in lineages]
+        result: list[TIdentity] = []
+        while any(sequences):
+            candidate = next(
+                (
+                    sequence[0]
+                    for sequence in sequences
+                    if sequence
+                    and all(sequence[0] not in other[1:] for other in sequences)
+                ),
+                None,
+            )
+            if candidate is None:
+                raise ValueError(message)
+            result.append(candidate)
+            for sequence in sequences:
+                if sequence and sequence[0] == candidate:
+                    sequence.pop(0)
+        return tuple(result)
 
     class _RuntimeBaseResolver:
         """Resolve owned classes in C3 order and external classes through Rope.
@@ -57,17 +91,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._sources = sources
             self._roots = roots
             self._extra_module_aliases = extra_module_aliases
-            self._definitions: dict[str, m.Infra.SourceClassDefinition] = {}
-            self._modules: dict[
+            self._definitions: t.MutableMappingKV[
+                str, m.Infra.SourceClassDefinition
+            ] = {}
+            self._modules: t.MutableMappingKV[
                 str,
                 t.MappingKV[str, m.Infra.SourceClassReference | None],
             ] = {}
             self._namespaces: set[str] = set()
-            self._module_aliases: dict[str, str] = {}
-            self._external: dict[str, t.Infra.RopePyObject] = {}
-            self._linearizations: dict[str, t.StrTuple] = {}
+            self._module_aliases: t.MutableMappingKV[str, str] = {}
+            self._external: t.MutableMappingKV[str, t.Infra.RopePyObject] = {}
+            self._linearizations: t.MutableMappingKV[str, t.StrTuple] = {}
             self._active: set[str] = set()
-            self._resolved_memo: dict[str, str] = {}
+            self._resolved_memo: t.MutableMappingKV[str, str] = {}
             self._native_module_type = FlextInfraUtilitiesRopeRuntime.runtime_type(
                 "rope.base.builtins",
                 "BuiltinModule",
@@ -87,11 +123,48 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._object_id = self._external_reference("builtins", ("object",))
             return self._derived_roots()
 
+        def class_order(
+            self,
+            declarations: t.SequenceOf[m.Infra.SourceClassReference],
+        ) -> t.StrTuple:
+            """Order declared owners from their authoritative source ancestry.
+
+            Returns:
+                Declaration spellings in consistent source precedence order.
+
+            Raises:
+                ValueError: If declared identities duplicate or C3 conflicts.
+
+            """
+            self._namespaces = {
+                ".".join(parts[:index])
+                for module in self._sources
+                for parts in (module.split("."),)
+                for index in range(1, len(parts) + 1)
+            }
+            self._build_module_alias_map()
+            self._object_id = self._external_reference("builtins", ("object",))
+            identities = tuple(self._resolve(item) for item in declarations)
+            if len(set(identities)) != len(identities):
+                message = "Duplicate declared facade owner"
+                raise ValueError(message)
+            lineage = FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
+                (*(self._linearize(identity) for identity in identities),),
+                message="Inconsistent declared facade owner precedence",
+            )
+            spellings = {
+                identity: item.qualified_base
+                for identity, item in zip(identities, declarations, strict=True)
+            }
+            return tuple(
+                spellings[identity] for identity in lineage if identity in spellings
+            )
+
         def _index_modules(self) -> None:
             """Index every captured module and its declared namespaces."""
             sys.setrecursionlimit(max(sys.getrecursionlimit(), 4096))
             self._modules = {
-                module: self.inventory(module, captured)
+                module: self._inventory(module, captured)
                 for module, captured in self._sources.items()
             }
             self._namespaces = {
@@ -122,9 +195,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         alias_source,
                     )
                 ).items():
-                    if alias in self._modules or alias in self._namespaces:
+                    qualified_alias = f"{alias_module}.{alias}"
+                    if (
+                        qualified_alias in self._modules
+                        or qualified_alias in self._namespaces
+                    ):
                         continue
-                    self._module_aliases.setdefault(alias, absolute)
+                    self._module_aliases.setdefault(qualified_alias, absolute)
             for alias, absolute in (self._extra_module_aliases or {}).items():
                 if alias in self._modules or alias in self._namespaces:
                     continue
@@ -153,7 +230,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         derived.add(reference.qualified_base)
             return tuple(sorted(derived))
 
-        def inventory(
+        def _inventory(
             self,
             module: str,
             captured: t.Pair[Path, str],
@@ -181,11 +258,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 shadowing.
 
             """
+            path, source = captured
             request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
                 module=module,
-                path=captured[0],
-                source=captured[1],
+                path=path,
+                source=source,
                 required_line=required_line,
                 allow_conditional=allow_conditional,
             )
@@ -319,7 +397,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module: t.Infra.RopePyModule,
             line: int,
         ) -> str:
-            """Index the declaring module at the line and return the identity.
+            """Index the completed provider namespace and find its declaration.
 
             Returns:
                 The resolved declaration identity.
@@ -334,10 +412,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 if resource is None:
                     message = f"Module has no declared resource: {name}"
                     raise ValueError(message)
-                self.inventory(
+                # Module execution can publish class members after the body's
+                # declaration line; its final bindings own the exported class.
+                self._inventory(
                     name,
                     (Path(resource.real_path), module.source_code),
-                    required_line=line,
                     allow_conditional=True,
                     provider=module,
                 )
@@ -476,6 +555,18 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 message = f"Cyclic provider reexport: {target} (visiting: {chain})"
                 raise ValueError(message)
             if name not in module.get_attributes():
+                aliases = self._provider_lazy_aliases(module)
+                provider = aliases.get(name)
+                if provider is not None:
+                    return self._resolve(
+                        m.Infra.SourceClassReference(
+                            target=provider,
+                            attributes=attributes,
+                            qualified_base=target,
+                        ),
+                        visiting | {target},
+                        depth + 1,
+                    )
                 reexporter = self._star_reexporter(module, name)
                 if reexporter is not None:
                     return self._provider_reference(
@@ -501,6 +592,23 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     visiting,
                     depth,
                 )
+            return self._provider_value_reference(
+                binding, tuple(remaining), visiting, depth
+            )
+
+        def _provider_value_reference(
+            self,
+            binding: p.Infra.RopePyName,
+            remaining: t.StrTuple,
+            visiting: frozenset[str],
+            depth: int,
+        ) -> str:
+            """Resolve native value ancestry and its remaining class members.
+
+            Returns:
+                The declaration identity reached by the original member sequence.
+
+            """
             value = binding.get_object()
             if remaining and FlextInfraUtilitiesRopeRuntime.instance_object(value):
                 # Attribute access on a facade instance (``meltano.Tap``)
@@ -510,6 +618,30 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             for attribute in remaining:
                 identity = self._member(identity, attribute, depth + 1, visiting)
             return identity
+
+        def _provider_lazy_aliases(
+            self,
+            module: t.Infra.RopePyModule,
+        ) -> t.StrDict:
+            """Read a provider's declared lazy aliases from its native source module.
+
+            Returns:
+                Declared provider modules keyed by their lazy aliases.
+
+            """
+            declaring = module.get_module()
+            if not isinstance(declaring, p.Infra.RopeSourceModule):
+                return {}
+            resource = declaring.get_resource()
+            if resource is None:
+                return {}
+            return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                module.get_name(),
+                Path(resource.real_path),
+                declaring.source_code,
+                project=self._project,
+                pymodule=declaring,
+            )
 
         def _star_reexporter(
             self,
@@ -638,26 +770,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             os.path) exist only through runtime module aliasing, so static file
             lookup cannot see them. Their declarations live in the backing real
             module, which rope resolves normally.
+            Native Rope resolution and attribute errors propagate unchanged.
 
             Returns:
                 The resolved declaration identity.
 
-            Raises:
-                ModuleNotFoundError: If the target has no virtual stdlib backing.
-                RefactoringError: If Rope cannot resolve the target or its backing.
-                ResourceNotFoundError: If Rope cannot locate the required resource.
-                AttributeError: If the provider lacks a required module attribute.
-
             """
+            errors: t.VariadicTuple[type[BaseException]] = (
+                *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+                ModuleNotFoundError,
+            )
             try:
                 module = self._project.get_module(target)
-            except (
-                exceptions.RefactoringError,
-                exceptions.ResourceNotFoundError,
-                exceptions.ModuleNotFoundError,
-                AttributeError,
-                ModuleNotFoundError,
-            ):
+            except errors:
                 real = self._stdlib_backing_module(target)
                 if real is None:
                     raise
@@ -813,6 +938,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     message = f"Module used as a class base: {module}"
                     raise ValueError(message)
                 name = remaining.pop(0)
+                if module not in self._modules and module in self._sources:
+                    self._modules[module] = self._inventory(
+                        module, self._sources[module]
+                    )
                 bound = module in self._modules and name in self._modules[module]
                 submodule = f"{module}.{name}"
                 if bound or submodule not in self._namespaces:
@@ -825,7 +954,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if binding is None:
                 message = f"Unresolved planned base: {module}.{name}"
                 raise ValueError(message)
-            return self._resolve(binding, visiting | {key}, depth + 1), remaining
+            return self._resolve(
+                m.Infra.SourceClassReference(
+                    target=binding.target,
+                    attributes=(*binding.attributes, *remaining),
+                    qualified_base=binding.qualified_base,
+                ),
+                visiting | {key},
+                depth + 1,
+            ), []
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.
@@ -867,7 +1004,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     f"{identity}"
                 )
                 raise TypeError(message)
-            builtin_class = FlextInfraUtilitiesRopeRuntime._runtime_callable(  # ruff: ignore[private-member-access] - same-runtime internal rope accessor
+            builtin_class = FlextInfraUtilitiesRopeRuntime.runtime_callable(
                 "rope.base.builtins",
                 "BuiltinClass",
             )
@@ -928,31 +1065,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 The merged linearization headed by the identity.
 
-            Raises:
-                ValueError: If no consistent C3 ordering exists.
-
             """
-            sequences = [list(self._linearize(parent)) for parent in parents]
-            sequences.append(list(parents))
-            result = [identity]
-            while any(sequences):
-                candidate = next(
+            return (
+                identity,
+                *FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
                     (
-                        sequence[0]
-                        for sequence in sequences
-                        if sequence
-                        and all(sequence[0] not in other[1:] for other in sequences)
+                        *(self._linearize(parent) for parent in parents),
+                        parents,
                     ),
-                    None,
-                )
-                if candidate is None:
-                    message = f"Inconsistent class MRO: {identity}"
-                    raise ValueError(message)
-                result.append(candidate)
-                for sequence in sequences:
-                    if sequence and sequence[0] == candidate:
-                        sequence.pop(0)
-            return tuple(result)
+                    message=f"Inconsistent class MRO: {identity}",
+                ),
+            )
 
         def _member(
             self,
@@ -1024,9 +1147,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """Return the importable real module backing one virtual stdlib module.
 
             Returns:
-                The backing module name when the target imports at runtime and
-                its declaration file is importable under its own stem; otherwise
-                None.
+                The backing module name when the target's import specification
+                declares a file importable under its own stem; otherwise None.
 
             """
             if self._stdlib_backing_cache is None:
@@ -1035,10 +1157,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return self._stdlib_backing_cache[target] or None
             backing: str | None = None
             try:
-                runtime = importlib.import_module(target)
+                spec = importlib.util.find_spec(target)
             except ImportError:
-                runtime = None
-            file = getattr(runtime, "__file__", None)
+                spec = None
+            file = spec.origin if spec is not None else None
             if file:
                 stem = Path(file).stem
                 if stem != target.rpartition(".")[-1] and importlib.util.find_spec(
@@ -1048,7 +1170,27 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._stdlib_backing_cache[target] = backing or ""
             return backing
 
-        _stdlib_backing_cache: dict[str, str] | None = None
+        _stdlib_backing_cache: t.MutableMappingKV[str, str] | None = None
+
+    @classmethod
+    def source_class_order(
+        cls,
+        project: t.Infra.RopeProject,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+        declarations: t.SequenceOf[m.Infra.SourceClassReference],
+    ) -> t.StrTuple:
+        """Order declared owners by their strict source-backed C3.
+
+        A generated facade's previous base order is an output, never an input
+        authority. Resolution failures in the declared owners fail loudly.
+
+        Returns:
+            The declaration spellings in consistent precedence order.
+
+        """
+        return cls._RuntimeBaseResolver(project, sources, (), None).class_order(
+            declarations
+        )
 
     @classmethod
     def runtime_bases(
@@ -1070,16 +1212,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Sorted configured roots and derived Ruff-qualified base expressions.
 
         """
-        return FlextInfraUtilitiesRopeSourceBasesRuntime._RuntimeBaseResolver(
+        return cls._RuntimeBaseResolver(
             project,
             sources,
             roots,
             extra_module_aliases,
         ).run()
 
-
-# The flat module-level re-export: the package lazy map and the
-# internal from-import contract resolve this name at module scope
-# (the S6 nesting moved the class inside the family facade).
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeSourceBasesRuntime"]

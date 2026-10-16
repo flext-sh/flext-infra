@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.validate import _pytest_runner
@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from flext_infra.validate.scanner import FlextInfraTextPatternScanner
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
+    from flext_infra.validate.test_import_dag import FlextInfraValidateTestImportDag
     from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
 
@@ -65,6 +66,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraTextPatternScanner",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateLazyMapFreshness",
+    "FlextInfraValidateTestImportDag",
     "_pytest_runner",
 )
 
@@ -92,6 +94,7 @@ install_lazy_exports(
         "FlextInfraTextPatternScanner": ".scanner",
         "FlextInfraValidateFreshImport": ".fresh_import",
         "FlextInfraValidateLazyMapFreshness": ".lazy_map_freshness",
+        "FlextInfraValidateTestImportDag": ".test_import_dag",
         "_pytest_runner": "._pytest_runner",
     }),
     public_exports=__all__,

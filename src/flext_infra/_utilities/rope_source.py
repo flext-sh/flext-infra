@@ -149,7 +149,7 @@ class FlextInfraUtilitiesRopeSource:
         """
         if not statement_lines:
             return False
-        source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
         lines = source.splitlines(keepends=True)
         hoisted: list[str] = []
         drop: set[int] = set()
@@ -164,7 +164,7 @@ class FlextInfraUtilitiesRopeSource:
         block = [f"{text}\n" for text in hoisted if text not in present]
         updated = "".join([*kept[:position], *block, *kept[position:]])
         ast.parse(updated, filename=str(file_path))
-        file_path.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
+        file_path.write_text(updated, encoding=c.DEFAULT_ENCODING)
         return True
 
     @staticmethod

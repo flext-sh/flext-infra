@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from flext_infra import c, r
+from flext_infra import r
+from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.docs.generator import FlextInfraDocGenerator
-from tests import m, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -238,10 +237,13 @@ class TestsFlextInfraDocsGeneratorGuides:
         bundle = u.Tests.prepare_docs_bundle(generator)
         source.write_text("# Changed\n", encoding="utf-8")
 
-        planned = generator.plan_files(bundle)
-
-        tm.fail(planned)
-        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
+        planned = tm.ok(generator.plan_files(bundle))
+        target = next(
+            plan
+            for plan in planned
+            if plan.path == workspace / "flext-a/docs/guides/operator.md"
+        )
+        tm.fail(FlextInfraMisePublication.publish_file_plan(target, phase="docs"))
         tm.that((workspace / "flext-a/docs/guides/operator.md").exists(), eq=False)
 
     @staticmethod
@@ -262,10 +264,13 @@ class TestsFlextInfraDocsGeneratorGuides:
         source.parent.mkdir()
         (moved / source.name).rename(source)
 
-        planned = generator.plan_files(bundle)
-
-        tm.fail(planned)
-        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
+        planned = tm.ok(generator.plan_files(bundle))
+        target = next(
+            plan
+            for plan in planned
+            if plan.path == workspace / "flext-a/docs/guides/operator.md"
+        )
+        tm.fail(FlextInfraMisePublication.publish_file_plan(target, phase="docs"))
 
     @staticmethod
     def test_stale_guide_ownership_change_rejects_prepared_delete(
@@ -285,10 +290,9 @@ class TestsFlextInfraDocsGeneratorGuides:
         destination = workspace / "flext-a/docs/guides/operator.md"
         destination.write_text("# Now custom\n", encoding="utf-8")
 
-        planned = generator.plan_files(bundle)
-
-        tm.fail(planned)
-        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
+        planned = tm.ok(generator.plan_files(bundle))
+        target = next(plan for plan in planned if plan.path == destination)
+        tm.fail(FlextInfraMisePublication.publish_file_plan(target, phase="docs"))
         tm.that(destination.read_text(encoding="utf-8"), eq="# Now custom\n")
 
     @staticmethod

@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import FlextInfraDocAuditorMixin, FlextInfraDocServiceBase, m, u
+from flext_infra import m, u
 from flext_infra.docs import (
     FlextInfraDocAuditorChecksMixin,
+    FlextInfraDocAuditorMixin,
     FlextInfraDocAuditorReportMixin,
+    FlextInfraDocServiceBase,
 )
 
 if TYPE_CHECKING:

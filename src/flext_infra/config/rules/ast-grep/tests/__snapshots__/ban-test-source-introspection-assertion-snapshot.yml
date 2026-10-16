@@ -1,0 +1,214 @@
+id: ban-test-source-introspection-assertion
+snapshots:
+  ? |
+    from inspect import getsource
+    assert "return" in getsource(handler)
+  : labels:
+    - source: getsource(handler)
+      style: primary
+      start: 49
+      end: 67
+    - source: getsource
+      style: secondary
+      start: 49
+      end: 58
+    - source: getsource
+      style: secondary
+      start: 20
+      end: 29
+    - source: from inspect import getsource
+      style: secondary
+      start: 0
+      end: 29
+    - source: |
+        from inspect import getsource
+        assert "return" in getsource(handler)
+      style: secondary
+      start: 0
+      end: 68
+    - source: assert "return" in getsource(handler)
+      style: secondary
+      start: 30
+      end: 67
+  ? |
+    from inspect import getsource as source_of
+    tm.that(source_of(handler), has="return")
+  : labels:
+    - source: source_of(handler)
+      style: primary
+      start: 51
+      end: 69
+    - source: getsource as source_of
+      style: secondary
+      start: 20
+      end: 42
+    - source: from inspect import getsource as source_of
+      style: secondary
+      start: 0
+      end: 42
+    - source: |
+        from inspect import getsource as source_of
+        tm.that(source_of(handler), has="return")
+      style: secondary
+      start: 0
+      end: 85
+    - source: tm.that(source_of(handler), has="return")
+      style: secondary
+      start: 43
+      end: 84
+  ? |
+    from inspect import getsource as source_of, isfunction
+    assert "def" in source_of(isfunction)
+  : labels:
+    - source: source_of(isfunction)
+      style: primary
+      start: 71
+      end: 92
+    - source: getsource as source_of
+      style: secondary
+      start: 20
+      end: 42
+    - source: from inspect import getsource as source_of, isfunction
+      style: secondary
+      start: 0
+      end: 54
+    - source: |
+        from inspect import getsource as source_of, isfunction
+        assert "def" in source_of(isfunction)
+      style: secondary
+      start: 0
+      end: 93
+    - source: assert "def" in source_of(isfunction)
+      style: secondary
+      start: 55
+      end: 92
+  ? |
+    from inspect import getsource as source_of, isfunction
+    tm.that(source_of(isfunction), has="def")
+  : labels:
+    - source: source_of(isfunction)
+      style: primary
+      start: 63
+      end: 84
+    - source: getsource as source_of
+      style: secondary
+      start: 20
+      end: 42
+    - source: from inspect import getsource as source_of, isfunction
+      style: secondary
+      start: 0
+      end: 54
+    - source: |
+        from inspect import getsource as source_of, isfunction
+        tm.that(source_of(isfunction), has="def")
+      style: secondary
+      start: 0
+      end: 97
+    - source: tm.that(source_of(isfunction), has="def")
+      style: secondary
+      start: 55
+      end: 96
+  ? |
+    import inspect
+    assert "await " in inspect.getsource(handler)
+  : labels:
+    - source: inspect.getsource(handler)
+      style: primary
+      start: 34
+      end: 60
+    - source: inspect.getsource
+      style: secondary
+      start: 34
+      end: 51
+    - source: import inspect
+      style: secondary
+      start: 0
+      end: 14
+    - source: |
+        import inspect
+        assert "await " in inspect.getsource(handler)
+      style: secondary
+      start: 0
+      end: 61
+    - source: assert "await " in inspect.getsource(handler)
+      style: secondary
+      start: 15
+      end: 60
+  ? |
+    import inspect
+    assert any("await " in inspect.getsource(handler) for handler in handlers)
+  : labels:
+    - source: inspect.getsource(handler)
+      style: primary
+      start: 38
+      end: 64
+    - source: inspect.getsource
+      style: secondary
+      start: 38
+      end: 55
+    - source: import inspect
+      style: secondary
+      start: 0
+      end: 14
+    - source: |
+        import inspect
+        assert any("await " in inspect.getsource(handler) for handler in handlers)
+      style: secondary
+      start: 0
+      end: 90
+    - source: assert any("await " in inspect.getsource(handler) for handler in handlers)
+      style: secondary
+      start: 15
+      end: 89
+  ? |
+    import inspect
+    tm.that(inspect.getsource(handler), has="return", lacks="raise")
+  : labels:
+    - source: inspect.getsource(handler)
+      style: primary
+      start: 23
+      end: 49
+    - source: inspect.getsource
+      style: secondary
+      start: 23
+      end: 40
+    - source: import inspect
+      style: secondary
+      start: 0
+      end: 14
+    - source: |
+        import inspect
+        tm.that(inspect.getsource(handler), has="return", lacks="raise")
+      style: secondary
+      start: 0
+      end: 80
+    - source: tm.that(inspect.getsource(handler), has="return", lacks="raise")
+      style: secondary
+      start: 15
+      end: 79
+  ? |
+    import inspect as reflection
+    assert "try:" in reflection.getsource(handler)
+  : labels:
+    - source: reflection.getsource(handler)
+      style: primary
+      start: 46
+      end: 75
+    - source: reflection.getsource
+      style: secondary
+      start: 46
+      end: 66
+    - source: import inspect as reflection
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        import inspect as reflection
+        assert "try:" in reflection.getsource(handler)
+      style: secondary
+      start: 0
+      end: 76
+    - source: assert "try:" in reflection.getsource(handler)
+      style: secondary
+      start: 29
+      end: 75

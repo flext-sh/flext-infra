@@ -120,8 +120,9 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
 
         """
         module = importlib.import_module(module_name)
+        classes = inspect.getmembers(module, inspect.isclass)
         violations: list[str] = []
-        for _name, obj in inspect.getmembers(module, inspect.isclass):
+        for _name, obj in classes:
             if not self._is_local_class(obj, module.__name__):
                 continue
             report = u.check(obj)

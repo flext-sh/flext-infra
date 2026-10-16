@@ -1,0 +1,23 @@
+id: rewire-test-assert-result-ok
+snapshots:
+  ? |
+    from tests import tm
+    assert result.success
+  : fixed: |
+      from tests import tm
+      tm.that(result.success, truth=True)
+    labels:
+    - source: assert result.success
+      style: primary
+      start: 21
+      end: 42
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert result.success
+      style: secondary
+      start: 0
+      end: 43

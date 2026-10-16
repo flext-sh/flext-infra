@@ -101,3 +101,6 @@ class FlextInfraModelsCodegenScaffoldModels:
             t.MutableSequenceOf[str],
             m.Field(description="Skipped file accumulator"),
         ]
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenScaffoldModels"]

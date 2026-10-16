@@ -9,13 +9,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
 from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -294,9 +293,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
                 apply_fixes=True,
             ),
         )
-        # The repair completes (FINDINGS never breaks it); the unwritable
-        # docstring stays a finding that check enforces.
-        tm.that(result.result.passed, eq=True)
+        # An unwritable docstring remains a blocking finding after repair.
+        tm.that(result.result.passed, eq=not unformatted)
         tm.that(
             result.outcome,
             eq=(

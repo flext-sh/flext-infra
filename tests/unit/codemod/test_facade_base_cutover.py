@@ -6,12 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, infra, m, p, t, u
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,6 +54,16 @@ class TestsFlextInfraFacadeBaseCutover:
         ("statement", "base", "rebind"),
         [
             ("from parent_pkg import m", "m", "m = ChildModels"),
+            (
+                "from parent_pkg import ParentDeclaredModelFacade as m",
+                "m",
+                "m = ChildModels",
+            ),
+            (
+                "from parent_pkg import ParentDeclaredModelFacade as m",
+                "m",
+                "m: type[ChildModels] = ChildModels",
+            ),
             (
                 "from parent_pkg import m as _parent_m",
                 "_parent_m",
@@ -94,6 +106,65 @@ class TestsFlextInfraFacadeBaseCutover:
         updated = self._edits(tmp_path, sources, child)[0].updated_source
         tm.that(updated, has=f"    base = {self.PARENT_CLASS}.BaseModel\n")
         tm.that(updated, has="        return m.BaseModel\n")
+
+    def test_module_alias_uses_the_binding_before_assignment(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Resolve an imported module alias through its actual source identity."""
+        child, sources = self._workspace(
+            tmp_path,
+            """from parent_pkg import m
+
+class ChildModels(m):
+    pass
+
+m = ChildModels
+""",
+        )
+        parent = tmp_path / "parent/src/parent_pkg"
+        sources[parent / "prior.py"] = """class DeclaredAncestor:
+    pass
+
+__all__ = ['DeclaredAncestor']
+"""
+        sources[parent / "models.py"] = f"""from parent_pkg import prior
+
+previous = prior
+
+class {self.PARENT_CLASS}(previous.DeclaredAncestor):
+    pass
+
+m = {self.PARENT_CLASS}
+__all__ = [{self.PARENT_CLASS!r}, 'm']
+"""
+        updated = self._edits(tmp_path, sources, child)[0].updated_source
+        tm.that(updated, has=f"class ChildModels({self.PARENT_CLASS}):")
+        sources[child] = updated
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        consumer = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from child_pkg.models import ChildModels; "
+                        "from parent_pkg.prior import DeclaredAncestor; "
+                        "assert isinstance(ChildModels(), DeclaredAncestor)"
+                    ),
+                ),
+                cwd=tmp_path,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "PYTHONPATH": os.pathsep.join(
+                            (str(parent.parent), str(child.parent.parent)),
+                        ),
+                    },
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True, msg=consumer.stderr)
 
     def test_every_letter_base_of_a_composed_facade_extends_its_own_parent(
         self,
@@ -176,6 +247,32 @@ class TestsFlextInfraFacadeBaseCutover:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(source, encoding="utf-8")
         tm.that(u.Infra.facade_classes("parent_pkg"), eq={"m": self.PARENT_CLASS})
+
+    @pytest.mark.parametrize("consumer", ["workspace", "member"])
+    def test_facade_classes_read_a_declared_sibling_without_installation(
+        self,
+        tmp_path: Path,
+        consumer: str,
+    ) -> None:
+        """Derive the parent contract from the declared workspace source graph."""
+        child, sources = self._workspace(tmp_path, "")
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "parent"]\npath = parent\n'
+            "url = https://example.org/parent.git\n"
+            '[submodule "child"]\npath = child\n'
+            "url = https://example.org/child.git\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(
+            u.Infra.facade_classes(
+                "parent_pkg",
+                source_root=tmp_path if consumer == "workspace" else child.parents[2],
+            ),
+            eq={"m": self.PARENT_CLASS},
+        )
 
     def test_composite_facade_cuts_over_every_letter(self, tmp_path: Path) -> None:
         """A facade binding several parent letters cuts over all of them."""
@@ -458,14 +555,14 @@ class TestsFlextInfraFacadeBaseCutover:
         }
 
     @staticmethod
-    def _finding(file_path: Path) -> m.Infra.ModScanFinding:
+    def _finding(file_path: Path) -> m.Infra.ModOccurrence:
         """Build one detector finding for the facade module.
 
         Returns:
-            The resulting ``m.Infra.ModScanFinding``.
+            The resulting ``m.Infra.ModOccurrence``.
 
         """
-        return m.Infra.ModScanFinding(
+        return m.Infra.ModOccurrence(
             rule_file="facade-base-by-class-name.yml",
             rule_id="facade-base-by-class-name",
             repository="child",
@@ -474,7 +571,6 @@ class TestsFlextInfraFacadeBaseCutover:
             text="m = ChildModels",
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
 
     @classmethod

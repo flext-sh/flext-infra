@@ -31,13 +31,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraWorkspaceDetector, c, config, m, r, t, u
+from flext_infra import c, config, m, r, t, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraFlextBindingService:
+class FlextInfraBindingService:
     """Resolve and apply one session binding onto a flext worktree."""
 
     @staticmethod
@@ -48,7 +49,10 @@ class FlextInfraFlextBindingService:
             The resulting ``p.Result[Path]``.
 
         """
-        environment = u.Infra.runtime_environment_dir(consumer_root)
+        context = FlextInfraWorkspaceDetector.resolution_context(consumer_root)
+        if context.failure:
+            return r[Path].from_failure(context)
+        environment = context.value.environment_path
         scripts = Path(
             sysconfig.get_path(
                 "scripts",
@@ -115,6 +119,116 @@ class FlextInfraFlextBindingService:
         return r[t.StrMapping].ok({
             key: str(value) for key, value in facts.model_dump().items()
         })
+
+    @staticmethod
+    def consumer_package_environment(
+        *,
+        consumer_root: Path,
+        python: Path,
+        packages: t.StrSequence,
+    ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
+        """Observe real package resolution and metadata in the elected Python.
+
+        Returns:
+            The observed package environment, or the first observation failure.
+
+        """
+        result_type = r[m.Infra.PythonEnvironmentObservation]
+        environment = FlextInfraBindingService._consumer_environment(
+            consumer_root,
+            python,
+        )
+        if environment.failure:
+            return result_type.from_failure(environment)
+        physical = u.Cli.atomic_plan_directory_chain(environment.value)
+        if physical.failure:
+            return result_type.from_failure(physical)
+        outcome = u.Cli.run(
+            (str(python), "-I", "-c", c.Infra.BINDING_PACKAGE_SCRIPT, *packages),
+            cwd=consumer_root,
+        )
+        if outcome.failure:
+            return result_type.from_failure(outcome)
+        facts = m.Infra.PythonEnvironmentObservation.model_validate_json(
+            outcome.value.stdout,
+        )
+        identity = FlextInfraBindingService._validated_package_facts(
+            environment.value,
+            facts,
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
+        stable = FlextInfraBindingService._confirm_stable_environment(
+            environment.value,
+            physical.value,
+        )
+        if stable.failure:
+            return result_type.from_failure(stable)
+        u.Cli.info(
+            f"environment python={python} prefix={facts.prefix} "
+            f"metadata_paths={facts.metadata_paths}",
+        )
+        return result_type.ok(facts)
+
+    @staticmethod
+    def _validated_package_facts(
+        environment: Path,
+        facts: m.Infra.PythonEnvironmentObservation,
+    ) -> p.Result[bool]:
+        """Validate the reported facts against the elected environment.
+
+        Requires the interpreter prefix, installed metadata directories, and
+        every metadata path to agree with the elected environment.
+
+        Returns:
+            Success when every reported fact matches the elected environment.
+
+        """
+        result_type = r[bool]
+        if facts.prefix.resolve() != environment.resolve():
+            return result_type.fail("package interpreter reports a foreign environment")
+        if not facts.metadata_paths:
+            return result_type.fail(
+                "package interpreter has no installed metadata directories",
+            )
+        for path in facts.metadata_paths:
+            if not path.is_absolute() or not path.is_relative_to(
+                facts.prefix.resolve()
+            ):
+                return result_type.fail(
+                    f"installed metadata directory is outside the elected "
+                    f"environment: {path}",
+                )
+            directory = u.Cli.atomic_plan_directory_chain(path)
+            if directory.failure:
+                return result_type.from_failure(directory)
+            if directory.value.directories:
+                return result_type.fail(
+                    f"installed metadata directory is absent: {path}",
+                )
+        return result_type.ok(value=True)
+
+    @staticmethod
+    def _confirm_stable_environment(
+        environment: Path,
+        physical: m.Cli.AtomicDirectoryChainPlan,
+    ) -> p.Result[bool]:
+        """Require the elected environment identity to survive the observation.
+
+        Returns:
+            Success when the physical directory chain still matches the plan
+            recorded before the interpreter probe.
+
+        """
+        result_type = r[bool]
+        current = u.Cli.atomic_plan_directory_chain(environment)
+        if current.failure:
+            return result_type.from_failure(current)
+        if current.value != physical:
+            return result_type.fail(
+                "package environment identity changed during observation",
+            )
+        return result_type.ok(value=True)
 
     @staticmethod
     def _document(consumer_root: Path) -> t.Cli.TomlDocument:
@@ -263,7 +377,17 @@ class FlextInfraFlextBindingService:
             arguments: list[str] = []
             for (option, filename), lines in zip(
                 c.Infra.BINDING_RESOLUTION_FILES,
-                (resolution.value.overrides, resolution.value.constraints),
+                (
+                    (
+                        *resolution.value.overrides,
+                        *(
+                            f"{name}{u.Infra.dependency_extras(requirements, name)}"
+                            f" @ {path.as_uri()}"
+                            for name, path in paths.items()
+                        ),
+                    ),
+                    resolution.value.constraints,
+                ),
                 strict=True,
             ):
                 if lines:
@@ -290,6 +414,22 @@ class FlextInfraFlextBindingService:
             )
             if installed.failure:
                 return r[int].from_failure(installed)
+        # Resolve the consumer contract first; directory overrides are not editable.
+        # Bind the sources without resolving that already-validated closure again.
+        u.Cli.run_checked(
+            (
+                c.Infra.UV,
+                "pip",
+                "install",
+                "--no-config",
+                "--no-deps",
+                "--reinstall",
+                "--python",
+                str(python),
+                *editables,
+            ),
+            cwd=consumer_root,
+        ).unwrap()
         u.Cli.info(
             f"flext binding: {len(paths)} package(s) bound to {flext_root} "
             f"({', '.join(paths)}); consumer_python={python}",
@@ -297,4 +437,4 @@ class FlextInfraFlextBindingService:
         return r[int].ok(0)
 
 
-__all__: list[str] = ["FlextInfraFlextBindingService"]
+__all__: list[str] = ["FlextInfraBindingService"]

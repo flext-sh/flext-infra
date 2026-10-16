@@ -14,7 +14,9 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfraGate, FlextInfraValidateFreshImport, c, m, u
+from flext_infra import c, m, u
+from flext_infra.gates import FlextInfraGate
+from flext_infra.validate import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,18 +34,15 @@ class FlextInfraFreshImportGate(FlextInfraGate):
     def selected_for(self, project_dir: Path) -> bool:
         """Select a project that publishes an importable package layout.
 
-        A repository whose manifest declares ``package: false`` (a workspace
-        umbrella root) publishes no package, whatever its tree holds; an
-        unreadable manifest fails loud.
+        The canonical layout owner reads project metadata; no copied workspace
+        package flag may override that public contract.
 
         Returns:
             Whether the project publishes a Python package to import.
 
         """
-        manifests = u.Infra.load_workspace_manifest(project_dir).unwrap()
         return (
             super().selected_for(project_dir)
-            and all(manifest.repository.package for manifest in manifests)
             and u.Infra.layout(project_dir) is not None
         )
 

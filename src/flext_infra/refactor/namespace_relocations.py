@@ -12,12 +12,12 @@ from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraModGateEngine, c, m, u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
 
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 class FlextInfraNamespaceRelocationCascade:
@@ -27,8 +27,8 @@ class FlextInfraNamespaceRelocationCascade:
     the one scan engine evaluates. A rule that a rope relocation repairs
     names it under ``metadata.relocation``; this cascade runs those
     relocations over the captured findings — both for the standalone
-    namespace enforcer and as the mod loop's relocation callback — and
-    rescans to report the residue that remains.
+    namespace enforcer and as the mod loop's relocation callback. Callers
+    retain the complete scans used to measure progress and regressions.
     """
 
     @staticmethod
@@ -82,12 +82,15 @@ class FlextInfraNamespaceRelocationCascade:
         project_root: Path,
         py_files: t.SequenceOf[Path],
         entries: t.SequenceOf[m.Infra.ModScanFinding],
+        *,
+        scan_root: Path,
     ) -> t.VariadicTuple[t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]]:
         """Filter one scan report's entries down to in-scope relocation findings.
 
         The scope is the project's namespace file set (its declared scan
         directories), so a relocation never reaches a file the namespace pass
-        does not govern.
+        does not govern. Finding paths belong to ``scan_root``; returned targets
+        are project-relative even when captured by the workspace scan.
 
         Returns:
             The resulting ``t.VariadicTuple[
@@ -97,29 +100,19 @@ class FlextInfraNamespaceRelocationCascade:
         relocation_by_rule = cls.relocation_by_rule(project_root)
         scoped = frozenset(path.resolve() for path in py_files)
         return tuple(
-            (relocation_by_rule[entry.rule_id], entry)
+            (
+                relocation_by_rule[entry.rule_id],
+                entry.model_copy(
+                    update={
+                        "file": (scan_root / entry.file)
+                        .resolve()
+                        .relative_to(project_root),
+                    }
+                ),
+            )
             for entry in entries
             if entry.rule_id in relocation_by_rule
-            and (project_root / entry.file).resolve() in scoped
-        )
-
-    @staticmethod
-    def scan_findings(
-        project_root: Path,
-        py_files: t.SequenceOf[Path],
-    ) -> t.VariadicTuple[t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]]:
-        """Scan the project and return its in-scope relocation findings.
-
-        Returns:
-            The resulting ``t.VariadicTuple[
-                t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]]``.
-
-        """
-        report = FlextInfraModGateEngine.scan(project_root, fix=False).unwrap()
-        return FlextInfraNamespaceRelocationCascade.findings_from_report(
-            project_root,
-            py_files,
-            report.entries,
+            and (scan_root / entry.file).resolve() in scoped
         )
 
     def run(
@@ -132,15 +125,10 @@ class FlextInfraNamespaceRelocationCascade:
         ],
         py_files: t.SequenceOf[Path],
         gates: t.StrSequence | None = None,
-    ) -> t.NonNegativeInt:
-        """Apply each declared relocation once, then rescan for the residue.
-
-        Returns:
-            The resulting ``t.NonNegativeInt``.
-
-        """
+    ) -> None:
+        """Apply captured relocations; the caller owns full-catalog observation."""
         if not findings:
-            return 0
+            return
         names, spans, imports, classes = self._grouped_targets(
             project_root,
             findings,
@@ -158,7 +146,6 @@ class FlextInfraNamespaceRelocationCascade:
                 gates=gates,
             )
         rope_project.validate(rope_project.root)
-        return len(self.scan_findings(project_root, py_files))
 
     @classmethod
     def import_relocation_targets(
@@ -185,24 +172,35 @@ class FlextInfraNamespaceRelocationCascade:
         targets: MutableMapping[Path, MutableMapping[t.StrPair, set[str]]] = (
             defaultdict(lambda: defaultdict(set))
         )
-        for relocation, finding in findings:
-            if relocation not in {
-                c.Infra.CodemodRelocation.PACKAGE_ROOT_IMPORT,
-                c.Infra.CodemodRelocation.OWN_PACKAGE_IMPORT,
-            }:
-                continue
-            module = cls._captured(
-                finding,
-                c.Infra.CODEMOD_RULE_MODULE_METAVARIABLE,
-            )
-            if (
-                relocation is c.Infra.CodemodRelocation.PACKAGE_ROOT_IMPORT
-                and module.split(".", maxsplit=1)[0] != own_package
-            ):
-                continue
-            targets[project_root / finding.file][module, own_package].add(
-                cls._captured(finding, c.Infra.CODEMOD_RULE_NAME_METAVARIABLE),
-            )
+        artifacts = tuple(
+            {
+                finding.native_receipt.path: finding.native_receipt
+                for _relocation, finding in findings
+                if finding.native_receipt is not None
+            }.values()
+        )
+        with u.Infra.mod_native_readers(artifacts) as readers:
+            for relocation, finding in findings:
+                if relocation not in {
+                    c.Infra.CodemodRelocation.PACKAGE_ROOT_IMPORT,
+                    c.Infra.CodemodRelocation.OWN_PACKAGE_IMPORT,
+                }:
+                    continue
+                module = cls._captured(
+                    finding,
+                    c.Infra.CODEMOD_RULE_MODULE_METAVARIABLE,
+                    readers,
+                )
+                if (
+                    relocation is c.Infra.CodemodRelocation.PACKAGE_ROOT_IMPORT
+                    and module.split(".", maxsplit=1)[0] != own_package
+                ):
+                    continue
+                targets[project_root / finding.file][module, own_package].add(
+                    cls._captured(
+                        finding, c.Infra.CODEMOD_RULE_NAME_METAVARIABLE, readers
+                    ),
+                )
         return targets
 
     def _grouped_targets(
@@ -235,35 +233,52 @@ class FlextInfraNamespaceRelocationCascade:
             defaultdict(lambda: defaultdict(set))
         )
         classes: list[tuple[Path, str, str, int]] = []
-        for relocation, finding in findings:
-            file_path = project_root / finding.file
-            match relocation:
-                case c.Infra.CodemodRelocation.MODULE_IMPORT:
-                    spans[file_path].append(self._finding_lines(finding))
-                case c.Infra.CodemodRelocation.FUTURE_ANNOTATIONS:
-                    names[relocation].setdefault(file_path, set())
-                case (
-                    c.Infra.CodemodRelocation.PACKAGE_ROOT_IMPORT
-                    | c.Infra.CodemodRelocation.OWN_PACKAGE_IMPORT
-                ):
-                    # Grouped by the public import_relocation_targets owner,
-                    # which binds own-package symbols to the own package and
-                    # leaves foreign-package findings as residue.
-                    pass
-                case c.Infra.CodemodRelocation.FACADE_CLASS:
-                    classes.append((
-                        file_path,
-                        self._captured(finding, c.Infra.CODEMOD_RULE_NAME_METAVARIABLE),
-                        self._captured(
-                            finding,
-                            c.Infra.CODEMOD_RULE_FAMILY_METAVARIABLE,
-                        ),
-                        self._finding_lines(finding)[0],
-                    ))
-                case _:
-                    names[relocation][file_path].add(
-                        self._captured(finding, c.Infra.CODEMOD_RULE_NAME_METAVARIABLE),
-                    )
+        artifacts = tuple(
+            {
+                finding.native_receipt.path: finding.native_receipt
+                for _relocation, finding in findings
+                if finding.native_receipt is not None
+            }.values()
+        )
+        with u.Infra.mod_native_readers(artifacts) as readers:
+            for relocation, finding in findings:
+                file_path = project_root / finding.file
+                match relocation:
+                    case c.Infra.CodemodRelocation.MODULE_IMPORT:
+                        spans[file_path].append(self._finding_lines(finding))
+                    case c.Infra.CodemodRelocation.FUTURE_ANNOTATIONS:
+                        names[relocation].setdefault(file_path, set())
+                    case (
+                        c.Infra.CodemodRelocation.PACKAGE_ROOT_IMPORT
+                        | c.Infra.CodemodRelocation.OWN_PACKAGE_IMPORT
+                    ):
+                        # Grouped by the public import_relocation_targets owner,
+                        # which binds own-package symbols to the own package and
+                        # leaves foreign-package findings as residue.
+                        pass
+                    case c.Infra.CodemodRelocation.FACADE_CLASS:
+                        classes.append((
+                            file_path,
+                            self._captured(
+                                finding,
+                                c.Infra.CODEMOD_RULE_NAME_METAVARIABLE,
+                                readers,
+                            ),
+                            self._captured(
+                                finding,
+                                c.Infra.CODEMOD_RULE_FAMILY_METAVARIABLE,
+                                readers,
+                            ),
+                            self._finding_lines(finding)[0],
+                        ))
+                    case _:
+                        names[relocation][file_path].add(
+                            self._captured(
+                                finding,
+                                c.Infra.CODEMOD_RULE_NAME_METAVARIABLE,
+                                readers,
+                            ),
+                        )
         for file_path, moves in self.import_relocation_targets(
             project_root,
             findings,
@@ -398,7 +413,11 @@ class FlextInfraNamespaceRelocationCascade:
         return start_line + 1, end_line + 1
 
     @staticmethod
-    def _captured(finding: m.Infra.ModScanFinding, variable: str) -> str:
+    def _captured(
+        finding: m.Infra.ModScanFinding,
+        variable: str,
+        readers: t.MappingKV[Path, p.Cli.AtomicFileReader],
+    ) -> str:
         """Return one metavariable a relocation rule captured or derived.
 
         Returns:
@@ -408,7 +427,7 @@ class FlextInfraNamespaceRelocationCascade:
             TypeError: If ast-grep finding without metaVariables; or if relocation rule.
 
         """
-        metavariables = finding.payload["metaVariables"]
+        metavariables = u.Infra.mod_native_payload(finding, readers)["metaVariables"]
         if not isinstance(metavariables, Mapping):
             msg = f"ast-grep finding without metaVariables: {finding.rule_id}"
             raise TypeError(msg)

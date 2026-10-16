@@ -44,7 +44,7 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
         return tuple(entries)
 
     @classmethod
-    def _state_index_update(
+    def state_index_update(
         cls,
         root: Path,
         removed: t.SequenceOf[Path],
@@ -52,7 +52,7 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
         *,
         index_file: Path | None = None,
     ) -> None:
-
+        """Apply removals and additions to the index selected by ``index_file``."""
         repo = cls._repo(root)
         with repo.git.custom_environment(
             GIT_INDEX_FILE=str(index_file) if index_file else None,
@@ -103,7 +103,7 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
                     if snapshot.paths
                     else ()
                 )
-                cls._state_index_update(
+                cls.state_index_update(
                     snapshot.repo_root,
                     removed,
                     entries,

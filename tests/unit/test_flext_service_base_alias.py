@@ -7,10 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import s as cli_service_base
-from flext_tests import tm
 
 from flext_infra import FlextInfraServiceBase
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraServiceBaseAlias:

@@ -84,7 +84,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
                 repository.checkpoint_sha,
                 "--",
                 *exclusions,
-            ).encode(c.Cli.ENCODING_DEFAULT)
+            ).encode(c.DEFAULT_ENCODING)
         except GitCommandError as exc:
             return r[m.Infra.RepositoryDelta].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:

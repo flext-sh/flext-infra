@@ -1,0 +1,18 @@
+id: result-recovery-authored-cause
+snapshots:
+  recover(layout, "destination conflict"):
+    fixed: recover(layout, r[bool].fail("destination conflict"))
+    labels:
+    - source: recover(layout, "destination conflict")
+      style: primary
+      start: 0
+      end: 39
+  ? |
+    recover(layout, "multiple generation phases own one destination: " f"{relative.value}")
+  : fixed: |
+      recover(layout, r[bool].fail("multiple generation phases own one destination: " f"{relative.value}"))
+    labels:
+    - source: 'recover(layout, "multiple generation phases own one destination: " f"{relative.value}")'
+      style: primary
+      start: 0
+      end: 87

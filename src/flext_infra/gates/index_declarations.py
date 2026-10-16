@@ -30,7 +30,8 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfraGate, m, r, t, u
+from flext_infra import m, r, t, u
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p

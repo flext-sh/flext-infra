@@ -9,7 +9,8 @@ from __future__ import annotations
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfraGate, c, config, m, t, u
+from flext_infra import c, config, m, t, u
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path

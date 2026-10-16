@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, t
+from flext_infra import c, config, m, t
 from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFilesMixin
 
 
@@ -108,7 +108,7 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
                         entry.oid,
                     )
                 )
-                os.fsdecode(payload).encode(c.Cli.ENCODING_DEFAULT, errors="strict")
+                os.fsdecode(payload).encode(c.DEFAULT_ENCODING, errors="strict")
 
     @classmethod
     def _state_realized_current(
@@ -294,13 +294,13 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
             plan = u.Cli.atomic_plan_directory_chain(destination.parent).unwrap()
             u.Cli.atomic_create_directory_chain_guarded(
                 plan,
-                permission_mode=0o755,
+                permission_mode=config.Infra.codegen.modes.directory_generated,
             ).unwrap()
             cls._state_effect_file(root, path, entry, allowed)
         # An index change made by another writer remains visible before the
         # one atomic index-info publication; no intermediate empty index.
         cls._state_preflight_transition(snapshot, root, cleanup=cleanup)
-        cls._state_index_update(
+        cls.state_index_update(
             root,
             tuple(paths),
             baseline if cleanup else snapshot.index_entries,

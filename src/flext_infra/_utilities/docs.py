@@ -136,7 +136,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             u.write_file(
                 path,
                 "\n".join(lines).rstrip() + "\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             return r[bool].ok(value=True)
         except OSError as exc:

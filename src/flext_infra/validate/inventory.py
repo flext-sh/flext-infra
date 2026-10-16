@@ -82,18 +82,18 @@ class FlextInfraInventoryService(s[bool]):
 
         """
         now = u.now().isoformat()
-        inventory_payload = t.json_value_adapter().validate_python({
+        inventory_payload = u.json_value_adapter().validate_python({
             "generated_at": now,
             "repo_root": str(root),
             "total_scripts": len(scripts),
             "scripts": list(scripts),
         })
-        wiring_payload = t.json_value_adapter().validate_python({
+        wiring_payload = u.json_value_adapter().validate_python({
             "generated_at": now,
             "root_makefile": [c.Infra.MAKEFILE_FILENAME],
             "unwired_scripts": [],
         })
-        external_payload = t.json_value_adapter().validate_python({
+        external_payload = u.json_value_adapter().validate_python({
             "generated_at": now,
             "candidates": [],
         })

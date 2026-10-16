@@ -10,10 +10,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraGitService, FlextInfraWorktreeService, config, main
-from tests import c, m, u
+from tests import c, m, tm, u
 
 
 class TestsVerifyLanes:

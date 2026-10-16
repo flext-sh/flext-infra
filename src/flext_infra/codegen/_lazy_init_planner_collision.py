@@ -430,7 +430,9 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         """
         return (
             not name.startswith("_")
-            and name not in c.Infra.INFRA_ONLY_EXPORTS
             and name not in {c.Infra.DUNDER_INIT, "pytestmark"}
             and (name != "main" or allow_main)
         )
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerCollisionMixin"]

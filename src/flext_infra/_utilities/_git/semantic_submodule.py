@@ -130,6 +130,7 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
                     requirement
                     for group in manifest.dependency_groups.values()
                     for requirement in group
+                    if isinstance(requirement, str)
                 ),
             )
             if group_names.failure:
@@ -209,7 +210,7 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
             if not pyproject.is_file():
                 continue
             payload = u.Cli.toml_mapping_from_text(
-                pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                pyproject.read_text(encoding=c.DEFAULT_ENCODING),
             )
             if payload is None:
                 return result.fail(f"{pyproject} is not valid TOML")

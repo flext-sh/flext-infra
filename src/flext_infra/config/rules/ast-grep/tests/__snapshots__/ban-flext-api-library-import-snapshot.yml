@@ -1,0 +1,14 @@
+id: ban-flext-api-library-import
+snapshots:
+  from httpx import AsyncClient:
+    labels:
+    - source: httpx
+      style: primary
+      start: 5
+      end: 10
+  import httpx:
+    labels:
+    - source: httpx
+      style: primary
+      start: 7
+      end: 12

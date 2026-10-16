@@ -11,11 +11,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m, main
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -122,6 +121,36 @@ class TestsFlextInfraWorkspaceCheckCli:
         ])
 
         tm.that(exit_code, eq=1)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "entrypoint",
+        [("flext-infra",), (sys.executable, "-m", "flext_infra")],
+        ids=["installed_console", "module"],
+    )
+    def test_process_entrypoints_preserve_rejected_gate_exit(
+        tmp_path: Path,
+        entrypoint: t.StrSequence,
+    ) -> None:
+        """Both shipped entrypoints retain a failed Result's native exit status."""
+        workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
+        gate = "invalid-exit-contract-gate"
+        output = tm.ok(
+            u.Cli.run_raw([
+                *entrypoint,
+                "check",
+                "run",
+                "--repository-root",
+                str(workspace),
+                "--projects",
+                "flext-core",
+                "--gates",
+                gate,
+            ])
+        )
+
+        tm.that(output.outcome.raw_return_code, eq=c.Cli.EXIT_CODE_FAILURE)
+        tm.that(output.stdout + output.stderr, has=f"unknown gate '{gate}'")
 
     @pytest.mark.parametrize("reports_directory", [None, "artifacts/check"])
     def test_run_cli_handles_multiple_projects(
@@ -264,9 +293,10 @@ class TestsFlextInfraWorkspaceCheckCli:
         ])
 
         # Ruff completes and reports the syntax error as a finding of the
-        # code: the module is never rewritten, the repair verb completes, and
-        # the residual finding stays for check to enforce.
-        tm.that(exit_code, eq=0)
+        # code: the verb does not break, and the module is never rewritten.
+        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
+        # a fix run that leaves findings exits 1.
+        tm.that(exit_code, eq=1)
         tm.that(
             module_path.read_text(encoding="utf-8"),
             eq='"""Fixture module."""\n\ndef broken(:\n',
@@ -315,7 +345,9 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
         ])
 
-        tm.that(exit_code, eq=0)
+        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
+        # an unparsable neighbour leaves findings, so the fix run exits 1.
+        tm.that(exit_code, eq=1)
         tm.that(
             sample.read_text(encoding="utf-8"),
             has="    @staticmethod\n    def value() -> int:\n",
