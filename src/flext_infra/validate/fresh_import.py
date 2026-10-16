@@ -234,9 +234,7 @@ _native_atomic = (
                 f"producer runtime is not a physical managed environment: {environment}"
             )
         runtime_root = environment.parent
-        reference = cls._capture_producer_reference(
-            repository_root, runtime_root, names
-        )
+        reference = cls.capture_producer_reference(repository_root, runtime_root, names)
         if reference.failure:
             return result_type.from_failure(reference)
         consumed = FlextInfraCodegenPreconditions.authority_inputs(
@@ -258,7 +256,7 @@ _native_atomic = (
         )
 
     @classmethod
-    def _capture_producer_reference(
+    def capture_producer_reference(
         cls,
         repository_root: Path,
         runtime_root: Path,
@@ -275,54 +273,54 @@ _native_atomic = (
             f"stage=native-source-authority selections={len(names)} "
             f"runtime={runtime_root}",
         )
-        cold = FlextInfraCodegenPreconditions.capture_source_authority(
-            runtime_root,
-            nominated=names,
+        sealed = FlextInfraCodegenPreconditions.observed_source_authority(
+            runtime_root, names
         )
-        if cold.failure:
-            return result_type.from_failure(cold)
+        if sealed.failure:
+            return result_type.from_failure(sealed)
+        authority, observation = sealed.value
         u.Cli.info(
             f"stage=native-source-authority-complete "
-            f"providers={len(cold.value.generator_modules)} "
-            f"inputs={len(cold.value.inputs)}",
+            f"providers={len(authority.generator_modules)} "
+            f"inputs={len(authority.inputs)}",
         )
-        inputs = FlextInfraCodegenPreconditions.authority_inputs(cold.value)
+        inputs = FlextInfraCodegenPreconditions.authority_inputs(authority)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        return cls.capture_native_reference(
+        # The authority already observed these exact selections; capturing the
+        # loaded producer again could only repeat that observation.
+        return cls._observed_native_reference(
             m.Infra.NativeImportRequest(
                 repository_root=repository_root,
                 runtime_root=runtime_root,
                 modules=names,
                 inputs=inputs.value,
-                source_authority=cold.value,
+                source_authority=authority,
                 import_roots=tuple(
                     dict.fromkeys(
-                        root.parent for _name, root in cold.value.generator_modules
+                        root.parent for _name, root in authority.generator_modules
                     )
                 ),
             ),
+            observation,
         )
 
     @classmethod
-    def capture_native_reference(
+    def _observed_native_reference(
         cls,
         request: m.Infra.NativeImportRequest,
+        snapshot: m.Infra.NativeImportObservation,
     ) -> p.Result[m.Infra.NativeImportReference]:
-        """Authenticate the loaded producer against a cold native import.
+        """Prove one loaded-producer observation against a cold native import.
 
         Returns:
             The sealed reference, or the first source or runtime failure.
 
         """
         result_type = r[m.Infra.NativeImportReference]
-        observed = FlextInfraWorkspaceNativeReference.capture(request.modules).flat_map(
-            lambda snapshot: (
-                FlextInfraWorkspaceNativeReference.authored_sources_current(
-                    snapshot, request.source_authority.inputs
-                ).map(lambda _: snapshot)
-            )
-        )
+        observed = FlextInfraWorkspaceNativeReference.authored_sources_current(
+            snapshot, request.source_authority.inputs
+        ).map(lambda _: snapshot)
         if observed.failure:
             return result_type.from_failure(observed)
         cold = cls._cold_native_observation(request)
