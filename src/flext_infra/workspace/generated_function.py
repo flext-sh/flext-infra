@@ -368,21 +368,28 @@ class FlextInfraWorkspaceGeneratedFunction:
         """
         sdk = sys.modules.get("attr._make")
         supplier = storage.get("__module__")
-        if type(sdk) is not ModuleType or type(supplier) is not str:
+        if (
+            type(sdk) is not ModuleType
+            or type(supplier) is not str
+            or supplier != self._witness.module.get_name()
+        ):
             return None
         namespace = vars(self._module(supplier))
-        matches = self._physical_invocations(
-            "${export} = ${invocation}",
-            ("export", "invocation"),
-            tuple(
-                name
-                for name, item in namespace.items()
-                if type(name) is str and item is owner
-            ),
-        )
-        if len(matches) != 1:
+        aliases = {
+            name for name, item in namespace.items() if type(name) is str and item is owner
+        }
+        statements = [
+            node.value
+            for node in self._trees[self._witness.source].body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id in aliases
+            and isinstance(node.value, ast.Call)
+        ]
+        if len(statements) != 1:
             return None
-        call = ast.parse(matches[0]["invocation"], mode="eval").body
+        call: ast.expr = statements[0]
         while isinstance(call, ast.Call) and isinstance(call.func, ast.Name):
             helper = namespace.get(call.func.id)
             if helper is not vars(sdk).get(call.func.id) or type(helper) is not FunctionType:
@@ -452,7 +459,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             match keyword:
                 case ast.keyword(arg="attrs", value=expression):
                     arguments["attrs"] = self._attrs_helper_records(
-                        expression, supplier, sdk["Attribute"]
+                        expression, supplier, sdk, call.lineno
                     )
                 case ast.keyword(arg="ns", value=ast.Constant(value=None)):
                     arguments["ns"] = None
@@ -507,7 +514,8 @@ class FlextInfraWorkspaceGeneratedFunction:
         self,
         expression: ast.expr,
         supplier: t.MappingKV[str, p.AttributeProbe],
-        kind: p.AttributeProbe,
+        sdk: t.MappingKV[str, p.AttributeProbe],
+        position: int,
     ) -> p.AttributeProbe:
         """Evaluate a helper's ``attrs`` operand over native record slots.
 
@@ -522,8 +530,8 @@ class FlextInfraWorkspaceGeneratedFunction:
 
         """
         match expression:
-            case ast.Name(id=name) if name in supplier:
-                return supplier[name]
+            case ast.Name(id=name):
+                return self._attrs_bound_records(name, supplier, sdk, position)
             case ast.ListComp(
                 elt=ast.Name(id=element),
                 generators=[
@@ -534,8 +542,8 @@ class FlextInfraWorkspaceGeneratedFunction:
                         is_async=0,
                     )
                 ],
-            ) if element == target and source in supplier:
-                records = supplier[source]
+            ) if element == target:
+                records = self._attrs_bound_records(source, supplier, sdk, position)
                 if type(records) is not list:
                     msg = "native attrs helper record source is not a list"
                     raise ValueError(msg)
@@ -543,12 +551,174 @@ class FlextInfraWorkspaceGeneratedFunction:
                     record
                     for record in records
                     if all(
-                        self._attrs_condition(condition, target, record, kind)
+                        self._attrs_condition(condition, target, record, sdk["Attribute"])
                         for condition in conditions
                     )
                 ]
             case _:
                 msg = "native attrs helper records are outside the closed form"
+                raise ValueError(msg)
+
+    def _attrs_bound_records(
+        self,
+        name: str,
+        supplier: t.MappingKV[str, p.AttributeProbe],
+        sdk: t.MappingKV[str, p.AttributeProbe],
+        position: int,
+    ) -> p.AttributeProbe:
+        """Resolve a module record list as it was bound at a physical line.
+
+        A name rebound by a later top-level assignment no longer holds the list
+        the earlier statement consumed; that list is rebuilt from its physical
+        comprehension instead.
+
+        Returns:
+            The record list bound to ``name`` before ``position``.
+
+        Raises:
+            ValueError: If no physical binding precedes the consuming line.
+
+        """
+        bindings = [
+            node
+            for node in self._trees[self._witness.source].body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == name
+        ]
+        preceding = [node for node in bindings if node.lineno < position]
+        if not preceding or name not in supplier:
+            msg = f"native attrs helper records have no physical binding: {name}"
+            raise ValueError(msg)
+        if all(node.lineno < position for node in bindings):
+            return supplier[name]
+        return self._attrs_record_list(preceding[-1].value, supplier, sdk)
+
+    def _attrs_record_list(
+        self,
+        expression: ast.expr,
+        supplier: t.MappingKV[str, p.AttributeProbe],
+        sdk: t.MappingKV[str, p.AttributeProbe],
+    ) -> list[p.AttributeProbe]:
+        """Rebuild a shadowed record list from its closed physical comprehension.
+
+        Returns:
+            Fresh records built by the authenticated ``Attribute`` initializer.
+
+        Raises:
+            TypeError: If the record constructor is not the attrs class.
+            ValueError: If the comprehension is outside the closed form.
+
+        """
+        match expression:
+            case ast.ListComp(
+                elt=ast.Call(func=ast.Name(id=constructor), args=[], keywords=keywords),
+                generators=[
+                    ast.comprehension(
+                        target=ast.Name(id=variable), iter=iterable, ifs=[], is_async=0
+                    )
+                ],
+            ) if all(keyword.arg is not None for keyword in keywords):
+                pass
+            case _:
+                msg = "native attrs record list is outside the closed comprehension"
+                raise ValueError(msg)
+        kind = supplier.get(constructor)
+        if type(kind) is not type or kind is not sdk.get("Attribute"):
+            msg = "native attrs record list constructor is not the attrs record"
+            raise TypeError(msg)
+        self._function(
+            vars(type)["__dict__"].__get__(kind, type).get("__init__"),
+            source_name="Attribute.__init__",
+            source_namespace=sdk,
+        )
+        return [
+            kind(**{
+                str(keyword.arg): self._attrs_record_operand(
+                    keyword.value, (variable, item), supplier, sdk
+                )
+                for keyword in keywords
+            })
+            for item in self._attrs_slot_names(iterable, supplier)
+        ]
+
+    def _attrs_slot_names(
+        self, iterable: ast.expr, supplier: t.MappingKV[str, p.AttributeProbe]
+    ) -> t.VariadicTuple[str]:
+        """Read the closed names a record comprehension iterates.
+
+        Returns:
+            A class's raw ``__slots__`` strings or a literal string tuple.
+
+        Raises:
+            ValueError: If the iterable is not native string storage.
+
+        """
+        match iterable:
+            case ast.Attribute(value=ast.Name(id=owner), attr="__slots__") if (
+                type(supplier.get(owner)) is type
+            ):
+                slots = vars(type)["__dict__"].__get__(supplier[owner], type).get(
+                    "__slots__"
+                )
+            case ast.Tuple(elts=elements):
+                slots = tuple(
+                    element.value
+                    for element in elements
+                    if isinstance(element, ast.Constant)
+                )
+                if len(slots) != len(elements):
+                    slots = None
+            case _:
+                slots = None
+        if type(slots) is not tuple or any(type(name) is not str for name in slots):
+            msg = "native attrs record comprehension iterates foreign names"
+            raise ValueError(msg)
+        return tuple(str(name) for name in slots)
+
+    def _attrs_record_operand(
+        self,
+        node: ast.expr,
+        binding: t.Pair[str, str],
+        supplier: t.MappingKV[str, p.AttributeProbe],
+        sdk: t.MappingKV[str, p.AttributeProbe],
+    ) -> p.AttributeProbe:
+        """Evaluate one record keyword of a closed comprehension.
+
+        Returns:
+            A literal, the loop name, an SDK marker, a literal comparison of the
+            loop name, or an authenticated SDK function of the loop name.
+
+        Raises:
+            ValueError: If the operand is outside that closed form.
+
+        """
+        variable, item = binding
+        match node:
+            case ast.Constant(value=literal) if type(literal) in {bool, NoneType, str}:
+                return literal
+            case ast.Name(id=name) if name == variable:
+                return item
+            case ast.Name(id=name) if (
+                name in supplier and supplier[name] is sdk.get("NOTHING")
+            ):
+                return supplier[name]
+            case ast.Compare(
+                left=ast.Name(id=name),
+                ops=[ast.Eq() | ast.NotEq() as operator],
+                comparators=[ast.Constant(value=str() as literal)],
+            ) if name == variable:
+                return (item == literal) is isinstance(operator, ast.Eq)
+            case ast.Call(
+                func=ast.Name(id=function), args=[ast.Name(id=name)], keywords=[]
+            ) if name == variable:
+                self._function(
+                    supplier.get(function), source_name=function, source_namespace=sdk
+                )
+                return self._attrs_builder(sdk, function)(item)
+            case _:
+                msg = "native attrs record operand is outside the closed form"
                 raise ValueError(msg)
 
     def _attrs_condition(
@@ -612,6 +782,7 @@ class FlextInfraWorkspaceGeneratedFunction:
             "_assign",
             "_assign_with_converter",
             "_is_slot_attr",
+            "_determine_attrib_eq_order",
         ):
             self._function(
                 namespace.get(name), source_name=name, source_namespace=namespace
