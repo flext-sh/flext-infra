@@ -736,10 +736,13 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If inherited fields or abstract state need unproved inputs.
 
         """
-        # An ABC-derived receiver always stores __abstractmethods__; an exact
-        # empty frozenset carries no authored state and changes no emission.
+        # An ABC-derived receiver stores __abstractmethods__ as an exact frozenset
+        # of names: native data that no SDK emission reads, so it is admitted;
+        # any other storage there is authored state.
         abstract = namespace.get("__abstractmethods__", frozenset())
-        if type(abstract) is not frozenset or abstract:
+        if type(abstract) is not frozenset or any(
+            type(item) is not str for item in abstract
+        ):
             msg = (
                 "native dataclass receiver requires authored abstract-state inputs: "
                 f"{namespace.get('__module__')}::"
