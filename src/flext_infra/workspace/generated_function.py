@@ -787,7 +787,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         """Retain source-defined methods without invoking their descriptors or bodies.
 
         Raises:
-            ValueError: If inherited fields or abstract state need unproved inputs.
+            TypeError: If abstract state has foreign storage.
 
         """
         # ABCMeta derives ``__abstractmethods__`` from the authored markers; the
@@ -804,6 +804,9 @@ class FlextInfraWorkspaceGeneratedFunction:
             raise TypeError(msg)
         for ancestor in vars(type)["__mro__"].__get__(owner, type(owner))[1:]:
             inherited = vars(type)["__dict__"].__get__(ancestor, type(ancestor))
+            # Inherited fields reach the SDK through ``_dataclass_bases``; the
+            # receiver carries no authored ancestor, so an inherited hook the
+            # SDK looks up by name is proved and copied here.
             if "__post_init__" in inherited and "__post_init__" not in result:
                 self._dataclass_method(inherited["__post_init__"])
                 result["__post_init__"] = inherited["__post_init__"]
@@ -989,7 +992,9 @@ class FlextInfraWorkspaceGeneratedFunction:
         self._dataclass_hash_action(factory[1], namespace)
         self._dataclass_sdk_state()
         self._inputs_current("native dataclass compiler input changed")
-        receiver = type(declaration.name, (object,), namespace)
+        receiver = type(
+            declaration.name, self._dataclass_bases(owner, factory[1]), namespace
+        )
         emitted = factory[0](receiver, **factory[1])
         if type(emitted) is not type:
             msg = "native dataclass SDK returned a foreign receiver"
@@ -1014,6 +1019,64 @@ class FlextInfraWorkspaceGeneratedFunction:
                 inputs=tuple(self._inputs.values()),
             )
         )
+
+    def _dataclass_bases(
+        self,
+        owner: p.AttributeProbe,
+        options: t.MappingKV[str, bool],
+    ) -> t.VariadicTuple[type]:
+        """Mirror every ancestor's stored SDK state without its authored class.
+
+        The SDK reads inherited fields only through ``getattr`` of
+        ``__dataclass_fields__``/``__dataclass_params__`` along the receiver MRO.
+        A linear chain of plain types carrying exactly that native state, in the
+        owner's MRO order, reproduces it without running ancestor metaclasses,
+        ``__init_subclass__`` hooks or bodies.
+
+        Returns:
+            The receiver bases: the mirrored chain, or ``object`` alone.
+
+        Raises:
+            TypeError: If an ancestor carries foreign SDK state storage.
+            ValueError: If the ancestry is not linear or slots need ancestor storage.
+
+        """
+        compiler = vars(self._module("dataclasses"))
+        ancestry = vars(type)["__mro__"].__get__(owner, type(owner))
+        base: type = object
+        for index in range(len(ancestry) - 2, 0, -1):
+            ancestor = ancestry[index]
+            name = vars(type)["__name__"].__get__(ancestor, type(ancestor))
+            if vars(type)["__mro__"].__get__(ancestor, type(ancestor)) != ancestry[index:]:
+                msg = f"native dataclass ancestry is not linear: {name}"
+                raise ValueError(msg)
+            storage = vars(type)["__dict__"].__get__(ancestor, type(ancestor))
+            state: t.DictKV[str, p.AttributeProbe] = {}
+            fields = storage.get("__dataclass_fields__")
+            if fields is not None:
+                if options["slots"]:
+                    msg = (
+                        "native dataclass slots with dataclass ancestors need "
+                        f"authored slot inputs: {name}"
+                    )
+                    raise ValueError(msg)
+                params = storage.get("__dataclass_params__")
+                if (
+                    type(fields) is not dict
+                    or any(
+                        type(key) is not str or type(field) is not compiler["Field"]
+                        for key, field in fields.items()
+                    )
+                    or type(params) is not compiler["_DataclassParams"]
+                ):
+                    msg = f"native dataclass ancestor has foreign SDK state: {name}"
+                    raise TypeError(msg)
+                state = {
+                    "__dataclass_fields__": fields,
+                    "__dataclass_params__": params,
+                }
+            base = type(name, (base,), state)
+        return (base,)
 
     def _dataclass_hash_action(
         self,
