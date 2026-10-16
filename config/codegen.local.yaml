@@ -1,0 +1,8 @@
+Infra:
+  codegen:
+    repository:
+      candidate_bootstrap_targets:
+      - path: .
+        what: pyproject
+      - path: ../../flext-tests/session-runtime-supplier-20261014
+        what: pyproject

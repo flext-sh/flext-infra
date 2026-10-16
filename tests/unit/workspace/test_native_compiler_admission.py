@@ -485,9 +485,7 @@ class TestsNativeCompilerAdmission:
         shadow = "object = int\n" if defect == "shadow" else ""
         u.Tests.write_package_init(
             tmp_path / "slot_provider",
-            "from dataclasses import dataclass\n"
-            + shadow
-            + "@dataclass\n"
+            "from dataclasses import dataclass\n" + shadow + "@dataclass\n"
             "class Reference:\n"
             "    name: str\n"
             "    __hash__ = object.__hash__\n",
@@ -526,6 +524,12 @@ class TestsNativeCompilerAdmission:
             "    @abstractmethod\n"
             "    def render(self) -> str: ...\n"
             "    def label(self) -> str:\n"
+            "        return self.name\n"
+            "@dataclass(frozen=True)\n"
+            "class Leaf(Node):\n"
+            '    """Concrete leaf inheriting the abstract fields."""\n'
+            "    weight: int = 1\n"
+            "    def render(self) -> str:\n"
             "        return self.name\n",
         )
         consumer = (
@@ -533,6 +537,8 @@ class TestsNativeCompilerAdmission:
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('abstract_provider')\n"
             "assert module.Node.__abstractmethods__ == frozenset({'render'})\n"
+            "assert module.Leaf('leaf').render() == 'leaf'\n"
+            "assert module.Leaf('leaf') == module.Leaf('leaf', 1)\n"
             "if sys.argv[2] == 'marker':\n"
             "    module.Node.label.__isabstractmethod__ = True\n"
             "observed = authenticate(module.__name__)\n"
