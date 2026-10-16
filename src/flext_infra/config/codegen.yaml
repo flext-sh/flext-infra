@@ -371,7 +371,7 @@ Infra:
       - main
       # The one versioned line this fleet integrates on (SSOT — no fallback
       # probe list; the model probes exactly this line against live Git).
-      integration_branch: "0.12.0-dev"
+      integration_branch: "upload-20261007"
     # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
     # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
     # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
