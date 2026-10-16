@@ -2299,23 +2299,9 @@ class FlextInfraWorkspaceGeneratedFunction:
         ):
             msg = "closed compiler function has foreign globals"
             raise ValueError(msg)
+        spellings = self._decorator_spellings(decorator, namespace)
         path, tree = self._source(self._module(module_name))
-        if decorator == "abstractmethod":
-            # The abstract marker is not a builtin: the module's own import
-            # binding must resolve to the exact ``abc.abstractmethod``.
-            if self._global(decorator, namespace, tree) is not vars(
-                self._module("abc")
-            ).get(decorator):
-                msg = (
-                    "closed compiler abstract marker is not abc.abstractmethod: "
-                    f"{module_name}.{function.__code__.co_qualname}"
-                )
-                raise ValueError(msg)
-        elif decorator is not None and "." not in decorator:
-            # The source decorator must be the native descriptor type itself;
-            # ``<name>.setter``/``.deleter`` are the property's own methods.
-            self._builtin(decorator, namespace)
-        candidates = self._function_declarations(function, tree, decorator=decorator)
+        candidates = self._function_declarations(function, tree, spellings=spellings)
         pending = [self._codes[path]]
         matched = False
         while pending:
