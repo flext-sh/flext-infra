@@ -302,12 +302,14 @@ class FlextInfraWorkspaceGeneratedFunction:
         transformer runs.
 
         Returns:
-            The independent emission of the observed generated method.
+            The independent emission of the observed generated method, or the
+            first stored class state that differs from what attrs writes.
 
         Raises:
-            ValueError: If the method is not its class slot or was not emitted.
+            ValueError: If the builders did not emit the class slot.
 
         """
+        result_type = r[m.Infra.NativeGeneratedFunctionProof]
         namespace = vars(self._module("attr._make"))
         self._attrs_sdk(namespace)
         module = self._witness.module.get_name()
@@ -315,11 +317,19 @@ class FlextInfraWorkspaceGeneratedFunction:
             (module, f"{qualified}.{attribute}", attribute),
             (value.__module__, value.__qualname__, value.__name__),
         ):
-            msg = f"native attrs generated method is not its class slot: {attribute}"
-            raise ValueError(msg)
-        records = self._attrs_records(storage, namespace, qualified)
-        props = self._attrs_props(storage, namespace)
-        self._attrs_layout(owner, storage, records, props, namespace)
+            return result_type.fail(
+                f"native attrs generated method is not its class slot: {attribute}"
+            )
+        stored = self._attrs_records(storage, namespace, qualified)
+        if stored.failure:
+            return result_type.from_failure(stored)
+        options = self._attrs_props(storage, namespace)
+        if options.failure:
+            return result_type.from_failure(options)
+        records, props = stored.value, options.value
+        layout = self._attrs_layout(owner, storage, records, props, namespace)
+        if layout.failure:
+            return result_type.from_failure(layout)
         identity = type(
             qualified.rsplit(".", 1)[-1],
             (object,),
@@ -339,7 +349,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         if attribute == init_name:
             expected.__annotations__ = dict(annotations)
         self._inputs_current("native attrs compiler input changed")
-        return r[m.Infra.NativeGeneratedFunctionProof].ok(
+        return result_type.ok(
             m.Infra.NativeGeneratedFunctionProof(
                 code=expected.__code__,
                 globals=expected.__globals__,
@@ -927,24 +937,27 @@ class FlextInfraWorkspaceGeneratedFunction:
         storage: t.MappingKV[str, p.AttributeProbe],
         namespace: t.MappingKV[str, p.AttributeProbe],
         qualified: str,
-    ) -> p.AttributeProbe:
+    ) -> p.Result[p.AttributeProbe]:
         """Authenticate the stored attrs field tuple and every record operand.
 
+        A stored tuple that is not the attrs accessor class is changed class
+        state and fails the proof; an operand the builders cannot read without
+        an authored hook is unsupported and raises.
+
         Returns:
-            The exact stored record tuple the builders consumed.
+            The exact stored record tuple, or the first stored-state difference.
 
         Raises:
-            TypeError: If the tuple or a record operand has foreign storage.
-            ValueError: If the tuple accessors differ from the attrs factory.
+            TypeError: If a record alias the initializer spells is not a string.
 
         """
+        result_type = r[p.AttributeProbe]
         records = storage.get("__attrs_attrs__")
         holder = type(records)
         if type(holder) is not type or vars(type)["__bases__"].__get__(
             holder, type
         ) != (tuple,):
-            msg = "native attrs records have foreign tuple storage"
-            raise TypeError(msg)
+            return result_type.fail("native attrs records have foreign tuple storage")
         maker = self._attrs_builder(namespace, "_make_attr_tuple_class")
         getter = next(
             (
@@ -959,8 +972,9 @@ class FlextInfraWorkspaceGeneratedFunction:
         names = self._attrs_names(records, kind)
         name = vars(type)["__name__"].__get__(holder, type)
         if getter is None or name != f"{qualified.rsplit('.', 1)[-1]}Attributes":
-            msg = "native attrs record tuple is not the attrs accessor class"
-            raise ValueError(msg)
+            return result_type.fail(
+                "native attrs record tuple is not the attrs accessor class"
+            )
         for key, accessor in body.items():
             if key not in names:
                 if type(accessor) is GetSetDescriptorType or key in {
@@ -968,8 +982,9 @@ class FlextInfraWorkspaceGeneratedFunction:
                     "__doc__",
                 }:
                     continue
-                msg = f"native attrs record tuple has authored storage: {key}"
-                raise ValueError(msg)
+                return result_type.fail(
+                    f"native attrs record tuple has authored storage: {key}"
+                )
             getter_function = accessor.fget if type(accessor) is property else None
             if (
                 type(getter_function) is not FunctionType
@@ -977,15 +992,16 @@ class FlextInfraWorkspaceGeneratedFunction:
                 or getter_function.__defaults__ != (names.index(key),)
                 or (accessor.fset, accessor.fdel) != (None, None)
             ):
-                msg = f"native attrs record accessor differs from attrs: {key}"
-                raise ValueError(msg)
+                return result_type.fail(
+                    f"native attrs record accessor differs from attrs: {key}"
+                )
         for item in vars(tuple)["__getitem__"](records, slice(None)):
             self._attrs_record(item, kind, namespace)
             # The class initializer spells each parameter by its alias.
             if type(self._attrs_slot(item, kind, "alias")) is not str:
                 msg = "native attrs record alias is not a string"
                 raise TypeError(msg)
-        return records
+        return result_type.ok(records)
 
     def _attrs_record(
         self,
@@ -1057,22 +1073,25 @@ class FlextInfraWorkspaceGeneratedFunction:
         self,
         storage: t.MappingKV[str, p.AttributeProbe],
         namespace: t.MappingKV[str, p.AttributeProbe],
-    ) -> t.MappingKV[str, p.AttributeProbe]:
+    ) -> p.Result[t.MappingKV[str, p.AttributeProbe]]:
         """Read the stored attrs class options through their native slots.
 
         Returns:
-            Every declared option slot by name.
+            Every declared option slot by name, or the first foreign option.
 
         Raises:
-            TypeError: If an option the builders consume has foreign storage.
+            TypeError: If the attrs options class declares no slots.
 
         """
+        result_type = r[t.MappingKV[str, p.AttributeProbe]]
         kind = namespace["ClassProps"]
         slots = vars(type)["__dict__"].__get__(kind, type).get("__slots__")
         props = storage.get("__attrs_props__")
-        if type(slots) is not tuple:
+        if type(slots) is not tuple or type(kind) is not type:
             msg = "native attrs class options have no declared slots"
             raise TypeError(msg)
+        if type(props) is not kind:
+            return result_type.fail("native attrs class options have a foreign type")
         values = {
             name: self._attrs_slot(props, kind, name)
             for name in slots
@@ -1104,9 +1123,8 @@ class FlextInfraWorkspaceGeneratedFunction:
                 or type(hook) is FunctionType
             )
         ):
-            msg = "native attrs class options have foreign storage"
-            raise TypeError(msg)
-        return {**values, "hashability_members": members}
+            return result_type.fail("native attrs class options have foreign storage")
+        return result_type.ok({**values, "hashability_members": members})
 
     def _attrs_layout(
         self,
@@ -1115,19 +1133,21 @@ class FlextInfraWorkspaceGeneratedFunction:
         records: p.AttributeProbe,
         props: t.MappingKV[str, p.AttributeProbe],
         namespace: t.MappingKV[str, p.AttributeProbe],
-    ) -> None:
+    ) -> p.Result[bool]:
         """Prove the class slot layout is the one attrs derives from its records.
 
-        Raises:
-            ValueError: If declared slots or slot descriptors differ.
+        Returns:
+            Success, or the first declared slot or descriptor that differs.
 
         """
+        result_type = r[bool]
         slots = storage.get("__slots__")
         if props["is_slotted"] is not True:
             if "__slots__" in storage:
-                msg = "native attrs class declares slots its options do not"
-                raise ValueError(msg)
-            return
+                return result_type.fail(
+                    "native attrs class declares slots its options do not"
+                )
+            return result_type.ok(value=True)
         names = list(self._attrs_names(records, namespace["Attribute"]))
         ancestry = vars(type)["__mro__"].__get__(owner, type(owner))[1:-1]
         inherited = any(
@@ -1145,15 +1165,16 @@ class FlextInfraWorkspaceGeneratedFunction:
         if self._attrs_hashability(props)[1] and type(cache_field) is str:
             names.append(cache_field)
         if type(slots) is not tuple or slots != tuple(names):
-            msg = "native attrs slot layout differs from its records"
-            raise ValueError(msg)
+            return result_type.fail("native attrs slot layout differs from its records")
         for name in names:
             expected = (
                 GetSetDescriptorType if name == "__weakref__" else MemberDescriptorType
             )
             if type(storage.get(name)) is not expected:
-                msg = f"native attrs slot has no native descriptor: {name}"
-                raise ValueError(msg)
+                return result_type.fail(
+                    f"native attrs slot has no native descriptor: {name}"
+                )
+        return result_type.ok(value=True)
 
     @staticmethod
     def _attrs_hashability(
