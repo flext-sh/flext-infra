@@ -974,19 +974,23 @@ class FlextInfraCodegenPreconditions:
         cls,
         reference: m.Infra.NativeImportReference,
     ) -> p.Result[bool]:
-        """Re-prove a native reference by value against its sealed authority.
+        """Re-prove a native reference's admission by value.
 
-        A reference is a value: the same producer is current on every path
-        (live, journaled, recovered) exactly when its source authority still
-        proves the capturing runtime, module election and pinned inputs.
+        A reference is a value: it stays admitted on every path (live,
+        journaled, recovered) while its sealed authority still names this
+        capturing runtime, compiler optimization and module election. Its
+        pinned input bytes are not re-read here: a transaction legitimately
+        publishes its own producer inputs (a self-hosted pyproject or lazy
+        init), so input currency belongs to ``authority_current``, which
+        authenticates those effects against the journal's recorded outputs.
 
         Returns:
-            Success only while the reference's source authority is current.
+            Success only while the reference's runtime and election hold.
 
         """
         if type(reference) is not m.Infra.NativeImportReference:
             return r[bool].fail("native reference is not an admitted native import")
-        return cls.source_authority_current(reference.source_authority)
+        return cls._authority_modules_current(reference.source_authority)
 
     @classmethod
     def _executed_source_authority(
