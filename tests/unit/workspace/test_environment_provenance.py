@@ -137,7 +137,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         *,
         installed_layout: bool,
     ) -> None:
-        """An unproven binding fails with declaration context, never operand contents."""
+        """Unproven bindings report declaration context without operand contents."""
         import_root = tmp_path / "site-packages" if installed_layout else tmp_path
         u.Tests.write_package_init(
             import_root / "diagnostic_provider",
@@ -194,7 +194,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         package_name: str,
         defect: str,
     ) -> None:
-        """Inherited guard calls keep non-fleet declarations and reject native changes."""
+        """Inherited guards retain declarations and reject native changes."""
         u.Tests.write_package_init(
             tmp_path / package_name,
             "class Payload:\n"
@@ -508,7 +508,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tmp_path: Path,
         changed: bool,
     ) -> None:
-        """An inherited accessor retains its supplier, not its importing class's file."""
+        """Inherited accessors retain the physical supplier of their implementation."""
         tm.ok(
             u.Cli.atomic_write_text_file(
                 tmp_path / "ancestor_provider.py",
@@ -829,7 +829,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tmp_path: Path,
         defect: str,
     ) -> None:
-        """Authentication preserves effects of the actual imported construction."""
+        """Source preflight preserves effects of the actual imported construction."""
         u.Tests.write_package_init(
             tmp_path / "effect_provider",
             "from dataclasses import dataclass\n"
@@ -861,11 +861,11 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "before = tuple(module.effects)\n"
             "marker = module.marker.read_bytes()\n"
             "assert set(before) == {'body', 'decorator', 'metaclass', 'subclass'}\n"
-            "authenticate(module.__name__).unwrap()\n"
+            "source_preflight(module.__name__).unwrap()\n"
             "if sys.argv[2] == 'code':\n"
             "    module.Payload.__init__.__code__ = "
             "module.Payload.__init__.__code__.replace(co_name='replaced')\n"
-            "observed = authenticate(module.__name__)\n"
+            "observed = source_preflight(module.__name__)\n"
             "assert observed.success == (sys.argv[2] == 'none'), observed\n"
             "assert tuple(module.effects) == before\n"
             "assert module.marker.read_bytes() == marker\n"
@@ -1059,7 +1059,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('static_reference_provider')\n"
             "assert module.Payload(3).value == 3\n"
-            "reference = provenance.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
+            "reference = provenance.capture("
+            "(m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
             "defect = sys.argv[2]\n"
             "if defect == 'filename':\n"
             "    method = module.Payload.__init__\n"
@@ -1068,7 +1069,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    module.Payload.__annotations__['value'] = Annotated[int, Ge(3)]\n"
             "elif defect == 'parameters':\n"
             "    module.Payload.__dataclass_params__ = module.ForeignParameters()\n"
-            "observed = provenance.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
+            "observed = provenance.capture("
+            "(m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
             "compared = provenance.compare(observed, reference)\n"
             "assert compared.success == (defect == 'none'), compared.error\n"
         )
@@ -1101,7 +1103,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "FlextInfraWorkspaceNativeReference as provenance\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('native_wrapper_provider')\n"
-            "reference = provenance.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
+            "reference = provenance.capture("
+            "(m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
             "defect = sys.argv[2]\n"
             "if defect == 'wrapped':\n"
             "    module.produce.__wrapped__ = module.counterfeit\n"
@@ -1112,7 +1115,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "    module.produce.__wrapped__ = module.counterfeit\n"
             "elif defect == 'partial_arguments':\n"
             "    module.selected.keywords['value'] = 'foreign'\n"
-            "observed = provenance.capture((m.Infra.SourceClassReference(target=module.__name__),))\n"
+            "observed = provenance.capture("
+            "(m.Infra.SourceClassReference(target=module.__name__),))\n"
             "if defect in {'wrapped', 'cached_wrapped'}:\n"
             "    assert observed.failure, observed\n"
             "else:\n"
@@ -1144,7 +1148,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "effect = pathlib.Path(module.__file__).with_name('effect')\n"
             "assert effect.read_text() == 'imported'\n"
             "effect.unlink()\n"
-            "observed = authenticate(module.__name__)\n"
+            "observed = source_preflight(module.__name__)\n"
             "assert observed.failure, observed\n"
             "assert not effect.exists(), 'source admission replayed the module'\n"
         )
@@ -1156,7 +1160,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         native_consumer: p.Tests.NativeConsumer,
         defect: str,
     ) -> None:
-        """Authenticate real Protocol dataclasses and reject altered constructor state."""
+        """Authenticate Protocol dataclasses and reject constructor-state drift."""
         consumer = (
             "import inspect\n"
             "from annotated_types import Interval, Len, MaxLen, MinLen\n"
@@ -1647,6 +1651,42 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 )
             tm.that(tuple(item.path for item in selected), eq=(Path("sample-member"),))
 
+    @staticmethod
+    def _materialize_editable_layout(root: Path, layout: str) -> None:
+        """Declare real source roots through the existing native Hatch table."""
+        roots = (root / "left", root / "right")
+        primary = u.Infra.project_package_name(root)
+        package_names = (
+            (primary, primary)
+            if layout == "namespace"
+            else (primary, f"{primary}_companion")
+        )
+        declarations: list[str] = []
+        for source_root, name in zip(roots, package_names, strict=True):
+            package = source_root / name
+            tm.ok(u.Cli.ensure_dir(package))
+            if layout in {"multiple", "hatch-sources"}:
+                tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, ""))
+            else:
+                tm.ok(u.Cli.atomic_write_text_file(package / "portion.py", ""))
+            declarations.append(package.relative_to(root).as_posix())
+        pyproject = root / c.PYPROJECT_FILENAME
+        payload = u.Tests.toml_payload(pyproject.read_text(encoding="utf-8"))
+        wheel = tm.not_none(
+            u.Cli.toml_mapping_path(
+                payload, ("tool", "hatch", "build", "targets", "wheel")
+            )
+        )
+        if layout == "hatch-sources":
+            for key in ("packages", "include", "sources"):
+                wheel.pop(key, None)
+            wheel["include"] = [f"/{declaration}/**" for declaration in declarations]
+            wheel["sources"] = dict(zip(declarations, package_names, strict=True))
+        else:
+            boundary_packages: t.JsonValueList = list(declarations)
+            wheel["packages"] = boundary_packages
+        tm.ok(u.Cli.toml_write_mapping(pyproject, payload))
+
     @pytest.mark.parametrize(
         "layout", ["package", "namespace", "multiple", "hatch-sources"]
     )
@@ -1658,63 +1698,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         """Authenticate native backend paths and reject a case-local docs-only path."""
         root = installed_artifact_consumer
         if layout != "package":
-            roots = (root / "left", root / "right")
-            primary = u.Infra.project_package_name(root)
-            package_names = (
-                (primary, primary)
-                if layout == "namespace"
-                else (primary, f"{primary}_companion")
-            )
-            declarations = []
-            for source_root, name in zip(roots, package_names, strict=True):
-                package = source_root / name
-                tm.ok(u.Cli.ensure_dir(package))
-                if layout in {"multiple", "hatch-sources"}:
-                    tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.INIT_PY, ""))
-                else:
-                    tm.ok(u.Cli.atomic_write_text_file(package / "portion.py", ""))
-                declarations.append(package.relative_to(root).as_posix())
-            pyproject = root / c.PYPROJECT_FILENAME
-            payload = u.Tests.toml_payload(pyproject.read_text(encoding="utf-8"))
-            tool = u.Tests.toml_mapping(payload.get("tool", {}))
-            hatch = u.Tests.toml_mapping(tool.get("hatch", {}))
-            build = u.Tests.toml_mapping(hatch.get("build", {}))
-            targets = u.Tests.toml_mapping(build.get("targets", {}))
-            wheel = u.Tests.toml_mapping(targets.get("wheel", {}))
-            declared_wheel = {**wheel, "packages": declarations}
-            if layout == "hatch-sources":
-                declared_wheel = {
-                    key: value
-                    for key, value in wheel.items()
-                    if key not in {"packages", "include", "sources"}
-                }
-                declared_wheel["include"] = [
-                    f"/{declaration}/**" for declaration in declarations
-                ]
-                declared_wheel["sources"] = dict(
-                    zip(declarations, package_names, strict=True)
-                )
-            tm.ok(
-                u.Cli.toml_write_mapping(
-                    pyproject,
-                    {
-                        **payload,
-                        "tool": {
-                            **tool,
-                            "hatch": {
-                                **hatch,
-                                "build": {
-                                    **build,
-                                    "targets": {
-                                        **targets,
-                                        "wheel": declared_wheel,
-                                    },
-                                },
-                            },
-                        },
-                    },
-                )
-            )
+            self._materialize_editable_layout(root, layout)
             ci = config.Infra.codegen.make.ci
             setup = tm.ok(
                 u.Tests.run_isolated_make(
@@ -1818,12 +1802,14 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "FlextInfraWorkspaceNativeReference as producer\n"
             "root = pathlib.Path(sys.argv[1])\n"
             "module = importlib.import_module(sys.argv[2])\n"
-            "reference = producer.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
+            "reference = producer.capture("
+            "(m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
             "yaml.safe_load.__module__ = None\n"
             "module.producer.__code__ = module.producer.__code__.replace("
             "co_filename='<unbound producer>')\n"
             "environment.validate(root).unwrap()\n"
-            "observed = producer.capture((m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
+            "observed = producer.capture("
+            "(m.Infra.SourceClassReference(target=module.__name__),)).unwrap()\n"
             "rejected = producer.compare(observed, reference)\n"
             "assert rejected.failure, rejected\n"
             "assert module.producer.__qualname__ in rejected.error, rejected.error\n"

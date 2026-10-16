@@ -20,6 +20,7 @@ from flext_infra._models import (
     FlextInfraModelsCodemod,
     FlextInfraModelsMixins,
     FlextInfraModelsNamespaceEnforcer,
+    FlextInfraModelsRefactorGrep,
 )
 from flext_infra._models.base import FlextInfraModelsBase
 
@@ -341,6 +342,19 @@ class FlextInfraModelsScan:
     class ModScanReport(ModOccurrenceReport[ModScanFinding]):
         """Native scan inventory with complete durable output receipts."""
 
+        repository_root: Path | None = m.Field(
+            default=None, description="Repository elected by the original native scan"
+        )
+        source_files: tuple[Path, ...] | None = m.Field(
+            default=None,
+            description="Explicit original source selection, when supplied",
+        )
+        rule_plan: FlextInfraModelsRefactorGrep.CodemodRulePlan | None = m.Field(
+            default=None, description="Actual rule plan consumed by the native scan"
+        )
+        catalog_states: tuple[m.Cli.AtomicFileState, ...] | None = m.Field(
+            default=None, description="Original rule and configuration input snapshots"
+        )
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
             min_length=1, description="Complete authenticated native output inventory"
         )

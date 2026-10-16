@@ -767,36 +767,45 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 dict(editable),
                 definitions_by_file,
             )
+
+            def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
+                module = modules.get(path)
+                definitions = definitions_by_file.get(path, {})
+                updated = cls._rewrite_class_nesting_source(
+                    quoted[path],
+                    native=(
+                        project,
+                        project.get_resource(
+                            path.relative_to(Path(project.root.real_path)).as_posix(),
+                        ),
+                    ),
+                    scope=(
+                        module.module_name if module is not None else "",
+                        module.is_package_init if module is not None else False,
+                    ),
+                    bindings_by_module=bindings_by_module,
+                    definitions=definitions,
+                )
+                if definitions and updated == source:
+                    msg = "class-nesting owner produced no structural edit"
+                    raise ValueError(msg)
+                return updated, tuple(
+                    f"nested {name} under {owner}"
+                    for name, owner in definitions.items()
+                ) or ("rewired nested-class consumer",)
+
+            return cls._semantic_edits(
+                tuple(
+                    (path, source)
+                    for path, source in editable
+                    if path in definitions_by_file
+                    or quoted[path] != source
+                    or any(name in source for name in nested_names)
+                ),
+                rewrite,
+            )
         finally:
             project.close()
-
-        def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
-            module = modules.get(path)
-            definitions = definitions_by_file.get(path, {})
-            updated = cls._rewrite_class_nesting_source(
-                quoted[path],
-                module_name=module.module_name if module is not None else "",
-                is_package_init=module.is_package_init if module is not None else False,
-                bindings_by_module=bindings_by_module,
-                definitions=definitions,
-            )
-            if definitions and updated == source:
-                msg = "class-nesting owner produced no structural edit"
-                raise ValueError(msg)
-            return updated, tuple(
-                f"nested {name} under {owner}" for name, owner in definitions.items()
-            ) or ("rewired nested-class consumer",)
-
-        return cls._semantic_edits(
-            tuple(
-                (path, source)
-                for path, source in editable
-                if path in definitions_by_file
-                or quoted[path] != source
-                or any(name in source for name in nested_names)
-            ),
-            rewrite,
-        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverNesting"]

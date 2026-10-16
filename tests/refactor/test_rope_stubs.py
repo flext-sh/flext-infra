@@ -46,3 +46,6 @@ class TestsFlextInfraRefactorRopeStubs:
             tm.that(len(hits) > 0, eq=True)
         finally:
             project.close()
+
+
+__all__: list[str] = ["TestsFlextInfraRefactorRopeStubs"]

@@ -154,6 +154,7 @@ class FlextInfraRefactorCensus(
                         f"bindings={sum(len(edit.changes) for edit in constant_edits)} "
                         f"applied={self.apply_changes and not self.effective_dry_run}",
                     )
+                rope.refresh()
             impact_report = self._collect_report(
                 rope, source_preview=self.source_preview
             )
@@ -191,6 +192,7 @@ class FlextInfraRefactorCensus(
                 and not self.effective_dry_run
                 and self._apply_removal_candidates(rope, report)
             ):
+                rope.refresh()
                 report = self._collect_report(rope, source_preview=self.source_preview)
         finalized = report.model_copy(
             update={

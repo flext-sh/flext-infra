@@ -474,3 +474,6 @@ class FlextInfraConfigModelsRepository:
                 ),
             ),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsRepository"]

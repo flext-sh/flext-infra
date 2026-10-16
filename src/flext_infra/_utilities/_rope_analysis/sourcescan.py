@@ -430,7 +430,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         """
         if not isinstance(mapping, ast.Dict):
             return None
-        keys: list[ast.expr] = []
+        keys: list[ast.expr | None] = []
         values: list[ast.expr] = []
         for module_key, aliases in zip(mapping.keys, mapping.values, strict=True):
             if not isinstance(module_key, ast.Constant) or not isinstance(
@@ -604,3 +604,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                         )
                         target_map[local] = module_name
         return target_map
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisSourceScan"]

@@ -384,4 +384,4 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(execution.result.passed, eq=True)
+        assert execution.result.passed, execution.issues

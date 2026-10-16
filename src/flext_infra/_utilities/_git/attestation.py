@@ -101,9 +101,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
         if inline and key is not None:
             try:
                 cls._validate_inline_ssh_key(key)
-            except ValueError:
+            except ValueError as error:
                 return r[m.Infra.GitSigningIdentityReport].fail(
                     "native Git signing configuration declares a malformed public key",
+                    exception=error,
                 )
         return r[m.Infra.GitSigningIdentityReport].ok(
             m.Infra.GitSigningIdentityReport(
@@ -1071,7 +1072,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
             policy=predicate.commands[0].policy,
             policy_digest=predicate.commands[0].policy_digest,
         )
-        return cls._publish_gate_tag(verification_request, predicate, serialized.value)
+        return cls._publish_gate_tag(
+            verification_request, predicate, serialized.value, context
+        )
 
     @classmethod
     def _publish_gate_tag(
@@ -1079,6 +1082,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateAttestationVerifyRequest,
         predicate: m.Infra.GateAttestationPredicate,
         serialized: str,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()
@@ -1091,6 +1095,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                     repo_root,
                     allowed,
                     tag,
+                    context,
                 )
                 if existing.failure:
                     return r[m.Infra.GateAttestationReport].from_failure(existing)
@@ -1117,6 +1122,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             repo_root,
             allowed,
             tag,
+            context,
         )
         if verified.failure:
             return r[m.Infra.GateAttestationReport].from_failure(verified)

@@ -23,7 +23,7 @@ class TestsFlextInfraConstantDeclarations:
         ["flext_tap_oracle_wms", "flext_target_oracle", "flext_dbt_oracle"],
     )
     @pytest.mark.parametrize(
-        ("imports", "qualifier"),
+        "binding",
         [
             ("from typing import Final", "Final"),
             ("from typing import Final as Immutable", "Immutable"),
@@ -34,11 +34,11 @@ class TestsFlextInfraConstantDeclarations:
         constants_workspace: t.Pair[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
         infra_subprocess: p.Cli.CommandRunner,
-        imports: str,
-        qualifier: str,
+        binding: t.Pair[str, str],
         provider: str,
     ) -> None:
         """The migrated namespace publishes scalars and an immutable collection."""
+        imports, qualifier = binding
         root, package = constants_workspace
         family = package / u.Infra.facade_families()["c"].directory
         family.mkdir()

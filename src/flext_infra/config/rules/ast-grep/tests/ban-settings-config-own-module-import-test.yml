@@ -2,6 +2,8 @@ id: ban-settings-config-own-module-import
 valid:
   - |
     from pydantic_settings import BaseSettings
+  - |
+    from flext_infra import config
 invalid:
   - |
     from flext_infra._settings import FlextInfraSettings
@@ -23,3 +25,6 @@ invalid:
     from flext_infra._constants import FlextInfraConstantsCodegenProject
   - |
     from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
+  - |
+    if TYPE_CHECKING:
+        from flext_infra._models import FlextInfraModelsBase
