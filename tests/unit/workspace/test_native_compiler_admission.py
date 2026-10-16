@@ -508,6 +508,42 @@ class TestsNativeCompilerAdmission:
         native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
+    @pytest.mark.parametrize("defect", ["none", "marker"])
+    def test_abstract_dataclass_methods_are_authenticated(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        defect: str,
+    ) -> None:
+        """An abstract dataclass proves its marked methods; a forged marker fails."""
+        u.Tests.write_package_init(
+            tmp_path / "abstract_provider",
+            "from abc import ABC, abstractmethod\n"
+            "from dataclasses import dataclass\n"
+            "@dataclass(frozen=True)\n"
+            "class Node(ABC):\n"
+            '    """Abstract node."""\n'
+            "    name: str\n"
+            "    @abstractmethod\n"
+            "    def render(self) -> str: ...\n"
+            "    def label(self) -> str:\n"
+            "        return self.name\n",
+        )
+        consumer = (
+            "import importlib, sys\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('abstract_provider')\n"
+            "assert module.Node.__abstractmethods__ == frozenset({'render'})\n"
+            "if sys.argv[2] == 'marker':\n"
+            "    module.Node.label.__isabstractmethod__ = True\n"
+            "observed = authenticate(module.__name__)\n"
+            "if sys.argv[2] == 'none':\n"
+            "    observed.unwrap()\n"
+            "else:\n"
+            "    assert observed.failure\n"
+        )
+        native_consumer(consumer, str(tmp_path), defect)
+
+    @staticmethod
     @pytest.mark.parametrize("location", ["workspace", "site-packages"])
     @pytest.mark.parametrize("defect", ["none", "descriptor", "code"])
     def test_class_method_alias_uses_its_physical_class_namespace(

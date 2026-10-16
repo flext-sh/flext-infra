@@ -740,9 +740,18 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If inherited fields or abstract state need unproved inputs.
 
         """
-        if "__abstractmethods__" in namespace:
-            msg = "native dataclass receiver requires authored abstract-state inputs"
-            raise ValueError(msg)
+        # ABCMeta derives ``__abstractmethods__`` from the authored markers; the
+        # SDK never reads it from the plain ``type`` receiver, so it is only
+        # checked for native storage and never copied into the receiver.
+        abstract = namespace.get("__abstractmethods__", frozenset())
+        if type(abstract) is not frozenset or any(
+            type(name) is not str for name in abstract
+        ):
+            msg = (
+                "native dataclass abstract state has foreign storage: "
+                f"{declaration.name}; source={self._witness.source}"
+            )
+            raise TypeError(msg)
         for ancestor in vars(type)["__mro__"].__get__(owner, type(owner))[1:]:
             inherited = vars(type)["__dict__"].__get__(ancestor, type(ancestor))
             if "__dataclass_fields__" in inherited:
@@ -791,6 +800,17 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = (
                 "native dataclass method is not an exact Python function: "
                 f"{type(value).__module__}.{type(value).__qualname__}"
+            )
+            raise TypeError(msg)
+        # ``abc.abstractmethod`` returns the same function after storing an
+        # exact ``True`` marker; the declaration must carry that decorator.
+        marker = self._function_attributes(value).get("__isabstractmethod__")
+        if marker is True and decorator is None:
+            decorator = "abstractmethod"
+        elif marker is not None:
+            msg = (
+                "native dataclass method has a foreign abstract marker: "
+                f"{value.__qualname__}"
             )
             raise TypeError(msg)
         self._dataclass_accessor(value, decorator)
@@ -2190,11 +2210,22 @@ class FlextInfraWorkspaceGeneratedFunction:
         ):
             msg = "closed compiler function has foreign globals"
             raise ValueError(msg)
-        if decorator is not None and "." not in decorator:
+        path, tree = self._source(self._module(module_name))
+        if decorator == "abstractmethod":
+            # The abstract marker is not a builtin: the module's own import
+            # binding must resolve to the exact ``abc.abstractmethod``.
+            if self._global(decorator, namespace, tree) is not vars(
+                self._module("abc")
+            ).get(decorator):
+                msg = (
+                    "closed compiler abstract marker is not abc.abstractmethod: "
+                    f"{module_name}.{function.__code__.co_qualname}"
+                )
+                raise ValueError(msg)
+        elif decorator is not None and "." not in decorator:
             # The source decorator must be the native descriptor type itself;
             # ``<name>.setter``/``.deleter`` are the property's own methods.
             self._builtin(decorator, namespace)
-        path, tree = self._source(self._module(module_name))
         candidates = self._function_declarations(function, tree, decorator=decorator)
         pending = [self._codes[path]]
         matched = False
