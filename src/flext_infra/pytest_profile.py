@@ -148,9 +148,7 @@ class FlextInfraPytestProfile:
         try:
             return self._publish_profile(profile)
         except OSError as publication_failure:
-            return r[bool].fail(
-                str(publication_failure), exception=publication_failure
-            )
+            return r[bool].fail(str(publication_failure), exception=publication_failure)
 
     def _publish_profile(self, profile: cProfile.Profile) -> p.Result[bool]:
         """Publish raw stats before the associated run and child receipts.
