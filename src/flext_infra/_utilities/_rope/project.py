@@ -22,7 +22,7 @@ from typing import Self, override
 
 from rope.base.builtins import BuiltinModule
 from rope.base.exceptions import ResourceNotFoundError
-from rope.base.project import NoProject, Project, _find_module_in_folder
+from rope.base.project import NoProject, Project
 from rope.base.pyobjectsdef import PyModule, PyPackage
 from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder, Resource
@@ -133,7 +133,7 @@ class FlextInfraRopeProject(Project):
             *((folder,) if folder is not None else ()),
         )
         for root in roots:
-            resource = _find_module_in_folder(root, modname)
+            resource = super().find_relative_module(modname, root, 1)
             if resource is None:
                 continue
             if isinstance(resource, File) or resource.has_child(c.Infra.INIT_PY):

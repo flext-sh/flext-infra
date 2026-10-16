@@ -74,7 +74,7 @@ class FlextInfraRuntimeDependencyCollector:
             python=self._python,
         ).unwrap()
         declarations = u.Infra.document_requirement_lines(document).unwrap()
-        authored = {
+        authored: t.MappingKV[str, str] = {
             canonicalize_name(Requirement(item).name): item
             for item in declarations
             if u.Infra.active_requirement(item, environment=markers) is not None
@@ -132,94 +132,23 @@ class FlextInfraRuntimeDependencyCollector:
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             context.runtime_root,
         ).unwrap()
-        repositories = {
+        repositories: t.MappingKV[str, m.Infra.RepositoryRef] = {
             canonicalize_name(repository.distribution): repository
             for repository in (workspace.repository, *workspace.subprojects)
         }
-
-        def provider(
-            distribution: Distribution,
-        ) -> p.Result[m.Infra.RuntimeDependencyProvider | None]:
-            """Elect and authenticate one native distribution without another scan.
-
-            Returns:
-                The required supplier, its failure, or no provider for unused modules.
-
-            """
-            selected = r[m.Infra.RuntimeDependencyProvider | None]
-            states = self._metadata_states(distribution, context.environment_path)
-            name = distribution.metadata.get("Name")
-            if name is None:
-                return selected.fail("installed dependency metadata lacks its Name")
-            identity = canonicalize_name(name)
-            if identity not in authored:
-                return selected.ok(None)
-            repository = repositories.get(identity)
-            receipt_state = states[-1]
-            receipt = (
-                m.Infra.DirectUrlReceipt.model_validate_json(receipt_state.content)
-                if receipt_state.content is not None
-                else None
-            )
-            supplied = tuple(
-                sorted(
-                    needed.intersection(
-                        self._distribution_modules(
-                            distribution,
-                            name,
-                            repository,
-                            context.runtime_root,
-                            receipt,
-                        ),
-                    ),
-                ),
-            )
-            if not supplied:
-                return selected.ok(None)
-            package = self._locked_package(distribution, name, locked)
-            editable = (
-                receipt is not None
-                and receipt.dir_info is not None
-                and receipt.dir_info.editable
-            )
-            extra_inputs = package.flat_map(
-                lambda locked_package: (
-                    self._editable_inputs(
-                        context, distribution, locked_package, repository, receipt
-                    )
-                    if editable and receipt is not None
-                    else r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(())
-                ),
-            )
-            if extra_inputs.failure:
-                return selected.from_failure(extra_inputs)
-            states += extra_inputs.value
-            if not editable:
-                if package.value.source.registry is not None and receipt is not None:
-                    return selected.fail(
-                        f"registry dependency has a foreign direct origin: {name}"
-                    )
-                FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict(
-                    name,
-                    package.value,
-                    receipt_state.content.decode(c.DEFAULT_ENCODING)
-                    if receipt_state.content is not None
-                    else None,
-                ).unwrap()
-            return selected.ok(
-                m.Infra.RuntimeDependencyProvider(
-                    modules=supplied,
-                    package=package.value,
-                    requirement=authored[identity],
-                    inputs=states,
-                )
-            )
 
         providers: list[m.Infra.RuntimeDependencyProvider] = []
         for distribution in u.installed_distributions(
             path=tuple(str(path) for path in metadata_paths),
         ):
-            selected = provider(distribution)
+            selected = self._provider(
+                distribution,
+                context=context,
+                needed=needed,
+                locked=locked,
+                authored=authored,
+                repositories=repositories,
+            )
             if selected.failure:
                 return result.from_failure(selected)
             if selected.value is not None:
@@ -231,6 +160,91 @@ class FlextInfraRuntimeDependencyCollector:
                     f"supplier: {module}",
                 )
         return result.ok(tuple(providers))
+
+    def _provider(
+        self,
+        distribution: Distribution,
+        *,
+        context: m.Infra.WorkspaceRuntimeContext,
+        needed: t.Infra.StrSet,
+        locked: m.Infra.LockedEnvironment,
+        authored: t.MappingKV[str, str],
+        repositories: t.MappingKV[str, m.Infra.RepositoryRef],
+    ) -> p.Result[m.Infra.RuntimeDependencyProvider | None]:
+        """Elect and authenticate one native distribution without another scan.
+
+        Returns:
+            The required supplier, its failure, or no provider for unused modules.
+
+        """
+        selected = r[m.Infra.RuntimeDependencyProvider | None]
+        states = self._metadata_states(distribution, context.environment_path)
+        name = distribution.metadata.get("Name")
+        if name is None:
+            return selected.fail("installed dependency metadata lacks its Name")
+        identity = canonicalize_name(name)
+        if identity not in authored:
+            return selected.ok(None)
+        receipt = (
+            m.Infra.DirectUrlReceipt.model_validate_json(states[-1].content)
+            if states[-1].content is not None
+            else None
+        )
+        supplied = tuple(
+            sorted(
+                needed.intersection(
+                    self._distribution_modules(
+                        distribution,
+                        name,
+                        repositories.get(identity),
+                        context.runtime_root,
+                        receipt,
+                    ),
+                ),
+            ),
+        )
+        if not supplied:
+            return selected.ok(None)
+        package = self._locked_package(distribution, name, locked)
+        extra_inputs: p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]
+        if (
+            receipt is not None
+            and receipt.dir_info is not None
+            and receipt.dir_info.editable
+        ):
+            extra_inputs = package.flat_map(
+                lambda locked_package: self._editable_inputs(
+                    context,
+                    distribution,
+                    locked_package,
+                    repositories.get(identity),
+                    receipt,
+                ),
+            )
+        else:
+            extra_inputs = package.map(lambda _: ())
+            if package.success:
+                if package.value.source.registry is not None and receipt is not None:
+                    return selected.fail(
+                        f"registry dependency has a foreign direct origin: {name}"
+                    )
+                FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict(
+                    name,
+                    package.value,
+                    states[-1].content.decode(c.DEFAULT_ENCODING)
+                    if states[-1].content is not None
+                    else None,
+                ).unwrap()
+        if extra_inputs.failure:
+            return selected.from_failure(extra_inputs)
+        return selected.ok(
+            m.Infra.RuntimeDependencyProvider(
+                modules=supplied,
+                package=package.value,
+                requirement=authored[identity],
+                inputs=(*states, *extra_inputs.value),
+            )
+        )
 
     @classmethod
     def _distribution_modules(

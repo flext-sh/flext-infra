@@ -286,7 +286,7 @@ class FlextInfraMiseArtifactsVerification(
             if publication.batches:
                 pending.extend(publication.batches)
             else:
-                born = cls.publication_producer_current(publication)
+                born = cls.publication_birth_current(publication)
                 if born.failure:
                     return r[
                         t.VariadicTuple[m.Infra.CodegenJournalSource]
@@ -307,19 +307,31 @@ class FlextInfraMiseArtifactsVerification(
         return result_type.ok(outputs)
 
     @staticmethod
-    def publication_producer_current(
+    def publication_birth_current(
         outcome: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[bool]:
-        """Re-prove a publication receipt's producer by value.
+        """Require the exact receipt emitted by its live publication owner.
 
         Returns:
-            Success while the receipt's native producer reference is current.
+            Success for the original receipt, never a JSON or copied model.
 
         """
         reference = outcome.generator_reference
         if reference is None:
             return r[bool].fail("publication receipt lacks its original producer")
-        return codegen.FlextInfraCodegenPreconditions.reference_current(reference)
+        born = codegen.FlextInfraCodegenPreconditions.reference_birth_current(reference)
+        if born.failure:
+            return born
+        storage = outcome.__pydantic_private__
+        if storage is None or storage.get("_publication_birth") != (
+            id(outcome),
+            id(reference),
+            u.Cli.sha256_content(outcome.model_dump_json()),
+        ):
+            return r[bool].fail(
+                "publication receipt was not emitted by this live operation",
+            )
+        return r[bool].ok(value=True)
 
     @classmethod
     def _publication_history_current(
