@@ -355,24 +355,27 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         )
         if custom_result.failure:
             return result_type.from_failure(custom_result)
-        tooling_context = self._existing_tooling_context(
-            target,
-            identity,
-            codegen,
-            managed_artifacts.value.resolution,
-            custom_result.value,
-        )
-        if tooling_context.failure:
-            return result_type.from_failure(tooling_context)
-        u.Cli.info(
-            f"  stage=tooling-context repository={repository.name} "
-            f"elapsed={time.monotonic() - tooling_started:.2f}s",
-        )
+        tooling_runtime: m.Infra.ToolingRuntimeContext | None = None
+        if contract.tooling:
+            tooling_context = self._existing_tooling_context(
+                target,
+                identity,
+                codegen,
+                managed_artifacts.value.resolution,
+                custom_result.value,
+            )
+            if tooling_context.failure:
+                return result_type.from_failure(tooling_context)
+            tooling_runtime = tooling_context.value
+            u.Cli.info(
+                f"  stage=tooling-context repository={repository.name} "
+                f"elapsed={time.monotonic() - tooling_started:.2f}s",
+            )
         render_inputs = self.resolve_render_inputs(
             target=target,
             workspace=workspace,
             codegen=codegen,
-            tooling_runtime=tooling_context.value,
+            tooling_runtime=tooling_runtime,
             managed_artifacts=managed_artifacts.value,
         )
         managed_result = self._plan_existing_templates(
@@ -383,7 +386,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(managed_result)
         planned = list(managed_result.value)
         planned.extend(custom_result.value)
-        final_inputs = self.planned_source_render_inputs(render_inputs, planned)
+        final_inputs = (
+            self.planned_source_render_inputs(render_inputs, planned)
+            if contract.pyproject
+            else render_inputs
+        )
         if contract.pyproject and final_inputs is not render_inputs:
             final_templates = self._plan_existing_templates(
                 render_inputs=final_inputs,

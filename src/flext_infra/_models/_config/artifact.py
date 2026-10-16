@@ -707,6 +707,10 @@ class FlextInfraConfigModelsArtifact:
             bool,
             m.Field(description="Whether managed templates are planned"),
         ] = True
+        tooling: Annotated[
+            bool,
+            m.Field(description="Whether selected outputs consume resolved tooling"),
+        ] = True
         custom: Annotated[
             bool,
             m.Field(description="Whether custom Make policy is planned"),
@@ -820,8 +824,8 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Codegen contract the repository renders under"),
         ]
         tooling_runtime: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolingRuntimeContext,
-            m.Field(description="Tooling values resolved for the repository"),
+            FlextInfraModelsDepsToolConfig.ToolingRuntimeContext | None,
+            m.Field(description="Tooling values resolved only when outputs consume them"),
         ]
         managed_artifacts: Annotated[
             FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsSnapshot,

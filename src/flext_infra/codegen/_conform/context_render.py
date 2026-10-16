@@ -23,7 +23,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
-        tooling_runtime: m.Infra.ToolingRuntimeContext,
+        tooling_runtime: m.Infra.ToolingRuntimeContext | None,
         managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot,
     ) -> m.Infra.CodegenRenderInputs:
         """Resolve every input shared by one repository's renders exactly once.
@@ -112,6 +112,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository = target.repository
         repository_root = target.root
         profile = target.make_profile
+        tooling_runtime = render_inputs.tooling_runtime
+        if tooling_runtime is None:
+            return r[m.Infra.MakeRenderContext].fail(
+                "Make rendering requires resolved tooling context",
+            )
         subprojects = (
             tuple(workspace.subprojects)
             if profile is c.Infra.MakeProfile.WORKSPACE
@@ -133,7 +138,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                tooling_runtime=render_inputs.tooling_runtime,
+                tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
                 examples_module=repository.examples_module,

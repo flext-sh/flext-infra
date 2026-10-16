@@ -1044,6 +1044,10 @@ request publication; fork requests and cancelled runs do not. The native cache
 action's effective access mode still governs whether upload occurs. A successful
 save step alone proves no generation was stored: acceptance requires the actual
 saved key or cache record, including when a reserve collision was reported.
+Each workflow declares whether the shared save fragment may emit PR payload
+accesses. Docs accepts push and dispatch only, so its save conditions contain no
+PR payload references. The dispatch-only matrix groups runs by workflow, event
+and ref without accessing a PR number.
 
 CI uploads the reports that the original operations produced on every job outcome,
 including successful checks, completed failures and interrupted runs. The upload also

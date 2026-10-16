@@ -31,6 +31,7 @@ _PARTIAL_PLAN_SURFACES: frozenset[c.Infra.CodegenConformSurface] = frozenset((
     c.Infra.CodegenConformSurface.PYPROJECT,
     c.Infra.CodegenConformSurface.MISE_CONFIG,
     c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
+    c.Infra.CodegenConformSurface.WORKFLOWS,
 ))
 
 

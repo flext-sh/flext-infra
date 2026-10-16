@@ -46,6 +46,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if plan.desired_content is not None
         }
         tooling = render_inputs.tooling_runtime
+        if tooling is None:
+            msg = "Python source rendering requires resolved tooling context"
+            raise ValueError(msg)
         policy = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
         runtime_bases = (
             tuple(tooling.ruff_runtime_evaluated_base_classes)
