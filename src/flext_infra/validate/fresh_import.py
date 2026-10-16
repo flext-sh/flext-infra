@@ -199,9 +199,7 @@ _native_atomic = (
                 f"producer runtime is not a physical managed environment: {environment}"
             )
         runtime_root = environment.parent
-        reference = cls._capture_producer_reference(
-            repository_root, runtime_root, names
-        )
+        reference = cls.capture_producer_reference(repository_root, runtime_root, names)
         if reference.failure:
             return result_type.from_failure(reference)
         consumed = FlextInfraCodegenPreconditions.authority_inputs(
@@ -223,7 +221,7 @@ _native_atomic = (
         )
 
     @classmethod
-    def _capture_producer_reference(
+    def capture_producer_reference(
         cls,
         repository_root: Path,
         runtime_root: Path,
@@ -240,7 +238,7 @@ _native_atomic = (
             f"stage=native-source-authority selections={len(names)} "
             f"runtime={runtime_root}",
         )
-        sealed = FlextInfraCodegenPreconditions.capture_observed_source_authority(
+        sealed = FlextInfraCodegenPreconditions.observed_source_authority(
             runtime_root, names
         )
         if sealed.failure:
@@ -254,6 +252,8 @@ _native_atomic = (
         inputs = FlextInfraCodegenPreconditions.authority_inputs(authority)
         if inputs.failure:
             return result_type.from_failure(inputs)
+        # The authority already observed these exact selections; capturing the
+        # loaded producer again could only repeat that observation.
         return cls._observed_native_reference(
             m.Infra.NativeImportRequest(
                 repository_root=repository_root,
@@ -271,11 +271,12 @@ _native_atomic = (
         )
 
     @classmethod
-    def capture_native_reference(
+    def _observed_native_reference(
         cls,
         request: m.Infra.NativeImportRequest,
+        snapshot: m.Infra.NativeImportObservation,
     ) -> p.Result[m.Infra.NativeImportReference]:
-        """Authenticate the loaded producer against a cold native import.
+        """Prove one loaded-producer observation against a cold native import.
 
         Returns:
             The sealed reference, or the first source or runtime failure.
