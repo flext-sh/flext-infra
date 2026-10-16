@@ -52,7 +52,6 @@ class FlextInfraAccessorMigrationExpressionMixin:
             The proposed source and its actual owned transformation receipts.
 
         Raises:
-            TypeError: If a proven read-only accessor is written.
             ValueError: If a selected rule or owned use cannot be resolved safely.
 
         """

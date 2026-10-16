@@ -8,17 +8,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, p, r, u
+from flext_infra import m, p, u
 from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import (
-    FlextInfraAccessorMigrationReportMixin,
     FlextInfraAccessorMigrationRewriteMixin,
+    FlextInfraAccessorOriginResolver,
 )
 
 
 class FlextInfraAccessorRenamePhase(
     FlextInfraAccessorMigrationRewriteMixin,
-    FlextInfraAccessorMigrationReportMixin,
 ):
     """Accessor callback: origin-owned rename catalog repairs in the loop.
 
@@ -44,26 +43,16 @@ class FlextInfraAccessorRenamePhase(
             The resulting ``p.Result[bool]`` — ``True`` marks changed sources.
 
         """
-        iter_result = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(
-                project_roots=tuple(u.Infra.governed_project_roots(root)),
-            ),
-        )
-        if iter_result.failure:
-            return r[bool].from_failure(iter_result)
-        original: dict[Path, str] = {}
-        for py_file in iter_result.value:
-            read = u.Cli.files_read_text(py_file)
-            if read.failure:
-                return r[bool].from_failure(read)
-            original[py_file] = read.value
+        original = FlextInfraCodemodSemanticApply.source_inventory(root, preflight)
         snapshot = u.Infra.snapshot_project(rope_workspace.rope_project, original)
+        resolver = FlextInfraAccessorOriginResolver(snapshot)
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for py_file, source in original.items():
             updated_source, rewrite_changes = self._apply_automated_rewrites(
                 snapshot,
                 py_file,
                 source,
+                resolver=resolver,
             )
             if not any(change.automated for change in rewrite_changes):
                 continue
@@ -77,7 +66,9 @@ class FlextInfraAccessorRenamePhase(
                     ),
                 ),
             )
-        return FlextInfraCodemodSemanticApply.publish_planned_edits(root, edits)
+        return FlextInfraCodemodSemanticApply.publish_planned_edits(
+            root, edits, source_preview=self.source_preview
+        )
 
 
 __all__: list[str] = ["FlextInfraAccessorRenamePhase"]

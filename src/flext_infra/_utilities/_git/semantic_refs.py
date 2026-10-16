@@ -11,10 +11,16 @@ from pathlib import Path
 from git import BadName, GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreePatchMixin
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStatePublicationMixin,
+    FlextInfraUtilitiesGitWorktreePatchMixin,
+)
 
 
-class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatchMixin):
+class FlextInfraUtilitiesGitSemanticRefsMixin(
+    FlextInfraUtilitiesGitWorktreePatchMixin,
+    FlextInfraUtilitiesGitStatePublicationMixin,
+):
     """Own semantic refs operations."""
 
     @classmethod
@@ -71,9 +77,11 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreePatc
         if (
             snapshot.repo_root.resolve() != request.repo_root.resolve()
             or snapshot.paths != (Path(),)
+            or snapshot.branch is None
         ):
             return r[m.Infra.GitOidReport].fail(
-                "lane ownership receipt does not cover this entire repository",
+                "lane ownership receipt does not cover this entire repository "
+                "on an owned branch",
             )
         retained = cls.git_verify_worktree_checkpoint_publication(
             receipt.checkpoint,

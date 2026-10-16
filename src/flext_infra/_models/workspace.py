@@ -31,7 +31,6 @@ class FlextInfraModelsWorkspace:
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
 
-
     class CodegenSourceAuthority(m.Value):
         """Cold reference authority has no project publication capability."""
 

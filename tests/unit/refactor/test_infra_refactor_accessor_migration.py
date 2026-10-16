@@ -237,7 +237,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         u.Tests.provision_checkout(workspace)
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraAccessorRenamePhase()
+            phase = FlextInfraAccessorRenamePhase(
+                source_preview=infra.source_preview(workspace),
+            )
             tm.that(phase.apply(project, preflight, rope).unwrap(), eq=True)
         program += (
             "names = ('literal_name',)\n"
@@ -256,6 +258,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             tm.that(phase.apply(project, preflight, rope).unwrap(), eq=False)
         receipt = (
             FlextInfraAccessorMigrationOrchestrator(
+                source_preview=infra.source_preview(workspace),
                 repository_root=workspace,
                 apply_changes=False,
             )
@@ -285,7 +288,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
             with pytest.raises(ValueError, match="accessor receiver"):
-                FlextInfraAccessorRenamePhase().apply(project, preflight, rope)
+                FlextInfraAccessorRenamePhase(
+                    source_preview=infra.source_preview(workspace),
+                ).apply(project, preflight, rope)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
@@ -327,7 +332,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             with infra.rope_workspace(project) as rope:
                 preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
                 with pytest.raises(ValueError, match="accessor backing field"):
-                    FlextInfraAccessorRenamePhase().apply(project, preflight, rope)
+                    FlextInfraAccessorRenamePhase(
+                        source_preview=infra.source_preview(workspace),
+                    ).apply(project, preflight, rope)
             tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod

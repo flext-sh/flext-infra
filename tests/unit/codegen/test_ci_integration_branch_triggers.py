@@ -346,7 +346,10 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 step
                 for step in steps
                 if step.get("run")
-                == f"{spec.make.ci.variable}={spec.make.ci.value} make {c.Infra.VERB_TEST}"
+                == (
+                    f"{spec.make.ci.variable}={spec.make.ci.value} "
+                    f"make {c.Infra.VERB_TEST}"
+                )
             )
             tm.that(
                 cache_input["path"],

@@ -133,7 +133,8 @@ class TestsFlextInfraCodemodContextComposeModule:
             ),
         )
         with u.Infra.codemod_binding_project(
-            root, m.Infra.CodemodBindingSnapshot(states=())
+            root,
+            u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=())),
         ) as (project, sources):
             return u.Infra.codemod_context_admits(
                 m.Infra.CodemodAdmission(

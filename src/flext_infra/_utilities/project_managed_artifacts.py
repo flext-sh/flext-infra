@@ -359,8 +359,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 else dict(payload)
             )
             merged = u.config_merge(merged, values)
-        codegen = u.Cli.json_walk_path(merged, ("Infra", "codegen"))
-        return m.Infra.CodegenConfigSpec.model_validate(codegen)
+        return merged
 
     @staticmethod
     def compose_ruff_per_file_ignores(

@@ -11,7 +11,7 @@ from operator import itemgetter
 from tokenize import NAME, generate_tokens
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, m, u
+from flext_infra import m, u
 from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.refactor._accessor_expression import (
     FlextInfraAccessorMigrationExpressionMixin,
@@ -32,15 +32,6 @@ class FlextInfraAccessorMigrationRewriteMixin(
 ):
     """Compose token renames, expression planning, and manual review detection."""
 
-    _AUTOMATED_RULES: ClassVar[t.VariadicTuple[m.Infra.AccessorMigrationRule]] = tuple(
-        m.Infra.AccessorMigrationRule(
-            source_name=src,
-            replacement_name=repl,
-            reason=reason,
-            origin="flext_core",
-        )
-        for src, (repl, reason) in c.ENFORCEMENT_ACCESSOR_RENAMES.items()
-    )
     _SKIPPED_ORIGIN_REASON: ClassVar[str] = (
         "Skipped homonym: resolves to {definition}; only {origin}-owned "
         "definitions are renamed automatically"
@@ -63,20 +54,18 @@ class FlextInfraAccessorMigrationRewriteMixin(
         resource = u.Infra.resolve_resource_from_path(rope_project, py_file)
         if resource is None:
             return source, ()
-        resolver = FlextInfraAccessorOriginResolver(rope_project)
-        updated_source = source
-        changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
         declared = self._expression_catalog()
-        for rule in (*self._AUTOMATED_RULES, *declared):
-            if rule.operation != "rename":
-                continue
-            updated_source, rule_changes = self._rename_symbol_tokens(
-                updated_source,
-                rule=rule,
-                file_path=py_file,
-                resolver=resolver,
-            )
-            changes.extend(rule_changes)
+        updated_source, renamed = self._rename_symbol_tokens(
+            source,
+            rules=tuple(
+                rule
+                for rule in (*self._AUTOMATED_RULES, *declared)
+                if rule.operation == "rename"
+            ),
+            file_path=py_file,
+            resolver=resolver,
+        )
+        changes = list(renamed)
         expression_rules = tuple(
             rule for rule in declared if rule.operation == "normalize-field"
         )
@@ -182,71 +171,6 @@ class FlextInfraAccessorMigrationRewriteMixin(
         source_lines = source.splitlines(keepends=True)
         line_offset = sum(len(item) for item in source_lines[: line - 1])
         return line_offset + column
-
-    def _collect_manual_warnings(
-        self,
-        rope_project: t.Infra.RopeProject,
-        py_file: Path,
-        source: str,
-        *,
-        resolver: FlextInfraAccessorOriginResolver,
-    ) -> t.SequenceOf[m.Infra.AccessorMigrationChange]:
-        """Report introducing methods through the canonical Core prefix predicate.
-
-        Returns:
-            The resulting ``t.SequenceOf[m.Infra.AccessorMigrationChange]``.
-
-        Raises:
-            ValueError: If the source/project differs from the original Rope snapshot.
-
-        """
-        if (
-            resolver.rope_project is not rope_project
-            or source != resolver.module(py_file).source_code
-        ):
-            msg = f"accessor discovery source differs from Rope snapshot: {py_file}"
-            raise ValueError(msg)
-        policy = m.MethodShapeParams.model_validate(
-            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
-        )
-        warnings: list[m.Infra.AccessorMigrationChange] = []
-        for declaration in resolver.introduced_methods(py_file):
-            name = declaration.name
-            prefix = next(
-                (
-                    prefix
-                    for prefix in policy.forbidden_prefixes
-                    if name.startswith(prefix)
-                ),
-                None,
-            )
-            if prefix is None or name.startswith("_"):
-                continue
-            rule = next(
-                (rule for rule in self._AUTOMATED_RULES if rule.source_name == name),
-                None,
-            )
-            if rule is not None and resolver.within_origin(
-                str(py_file), origin=rule.origin
-            ):
-                continue
-            warnings.append(
-                m.Infra.AccessorMigrationChange(
-                    file=str(py_file),
-                    line=declaration.line,
-                    original_name=name,
-                    replacement_name="",
-                    automated=False,
-                    reason=(
-                        "Owned introducing method "
-                        f"{declaration.module_name}.{declaration.scope_path} "
-                        "violates no_accessor_methods; "
-                        f"{policy.forbidden_prefixes[prefix]}; "
-                        "an explicit domain rename decision is required."
-                    ),
-                ),
-            )
-        return tuple(warnings)
 
 
 __all__: list[str] = ["FlextInfraAccessorMigrationRewriteMixin"]

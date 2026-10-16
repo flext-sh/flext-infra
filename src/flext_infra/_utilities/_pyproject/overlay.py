@@ -159,27 +159,44 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 if not entries
                 else result_type.fail("dev provenance requires its parsed source")
             )
+        comments = FlextInfraUtilitiesPyprojectOverlay._dependency_group_comments(
+            live, group
+        )
+        if comments.failure:
+            return result_type.from_failure(comments)
+        if len(comments.value) != len(entries):
+            return result_type.fail("dev provenance occurrence counts differ")
+        return result_type.ok(
+            tuple(
+                value
+                for value, comment in zip(entries, comments.value, strict=True)
+                if not isinstance(value, str)
+                or comment.removeprefix("#").strip() != _MEMBER_DEV_PROVENANCE
+            ),
+        )
+
+    @staticmethod
+    def _dependency_group_comments(
+        live: str,
+        group: str,
+    ) -> p.Result[t.StrSequence]:
+        """Read native per-occurrence comments from the parsed dependency group.
+
+        Returns:
+            Ordered array comments or the original missing-source failure.
+
+        """
+        result_type = r[t.StrSequence]
         document = u.Cli.toml_parse_text(live)
         if document is None:
             return result_type.fail("dev provenance source is invalid TOML")
         group_table = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
         if group_table is None:
-            return r[t.StrSequence].fail("dev provenance dependency groups are missing")
-        raw_array = u.Cli.toml_item_child(group_table, group)
-        if raw_array is None:
-            return r[t.StrSequence].fail("dev provenance group array is missing")
-        comments = tuple(
-            str(getattr(item, "trivia", None).comment or "") for item in raw_array
-        )
-        if len(comments) != len(values.value):
-            return r[t.StrSequence].fail("dev provenance occurrence counts differ")
-        return r[t.StrSequence].ok(
-            tuple(
-                value
-                for value, comment in zip(entries, comments, strict=True)
-                if not isinstance(value, str)
-                or comment.removeprefix("#").strip() != _MEMBER_DEV_PROVENANCE
-            ),
+            return result_type.fail("dev provenance dependency groups are missing")
+        if group not in group_table:
+            return result_type.fail("dev provenance group array is missing")
+        return result_type.ok(
+            u.Cli.toml_array_item_comments(group_table, group),
         )
 
     @staticmethod

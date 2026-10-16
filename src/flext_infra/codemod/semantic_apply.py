@@ -51,7 +51,7 @@ class FlextInfraCodemodSemanticApply:
             )
             for selection in selections.decisions
         )
-        original = cls._source_inventory(
+        original = cls.source_inventory(
             root,
             FlextInfraModGateEngine.recounted(()),
         )
@@ -288,7 +288,7 @@ class FlextInfraCodemodSemanticApply:
             files=frozenset(),
             entries=(),
         )
-        original = cls._source_inventory(root, inventory)
+        original = cls.source_inventory(root, inventory)
         phases = (
             c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
             c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
@@ -341,7 +341,7 @@ class FlextInfraCodemodSemanticApply:
         def verify(candidate_root: Path) -> p.Result[bool]:
             with workspace_factory(candidate_root, None) as candidate_workspace:
                 fixed_point = cls._verify_census_phases(
-                    cls._source_inventory(candidate_root, inventory),
+                    cls.source_inventory(candidate_root, inventory),
                     candidate_workspace,
                     phases,
                 )
@@ -408,7 +408,7 @@ class FlextInfraCodemodSemanticApply:
         """
         return tuple(
             (path.as_posix(), u.Cli.sha256_bytes(source.encode(c.DEFAULT_ENCODING)))
-            for path, source in sorted(cls._source_inventory(root, preflight).items())
+            for path, source in sorted(cls.source_inventory(root, preflight).items())
         )
 
     @classmethod
@@ -426,7 +426,7 @@ class FlextInfraCodemodSemanticApply:
         """
         return u.Infra.declaration_relocation_findings(
             rope_workspace,
-            cls._source_inventory(root, preflight),
+            cls.source_inventory(root, preflight),
         )
 
     @classmethod
@@ -442,7 +442,7 @@ class FlextInfraCodemodSemanticApply:
             One immutable Rope callback for the mod loop's progress identity.
 
         """
-        original = cls._source_inventory(root, preflight)
+        original = cls.source_inventory(root, preflight)
 
         return u.Infra.plan_transaction_path_cutover(
             rope_workspace=rope_workspace,
@@ -458,7 +458,7 @@ class FlextInfraCodemodSemanticApply:
         source_preview: p.Infra.SourcePreview,
     ) -> None:
         """Publish the exact callback included in the existing progress fingerprint."""
-        cls.publish_planned_edits(root, edits).unwrap()
+        cls.publish_planned_edits(root, edits, source_preview=source_preview).unwrap()
         cli.display_text(f"mod: Rope transaction paths changed_files={len(edits)}")
 
     @classmethod
@@ -467,7 +467,8 @@ class FlextInfraCodemodSemanticApply:
         root: Path,
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
         *,
-        validator: Callable[[], p.Result[bool]] | None = None,
+        source_preview: p.Infra.SourcePreview,
+        validator: Callable[[Path], p.Result[bool]] | None = None,
     ) -> p.Result[bool]:
         """Compose a complete edit batch and publish through the semantic owner.
 
@@ -485,8 +486,8 @@ class FlextInfraCodemodSemanticApply:
         return cls._publish(
             root,
             original,
-            working,
-            changed,
+            {path: working[path] for path in changed},
+            source_preview=source_preview,
             validator=validator,
         ).map(lambda accepted: bool(changed) and accepted)
 
@@ -509,7 +510,7 @@ class FlextInfraCodemodSemanticApply:
             The resulting ``p.Result[bool]``.
 
         """
-        original = cls._source_inventory(root, preflight)
+        original = cls.source_inventory(root, preflight)
         if not original:
             return r[bool].fail("semantic cutover has no source inventory")
         working = dict(original)
@@ -654,7 +655,7 @@ class FlextInfraCodemodSemanticApply:
             The resulting ``p.Result[bool]``.
 
         """
-        published = dict(cls._source_inventory(root, preflight))
+        published = dict(cls.source_inventory(root, preflight))
         rope_workspace.refresh()
         return (
             cls
@@ -871,7 +872,7 @@ class FlextInfraCodemodSemanticApply:
         return verified
 
     @staticmethod
-    def _source_inventory[FindingT: m.Infra.ModOccurrence](
+    def source_inventory[FindingT: m.Infra.ModOccurrence](
         root: Path,
         preflight: m.Infra.ModOccurrenceReport[FindingT],
     ) -> t.MappingKV[Path, str]:

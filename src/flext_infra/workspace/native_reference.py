@@ -461,7 +461,6 @@ class FlextInfraWorkspaceNativeReference:
             raise TypeError(msg)
         return dict(zip(value.__code__.co_freevars, closure, strict=True))
 
-
     @classmethod
     def _remember_generated_descriptors(
         cls,
@@ -2559,7 +2558,6 @@ class FlextInfraWorkspaceNativeReference:
             nonportable_constants=nonportable,
         )
 
-
     @staticmethod
     def _code_matches(
         observed: m.Infra.NativeCodeEvidence,
@@ -2647,7 +2645,6 @@ class FlextInfraWorkspaceNativeReference:
                 if cls._is_native(child, CodeType)
             )
         return tuple(locations)
-
 
     @classmethod
     def capture(
@@ -4728,7 +4725,6 @@ class FlextInfraWorkspaceNativeReference:
             if code.failure:
                 return code
         return r[bool].ok(value=True)
-
 
     @classmethod
     def authored_sources_current(
