@@ -301,8 +301,14 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         native = namespace.get("__spec__")
         if native is None:
             return cls._native_child_source(module_name, module, namespace)
-        if type(native) is not ModuleSpec or modules.get(native.name) is not module:
-            return r[Path].fail(f"producer module lacks its native spec: {module_name}")
+        if type(native) is not ModuleSpec:
+            return r[Path].fail(
+                f"producer module lacks native spec storage: {module_name}; "
+                f"spec_type={type(native).__name__}",
+            )
+        # The requested key is already authenticated by _registered_module.
+        # Native source names survive aliases and cache-key removal; loader and
+        # physical-origin checks below authenticate that source independently.
         return cls._module_spec_source(module_name, namespace, native)
 
     @classmethod
@@ -512,6 +518,23 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 },
             )
         ).resolve()
+
+    @staticmethod
+    def standard_library_package_roots() -> t.VariadicTuple[Path]:
+        """Elect package-installation trees inside the interpreter's base scheme.
+
+        Returns:
+            Physical purelib and platlib roots, kept outside stdlib authority.
+
+        """
+        variables = {
+            "base": sys.base_prefix,
+            "platbase": sys.base_exec_prefix,
+        }
+        return tuple(dict.fromkeys(
+            Path(sysconfig.get_path(key, vars=variables)).resolve()
+            for key in ("purelib", "platlib")
+        ))
 
     @classmethod
     def _file_module_source(

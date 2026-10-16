@@ -46,6 +46,8 @@ from flext_infra.workspace import (
     FlextInfraRopeWorkspace,
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentMixin,
+)
+from flext_infra.workspace.native_reference import (
     FlextInfraWorkspaceNativeReference,
 )
 

@@ -198,6 +198,13 @@ remain valid when the authenticated import produces the same native behavior and
 bindings. A generated filename, advertised module name, serialized model or cached
 field table alone supplies no authority.
 
+Module-source observation starts from the requested live registry key. An alias
+may retain its source's `ModuleSpec.name` after the original cache key is removed;
+that source name is not another required registration. The raw loader, physical
+origin and interpreter or distribution ownership remain checked. Bootstrap input
+pins capture those physical files; only the complete independent import comparison
+authenticates executable bindings.
+
 The original reference remains an immutable expectation throughout the operation.
 Its in-process birth is recorded only after full authentication. JSON round-trips,
 model validation and copied references preserve a data shape; they do not establish
