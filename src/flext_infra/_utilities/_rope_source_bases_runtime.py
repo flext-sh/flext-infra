@@ -655,9 +655,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             declaring = module.get_module()
-            if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
-                return {}
             resource = declaring.get_resource()
+            if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
+                u.Cli.info(
+                    f"stage=provider-source module={module.get_name()} "
+                    f"kind={type(declaring).__name__} "
+                    f"path={resource.real_path if resource is not None else None}"
+                )
+                return {}
             if resource is None:
                 return {}
             return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(

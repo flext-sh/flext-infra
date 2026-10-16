@@ -30,12 +30,14 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
 			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
 			exit 2; \
 		fi; \
-		$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"
+		$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"; \
+		$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run(gates_csv(make.fmt_gates), " --apply") }}
 {%- endmacro -%}
 {%- macro fix_body() -%}
+{{ "\t" }}@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode apply
 {{ "\t" }}@{{ check_run(gates_csv(make.check_gates_fixable), " --apply") }}
 {%- endmacro -%}
 {#- A local workspace run carries a mutating verb to every governed member
@@ -543,7 +545,7 @@ SETUP_ENVIRONMENT_RECIPE = $(INSTALL_RUNTIME_RECIPE); \
 	if [ "$(strip $({{ make.uv_resolution.hosted_variable }}))" = "{{ make.uv_resolution.hosted_value }}" ]; then setup_scope=self; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only --scope "$$setup_scope"; \
 	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)" --scope "$$setup_scope"; \
-	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope" --mode apply
+	$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what runtime-bindings --scope "$$setup_scope"
 
 # Reject borrowed environments before bootstrap, activation or custom hooks.
 # Members may use their containing workspace, never an unrelated checkout.
@@ -594,7 +596,6 @@ override TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
 endif
 override SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
 # Compare the parsed dispatcher with the one published by generation.
-override SELF_MAKEFILE_DIGEST := $(shell sha256sum "$(SELF_MAKEFILE)")
 
 define RUN_PUBLIC_POST
 	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
@@ -885,41 +886,25 @@ _upg_lifecycle: _builtin_setup_submodules
 		$(UV) lock --project "$$resolution" --python "$$desired_python" --upgrade --refresh; \
 	done
 	@$(SELF_MAKE) _upg_install_runtime
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what pyproject --scope all --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --what mise-config --scope self --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what mise-config --scope self
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --projects .
 	$(call RUN_PUBLIC_PRODUCE,gen)
-	+@set -eu; \
-	published="$$(sha256sum "$(SELF_MAKEFILE)")"; \
-	if [ "$$published" = "$(SELF_MAKEFILE_DIGEST)" ]; then \
-		$(SELF_MAKE) _upg_converge; \
-	elif [ "$(UPG_HANDOFF)" = "Y" ]; then \
-		printf 'ERROR: upg: gen republished %s inside the hand-off; gen is not a fixed point\n' "$(SELF_MAKEFILE)" >&2; \
-		exit 1; \
-	else \
-		printf 'upg: gen published a new %s; handing off to make upg on it\n' "$(SELF_MAKEFILE)"; \
-		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)" upg UPG_HANDOFF=Y; \
-	fi
+	+@$(SELF_MAKE) _upg_converge
 
-# Convergence runs the complete gen verb, whose activation half checks the
-# receipt gen itself just republished. A separate activation before it would
-# read the runtime-bindings receipt _builtin_setup_environment leaves behind,
-# which never covers the gen request.
+# Complete the upgrade against the projections just published. Re-reading the
+# current Makefile selects the new recipes without restarting the upgrade or
+# repeating generation and installation.
 _upg_converge:
 	@$(SELF_MAKE) _upg_reconcile_locks
-	@mise -C "$(PROJECT_ROOT)" lock --bump
-	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(SELF_MAKE) _builtin_require_mise
-	@$(SELF_MAKE) gen
-	@$(SELF_MAKE) _upg_reconcile_locks
-	@$(SELF_MAKE) _builtin_setup_environment
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
 
@@ -1048,8 +1033,8 @@ profile-gen: _builtin_require_environment
 	scope=all; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
 	$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
-		"$(PROFILE_REPORTS_DIR)/conform.pstats" codegen conform \
-		--root "$(PROJECT_ROOT)" --scope "$$scope" --mode apply
+		"$(PROFILE_REPORTS_DIR)/conform.pstats" codegen generate \
+		--root "$(PROJECT_ROOT)" --scope "$$scope"
 
 .PHONY: profile-gen-report
 profile-gen-report: _builtin_require_environment
@@ -1225,10 +1210,9 @@ _builtin_release_build: _builtin_require_environment
 _builtin_release_publish: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) release run --phase publish --apply $(if $(filter Y,$(INDEX)),--index)
 
-# Generation has one transaction owner. Conform covers this root and all declared
-# members and journals ordinary, Mise, lazy-init, and documentation phases through
-# one fixed point. Only `upg` resolves and rewrites the locks; gen installs
-# nothing and never runs another writer before or after conform's journal.
+# Generation uses the shared planner and transaction publisher for the declared
+# projections. It never repairs authored declarations or resolves dependencies.
+# Only `upg` resolves and rewrites locks; `fix` owns conformance repairs.
 export KIND
 _builtin_gen_init:
 	@set -eu; set --; \
@@ -1250,7 +1234,7 @@ _builtin_gen_all:
 	@set -eu; \
 	scope=all; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
-	$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$$scope" --mode apply
+	$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"
 
 _builtin-gen-footprint:
 	@$(PROJECT_FLEXT_INFRA) codegen footprint --root "$(PROJECT_ROOT)" --scope all
@@ -1341,7 +1325,6 @@ endif
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-environment --repository-root "$(RUNTIME_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(RUNTIME_ROOT)" --uv-executable "$$(command -v $(UV))"
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 _builtin-status: _builtin_status_diagnostics
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} signing-identity --repo-root "$(PROJECT_ROOT)"
 _builtin-verify-clean: _builtin_require_environment

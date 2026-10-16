@@ -716,8 +716,8 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Whether custom Make policy is planned"),
         ] = True
 
-    class CodegenConformRequest(FlextInfraConfigModelsContract.ConfigContract):
-        """Validated public request for ``flext-infra codegen conform``."""
+    class CodegenGenerateRequest(FlextInfraConfigModelsContract.ConfigContract):
+        """Validated projection inputs for ``flext-infra codegen generate``."""
 
         model_config = m.ConfigDict(use_enum_values=False)
         root: Annotated[Path, m.Field(description="Repository or workspace root")]
@@ -729,19 +729,9 @@ class FlextInfraConfigModelsArtifact:
             c.Infra.CodegenConformScope,
             m.Field(description="Repository selection scope"),
         ] = c.Infra.CodegenConformScope.SELF
-        mode: Annotated[
-            c.Infra.CodegenConformMode,
-            m.Field(description="Read-only check or atomic apply"),
-        ] = c.Infra.CodegenConformMode.CHECK
         module: Annotated[
             str | None,
             m.Field(description="Exact package or module for a file-only surface"),
-        ] = None
-        declaration_kind: Annotated[
-            c.Infra.ProjectKind | None,
-            m.Field(
-                description="Explicit self-owned kind supplied by native bootstrap"
-            ),
         ] = None
 
         @m.model_validator(mode="after")
@@ -759,12 +749,6 @@ class FlextInfraConfigModelsArtifact:
                 c.Infra.CodegenConformSurface.LAZY_INIT,
                 c.Infra.CodegenConformSurface.FACADES,
             }
-            if self.declaration_kind is not None and (
-                self.what != c.Infra.CodegenConformSurface.MAKEFILE
-                or self.scope != c.Infra.CodegenConformScope.SELF
-            ):
-                msg = "kind bootstrap requires the target's self Makefile surface"
-                raise ValueError(msg)
             facades = self.what == c.Infra.CodegenConformSurface.FACADES
             if self.module is not None and not file_only:
                 msg = "--module belongs only to lazy-init or facades"
@@ -788,6 +772,39 @@ class FlextInfraConfigModelsArtifact:
                 and self.scope != c.Infra.CodegenConformScope.SELF
             ):
                 msg = f"{self.what} requires the self repository scope"
+                raise ValueError(msg)
+            return self
+
+    class CodegenConformRequest(CodegenGenerateRequest):
+        """Add explicit checking and declaration repair to projection inputs."""
+
+        mode: Annotated[
+            c.Infra.CodegenConformMode,
+            m.Field(description="Read-only check or atomic apply"),
+        ] = c.Infra.CodegenConformMode.CHECK
+        declaration_kind: Annotated[
+            c.Infra.ProjectKind | None,
+            m.Field(
+                description="Explicit self-owned kind supplied by native bootstrap"
+            ),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _validate_declaration_kind(self) -> Self:
+            """Keep explicit kind bootstrap on the target's own Makefile.
+
+            Returns:
+                The request with a coherent explicit bootstrap selection.
+
+            Raises:
+                ValueError: If kind bootstrap addresses another surface or scope.
+
+            """
+            if self.declaration_kind is not None and (
+                self.what != c.Infra.CodegenConformSurface.MAKEFILE
+                or self.scope != c.Infra.CodegenConformScope.SELF
+            ):
+                msg = "kind bootstrap requires the target's self Makefile surface"
                 raise ValueError(msg)
             return self
 

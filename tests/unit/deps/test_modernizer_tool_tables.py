@@ -115,7 +115,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             path=tmp_path / "flext-sample" / c.PYPROJECT_FILENAME,
         )
         tm.that(second, eq=payload)
-        tm.that(changes, eq=())
+        tm.that(changes, empty=True)
 
     @staticmethod
     @pytest.mark.parametrize(

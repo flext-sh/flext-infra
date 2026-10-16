@@ -54,19 +54,30 @@ class FlextInfraRuntimeDependencyCollector:
             python=self._python,
             packages=(),
         ).unwrap()
-        lock = u.Cli.atomic_read_binary_file_state(context.lock_path, required=True).unwrap()
+        lock = u.Cli.atomic_read_binary_file_state(
+            context.lock_path,
+            required=True,
+        ).unwrap()
         if lock.content is None or scan.settings.content is None:
             return result.fail("dependency collector lacks native lock or declarations")
         payload = u.Cli.toml_mapping_from_text(lock.content.decode(c.DEFAULT_ENCODING))
         if payload is None:
             return result.fail(f"invalid native dependency lock: {lock.path}")
         locked = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
-        document = u.Cli.toml_parse_text(scan.settings.content.decode(c.DEFAULT_ENCODING))
+        document = u.Cli.toml_parse_text(
+            scan.settings.content.decode(c.DEFAULT_ENCODING),
+        )
         if document is None:
             return result.fail(f"invalid target declarations: {scan.settings.path}")
+        markers = FlextInfraBindingService.consumer_marker_environment(
+            consumer_root=project_root,
+            python=self._python,
+        ).unwrap()
         declarations = u.Infra.document_requirement_lines(document).unwrap()
         authored = {
-            canonicalize_name(Requirement(item).name): item for item in declarations
+            canonicalize_name(Requirement(item).name): item
+            for item in declarations
+            if u.Infra.active_requirement(item, environment=markers) is not None
         }
         needed = {
             item.module
@@ -84,13 +95,13 @@ class FlextInfraRuntimeDependencyCollector:
         for distribution in u.installed_distributions(
             path=tuple(str(path) for path in observed.metadata_paths),
         ):
+            states = self._metadata_states(distribution, context.environment_path)
             name = distribution.metadata.get("Name")
             if name is None:
                 return result.fail("installed dependency metadata lacks its Name")
             identity = canonicalize_name(name)
             if identity not in authored:
                 continue
-            states = self._metadata_states(distribution, context.environment_path)
             receipt_state = states[-1]
             receipt = (
                 m.Infra.DirectUrlReceipt.model_validate_json(receipt_state.content)
@@ -99,13 +110,18 @@ class FlextInfraRuntimeDependencyCollector:
             )
             modules = self._record_modules(distribution)
             repository = repositories.get(identity)
-            editable = receipt is not None and receipt.dir_info is not None and receipt.dir_info.editable
+            editable = (
+                receipt is not None
+                and receipt.dir_info is not None
+                and receipt.dir_info.editable
+            )
             if editable and repository is not None:
                 expected_root = (context.runtime_root / repository.path).resolve()
                 modules.update(
                     name
                     for name, _path in FlextInfraWorkspaceEnvironmentProvenance.editable_declared_packages(
-                        name, expected_root,
+                        name,
+                        expected_root,
                     ).unwrap()
                 )
             supplied = tuple(sorted(needed.intersection(modules)))
@@ -118,58 +134,85 @@ class FlextInfraRuntimeDependencyCollector:
                 and item.version == distribution.version
             )
             if len(matches) != 1:
-                return result.fail(f"dependency supplier lacks one exact lock entry: {name}")
+                return result.fail(
+                    f"dependency supplier lacks one exact lock entry: {name}",
+                )
             package = matches[0]
             if editable:
-                if repository is None or receipt is None or package.source.editable is None:
-                    return result.fail(f"editable dependency lacks declared lock ownership: {name}")
+                if (
+                    repository is None
+                    or receipt is None
+                    or package.source.editable is None
+                    or not repository.editable
+                ):
+                    return result.fail(
+                        f"editable dependency lacks declared lock ownership: {name}",
+                    )
                 expected_root = (context.runtime_root / repository.path).resolve()
-                if (context.resolution_root / package.source.editable).resolve() != expected_root:
-                    return result.fail(f"editable dependency differs from locked path: {name}")
+                if (
+                    context.resolution_root / package.source.editable
+                ).resolve() != expected_root:
+                    return result.fail(
+                        f"editable dependency differs from locked path: {name}",
+                    )
                 FlextInfraWorkspaceEnvironmentProvenance.validate_editable_installation(
-                    repository, context.runtime_root, distribution, receipt,
+                    repository,
+                    context.runtime_root,
+                    distribution,
+                    receipt,
                 ).unwrap()
                 states += (
                     u.Cli.atomic_read_binary_file_state(
-                        expected_root / c.PYPROJECT_FILENAME, required=True,
+                        expected_root / c.PYPROJECT_FILENAME,
+                        required=True,
                     ).unwrap(),
                 )
             else:
                 if package.source.registry is not None and receipt is not None:
-                    return result.fail(f"registry dependency has a foreign direct origin: {name}")
+                    return result.fail(
+                        f"registry dependency has a foreign direct origin: {name}",
+                    )
                 FlextInfraWorkspaceEnvironmentProvenance.locked_origin_verdict(
                     name,
                     package,
                     receipt_state.content.decode(c.DEFAULT_ENCODING)
-                    if receipt_state.content is not None else None,
+                    if receipt_state.content is not None
+                    else None,
                 ).unwrap()
-            providers.append(m.Infra.RuntimeDependencyProvider(
-                modules=supplied,
-                package=package,
-                requirement=authored[identity],
-                inputs=states,
-            ))
+            providers.append(
+                m.Infra.RuntimeDependencyProvider(
+                    modules=supplied,
+                    package=package,
+                    requirement=authored[identity],
+                    inputs=states,
+                ),
+            )
         for module in needed:
             if sum(module in provider.modules for provider in providers) != 1:
                 return result.fail(
-                    f"runtime import requires one authored, installed, locked supplier: {module}"
+                    "runtime import requires one authored, installed, locked "
+                    f"supplier: {module}",
                 )
-        return result.ok(m.Infra.RuntimeDependencyInputs(
-            target_root=project_root,
-            python=self._python,
-            lock=lock,
-            providers=tuple(providers),
-            development_only=self._development_only,
-            inputs=(
-                scan.settings,
-                u.Cli.atomic_read_binary_file_state(
-                    context.pyproject_path, required=True,
-                ).unwrap(),
-                u.Cli.atomic_read_binary_file_state(
-                    context.runtime_root / c.Infra.GITMODULES, required=False,
-                ).unwrap(),
+        return result.ok(
+            m.Infra.RuntimeDependencyInputs(
+                target_root=project_root,
+                python=self._python,
+                lock=lock,
+                providers=tuple(providers),
+                development_only=self._development_only,
+                inputs=(
+                    scan.settings,
+                    u.Cli.atomic_read_binary_file_state(
+                        context.pyproject_path,
+                        required=True,
+                    ).unwrap(),
+                    u.Cli.atomic_read_binary_file_state(
+                        context.runtime_root / c.Infra.GITMODULES,
+                        required=False,
+                    ).unwrap(),
+                ),
             ),
-        ))
+        )
 
     @staticmethod
     def _record_modules(distribution: Distribution) -> set[str]:
@@ -213,14 +256,23 @@ class FlextInfraRuntimeDependencyCollector:
         paths = (
             metadata[0],
             metadata[0].with_name("RECORD"),
-            *(Path(str(distribution.locate_file(file))) for file in files if file.suffix == ".pth"),
+            *(
+                Path(str(distribution.locate_file(file)))
+                for file in files
+                if file.suffix == ".pth"
+            ),
             metadata[0].with_name(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
         )
-        if any(not path.resolve().is_relative_to(environment.resolve()) for path in paths):
+        if any(
+            not path.resolve().is_relative_to(environment.resolve()) for path in paths
+        ):
             msg = "dependency supplier metadata leaves the selected environment"
             raise ValueError(msg)
         return tuple(
-            u.Cli.atomic_read_binary_file_state(path, required=index != len(paths) - 1).unwrap()
+            u.Cli.atomic_read_binary_file_state(
+                path,
+                required=index != len(paths) - 1,
+            ).unwrap()
             for index, path in enumerate(paths)
         )
 

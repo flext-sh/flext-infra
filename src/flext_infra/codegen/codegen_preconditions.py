@@ -208,7 +208,9 @@ class FlextInfraCodegenPreconditions:
         ).flat_map(lambda _: cls._loaded_provider_sources(roots, states))
         if owned.failure:
             return result_type.from_failure(owned)
-        return cls._sealed_source_authority(names, roots, trees, states)
+        return cls._sealed_source_authority(
+            names, roots, trees, states, bootstrap_sources=owned.value
+        )
 
     @classmethod
     def _runtime_dependency_roots(
@@ -338,7 +340,7 @@ class FlextInfraCodegenPreconditions:
         cls,
         roots: t.MappingKV[str, Path],
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-    ) -> p.Result[bool]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Pin already loaded elected-provider inputs for the atomic reader bootstrap.
 
         This observes registered modules without importing a provider. A source
@@ -349,6 +351,8 @@ class FlextInfraCodegenPreconditions:
             The first provenance/read failure or the complete bootstrap pins.
 
         """
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        bootstrap: list[m.Cli.AtomicFileState] = []
         standard = FlextInfraWorkspaceEnvironmentProvenance.standard_library_root()
         packages = (
             FlextInfraWorkspaceEnvironmentProvenance.standard_library_package_roots()
@@ -361,7 +365,7 @@ class FlextInfraCodegenPreconditions:
             if namespace in roots:
                 elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(name)
                 if elected.failure:
-                    return r[bool].from_failure(elected)
+                    return result_type.from_failure(elected)
                 source = elected.value
             else:
                 source = cls._runtime_bootstrap_file(module, standard, packages)
@@ -371,9 +375,11 @@ class FlextInfraCodegenPreconditions:
                 continue
             captured = FlextInfraMiseArtifactsFiles.read_state(source, required=True)
             if captured.failure:
-                return r[bool].from_failure(captured)
+                return result_type.from_failure(captured)
             states[source] = captured.value
-        return r[bool].ok(value=True)
+            if source.suffix == c.Infra.EXT_PYTHON:
+                bootstrap.append(captured.value)
+        return result_type.ok(tuple(bootstrap))
 
     @staticmethod
     def _runtime_bootstrap_file(
@@ -613,6 +619,8 @@ class FlextInfraCodegenPreconditions:
         roots: t.MappingKV[str, Path],
         trees: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
         states: t.MappingKV[Path, m.Cli.AtomicFileState],
+        *,
+        bootstrap_sources: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenSourceAuthority]:
         """Seal receipts into the cold authority and re-prove it current.
 
@@ -621,6 +629,8 @@ class FlextInfraCodegenPreconditions:
             roots: Elected namespace roots sealed into the authority.
             trees: Captured physical tree manifests.
             states: Captured atomic file states awaiting their receipts.
+            bootstrap_sources: Buffered source candidates added by bootstrap
+                collection, pending actual import consumption.
 
         Returns:
             The authenticated immutable producer closure.
@@ -644,11 +654,44 @@ class FlextInfraCodegenPreconditions:
             runtime=Path(sys.executable).resolve(),
             optimize=sys.flags.optimize,
             inputs=tuple(receipts),
+            bootstrap_sources=bootstrap_sources,
             generator_trees=tuple(trees.values()),
             generator_modules=tuple(sorted(roots.items())),
             selections=names,
         )
         return cls.source_authority_current(authority).map(lambda _current: authority)
+
+    @classmethod
+    def _bootstrap_source_paths(
+        cls,
+        authority: m.Infra.CodegenSourceAuthority,
+    ) -> p.Result[frozenset[Path]]:
+        """Bind bootstrap buffers to original receipts without rereading candidates.
+
+        Returns:
+            Candidate paths outside protected runtime and resource inventories.
+
+        """
+        result_type = r[frozenset[Path]]
+        sources = cls.unique_states(authority.bootstrap_sources)
+        if sources.failure:
+            return result_type.from_failure(sources)
+        by_path = {source.path: source for source in sources.value}
+        matched = cls._authenticated_receipt_files(by_path, authority.inputs)
+        if matched.failure:
+            return result_type.from_failure(matched)
+        if matched.value != set(by_path):
+            return result_type.fail("bootstrap source lacks its original receipt")
+        protected = {
+            authority.runtime,
+            *(tree.root.path for tree in authority.generator_trees),
+            *(
+                entry.path
+                for tree in authority.generator_trees
+                for entry in tree.entries
+            ),
+        }
+        return result_type.ok(frozenset(by_path).difference(protected))
 
     @classmethod
     def source_authority_current(
@@ -702,7 +745,12 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[bool]
+        bootstrap = cls._bootstrap_source_paths(authority)
+        if bootstrap.failure:
+            return result_type.from_failure(bootstrap)
         for expected in authority.inputs:
+            if expected.path in bootstrap.value:
+                continue
             observed = u.Cli.atomic_read_binary_file_receipt(
                 expected.path,
                 required=expected.device is not None,
@@ -732,8 +780,9 @@ class FlextInfraCodegenPreconditions:
                 )
         return result_type.ok(value=True)
 
-    @staticmethod
+    @classmethod
     def authority_inputs(
+        cls,
         authority: m.Infra.CodegenSourceAuthority,
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Read pinned payloads through the CLI receipt's authenticated descriptor.
@@ -743,8 +792,19 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        bootstrap = cls._bootstrap_source_paths(authority)
+        if bootstrap.failure:
+            return result_type.from_failure(bootstrap)
+        buffered = {
+            source.path: source
+            for source in authority.bootstrap_sources
+            if source.path in bootstrap.value
+        }
         states: list[m.Cli.AtomicFileState] = []
         for receipt in authority.inputs:
+            if receipt.path in buffered:
+                states.append(buffered[receipt.path])
+                continue
             if receipt.device is None:
                 current = u.Cli.atomic_read_binary_file_receipt(receipt.path)
                 if current.failure:

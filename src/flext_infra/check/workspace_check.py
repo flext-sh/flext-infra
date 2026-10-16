@@ -17,7 +17,9 @@ from flext_infra.check import (
     FlextInfraWorkspaceCheckGatesMixin,
     FlextInfraWorkspaceCheckReportsMixin,
 )
-from flext_infra.workspace.runtime_dependencies import FlextInfraRuntimeDependencyCollector
+from flext_infra.workspace.runtime_dependencies import (
+    FlextInfraRuntimeDependencyCollector,
+)
 
 
 class FlextInfraWorkspaceChecker(
@@ -125,7 +127,7 @@ class FlextInfraWorkspaceChecker(
             selected_files=selected_files,
             runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
                 python=Path(sys.executable),
-                development_only=tuple(config.Infra.codegen.scaffold.project.required_flext_dev),
+                development_only=(),
             ),
         )
         run_result = self.run_projects(

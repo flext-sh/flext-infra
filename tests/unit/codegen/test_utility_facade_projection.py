@@ -19,20 +19,20 @@ from tests import t, tm, u
 class TestsFlextInfraUtilityFacadeProjection:
     """Exercise consumer-driven owner projection only through ``u.Infra``."""
 
-    @pytest.mark.parametrize("width_delta", [0, 16])
+    @pytest.mark.parametrize("length_delta", [0, 16])
     @pytest.mark.parametrize("parenthesized", [False, True])
     def test_published_import_width_preserves_mro_and_lazy_exports(
         self,
         tmp_path: Path,
-        width_delta: int,
+        length_delta: int,
         *,
         parenthesized: bool,
     ) -> None:
-        """Preserve MRO and lazy exports under SSOT-derived consumer budgets."""
+        """Preserve MRO and lazy exports around the configured import budget."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         self._write(package / c.Infra.INIT_PY, "")
         width = config.Infra.tooling.tools.ruff.line_length
-        owner = "Owner" + "X" * (width // 2)
+        owner = "Owner" + "X" * ((width + length_delta) // 2)
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
         prefix = f"from {package.name}.{family.directory}.owner_ import ("
         module = "owner_" + "x" * max(0, width - len(prefix))
@@ -139,7 +139,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                     "--config",
                     str(Path(__file__).resolve().parents[3] / c.PYPROJECT_FILENAME),
                     "--line-length",
-                    str(width + width_delta),
+                    str(width),
                     str(facade),
                     str(package / c.Infra.INIT_PY),
                 ),
@@ -341,6 +341,10 @@ class TestsFlextInfraUtilityFacadeProjection:
         """
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
         cls._write(facade, rendered)
+        service = u.Tests.create_lazy_init_service(package.parent.parent)
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        service.target_module = f"{package.name}.{family.directory}"
+        tm.ok(u.Tests.materialize_lazy_init(service))
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -951,9 +955,12 @@ class TestsFlextInfraUtilityFacadeProjection:
             (package.parent.parent, "receiver"),
             (foreign.parent.parent, "provider"),
         ):
+            project = u.Tests.project_spec(distribution)
             self._write(
                 directory / "pyproject.toml",
                 f'[project]\nname = "{distribution}"\nversion = "1.0.0"\n'
+                f'authors = [{{name = "{project.author_name}", '
+                f'email = "{project.author_email}"}}]\n'
                 + (
                     'dependencies = ["provider"]\n'
                     if distribution == "receiver"
@@ -1032,25 +1039,47 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="identities-proven")
 
-    def test_unresolved_consumer_import_fails_before_projection(
+    def test_unresolved_consumer_import_remains_a_consumer_failure(
         self,
         tmp_path: Path,
     ) -> None:
-        """Unknown provenance is an error, never an empty owner selection."""
+        """Declared projection preserves an unrelated consumer's native failure."""
         package = tmp_path / "src" / "flext_sample"
         self._write(package / "__init__.py", "")
-        self._write(package / "_utilities" / "owner.py", "class Owner:\n    pass\n")
+        self._write(
+            package / "_utilities" / "owner.py",
+            "class Owner:\n    pass\n__all__ = ['Owner']\n",
+        )
         self._write(
             package / "utilities.py",
             "class Facade:\n    class Sample:\n        pass\n\n"
             "u = Facade\n__all__ = ['Facade', 'u']\n",
         )
-        self._write(
-            package / "consumer.py",
-            "from nonexistent_facade_owner import u\nu.Sample.required()\n",
+        consumer = package / "consumer.py"
+        source = "from nonexistent_facade_owner import u\nu.Sample.required()\n"
+        self._write(consumer, source)
+        facade = package / "utilities.py"
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)),
+            eq=before,
         )
-        with pytest.raises(ValueError, match="unresolved imported module"):
-            u.Infra.render_utility_facade(package)
+        self._write(facade, rendered)
+        output = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", "import flext_sample.consumer"),
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=False)
+        tm.that(
+            output.stderr,
+            has="ModuleNotFoundError: No module named 'nonexistent_facade_owner'",
+        )
+        tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     def test_inherited_aggregator_keeps_one_behavior_owner(
         self, tmp_path: Path
@@ -1147,7 +1176,11 @@ class TestsFlextInfraUtilityFacadeProjection:
 
     def test_rejects_competing_inherited_namespaces(self, tmp_path: Path) -> None:
         """Reject an ambiguous facade without dropping either declaration body."""
-        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
+        _, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
         facade = package / c.Infra.UTILITIES_PY
         source = (
@@ -1193,7 +1226,11 @@ class TestsFlextInfraUtilityFacadeProjection:
         consumer_source: str,
     ) -> None:
         """Compose valid declarations without analyzing unrelated test bodies."""
-        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
+        _, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
         family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
         self._write(package / c.Infra.INIT_PY, "")
         self._write(
@@ -1222,7 +1259,11 @@ class TestsFlextInfraUtilityFacadeProjection:
         tmp_path: Path,
     ) -> None:
         """An invalid old projection cannot override its valid source owners."""
-        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_sample"
+        _, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
         family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
         self._write(package / c.Infra.INIT_PY, "")
         self._write(
