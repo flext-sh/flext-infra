@@ -3481,6 +3481,10 @@ class FlextInfraWorkspaceNativeReference:
                 f"producer class has no native qualified name: {binding}",
             )
         context.sources.add((f"{supplier}::{qualname}", source, ""))
+        if FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(supplier):
+            return cls._capture_runtime_binding(
+                context, supplier, cls._type_attr("__name__", value, type(value)), qualname
+            )
         return cls._capture_class_body(
             context,
             value,
@@ -4595,6 +4599,12 @@ class FlextInfraWorkspaceNativeReference:
         if captured.failure:
             return r[bool].from_failure(captured)
         facts = captured.value
+        if not facts.generated and FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(
+            facts.supplier
+        ):
+            return cls._capture_runtime_binding(
+                context, facts.supplier, value.__name__, value.__qualname__
+            )
         cls._function_namespaces(context, facts, graph[2])
         if context.lexical:
             attributes = cls._function_attribute_edges(context, facts, graph[2])
@@ -4603,6 +4613,34 @@ class FlextInfraWorkspaceNativeReference:
             cls._function_descriptor_edges(context, facts)
         cls._enqueue_function_operands(context, facts)
         cls._capture_function_evidence(context, facts, kind)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _capture_runtime_binding(
+        context: m.Infra.NativeObservationContext,
+        supplier: str,
+        name: str,
+        qualname: str,
+    ) -> p.Result[bool]:
+        """End the walk at an interpreter-owned standard-library identity.
+
+        The interpreter identity (runtime, prefix and the stdlib origin its
+        provenance proves) authenticates the binding; its live module globals
+        are interpreter state, never producer source.
+
+        Returns:
+            Success after recording the runtime identity evidence.
+
+        """
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind="runtime",
+                supplier=supplier,
+                name=name,
+                qualname=qualname,
+            )
+        )
         return r[bool].ok(value=True)
 
     @classmethod
