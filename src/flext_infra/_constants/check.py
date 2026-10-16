@@ -26,6 +26,8 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Stop mutating service workflows at the first failed project or rule."""
     NATIVE_CODE_WITNESS_MARSHAL_VERSION: ClassVar[int] = 2
     """Complete CPython code encoding without reference or interning flags."""
+    NATIVE_TUPLE_REPEAT_LIMIT: ClassVar[int] = 255
+    """Largest literal repeat count read as closed tuple constructor data."""
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
