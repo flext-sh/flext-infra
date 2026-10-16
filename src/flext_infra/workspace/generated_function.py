@@ -767,10 +767,48 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If a raw wrapper chain is cyclic or lacks physical code.
 
         """
+        # A native method descriptor names its own source decorator; the
+        # declaration carries exactly that decorator and nothing else.
+        decorator: str | None = None
+        if type(value) is property:
+            getter = value.fget
+            if type(getter) is not FunctionType:
+                msg = "native dataclass property has no exact Python getter"
+                raise TypeError(msg)
+            name = getter.__name__
+            for accessor, expected in (
+                (getter, "property"),
+                (value.fset, f"{name}.setter"),
+                (value.fdel, f"{name}.deleter"),
+            ):
+                if accessor is not None:
+                    self._dataclass_accessor(accessor, expected)
+            return
         if type(value) is classmethod or type(value) is staticmethod:
+            decorator = vars(type)["__name__"].__get__(type(value), type)
             value = value.__func__
         if type(value) is not FunctionType:
-            msg = "native dataclass method is not an exact Python function"
+            msg = (
+                "native dataclass method is not an exact Python function: "
+                f"{type(value).__module__}.{type(value).__qualname__}"
+            )
+            raise TypeError(msg)
+        self._dataclass_accessor(value, decorator)
+
+    def _dataclass_accessor(
+        self,
+        value: p.AttributeProbe | None,
+        decorator: str | None,
+    ) -> None:
+        """Prove one method body and its raw ``__wrapped__`` chain.
+
+        Raises:
+            TypeError: If storage can invoke an authored accessor.
+            ValueError: If the raw wrapper chain is cyclic or lacks physical code.
+
+        """
+        if type(value) is not FunctionType:
+            msg = "native dataclass accessor is not an exact Python function"
             raise TypeError(msg)
         seen: set[int] = set()
         while type(value) is FunctionType:
@@ -778,7 +816,8 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = "native dataclass method has a cyclic raw wrapper"
                 raise ValueError(msg)
             seen.add(id(value))
-            self._physical_function(value)
+            self._physical_function(value, decorator=decorator)
+            decorator = None
             value = self._function_attributes(value).get("__wrapped__")
         if value is not None:
             msg = "native dataclass method has callback-bearing descriptor storage"
@@ -795,17 +834,63 @@ class FlextInfraWorkspaceGeneratedFunction:
             ValueError: If source assigns class state through non-name targets.
 
         """
+        namespace = vars(self._module(self._witness.module.get_name()))
         for target in assignment.targets:
             match target:
                 case ast.Name(id=name):
-                    result[name] = self._source_scalar(
-                        assignment.value,
-                        vars(self._module(self._witness.module.get_name())),
-                        self._trees[self._witness.source],
+                    member = self._native_type_member(assignment.value, namespace)
+                    result[name] = (
+                        member
+                        if member is not None
+                        else self._source_scalar(
+                            assignment.value,
+                            namespace,
+                            self._trees[self._witness.source],
+                        )
                     )
                 case _:
                     msg = "native dataclass class value has no closed source name"
                     raise ValueError(msg)
+
+    def _native_type_member(
+        self,
+        expression: ast.expr,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+    ) -> p.AttributeProbe | None:
+        """Bind ``<builtin type>.<slot>`` to the native slot it physically names.
+
+        pydantic's ``PydanticRecursiveRef`` declares ``__hash__ = object.__hash__``
+        to keep identity hashing under ``eq=True``; the SDK hash action reads
+        that class value, so it must be the native slot descriptor itself.
+
+        Returns:
+            The native slot descriptor, or ``None`` for any other expression.
+
+        Raises:
+            TypeError: If the named member is not a native slot descriptor.
+
+        """
+        match expression:
+            case ast.Attribute(value=ast.Name(id=owner_name), attr=member) if (
+                owner_name not in namespace
+            ):
+                owner = self._builtin(owner_name, namespace)
+                if type(owner) is not type:
+                    msg = "native dataclass class value owner is not a builtin type"
+                    raise TypeError(msg)
+                value = vars(type)["__dict__"].__get__(owner, type(owner)).get(member)
+                if (
+                    type(value) is not WrapperDescriptorType
+                    and type(value) is not MethodDescriptorType
+                ):
+                    msg = (
+                        "native dataclass class value is not a native slot: "
+                        f"{owner_name}.{member}"
+                    )
+                    raise TypeError(msg)
+                return value
+            case _:
+                return None
 
     def _compile_dataclass(
         self,
@@ -926,6 +1011,9 @@ class FlextInfraWorkspaceGeneratedFunction:
             case ast.Constant(value=None) if action is None:
                 return
             case ast.Name(id=name) if namespace.get(name) is action:
+                # The action reaches its collaborators (``_tuple_str``,
+                # ``_FuncBuilder``) through globals already proved by the SDK
+                # check; the 3.13 compiler has no separate hash builder.
                 self._function(
                     action, source_name=name, source_namespace=namespace
                 )
@@ -2089,6 +2177,8 @@ class FlextInfraWorkspaceGeneratedFunction:
     def _physical_function(
         self,
         function: p.AttributeProbe | None,
+        *,
+        decorator: str | None = None,
     ) -> t.Triple[ast.FunctionDef, ast.Module, t.MappingKV[str, p.AttributeProbe]]:
         if type(function) is not FunctionType:
             msg = "closed compiler callback is not an exact Python function"
@@ -2100,8 +2190,12 @@ class FlextInfraWorkspaceGeneratedFunction:
         ):
             msg = "closed compiler function has foreign globals"
             raise ValueError(msg)
+        if decorator is not None and "." not in decorator:
+            # The source decorator must be the native descriptor type itself;
+            # ``<name>.setter``/``.deleter`` are the property's own methods.
+            self._builtin(decorator, namespace)
         path, tree = self._source(self._module(module_name))
-        candidates = self._function_declarations(function, tree)
+        candidates = self._function_declarations(function, tree, decorator=decorator)
         pending = [self._codes[path]]
         matched = False
         while pending:
@@ -2114,7 +2208,11 @@ class FlextInfraWorkspaceGeneratedFunction:
             )
             pending.extend(item for item in code.co_consts if type(item) is CodeType)
         if len(candidates) != 1 or not matched:
-            msg = "closed compiler function differs from its physical compilation"
+            msg = (
+                "closed compiler function differs from its physical compilation: "
+                f"{module_name}.{function.__code__.co_qualname} "
+                f"declarations={len(candidates)} compiled_match={matched}"
+            )
             raise ValueError(msg)
         return candidates[0], tree, namespace
 
@@ -2228,8 +2326,16 @@ class FlextInfraWorkspaceGeneratedFunction:
     def _native_globals(self, function: FunctionType) -> None:
         """Prove native builtin lookups without invoking any selected operation.
 
+        A module's own identity attributes (``__name__``, ``__spec__``, ...) are
+        also attributes of the ``builtins`` module, but a global lookup of one
+        resolves to the supplier module's metadata, never to a builtin: the
+        stdlib ``dataclasses._process_class`` reads ``sys.modules[__name__]``.
+        Those names are derived from a fresh module's namespace and proved as
+        the supplier's identity instead of as builtins.
+
         Raises:
-            ValueError: If a builtin lookup is interposed in the SDK namespace.
+            ValueError: If a builtin lookup is interposed in the SDK namespace, or a
+                module identity lookup does not name the function's own module.
 
         """
         names: set[str] = set()
@@ -2243,12 +2349,14 @@ class FlextInfraWorkspaceGeneratedFunction:
                 and type(instruction.argval) is str
             )
             pending.extend(item for item in code.co_consts if type(item) is CodeType)
-        # Every module namespace defines its own metadata (__name__, __doc__,
-        # __spec__, ...), derived from a fresh module rather than listed: a
-        # global lookup of those names resolves in the module by language
-        # semantics, so it is never a builtin lookup that could be interposed.
-        module_metadata = set(vars(ModuleType("")))
-        for name in names.intersection(vars(builtins)) - module_metadata:
+        identity = vars(ModuleType(function.__module__)).keys()
+        if (
+            "__name__" in names
+            and function.__globals__.get("__name__") != function.__module__
+        ):
+            msg = "closed compiler module identity is interposed: __name__"
+            raise ValueError(msg)
+        for name in names.intersection(vars(builtins)).difference(identity):
             if (
                 name in function.__globals__
                 and function.__globals__[name] is not vars(builtins)[name]
@@ -2259,12 +2367,20 @@ class FlextInfraWorkspaceGeneratedFunction:
 
     @staticmethod
     def _function_declarations(
-        function: FunctionType, tree: ast.Module
+        function: FunctionType,
+        tree: ast.Module,
+        *,
+        decorator: str | None = None,
     ) -> t.VariadicTuple[ast.FunctionDef]:
         """Locate the physical module or class method without running its body.
 
+        ``decorator`` names the sole native method descriptor (``classmethod``
+        or ``staticmethod``) the declaration may carry; the code's first line
+        is then the decorator line, as CPython records it.
+
         Returns:
-            Undecorated declarations matching the native qualified code identity.
+            Declarations matching the native qualified code identity and carrying
+            exactly the expected decorator, or none.
 
         """
         nodes: t.SequenceOf[ast.stmt] = tree.body
@@ -2278,13 +2394,26 @@ class FlextInfraWorkspaceGeneratedFunction:
             if len(parents) != 1:
                 return ()
             nodes = parents[0].body
+
+        def decorated(node: ast.FunctionDef) -> bool:
+            match node.decorator_list:
+                case []:
+                    return decorator is None
+                case [ast.Name(id=name)]:
+                    return name == decorator
+                case [ast.Attribute(value=ast.Name(id=owner), attr=member)]:
+                    return f"{owner}.{member}" == decorator
+                case _:
+                    return False
+
         return tuple(
             node
             for node in nodes
             if isinstance(node, ast.FunctionDef)
             and node.name == components[-1]
-            and node.lineno == function.__code__.co_firstlineno
-            and not node.decorator_list
+            and (node.decorator_list[0] if node.decorator_list else node).lineno
+            == function.__code__.co_firstlineno
+            and decorated(node)
         )
 
     @staticmethod
