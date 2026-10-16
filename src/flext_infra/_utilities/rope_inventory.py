@@ -400,7 +400,12 @@ class FlextInfraUtilitiesRopeInventory:
         if any(not base for base in bases):
             return ""
         scope = options.child_scope
-        module = options.rope_project.get_pymodule(options.resource)
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            options.rope_project,
+            FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                options.resource, options.resource.path
+            ),
+        )
         statements = tuple(
             statement
             for statement in FlextInfraUtilitiesRopeStructure.logical_statements(

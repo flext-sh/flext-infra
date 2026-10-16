@@ -108,6 +108,9 @@ class FlextInfraRenameSymbols:
         Returns:
             The resulting ``p.Infra.RopePyName | None``.
 
+        Raises:
+            TypeError: The destination lacks a native semantic module interface.
+
         """
         parts = owner.split(".")
         module = parts[0]
@@ -117,7 +120,11 @@ class FlextInfraRenameSymbols:
                 break
             module = candidate
         attributes = parts[len(module.split(".")) :]
-        value: p.Infra.RopePyModule | p.Infra.RopePyObject = project.get_module(module)
+        root = project.get_module(module)
+        if not u.Infra.semantic_module(root):
+            message = "Rename lookup requires a native semantic module"
+            raise TypeError(message)
+        value: p.Infra.RopeSemanticModule | p.Infra.RopePyObject = root
         binding: p.Infra.RopePyName | None = None
         for attribute in (*attributes, *suffix.split(".")):
             if attribute not in value.get_attributes():
@@ -318,7 +325,10 @@ class FlextInfraRenameSymbols:
                 namespace.
 
         """
-        module = project.get_pymodule(change.resource)
+        module = u.Infra.resolve_pymodule(
+            project,
+            u.Infra.require_file_resource(change.resource, change.resource.path),
+        )
         owner, old, new = symbols
         expected = cls.resolve_member(project, owner, old)
         destination = cls.resolve_member(project, owner, new)

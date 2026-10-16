@@ -230,6 +230,7 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
             repo_root=root,
             common_dir=Path(repo.common_dir).resolve(),
             head=head,
+            branch=None if repo.head.is_detached else repo.active_branch.name,
             retained_commits=retained,
             paths=tuple(request.paths),
             head_entries=cls._state_head_entries(root, request.paths),

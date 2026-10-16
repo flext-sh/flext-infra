@@ -17,8 +17,10 @@ import libcst as cst
 from flext_infra import m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverClassScope,
@@ -182,21 +184,18 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         Returns:
             Bindings holding a nested class or its instance in the same snapshot.
 
-        Raises:
-            ValueError: If the module exposes no root semantic scope.
-
         Loose top-level helper and sentinel classes can move together with their
         construction sites. A class already inside an owner is not such a helper.
 
         """
-        resource = project.get_resource(
-            file_path.relative_to(Path(project.root.real_path)).as_posix(),
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            project.get_resource(
+                file_path.relative_to(Path(project.root.real_path)).as_posix(),
+            ),
+            file_path,
         )
-        module = project.get_pymodule(resource)
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         root_scope = module.get_scope()
-        if root_scope is None:
-            msg = f"module has no root scope: {file_path}"
-            raise ValueError(msg)
         pending: list[tuple[t.Infra.RopeScope, int]] = [(root_scope, 0)]
         identities: list[t.Infra.RopePyObject] = []
         while pending:

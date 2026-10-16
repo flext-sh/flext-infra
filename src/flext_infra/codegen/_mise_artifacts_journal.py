@@ -274,12 +274,34 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 candidate.model_dump_json()
             )
         )
-        if validated.failure:
-            return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate prepared codegen journal",
-                validated.error,
+        reference = journal.generator_reference
+
+        def retain_reference(
+            prepared: m.Infra.CodegenTransactionJournal,
+        ) -> p.Result[m.Infra.CodegenTransactionJournal]:
+            """Keep only the original live reference after JSON shape validation.
+
+            Returns:
+                The prepared journal or its original-reference mismatch.
+
+            """
+            if reference is None:
+                return r[m.Infra.CodegenTransactionJournal].ok(prepared)
+            if prepared.generator_reference is None or (
+                prepared.generator_reference.model_dump() != reference.model_dump()
+            ):
+                return r[m.Infra.CodegenTransactionJournal].fail(
+                    "prepared journal differs from its original producer reference",
+                )
+            return codegen.FlextInfraCodegenPreconditions.reference_birth_current(
+                reference
+            ).map(
+                lambda _: prepared.model_copy(
+                    update={"generator_reference": reference},
+                ),
             )
-        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
+
+        return validated.flat_map(retain_reference)
 
     @classmethod
     def _prepared_phase_entries(

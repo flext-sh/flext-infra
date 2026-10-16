@@ -134,12 +134,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 tm.that(published.exists(), eq=True)
                 tm.that(published.read(), eq=content.decode(c.DEFAULT_ENCODING))
                 tm.that(
-                    snapshot.get_pymodule(published).source_code,
+                    u.Infra.resolve_pymodule(snapshot, published).source_code,
                     eq=content.decode(c.DEFAULT_ENCODING),
                 )
                 snapshot.validate()
                 tm.that(
-                    snapshot.get_pymodule(published).source_code,
+                    u.Infra.resolve_pymodule(snapshot, published).source_code,
                     eq=content.decode(c.DEFAULT_ENCODING),
                 )
                 with pytest.raises(u.Infra.rope_error_types()):

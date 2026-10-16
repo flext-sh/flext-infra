@@ -53,6 +53,8 @@ class TestsFlextInfraFamilyTypeReferences:
             f"from {package.name}.entities import Container, Other\n\n"
             "class Public(Part):\n    pass\n\n"
             'class Specialized(Container["Part.Domain.Item"]):\n    pass\n\n'
+            'class Generic[T: "Part.Domain.Item" = "Part.Domain.Item"]:\n'
+            "    pass\n\n"
             "LABEL = 'é'; item: \"Public.Domain.Item\"\n"
             'items: list["Part.Domain.Item"]\n'
             'meta: Meta["Part.Domain.Item", "Part.Domain.Item"]\n'
@@ -60,7 +62,8 @@ class TestsFlextInfraFamilyTypeReferences:
             'unrelated: "Other.Domain.Item"\n'
             'type Items = list["Part.Domain.Item"]\n'
             'TEXT = "Part.Domain.Item"\n\n'
-            'def convert(value: "Part.Domain.Item") -> "Part.Domain.Item":\n'
+            'def convert(value: "Part.Domain.Item" = "Part.Domain.Item")'
+            ' -> "Part.Domain.Item":\n'
             "    Part = Other\n"
             '    local: "Part.Domain.Item"\n'
             "    return Part.Domain.Item()\n"
@@ -87,11 +90,15 @@ class TestsFlextInfraFamilyTypeReferences:
                 tm.that(proposed[consumer], has=preserved)
             for rewritten in (
                 "Container['Part.DomainItem']",
+                "class Generic[T: 'Part.DomainItem' = 'Part.DomainItem']:",
                 "LABEL = 'é'; item: 'Public.DomainItem'",
                 "items: list['Part.DomainItem']",
                 "meta: Meta['Part.DomainItem', \"Part.Domain.Item\"]",
                 "type Items = list['Part.DomainItem']",
-                "def convert(value: 'Part.DomainItem') -> 'Part.DomainItem':",
+                (
+                    "def convert(value: 'Part.DomainItem' = \"Part.Domain.Item\")"
+                    " -> 'Part.DomainItem':"
+                ),
             ):
                 tm.that(proposed[consumer], has=rewritten)
             remaining = tm.ok(
