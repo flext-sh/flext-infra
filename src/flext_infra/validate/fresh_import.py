@@ -99,14 +99,18 @@ for _native_name in tuple(sys.modules):
 
 def _native_source_path(fullname, filename):
     path = Path(filename).absolute()
+    physical = path.resolve()
     namespace = fullname.partition('.')[0]
     root = _native_roots.get(namespace)
     if root is not None:
-        allowed = path.is_relative_to(root) if root.is_dir() else path == root
+        allowed = (
+            physical.is_relative_to(root.resolve())
+            if root.is_dir() else physical == root.resolve()
+        )
     else:
         allowed = (
-            namespace in sys.stdlib_module_names
-            and path.is_relative_to(_native_standard)
+            physical.is_relative_to(_native_standard)
+            and not any(physical.is_relative_to(root) for root in _native_packages)
         )
     if not allowed:
         raise ImportError(
@@ -225,6 +229,12 @@ _native_atomic = (
             if state.path.suffix == c.Infra.EXT_PYTHON and state.content is not None
         }
         standard = FlextInfraWorkspaceEnvironmentProvenance.standard_library_root()
+        packages = tuple(
+            map(
+                str,
+                FlextInfraWorkspaceEnvironmentProvenance.standard_library_package_roots(),
+            )
+        )
         elected_roots = tuple(
             (name, str(root))
             for name, root in request.source_authority.generator_modules
@@ -234,6 +244,7 @@ _native_atomic = (
             f"_native_roots = {{name: Path(root) for name, root in "
             f"{elected_roots!r}}}\n"
             f"_native_standard = Path({str(standard)!r})\n"
+            f"_native_packages = tuple(Path(root) for root in {packages!r})\n"
             f"_native_receipts = {{Path(path): receipt for path, receipt in "
             f"{tuple((str(path), receipt) for path, receipt in receipts.items())!r}}}\n"
             f"_native_payloads = {{Path(path): content for path, content in "

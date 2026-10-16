@@ -215,15 +215,24 @@ class FlextInfraCodegenPreconditions:
             The first provenance/read failure or the complete bootstrap pins.
 
         """
+        standard = FlextInfraWorkspaceEnvironmentProvenance.standard_library_root()
+        packages = (
+            FlextInfraWorkspaceEnvironmentProvenance.standard_library_package_roots()
+        )
         for name, module in tuple(sys.modules.items()):
             namespace = name.partition(".")[0]
-            if (
-                name == "__main__"
-                or module is None
-                or not isinstance(module, ModuleType)
-                or (namespace not in roots and namespace not in sys.stdlib_module_names)
-            ):
+            if name == "__main__":
                 continue
+            if namespace not in roots and namespace not in sys.stdlib_module_names:
+                storage = vars(ModuleType)["__dict__"].__get__(module, type(module))
+                declared = storage.get("__file__")
+                if not isinstance(declared, str) or type(declared) is not str:
+                    continue
+                physical = Path(declared).resolve()
+                if not physical.is_relative_to(standard) or any(
+                    physical.is_relative_to(root) for root in packages
+                ):
+                    continue
             elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(name)
             if elected.failure:
                 return r[bool].from_failure(elected)
@@ -764,15 +773,24 @@ class FlextInfraCodegenPreconditions:
         """
         result_type = r[t.VariadicTuple[m.Cli.AtomicFileReceipt]]
         standard = FlextInfraWorkspaceEnvironmentProvenance.standard_library_root()
+        packages = (
+            FlextInfraWorkspaceEnvironmentProvenance.standard_library_package_roots()
+        )
         roots = tuple(root for _, root in authority.generator_modules)
         pinned = {receipt.path: receipt for receipt in authority.inputs}
         executed: dict[Path, m.Cli.AtomicFileReceipt] = {}
         for receipt in receipts:
             path = receipt.path
+            physical = path.resolve()
+            runtime_source = physical.is_relative_to(standard) and not any(
+                physical.is_relative_to(root) for root in packages
+            )
             if not (
-                path.is_relative_to(standard)
+                runtime_source
                 or any(
-                    path.is_relative_to(root) if root.is_dir() else path == root
+                    physical.is_relative_to(root.resolve())
+                    if root.is_dir()
+                    else physical == root.resolve()
                     for root in roots
                 )
             ):
