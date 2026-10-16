@@ -288,6 +288,16 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = None
+        bin: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                default=None,
+                description=(
+                    "Native release-backend name for a downloaded single-file "
+                    "binary, when the backend keeps a platform suffix"
+                ),
+            ),
+        ] = None
         form: Annotated[
             Literal["scalar", "table"],
             m.Field(

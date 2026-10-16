@@ -149,10 +149,13 @@ Infra:
       # the aqua registry entry (complete_windows_ext: false, unchanged since
       # v2.37.0) still asks for the old extensionless name, so the default
       # aqua resolver cannot lock windows-x64. The GitHub release backend
-      # selects assets by OS/arch and strips the suffix of raw binaries.
+      # selects assets by OS/arch, but mise 2026.10.3 strips only the arch
+      # suffix of a raw binary (direnv.linux-amd64 installs as direnv.linux),
+      # so `bin` names the executable the activation and probe resolve.
       - name: direnv
         selector: github:direnv/direnv
         version: latest
+        bin: direnv
         version_probe:
           binary: direnv
           arguments: [ version ]
