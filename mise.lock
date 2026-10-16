@@ -149,48 +149,48 @@ url_api = "https://api.github.com/repos/jdx/mise/releases/assets/612241184"
 provenance = "github-attestations"
 
 [[tools."github:kucherenko/jscpd"]]
-version = "5.3.2"
+version = "5.4.0"
 backend = "github:kucherenko/jscpd"
-specifiers = ["5.3.2"]
+specifiers = ["latest"]
 
 [tools."github:kucherenko/jscpd"."platforms.linux-arm64"]
-checksum = "sha256:ddf336de86eb7e26632062a01e751417f6579b4422e9156aa3836fdab1d0265d"
-url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-linux-arm64-gnu.tar.gz"
-url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634217"
+checksum = "sha256:e31c723f89228fbd2f4231c2fbaf885074d15d33c4dc6b93ba551a966efe3517"
+url = "https://github.com/kucherenko/jscpd/releases/download/v5.4.0/jscpd-linux-arm64-gnu.tar.gz"
+url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/601533636"
 provenance = "github-attestations"
 
 [tools."github:kucherenko/jscpd"."platforms.linux-x64"]
-checksum = "sha256:97259f222ea7f6d51a0f2faa98ed5889430233e0fb8d2c129f23d84aff4b93b2"
-url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-linux-x64-gnu.tar.gz"
-url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634214"
+checksum = "sha256:4c2819a5663e5418fe5dcf0faceca7f05c1f080d3c87fd57cc4ccf99ce857194"
+url = "https://github.com/kucherenko/jscpd/releases/download/v5.4.0/jscpd-linux-x64-gnu.tar.gz"
+url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/601533640"
 provenance = "github-attestations"
 
 [tools."github:kucherenko/jscpd"."platforms.linux-x64-musl"]
-checksum = "sha256:bfae3e3cfc18040a044d2dada4c9d99761a9953d08c509c41a2eb5bfafef8309"
-url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-linux-x64-musl.tar.gz"
-url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634242"
+checksum = "sha256:10dd883b1fecedb457b7b75870a5895b17f54e1c045c87fe46864fa98730bbf2"
+url = "https://github.com/kucherenko/jscpd/releases/download/v5.4.0/jscpd-linux-x64-musl.tar.gz"
+url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/601533659"
 provenance = "github-attestations"
 
 [tools."github:kucherenko/jscpd"."platforms.macos-arm64"]
-checksum = "sha256:c629e1d2c7a6c41230a0f3bdd72d5ee69996013527a19eabbb5f0e845249dfbc"
-url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634218"
+checksum = "sha256:75022b94cd6c05523a7a1639c3fff769d9a97f8c7ef3f6a614c6bee53b7e3bdd"
+url = "https://github.com/kucherenko/jscpd/releases/download/v5.4.0/jscpd-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/601533635"
 provenance = "github-attestations"
 
 [tools."github:kucherenko/jscpd"."platforms.macos-x64"]
-checksum = "sha256:435ae3f0c4d6256ac84199494c45c31fc04ba1165358151c2c1a1b036f1c523d"
-url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-darwin-x64.tar.gz"
-url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634215"
+checksum = "sha256:866676d440854f2e6083c4a88f754856fb91ccdc16f59e49a64574cd35d3f48d"
+url = "https://github.com/kucherenko/jscpd/releases/download/v5.4.0/jscpd-darwin-x64.tar.gz"
+url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/601533634"
 provenance = "github-attestations"
 
 [tools."github:kucherenko/jscpd"."platforms.windows-x64"]
-checksum = "sha256:165778418ef43d754d42ec014bb56f609b167655449ad17ed00f9ed05cee2441"
-url = "https://github.com/kucherenko/jscpd/releases/download/v5.3.2/jscpd-windows-x64-msvc.tar.gz"
-url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/583634243"
+checksum = "sha256:fb23edc10657bf93a66f6f2be53f10335f1be1da9456c97107f98a9d0e21ce13"
+url = "https://github.com/kucherenko/jscpd/releases/download/v5.4.0/jscpd-windows-x64-msvc.tar.gz"
+url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/601533667"
 provenance = "github-attestations"
 
 [[tools."github:microsoft/waza"]]
-version = "0.38.8"
+version = "0.38.9"
 backend = "github:microsoft/waza"
 specifiers = ["latest"]
 
@@ -198,74 +198,74 @@ specifiers = ["latest"]
 version_prefix = "v"
 
 [tools."github:microsoft/waza"."platforms.linux-arm64"]
-checksum = "sha256:2721267b59dbca682e754e0e4ad392473e7341dbdbd64578ef1bee9b52daa31b"
-url = "https://github.com/microsoft/waza/releases/download/v0.38.8/waza-linux-arm64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/599032509"
+checksum = "sha256:6baa83b1df6269245e1aae1a818e4cbc5daaad15d4fd8316aa8e67a90f30924f"
+url = "https://github.com/microsoft/waza/releases/download/v0.38.9/waza-linux-arm64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/613311359"
 
 [tools."github:microsoft/waza"."platforms.linux-x64"]
-checksum = "sha256:1bc9886cf2254e50cfab22bc1bcc7acd9715e69e0c2057c04079c95b8f68132e"
-url = "https://github.com/microsoft/waza/releases/download/v0.38.8/waza-linux-amd64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/599032506"
+checksum = "sha256:7893f40d0b13332a70b4b17ba2d5a817367b7f4824a079202e6cf5df7f7dc85e"
+url = "https://github.com/microsoft/waza/releases/download/v0.38.9/waza-linux-amd64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/613311357"
 
 [tools."github:microsoft/waza"."platforms.linux-x64-musl"]
-checksum = "sha256:1bc9886cf2254e50cfab22bc1bcc7acd9715e69e0c2057c04079c95b8f68132e"
-url = "https://github.com/microsoft/waza/releases/download/v0.38.8/waza-linux-amd64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/599032506"
+checksum = "sha256:7893f40d0b13332a70b4b17ba2d5a817367b7f4824a079202e6cf5df7f7dc85e"
+url = "https://github.com/microsoft/waza/releases/download/v0.38.9/waza-linux-amd64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/613311357"
 
 [tools."github:microsoft/waza"."platforms.macos-arm64"]
-checksum = "sha256:f4f36fbdfdd60b6d7c1bd555b25a6c6d33485e57fdf8e67c1c65a82400622601"
-url = "https://github.com/microsoft/waza/releases/download/v0.38.8/waza-darwin-arm64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/599032505"
+checksum = "sha256:d517ff9ef70ce0b3ecc7973a411082901738d065a9a16fa9a304942bcb9e2c0d"
+url = "https://github.com/microsoft/waza/releases/download/v0.38.9/waza-darwin-arm64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/613311364"
 
 [tools."github:microsoft/waza"."platforms.macos-x64"]
-checksum = "sha256:7533f4a025e7cbe7dc6adbb48acf04cc8778f21e57b9a9e716300264ff040920"
-url = "https://github.com/microsoft/waza/releases/download/v0.38.8/waza-darwin-amd64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/599032510"
+checksum = "sha256:9607598457ece2e2291691a6c42a7dcb8cbbe51c437080caff4b47957dfe122f"
+url = "https://github.com/microsoft/waza/releases/download/v0.38.9/waza-darwin-amd64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/613311363"
 
 [tools."github:microsoft/waza"."platforms.windows-x64"]
-checksum = "sha256:b52763feedf789025399a79269d001dd27ad54a2588442f831a1072be5b7ce4f"
-url = "https://github.com/microsoft/waza/releases/download/v0.38.8/waza-windows-amd64.exe"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/599032529"
+checksum = "sha256:d7d3ea486cbef89f63d37580d8b840c0767940bece5f967ccca3f706009d782e"
+url = "https://github.com/microsoft/waza/releases/download/v0.38.9/waza-windows-amd64.exe"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/613311380"
 
 [[tools."github:qltysh/qlty"]]
-version = "0.645.0"
+version = "0.651.0"
 backend = "github:qltysh/qlty"
-specifiers = ["0.645.0"]
+specifiers = ["latest"]
 
 [tools."github:qltysh/qlty"."platforms.linux-arm64"]
-checksum = "sha256:5e283bfe1cbb376b66e03cc10628aa10f8cf55eb38ad29a40dab9835f1077346"
-url = "https://github.com/qltysh/qlty/releases/download/v0.645.0/qlty-aarch64-unknown-linux-gnu.tar.xz"
-url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/584509804"
+checksum = "sha256:5c7978db3937cf2d500089a7bbbd52923c55fe9af24c4250c7e682f9eaad43d4"
+url = "https://github.com/qltysh/qlty/releases/download/v0.651.0/qlty-aarch64-unknown-linux-gnu.tar.xz"
+url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/603700616"
 provenance = "github-attestations"
 
 [tools."github:qltysh/qlty"."platforms.linux-x64"]
-checksum = "sha256:cc32b1f9c8f6ea365ece19c7da437663d11eb878cd5b0964b47c684db47037f1"
-url = "https://github.com/qltysh/qlty/releases/download/v0.645.0/qlty-x86_64-unknown-linux-gnu.tar.xz"
-url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/584509845"
+checksum = "sha256:b96eaea35490573985fc98b4847e756dc591ea2b8f8de1777108a598fd6f55be"
+url = "https://github.com/qltysh/qlty/releases/download/v0.651.0/qlty-x86_64-unknown-linux-gnu.tar.xz"
+url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/603700671"
 provenance = "github-attestations"
 
 [tools."github:qltysh/qlty"."platforms.linux-x64-musl"]
-checksum = "sha256:bd099788012cd6517e5dee152d8c68d20410834f794af51c3a3f92075c4e559e"
-url = "https://github.com/qltysh/qlty/releases/download/v0.645.0/qlty-x86_64-unknown-linux-musl.tar.xz"
-url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/584509854"
+checksum = "sha256:497145bd70f083befa74cd6c63c6de645e11127c1f23d797347f94d432c25293"
+url = "https://github.com/qltysh/qlty/releases/download/v0.651.0/qlty-x86_64-unknown-linux-musl.tar.xz"
+url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/603700685"
 provenance = "github-attestations"
 
 [tools."github:qltysh/qlty"."platforms.macos-arm64"]
-checksum = "sha256:18c27cb6c8a4ca3cf45375236dd102e7dcbb433a67235ef9ed8b4a67e15f0800"
-url = "https://github.com/qltysh/qlty/releases/download/v0.645.0/qlty-aarch64-apple-darwin.tar.xz"
-url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/584509806"
+checksum = "sha256:22898682c938edb9378b57762b5e009b62590aac3ea1bf09feb00769dc470485"
+url = "https://github.com/qltysh/qlty/releases/download/v0.651.0/qlty-aarch64-apple-darwin.tar.xz"
+url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/603700617"
 provenance = "github-attestations"
 
 [tools."github:qltysh/qlty"."platforms.macos-x64"]
-checksum = "sha256:fe4ce76901da04fbb7c851edee91ffe0fe12bfcd0820135f418b02ca08112170"
-url = "https://github.com/qltysh/qlty/releases/download/v0.645.0/qlty-x86_64-apple-darwin.tar.xz"
-url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/584509820"
+checksum = "sha256:81ce5a9cfdbdb4cd8abf049770027122aebbc1d0e90acd792ada85752f399567"
+url = "https://github.com/qltysh/qlty/releases/download/v0.651.0/qlty-x86_64-apple-darwin.tar.xz"
+url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/603700644"
 provenance = "github-attestations"
 
 [tools."github:qltysh/qlty"."platforms.windows-x64"]
-checksum = "sha256:192db61f71d03369505b6f441ba1a13c63b34477548a7ae3202b2af041a065cc"
-url = "https://github.com/qltysh/qlty/releases/download/v0.645.0/qlty-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/584509836"
+checksum = "sha256:92ca27a09bd0ea9b57dcf8a3d6288b78e1a8a87e35a5e1385e6f39ba05c6048b"
+url = "https://github.com/qltysh/qlty/releases/download/v0.651.0/qlty-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/qltysh/qlty/releases/assets/603700664"
 provenance = "github-attestations"
 
 [[tools.gitleaks]]
@@ -397,42 +397,42 @@ url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-windows-x
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323062"
 
 [[tools.uv]]
-version = "0.12.21"
+version = "0.12.23"
 backend = "aqua:astral-sh/uv"
 specifiers = ["latest"]
 
 [tools.uv."platforms.linux-arm64"]
-checksum = "sha256:030b69227b40af8c1981b7301793dc66e71ed3c796ea8688209dd268bd91ec51"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.21/uv-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/599237845"
+checksum = "sha256:6524bd338177ed50d035d39354e12545e993bbeba2ecbddf0480c5b3a81d313f"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.23/uv-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/608232491"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64"]
-checksum = "sha256:23f02075b652bb1df64178cfae41b5caf160822e720e2663568f3f5d63bc52c0"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.21/uv-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/599238020"
+checksum = "sha256:9167d72b3319674b6303c4cbe071854bba13ebdf3d76b1a7cbdc175471fb66d6"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.23/uv-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/608232628"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64-musl"]
-checksum = "sha256:d69d543a55ec9cdf9d3d9f2648b0a161847e3dbddc477e3be6b5813a6d46f639"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.21/uv-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/599238034"
+checksum = "sha256:1cff8783850e794470aadb73f54b749542a511fc57b0ce6468b64bd3852e0ade"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.23/uv-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/608232639"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:b88bda573e566ef9bced66b155fe0408626fbbc053aee1c30ba686f0728c9447"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.21/uv-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/599237829"
+checksum = "sha256:50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.23/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/608232483"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-x64"]
-checksum = "sha256:2b336763b396ec6afa20c5a8b083538ca7402445b868311979d740a4344c17d8"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.21/uv-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/599237993"
+checksum = "sha256:960da44cb4b73685206ddd250b19e0a117fa41095710c1038f081f5cb613efb4"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.23/uv-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/608232607"
 provenance = "github-attestations"
 
 [tools.uv."platforms.windows-x64"]
-checksum = "sha256:5d223efa0bf00208c3853246af09420419dfbd352536aa6bb8163d6170e23890"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.21/uv-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/599238008"
+checksum = "sha256:75d05de6762778c31ee183398de7dd15093fad0ed90b1f236d8205ea5ec00c90"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.23/uv-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/608232617"
 provenance = "github-attestations"

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from flext_cli import m
 
@@ -54,6 +54,14 @@ class FlextInfraModelsCodegenLazyInitModels:
             c.Infra.LazyInitAction,
             m.Field(description="Action selected for this package."),
         ] = c.Infra.LazyInitAction.SKIP
+        ownership: Literal["generator", "authored"] | None = m.Field(
+            default=None,
+            description="Content-elected initializer owner",
+        )
+        disposition: Literal["planned", "retained"] | None = m.Field(
+            default=None,
+            description="Actual ownership decision, never a failure suppression",
+        )
         exports: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Public exports for generated __init__.py.",

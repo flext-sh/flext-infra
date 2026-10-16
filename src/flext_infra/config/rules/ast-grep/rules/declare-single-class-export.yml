@@ -1,0 +1,73 @@
+# A class-only source module declares its own publication before lazy-init
+# propagates it. The existing project context proves the canonical class stem.
+# Multi-class modules, explicit exports, loose behavior and module bindings
+# require their existing semantic ownership phase; this rule never elects them.
+id: declare-single-class-export
+language: python
+severity: error
+metadata:
+  context:
+    NAME:
+      is: class-stem
+utils:
+  import:
+    any:
+      - kind: import_statement
+      - kind: import_from_statement
+      - kind: future_import_statement
+  import-guard:
+    kind: if_statement
+    has:
+      field: condition
+      any:
+        - pattern: TYPE_CHECKING
+        - pattern: typing.TYPE_CHECKING
+    not:
+      has:
+        inside:
+          kind: block
+        not:
+          any:
+            - matches: import
+            - kind: comment
+        stopBy: end
+rule:
+  kind: module
+  pattern: $SOURCE
+  has:
+    kind: class_definition
+    inside:
+      kind: module
+    has:
+      field: name
+      pattern: $NAME
+    not:
+      any:
+        - follows:
+            stopBy: end
+            kind: class_definition
+        - precedes:
+            stopBy: end
+            kind: class_definition
+  not:
+    has:
+      inside:
+        kind: module
+      not:
+        any:
+          - matches: import
+          - matches: import-guard
+          - kind: class_definition
+          - kind: comment
+          - kind: expression_statement
+            has:
+              kind: string
+      stopBy: end
+fix: |-
+  $SOURCE
+
+
+  __all__: list[str] = ["$NAME"]
+message: >-
+  Declare the canonical source class in __all__ before generating its lazy
+  package export. Preserve the class and consume it through its owning package.

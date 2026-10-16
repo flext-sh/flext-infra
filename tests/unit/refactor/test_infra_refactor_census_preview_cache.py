@@ -171,7 +171,8 @@ class TestsFlextInfraRefactorCensusPreview:
                 rope,
                 repository_root,
                 candidate,
-                gates=("lint",),
+                options=m.Infra.RemovalPreviewOptions(gates=("lint",)),
+                source_preview=flext_infra.infra.source_preview(repository_root),
             )
 
         tm.ok(preview)

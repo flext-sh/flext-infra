@@ -12,12 +12,93 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_infra import m
+    from flext_cli import p
+
+    from flext_infra import m, t
 
 
 @runtime_checkable
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
+
+    class NativeStorageSlot[ValueT](Protocol):
+        """Read one interpreter-owned slot with its precise native result."""
+
+        def __get__(
+            self,
+            instance: t.Infra.NativeOperand,
+            owner: t.Infra.NativeType,
+            /,
+        ) -> ValueT: ...
+
+    @runtime_checkable
+    class NativeModuleSpec(Protocol):
+        """Physical source fields supplied by the native import finder."""
+
+        @property
+        def origin(self) -> str | None: ...
+
+        @property
+        def loader(self) -> p.AttributeProbe | None: ...
+
+        @property
+        def submodule_search_locations(self) -> t.SequenceOf[str] | None: ...
+
+    @runtime_checkable
+    class NativeCodeIdentity(Protocol):
+        """Immutable native code metadata consumed by source provenance."""
+
+        @property
+        def co_argcount(self) -> int: ...
+
+        @property
+        def co_posonlyargcount(self) -> int: ...
+
+        @property
+        def co_kwonlyargcount(self) -> int: ...
+
+        @property
+        def co_filename(self) -> str: ...
+
+        @property
+        def co_qualname(self) -> str: ...
+
+        @property
+        def co_firstlineno(self) -> int: ...
+
+        @property
+        def co_consts(self) -> tuple[p.AttributeProbe | None, ...]: ...
+
+        @property
+        def co_names(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_varnames(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_freevars(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_cellvars(self) -> tuple[str, ...]: ...
+
+        @property
+        def co_code(self) -> bytes: ...
+
+        @property
+        def co_linetable(self) -> bytes: ...
+
+        @property
+        def co_exceptiontable(self) -> bytes: ...
+
+        @property
+        def co_flags(self) -> int: ...
+
+        def replace(
+            self,
+            *,
+            co_filename: str,
+            co_consts: tuple[p.AttributeProbe | None, ...],
+        ) -> FlextInfraProtocolsCheck.NativeCodeIdentity: ...
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):

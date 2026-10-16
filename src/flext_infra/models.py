@@ -11,7 +11,11 @@ from __future__ import annotations
 
 from flext_cli import FlextCliModels
 
-from flext_infra._models import FlextInfraCodegen
+from flext_infra._models import (
+    FlextInfraCodegen,
+    FlextInfraModelsDepsToolConfigProjectMise,
+    FlextInfraModelsDepsToolConfigTypeCheckers,
+)
 from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._models.census import FlextInfraModelsCensus
@@ -33,12 +37,6 @@ from flext_infra._models.deps_tool_config_project_artifacts import (
 )
 from flext_infra._models.deps_tool_config_project_gitignore import (
     FlextInfraModelsDepsToolConfigProjectGitignore,
-)
-from flext_infra._models.deps_tool_config_project_mise import (
-    FlextInfraModelsDepsToolConfigProjectMise,
-)
-from flext_infra._models.deps_tool_config_type_checkers import (
-    FlextInfraModelsDepsToolConfigTypeCheckers,
 )
 from flext_infra._models.docs import FlextInfraModelsDocs
 from flext_infra._models.docs_collection import FlextInfraModelsDocsCollection
@@ -77,10 +75,6 @@ class FlextInfraModels(FlextCliModels):
     class Infra(
         FlextInfraModelsCensus,
         FlextInfraModelsCheck,
-        FlextInfraConfigModels,
-        FlextInfraCodegen,
-        FlextInfraModelsCodegenToolchain,
-        FlextInfraModelsCodegenRender,
         FlextInfraModelsCodemod,
         FlextInfraModelsDeps,
         FlextInfraModelsDepsToolConfig,
@@ -96,29 +90,33 @@ class FlextInfraModels(FlextCliModels):
         FlextInfraModelsDocsCollection,
         FlextInfraModelsGates,
         FlextInfraModelsDuplication,
+        FlextInfraModelsGit,
+        FlextInfraModelsGitLaneOwnership,
+        FlextInfraModelsGitLaneInputs,
         FlextInfraModelsLayout,
+        FlextInfraModelsMiseToolchainBase,
+        FlextInfraModelsMixins,
         FlextInfraModelsPromoted,
+        FlextInfraModelsBase,
         FlextInfraModelsRefactor,
         FlextInfraModelsRefactorGrep,
         FlextInfraModelsNamespaceEnforcer,
         FlextInfraModelsRelease,
-        FlextInfraModelsMixins,
-        FlextInfraModelsTransformers,
-        FlextInfraModelsWorkspace,
-        FlextInfraModelsWorktree,
-        FlextInfraModelsGit,
-        FlextInfraModelsGitLaneOwnership,
-        FlextInfraModelsGitLaneInputs,
         FlextInfraModelsRope,
         FlextInfraModelsRopeMove,
         FlextInfraModelsScan,
+        FlextInfraSettingsModels,
         FlextInfraModelsSonarcloud,
         FlextInfraModelsTestmon,
+        FlextInfraModelsTransformers,
         FlextInfraModelsCore,
-        FlextInfraModelsBase,
+        FlextInfraModelsWorkspace,
+        FlextInfraModelsWorktree,
+        FlextInfraConfigModels,
         FlextInfraModelsMiseToolchain,
-        FlextInfraModelsMiseToolchainBase,
-        FlextInfraSettingsModels,
+        FlextInfraCodegen,
+        FlextInfraModelsCodegenToolchain,
+        FlextInfraModelsCodegenRender,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 

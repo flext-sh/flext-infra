@@ -1,3 +1,7 @@
 # Private lifecycle hooks for {{ dist }}.
 # Define only pre-<verb> or post-<verb> for an operation declared by the typed
 # Make catalog. A distinct operation is a named public verb, never a parameter.
+# Hooks and repository scripts must never set MISE_OVERRIDE_CONFIG_FILENAMES,
+# MISE_CONFIG_DIR, MISE_GLOBAL_CONFIG_FILE or MISE_SYSTEM_CONFIG_FILE: config
+# discovery is owned by the Makefile's runtime isolation, and suppressing it
+# leaves child tool resolution with no declarations at all (uv@[none]).

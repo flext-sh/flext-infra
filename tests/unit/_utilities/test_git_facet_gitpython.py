@@ -18,6 +18,117 @@ from tests import tm, u
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
+    @pytest.mark.parametrize("index_mode", ["ordinary", "v4", "split"])
+    def test_retire_index_artifact_preserves_live_and_staged_siblings(
+        self,
+        tmp_path: Path,
+        index_mode: str,
+    ) -> None:
+        """Native Git retains the other index entries and every working file."""
+        repository = u.Tests.git_repository(tmp_path, "consumer")
+        artifact = repository / "runtime.json"
+        sibling = repository / "source.py"
+        artifact.write_text('{"portable": true}\n', encoding=c.DEFAULT_ENCODING)
+        sibling.write_text("value = 1\n", encoding=c.DEFAULT_ENCODING)
+        u.Tests.git_run(repository, "add", "--", artifact.name, sibling.name)
+        u.Tests.git_run(repository, "commit", "-m", "test: track fixture artifacts")
+        sibling.write_text("value = 2\n", encoding=c.DEFAULT_ENCODING)
+        u.Tests.git_run(repository, "add", "--", sibling.name)
+        sibling.write_text("value = 3\n", encoding=c.DEFAULT_ENCODING)
+        artifact.write_text('{"operator": true}\n', encoding=c.DEFAULT_ENCODING)
+        if index_mode == "v4":
+            u.Tests.git_run(repository, "update-index", "--index-version=4")
+        elif index_mode == "split":
+            u.Tests.git_run(repository, "update-index", "--split-index")
+        original_artifact = artifact.read_bytes()
+        original_sibling = sibling.read_bytes()
+        captured_sibling = tm.ok(
+            u.Infra.git_capture_index_file(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=sibling.name,
+                ),
+            ),
+        )
+        captured = tm.ok(
+            u.Infra.git_capture_index_file(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=artifact.name,
+                ),
+            ),
+        )
+        assert captured.entry is not None
+        tm.ok(
+            u.Infra.git_retire_index_file(
+                m.Infra.GitIndexRetirementRequest(
+                    repo_root=repository,
+                    entry=captured.entry,
+                ),
+            ),
+        )
+        observed_sibling = tm.ok(
+            u.Infra.git_capture_index_file(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=sibling.name,
+                ),
+            ),
+        )
+        tm.that(observed_sibling, eq=captured_sibling)
+        tm.that(artifact.read_bytes(), eq=original_artifact)
+        tm.that(sibling.read_bytes(), eq=original_sibling)
+        removed = tm.ok(
+            u.Infra.git_is_tracked(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=artifact.name,
+                ),
+            ),
+        )
+        tm.that(removed.value, eq=False)
+        native_tree = tm.ok(
+            u.Cli.run((c.Infra.GIT, "write-tree"), cwd=repository),
+        ).stdout.strip()
+        native_artifact = tm.ok(
+            u.Cli.run(
+                (c.Infra.GIT, "ls-tree", native_tree, "--", artifact.name),
+                cwd=repository,
+            ),
+        )
+        tm.that(native_artifact.stdout, eq="")
+
+    def test_retire_index_artifact_refuses_changed_preimage(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An outside staging operation leaves new index bytes and live data intact."""
+        repository = u.Tests.git_repository(tmp_path, "consumer")
+        artifact = repository / "runtime.json"
+        artifact.write_text('{"initial": true}\n', encoding=c.DEFAULT_ENCODING)
+        u.Tests.git_run(repository, "add", "--", artifact.name)
+        captured = tm.ok(
+            u.Infra.git_capture_index_file(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=artifact.name,
+                ),
+            ),
+        )
+        assert captured.entry is not None
+        artifact.write_text('{"new": true}\n', encoding=c.DEFAULT_ENCODING)
+        u.Tests.git_run(repository, "add", "--", artifact.name)
+        before = self._lane_bytes(repository)
+        rejected = u.Infra.git_retire_index_file(
+            m.Infra.GitIndexRetirementRequest(
+                repo_root=repository,
+                entry=captured.entry,
+            ),
+        )
+        tm.fail(rejected)
+        tm.that(rejected.exception, is_=ValueError)
+        tm.that(self._lane_bytes(repository), eq=before)
+
     @staticmethod
     def _lane_repository(tmp_path: Path) -> t.Triple[Path, Path, str]:
         """Publish a real member whose superproject declares its integration line.

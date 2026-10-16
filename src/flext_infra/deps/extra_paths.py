@@ -21,7 +21,7 @@ from typing import Annotated, override
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, p, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsSyncMixin
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraExtraPathsManager(

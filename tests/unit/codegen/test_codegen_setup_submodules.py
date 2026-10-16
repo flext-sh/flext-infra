@@ -119,6 +119,30 @@ class TestsFlextInfraCodegenSetupSubmodules:
         return process
 
     @classmethod
+    def _assert_detached_recorded_gitlink(cls, project: Path) -> None:
+        checkout = project / "vendor/source"
+        tm.that(cls._git(checkout, "branch", "--show-current"), eq="")
+        tm.that(
+            cls._git(checkout, "rev-parse", "HEAD"),
+            eq=cls._git(project, "rev-parse", "HEAD:vendor/source"),
+        )
+
+    @classmethod
+    def _seed_unmanaged_upstream(cls, tmp_path: Path, template: Path) -> Path:
+        source = tmp_path / "source"
+        cls._commit_repository(source, "upstream", "foreign")
+        project = tmp_path / "project"
+        cls._generated_project(project, template)
+        cls._add_submodule(
+            project,
+            source,
+            "vendor/upstream",
+            "upstream",
+            managed=False,
+        )
+        return project
+
+    @classmethod
     def _add_submodule(
         cls,
         superproject: Path,
@@ -215,13 +239,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         tm.that(direct_marker.exists(), eq=False)
 
         self._assert_setup(project)
-
-        checkout = project / "vendor/source"
-        tm.that(self._git(checkout, "branch", "--show-current"), eq="")
-        tm.that(
-            self._git(checkout, "rev-parse", "HEAD"),
-            eq=self._git(project, "rev-parse", "HEAD:vendor/source"),
-        )
+        self._assert_detached_recorded_gitlink(project)
         tm.that(nested_marker.exists(), eq=False)
 
     def test_setup_is_repeatable_with_managed_submodule(
@@ -302,17 +320,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         generated_project_template: Path,
     ) -> None:
         """A checkout without the config-owned marker remains untouched."""
-        source = tmp_path / "source"
-        self._commit_repository(source, "upstream", "foreign")
-        project = tmp_path / "project"
-        self._generated_project(project, generated_project_template)
-        self._add_submodule(
-            project,
-            source,
-            "vendor/upstream",
-            "upstream",
-            managed=False,
-        )
+        project = self._seed_unmanaged_upstream(tmp_path, generated_project_template)
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
 
         self._assert_setup(project)
@@ -325,17 +333,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         generated_project_template: Path,
     ) -> None:
         """Setup neither synchronizes nor validates an immutable checkout."""
-        source = tmp_path / "source"
-        self._commit_repository(source, "upstream", "foreign")
-        project = tmp_path / "project"
-        self._generated_project(project, generated_project_template)
-        self._add_submodule(
-            project,
-            source,
-            "vendor/upstream",
-            "upstream",
-            managed=False,
-        )
+        project = self._seed_unmanaged_upstream(tmp_path, generated_project_template)
         checkout = project / "vendor/upstream"
         marker = checkout / "marker.txt"
         marker.write_text("foreign wip", encoding="utf-8")
@@ -569,13 +567,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
 
         self._assert_setup(project)
-
-        checkout = project / "vendor/source"
-        tm.that(self._git(checkout, "branch", "--show-current"), eq="")
-        tm.that(
-            self._git(checkout, "rev-parse", "HEAD"),
-            eq=self._git(project, "rev-parse", "HEAD:vendor/source"),
-        )
+        self._assert_detached_recorded_gitlink(project)
 
     def test_setup_succeeds_when_gitlink_is_ahead_of_origin(
         self,

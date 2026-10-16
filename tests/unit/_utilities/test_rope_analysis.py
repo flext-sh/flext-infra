@@ -145,9 +145,11 @@ class TestsFlextInfraRopeAnalysis:
         [
             ("value = object", "object"),
             ("value = Exception", "Exception"),
+            ("value = Exception()", "Exception"),
             ("class Parent:\n    pass\nvalue = Parent", "Parent"),
             ("class Parent:\n    pass\nvalue = Parent()", "Parent"),
             ("from .provider import Parent\nvalue = Parent", "Parent"),
+            ("from .provider import Parent\nvalue = Parent()", "Parent"),
         ],
     )
     def test_superclass_name_uses_the_sdk_class_or_instance_type(
@@ -174,6 +176,8 @@ class TestsFlextInfraRopeAnalysis:
         ("declaration", "message"),
         [
             ("def value():\n    pass\n", "not a class or inferred instance"),
+            ("value = len\n", "not a class or inferred instance"),
+            ("import os as value\n", "not a class or inferred instance"),
             ("value = missing\n", "cyclic Rope superclass type"),
         ],
     )
@@ -192,6 +196,28 @@ class TestsFlextInfraRopeAnalysis:
             value = module.get_attribute("value").get_object()
             with pytest.raises((TypeError, ValueError), match=message):
                 u.Infra.superclass_name(value)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "declaration",
+        [
+            "def invalid():\n    pass\nclass Consumer(invalid):\n    pass\n",
+            "class Consumer(missing):\n    pass\n",
+            "class Parent:\n    pass\nclass Consumer(Parent, missing):\n    pass\n",
+        ],
+    )
+    def test_class_info_refuses_incomplete_superclass_lineage(
+        tmp_path: Path,
+        declaration: str,
+    ) -> None:
+        """SDK-omitted bases cannot turn an invalid class into a root namespace."""
+        project, package = u.Tests.demo_project(tmp_path)
+        source = package / "consumer.py"
+        source.write_text(declaration, encoding="utf-8")
+        with u.Infra.open_project(project) as rope_project:
+            resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
+            with pytest.raises(ValueError, match="Unresolved Rope superclass lineage"):
+                u.Infra.resolve_class_info(rope_project, resource)
 
     @staticmethod
     @pytest.mark.parametrize(

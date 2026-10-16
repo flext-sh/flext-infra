@@ -21,7 +21,7 @@ from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -88,7 +88,7 @@ class FlextInfraCodegenLazyInitProjectionManifest:
                     path=manifest_path,
                     before=state.value,
                     desired_content=content,
-                    desired_mode=0o644,
+                    desired_mode=config.Infra.codegen.modes.file_default,
                 ),
             )
         return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(plans))

@@ -1,0 +1,192 @@
+id: typing-dict-missing-t-import
+snapshots:
+  ? |
+    from flext_core import t
+    from typing import Dict
+    def f(t, value: Dict[str, int]): ...
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 65
+      end: 79
+    - source: |
+        from flext_core import t
+        from typing import Dict
+        def f(t, value: Dict[str, int]): ...
+      style: secondary
+      start: 0
+      end: 86
+  ? |
+    from flext_core import t
+    from typing import Dict
+    t = None
+    value: Dict[str, int]
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 65
+      end: 79
+    - source: |
+        from flext_core import t
+        from typing import Dict
+        t = None
+        value: Dict[str, int]
+      style: secondary
+      start: 0
+      end: 80
+  ? |
+    from flext_core import t
+    from unrelated import t
+    from typing import Dict
+    value: Dict[str, int]
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 80
+      end: 94
+    - source: |
+        from flext_core import t
+        from unrelated import t
+        from typing import Dict
+        value: Dict[str, int]
+      style: secondary
+      start: 0
+      end: 95
+  ? |
+    from flext_core import u as t
+    from typing import Dict
+    value: Dict[str, int]
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 61
+      end: 75
+    - source: |
+        from flext_core import u as t
+        from typing import Dict
+        value: Dict[str, int]
+      style: secondary
+      start: 0
+      end: 76
+  ? |
+    from typing import Dict
+    ALIAS: Dict[str, int] = {}
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 31
+      end: 45
+    - source: |
+        from typing import Dict
+        ALIAS: Dict[str, int] = {}
+      style: secondary
+      start: 0
+      end: 51
+  ? |
+    from typing import Dict
+    def f(x: Dict[str, int]) -> None: ...
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 33
+      end: 47
+    - source: |
+        from typing import Dict
+        def f(x: Dict[str, int]) -> None: ...
+      style: secondary
+      start: 0
+      end: 62
+  ? |
+    from typing import Dict
+    def local():
+        from flext_core import t
+    value: Dict[str, int]
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 73
+      end: 87
+    - source: |
+        from typing import Dict
+        def local():
+            from flext_core import t
+        value: Dict[str, int]
+      style: secondary
+      start: 0
+      end: 88
+  ? |
+    from typing import Dict
+    type ALIAS = Dict[str, int]
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 37
+      end: 51
+    - source: |
+        from typing import Dict
+        type ALIAS = Dict[str, int]
+      style: secondary
+      start: 0
+      end: 52
+  ? |
+    from typing import Dict, TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_core import t
+    value: Dict[str, int]
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 93
+      end: 107
+    - source: |
+        from typing import Dict, TYPE_CHECKING
+        if TYPE_CHECKING:
+            from flext_core import t
+        value: Dict[str, int]
+      style: secondary
+      start: 0
+      end: 108
+  ? |
+    from unrelated import t
+    from typing import Dict
+    value: Dict[str, int]
+  : labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 55
+      end: 69
+    - source: |
+        from unrelated import t
+        from typing import Dict
+        value: Dict[str, int]
+      style: secondary
+      start: 0
+      end: 70
+  ? |
+    import typing
+    def f(y: typing.Dict[str, int]) -> None: ...
+  : labels:
+    - source: typing.Dict[str, int]
+      style: primary
+      start: 23
+      end: 44
+    - source: |
+        import typing
+        def f(y: typing.Dict[str, int]) -> None: ...
+      style: secondary
+      start: 0
+      end: 59
+  ? |
+    import typing
+    type ALIAS = typing.Dict[str, int]
+  : labels:
+    - source: typing.Dict[str, int]
+      style: primary
+      start: 27
+      end: 48
+    - source: |
+        import typing
+        type ALIAS = typing.Dict[str, int]
+      style: secondary
+      start: 0
+      end: 49

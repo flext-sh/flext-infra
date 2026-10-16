@@ -14,14 +14,13 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
     FlextInfraCodegenLazyInitGenerationMixin,
+    FlextInfraCodegenLazyInitPlanner,
     FlextInfraCodegenLazyInitProjectionManifest,
 )
-from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_infra.workspace import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -83,7 +82,11 @@ class FlextInfraCodegenLazyInit(
             )
         return r[bool].ok(value=True)
 
-    def plan_files(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+    def plan_files(
+        self,
+        *,
+        evidence_root: Path | None = None,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return one complete immutable lazy-init analysis receipt.
 
         Returns:
@@ -113,6 +116,13 @@ class FlextInfraCodegenLazyInit(
         if planned.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
         analysis = planned.value
+        evidence = u.Infra.publish_refactor_report_evidence(
+            resolved_repository_root if evidence_root is None else evidence_root,
+            analysis,
+            relative_path=c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH,
+        )
+        if evidence.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(evidence)
         changed = tuple(
             plan
             for plan in analysis.files
@@ -154,9 +164,6 @@ class FlextInfraCodegenLazyInit(
             return r[m.Infra.CodegenPhaseAnalysis].fail(
                 f"lazy-init target module not found: {self.target_module}",
             )
-        stable = self._verify_snapshots(inputs)
-        if stable.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(stable)
         composed = tuple(file for analysis in analyses for file in analysis.files)
         manifests = (
             FlextInfraCodegenLazyInitProjectionManifest.projection_manifest_plans(
@@ -204,7 +211,7 @@ class FlextInfraCodegenLazyInit(
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         target_roots = 0
         for root in roots:
-            import_roots = FlextInfraUtilitiesRopeCore.import_project_roots(root)
+            import_roots = u.Infra.import_project_roots(root)
             with FlextInfraRopeWorkspace.open_workspace(
                 root,
                 rope_repository_root=import_roots[0],
@@ -224,12 +231,6 @@ class FlextInfraCodegenLazyInit(
                     return result_type.from_failure(planned)
                 analyses.append(planned.value)
                 for state in planned.value.inputs:
-                    previous = inputs.get(state.path)
-                    if previous is not None and previous != state:
-                        return result_type.fail(
-                            f"lazy-init shared input changed between "
-                            f"repositories: {state.path}",
-                        )
                     inputs[state.path] = state
         return result_type.ok((analyses, inputs, target_roots))
 
@@ -400,9 +401,6 @@ class FlextInfraCodegenLazyInit(
         if file_plans.failure:
             return result_type.from_failure(file_plans)
         all_plans = file_plans.value
-        stable = self._verify_snapshots(snapshots)
-        if stable.failure:
-            return result_type.from_failure(stable)
         return result_type.ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,

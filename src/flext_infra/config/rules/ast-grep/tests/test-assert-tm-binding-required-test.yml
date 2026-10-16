@@ -1,0 +1,8 @@
+id: test-assert-tm-binding-required
+valid:
+  - tm.that(condition, truth=True)
+invalid:
+  - assert condition
+  - |
+    from tests import tm
+    assert left == right

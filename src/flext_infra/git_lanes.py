@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -141,7 +141,7 @@ class FlextInfraGitLanes:
         policy = config.Infra.codegen.branch_policy
         base = u.Infra.resolve_integration_branch(
             request.repo_root,
-            preference=policy.integration_branch_preference,
+            policy_branch=policy.integration_branch,
             declared=request.declared,
         )
         if base.failure:
@@ -314,12 +314,24 @@ class FlextInfraGitLanes:
         Returns:
             The actual global coordination SSOT; read/validation failures escape.
 
+        Raises:
+            ValueError: If lane governance file must be declared by the selected host or
+                target.
+
         """
         source = (
             request.governance_file
             if request.governance_file is not None
-            else config.Infra.codegen.branch_policy.lane_governance_file
+            else u.Infra
+            .load_codegen_inputs(request.repo_root)
+            .unwrap()
+            .spec.branch_policy.lane_governance_file
         )
+        if source is None:
+            message = (
+                "lane governance file must be declared by the selected host or target"
+            )
+            raise ValueError(message)
         return m.Infra.GitLaneGovernance.model_validate_json(
             source.expanduser().read_text(encoding=c.DEFAULT_ENCODING),
         ).coordination
@@ -575,27 +587,33 @@ class FlextInfraGitLanes:
                 "repo_root": request.repo_root.expanduser().resolve(),
             },
         )
-        manifest = u.Infra.load_workspace_manifest(request.repo_root)
+        captured = u.Infra.load_codegen_inputs(request.repo_root)
         requests = [request]
-        if manifest.failure:
-            return r[m.Infra.GitLaneReport].from_failure(manifest)
-        if manifest.value:
-            workspace = manifest.value[0]
-            declared = (
-                workspace.integration.branch
-                if workspace.integration
-                else request.declared
+        if captured.failure:
+            return r[m.Infra.GitLaneReport].from_failure(captured)
+        repository = captured.value.spec.repository
+        declared = (
+            repository.integration.branch
+            if repository.integration is not None
+            else request.declared
+        )
+        targets = u.Infra.repository_operation_targets(
+            request.repo_root,
+            c.Infra.CodegenConformScope.ALL,
+        )
+        if targets.failure:
+            return r[m.Infra.GitLaneReport].from_failure(targets)
+        requests.extend(
+            m.Infra.GitLaneVerificationRequest(
+                repo_root=target.root,
+                declared=declared,
+                governance_file=request.governance_file,
+                read_pull_requests=request.read_pull_requests,
+                read_beads=request.read_beads,
             )
-            requests.extend(
-                m.Infra.GitLaneVerificationRequest(
-                    repo_root=request.repo_root / member.path,
-                    declared=declared,
-                    governance_file=request.governance_file,
-                    read_pull_requests=request.read_pull_requests,
-                    read_beads=request.read_beads,
-                )
-                for member in workspace.members
-            )
+            for target in targets.value[1:]
+            if target.managed is not False
+        )
         reports = tuple(cls._inspect_repository(item) for item in requests)
         report = m.Infra.GitLaneReport(
             repo_root=request.repo_root,
@@ -636,7 +654,7 @@ class FlextInfraGitLanes:
         refs = cls._collect_lane_facts(request, inventory, findings, violations)
         base = u.Infra.resolve_integration_branch(
             request.repo_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
             declared=request.declared,
         )
         fresh = cls.fresh_integration(request)

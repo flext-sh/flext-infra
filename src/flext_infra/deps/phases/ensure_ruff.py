@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, t, u
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.deps import FlextInfraExtraPathsManager
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraEnsureRuffConfigPhase:
@@ -102,13 +102,11 @@ class FlextInfraEnsureRuffConfigPhase:
             ("combine-as-imports", ruff_cfg.lint.isort.combine_as_imports),
             ("force-single-line", ruff_cfg.lint.isort.force_single_line),
             ("split-on-trailing-comma", ruff_cfg.lint.isort.split_on_trailing_comma),
-        ]
-        detected_packages = sorted(facts.first_party)
-        if detected_packages:
-            isort_values.append((
+            (
                 c.Infra.KNOWN_FIRST_PARTY_HYPHEN,
-                u.normalize_to_json_value(detected_packages),
-            ))
+                u.normalize_to_json_value(sorted(facts.first_party)),
+            ),
+        ]
         # Dev/tooling source roots are config-declared, but a repository that
         # retired a tree (e.g. scripts/) must not keep analyzer entries naming
         # it: ruff fails hard on src roots whose directories do not exist, and

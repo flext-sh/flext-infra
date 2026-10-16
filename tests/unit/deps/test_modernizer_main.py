@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraPyprojectModernizer, main
+from flext_infra import main
+from flext_infra.deps import FlextInfraPyprojectModernizer
 from tests import c, m, tm
 
 if TYPE_CHECKING:
@@ -25,6 +26,19 @@ class TestsFlextInfraDepsModernizerMain:
         """Verify initialization uses explicit workspace."""
         modernizer = FlextInfraPyprojectModernizer(repository_root=modernizer_workspace)
         tm.that(modernizer.root, eq=modernizer_workspace)
+
+    @staticmethod
+    def test_document_state_default_payload_is_independent(tmp_path: Path) -> None:
+        """Omitted payloads are empty mutable mappings owned by each state."""
+        pyproject_path = tmp_path / c.PYPROJECT_FILENAME
+        first = m.Infra.PyprojectDocumentState(pyproject_path=pyproject_path)
+        second = m.Infra.PyprojectDocumentState(pyproject_path=pyproject_path)
+        tm.that(first.payload, empty=True)
+        tm.that(second.payload, empty=True)
+
+        first.payload["entry"] = "value"
+        tm.that(first.payload["entry"], eq="value")
+        tm.that(second.payload, empty=True)
 
     @staticmethod
     def test_conform_source_rejects_invalid_toml(

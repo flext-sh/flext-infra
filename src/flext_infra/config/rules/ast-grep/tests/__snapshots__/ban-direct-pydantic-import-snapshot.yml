@@ -1,0 +1,26 @@
+id: ban-direct-pydantic-import
+snapshots:
+  from pydantic import BaseModel:
+    labels:
+    - source: pydantic
+      style: primary
+      start: 5
+      end: 13
+  from pydantic.fields import FieldInfo:
+    labels:
+    - source: pydantic.fields
+      style: primary
+      start: 5
+      end: 20
+  import pydantic:
+    labels:
+    - source: pydantic
+      style: primary
+      start: 7
+      end: 15
+  import pydantic_core:
+    labels:
+    - source: pydantic_core
+      style: primary
+      start: 7
+      end: 20

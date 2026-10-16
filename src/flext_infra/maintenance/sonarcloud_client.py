@@ -30,6 +30,7 @@ class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
 
         Returns:
             The resulting ``p.Result[t.SecretStr]``.
+
         """
         if settings.Infra.sonar_token is None:
             return r[t.SecretStr].ok(t.SecretStr(""))
@@ -60,6 +61,7 @@ class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         origin = u.Infra.git_remote_url(
             m.Infra.GitRemoteUrlRequest(repo_root=repository_root),
@@ -81,6 +83,7 @@ class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
 
         Returns:
             The ``(token, project key)`` pair every authenticated call needs.
+
         """
         token = self.required_token()
         if token.failure:
@@ -101,6 +104,7 @@ class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         method, path, form = request
         return u.Infra.http_bearer_text(

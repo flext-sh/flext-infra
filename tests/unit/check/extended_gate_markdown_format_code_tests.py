@@ -293,9 +293,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
                 apply_fixes=True,
             ),
         )
-        # The repair completes (FINDINGS never breaks it); the unwritable
-        # docstring stays a finding that check enforces.
-        tm.that(result.result.passed, eq=True)
+        # An unwritable docstring remains a blocking finding after repair.
+        tm.that(result.result.passed, eq=not unformatted)
         tm.that(
             result.outcome,
             eq=(

@@ -1,0 +1,88 @@
+id: mod-scan-selection-conflict
+snapshots:
+  Engine.scan(root, fix=False, plan=plan, selection=plan):
+    labels:
+    - source: Engine.scan(root, fix=False, plan=plan, selection=plan)
+      style: primary
+      start: 0
+      end: 55
+    - source: plan
+      style: secondary
+      start: 29
+      end: 33
+    - source: plan=plan
+      style: secondary
+      start: 29
+      end: 38
+    - source: selection
+      style: secondary
+      start: 40
+      end: 49
+    - source: selection=plan
+      style: secondary
+      start: 40
+      end: 54
+    - source: (root, fix=False, plan=plan, selection=plan)
+      style: secondary
+      start: 11
+      end: 55
+  Engine.scan(root, fix=False, rule_ids=rules, plan=plan):
+    labels:
+    - source: Engine.scan(root, fix=False, rule_ids=rules, plan=plan)
+      style: primary
+      start: 0
+      end: 55
+    - source: rule_ids
+      style: secondary
+      start: 29
+      end: 37
+    - source: rule_ids=rules
+      style: secondary
+      start: 29
+      end: 43
+    - source: rule_ids
+      style: secondary
+      start: 29
+      end: 37
+    - source: rule_ids=rules
+      style: secondary
+      start: 29
+      end: 43
+    - source: plan
+      style: secondary
+      start: 45
+      end: 49
+    - source: plan=plan
+      style: secondary
+      start: 45
+      end: 54
+    - source: (root, fix=False, rule_ids=rules, plan=plan)
+      style: secondary
+      start: 11
+      end: 55
+  Engine.scan(root, fix=False, rule_ids=rules, selection=rules):
+    labels:
+    - source: Engine.scan(root, fix=False, rule_ids=rules, selection=rules)
+      style: primary
+      start: 0
+      end: 61
+    - source: rule_ids
+      style: secondary
+      start: 29
+      end: 37
+    - source: rule_ids=rules
+      style: secondary
+      start: 29
+      end: 43
+    - source: selection
+      style: secondary
+      start: 45
+      end: 54
+    - source: selection=rules
+      style: secondary
+      start: 45
+      end: 60
+    - source: (root, fix=False, rule_ids=rules, selection=rules)
+      style: secondary
+      start: 11
+      end: 61

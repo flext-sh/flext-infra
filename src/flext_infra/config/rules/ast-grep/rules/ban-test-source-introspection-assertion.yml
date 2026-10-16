@@ -1,0 +1,79 @@
+# Source spelling is not an observation of the owner's runtime behavior.
+# AST elects assertion candidates; the existing Rope context proves the exact
+# inspect.getsource binding, including import aliases and lexical shadowing.
+# Reading generated artifacts remains legal: their bytes are product output.
+# Detection only: choosing the replacement behavior is not a text rewrite.
+# FUNCTION captures only the call occurrence. Import guards use distinct names
+# so their declaration coordinates cannot replace the semantic admission input.
+id: ban-test-source-introspection-assertion
+language: python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+metadata:
+  context:
+    FUNCTION:
+      is: resolved-symbol
+      arg: inspect getsource
+rule:
+  all:
+    - pattern: $FUNCTION($$$ARGS)
+    - any:
+        - all:
+            - has:
+                field: function
+                regex: '^inspect\.getsource$'
+            - inside:
+                kind: module
+                stopBy: end
+                has:
+                  stopBy: end
+                  kind: import_statement
+                  regex: '^import\s+inspect(?:\s*,|\s*$)'
+        - all:
+            - has:
+                field: function
+                pattern: $MODULE.getsource
+            - inside:
+                kind: module
+                stopBy: end
+                has:
+                  stopBy: end
+                  pattern: import inspect as $MODULE
+        - all:
+            - has:
+                field: function
+                regex: '^getsource$'
+            - inside:
+                kind: module
+                stopBy: end
+                has:
+                  stopBy: end
+                  pattern: from inspect import $$$NAMES
+                  has:
+                    stopBy: end
+                    kind: dotted_name
+                    regex: '^getsource$'
+        - inside:
+            kind: module
+            stopBy: end
+            has:
+              stopBy: end
+              pattern: from inspect import $$$NAMES
+              has:
+                stopBy: end
+                kind: aliased_import
+                pattern:
+                  context: from inspect import getsource as $IMPORT_ALIAS
+                  selector: aliased_import
+    - inside:
+        stopBy: end
+        any:
+          - kind: assert_statement
+          - pattern: tm.that($$$ASSERTION_ARGS)
+message: >-
+  An assertion on inspect.getsource checks implementation spelling instead of
+  observable behavior. Exercise the public owner and assert its result or
+  effects. Preserve failure scenarios; do not replace this with another source
+  assertion or a fabricated runtime.

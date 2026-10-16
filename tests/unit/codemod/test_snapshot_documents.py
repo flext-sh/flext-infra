@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
 from tests import c, tm, u
 
 
@@ -55,6 +55,12 @@ class TestsFlextInfraSnapshotDocuments:
             ("second-probe", ("second_case",)),
         ):
             tm.ok(
+                u.Cli.atomic_write_text_file(
+                    rules / f"{rule_id}{c.Infra.CODEMOD_RULE_SUFFIX}",
+                    f"id: {rule_id}\nlanguage: Python\nrule:\n  pattern: $VALUE\n",
+                ),
+            )
+            tm.ok(
                 u.Cli.yaml_dump(
                     snapshots / f"{rule_id}{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}",
                     {
@@ -78,12 +84,12 @@ class TestsFlextInfraSnapshotDocuments:
         if empty_stream is not None:
             with pytest.raises(TypeError, match="empty ast-grep rule-test"):
                 FlextInfraCodemodSnapshotReconciler.stale_snapshots(
-                    tmp_path, frozenset(("first-probe", "second-probe"))
+                    tmp_path,
                 )
             return
         tm.that(
             FlextInfraCodemodSnapshotReconciler.stale_snapshots(
-                tmp_path, frozenset(("first-probe", "second-probe"))
+                tmp_path,
             ),
             empty=True,
         )

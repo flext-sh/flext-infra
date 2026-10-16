@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraPytestRunner, config
+from flext_infra import config
+from flext_infra.validate import FlextInfraPytestRunner
 from tests import c, m, t, tm, u
 
 
@@ -32,12 +33,12 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         return tm.ok(u.Cli.files_read_text(path))
 
     @staticmethod
-    def _spent_runner(project: Path, *, serial: bool = False) -> FlextInfraPytestRunner:
+    def _spent_runner(project: Path) -> FlextInfraPytestRunner:
         """Build the real runner whose derived stop instant has already passed.
 
         The entrypoint clock is placed so pytest stops dispatch at a durable
         testmon batch checkpoint, never through the deadline SIGTERM. The
-        reserve matches the runner's own serial decision for the selection.
+        reserve is the aggregate termination grace, independent of dispatch.
 
         Returns:
             The resulting ``FlextInfraPytestRunner``.
@@ -45,16 +46,11 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         """
         policy = config.Infra.tooling.tools.pytest
         runner = u.Tests.PytestRunner.runner_for(project)
-        reserve = (
-            policy.serial_suite_stop_reserve_seconds
-            if serial or runner.parallel_worker_budget(policy) <= 1
-            else policy.suite_stop_reserve_seconds
-        )
         return runner.model_copy(
             update={
                 "started_at_monotonic": time.monotonic()
                 - runner.run_timeout_seconds(policy)
-                + reserve,
+                + policy.termination_grace_seconds,
             },
         )
 
@@ -125,14 +121,10 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         tm.that((outcome_path.parent / "run-accounting.json").exists(), eq=False)
 
     @staticmethod
-    def test_stop_reserve_matches_the_runner_dispatch_decision(
+    def test_ordinary_stop_reserve_is_independent_of_dispatch(
         cached_runner_project: Path,
     ) -> None:
-        """The typed reserve follows the same serial decision as the workers.
-
-        The reserve follows the actual worker budget. A one-worker selection
-        executes serially and keeps only one in-flight item.
-        """
+        """Both dispatch shapes share the aggregate grace, without an item cap."""
         policy = config.Infra.tooling.tools.pytest
 
         def dispatch_plan(node_ids: t.StrSequence) -> m.Infra.PytestSelectionPlan:
@@ -182,7 +174,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             stop_value(multi_command),
             eq=runner.started_at_monotonic
             + runner.run_timeout_seconds(policy)
-            - policy.suite_stop_reserve_seconds,
+            - policy.termination_grace_seconds,
         )
         serial_workers_index = list(serial_command).index("-n") + 1
         tm.that(list(serial_command)[serial_workers_index], eq="0")
@@ -190,7 +182,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             stop_value(serial_command),
             eq=runner.started_at_monotonic
             + runner.run_timeout_seconds(policy)
-            - policy.serial_suite_stop_reserve_seconds,
+            - policy.termination_grace_seconds,
         )
 
     @pytest.mark.slow
@@ -251,7 +243,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             ),
             encoding="utf-8",
         )
-        runner = self._spent_runner(cached_runner_project, serial=not distributed)
+        runner = self._spent_runner(cached_runner_project)
         tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.INTERRUPTED.value)
 
         bounded, selected, executed = self._published_run(
@@ -305,7 +297,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         the accounting is complete and the run is green although pytest still
         reports its interrupt.
         """
-        runner = self._spent_runner(cached_runner_project, serial=True)
+        runner = self._spent_runner(cached_runner_project)
 
         tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
 

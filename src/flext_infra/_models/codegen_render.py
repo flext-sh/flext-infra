@@ -7,26 +7,56 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsDepsToolConfig
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.make import FlextInfraConfigModelsMake
 from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
 from flext_infra._models._config.render import FlextInfraConfigModelsRender
+from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
 
 
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
 
+    class UvResolutionProject(FlextInfraConfigModelsContract.ConfigContract):
+        """Authenticated project input to the native development resolution view."""
+
+        repository: Annotated[
+            FlextInfraConfigModelsContexts.RepositoryRef,
+            m.Field(
+                description="Declared identity, package status and editable policy"
+            ),
+        ]
+        directory: Annotated[
+            Path,
+            m.Field(description="Authenticated absolute physical project directory"),
+        ]
+        document: Annotated[
+            t.Cli.TomlDocument,
+            m.Field(
+                exclude=True,
+                description="Already parsed conform-owned native project metadata",
+            ),
+        ]
+
     class GithubWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        gate_original_receipt_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Public original native gate receipt filename"),
+        ]
+        setup_operations_report_directory: Annotated[
+            Path,
+            m.Field(description="Canonical setup operation report artifact directory"),
+        ]
         docs_report_filenames: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Structured docs reports CI dumps and uploads"),
@@ -210,6 +240,14 @@ class FlextInfraModelsCodegenRender:
     class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed only by the generated project ``.envrc``."""
 
+        toolchain: Annotated[
+            FlextInfraConfigModelsContract.ToolchainSpec,
+            m.Field(description="Governed native reader shared with Make"),
+        ]
+        uv_resolution: Annotated[
+            FlextInfraConfigModelsMake.MakeUvResolutionSpec,
+            m.Field(description="Native resolver input ownership shared with Make"),
+        ]
         repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Project-relative owner of the runtime environment"),
@@ -272,12 +310,17 @@ class FlextInfraModelsCodegenRender:
             t.VariadicTuple[str],
             m.Field(description="Declared constraints; the uv pin is never kept"),
         ]
-        exclude_dependencies: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec
-            ],
-            m.Field(description="Scoped dependency exclusions routed to the project"),
-        ]
+        override_dependencies: Annotated[
+            t.VariadicTuple[str],
+            m.Field(
+                description=(
+                    "SSOT-declared PEP 508 overrides resolving a transitive "
+                    "graph's family pins to the declared integration line; "
+                    "empty removes the key, so a standalone repository locks "
+                    "exactly like a fleet member (no member-computed fallback)."
+                ),
+            ),
+        ] = ()
         environments: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Resolved environment markers uv resolves for"),

@@ -130,6 +130,7 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
                     requirement
                     for group in manifest.dependency_groups.values()
                     for requirement in group
+                    if isinstance(requirement, str)
                 ),
             )
             if group_names.failure:

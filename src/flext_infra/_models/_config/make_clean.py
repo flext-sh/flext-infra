@@ -41,3 +41,6 @@ class FlextInfraConfigModelsMakeClean:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Trace/profile globs removed anywhere in the tree"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsMakeClean"]

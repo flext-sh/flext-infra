@@ -1,0 +1,29 @@
+id: ban-flext-core-library-import
+snapshots:
+  ? |
+    def load():
+        import yaml
+        return yaml
+  : labels:
+    - source: yaml
+      style: primary
+      start: 23
+      end: 27
+  from dependency_injector import containers:
+    labels:
+    - source: dependency_injector
+      style: primary
+      start: 5
+      end: 24
+  from returns.result import Result:
+    labels:
+    - source: returns.result
+      style: primary
+      start: 5
+      end: 19
+  import yaml as y:
+    labels:
+    - source: yaml
+      style: primary
+      start: 7
+      end: 11

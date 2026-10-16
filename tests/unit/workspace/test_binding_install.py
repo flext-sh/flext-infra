@@ -379,7 +379,6 @@ class TestsFlextInfraBindingInstall:
                 uv_resolution=m.Infra.UvResolutionSpec(
                     link_mode=toolchain.uv_link_mode,
                     constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
-                    exclude_dependencies=tuple(config.Infra.codegen.uv_exclude_dependencies),
                     environments=tuple(toolchain.uv_environments),
                 ),
                 options=u.Infra.PyprojectConformOptions(
@@ -399,7 +398,8 @@ class TestsFlextInfraBindingInstall:
             origin_case = argv[2]
             if origin_case == "nested":
                 function = inspect.unwrap(builder_type.build)
-                external = inspect.getfile(inspect.unwrap(FlextCliConfig.model_validate))
+                unwrap_model = inspect.unwrap(FlextCliConfig.model_validate)
+                external = inspect.getfile(unwrap_model)
                 function.__code__ = function.__code__.replace(co_filename=external)
                 print("external nested definition", function.__code__.co_filename,
                       flush=True)

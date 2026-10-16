@@ -24,3 +24,6 @@ class FlextInfraConfigModelsStatic:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Ordered production source directory names"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsStatic"]

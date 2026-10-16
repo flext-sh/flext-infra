@@ -108,6 +108,9 @@ if TYPE_CHECKING:
     from flext_infra.codegen._mise_artifacts_candidates import (
         FlextInfraMiseArtifactsCandidates,
     )
+    from flext_infra.codegen._mise_artifacts_comparison import (
+        FlextInfraMiseArtifactsComparison,
+    )
     from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
     from flext_infra.codegen._mise_artifacts_journal import (
         FlextInfraMiseArtifactsJournal,
@@ -144,6 +147,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+    from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
     from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
     from flext_infra.codegen.conform import FlextInfraCodegenConform
     from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -219,6 +223,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenMiseToolchainProof",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPipelineStagesMixin",
+    "FlextInfraCodegenPreconditions",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenProtocolModelAnnotations",
     "FlextInfraCodegenProtocolModelRender",
@@ -232,6 +237,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenTransactionPhases",
     "FlextInfraCodegenVersionFile",
     "FlextInfraMiseArtifactsCandidates",
+    "FlextInfraMiseArtifactsComparison",
     "FlextInfraMiseArtifactsFiles",
     "FlextInfraMiseArtifactsJournal",
     "FlextInfraMiseArtifactsJournalRelocation",
@@ -312,6 +318,7 @@ install_lazy_exports(
         "FlextInfraCodegenMiseToolchainProof": ".mise_toolchain_proof",
         "FlextInfraCodegenPipeline": ".pipeline",
         "FlextInfraCodegenPipelineStagesMixin": "._pipeline_stages",
+        "FlextInfraCodegenPreconditions": ".codegen_preconditions",
         "FlextInfraCodegenProjectNew": ".project_new",
         "FlextInfraCodegenProtocolModelAnnotations": "._protocol_model_annotations",
         "FlextInfraCodegenProtocolModelRender": "._protocol_model_render",
@@ -325,6 +332,7 @@ install_lazy_exports(
         "FlextInfraCodegenTransactionPhases": "._codegen_transaction_phases",
         "FlextInfraCodegenVersionFile": ".version_file",
         "FlextInfraMiseArtifactsCandidates": "._mise_artifacts_candidates",
+        "FlextInfraMiseArtifactsComparison": "._mise_artifacts_comparison",
         "FlextInfraMiseArtifactsFiles": "._mise_artifacts_files",
         "FlextInfraMiseArtifactsJournal": "._mise_artifacts_journal",
         "FlextInfraMiseArtifactsJournalRelocation": (

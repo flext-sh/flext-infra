@@ -14,7 +14,7 @@ from flext_cli import m, t
 class FlextInfraSettingsModels:
     """Private namespace for validated settings payloads."""
 
-    class Infra(m.BaseSettings):
+    class InfraSettings(m.BaseSettings):
         """Validated process-start settings owned by flext-infra."""
 
         # Validate every external alias before singleton export.

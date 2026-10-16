@@ -1,0 +1,56 @@
+# Resolve Annotated's constructor from its actual typing import binding.
+id: typing-annotated-form
+language: python
+rule:
+  any:
+    - all:
+        - any:
+            - kind: generic_type
+              has:
+                kind: identifier
+                pattern: $FORM
+            - kind: subscript
+              has:
+                field: value
+                kind: identifier
+                pattern: $FORM
+        - inside:
+            kind: module
+            stopBy: end
+            has:
+              kind: import_from_statement
+              stopBy: end
+              has:
+                field: module_name
+                regex: "^typing$"
+              any:
+                - has:
+                    kind: dotted_name
+                    stopBy: end
+                    pattern: $FORM
+                    regex: "^Annotated$"
+                    not:
+                      inside:
+                        kind: aliased_import
+                - has:
+                    kind: aliased_import
+                    stopBy: end
+                    has:
+                      field: name
+                      regex: "^Annotated$"
+                    all:
+                      - has:
+                          field: alias
+                          pattern: $FORM
+    - all:
+        - kind: subscript
+        - has:
+            field: value
+            kind: attribute
+            has:
+              field: attribute
+              pattern: Annotated
+            all:
+              - has:
+                  field: object
+                  matches: typing-module-binding

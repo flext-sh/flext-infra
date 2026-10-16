@@ -26,10 +26,12 @@ class FlextInfraRefactorCensusCollectMixin:
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             project_reports: t.VariadicTuple[m.Infra.ProjectReport],
+            *,
+            source_preview: p.Infra.SourcePreview,
         ) -> t.VariadicTuple[m.Infra.ProjectReport]: ...
 
         @staticmethod
-        def _project_name_for_module(
+        def project_name_for_module(
             module: m.Infra.RopeModuleIndexEntry,
             convention: m.Infra.RopeModuleConvention,
         ) -> str: ...
@@ -41,7 +43,7 @@ class FlextInfraRefactorCensusCollectMixin:
             selected_kinds: frozenset[str] | None,
         ) -> bool: ...
         @staticmethod
-        def _duplicate_groups(
+        def duplicate_groups(
             project_objects: t.VariadicTuple[t.SequenceOf[m.Infra.Object]],
         ) -> t.VariadicTuple[m.Infra.DuplicateGroup]: ...
         @staticmethod
@@ -69,7 +71,7 @@ class FlextInfraRefactorCensusCollectMixin:
         the modules it could not read reports a partial workspace as whole.
         """
         convention = rope.convention(module.file_path)
-        project = self._project_name_for_module(module, convention)
+        project = self.project_name_for_module(module, convention)
         if not project:
             return
         findings.report_projects.add(project)
@@ -93,6 +95,7 @@ class FlextInfraRefactorCensusCollectMixin:
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         *,
+        source_preview: p.Infra.SourcePreview,
         findings: m.Infra.ScanFindings,
         scan_config: m.Infra.ScanConfig,
     ) -> m.Infra.WorkspaceReport:
@@ -105,10 +108,11 @@ class FlextInfraRefactorCensusCollectMixin:
             The resulting ``m.Infra.WorkspaceReport``.
 
         """
-        duplicates = self._duplicate_groups(tuple(findings.project_objects.values()))
+        duplicates = self.duplicate_groups(tuple(findings.project_objects.values()))
         duplicate_keys = frozenset(
             self._object_key(item)
             for group in duplicates
+            if not group.semantic_candidate
             for item in group.definitions[1:]
         )
         project_reports = tuple(
@@ -123,7 +127,9 @@ class FlextInfraRefactorCensusCollectMixin:
             )
         )
         if self.effective_dry_run:
-            project_reports = self._validated_project_reports(rope, project_reports)
+            project_reports = self._validated_project_reports(
+                rope, project_reports, source_preview=source_preview
+            )
         return m.Infra.WorkspaceReport(
             projects=project_reports,
             total_objects=sum(report.objects_total for report in project_reports),

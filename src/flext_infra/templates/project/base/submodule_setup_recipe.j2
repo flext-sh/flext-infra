@@ -3,8 +3,8 @@
 
 # === SECTION: submodule setup (managed) ===
 # Source: template (submodule_setup_recipe.j2)
-# Computed: workspace uses MANAGED_GITLINKS from config; standalone discovers
-#           submodules with flext-managed=true from .gitmodules at runtime.
+# Computed: every checkout discovers governed paths from its own .gitmodules.
+#           An absent management flag participates; an explicit false does not.
 # Rule: setup PROVISIONS an absent or proven unfinished initial clone and
 #       VERIFIES an established checkout. An initial clone has no physical index,
 #       no worktree content, and only its clone reflog entry. Established work
@@ -32,181 +32,184 @@
 	@set -eu; \
 	umask 022; \
 	root="{{ project_root }}"; \
-	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
-	profile="$(MAKE_PROFILE)"; \
-	if [ "$$profile" = "workspace" ]; then \
-		managed="$(MANAGED_GITLINKS)"; \
+	if [ ! -f "$${root}/.gitmodules" ]; then exit 0; fi; \
+	managed=""; \
+	keys=""; \
+	if keys=$$(git -C "$${root}" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
+		keys_status=0; \
 	else \
-		managed=""; \
-		keys=""; \
-		if keys=$$(git -C "$$root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.flext-managed$$'); then \
-			keys_status=0; \
-		else \
-			keys_status=$$?; \
-		fi; \
-		if [ "$$keys_status" -ne 0 ] && [ "$$keys_status" -ne 1 ]; then \
-			printf 'ERROR: cannot enumerate governed gitlinks\n' >&2; \
-			exit "$$keys_status"; \
-		fi; \
-		for key in $$keys; do \
-			value=$$(git -C "$$root" config -f .gitmodules --get "$$key"); \
-			if [ "$$value" = "true" ]; then \
-				section=$${key%.flext-managed}; \
-				path=$$(git -C "$$root" config -f .gitmodules --get --default "" "$$section.path"); \
-				if [ -n "$$path" ]; then \
-					managed="$$managed $$path"; \
-				fi; \
-			fi; \
-		done; \
+		keys_status=$$?; \
 	fi; \
-	managed=$$(printf '%s' "$$managed" | tr ' ' '\n' | sort -u | tr '\n' ' '); \
-	if [ -z "$$managed" ]; then exit 0; fi; \
+	if [ "$${keys_status}" -ne 0 ] && [ "$${keys_status}" -ne 1 ]; then \
+		printf 'ERROR: cannot enumerate governed gitlinks\n' >&2; \
+		exit "$${keys_status}"; \
+	fi; \
+	for key in $${keys}; do \
+		section=$${key%.path}; \
+		value=$$(git -C "$${root}" config -f .gitmodules --type=bool --get --default true "$${section}.flext-managed"); \
+		case "$${value}" in \
+			true) ;; \
+			false) continue ;; \
+			*) printf 'ERROR: Git returned an invalid management boolean for %s\n' "$${section}" >&2; exit 2 ;; \
+		esac; \
+		path=$$(git -C "$${root}" config -f .gitmodules --get "$${key}"); \
+		case "$${path}" in \
+			""|/*|..|../*|*/../*|*/..|*[[:space:]]*) \
+				printf 'ERROR: governed gitlink path is not a safe relative Make path: %s\n' "$${path}" >&2; \
+				exit 2 ;; \
+		esac; \
+		case " $${managed} " in \
+			*" $${path} "*) printf 'ERROR: governed gitlink path is duplicated: %s\n' "$${path}" >&2; exit 2 ;; \
+		esac; \
+		managed="$${managed} $${path}"; \
+	done; \
+	if [ -z "$${managed}" ]; then exit 0; fi; \
 	if [ "$${GIT_INDEX_FILE+x}" = x ]; then \
 		printf 'ERROR: submodule setup cannot authenticate a relocated Git index\n' >&2; \
 		exit 2; \
 	fi; \
 	absent=""; \
-	for path in $$managed; do \
-		child="$$root/$$path"; \
-		if [ ! -e "$$child/.git" ]; then \
-			absent="$$absent $$path"; \
+	for path in $${managed}; do \
+		child="$${root}/$${path}"; \
+		if [ ! -e "$${child}/.git" ]; then \
+			absent="$${absent} $${path}"; \
 			continue; \
 		fi; \
-		owner=$$(git -C "$$child" rev-parse --show-superproject-working-tree); \
-		checkout_root=$$(git -C "$$child" rev-parse --show-toplevel); \
-		if [ "$$owner" != "$$root" ] || [ "$$checkout_root" != "$$child" ]; then \
-			printf 'ERROR: %s: checkout identity does not match the governed child\n' "$$path" >&2; \
+		owner=$$(git -C "$${child}" rev-parse --show-superproject-working-tree); \
+		checkout_root=$$(git -C "$${child}" rev-parse --show-toplevel); \
+		if [ "$${owner}" != "$${root}" ] || [ "$${checkout_root}" != "$${child}" ]; then \
+			printf 'ERROR: %s: checkout identity does not match the governed child\n' "$${path}" >&2; \
 			exit 2; \
 		fi; \
-		git_dir=$$(git -C "$$child" rev-parse --absolute-git-dir); \
-		index="$$git_dir/index"; \
-		if [ -e "$$index" ] || [ -L "$$index" ]; then continue; fi; \
-		content=$$(git -C "$$child" ls-files --others --directory); \
-		reflog=$$(git -C "$$child" reflog show --format=%gs HEAD); \
-		initial=$$(git -C "$$child" reflog show --format=%gs -1 HEAD); \
-		if [ -n "$$content" ] || [ "$$reflog" != "$$initial" ]; then \
-			printf 'ERROR: %s: missing index with unproven initial-clone state; preserve and review\n' "$$path" >&2; \
+		git_dir=$$(git -C "$${child}" rev-parse --absolute-git-dir); \
+		index="$${git_dir}/index"; \
+		if [ -e "$${index}" ] || [ -L "$${index}" ]; then continue; fi; \
+		content=$$(git -C "$${child}" ls-files --others --directory); \
+		reflog=$$(git -C "$${child}" reflog show --format=%gs HEAD); \
+		initial=$$(git -C "$${child}" reflog show --format=%gs -1 HEAD); \
+		if [ -n "$${content}" ] || [ "$${reflog}" != "$${initial}" ]; then \
+			printf 'ERROR: %s: missing index with unproven initial-clone state; preserve and review\n' "$${path}" >&2; \
 			exit 2; \
 		fi; \
-		case "$$initial" in \
+		case "$${initial}" in \
 			'clone: from '*) ;; \
-			*) printf 'ERROR: %s: missing index without initial clone receipt\n' "$$path" >&2; exit 2 ;; \
+			*) printf 'ERROR: %s: missing index without initial clone receipt\n' "$${path}" >&2; exit 2 ;; \
 		esac; \
-		local_refs=$$(git -C "$$child" for-each-ref --format='%(refname)' refs/heads refs/stash); \
-		if active_ref=$$(git -C "$$child" symbolic-ref -q HEAD); then \
+		local_refs=$$(git -C "$${child}" for-each-ref --format='%(refname)' refs/heads refs/stash); \
+		if active_ref=$$(git -C "$${child}" symbolic-ref -q HEAD); then \
 			:; \
 		else \
 			ref_status=$$?; \
-			[ "$$ref_status" -eq 1 ] || exit "$$ref_status"; \
+			[ "$${ref_status}" -eq 1 ] || exit "$${ref_status}"; \
 		fi; \
-		if [ "$$local_refs" != "$$active_ref" ]; then \
-			printf 'ERROR: %s: missing index with local branch or stash work; preserve and review\n' "$$path" >&2; \
+		if [ "$${local_refs}" != "$${active_ref}" ]; then \
+			printf 'ERROR: %s: missing index with local branch or stash work; preserve and review\n' "$${path}" >&2; \
 			exit 2; \
 		fi; \
-		entry=$$(git -C "$$root" ls-files --stage -- "$$path"); \
-		set -- $$entry; \
-		if [ "$$#" -ne 4 ] || [ "$$1" != 160000 ] || [ "$$3" != 0 ] || [ "$$4" != "$$path" ]; then \
-			printf 'ERROR: governed path is not a gitlink: %s\n' "$$path" >&2; \
+		entry=$$(git -C "$${root}" ls-files --stage -- "$${path}"); \
+		set -- $${entry}; \
+		if [ "$$#" -ne 4 ] || [ "$$1" != 160000 ] || [ "$$3" != 0 ] || [ "$$4" != "$${path}" ]; then \
+			printf 'ERROR: governed path is not a gitlink: %s\n' "$${path}" >&2; \
 			exit 2; \
 		fi; \
-		head=$$(git -C "$$child" rev-parse HEAD); \
-		if [ "$$head" = "$$2" ]; then \
-			printf 'setup: materializing unfinished initial clone at recorded pin: %s\n' "$$path"; \
+		head=$$(git -C "$${child}" rev-parse HEAD); \
+		if [ "$${head}" = "$$2" ]; then \
+			printf 'setup: materializing unfinished initial clone at recorded pin: %s\n' "$${path}"; \
 			GIT_TERMINAL_PROMPT=0 {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "{{ submodule_timeout_seconds }}s" \
-				git -C "$$child" -c submodule.recurse=false checkout --detach --no-overwrite-ignore "$$head"; \
+				git -C "$${child}" -c submodule.recurse=false checkout --detach --no-overwrite-ignore "$${head}"; \
 			continue; \
 		fi; \
-		printf 'setup: resuming unfinished initial clone: %s\n' "$$path"; \
-		absent="$$absent $$path"; \
+		printf 'setup: resuming unfinished initial clone: %s\n' "$${path}"; \
+		absent="$${absent} $${path}"; \
 	done; \
-	if [ -n "$$absent" ]; then \
-		credential_helper='!f() { if [ "$$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$$GITHUB_TOKEN"; fi; }; f'; \
-		absent_count=$$(printf '%s\n' $$absent | wc -l); \
+	if [ -n "$${absent}" ]; then \
+		credential_helper='!f() { if [ "$$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$${GITHUB_TOKEN}"; fi; }; f'; \
+		absent_count=$$(printf '%s\n' $${absent} | wc -l); \
 		clone_waves=$$(( (absent_count + {{ submodule_jobs }} - 1) / {{ submodule_jobs }} )); \
 		GIT_TERMINAL_PROMPT=0 {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "$$(( clone_waves * {{ submodule_timeout_seconds }} ))s" \
-			git -C "$$root" -c credential.helper= \
-			-c "credential.https://$${GH_HOST:-github.com}.helper=$$credential_helper" \
-			submodule update --init --checkout --depth 1 --jobs "{{ submodule_jobs }}" -- $$absent; \
+			git -C "$${root}" -c credential.helper= \
+			-c "credential.https://$${GH_HOST:-github.com}.helper=$${credential_helper}" \
+			submodule update --init --checkout --depth 1 --jobs "{{ submodule_jobs }}" -- $${absent}; \
 	fi; \
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
-		child_root="$$superproject/$$child_path"; \
+		child_root="$${superproject}/$${child_path}"; \
 		keys=""; \
-		if keys=$$(git -C "$$superproject" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
+		if keys=$$(git -C "$${superproject}" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
 			keys_status=0; \
 		else \
 			keys_status=$$?; \
 		fi; \
-		if [ "$$keys_status" -ne 0 ] && [ "$$keys_status" -ne 1 ]; then \
+		if [ "$${keys_status}" -ne 0 ] && [ "$${keys_status}" -ne 1 ]; then \
 			printf 'ERROR: cannot enumerate submodule paths\n' >&2; \
-			exit "$$keys_status"; \
+			exit "$${keys_status}"; \
 		fi; \
 		section=""; \
-		for key in $$keys; do \
-			declared=$$(git -C "$$superproject" config -f .gitmodules --get "$$key"); \
-			if [ "$$declared" = "$$child_path" ]; then \
-				if [ -n "$$section" ]; then \
-					printf 'ERROR: governed gitlink path is duplicated: %s\n' "$$child_path" >&2; \
+		for key in $${keys}; do \
+			declared=$$(git -C "$${superproject}" config -f .gitmodules --get "$${key}"); \
+			if [ "$${declared}" = "$${child_path}" ]; then \
+				if [ -n "$${section}" ]; then \
+					printf 'ERROR: governed gitlink path is duplicated: %s\n' "$${child_path}" >&2; \
 					exit 2; \
 				fi; \
 				section=$${key%.path}; \
 			fi; \
 		done; \
-		if [ -z "$$section" ]; then \
-			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$$child_path" >&2; \
+		if [ -z "$${section}" ]; then \
+			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
-		branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$section.branch"); \
-		if [ -z "$$branch" ]; then \
-			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$$child_path" >&2; \
+		branch=$$(git -C "$${superproject}" config -f .gitmodules --get --default "" "$${section}.branch"); \
+		if [ -z "$${branch}" ]; then \
+			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
-		super_branch=$$(git -C "$$superproject" branch --show-current); \
-		if [ "$$branch" = "." ]; then \
-			branch="$$super_branch"; \
-			if [ -z "$$branch" ]; then \
-				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$$child_path" >&2; \
+		super_branch=$$(git -C "$${superproject}" branch --show-current); \
+		if [ "$${branch}" = "." ]; then \
+			branch="$${super_branch}"; \
+			if [ -z "$${branch}" ]; then \
+				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$${child_path}" >&2; \
 				exit 1; \
 			fi; \
 		fi; \
-		validated_branch=$$(git check-ref-format --branch "$$branch"); \
-		if [ "$$validated_branch" != "$$branch" ]; then \
-			printf 'ERROR: branch validator changed %s to %s\n' "$$branch" "$$validated_branch" >&2; \
+		validated_branch=$$(git check-ref-format --branch "$${branch}"); \
+		if [ "$${validated_branch}" != "$${branch}" ]; then \
+			printf 'ERROR: branch validator changed %s to %s\n' "$${branch}" "$${validated_branch}" >&2; \
 			exit 2; \
 		fi; \
-		gitlink_entry=$$(git -C "$$superproject" ls-files --stage -- "$$child_path"); \
-		if [ -z "$$gitlink_entry" ]; then \
-			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$$child_path" >&2; \
+		gitlink_entry=$$(git -C "$${superproject}" ls-files --stage -- "$${child_path}"); \
+		if [ -z "$${gitlink_entry}" ]; then \
+			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
-		set -- $$gitlink_entry; \
+		set -- $${gitlink_entry}; \
 		if [ "$$1" != 160000 ]; then \
-			printf 'ERROR: governed path is not a gitlink: %s\n' "$$child_path" >&2; \
+			printf 'ERROR: governed path is not a gitlink: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
 		gitlink="$$2"; \
-		if [ ! -e "$$child_root/.git" ]; then \
-			printf 'ERROR: governed gitlink is not materialized: %s\n' "$$child_path" >&2; \
+		if [ ! -e "$${child_root}/.git" ]; then \
+			printf 'ERROR: governed gitlink is not materialized: %s\n' "$${child_path}" >&2; \
 			exit 2; \
 		fi; \
-		current=$$(git -C "$$child_root" branch --show-current); \
-		head=$$(git -C "$$child_root" rev-parse HEAD); \
-		if git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
+		current=$$(git -C "$${child_root}" branch --show-current); \
+		head=$$(git -C "$${child_root}" rev-parse HEAD); \
+		if git -C "$${child_root}" merge-base --is-ancestor "$${gitlink}" HEAD; then \
 			ancestor=Y; \
 		else \
-			status=$$?; if [ "$$status" -eq 1 ]; then ancestor=N; else exit "$$status"; fi; \
+			status=$$?; if [ "$${status}" -eq 1 ]; then ancestor=N; else exit "$${status}"; fi; \
 		fi; \
-		if [ "$$ancestor" = N ]; then \
-			if [ -z "$$current" ]; then \
-				printf 'ERROR: %s: detached HEAD %s does not contain recorded gitlink %s; merge the superproject gitlink into this head\n' "$$child_path" "$$head" "$$gitlink" >&2; \
+		if [ "$${ancestor}" = N ]; then \
+			if [ -z "$${current}" ]; then \
+				printf 'ERROR: %s: detached HEAD %s does not contain recorded gitlink %s; merge the superproject gitlink into this head\n' "$${child_path}" "$${head}" "$${gitlink}" >&2; \
 			else \
-				printf 'ERROR: %s: checked-out branch %s at %s does not contain recorded gitlink %s; merge the superproject gitlink into this branch\n' "$$child_path" "$$current" "$$head" "$$gitlink" >&2; \
+				printf 'ERROR: %s: checked-out branch %s at %s does not contain recorded gitlink %s; merge the superproject gitlink into this branch\n' "$${child_path}" "$${current}" "$${head}" "$${gitlink}" >&2; \
 			fi; \
 			exit 1; \
 		fi; \
 	}; \
-	for child_path in $$managed; do \
-		validate_submodule "$$root" "$$child_path"; \
+	for child_path in $${managed}; do \
+		validate_submodule "$${root}" "$${child_path}"; \
 	done
 {%- endmacro %}

@@ -39,3 +39,6 @@ class FlextInfraDeadScaffold(cst.CSTTransformer):
                 if len(inner) == 1 and isinstance(inner[0], cst.Pass):
                     return cst.RemoveFromParent()
         return updated_node
+
+
+__all__: list[str] = ["FlextInfraDeadScaffold"]

@@ -1,0 +1,85 @@
+id: ban-test-http-doubles
+snapshots:
+  ? |
+    @responses.activate
+    def test_call(self) -> None:
+        responses.add(responses.GET, url, json={})
+  : labels:
+    - source: responses.add(responses.GET, url, json={})
+      style: primary
+      start: 53
+      end: 95
+    - source: responses.add
+      style: secondary
+      start: 53
+      end: 66
+  from aioresponses import aioresponses:
+    labels:
+    - source: from aioresponses import aioresponses
+      style: primary
+      start: 0
+      end: 37
+  from freezegun import freeze_time:
+    labels:
+    - source: from freezegun import freeze_time
+      style: primary
+      start: 0
+      end: 33
+  ? |
+    from httpx import MockTransport
+    transport = MockTransport(handler)
+  : labels:
+    - source: from httpx import MockTransport
+      style: primary
+      start: 0
+      end: 31
+    - source: MockTransport
+      style: secondary
+      start: 18
+      end: 31
+  from pytest_httpx import HTTPXMock:
+    labels:
+    - source: from pytest_httpx import HTTPXMock
+      style: primary
+      start: 0
+      end: 34
+  from time_machine import travel:
+    labels:
+    - source: from time_machine import travel
+      style: primary
+      start: 0
+      end: 31
+  from vcr import use_cassette:
+    labels:
+    - source: from vcr import use_cassette
+      style: primary
+      start: 0
+      end: 28
+  import requests_mock:
+    labels:
+    - source: import requests_mock
+      style: primary
+      start: 0
+      end: 20
+  import responses:
+    labels:
+    - source: import responses
+      style: primary
+      start: 0
+      end: 16
+  requests_mock.Mocker() as mocker:
+    labels:
+    - source: requests_mock.Mocker()
+      style: primary
+      start: 0
+      end: 22
+    - source: requests_mock.Mocker
+      style: secondary
+      start: 0
+      end: 20
+  transport = httpx.MockTransport(handler):
+    labels:
+    - source: httpx.MockTransport
+      style: primary
+      start: 12
+      end: 31

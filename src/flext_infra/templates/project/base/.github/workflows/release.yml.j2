@@ -56,14 +56,14 @@ jobs:
         run: |
           set -euo pipefail
           subject="$(git log -1 --format=%s)"
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "ref=refs/tags/$DISPATCH_TAG" >> "$GITHUB_OUTPUT"
-            echo "release_commit=true" >> "$GITHUB_OUTPUT"
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "ref=refs/tags/${DISPATCH_TAG}" >> "${GITHUB_OUTPUT}"
+            echo "release_commit=true" >> "${GITHUB_OUTPUT}"
           else
-            echo "ref=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
-            case "$subject" in
-              "chore(release): v"*) echo "release_commit=true" >> "$GITHUB_OUTPUT" ;;
-              *) echo "release_commit=false" >> "$GITHUB_OUTPUT" ;;
+            echo "ref=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+            case "${subject}" in
+              "chore(release): v"*) echo "release_commit=true" >> "${GITHUB_OUTPUT}" ;;
+              *) echo "release_commit=false" >> "${GITHUB_OUTPUT}" ;;
             esac
           fi
 

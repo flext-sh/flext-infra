@@ -38,13 +38,9 @@ class FlextInfraModTextGateEngine:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        pending = cls.scan(root, fix=False, validate_receipts=True)
+        pending = cls.scan(root, fix=apply, validate_receipts=True)
         if pending.failure:
             return r[t.Cli.ResultValue].from_failure(pending)
-        if apply and pending.value.actionable:
-            applied = cls.scan(root, fix=True, validate_receipts=True)
-            if applied.failure:
-                return r[t.Cli.ResultValue].from_failure(applied)
         remaining = cls.scan(root, fix=False)
         if remaining.failure:
             return r[t.Cli.ResultValue].from_failure(remaining)
@@ -85,6 +81,16 @@ class FlextInfraModTextGateEngine:
             elected = cls._elected_rules(project)
             if elected.failure:
                 return r[t.VariadicTuple[Path]].from_failure(elected)
+            issues = cls._include_issues(project, elected.value[2])
+            if issues:
+                error = ValueError(issues[0].message)
+                return r[t.VariadicTuple[Path]].fail(
+                    "\n".join(issue.formatted for issue in issues),
+                    exception=error,
+                    error_data={
+                        "issues": tuple(issue.model_dump() for issue in issues)
+                    },
+                )
             sources = cls._source_paths(project, elected.value[2])
             if sources.failure:
                 return sources
@@ -100,6 +106,7 @@ class FlextInfraModTextGateEngine:
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.ModTextRule]]``.
+
         """
         if identity.content is None:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
@@ -474,6 +481,31 @@ class FlextInfraModTextGateEngine:
             )
         return r[m.Infra.ModTextRule].ok(rule)
 
+    @classmethod
+    def _include_issues(
+        cls,
+        root: Path,
+        rules: t.VariadicTuple[m.Infra.ModTextRule],
+    ) -> t.VariadicTuple[m.Infra.Issue]:
+        """Report declared formats outside this phase's existing source contract.
+
+        Returns:
+            Central issues for unsupported explicit input declarations. A scope
+            glob without a suffix still selects the canonical Python inventory.
+
+        """
+        return tuple(
+            cls._source_issue(
+                root / pattern,
+                f"text rule {rule.rule_id} declares an unsupported input: {pattern}",
+            )
+            for rule in rules
+            for pattern in rule.include
+            if Path(pattern).suffix
+            and Path(pattern).suffix != c.Infra.EXT_PYTHON
+            and Path(pattern).suffix != ".md"
+        )
+
     @staticmethod
     def _source_paths(
         root: Path,
@@ -654,58 +686,63 @@ class FlextInfraModTextGateEngine:
         *,
         fix: bool,
     ) -> p.Result[
-        t.Triple[
+        t.Pair[
             m.Infra.ModTextReport,
-            t.VariadicTuple[m.Infra.CodegenFilePlan],
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Infra.CodegenPhaseAnalysis,
         ]
     ]:
-        """Rewrite every elected source and collect the report and fix plans.
+        """Plan each source, preserving failures beside independent valid targets.
 
         Returns:
-            The resulting ``(report, plans, inputs)`` triple.
+            Reported matches and the canonical phase analysis with its first cause.
 
         """
         entries: list[m.Infra.ModTextFinding] = []
         files: set[Path] = set()
         actionable = 0
-        inputs = [*base_states]
         plans: list[m.Infra.CodegenFilePlan] = []
+        issues: list[m.Infra.Issue] = []
+        first_exception: BaseException | None = None
         for path in sources:
-            prepared = cls._authenticated_source(root, path)
+            try:
+                prepared = cls._authenticated_source(root, path)
+            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+                first_exception = first_exception or exc
+                issues.append(cls._source_issue(path, str(exc), exception=exc))
+                continue
             if prepared.failure:
-                return r[
-                    t.Triple[
-                        m.Infra.ModTextReport,
-                        t.VariadicTuple[m.Infra.CodegenFilePlan],
-                        t.VariadicTuple[m.Cli.AtomicFileState],
-                    ]
-                ].from_failure(prepared)
+                issues.append(cls._source_issue(path, str(prepared.error)))
+                first_exception = first_exception or prepared.exception
+                continue
             before, source, relative = prepared.value
-            inputs.append(before)
-            updated, target_entries, target_actionable = cls._rewrite_source(
-                source,
-                relative,
-                rules,
-            )
+            try:
+                updated, target_entries, target_actionable = cls._rewrite_source(
+                    source, relative, rules
+                )
+            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+                first_exception = first_exception or exc
+                issues.append(cls._source_issue(path, str(exc), exception=exc))
+                continue
             entries.extend(target_entries)
             actionable += target_actionable
             if target_entries:
                 files.add(Path(relative))
-            if fix and updated != source:
-                if source.startswith(c.Infra.AUTOGEN_HEADERS):
-                    return r[
-                        t.Triple[
-                            m.Infra.ModTextReport,
-                            t.VariadicTuple[m.Infra.CodegenFilePlan],
-                            t.VariadicTuple[m.Cli.AtomicFileState],
-                        ]
-                    ].fail(
-                        "generated findings require canonical generator repair: "
-                        f"{path}",
+            if updated != source and source.startswith(c.Infra.AUTOGEN_HEADERS):
+                issues.append(
+                    cls._source_issue(
+                        path,
+                        "generated findings require canonical generator repair",
                     )
-                if path.suffix == c.Infra.EXT_PYTHON:
+                )
+                continue
+            if updated != source and path.suffix == c.Infra.EXT_PYTHON:
+                try:
                     ast.parse(updated, filename=str(path))
+                except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+                    first_exception = first_exception or exc
+                    issues.append(cls._source_issue(path, str(exc), exception=exc))
+                    continue
+            if fix and updated != source:
                 plans.append(
                     cls._rewrite_plan(root, path, before, updated, base_states),
                 )
@@ -716,12 +753,49 @@ class FlextInfraModTextGateEngine:
             entries=tuple(entries),
         )
         return r[
-            t.Triple[
+            t.Pair[
                 m.Infra.ModTextReport,
-                t.VariadicTuple[m.Infra.CodegenFilePlan],
-                t.VariadicTuple[m.Cli.AtomicFileState],
+                m.Infra.CodegenPhaseAnalysis,
             ]
-        ].ok((report, tuple(plans), tuple(inputs)))
+        ].ok((
+            report,
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
+                files=tuple(plans),
+                inputs=tuple(
+                    {
+                        state.path: state
+                        for plan in plans
+                        for state in plan.source_states
+                    }.values()
+                ),
+                issues=tuple(issues),
+                exception=first_exception,
+            ),
+        ))
+
+    @staticmethod
+    def _source_issue(
+        path: Path, message: str, *, exception: BaseException | None = None
+    ) -> m.Infra.Issue:
+        """Use the canonical issue contract for one actual source failure.
+
+        Args:
+            path: The path to the source file that caused the failure.
+            message: A human-readable message describing the failure.
+            exception: The exception instance that triggered the failure, if any.
+
+        Returns:
+            An instance of `m.Infra.Issue` representing the source failure.
+
+        """
+        return m.Infra.Issue(
+            file=str(path),
+            line=exception.lineno or 0 if isinstance(exception, SyntaxError) else 0,
+            column=exception.offset or 0 if isinstance(exception, SyntaxError) else 0,
+            code=c.Infra.ToolOutcome.ERROR.value,
+            message=message,
+        )
 
     @classmethod
     def scan(
@@ -742,43 +816,133 @@ class FlextInfraModTextGateEngine:
         files: set[Path] = set()
         plans: list[m.Infra.CodegenFilePlan] = []
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        conflicting_dependencies: set[Path] = set()
+        issues: list[m.Infra.Issue] = []
+        first_exception: BaseException | None = None
         actionable = 0
         for project in u.Infra.governed_project_roots(root):
-            outcome = cls._scan_project(
-                project,
-                fix=fix,
-                validate_receipts=validate_receipts,
-            )
+            try:
+                outcome = cls._scan_project(
+                    project,
+                    fix=fix,
+                    validate_receipts=validate_receipts,
+                )
+            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+                issues.append(cls._source_issue(project, str(exc), exception=exc))
+                first_exception = first_exception or exc
+                continue
             if outcome.failure:
-                return r[m.Infra.ModTextReport].from_failure(outcome)
-            report, project_plans, project_inputs = outcome.value
+                issues.append(cls._source_issue(project, str(outcome.error)))
+                first_exception = first_exception or outcome.exception
+                continue
+            report, analysis = outcome.value
+            issues.extend(analysis.issues)
+            first_exception = first_exception or analysis.exception
             prefix = project.relative_to(root)
             entries.extend(
                 entry.model_copy(update={"file": prefix / entry.file})
                 for entry in report.entries
             )
             files.update(prefix / path for path in report.files)
-            plans.extend(project_plans)
+            plans.extend(analysis.files)
             actionable += report.actionable
-            for state in project_inputs:
-                previous = inputs.setdefault(state.path, state)
-                if previous != state:
-                    return r[m.Infra.ModTextReport].fail(
-                        "text source identity changed during fleet planning: "
-                        f"{state.path}",
-                    )
-        if fix and plans:
-            published = cls._publish(root, tuple(plans), tuple(inputs.values()))
-            if published.failure:
-                return r[m.Infra.ModTextReport].from_failure(published)
-        return r[m.Infra.ModTextReport].ok(
-            m.Infra.ModTextReport(
-                findings=len(entries),
-                actionable=actionable,
-                files=frozenset(files),
-                entries=tuple(entries),
+            conflicting_dependencies.update(cls._conflicting_inputs(analysis, inputs))
+        if conflicting_dependencies:
+            plans = cls._without_conflicting_plans(
+                plans, conflicting_dependencies, issues
             )
+            inputs = {
+                state.path: state for plan in plans for state in plan.source_states
+            }
+        report = m.Infra.ModTextReport(
+            findings=len(entries),
+            actionable=actionable,
+            files=frozenset(files),
+            entries=tuple(entries),
         )
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
+            files=tuple(plans),
+            inputs=tuple(inputs.values()),
+            issues=tuple(issues),
+            exception=first_exception,
+        )
+        if fix and plans:
+            published = cls._publish(root, analysis)
+            if published.failure:
+                details: t.MutableMappingKV[str, t.JsonValue] = {
+                    "report": u.Cli.normalize_json_value(report.model_dump(mode="json"))
+                }
+                if published.error_data is not None:
+                    details.update(published.error_data)
+                return r[m.Infra.ModTextReport].fail(
+                    str(published.error),
+                    exception=published.exception,
+                    error_code=published.error_code,
+                    error_data=details,
+                )
+        if issues:
+            return r[m.Infra.ModTextReport].fail(
+                "\n".join(issue.formatted for issue in issues),
+                exception=first_exception,
+                error_code=c.Infra.ToolOutcome.ERROR.value,
+                error_data={
+                    "report": report.model_dump(mode="json"),
+                    "issues": tuple(issue.model_dump() for issue in issues),
+                    "written_files": (),
+                },
+            )
+        return r[m.Infra.ModTextReport].ok(report)
+
+    @staticmethod
+    def _conflicting_inputs(
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> set[Path]:
+        """Register publication inputs and identify inconsistent snapshots.
+
+        Returns:
+            Dependency paths with conflicting authenticated identities.
+
+        """
+        return {
+            state.path
+            for state in analysis.inputs
+            if analysis.files
+            if inputs.setdefault(state.path, state) != state
+        }
+
+    @classmethod
+    def _without_conflicting_plans(
+        cls,
+        plans: list[m.Infra.CodegenFilePlan],
+        conflicting_dependencies: set[Path],
+        issues: list[m.Infra.Issue],
+    ) -> list[m.Infra.CodegenFilePlan]:
+        """Reject plans whose authenticated dependencies changed during scanning.
+
+        Returns:
+            Plans with consistent dependency identities.
+
+        """
+        allowed: list[m.Infra.CodegenFilePlan] = []
+        for plan in plans:
+            dependencies = tuple(
+                str(state.path)
+                for state in plan.source_states
+                if state.path in conflicting_dependencies
+            )
+            if dependencies:
+                issues.append(
+                    cls._source_issue(
+                        plan.path,
+                        "text dependency identity changed during planning: "
+                        f"{dependencies}",
+                    )
+                )
+            else:
+                allowed.append(plan)
+        return allowed
 
     @classmethod
     def _scan_project(
@@ -788,35 +952,33 @@ class FlextInfraModTextGateEngine:
         fix: bool,
         validate_receipts: bool,
     ) -> p.Result[
-        t.Triple[
+        t.Pair[
             m.Infra.ModTextReport,
-            t.VariadicTuple[m.Infra.CodegenFilePlan],
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Infra.CodegenPhaseAnalysis,
         ]
     ]:
         """Plan one member's rules using its authenticated distribution identity.
 
         Returns:
-            The report, proposed files, and authenticated inputs without effects.
+            Reported matches and the authenticated phase analysis without effects.
 
         """
         context = cls._elected_rules(root)
         if context.failure:
             return r[
-                t.Triple[
+                t.Pair[
                     m.Infra.ModTextReport,
-                    t.VariadicTuple[m.Infra.CodegenFilePlan],
-                    t.VariadicTuple[m.Cli.AtomicFileState],
+                    m.Infra.CodegenPhaseAnalysis,
                 ]
             ].from_failure(context)
         catalogues, identity, rules = context.value
+        include_issues = cls._include_issues(root, rules)
         sources = cls._source_paths(root, rules)
         if sources.failure:
             return r[
-                t.Triple[
+                t.Pair[
                     m.Infra.ModTextReport,
-                    t.VariadicTuple[m.Infra.CodegenFilePlan],
-                    t.VariadicTuple[m.Cli.AtomicFileState],
+                    m.Infra.CodegenPhaseAnalysis,
                 ]
             ].from_failure(sources)
         scanned = cls._scan_paths(
@@ -828,58 +990,66 @@ class FlextInfraModTextGateEngine:
         )
         if scanned.failure:
             return scanned
-        report, _plans, _inputs = scanned.value
-        if validate_receipts:
-            cls._validate_expected_receipts(rules, report)
-        return scanned
-
-    @classmethod
-    def _validate_inventory(
-        cls,
-        root: Path,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[bool]:
-        """Require the source inventory to be unchanged since the scan.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        catalogues: set[Path] = set()
-        identities: set[Path] = set()
-        observed: set[Path] = set()
-        for project in u.Infra.governed_project_roots(root):
-            context = cls._elected_rules(project)
-            if context.failure:
-                return r[bool].from_failure(context)
-            states, identity, rules = context.value
-            catalogues.update(state.path for state in states)
-            identities.add(identity.path)
-            sources = cls._source_paths(project, rules)
-            if sources.failure:
-                return r[bool].from_failure(sources)
-            observed.update(sources.value)
-        expected = {
-            state.path
-            for state in inputs
-            if state.path not in catalogues and state.path not in identities
-        }
-        if observed != expected:
-            return r[bool].fail(
-                "text source inventory changed before publication: "
-                f"missing={sorted(map(str, expected - observed))}, "
-                f"added={sorted(map(str, observed - expected))}",
+        report, analysis = scanned.value
+        if include_issues:
+            analysis = analysis.model_copy(
+                update={
+                    "issues": (*include_issues, *analysis.issues),
+                    "exception": ValueError(include_issues[0].message),
+                }
             )
-        return r[bool].ok(value=True)
+            scanned = r[
+                t.Pair[
+                    m.Infra.ModTextReport,
+                    m.Infra.CodegenPhaseAnalysis,
+                ]
+            ].ok((report, analysis))
+        if validate_receipts:
+            failed_rules: set[str] = set()
+            receipt_issues: list[m.Infra.Issue] = []
+            first_exception = analysis.exception
+            for rule in rules:
+                try:
+                    cls._validate_expected_receipts((rule,), report)
+                except RuntimeError as exc:
+                    failed_rules.add(rule.rule_id)
+                    receipt_issues.append(cls._source_issue(root, str(exc)))
+                    first_exception = first_exception or exc
+            if receipt_issues:
+                blocked = {
+                    root / entry.file
+                    for entry in report.entries
+                    if entry.rule_id in failed_rules
+                }
+                allowed = tuple(
+                    plan for plan in analysis.files if plan.path not in blocked
+                )
+                analysis = analysis.model_copy(
+                    update={
+                        "files": allowed,
+                        "inputs": tuple(
+                            {
+                                state.path: state
+                                for plan in allowed
+                                for state in plan.source_states
+                            }.values()
+                        ),
+                        "issues": (*analysis.issues, *receipt_issues),
+                        "exception": first_exception,
+                    }
+                )
+                return r[
+                    t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]
+                ].ok((report, analysis))
+        return scanned
 
     @classmethod
     def _publish(
         cls,
         root: Path,
-        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        analysis: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[t.VariadicTuple[Path]]:
-        """Publish the complete authenticated batch through the shared journal.
+        """Publish owned targets and their declared dependencies through the journal.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[Path]]``.
@@ -890,44 +1060,24 @@ class FlextInfraModTextGateEngine:
         )
         roots = {
             f"@mod-text-{index}": project
-            for index, project in enumerate(u.Infra.governed_project_roots(root))
+            for index, project in enumerate(
+                sorted({plan.project for plan in analysis.files})
+            )
         }
-        analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
-            files=plans,
-            inputs=inputs,
-        )
-
-        def validate_inventory() -> p.Result[bool]:
-            return cls._validate_inventory(root, inputs)
-
-        def validate_published() -> p.Result[bool]:
-            inventory = validate_inventory()
-            if inventory.failure:
-                return inventory
-            return transaction.validate_phase_analysis_locked(analysis)
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
-            inventory = validate_inventory()
-            if inventory.failure:
-                return r[t.VariadicTuple[Path]].from_failure(inventory)
-            started = transaction.begin_files_locked(scope_root, roots, inputs)
-            if started.failure:
-                return r[t.VariadicTuple[Path]].from_failure(started)
-
-            def apply(
-                session: m.Infra.CodegenTransactionSession,
-            ) -> p.Result[t.VariadicTuple[Path]]:
-                published = transaction.append_phase_locked(
-                    session,
-                    analysis.phase,
-                    plans,
-                )
-                if published.failure:
-                    return r[t.VariadicTuple[Path]].from_failure(published)
-                return transaction.commit_locked(published.value, validate_published)
-
-            return transaction.publish_prepared_locked(started.value, apply)
+            published = transaction.publish_file_phase_locked(
+                scope_root,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
+            )
+            if published.failure:
+                return r[t.VariadicTuple[Path]].from_failure(published)
+            verified = transaction.validate_phase_analysis_locked(analysis)
+            if verified.failure:
+                return r[t.VariadicTuple[Path]].from_failure(verified)
+            return published
 
         return transaction.run_files_locked(roots, publish)
 
