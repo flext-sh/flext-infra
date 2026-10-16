@@ -54,6 +54,14 @@ class FlextInfraWorkspaceNativeReference:
     _compilation_facts: ClassVar[ContextVar[t.Infra.NativeInvocationFacts | None]] = (
         ContextVar("native_compilation_facts", default=None)
     )
+    # Last module-file index and the exact registry state it derives from.
+    _MODULE_FILE_INDEX: ClassVar[
+        t.Pair[
+            t.Pair[str, t.VariadicTuple[t.Pair[str, int]]],
+            t.MappingKV[str, t.VariadicTuple[str]],
+        ]
+        | None
+    ] = None
 
     @classmethod
     @contextmanager
@@ -3988,6 +3996,39 @@ class FlextInfraWorkspaceNativeReference:
         return r[str].ok(aliases[0])
 
     @classmethod
+    def _module_file_owners(cls) -> t.MappingKV[str, t.VariadicTuple[str]]:
+        """Index registered modules by the absolute file their namespace declares.
+
+        Every compiler-input election used to rescan the whole ``sys.modules``
+        and build two ``Path`` objects per module (flext-zd80z: thousands of
+        modules per election, ~44 s of a cold capture). The index is a pure
+        derivation of the exact registry state (module name and object
+        identity) and the working directory, rebuilt whenever either changes,
+        so an import or replacement during capture is always observed.
+
+        Returns:
+            Absolute declared file path -> names of the modules declaring it.
+
+        """
+        registry = tuple(
+            (name, id(module)) for name, module in tuple(sys.modules.items())
+        )
+        cwd = str(Path.cwd())
+        cached = cls._MODULE_FILE_INDEX
+        if cached is not None and cached[0] == (cwd, registry):
+            return cached[1]
+        index: dict[str, list[str]] = {}
+        for name, module in tuple(sys.modules.items()):
+            if name == "__main__" or type(module) is not ModuleType:
+                continue
+            declared = cls._module_namespace(module).get("__file__")
+            if type(declared) is str:
+                index.setdefault(str(Path(cwd, declared)), []).append(name)
+        frozen = {key: tuple(names) for key, names in index.items()}
+        cls._MODULE_FILE_INDEX = ((cwd, registry), frozen)
+        return frozen
+
+    @classmethod
     def _compiler_input_module(cls, path: Path) -> p.Result[str]:
         """Name the one registered module whose physical file is a compiler input.
 
@@ -3999,16 +4040,10 @@ class FlextInfraWorkspaceNativeReference:
             The unique registered module owning the physical input file.
 
         """
-        if path.absolute() == Path(sys.executable).resolve():
+        target = path.absolute()
+        if target == Path(sys.executable).resolve():
             return r[str].ok("builtins")
-        owners = sorted(
-            name
-            for name, module in tuple(sys.modules.items())
-            if name != "__main__"
-            and type(module) is ModuleType
-            and type(declared := cls._module_namespace(module).get("__file__")) is str
-            and Path(declared).absolute() == path.absolute()
-        )
+        owners = sorted(cls._module_file_owners().get(str(target), ()))
         if len(owners) != 1:
             return r[str].fail(
                 f"generated compiler input has no unique registered module: {path}; "

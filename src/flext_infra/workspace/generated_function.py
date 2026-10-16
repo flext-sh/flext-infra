@@ -22,7 +22,7 @@ from types import (
     ModuleType,
     WrapperDescriptorType,
 )
-from typing import TypeIs
+from typing import ClassVar, TypeIs
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.workspace.environment_provenance import (
@@ -33,6 +33,10 @@ from flext_infra.workspace.environment_provenance import (
 class FlextInfraWorkspaceGeneratedFunction:
     """Interpret a closed compiler's data without invoking its Python callbacks."""
 
+    # Process-wide memo of exact physical sources (flext-zd80z).
+    _PARSED: ClassVar[dict[t.Pair[str, str | bytes], ast.Module]] = {}
+    _COMPILED: ClassVar[dict[t.Triple[str, bytes, int], CodeType]] = {}
+
     def __init__(self, witness: m.Infra.NativeSourceWitness) -> None:
         """Keep all observations local to the current immutable source witness."""
         self._witness = witness
@@ -40,9 +44,8 @@ class FlextInfraWorkspaceGeneratedFunction:
             witness.source: witness.state,
         }
         self._trees: dict[Path, ast.Module] = {
-            witness.source: ast.parse(
-                witness.module.source_code,
-                filename=str(witness.source),
+            witness.source: self._parsed(
+                str(witness.source), witness.module.source_code
             ),
         }
         self._codes: dict[Path, p.Infra.NativeCodeIdentity] = {
@@ -51,6 +54,46 @@ class FlextInfraWorkspaceGeneratedFunction:
         self._emitted: dict[int, m.Infra.NativeGeneratedFunctionProof] = {}
         self._dictionaries: set[int] = set()
         self._patterns: dict[int, str] = {}
+
+    @classmethod
+    def _parsed(cls, filename: str, content: str | bytes) -> ast.Module:
+        """Parse one exact physical source once per process (flext-zd80z).
+
+        Every proof engine re-read and re-parsed the same compiler modules
+        (``dataclasses``, ``collections``, ``functools``) for each receiver.
+        The key is the file name plus the exact bytes the engine just read and
+        recorded as its input, so a changed file is always parsed again; the
+        tree is only read, never mutated, by the proofs. The memo is plain
+        data: a ``functools`` cache wrapper would itself become a native
+        operand without callback-free storage in this module's own capture.
+
+        Returns:
+            The module AST of exactly that content.
+
+        """
+        key = (filename, content)
+        tree = cls._PARSED.get(key)
+        if tree is None:
+            tree = ast.parse(content, filename=filename)
+            cls._PARSED[key] = tree
+        return tree
+
+    @classmethod
+    def _compiled(cls, filename: str, content: bytes, optimize: int) -> CodeType:
+        """Compile one exact physical source once per process (flext-zd80z).
+
+        Returns:
+            The module code object of exactly that content and optimization.
+
+        """
+        key = (filename, content, optimize)
+        code = cls._COMPILED.get(key)
+        if code is None:
+            code = builtins.compile(
+                content, filename, "exec", dont_inherit=True, optimize=optimize
+            )
+            cls._COMPILED[key] = code
+        return code
 
     @classmethod
     def compile(
@@ -2254,17 +2297,11 @@ class FlextInfraWorkspaceGeneratedFunction:
                 msg = f"closed compiler source is absent: {path}"
                 raise ValueError(msg)
             self._inputs[path] = state
-            self._trees[path] = ast.parse(state.content, filename=str(path))
+            self._trees[path] = self._parsed(str(path), state.content)
             compiled = (
                 FrozenImporter.get_code(specification.name)
                 if frozen
-                else builtins.compile(
-                    state.content,
-                    str(path),
-                    "exec",
-                    dont_inherit=True,
-                    optimize=sys.flags.optimize,
-                )
+                else self._compiled(str(path), state.content, sys.flags.optimize)
             )
             if type(compiled) is not CodeType:
                 msg = "closed compiler supplier has no native compiled code"
