@@ -194,6 +194,24 @@ class TestsFlextInfraModEvidenceInputs:
                 ("right-global", "'right'"),
             ],
         )
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        resource = rules[0].resource
+        declaration = tm.ok(u.Cli.yaml_safe_load(resource))
+        tm.ok(
+            u.Cli.yaml_dump(
+                resource,
+                {**declaration, "rule": {"pattern": repr("changed")}},
+            ),
+        )
+        stale = FlextInfraModGateEngine.scan(
+            mod_workspace, fix=False, plan=plan, source_files=(source,)
+        )
+        tm.fail(stale)
+        tm.that(stale.error, has="catalog membership changed")
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),
+            eq=before,
+        )
 
     @staticmethod
     def test_native_record_digest_and_operational_fields_fail_closed(
@@ -449,7 +467,19 @@ class TestsFlextInfraModEvidenceInputs:
         )
         encoded = receipt.path.read_bytes()
         restored = m.Infra.ModScanEvidence.model_validate_json(encoded)
-        tm.that(encoded.count(b"descriptor evidence sentinel"), eq=1)
+        source_state = tm.not_none(report.entries[0].source_state)
+        strings = u.type_adapter(str)
+        content = strings.dump_json(
+            strings.validate_python(
+                source_state.model_dump(mode="json")["content"],
+                strict=True,
+            ),
+        )
+        tm.that(encoded.count(content), eq=1)
+        tm.that(
+            sum(state.path == source for state in restored.inputs.states),
+            eq=1,
+        )
         tm.that(u.Cli.sha256_bytes(encoded), eq=receipt.sha256)
         tm.that(restored.deferred, eq=1)
         tm.that(

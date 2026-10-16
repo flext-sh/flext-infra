@@ -57,7 +57,16 @@ class TestsFlextInfraRuleCatalogCache:
 
     @staticmethod
     def _catalog_entries(project: Path, entries: frozenset[str]) -> frozenset[str]:
-        """Select the actual cache records owned by this test's local catalog."""
+        """Select the actual cache records owned by this test's local catalog.
+
+        Args:
+            project: The path to the local project containing the catalog.
+            entries: The set of cache entry filenames to filter.
+
+        Returns:
+            A frozenset of cache entry filenames that are actually owned by the local catalog.
+
+        """
         directory = u.Infra.external_cache_directory(
             config.Infra.codegen.make.codemod_rules_cache,
         )

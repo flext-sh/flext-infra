@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 import traceback
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from functools import partial
 from pathlib import Path
 from typing import Literal
@@ -1097,7 +1097,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         package_dir: Path,
         family: Literal["u", "p", "m"],
         binding: t.Triple[
-            p.Infra.RopeProject, m.Infra.CodemodSourceEpoch, t.MappingKV[Path, str]
+            p.Infra.RopeProject,
+            Callable[[], tuple[m.Cli.AtomicFileState, ...]],
+            t.MappingKV[Path, str],
         ],
     ) -> t.SequenceOf[m.Infra.CodegenFilePlan]:
         """Retain the original diagnostic while collecting independent plans.
@@ -1162,7 +1164,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         package_dir: Path,
         family: Literal["u", "p", "m"],
         binding: t.Triple[
-            p.Infra.RopeProject, m.Infra.CodemodSourceEpoch, t.MappingKV[Path, str]
+            p.Infra.RopeProject,
+            Callable[[], tuple[m.Cli.AtomicFileState, ...]],
+            t.MappingKV[Path, str],
         ],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan one projected facade for the discovered package layout.
@@ -1174,7 +1178,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             ValueError: If a rendered facade has no declaring package module.
 
         """
-        project, epoch, sources = binding
+        project, consumed_states, sources = binding
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         rendered = u.Infra.render_utility_facade(
             package_dir,
@@ -1194,7 +1198,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(utility_plan)
         inputs = FlextInfraCodegenPreconditions.unique_states((
             *utility_plan.value.source_states,
-            *epoch.snapshot.states,
+            *consumed_states(),
         ))
         if inputs.failure:
             return result_type.from_failure(inputs)
