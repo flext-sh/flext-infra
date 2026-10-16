@@ -168,10 +168,9 @@ class TestsFlextInfraRopeContracts:
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
-    @pytest.mark.parametrize(
-        "namespace",
-        ["flext_tap_ldif", "flext_target_ldif", "flext_dbt_ldif"],
-    )
+    # Outer facades from this project's own declared FLEXT dependencies; a
+    # library test never imports a downstream consumer it does not install.
+    @pytest.mark.parametrize("namespace", ["flext_core", "flext_cli"])
     def test_outer_facades_preserve_nested_contracts(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         namespace: str,
