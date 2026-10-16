@@ -601,38 +601,49 @@ class FlextInfraWorkspaceNativeReference:
         )
 
     @classmethod
-    def _generated_function_matches(
+    def _generated_function_mismatch(
         cls, value: FunctionType, expected: m.Infra.NativeGeneratedFunctionProof
-    ) -> bool:
+    ) -> str | None:
         """Compare all immutable executable construction inputs in native order.
 
         Returns:
-            Whether code, defaults, closure, namespaces and annotations agree.
+            The first differing construction input, or None when all agree.
 
         """
-        if (
-            not cls._code_matches(
-                cls._code_evidence(value.__code__),
-                cls._code_evidence(expected.code),
-            )
-            or not cls._same_construction(value.__defaults__, expected.defaults)
-            or not cls._same_construction(
-                value.__kwdefaults__, expected.keyword_defaults
-            )
+        if not cls._code_matches(
+            cls._code_evidence(value.__code__),
+            cls._code_evidence(expected.code),
         ):
-            return False
-        return (
-            cls._same_construction(
+            return "code"
+        observed_globals = value.__globals__
+        differing = sorted(
+            key
+            for key in {*observed_globals, *expected.globals}
+            if key not in observed_globals
+            or key not in expected.globals
+            or not cls._same_construction(
+                observed_globals[key], expected.globals[key]
+            )
+        )
+        checks = (
+            ("defaults", value.__defaults__, expected.defaults),
+            ("keyword_defaults", value.__kwdefaults__, expected.keyword_defaults),
+            (
+                "closure",
                 tuple(cell.cell_contents for cell in value.__closure__ or ()),
                 expected.closure,
-            )
-            and cls._same_construction(value.__globals__, expected.globals)
-            and cls._same_construction(
+            ),
+            (
+                "builtins",
                 vars(FunctionType)["__builtins__"].__get__(value, FunctionType),
                 expected.globals.get("__builtins__"),
-            )
-            and cls._same_construction(value.__annotations__, expected.annotations)
+            ),
+            ("annotations", value.__annotations__, expected.annotations),
         )
+        for name, observed, constructed in checks:
+            if not cls._same_construction(observed, constructed):
+                return name
+        return f"globals {differing[:8]}" if differing else None
 
     @classmethod
     def _same_construction(
@@ -691,10 +702,12 @@ class FlextInfraWorkspaceNativeReference:
         supplier, attribute, expected = compiled.value
         if not cls._generated_storage_native(expected):
             return result_type.fail("generated compiler returned non-native storage")
-        if not cls._generated_function_matches(value, expected):
+        mismatch = cls._generated_function_mismatch(value, expected)
+        if mismatch is not None:
             return result_type.fail(
                 f"generated executable differs from its physical compiler: "
-                f"{supplier}::{attribute}; qualname={value.__qualname__[:160]}"
+                f"{supplier}::{attribute}; qualname={value.__qualname__[:160]}; "
+                f"differs={mismatch}"
             )
         for state in expected.inputs:
             current = u.Cli.atomic_read_binary_file_state(state.path, required=True)
