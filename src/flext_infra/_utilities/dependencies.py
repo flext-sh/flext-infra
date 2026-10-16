@@ -149,7 +149,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
         )
         for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
             wheel = None if wheel is None else u.Cli.toml_mapping_child(wheel, key)
-        return result_type.ok(dict[str, t.JsonValue]() if wheel is None else wheel)
+        return result_type.ok({} if wheel is None else wheel)
 
     @staticmethod
     def _shipped_import_base(
@@ -199,7 +199,7 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
             return result_type.from_failure(shipped)
         sources: p.Result[t.StrMapping] = u.validate_value(
             t.Infra.STR_MAPPING_ADAPTER,
-            wheel.value.get("sources", dict[str, str]()),
+            wheel.value.get("sources", {}),
             strict=True,
         )
         if sources.failure:

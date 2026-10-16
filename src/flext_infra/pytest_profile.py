@@ -108,30 +108,60 @@ class FlextInfraPytestProfile:
                 binding = self._record_context(reports_root, preexisting)
             finally:
                 finished = self._finish(profile)
-            publication_failure = (
-                binding.exception or RuntimeError(binding.error)
-                if binding.failure
-                else None
-            )
-            if finished.failure:
-                finish_failure = finished.exception or RuntimeError(finished.error)
-                if publication_failure is None:
-                    publication_failure = finish_failure
-                else:
-                    publication_failure.add_note(
-                        "profile finalization failed:\n"
-                        + "".join(traceback.format_exception(finish_failure)),
-                    )
+            publication_failure = self._publication_failure(binding, finished)
             if publication_failure is not None:
-                if failure is None and outcome in {None, 0}:
-                    raise publication_failure
-                if failure is not None:
-                    failure.add_note(
-                        "profile publication failed:\n"
-                        + "".join(traceback.format_exception(publication_failure)),
-                    )
-                else:
-                    traceback.print_exception(publication_failure)
+                self._settle_publication_failure(
+                    publication_failure, failure, outcome
+                )
+
+    @staticmethod
+    def _publication_failure(
+        binding: p.Result[bool], finished: p.Result[bool]
+    ) -> BaseException | None:
+        """Compose the receipt-binding and profile-finalization failures.
+
+        Returns:
+            The binding failure carrying the finalization failure as a note, the
+            single failure that occurred, or None when both succeeded.
+
+        """
+        binding_failure = (
+            binding.exception or RuntimeError(binding.error)
+            if binding.failure
+            else None
+        )
+        if not finished.failure:
+            return binding_failure
+        finish_failure = finished.exception or RuntimeError(finished.error)
+        if binding_failure is None:
+            return finish_failure
+        binding_failure.add_note(
+            "profile finalization failed:\n"
+            + "".join(traceback.format_exception(finish_failure)),
+        )
+        return binding_failure
+
+    @staticmethod
+    def _settle_publication_failure(
+        publication_failure: BaseException,
+        failure: BaseException | None,
+        outcome: int | None,
+    ) -> None:
+        """Raise a publication failure of a clean run; attach it to a failed one.
+
+        Raises:
+            BaseException: The publication failure when the run itself passed.
+
+        """
+        if failure is None and outcome in {None, 0}:
+            raise publication_failure
+        if failure is not None:
+            failure.add_note(
+                "profile publication failed:\n"
+                + "".join(traceback.format_exception(publication_failure)),
+            )
+            return
+        traceback.print_exception(publication_failure)
 
     def _finish(self, profile: cProfile.Profile) -> p.Result[bool]:
         """Keep raw profiles on early failure, but publish only this run's receipt.
@@ -161,54 +191,61 @@ class FlextInfraPytestProfile:
             self.output,
             immutable_output=process_profile,
         )
-        receipt_json: str | None = None
-        if self.context is not None:
-            receipt = self.context.model_copy(
+        context = self.context
+        if context is None:
+            return r[bool].ok(value=True)
+        receipt_json = (
+            context.model_copy(
                 update={
                     "profile_sha256": u.Cli.sha256_bytes(process_profile.read_bytes())
                 },
-            )
-            receipt_json = receipt.model_dump_json(indent=2) + "\n"
+            ).model_dump_json(indent=2)
+            + "\n"
+        )
+        for destination in (process_profile, self.output):
             written = u.Cli.atomic_write_text_file(
-                process_profile.with_suffix(".pstats.json"),
+                destination.with_suffix(".pstats.json"),
                 receipt_json,
             )
             if written.failure:
                 return written
+        if context.report_directory is None:
+            return r[bool].ok(value=True)
+        return self._publish_child_receipts(context, context.report_directory)
+
+    @staticmethod
+    def _publish_child_receipts(
+        context: m.Infra.PytestRunContext, directory: Path
+    ) -> p.Result[bool]:
+        """Bind every child, selection, inventory and suite profile to the run.
+
+        Returns:
+            The first receipt publication failure or successful publication.
+
+        """
+        policy = config.Infra.tooling.tools.pytest
+        profiles = sorted(
+            (directory / policy.profile_process_directory).glob("*.pstats")
+        )
+        profiles.extend(
+            artifact
+            for artifact in (
+                directory / c.Infra.PYTEST_SELECTION_PROFILE_FILENAME,
+                directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME,
+                directory / policy.profile_suite_filename,
+            )
+            if artifact.is_file()
+        )
+        for child in profiles:
+            child_receipt = context.model_copy(
+                update={"profile_sha256": u.Cli.sha256_bytes(child.read_bytes())},
+            )
             written = u.Cli.atomic_write_text_file(
-                self.output.with_suffix(".pstats.json"),
-                receipt_json,
+                child.with_suffix(".pstats.json"),
+                child_receipt.model_dump_json(indent=2) + "\n",
             )
             if written.failure:
                 return written
-        if self.context is not None:
-            directory = self.context.report_directory
-            if directory is not None:
-                children = directory / policy.profile_process_directory
-                profiles = sorted(children.glob("*.pstats"))
-                profiles.extend(
-                    artifact
-                    for artifact in (
-                        directory / c.Infra.PYTEST_SELECTION_PROFILE_FILENAME,
-                        directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME,
-                    )
-                    if artifact.is_file()
-                )
-                suite = directory / policy.profile_suite_filename
-                if suite.is_file():
-                    profiles.append(suite)
-                for child in profiles:
-                    child_receipt = self.context.model_copy(
-                        update={
-                            "profile_sha256": u.Cli.sha256_bytes(child.read_bytes())
-                        },
-                    )
-                    written = u.Cli.atomic_write_text_file(
-                        child.with_suffix(".pstats.json"),
-                        child_receipt.model_dump_json(indent=2) + "\n",
-                    )
-                    if written.failure:
-                        return written
         return r[bool].ok(value=True)
 
 
