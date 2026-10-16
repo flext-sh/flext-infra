@@ -2286,9 +2286,10 @@ class FlextInfraWorkspaceGeneratedFunction:
     ) -> t.VariadicTuple[str]:
         """Name stored field annotations built over types with authored hooks.
 
-        ``Union[...]`` and other typing forms hash and compare their operands
-        while the class body runs; an operand whose metaclass defines those
-        hooks ran authored code, so its stored annotation is not closed data.
+        ``Union[...]`` and other typing forms hash, compare and read attributes
+        of their operands while the class body runs; an operand whose metaclass
+        defines those hooks ran authored code, so its stored annotation is not
+        closed data.
 
         Returns:
             The fields whose stored annotation graph reaches such an operand.
@@ -2298,7 +2299,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         fields = storage.get("__dataclass_fields__")
         if type(fields) is not dict:
             return ()
-        hooks = frozenset({"__hash__", "__eq__"})
+        hooks = frozenset({"__hash__", "__eq__", "__getattribute__"})
         hooked: list[str] = []
         for name, field in fields.items():
             pending: list[p.AttributeProbe] = [self._field_slot(field, "type")]
