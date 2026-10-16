@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import Generator, MutableMapping
+from collections.abc import Callable, Generator, MutableMapping
 from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Literal
@@ -20,7 +20,7 @@ from libcst.codemod.commands.rename import RenameCommand
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
 
-from flext_infra import c, m, p, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesIterationDirectory,
@@ -29,13 +29,13 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
+from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
 from flext_infra._utilities.codegen_facade_syntax import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
 )
-from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
 
 
 class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
@@ -51,14 +51,14 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
-            m.Infra.CodemodSourceEpoch,
+            Callable[[], tuple[m.Cli.AtomicFileState, ...]],
             t.MappingKV[Path, str],
         ]
     ]:
         """Share one authenticated native source graph across a planning pass.
 
         Yields:
-            The closed Rope project, original epoch and planned source overlay.
+            The native Rope project, original-state reader and planned sources.
 
         """
         root = root.resolve()
@@ -80,58 +80,60 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 ),
             ),
         ).states
-        member_paths = tuple(
-            state.path
+        direct_states = tuple(
+            state
             for state in source_states
             if state.path.is_relative_to(root)
-            and state.content is not None
             and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
         )
-        captured = FlextInfraUtilitiesCodemodProject.codemod_binding_snapshot(
-            root,
-            tuple(
-                state
-                for state in source_states
-                if state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-            ),
-            projects=(
-                m.Infra.CodemodBindingProject(
-                    root=root,
-                    source_paths=member_paths,
-                    modules=(),
-                ),
-            ),
-        )
-        epoch = FlextInfraUtilitiesCodemodProject.codemod_source_epoch(captured)
-        u.Cli.atomic_verify_binary_file_states(epoch.snapshot.states).unwrap()
+        u.Cli.atomic_verify_binary_file_states(direct_states).unwrap()
         proposed = {
             plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
             for plan in declared_files
             if plan.desired_content is not None
         }
-        sources = {**epoch.sources, **proposed}
+        sources = {
+            **{
+                state.path: state.content.decode(c.DEFAULT_ENCODING)
+                for state in direct_states
+                if state.content is not None
+            },
+            **proposed,
+        }
         with (
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
-                FlextInfraUtilitiesRopeRuntime.snapshot_project(
-                    live,
-                    proposed,
-                    captured=epoch,
-                    declared_files=tuple(
-                        plan
-                        for plan in declared_files
-                        if plan.desired_content is not None
-                        and (
-                            isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                            or plan.before.content is None
-                        )
-                    ),
+                FlextInfraRopeProject.from_atomic_reads(
+                    live.root.real_path,
+                    source_states,
+                    [folder.path for folder in live.get_source_folders()],
+                    ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
+                    sources=proposed,
+                    python_path_folders=[
+                        folder.real_path
+                        for folder in live.get_python_path_folders()
+                        if folder.is_folder()
+                    ],
+                    declared_files=declared_files,
                 )
             ) as project,
             project.frozen_layout(),
         ):
-            yield project, epoch, sources
-            u.Cli.atomic_verify_binary_file_states(epoch.snapshot.states).unwrap()
+
+            def consumed_states() -> tuple[m.Cli.AtomicFileState, ...]:
+                """Retain source-parser inputs and native reads without rebaselining.
+
+                Returns:
+                    Original physical states consumed by this planning group.
+
+                """
+                return m.Infra.CodemodBindingSnapshot(
+                    states=(*direct_states, *project.consumed_source_states())
+                ).states
+
+            yield project, consumed_states, sources
+            project.verify_source_states()
+            u.Cli.atomic_verify_binary_file_states(direct_states).unwrap()
 
     @classmethod
     def render_type_facade(
