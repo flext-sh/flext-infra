@@ -608,6 +608,120 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "native dataclass class processor has foreign globals"
             raise ValueError(msg)
         self._function(processor)
+        _source, tree = self._source(compiler)
+        for name in ("Field", "_DataclassParams", "_FuncBuilder"):
+            self._sdk_class(namespace.get(name), namespace, tree)
+
+    def _sdk_class(
+        self,
+        owner: p.AttributeProbe | None,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> t.MappingKV[str, p.AttributeProbe]:
+        """Prove SDK class storage and methods before any instance is constructed.
+
+        Returns:
+            The raw namespace whose native type, bases and source are authenticated.
+
+        Raises:
+            TypeError: If the compiler owner does not have the exact native metaclass.
+            ValueError: If storage, slots or methods differ from the physical class.
+
+        """
+        if type(owner) is not type:
+            msg = "native compiler class has a foreign metaclass"
+            raise TypeError(msg)
+        storage = vars(type)["__dict__"].__get__(owner, type)
+        name = vars(type)["__name__"].__get__(owner, type)
+        if namespace.get(name) is not owner or vars(type)["__bases__"].__get__(
+            owner, type
+        ) != (object,):
+            msg = "native compiler class has foreign identity or bases"
+            raise ValueError(msg)
+        declarations = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == name
+        ]
+        if len(declarations) != 1:
+            msg = "native compiler class has no unique physical declaration"
+            raise ValueError(msg)
+        declaration = declarations[0]
+        module_name = namespace.get("__name__")
+        if type(module_name) is not str:
+            msg = "native compiler class has no physical supplier"
+            raise TypeError(msg)
+        source, _tree = self._source(self._module(module_name))
+        bodies = [
+            code
+            for code in self._codes[source].co_consts
+            if type(code) is CodeType
+            and code.co_name == name
+            and code.co_firstlineno == declaration.lineno
+        ]
+        slots: t.VariadicTuple[str] = ()
+        for member in declaration.body:
+            if isinstance(member, ast.FunctionDef) and not member.decorator_list:
+                self._function(storage.get(member.name))
+            elif (
+                isinstance(member, ast.Assign)
+                and len(member.targets) == 1
+                and isinstance(member.targets[0], ast.Name)
+                and member.targets[0].id == "__slots__"
+            ):
+                slots = self._sdk_slots(owner, storage, member.value, namespace, tree)
+        if len(bodies) != 1 or (
+            set(storage)
+            - set(bodies[0].co_names)
+            - set(slots)
+            - {"__dict__", "__weakref__", "__doc__"}
+        ):
+            msg = "native compiler class has undeclared runtime storage or hooks"
+            raise ValueError(msg)
+        if not self._same_default(
+            ast.get_docstring(declaration), storage.get("__doc__")
+        ):
+            msg = "native compiler class documentation differs from its declaration"
+            raise ValueError(msg)
+        return storage
+
+    def _sdk_slots(
+        self,
+        owner: type,
+        storage: t.MappingKV[str, p.AttributeProbe],
+        expression: ast.expr,
+        namespace: t.MappingKV[str, p.AttributeProbe],
+        tree: ast.Module,
+    ) -> t.VariadicTuple[str]:
+        """Check each source-declared slot through its native owning descriptor.
+
+        Returns:
+            Slot names whose native descriptors have their exact physical owner.
+
+        Raises:
+            TypeError: If the physical slot declaration is not a tuple of names.
+            ValueError: If a slot descriptor is replaced or belongs to another class.
+
+        """
+        slots = self._default(expression, namespace, tree)
+        if type(slots) is not tuple:
+            msg = "native compiler slots are not a physical tuple"
+            raise TypeError(msg)
+        names: list[str] = []
+        for name in slots:
+            if type(name) is not str:
+                msg = "native compiler slot name is not a physical string"
+                raise TypeError(msg)
+            descriptor = storage.get(name)
+            if (
+                type(descriptor) is not MemberDescriptorType
+                or descriptor.__objclass__ is not owner
+                or descriptor.__name__ != name
+            ):
+                msg = "native compiler slot descriptor differs from its declaration"
+                raise ValueError(msg)
+            names.append(name)
+        return tuple(names)
 
     @staticmethod
     def _tuple_constructor_diagnostic(
@@ -1271,14 +1385,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         ):
             msg = "closed compiler function has unsupported closure or future inputs"
             raise ValueError(msg)
-        candidates = tuple(
-            item
-            for item in tree.body
-            if isinstance(item, ast.FunctionDef)
-            and item.name == function.__name__
-            and item.lineno == function.__code__.co_firstlineno
-            and not item.decorator_list
-        )
+        candidates = self._function_declarations(function, tree)
         pending = [self._codes[path]]
         matched = False
         while pending:
@@ -1327,6 +1434,36 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "closed compiler defaults differ from physical source bindings"
             raise ValueError(msg)
         return declaration, tree, namespace
+
+    @staticmethod
+    def _function_declarations(
+        function: FunctionType, tree: ast.Module
+    ) -> t.VariadicTuple[ast.FunctionDef]:
+        """Locate the physical module or class method without running its body.
+
+        Returns:
+            Undecorated declarations matching the native qualified code identity.
+
+        """
+        nodes: t.SequenceOf[ast.stmt] = tree.body
+        components = function.__code__.co_qualname.split(".")
+        for component in components[:-1]:
+            parents = [
+                node
+                for node in nodes
+                if isinstance(node, ast.ClassDef) and node.name == component
+            ]
+            if len(parents) != 1:
+                return ()
+            nodes = parents[0].body
+        return tuple(
+            node
+            for node in nodes
+            if isinstance(node, ast.FunctionDef)
+            and node.name == components[-1]
+            and node.lineno == function.__code__.co_firstlineno
+            and not node.decorator_list
+        )
 
     @staticmethod
     def _same_default(
@@ -1381,6 +1518,22 @@ class FlextInfraWorkspaceGeneratedFunction:
                     ]
                     sentinel = namespace[node.id]
                     match definitions:
+                        case [
+                            ast.ClassDef(
+                                decorator_list=[],
+                                bases=[],
+                                keywords=[],
+                                body=[ast.Pass()],
+                            )
+                        ]:
+                            if (
+                                type(owner) is type
+                                and type(sentinel) is owner
+                                and vars(type)["__bases__"].__get__(owner, type(owner))
+                                == (object,)
+                            ):
+                                self._sdk_class(owner, namespace, tree)
+                                return sentinel
                         case [
                             ast.ClassDef(
                                 decorator_list=[],
