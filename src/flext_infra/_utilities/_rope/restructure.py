@@ -111,8 +111,7 @@ class FlextInfraRopeRestructure(Restructure):
                 for binding, declaration in self.import_policy.items()
                 if binding not in names
             )
-        native: p.Infra.RopeRestructure = super()
-        return native._add_imports(resource, source, list(selected))
+        return super()._add_imports(resource, source, list(selected))
 
 
 __all__: list[str] = ["FlextInfraRopeRestructure"]

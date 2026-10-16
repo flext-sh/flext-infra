@@ -353,10 +353,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             if contract.custom
             else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
         )
-        if custom_result.failure:
-            return result_type.from_failure(custom_result)
-        lazy_result = (
-            self._planned_lazy_init_files(root)
+        lazy_result = custom_result.flat_map(
+            lambda _: self._planned_lazy_init_files(root)
             if contract.tooling
             else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
         )

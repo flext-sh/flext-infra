@@ -64,16 +64,20 @@ class TestsFlextInfraNativeModelProvenance:
         for name, content in (
             (
                 "METADATA",
-                "Metadata-Version: 2.4\n"
-                "Name: parameterized-model-consumer\nVersion: 1.0\n",
+                (
+                    "Metadata-Version: 2.4\n"
+                    "Name: parameterized-model-consumer\nVersion: 1.0\n"
+                ),
             ),
             ("top_level.txt", "parameterized_model_consumer\n"),
             (
                 "RECORD",
-                f"{metadata.name}/METADATA,,\n"
-                f"{metadata.name}/top_level.txt,,\n"
-                f"{metadata.name}/RECORD,,\n"
-                "parameterized_model_consumer/__init__.py,,\n",
+                (
+                    f"{metadata.name}/METADATA,,\n"
+                    f"{metadata.name}/top_level.txt,,\n"
+                    f"{metadata.name}/RECORD,,\n"
+                    "parameterized_model_consumer/__init__.py,,\n"
+                ),
             ),
         ):
             tm.ok(u.Cli.atomic_write_text_file(metadata / name, content))

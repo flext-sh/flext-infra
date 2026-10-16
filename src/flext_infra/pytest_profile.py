@@ -12,7 +12,7 @@ import sys
 import traceback
 from pathlib import Path
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra._pytest_clock import FlextInfraPytestClock
 from flext_infra.validate import FlextInfraPytestRunner
 
@@ -27,29 +27,37 @@ class FlextInfraPytestProfile:
 
     def _record_context(
         self, reports_root: Path, preexisting: frozenset[Path]
-    ) -> None:
+    ) -> p.Result[bool]:
         """Bind only the context produced by this profiling invocation.
 
         Args:
             reports_root: The runner's declared report tree.
             preexisting: Context receipts observed before the runner started.
 
-        Raises:
-            RuntimeError: The invocation produced more than one matching context.
+        Returns:
+            The binding result, retaining native read or validation failures.
 
         """
-        owned = [
-            receipt
-            for receipt in reports_root.glob(f"*-{os.getpid()}/run-context.json")
-            if receipt not in preexisting
-        ]
+        try:
+            owned = [
+                receipt
+                for receipt in reports_root.glob(f"*-{os.getpid()}/run-context.json")
+                if receipt not in preexisting
+            ]
+            content = owned[0].read_bytes() if len(owned) == 1 else None
+        except OSError as read_failure:
+            return r[bool].fail(str(read_failure), exception=read_failure)
         if len(owned) > 1:
             msg = f"profiled run published more than one run context: {owned}"
-            raise RuntimeError(msg)
-        if owned:
-            self.context = m.Infra.PytestRunContext.model_validate_json(
-                owned[0].read_text(encoding=c.DEFAULT_ENCODING),
-            )
+            return r[bool].fail(msg, exception=RuntimeError(msg))
+        if content is not None:
+            try:
+                self.context = m.Infra.PytestRunContext.model_validate_json(content)
+            except c.ValidationError as validation_failure:
+                return r[bool].fail(
+                    str(validation_failure), exception=validation_failure
+                )
+        return r[bool].ok(True)
 
     def run_parent(
         self, *, started_at_monotonic: float, profile: cProfile.Profile
@@ -96,14 +104,17 @@ class FlextInfraPytestProfile:
             return outcome
         finally:
             failure = sys.exception()
-            publication_failure: BaseException | None = None
             try:
-                self._record_context(reports_root, preexisting)
-            except BaseException as binding_failure:
-                publication_failure = binding_failure
-            try:
-                self._finish(profile)
-            except BaseException as finish_failure:
+                binding = self._record_context(reports_root, preexisting)
+            finally:
+                finished = self._finish(profile)
+            publication_failure = (
+                binding.exception or RuntimeError(binding.error)
+                if binding.failure
+                else None
+            )
+            if finished.failure:
+                finish_failure = finished.exception or RuntimeError(finished.error)
                 if publication_failure is None:
                     publication_failure = finish_failure
                 else:
@@ -127,8 +138,27 @@ class FlextInfraPytestProfile:
                             f"profile diagnostic emission failed: {diagnostic_failure}",
                         )
 
-    def _finish(self, profile: cProfile.Profile) -> None:
-        """Keep raw profiles on early failure, but publish only this run's receipt."""
+    def _finish(self, profile: cProfile.Profile) -> p.Result[bool]:
+        """Keep raw profiles on early failure, but publish only this run's receipt.
+
+        Returns:
+            The publication result, retaining native profile I/O failures.
+
+        """
+        try:
+            return self._publish_profile(profile)
+        except OSError as publication_failure:
+            return r[bool].fail(
+                str(publication_failure), exception=publication_failure
+            )
+
+    def _publish_profile(self, profile: cProfile.Profile) -> p.Result[bool]:
+        """Publish raw stats before the associated run and child receipts.
+
+        Returns:
+            The first receipt publication failure or successful publication.
+
+        """
         policy = config.Infra.tooling.tools.pytest
         process_dir = self.output.parent / policy.profile_process_directory
         process_dir.mkdir(parents=True, exist_ok=True)
@@ -146,14 +176,18 @@ class FlextInfraPytestProfile:
                 },
             )
             receipt_json = receipt.model_dump_json(indent=2) + "\n"
-            u.Cli.atomic_write_text_file(
+            written = u.Cli.atomic_write_text_file(
                 process_profile.with_suffix(".pstats.json"),
                 receipt_json,
-            ).unwrap()
-            u.Cli.atomic_write_text_file(
+            )
+            if written.failure:
+                return written
+            written = u.Cli.atomic_write_text_file(
                 self.output.with_suffix(".pstats.json"),
                 receipt_json,
-            ).unwrap()
+            )
+            if written.failure:
+                return written
         if self.context is not None:
             directory = self.context.report_directory
             if directory is not None:
@@ -176,10 +210,13 @@ class FlextInfraPytestProfile:
                             "profile_sha256": u.Cli.sha256_bytes(child.read_bytes())
                         },
                     )
-                    u.Cli.atomic_write_text_file(
+                    written = u.Cli.atomic_write_text_file(
                         child.with_suffix(".pstats.json"),
                         child_receipt.model_dump_json(indent=2) + "\n",
-                    ).unwrap()
+                    )
+                    if written.failure:
+                        return written
+        return r[bool].ok(True)
 
 
 __all__: list[str] = ["FlextInfraPytestProfile"]

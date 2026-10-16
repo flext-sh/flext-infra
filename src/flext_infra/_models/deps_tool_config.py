@@ -254,7 +254,9 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(
                 alias="loadscope-reorder",
                 strict=True,
-                description="Let the native loadscope scheduler reorder scopes by size.",
+                description=(
+                    "Let the native loadscope scheduler reorder scopes by size."
+                ),
             ),
         ]
         parallel_schedule_chunk: Annotated[
