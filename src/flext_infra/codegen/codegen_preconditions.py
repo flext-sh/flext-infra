@@ -850,42 +850,31 @@ class FlextInfraCodegenPreconditions:
             The exact reference with its Pydantic-owned private birth storage.
 
         """
-        admitted = m.Infra.NativeImportReference(
-            **reference.model_dump(),
-            source_authority=authority,
+        return r[m.Infra.NativeImportReference].ok(
+            m.Infra.NativeImportReference(
+                **reference.model_dump(),
+                source_authority=authority,
+            ),
         )
-        private = admitted.__pydantic_private__
-        if private is None:
-            return r[m.Infra.NativeImportReference].fail(
-                "native admission has no Pydantic private storage"
-            )
-        private["_native_birth"] = (
-            id(admitted),
-            u.Cli.sha256_bytes(admitted.model_dump_json().encode(c.DEFAULT_ENCODING)),
-        )
-        return r[m.Infra.NativeImportReference].ok(admitted)
 
-    @staticmethod
-    def reference_birth_current(
+    @classmethod
+    def reference_current(
+        cls,
         reference: m.Infra.NativeImportReference,
     ) -> p.Result[bool]:
-        """Require the exact live object emitted by full native authentication.
+        """Re-prove a native reference by value against its sealed authority.
+
+        A reference is a value: the same producer is current on every path
+        (live, journaled, recovered) exactly when its source authority still
+        proves the capturing runtime, module election and pinned inputs.
 
         Returns:
-            The original birth/payload proof, never authority reconstructed from JSON.
+            Success only while the reference's source authority is current.
 
         """
         if type(reference) is not m.Infra.NativeImportReference:
-            return r[bool].fail("native reference lacks its live admission birth")
-        private = reference.__pydantic_private__
-        if private is None or private.get("_native_birth") != (
-            id(reference),
-            u.Cli.sha256_bytes(reference.model_dump_json().encode(c.DEFAULT_ENCODING)),
-        ):
-            return r[bool].fail(
-                "native reference lacks its original admission identity and payload"
-            )
-        return r[bool].ok(value=True)
+            return r[bool].fail("native reference is not an admitted native import")
+        return cls.source_authority_current(reference.source_authority)
 
     @classmethod
     def _executed_source_authority(
@@ -1365,7 +1354,7 @@ class FlextInfraCodegenPreconditions:
         """
         if reference is None:
             return r[bool].fail("producer closure lacks its pre-planning native epoch")
-        birth = FlextInfraCodegenPreconditions.reference_birth_current(reference)
+        birth = FlextInfraCodegenPreconditions.reference_current(reference)
         if birth.failure:
             return birth
         if (
