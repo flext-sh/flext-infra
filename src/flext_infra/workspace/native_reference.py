@@ -4462,19 +4462,27 @@ class FlextInfraWorkspaceNativeReference:
             cls._value, context=context, binding=context.binding_context
         )
         wrapped = vars(facts.value[0]).get("__wrapped__")
+        # A physical function is identified by its compiled name and the module
+        # that executes it; ``__qualname__``/``__module__`` are writable metadata
+        # a library may re-label (attrs re-labels ``evolve`` for each class).
+        qualname, module = (
+            (facts.value[0].__qualname__, facts.value[0].__module__)
+            if facts.generated
+            else (facts.code.co_qualname, facts.value[0].__globals__.get("__name__"))
+        )
         context.evidence.append(
             m.Infra.NativeBindingEvidence(
                 binding=context.binding,
                 kind=kind,
                 supplier=facts.supplier,
                 name=facts.value[0].__name__,
-                qualname=facts.value[0].__qualname__,
+                qualname=qualname,
                 code=cls._code_evidence(
                     facts.code, hashed=cls._generated_hashed(facts.generated_operands)
                 ).model_dump_json(),
                 operands=(
                     *facts.generated_operands,
-                    ("module", observe_value(facts.value[0].__module__)),
+                    ("module", observe_value(module)),
                     (
                         "globals",
                         dumps(
@@ -5399,13 +5407,21 @@ class FlextInfraWorkspaceNativeReference:
             if not agrees
         )
         if differing:
+            receipt_fields = executed.model_dump()
+            derived_fields = derived.model_dump()
             return result_type.fail(
                 "generated receipt differs from its physical compiler: "
                 f"{binding.binding}; differs={differing}; "
-                f"receipt_inputs={metadata.get('generated_inputs')}; "
-                f"derived_inputs={
-                    dumps(tuple(str(state.path) for state in expected.inputs))
-                }"
+                f"code_fields={
+                    tuple(
+                        name
+                        for name in receipt_fields
+                        if receipt_fields[name] != derived_fields.get(name)
+                    )
+                }; "
+                f"receipt_code={executed.filename[:80]}:{executed.firstlineno} "
+                f"{executed.name}; derived_code={derived.filename[:80]}:"
+                f"{derived.firstlineno} {derived.name}"
             )
         return cls._generated_inputs_current(expected, states)
 
