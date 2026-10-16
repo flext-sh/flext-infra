@@ -859,7 +859,7 @@ class FlextInfraCodegenPreconditions:
         if cold.failure:
             return result_type.from_failure(cold)
         reference = cold.value
-        consumed = cls._executed_source_authority(request, reference)
+        consumed = cls._executed_source_authority(request, reference, observed.value)
         if consumed.failure:
             return result_type.from_failure(consumed)
         proof = (
@@ -870,7 +870,7 @@ class FlextInfraCodegenPreconditions:
                     reference, consumed.value.inputs
                 )
             )
-            .flat_map(lambda _: cls._native_inputs_current(request))
+            .flat_map(lambda _: cls._native_runtime_current(request))
             .flat_map(lambda _: cls.source_authority_current(consumed.value))
         )
         return proof.flat_map(
@@ -957,6 +957,7 @@ class FlextInfraCodegenPreconditions:
         cls,
         request: m.Infra.NativeImportRequest,
         observed: m.Infra.NativeImportObservation,
+        original: m.Infra.NativeImportObservation,
     ) -> p.Result[m.Infra.CodegenSourceAuthority]:
         """Bind pre-execution child receipts to the original elected providers.
 
@@ -974,6 +975,9 @@ class FlextInfraCodegenPreconditions:
         )
         if consumed.failure:
             return result_type.from_failure(consumed)
+        bootstrap = cls._bootstrap_source_paths(request.source_authority)
+        if bootstrap.failure:
+            return result_type.from_failure(bootstrap)
         executed = {receipt.path for receipt in observed.executed_sources}
         for supplier, origin, declaration in observed.sources:
             if supplier.partition("::")[0].partition(".")[0] in sys.stdlib_module_names:
@@ -987,8 +991,23 @@ class FlextInfraCodegenPreconditions:
                     return result_type.fail(
                         f"cold producer source was not compiled by its loader: {source}"
                     )
+        graph_sources = {
+            Path(source)
+            for snapshot in (original, observed)
+            for _, origin, declaration in snapshot.sources
+            for source in (origin, declaration)
+            if source
+        }
+        required = graph_sources | executed
         authority = request.source_authority.model_copy(
-            update={"inputs": consumed.value}
+            update={
+                "inputs": tuple(
+                    receipt
+                    for receipt in consumed.value
+                    if receipt.path not in bootstrap.value or receipt.path in required
+                ),
+                "bootstrap_sources": (),
+            }
         )
         return cls.source_authority_current(authority).map(lambda _: authority)
 
@@ -1063,11 +1082,32 @@ class FlextInfraCodegenPreconditions:
             return r[bool].fail(
                 "native import request differs from its elected source authority"
             )
+        bootstrap = cls._bootstrap_source_paths(request.source_authority)
+        if bootstrap.failure:
+            return r[bool].from_failure(bootstrap)
         current = cls.source_authority_current(request.source_authority).flat_map(
-            lambda _: FlextInfraMiseArtifactsVerification.states_current(request.inputs)
+            lambda _: FlextInfraMiseArtifactsVerification.states_current(
+                tuple(
+                    state
+                    for state in request.inputs
+                    if state.path not in bootstrap.value
+                )
+            )
         )
         if current.failure:
             return current
+        return cls._native_runtime_current(request)
+
+    @staticmethod
+    def _native_runtime_current(
+        request: m.Infra.NativeImportRequest,
+    ) -> p.Result[bool]:
+        """Re-prove the request's original physical environment and interpreter.
+
+        Returns:
+            Success only for unchanged environment, prefix and compiler mode.
+
+        """
         environment = u.Infra.runtime_environment_dir(
             request.repository_root,
             runtime_root=request.runtime_root,
@@ -1095,7 +1135,7 @@ class FlextInfraCodegenPreconditions:
                 f"optimize={sys.flags.optimize} "
                 f"expected_optimize={request.source_authority.optimize}"
             )
-        return current
+        return r[bool].ok(value=True)
 
     @classmethod
     def capture_producer(
