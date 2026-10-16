@@ -2351,11 +2351,20 @@ class FlextInfraWorkspaceGeneratedFunction:
         """
         nodes: t.SequenceOf[ast.stmt] = tree.body
         components = function.__code__.co_qualname.split(".")
-        for component in components[:-1]:
+        for index, component in enumerate(components[:-1]):
+            if component == "<locals>":
+                continue
+            # A function parent owns the next scope only through ``<locals>``.
+            local = components[index + 1] == "<locals>"
             parents = [
                 node
                 for node in nodes
-                if isinstance(node, ast.ClassDef) and node.name == component
+                if (
+                    isinstance(node, ast.FunctionDef)
+                    if local
+                    else isinstance(node, ast.ClassDef)
+                )
+                and node.name == component
             ]
             if len(parents) != 1:
                 return ()
@@ -2379,9 +2388,27 @@ class FlextInfraWorkspaceGeneratedFunction:
                 case _:
                     return False
 
+        # functools.wraps(...) returns the same function after recording
+        # __wrapped__; with that native record present, the innermost decorator
+        # may be exactly a call of that binding in the function's own globals.
+        functools_module = sys.modules.get("functools")
+        wraps = vars(functools_module).get("wraps") if functools_module else None
+        wrapped = wraps is not None and "__wrapped__" in vars(function)
+
+        def wraps_marker(expression: ast.expr) -> bool:
+            match expression:
+                case ast.Call(func=ast.Name(id=name)):
+                    return function.__globals__.get(name) is wraps
+                case ast.Call(func=ast.Attribute(value=ast.Name(id=owner), attr="wraps")):
+                    return function.__globals__.get(owner) is functools_module
+                case _:
+                    return False
+
         def decorated(node: ast.FunctionDef) -> bool:
             decorators = node.decorator_list
             if abstract and decorators and abstract_marker(decorators[-1]):
+                decorators = decorators[:-1]
+            if wrapped and decorators and wraps_marker(decorators[-1]):
                 decorators = decorators[:-1]
             match decorators:
                 case []:
