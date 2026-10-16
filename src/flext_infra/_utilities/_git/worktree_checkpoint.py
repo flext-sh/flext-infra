@@ -9,7 +9,9 @@ from __future__ import annotations
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeMaterializationMixin
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitWorktreeMaterializationMixin,
+)
 
 
 class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
@@ -82,7 +84,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
                 repository.checkpoint_sha,
                 "--",
                 *exclusions,
-            ).encode(c.Cli.ENCODING_DEFAULT)
+            ).encode(c.DEFAULT_ENCODING)
         except GitCommandError as exc:
             return r[m.Infra.RepositoryDelta].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:

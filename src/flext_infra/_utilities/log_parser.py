@@ -25,26 +25,20 @@ class FlextInfraUtilitiesLogParser:
     def check_report_findings(
         repository_root: Path,
         *,
-        reports_dir: Path | None = None,
+        reports_dir: Path,
     ) -> p.Result[t.VariadicTuple[m.Infra.SarifResult]]:
         """Read the SARIF report ``check run`` wrote into typed findings.
 
-        ``reports_dir`` mirrors ``check run --reports-dir``: a relative value is
-        anchored at ``repository_root``; omitted, it is the canonical project
-        check report directory the checker writes by default.
+        ``reports_dir`` is the exact invocation directory printed by ``check run``,
+        not its shared base. Relative values are anchored at ``repository_root``.
+        No implicit latest report is selected from concurrent or historical runs.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SarifResult]]``.
 
         """
         report_dir = (
-            u.Cli.resolve_report_dir(
-                repository_root,
-                c.Infra.PROJECT,
-                c.Infra.VERB_CHECK,
-            )
-            if reports_dir is None
-            else (repository_root / reports_dir).resolve()
+            reports_dir if reports_dir.is_absolute() else repository_root / reports_dir
         )
         sarif_path = report_dir / c.Infra.CHECK_REPORT_SARIF_FILENAME
         if not sarif_path.is_file():
@@ -53,7 +47,7 @@ class FlextInfraUtilitiesLogParser:
             )
         return u.validate_value(
             m.Infra.SarifReport,
-            sarif_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            sarif_path.read_text(encoding=c.DEFAULT_ENCODING),
             from_json=True,
         ).map(lambda report: tuple(res for run in report.runs for res in run.results))
 

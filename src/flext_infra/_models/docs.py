@@ -7,16 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import (
-    FlextInfraConfigModels,
     FlextInfraModelsDocsCollection,
     FlextInfraModelsDocsGeneration,
 )
+from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 # Docs transport
@@ -180,14 +181,8 @@ class FlextInfraModelsDocs(
         severity: Annotated[str, m.Field(description="Issue severity")]
         message: Annotated[str, m.Field(description="Issue description")]
 
-    class DocsPublicContract(m.ArbitraryTypesModel):
+    class DocsPublicContract(FlextInfraModelsBase.FrozenArbitrary):
         """Exact project/config objects plus derived public API analysis."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True,
-            extra="forbid",
-            frozen=True,
-        )
 
         metadata: Annotated[
             m.ProjectMetadata,

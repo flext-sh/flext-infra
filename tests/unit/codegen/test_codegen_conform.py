@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import override
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra, r
 from flext_infra.codegen import (
@@ -24,12 +23,25 @@ from flext_infra.codegen import (
 )
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, u
+from tests import c, m, p, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
 
 _LIFECYCLE_EXCEPTION = OSError("conform operation raised after begin")
+
+
+def _assert_conform_check_reaches_fixed_point(root: Path) -> None:
+    """Run a SELF CHECK conform and assert it writes nothing new."""
+    fixed_point = infra.codegen_conform(
+        u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        ),
+    )
+    tm.ok(fixed_point)
+    tm.that(fixed_point.value.written_files, eq=())
 
 
 class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
@@ -246,7 +258,7 @@ class TestsFlextInfraCodegenConform:
         """A raised prepared operation removes invocation-owned root and Git state."""
         root = tmp_path / "exception-scaffold"
         # A new project is created inside a tree that already carries the lock.
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         repository = u.Tests.repository_ref(
             "exception-scaffold",
             role=c.Infra.MakeProfile.STANDALONE,
@@ -415,7 +427,29 @@ class TestsFlextInfraCodegenConform:
         ]
         tm.that(
             addopts,
-            has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
+            eq=list(config.Infra.tooling.tools.pytest.standard_addopts),
+        )
+
+    @staticmethod
+    def _assert_editor_settings(
+        settings_path: Path,
+        root: Path,
+        tmp_path: Path,
+        editor_settings: t.JsonMapping,
+    ) -> None:
+        """Assert the projected VS Code editor settings are workspace-relative."""
+        interpreter = u.type_adapter(str).validate_python(
+            editor_settings["python.defaultInterpreterPath"],
+        )
+        projected_python = root / interpreter.removeprefix("${workspaceFolder}/")
+        tm.that(
+            projected_python.resolve(),
+            eq=u.Infra.runtime_python(root, runtime_root=root),
+        )
+        tm.that(editor_settings["editor.wordWrap"], eq="on")
+        tm.that(
+            str(tmp_path) in settings_path.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=False,
         )
 
     # This end-to-end scenario scaffolds a project and runs its console entry
@@ -433,8 +467,16 @@ class TestsFlextInfraCodegenConform:
         # rows prove the result does not depend on the distribution name.
         """Test new project is complete and idempotent."""
         root = tmp_path / name
-        # The governed tree above the scaffold carries the committed Taplo pin.
-        u.Tests.seed_locked_taplo(tmp_path)
+        settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
+        settings_path.parent.mkdir(parents=True)
+        settings_path.write_text(
+            '{"editor.wordWrap": "on"}\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that((root / c.Infra.GIT_DIR).exists(), eq=False)
+        # The governed tree above the scaffold carries the committed Mise
+        # declaration and lock that activate its locked tools.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         service = FlextInfraCodegenProjectNew(
             flext_source=u.Tests.flext_source(),
             name=name,
@@ -454,6 +496,20 @@ class TestsFlextInfraCodegenConform:
         )
         first = infra.codegen_new(service)
         first_result = tm.ok(first)
+        tm.that(first_result.plan is not None, eq=True)
+        if first_result.plan is None:
+            pytest.fail("generation did not return its actual plan")
+        editor_settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(
+                u.Cli.json_parse(settings_path.read_text(encoding=c.DEFAULT_ENCODING))
+            ),
+        )
+        TestsFlextInfraCodegenConform._assert_editor_settings(
+            settings_path,
+            root,
+            tmp_path,
+            editor_settings,
+        )
         tm.that(bool(first_result.written_files), eq=True)
         tm.that(first_result.written_files.count(root / "README.md"), eq=1)
         tm.that(
@@ -524,7 +580,7 @@ class TestsFlextInfraCodegenConform:
         process = u.Cli.capture(
             [sys.executable, "-m", package_name, "ping"],
             cwd=root,
-            options=u.Cli.ProcessOptions(env={**os.environ, "PYTHONPATH": pythonpath}),
+            options=m.Cli.ProcessOptions(env={**os.environ, "PYTHONPATH": pythonpath}),
             timeout=c.Infra.TIMEOUT_DEFAULT,
         )
         tm.ok(process)
@@ -545,7 +601,7 @@ class TestsFlextInfraCodegenConform:
         )
         selected = u.Cli.run_raw(
             ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
-            options=u.Cli.ProcessOptions(remove_env_keys=("MAKEFLAGS",)),
+            options=m.Cli.ProcessOptions(remove_env_keys=("MAKEFLAGS",)),
         )
 
         selected_process = tm.ok(selected)
@@ -666,15 +722,7 @@ class TestsFlextInfraCodegenConform:
         )
         tm.ok(applied)
 
-        fixed_point = infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            ),
-        )
-        tm.ok(fixed_point)
-        tm.that(fixed_point.value.written_files, eq=())
+        _assert_conform_check_reaches_fixed_point(root)
 
     @staticmethod
     @pytest.mark.slow
@@ -712,8 +760,7 @@ class TestsFlextInfraCodegenConform:
             lacks="scripts",
         )
 
-    # Why (suite budget): two conform apply cycles plus a check over a full
-    # managed tree on a real git repo; the per-case wall only holds idle.
+    # Two conform apply cycles plus a check exercise the slow integration harness.
     @staticmethod
     @pytest.mark.slow
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
@@ -770,15 +817,7 @@ class TestsFlextInfraCodegenConform:
             ),
         )
 
-        fixed_point = infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            ),
-        )
-        tm.ok(fixed_point)
-        tm.that(fixed_point.value.written_files, eq=())
+        _assert_conform_check_reaches_fixed_point(root)
 
     @staticmethod
     @pytest.mark.slow
@@ -803,7 +842,7 @@ class TestsFlextInfraCodegenConform:
             project=u.Tests.project_spec("arbitrary-root"),
         )
         root = tmp_path / "arbitrary-root"
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         service, request = TestsFlextInfraConformSupport.check_conform_service(
             root,
             workspace,
@@ -832,9 +871,7 @@ class TestsFlextInfraCodegenConform:
             u.Tests.codegen_file_text(second_pyproject),
             eq=u.Tests.codegen_file_text(first_pyproject),
         )
-        tm.that(addopts, has=f"--timeout={pytest_policy.case_timeout_seconds}")
-        tm.that(addopts, lacks="--session-timeout")
-        tm.that(set(addopts) >= set(pytest_policy.standard_addopts), eq=True)
+        tm.that(addopts, eq=list(pytest_policy.standard_addopts))
         tm.that(report, lacks="fail_under")
 
     @staticmethod
@@ -853,7 +890,7 @@ class TestsFlextInfraCodegenConform:
         )
         workspace = u.Tests.workspace_spec(repository, project=project)
         root = tmp_path / "consumer"
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         tm.ok(
             infra.codegen_conform(
                 u.Tests.conform_request(

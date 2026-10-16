@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 pytestmark = [pytest.mark.slow]
 
@@ -335,17 +334,41 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats")
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats.json")
 
+    def test_profile_mod_report_uses_the_selected_project_root(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The report adapter runs in the selected Makefile's root, not caller CWD."""
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(),
+            script_dispatch=None,
+        )
+        report = rendered.split("_builtin-profile-mod-report:", 1)[1].split(
+            "\n\n",
+            1,
+        )[0]
+        tm.that(
+            report,
+            has=(
+                '\t@cd "$(PROJECT_ROOT)" || exit $$?; \\\n'
+                "\t\t$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \\\n"
+                '\t\t"$(PROFILE_REPORTS_DIR)/mod.pstats"'
+            ),
+        )
+
     def test_test_verbs_share_the_persistent_testmon_database(
         self,
         tmp_path: Path,
     ) -> None:
-        """Both test verbs run on the one persistent testmon database.
+        """The bounded test verb runs on the one persistent testmon database.
 
         The persistent database is keyed by the declared distribution, so
         every checkout of a project shares one testmon history. The full verb
-        runs against that same database (canonical-commands law: incremental
-        first, then the no-selection pass on the same database), never a
-        cache-less bypass.
+        is the one unbounded runner (canonical-commands test-verb law: local
+        only, without testmon and without any time limit): one ``full`` entry
+        outside PYTEST_BOUNDED, whose runner never hands the database to
+        pytest.
         """
         rendered = self._render_root_makefile(
             tmp_path,
@@ -376,13 +399,9 @@ class TestsFlextInfraScriptDispatchMakefile:
                 f'{cache.database_environment_variable}="$$database"',
             ],
         )
-        tm.that(
-            full,
-            has=[
-                "-m flext_infra._pytest_entry full",
-                f'{cache.database_environment_variable}="$$database"',
-            ],
-        )
+        tm.that(full.count("-m flext_infra._pytest_entry"), eq=1)
+        tm.that(full.rstrip().endswith("-m flext_infra._pytest_entry full"), eq=True)
+        tm.that(full, lacks="PYTEST_BOUNDED")
 
     # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

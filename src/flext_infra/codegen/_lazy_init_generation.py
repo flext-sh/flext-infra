@@ -9,10 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-from flext_infra.codegen._lazy_init_generation_files import (
+from flext_infra.codegen import (
     FlextInfraCodegenLazyInitGenerationFilePlanMixin,
-)
-from flext_infra.codegen._lazy_init_generation_registry import (
     FlextInfraCodegenLazyInitGenerationRegistryMixin,
 )
 
@@ -21,7 +19,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import m, t
-    from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
+    from flext_infra.codegen import FlextInfraCodegenLazyInitPlanner
 
 
 # Root manifests and initializers are synchronized as one artifact set.
@@ -59,6 +57,13 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
             plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
+            if idx == 1 or idx == len(pkg_dirs) or idx % progress_interval == 0:
+                u.Cli.info(
+                    f"lazy-init: resolved {idx}/{len(pkg_dirs)} "
+                    f"package={plan.context.current_pkg} "
+                    f"importable={plan.context.importable} "
+                    f"action={plan.action.value} exports={len(plan.lazy_map)}"
+                )
             if plan.lazy_map:
                 dir_exports[str(pkg_dir.resolve())] = dict(plan.lazy_map)
             should_process = (

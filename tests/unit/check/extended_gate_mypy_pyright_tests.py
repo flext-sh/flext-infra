@@ -9,14 +9,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, config, m, main
+from flext_infra import c, config, m, main, s
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,6 +25,36 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraTypeGates:
     """The selected project's actual findings determine acceptance."""
+
+    @staticmethod
+    def test_omitted_ruff_policy_is_rejected() -> None:
+        """A governed Make policy requires an explicit typed Ruff cache."""
+        configured = config.Infra.codegen.make
+        with pytest.raises(ValueError, match="ruff_cache"):
+            m.Infra.MakeSpec.model_validate(
+                configured.model_dump(
+                    exclude={"ruff_cache"},
+                    exclude_computed_fields=True,
+                ),
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "field",
+        ["data_home_environment_variable", "user_home_environment_variable"],
+    )
+    def test_required_cache_environment_fields_do_not_inherit_defaults(
+        field: str,
+    ) -> None:
+        """Testmon and codemod keep their explicitly required YAML contracts."""
+        configured = config.Infra.codegen.make
+        for policy in (configured.testmon_cache, configured.codemod_rules_cache):
+            payload = policy.model_dump(
+                exclude={field},
+                exclude_computed_fields=True,
+            )
+            with pytest.raises(ValueError, match=field):
+                type(policy).model_validate(payload)
 
     @staticmethod
     @pytest.mark.slow
@@ -105,6 +134,47 @@ class TestsFlextInfraTypeGates:
     @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize(
+        "plugin_output",
+        ["native-plugin-output", "    native-plugin-output", "Deferral trace:"],
+    )
+    def test_mypy_preserves_malformed_native_output(
+        checker_context: m.Infra.GateContext,
+        plugin_output: str,
+    ) -> None:
+        """Unexpected plugin output remains a causal, visible tool failure."""
+        project = checker_context.repository_root
+        plugin = project / "plugin.py"
+        plugin.write_text(
+            "from mypy.plugin import Plugin\n"
+            "def plugin(version: str) -> type[Plugin]:\n"
+            f"    print({plugin_output!r})\n"
+            "    return Plugin\n",
+            encoding="utf-8",
+        )
+        pyproject = project / "pyproject.toml"
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8").replace(
+                "[tool.mypy]\n",
+                '[tool.mypy]\nplugins = ["plugin.py"]\n',
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraMypyGate(project).check(project, checker_context)
+
+        tm.that(result.result.passed, eq=False)
+        tm.that(
+            tuple(issue.code for issue in result.issues),
+            has=c.Infra.ToolOutcome.ERROR,
+        )
+        tm.that(
+            "\n".join(issue.message for issue in result.issues),
+            has=plugin_output,
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
         "gate",
         sorted(c.Infra.TYPE_CHECKER_GATES),
     )
@@ -133,9 +203,11 @@ class TestsFlextInfraTypeGates:
             "--reports-dir",
             str(reports),
         ])
-        informative = gate in config.Infra.codegen.make.ci.informative_check_gates
-        tm.that(code, eq=0 if informative else 1)
-        findings = tm.ok(u.Infra.check_report_findings(project, reports_dir=reports))
+        tm.that(code, eq=1)
+        (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
+        findings = tm.ok(
+            u.Infra.check_report_findings(project, reports_dir=report_path.parent),
+        )
         tm.that(findings, empty=False)
         tm.that(
             any(
@@ -145,6 +217,64 @@ class TestsFlextInfraTypeGates:
             ),
             eq=True,
         )
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        ("module", "service"),
+        [
+            ("flext_infra", "FlextInfraServiceBase"),
+            ("flext_infra", "FlextInfraProjectSelectionServiceBase"),
+            ("flext_infra.codegen", "FlextInfraCodegenExecutionBase"),
+            ("flext_infra", "FlextInfraSonarcloudClient"),
+        ],
+    )
+    def test_mypy_public_service_payload_bound(
+        checker_context: m.Infra.GateContext,
+        module: str,
+        service: str,
+    ) -> None:
+        """The mandatory plugin accepts payloads and reports native bound errors."""
+        project = checker_context.repository_root
+        pyproject = project / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                "[tool.mypy]\n",
+                "[tool.mypy]\n"
+                f"plugins = {list(config.Infra.tooling.tools.mypy.plugins)!r}\n",
+            ),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(s[str](repository_root=project).root, eq=project.resolve())
+        source = project / "src" / "test_pkg" / "payload_bound.py"
+        valid_source = (
+            f"from {module} import {service}\n\n"
+            f"def consume(value: {service}[str]) -> None:\n"
+            "    pass\n"
+        )
+        source.write_text(valid_source, encoding=c.DEFAULT_ENCODING)
+        gate = FlextInfraMypyGate(project)
+
+        accepted = gate.check(project, checker_context)
+
+        assert accepted.result.passed, accepted.raw_output
+        assert not accepted.issues, accepted.raw_output
+        invalid_source = valid_source.replace(f"{service}[str]", f"{service}[set[int]]")
+        source.write_text(invalid_source, encoding=c.DEFAULT_ENCODING)
+
+        rejected = gate.check(project, checker_context)
+
+        assert not rejected.result.passed, rejected.raw_output
+        assert len(rejected.issues) == 1, rejected.raw_output
+        (issue,) = rejected.issues
+        assert issue.code == "type-var", rejected.raw_output
+        assert issue.severity == c.Infra.ERROR, rejected.raw_output
+        diagnostic_path = project / issue.file
+        assert diagnostic_path.resolve() == source.resolve(), rejected.raw_output
+        annotation = invalid_source.splitlines()[2]
+        assert issue.line == 3, rejected.raw_output
+        assert issue.column == annotation.index("set[int]"), rejected.raw_output
+        assert service in issue.message, rejected.raw_output
 
     @staticmethod
     @pytest.mark.slow
@@ -170,42 +300,6 @@ class TestsFlextInfraTypeGates:
         tm.that(result.result.passed, eq=False)
         messages = "\n".join(issue.message for issue in result.issues)
         tm.that(messages, has=["Expected", "Actual", "def size", "int", "str"])
-
-    @staticmethod
-    @pytest.mark.slow
-    def test_mypy_preserves_malformed_native_output(
-        checker_context: m.Infra.GateContext,
-    ) -> None:
-        """Unexpected plugin output remains a causal, visible tool failure."""
-        project = checker_context.repository_root
-        plugin = project / "plugin.py"
-        plugin.write_text(
-            "from mypy.plugin import Plugin\n"
-            "def plugin(version: str) -> type[Plugin]:\n"
-            "    print('native-plugin-output')\n"
-            "    return Plugin\n",
-            encoding="utf-8",
-        )
-        pyproject = project / "pyproject.toml"
-        pyproject.write_text(
-            pyproject.read_text(encoding="utf-8").replace(
-                "[tool.mypy]\n",
-                '[tool.mypy]\nplugins = ["plugin.py"]\n',
-            ),
-            encoding="utf-8",
-        )
-
-        result = FlextInfraMypyGate(project).check(project, checker_context)
-
-        tm.that(result.result.passed, eq=False)
-        tm.that(
-            tuple(issue.code for issue in result.issues),
-            has=c.Infra.ToolOutcome.ERROR,
-        )
-        tm.that(
-            "\n".join(issue.message for issue in result.issues),
-            has="native-plugin-output",
-        )
 
     @staticmethod
     @pytest.mark.slow
@@ -450,7 +544,8 @@ class TestsFlextInfraTypeGates:
         )
 
         tm.that(results[0].gates, empty=True)
-        markdown = (reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
+        (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_MARKDOWN_FILENAME}")
+        markdown = report_path.read_text(
             encoding="utf-8",
         )
         tm.that(markdown, lacks=f"- {FlextInfraPyrightGate.gate_id}:")

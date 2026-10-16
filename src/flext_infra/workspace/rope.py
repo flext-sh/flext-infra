@@ -13,9 +13,8 @@ from time import perf_counter
 from types import TracebackType
 from typing import Annotated, ClassVar, Self, override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base import s
-from flext_infra.workspace._rope_query import FlextInfraRopeQueryMixin
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.workspace import FlextInfraRopeQueryMixin
 
 
 class FlextInfraRopeWorkspace(
@@ -31,7 +30,7 @@ class FlextInfraRopeWorkspace(
         m.Field(description="Optional Rope project root; defaults to repository_root"),
     ] = None
 
-    _rope_repository_root: Path
+    _rope_repository_root: Path = u.PrivateAttr()
     _rope_project: t.Infra.RopeProject | None = u.PrivateAttr(
         default_factory=lambda: None,
     )
@@ -185,6 +184,8 @@ class FlextInfraRopeWorkspace(
         files and already restored the original on-disk content before the
         refresh runs. ``validate_project=False`` is reserved for those reverted
         preview flows so cleanup does not rescan an already-restored project.
+        Normal refresh also invalidates module inventory, project discovery,
+        and layouts; reverted previews retain those unchanged snapshots.
 
         Returns:
             The resulting ``m.Infra.RopeWorkspaceSession``.
@@ -198,6 +199,9 @@ class FlextInfraRopeWorkspace(
         self._module_object_cache.clear()
         self._resource_cache.clear()
         if not preserve_indexes:
+            self._workspace_index = None
+            self._codegen_projects = None
+            self._project_layout_cache.clear()
             self._name_index = None
             self._import_dependents_index = None
         return self.session_snapshot()
@@ -224,13 +228,7 @@ class FlextInfraRopeWorkspace(
         """
         if self._codegen_projects is None:
             projects_result = u.Infra.projects(self.repository_root)
-            if projects_result.failure:
-                self._codegen_projects = ()
-            else:
-                discovered_projects: t.SequenceOf[p.Infra.ProjectInfo] = (
-                    projects_result.unwrap()
-                )
-                self._codegen_projects = tuple(discovered_projects)
+            self._codegen_projects = tuple(projects_result.unwrap())
         return self._codegen_projects
 
     @override
@@ -314,11 +312,20 @@ class FlextInfraRopeWorkspace(
         cached = self._module_policy_cache.get(cache_key)
         if cached is not None:
             return cached
+        module_entry = self.module(resolved_file)
+        project_root = (
+            module_entry.project_root
+            if module_entry is not None and module_entry.project_root is not None
+            else u.Infra.project_root(resolved_file)
+        )
         policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
             resolved_file,
             rope_project=self.rope_project,
             rel_path=resolved_rel_path,
             current_pkg=current_pkg,
+            project_layout=self.layout(project_root)
+            if project_root is not None
+            else None,
         )
         self._module_policy_cache[cache_key] = policy
         return policy

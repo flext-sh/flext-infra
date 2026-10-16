@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from types import FunctionType
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 # Declaration-only protocol types stay
 # behind one guard so structural contracts add no reverse runtime dependency.
@@ -22,6 +23,83 @@ class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
     @runtime_checkable
+    class FunctionDescriptor(Protocol):
+        """Native descriptor capability used to authenticate its defining function."""
+
+        __func__: FunctionType
+
+    @runtime_checkable
+    class GitIndexLock(Protocol):
+        """Native gitdb LockedFD capability consumed by index publication."""
+
+        def open(self, *, write: Literal[True], stream: Literal[False]) -> int:
+            """Acquire the native index lock and return its owned raw descriptor."""
+            ...
+
+        def commit(self) -> None:
+            """Close the descriptor and publish its locked replacement."""
+            ...
+
+        def rollback(self) -> None:
+            """Close the descriptor and remove only its unpublished lock."""
+            ...
+
+    @runtime_checkable
+    class SourcePreview(Protocol):
+        """Consumer-owned capability for validating authenticated source views."""
+
+        def preview_sources[T](
+            self,
+            workspace: Path,
+            updates: t.MappingKV[Path, str],
+            validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+            *,
+            inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+            runtime_root: Path | None = None,
+        ) -> p.Result[T]:
+            """Validate staged candidates while preserving live sources."""
+            ...
+
+    @runtime_checkable
+    class ExternalCacheDirectory(Protocol):
+        """Shared consumer contract for declared tool cache placement."""
+
+        @property
+        def data_home_environment_variable(self) -> str: ...
+
+        @property
+        def user_home_environment_variable(self) -> str: ...
+
+        @property
+        def home_cache_directory(self) -> Path: ...
+
+        @property
+        def external_storage_directory(self) -> Path: ...
+
+    @runtime_checkable
+    class PytestStopController(Protocol):
+        """Native distributed controller's mutable stop request."""
+
+        shouldstop: bool | str
+
+    @runtime_checkable
+    class SupervisedProcess(Protocol):
+        """Process lifecycle consumed by the infrastructure resource supervisor."""
+
+        @property
+        def pid(self) -> int:
+            """Native process identifier."""
+            ...
+
+        def poll(self) -> int | None:
+            """Return the native exit code once the process has ended."""
+            ...
+
+        def wait(self) -> p.Result[int]:
+            """Reap the process and preserve its native result."""
+            ...
+
+    @runtime_checkable
     class RenameCampaignRunner(Protocol):
         """Apply or inspect one validated CSV rename campaign."""
 
@@ -29,6 +107,14 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             params: m.Infra.ApplyRenamesInput,
         ) -> p.Result[m.Infra.ApplyRenamesReport]: ...
+
+    class SemanticRenameCandidateProvider(Protocol):
+        """Select meaningful names from actual declarations, never token counts."""
+
+        def rename_decision(
+            self,
+            declaration: m.Infra.Object,
+        ) -> m.Infra.SemanticRenameDecision | None: ...
 
     @runtime_checkable
     class ModProgress(Protocol):
@@ -112,6 +198,24 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class ProjectSpec(Protocol):
+        """Elected project identity consumed directly by source projections."""
+
+        @property
+        def repository_root_rel(self) -> str:
+            """Declared relative path from the project to its workspace root."""
+            ...
+
+        @property
+        def package_name(self) -> str: ...
+
+        @property
+        def class_stem(self) -> str: ...
+
+        @property
+        def namespace(self) -> str: ...
+
+    @runtime_checkable
     class MiseArtifactsOwner(Protocol):
         """Owner contract consumed by the atomic generation transaction."""
 
@@ -129,29 +233,83 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class CodegenParticipantPolicyFactory(Protocol):
+        """Composition-root authorization for one generation request."""
+
+        def __call__(
+            self,
+            root: Path,
+            *,
+            initial_workspace: m.Infra.WorkspaceSpec | None,
+            producer: m.Infra.CodegenPhaseAnalysis,
+        ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
+            """Read the request's physical topology without acquiring a lease.
+
+            ``initial_workspace`` is the declared topology of a scaffold whose
+            own workspace configuration is not rendered yet; ``None`` reads
+            the repository's committed declaration.
+            ``producer`` carries the executor's already authenticated epoch.
+            """
+            ...
+
+    @runtime_checkable
     class CandidateBootstrapPlanner(Protocol):
         """Conform plan boundary consumed by the candidate campaign."""
+
+        def continue_after_publication(
+            self,
+            receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        ) -> p.Result[bool]:
+            """Continue the original producer through its verified effects."""
+            ...
 
         def surface_contract(
             self,
             surface: c.Infra.CodegenConformSurface,
+            *,
+            codegen: m.Infra.CodegenConfigSpec,
         ) -> m.Infra.CodegenConformSurfaceContract:
             """Resolve the declared output set for a recovery surface."""
             ...
 
-        def plan(
+        def plan_repositories(
             self,
             request: m.Infra.CodegenConformRequest,
+            inputs: m.Infra.CodegenInputs,
         ) -> p.Result[m.Infra.CodegenPlan]:
-            """Plan one declared target without publishing it."""
+            """Plan one declared target from its captured inputs without publishing."""
             ...
 
     @runtime_checkable
     class DocsArtifactPlanner(Protocol):
-        """Docs render planner the complete conform transaction publishes."""
+        """Captured scope batches published by the owning docs service."""
 
-        def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
-            """Freeze the configured render and its authenticated inputs."""
+        def prepare_batches(
+            self,
+            *,
+            producer: m.Infra.CodegenPhaseAnalysis | None = None,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
+        ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
+            """Pin the producer eagerly, then capture each settled scope."""
+            ...
+
+        def publish_batch(
+            self,
+            bundle: m.Infra.DocsGenerationBundle,
+            *,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
+        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+            """Admit, publish and settle one captured scope batch."""
+            ...
+
+        def prepare_bundle(
+            self,
+            *,
+            producer: m.Infra.CodegenPhaseAnalysis | None = None,
+        ) -> p.Result[m.Infra.DocsGenerationBundle]:
+            """Freeze one configured inventory with its original producer epoch."""
             ...
 
         def required_directories(
@@ -180,6 +338,40 @@ class FlextInfraProtocolsBase(Protocol):
             include_root: bool,
         ) -> FlextInfraProtocolsBase.DocsArtifactPlanner:
             """Bind the planner to the repositories conform publishes."""
+            ...
+
+    @runtime_checkable
+    class GateExecutionParams(Protocol):
+        """Read-only assembly boundary separating acceptance and native outcome."""
+
+        @property
+        def project_dir(self) -> Path:
+            """Project whose gate was executed."""
+            ...
+
+        @property
+        def verdict(self) -> bool:
+            """Acceptance decided by the caller."""
+            ...
+
+        @property
+        def outcome(self) -> c.Infra.ToolOutcome:
+            """Native tool outcome, independent of acceptance."""
+            ...
+
+        @property
+        def issues(self) -> t.SequenceOf[m.Infra.Issue]:
+            """Complete native diagnostics."""
+            ...
+
+        @property
+        def raw_output(self) -> str:
+            """Unmodified native output."""
+            ...
+
+        @property
+        def started(self) -> float:
+            """Monotonic execution start time."""
             ...
 
     @runtime_checkable
@@ -230,8 +422,10 @@ class FlextInfraProtocolsBase(Protocol):
             scope_root: Path,
             roots: t.MappingKV[str, Path],
             analysis: m.Infra.CodegenPhaseAnalysis,
-            directories: t.VariadicTuple[Path],
-            validator: Callable[[], p.Result[bool]],
+            policy: m.Infra.CodegenPhasePublicationPolicy,
+            *,
+            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+            | None = None,
         ) -> p.Result[t.VariadicTuple[Path]]:
             """Publish one recoverable multi-root phase and verify before commit."""
             ...
@@ -322,15 +516,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class ProjectSpec(Protocol):
-        """Scaffold-only project metadata consumed by initial generation."""
-
-        @property
-        def repository_root_rel(self) -> str:
-            """Declared relative path from the project to its workspace root."""
-            ...
-
-    @runtime_checkable
     class BeadsProjectSpec(Protocol):
         """Repository-local Beads identity contract."""
 
@@ -389,12 +574,12 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceEnvironmentRequest(Protocol):
-        """Read-only workspace environment validation request."""
+    class WorkspaceRequest(Protocol):
+        """One explicit repository target for read-only workspace operations."""
 
         @property
         def repository_root(self) -> Path:
-            """Workspace whose active interpreter provenance must be validated."""
+            """Repository whose owned environment or lock must be validated."""
             ...
 
     @runtime_checkable
@@ -446,6 +631,8 @@ class FlextInfraProtocolsBase(Protocol):
         def surface_contract(
             cls,
             surface: c.Infra.CodegenConformSurface,
+            *,
+            codegen: m.Infra.CodegenConfigSpec,
         ) -> m.Infra.CodegenConformSurfaceContract: ...
 
         @classmethod
@@ -453,6 +640,8 @@ class FlextInfraProtocolsBase(Protocol):
             cls,
             root: Path,
             profile: c.Infra.MakeProfile,
+            *,
+            inputs: m.Infra.CodegenInputs | None = None,
         ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
 
         @staticmethod
@@ -503,7 +692,7 @@ class FlextInfraProtocolsBase(Protocol):
             destination: str,
             failure_prefix: str,
             project_context: m.Infra.ProjectRenderContext | None,
-        ) -> p.Result[str]: ...
+        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
         @classmethod
         def compose_project_artifact(
@@ -513,6 +702,7 @@ class FlextInfraProtocolsBase(Protocol):
             rendered: str,
             *,
             render_inputs: m.Infra.CodegenRenderInputs | None = None,
+            source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
         @staticmethod
@@ -556,11 +746,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def python_version(self) -> str:
             """Compatible Python major.minor line."""
-            ...
-
-        @property
-        def worktree_environment_directory(self) -> str:
-            """Declared sibling directory for linked-worktree environments."""
             ...
 
         @property
@@ -756,14 +941,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Run deptry on a project and return issues."""
             ...
 
-        def govern_deptry_issues(
-            self,
-            project_path: Path,
-            issues: t.SequenceOf[t.JsonMapping],
-        ) -> p.Result[t.SequenceOf[t.JsonMapping]]:
-            """Drop findings the governed dependency profile makes policy."""
-            ...
-
         def build_project_report(
             self,
             project_name: str,
@@ -907,3 +1084,6 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
+
+
+__all__: list[str] = ["FlextInfraProtocolsBase"]

@@ -12,15 +12,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m, p, r
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
+    from multiprocessing.process import BaseProcess
     from multiprocessing.synchronize import Event
 
 
@@ -28,23 +28,79 @@ class TestsFlextInfraTransactionLease:
     """Keep live journal recovery behind the shared physical scope lease."""
 
     @staticmethod
-    @pytest.mark.parametrize("boundary", ["service", "cli"])
+    @pytest.mark.parametrize(
+        "imports",
+        [
+            "from flext_cli import u\nfrom flext_infra import m, u\n",
+            "from flext_infra import m, u\nfrom flext_cli import u\n",
+        ],
+    )
+    def test_fresh_facade_import_orders_execute_the_public_cli(
+        tmp_path: Path,
+        imports: str,
+    ) -> None:
+        """Fresh consumers compose models and execute CLI behavior in either order."""
+        script = (
+            "from pathlib import Path\nimport sys\n"
+            + imports
+            + "from flext_cli import cli\n"
+            "request = m.Infra.GitRepoRequest(repo_root=Path(sys.argv[1]))\n"
+            "assert request.repo_root == Path(sys.argv[1])\n"
+            "app = cli.create_app_with_common_params("
+            "name='import-probe', help_text='Public import probe')\n"
+            "def ready():\n"
+            "    print('public import ready')\n"
+            "cli.register_command(app, name='ready',"
+            " help_text='Run the public probe', command=ready)\n"
+            "result = cli.invoke_app(app, args=['ready'])\n"
+            "assert result.outcome.raw_return_code == 0\n"
+            "assert 'public import ready' in result.stdout\n"
+        )
+        output = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(tmp_path)),
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(output.outcome),
+            eq=True,
+            msg=output.stdout + output.stderr,
+        )
+
+    @staticmethod
     def test_native_acquisition_denial_escapes_without_waiting(
         tmp_path: Path,
-        boundary: str,
     ) -> None:
         """A Python audit policy denial is not kernel lock contention.
 
-        The child installs a real audit hook instead of replacing flock.
-        The public service and CLI preserve the exception and its traceback;
-        the lease can then acquire the unchanged physical lock file.
+        The child installs a real audit hook instead of replacing flock. The
+        public lease boundary preserves the exception and its traceback — the
+        EPERM is outside the {EACCES, EAGAIN, EWOULDBLOCK} wait set, so the
+        acquisition escapes instead of entering the polite wait — and the
+        lease can then acquire the unchanged physical lock file.
+
+        Why the public conform pipeline is not the vehicle anymore: the facade
+        boundary returns a ``FlextResult`` (it never raises) and a bare
+        repository fails its Beads precondition before any lease is taken, so
+        the denial could never reach the lock there. The lease boundary is the
+        surface this contract owns.
         """
-        root = u.Tests.git_repository(tmp_path)
+        # Conform resolves governance before it takes the lease, so the
+        # fixture is a governed project, as every real conform root is.
+        root = tmp_path / "repository"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "lease-probe",
+            beads=u.Tests.BeadsIdentity(
+                workspace="lease-probe",
+                database="lease_probe",
+                issue_prefix="lease",
+            ),
+        )
         script = (
             "import errno, sys\n"
             "from pathlib import Path\n"
-            "from flext_infra import infra, m, u\n"
-            "from flext_infra.cli import main\n"
+            "from flext_infra import m, u\n"
             "from flext_infra.codegen import FlextInfraMiseWorkspacePlanner\n"
             "root = Path(sys.argv[1])\n"
             "identity = u.Infra.git_identity("
@@ -57,11 +113,8 @@ class TestsFlextInfraTransactionLease:
             "        raise original\n"
             "sys.addaudithook(policy)\n"
             "try:\n"
-            "    if sys.argv[2] == 'service':\n"
-            "        infra.codegen_conform(m.Infra.CodegenConformRequest(root=root))\n"
-            "    else:\n"
-            "        main(['codegen', 'conform', '--root', str(root), "
-            "'--scope', 'self', '--mode', 'apply'])\n"
+            "    with u.Infra.codegen_transaction_lease(journal):\n"
+            "        pass\n"
             "except OSError as failure:\n"
             "    assert failure is original\n"
             "    assert failure.errno == errno.EPERM\n"
@@ -80,8 +133,7 @@ class TestsFlextInfraTransactionLease:
         )
         outcome = tm.ok(
             u.Cli.run_raw(
-                [sys.executable, "-c", script, str(root), boundary],
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
+                [sys.executable, "-c", script, str(root)],
             ),
         )
         tm.that(
@@ -131,10 +183,7 @@ class TestsFlextInfraTransactionLease:
                 eq=True,
             )
             tm.ok(
-                transaction.commit_locked(
-                    session,
-                    lambda: owner.validate_artifacts(root, scope_root),
-                ),
+                transaction.commit_locked(session),
             )
             return r[bool].ok(value=True)
 
@@ -228,7 +277,7 @@ class TestsFlextInfraTransactionLease:
             args=(member, ready, release),
         )
         holder.start()
-        waiter: multiprocessing.process.BaseProcess | None = None
+        waiter: BaseProcess | None = None
         try:
             tm.that(
                 ready.wait(config.Infra.tooling.tools.pytest.slow_timeout_seconds),

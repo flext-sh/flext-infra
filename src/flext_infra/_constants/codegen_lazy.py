@@ -54,12 +54,6 @@ class FlextInfraConstantsCodegenLazy:
         "install_lazy_exports",
     )
     "Lazy helpers every initializer imports; the bootstrap root publishes them."
-    ROOT_TEMPLATE_BINDINGS: ClassVar[frozenset[str]] = frozenset({
-        "MappingProxyType",
-        "TYPE_CHECKING",
-        *LAZY_BOOTSTRAP_HELPERS,
-    })
-    "Names the root initializer template binds; only the helpers are ever published."
     TEST_ONLY_SOURCE_MODULE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$",
     )
@@ -90,30 +84,9 @@ class FlextInfraConstantsCodegenLazy:
     "Root import surfaces generated as private lazy plumbing, not public ABI."
     WRAPPER_NAMESPACE_DEPTH: ClassVar[int] = 2
     "Dotted depth of a namespace package under a governed wrapper surface."
-    # Pytest must register fixture plugins before importing
-    # them, so their private package initializer is always side-effect free.
-    # Real cycle exceptions are the bootstrap packages imported while
-    # ``flext_core.lazy`` initializes; importing them with a lazy facade would
-    # re-enter the partially-initialized module and fail.
-    BOOTSTRAP_CYCLE_EXCEPTION_SEGMENTS: ClassVar[frozenset[str]] = frozenset({
-        "_lazy_parts",
-        "_typings",
-    })
-    "Package segments whose initializer must remain empty to avoid bootstrap cycles."
-
-    # The bootstrap-owning distribution's generated initializers open with
-    # `from flext_core.lazy import ...`, so a package that `flext_core.lazy`
-    # itself reaches at module scope cannot carry one: importing it would
-    # re-enter the module that is still initializing and fail with "cannot
-    # import name 'build_lazy_import_map' from partially initialized module
-    # 'flext_core.lazy'". `flext_core.lazy` pulls `._lazy_parts`, which pulls
-    # `._typings`, which reaches the other private facets, so the whole private
-    # surface of the bootstrap-owning distribution keeps side-effect-free
-    # initializers. Every OTHER distribution imports the helpers from the
-    # `flext_core` root, which publishes them, never from its submodule.
     LAZY_BOOTSTRAP_ROOT_PACKAGE: ClassVar[str] = "flext_core"
     LAZY_BOOTSTRAP_MODULE: ClassVar[str] = "flext_core.lazy"
-    "Module defining the lazy helpers; only the bootstrap owner imports it directly."
+    "Defining module imported directly by every generated lazy initializer."
 
     BARE_IMPORT_FROM_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^from\s+import\s",
@@ -150,32 +123,6 @@ class FlextInfraConstantsCodegenLazy:
     "Module segments recognized as local inferred imports in lazy-load chain."
     PUBLIC_ROOT_MODULE_EXPORTS: ClassVar[frozenset[str]] = frozenset()
     "Internal child packages exported at the root as module objects only."
-    INFRA_ONLY_EXPORTS: ClassVar[frozenset[str]] = frozenset({
-        "cleanup_submodule_namespace",
-        "lazy_getattr",
-        "logger",
-        "merge_lazy_imports",
-        "output",
-        "output_reporting",
-        "pytest_addoption",
-        "pytest_collect_file",
-        "pytest_collection_modifyitems",
-        "pytest_configure",
-        "pytest_runtest_setup",
-        "pytest_runtest_teardown",
-        "pytest_sessionfinish",
-        "pytest_sessionstart",
-        "pytest_terminal_summary",
-        "pytest_warning_recorded",
-    })
-    "Exports excluded from package __init__.py auto-export."
-    PUBLISHED_ALL_EXCLUDE: ClassVar[frozenset[str]] = frozenset({
-        "lazy",
-        "normalize_lazy_imports",
-    })
-    # These remain direct inline lazy imports without
-    # widening the explicit wildcard contract or requiring root sidecars.
-    "Public-module symbols withheld from generated root-facade __all__."
     PUBLIC_ROOT_ALIAS_ORDER: ClassVar[t.StrSequence] = (
         "c",
         "t",

@@ -12,9 +12,8 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._constants import FlextInfraConstantsRelease
-from flext_infra._models import FlextInfraConfigModelsContract
+from flext_infra import c, t
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
 class FlextInfraConfigModelsRelease:
@@ -140,31 +139,30 @@ class FlextInfraConfigModelsRelease:
         publishable_prefixes: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
-                default=(),
                 description=(
                     "Distribution-name prefixes eligible for build/publish. "
                     "Empty means every resolved project is eligible."
                 ),
             ),
-        ]
+        ] = ()
         bump_types: Annotated[
-            Mapping[t.NonEmptyStr, FlextInfraConstantsRelease.VersionBump],
+            Mapping[t.NonEmptyStr, c.Infra.VersionBump],
             m.Field(
-                default_factory=lambda: {
-                    "feat": FlextInfraConstantsRelease.VersionBump.MINOR,
-                    "fix": FlextInfraConstantsRelease.VersionBump.PATCH,
-                    "perf": FlextInfraConstantsRelease.VersionBump.PATCH,
-                },
                 description="Conventional Commits type -> semantic version bump",
             ),
-        ]
+        ] = m.Field(
+            default_factory=lambda: {
+                "feat": c.Infra.VersionBump.MINOR,
+                "fix": c.Infra.VersionBump.PATCH,
+                "perf": c.Infra.VersionBump.PATCH,
+            }
+        )
         publish_url: Annotated[
             t.NonEmptyStr,
             m.Field(
-                default=FlextInfraConstantsRelease.PYPI_UPLOAD_URL,
                 description="Package index upload endpoint for verified artifacts",
             ),
-        ]
+        ] = c.Infra.PYPI_UPLOAD_URL
         build_constraints: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsRelease.BuildConstraintSpec],
             m.Field(
@@ -202,3 +200,6 @@ class FlextInfraConfigModelsRelease:
             t.VariadicTuple[str],
             m.Field(description="Ordered dependency groups synchronized by setup"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsRelease"]

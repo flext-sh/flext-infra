@@ -15,7 +15,49 @@ class FlextInfraUtilitiesSemanticCutoverBindings:
     """Enumerate language bindings without guessing their runtime values."""
 
     @staticmethod
-    def _bound_identifiers(node: ast.AST) -> t.VariadicTuple[str]:
+    def bound_value(
+        node: ast.AST,
+        parents: t.MappingKV[ast.AST, ast.AST],
+    ) -> t.Pair[ast.expr | None, bool]:
+        """Elect a binding's value; only ordinary aliases propagate member paths.
+
+        Returns:
+            The original expression and whether its member paths propagate.
+
+        """
+        current: ast.AST | None = node
+        while current is not None:
+            match current:
+                case (
+                    ast.Assign(value=value)
+                    | ast.AnnAssign(value=value)
+                    | ast.NamedExpr(value=value)
+                    | ast.TypeAlias(value=value)
+                ):
+                    return value, isinstance(value, ast.Name | ast.Attribute)
+                case (
+                    ast.AugAssign(value=value)
+                    | ast.ExceptHandler(type=value)
+                    | ast.For(iter=value)
+                    | ast.AsyncFor(iter=value)
+                    | ast.comprehension(iter=value)
+                    | ast.withitem(context_expr=value)
+                    | ast.Match(subject=value)
+                    | ast.arg(annotation=value)
+                ):
+                    return value, False
+                case (
+                    ast.ClassDef()
+                    | ast.FunctionDef()
+                    | ast.AsyncFunctionDef()
+                    | ast.Module()
+                ):
+                    return None, False
+            current = parents.get(current)
+        return None, False
+
+    @staticmethod
+    def bound_identifiers(node: ast.AST) -> t.VariadicTuple[str]:
         """Include match, exception, import, type-parameter and scope targets.
 
         Returns:
@@ -45,7 +87,12 @@ class FlextInfraUtilitiesSemanticCutoverBindings:
                 | ast.TypeVarTuple(name=name)
             ):
                 return (name,)
-        return FlextInfraUtilitiesSemanticCutoverBindings._bound_scope_identifiers(node)
+            case _:
+                return (
+                    FlextInfraUtilitiesSemanticCutoverBindings._bound_scope_identifiers(
+                        node,
+                    )
+                )
 
     @staticmethod
     def _bound_scope_identifiers(node: ast.AST) -> t.VariadicTuple[str]:

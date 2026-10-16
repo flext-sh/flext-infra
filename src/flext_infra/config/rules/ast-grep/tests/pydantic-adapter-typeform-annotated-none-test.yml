@@ -1,0 +1,9 @@
+id: pydantic-adapter-typeform-annotated-none
+# `valid` MUST NOT match: real Annotated metadata or the converted form.
+valid:
+  - adapter = TypeAdapter(Annotated[int, Field(gt=0)])
+  - adapter = TypeAdapter(TypeForm(FlextTypingBase.Scalar))
+# `invalid` MUST match: the accidental Annotated[<alias>, None] conversion.
+invalid:
+  - adapter = TypeAdapter(Annotated[FlextTypingBase.Scalar, None])
+  - adapter = u.type_adapter(Annotated[t.ScalarMapping, None])

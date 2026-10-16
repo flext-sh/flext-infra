@@ -1,0 +1,98 @@
+id: pydantic-adapter-typeform
+snapshots:
+  adapter = TypeAdapter(FlextTypesPydantic.StrictInt):
+    fixed: adapter = TypeAdapter(TypeForm(FlextTypesPydantic.StrictInt))
+    labels:
+    - source: FlextTypesPydantic.StrictInt
+      style: primary
+      start: 22
+      end: 50
+    - source: FlextTypesPydantic
+      style: secondary
+      start: 22
+      end: 40
+    - source: TypeAdapter
+      style: secondary
+      start: 10
+      end: 21
+    - source: TypeAdapter(FlextTypesPydantic.StrictInt)
+      style: secondary
+      start: 10
+      end: 51
+    - source: (FlextTypesPydantic.StrictInt)
+      style: secondary
+      start: 21
+      end: 51
+  adapter = TypeAdapter(FlextTypingBase.Scalar, config=cfg):
+    fixed: adapter = TypeAdapter(TypeForm(FlextTypingBase.Scalar), config=cfg)
+    labels:
+    - source: FlextTypingBase.Scalar
+      style: primary
+      start: 22
+      end: 44
+    - source: FlextTypingBase
+      style: secondary
+      start: 22
+      end: 37
+    - source: TypeAdapter
+      style: secondary
+      start: 10
+      end: 21
+    - source: TypeAdapter(FlextTypingBase.Scalar, config=cfg)
+      style: secondary
+      start: 10
+      end: 57
+    - source: (FlextTypingBase.Scalar, config=cfg)
+      style: secondary
+      start: 21
+      end: 57
+  adapter = m.type_adapter(t.SequenceOf[str]):
+    fixed: adapter = m.type_adapter(TypeForm(t.SequenceOf[str]))
+    labels:
+    - source: t.SequenceOf[str]
+      style: primary
+      start: 25
+      end: 42
+    - source: t
+      style: secondary
+      start: 25
+      end: 26
+    - source: t.SequenceOf
+      style: secondary
+      start: 25
+      end: 37
+    - source: m.type_adapter
+      style: secondary
+      start: 10
+      end: 24
+    - source: m.type_adapter(t.SequenceOf[str])
+      style: secondary
+      start: 10
+      end: 43
+    - source: (t.SequenceOf[str])
+      style: secondary
+      start: 24
+      end: 43
+  adapter = u.type_adapter(t.JsonMapping):
+    fixed: adapter = u.type_adapter(TypeForm(t.JsonMapping))
+    labels:
+    - source: t.JsonMapping
+      style: primary
+      start: 25
+      end: 38
+    - source: t
+      style: secondary
+      start: 25
+      end: 26
+    - source: u.type_adapter
+      style: secondary
+      start: 10
+      end: 24
+    - source: u.type_adapter(t.JsonMapping)
+      style: secondary
+      start: 10
+      end: 39
+    - source: (t.JsonMapping)
+      style: secondary
+      start: 24
+      end: 39

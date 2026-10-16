@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import p as cli_p
 
 if TYPE_CHECKING:
-    from flext_core import t
+    from mkdocs.config.defaults import MkDocsConfig
+
+    from flext_infra import t
 
 
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): protocols mirror
@@ -99,45 +100,16 @@ class FlextInfraProtocolsDocs(Protocol):
         def source_paths(self) -> t.VariadicTuple[str]: ...
 
     @runtime_checkable
-    class MkDocsAnyCallable(Protocol):
-        """Generic lazily-loaded MkDocs callable without loose top types."""
+    class MkDocsConfigLoader(Protocol):
+        """Native configuration callable required by strict builds."""
 
         def __call__(
-            self,
-            *args: cli_p.AttributeProbe,
-            **kwargs: cli_p.AttributeProbe,
-        ) -> cli_p.AttributeProbe: ...
+            self, *, config_file: str, site_dir: str, strict: bool
+        ) -> MkDocsConfig: ...
 
     @runtime_checkable
-    class MkDocsLoadConfig(Protocol):
-        """Contract for ``mkdocs.config.load_config``.
-
-        MkDocs 1.6 takes the settings path as ``config_file``; the retired
-        ``config_file_path`` keyword is silently absorbed by ``**kwargs``,
-        which made every build load whatever ``mkdocs.yml`` the working
-        directory happened to hold.
-
-        """
-
-        def __call__(
-            self,
-            config_file: str,
-        ) -> MutableMapping[str, cli_p.AttributeProbe]: ...
-
-    @runtime_checkable
-    class MkDocsBuild(Protocol):
-        """Contract for ``mkdocs.commands.build.build``."""
-
-        def __call__(
-            self,
-            config: MutableMapping[str, cli_p.AttributeProbe],
-            *,
-            dirty: bool = False,
-        ) -> cli_p.AttributeProbe: ...
-
-    @runtime_checkable
-    class MkDocsServe(Protocol):
-        """Contract for ``mkdocs.commands.serve.serve``."""
+    class MkDocsServer(Protocol):
+        """Native server callable required by documentation composition."""
 
         def __call__(
             self,
@@ -145,8 +117,22 @@ class FlextInfraProtocolsDocs(Protocol):
             config_file: str,
             livereload: bool,
             dev_addr: str,
-            strict: bool = False,
-        ) -> cli_p.AttributeProbe: ...
+            strict: bool,
+        ) -> None: ...
+
+    @runtime_checkable
+    class MkDocsConfigModule(Protocol):
+        """Read-only native module configuration operation."""
+
+        @property
+        def load_config(self) -> FlextInfraProtocolsDocs.MkDocsConfigLoader: ...
+
+    @runtime_checkable
+    class MkDocsServeModule(Protocol):
+        """Read-only native module server operation."""
+
+        @property
+        def serve(self) -> FlextInfraProtocolsDocs.MkDocsServer: ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsDocs"]

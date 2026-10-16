@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 import ast
+import builtins
 from collections.abc import MutableMapping
 
 from flext_infra import m, t
@@ -24,8 +25,9 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     not a closure for that nested class's own body.
     """
 
-    @staticmethod
+    @classmethod
     def collect(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         statements: t.SequenceOf[ast.stmt],
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
@@ -47,73 +49,39 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 and node.lineno > spec.required_line
             ):
                 break
-            FlextInfraUtilitiesRopeSourceBindingCollector._index_node(
-                spec,
-                node,
-                bindings,
-                scope,
-            )
+            cls._index_node(spec, node, bindings, scope)
 
-    @staticmethod
+    @classmethod
     def _index_node(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.stmt,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
         scope: str,
     ) -> None:
-        """Dispatch one statement to its shape-specific indexing handler."""
+        """Dispatch declarations, mutations and control flow in source order."""
         if isinstance(node, ast.ClassDef):
-            FlextInfraUtilitiesRopeSourceBindingCollector._class_def(
-                spec,
-                node,
-                bindings,
-                scope,
-            )
+            cls._class_def(spec, node, bindings, scope)
         elif isinstance(node, ast.ImportFrom):
-            FlextInfraUtilitiesRopeSourceBindingCollector._import_from(
-                spec,
-                node,
-                bindings,
-            )
+            cls._import_from(spec, node, bindings)
         elif isinstance(node, ast.Import):
-            FlextInfraUtilitiesRopeSourceBindingCollector._import(node, bindings)
+            cls._import(node, bindings)
         elif isinstance(node, ast.Assign | ast.AnnAssign):
-            FlextInfraUtilitiesRopeSourceBindingCollector._assign(
-                spec,
-                node,
-                bindings,
-            )
+            cls._assign(spec, node, bindings)
         elif isinstance(node, ast.AugAssign):
-            FlextInfraUtilitiesRopeSourceBindingCollector._aug_assign(
-                spec,
-                node,
-                bindings,
-            )
+            cls._aug_assign(spec, node, bindings)
         elif isinstance(node, ast.Delete):
-            FlextInfraUtilitiesRopeSourceBindingCollector._delete(
-                spec,
-                node,
-                bindings,
-            )
+            cls._delete(node, bindings)
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             bindings[node.name] = None
         elif isinstance(node, ast.If):
-            FlextInfraUtilitiesRopeSourceBindingCollector._if(
-                spec,
-                node,
-                bindings,
-                scope,
-            )
+            cls._if(spec, node, bindings, scope)
         elif isinstance(node, ast.Try | ast.TryStar):
-            FlextInfraUtilitiesRopeSourceBindingCollector._try(
-                spec,
-                node,
-                bindings,
-                scope,
-            )
+            cls._try(spec, node, bindings, scope)
 
-    @staticmethod
+    @classmethod
     def _class_def(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.ClassDef,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
@@ -134,14 +102,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             )
             return
         visible = {**spec.lexical, **bindings}
-        bases = tuple(
-            FlextInfraUtilitiesRopeSourceBindingCollector._reference(
-                base,
-                visible,
-                spec.module,
-            )
-            for base in node.bases
-        )
+        bases = tuple(cls._reference(base, visible, spec) for base in node.bases)
         if node.type_params:
             bases = (
                 *bases,
@@ -153,14 +114,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             )
         identity = f"{spec.module}:{scope}{node.name}:{node.lineno}"
         members: MutableMapping[str, m.Infra.SourceClassReference | None] = {}
-        # Class locals are visible to a nested class's base expressions,
-        # but are not a closure for that nested class's own body.
-        FlextInfraUtilitiesRopeSourceBindingCollector.collect(
-            spec,
-            node.body,
-            members,
-            f"{scope}{node.name}.",
-        )
+        # Nested bases see class locals; bodies keep module lexical scope.
+        cls.collect(spec, node.body, members, f"{scope}{node.name}.")
         spec.definitions[identity] = m.Infra.SourceClassDefinition(
             identity=identity,
             bases=bases,
@@ -197,8 +152,14 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             if alias.name == "*":
                 if spec.allow_conditional:
                     # External/installed modules re-export through star
-                    # imports; the re-exported names resolve in the module's
-                    # own runtime, not statically.
+                    # imports (PyYAML: ``from .reader import *``). A name the
+                    # module never binds explicitly is then bound in the
+                    # module itself; the runtime walk follows its star
+                    # re-exports to the declaring module.
+                    bindings["*"] = m.Infra.SourceClassReference(
+                        target=spec.module,
+                        qualified_base=spec.module,
+                    )
                     continue
                 message = f"Star import has no explicit class binding in {spec.module}"
                 raise ValueError(message)
@@ -222,31 +183,53 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 qualified_base=target,
             )
 
-    @staticmethod
+    @classmethod
     def _assign(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> None:
-        """Index one assignment by its target shape."""
+        """Classify targets before publishing one captured value reference."""
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-        if any(not isinstance(target, ast.Name) for target in targets):
-            FlextInfraUtilitiesRopeSourceBindingCollector._non_name_assignment(
-                spec,
-                node,
-                targets,
-                bindings,
+        if (
+            spec.allow_conditional
+            and targets
+            and all(isinstance(target, ast.Tuple | ast.List) for target in targets)
+            and all(
+                isinstance(
+                    part, ast.Name | ast.Tuple | ast.List | ast.Starred | ast.Store
+                )
+                for target in targets
+                for part in ast.walk(target)
             )
+        ):
+            # Unpacking a provider iterable binds its elements, not the iterable's
+            # class identity. Never retain an earlier class under those names.
+            for target in targets:
+                for part in ast.walk(target):
+                    if isinstance(part, ast.Name):
+                        bindings[part.id] = None
             return
-        FlextInfraUtilitiesRopeSourceBindingCollector._name_assignment(
-            spec,
-            node,
-            targets,
-            bindings,
-        )
+        if any(not isinstance(target, ast.Name) for target in targets):
+            cls._non_name_assignment(spec, node, targets, bindings)
+            return
+        if node.value is None:
+            return
+        reference = cls._name_assignment(spec, node, bindings)
+        for target in targets:
+            if isinstance(target, ast.Name):
+                bindings[target.id] = (
+                    reference.model_copy(
+                        update={"qualified_base": f"{spec.module}.{target.id}"},
+                    )
+                    if reference is not None
+                    else None
+                )
 
-    @staticmethod
+    @classmethod
     def _non_name_assignment(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
         targets: t.SequenceOf[ast.expr],
@@ -256,32 +239,71 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Raises:
             ValueError: If the mutation is not a recognized provider
-                metadata, module table, or class namespace rebinding.
+                metadata, module table, or class namespace rebinding, and
+                it is not an opaque computed attribute rebind that cannot
+                declare a class base.
 
         """
         if FlextInfraUtilitiesRopeSourceBindingCollector._provider_metadata_rebind(
             spec,
-            targets,
-            bindings,
-        ):
-            return
-        if FlextInfraUtilitiesRopeSourceBindingCollector._module_table_mutation(
-            targets,
-            bindings,
-        ):
-            return
-        if FlextInfraUtilitiesRopeSourceBindingCollector._complete_class_namespace(
-            spec,
             node,
             targets,
             bindings,
         ):
             return
-        message = FlextInfraUtilitiesRopeSourceBindingCollector._mutation_message(
-            spec,
-            node,
-        )
+        if cls._module_table_mutation(targets, bindings):
+            return
+        if cls._complete_class_namespace(spec, node, targets, bindings):
+            return
+        if cls._opaque_attribute_mutation(targets, node):
+            return
+        if cls._subscript_mutation(targets):
+            return
+        message = cls._mutation_message(spec, node)
         raise ValueError(message)
+
+    @staticmethod
+    def _opaque_attribute_mutation(
+        targets: t.SequenceOf[ast.expr],
+        node: ast.Assign | ast.AnnAssign,
+    ) -> bool:
+        """Whether the mutation carries an opaque computed attribute rebind.
+
+        A ``receiver.attr = <call>`` mutates a foreign namespace with a
+        value computed at runtime, so it can never declare a module-level
+        class binding: the inventory records no binding and stays silent.
+        Rebinding shapes that could smuggle a class identity (constant or
+        name right-hand sides) still fail loudly below.
+
+        Returns:
+            ``True`` if the mutation is an opaque computed attribute rebind,
+            ``False`` otherwise.
+
+        """
+        if not isinstance(node.value, ast.Call):
+            return False
+        return bool(targets) and all(
+            isinstance(target, ast.Attribute) for target in targets
+        )
+
+    @staticmethod
+    def _subscript_mutation(targets: t.SequenceOf[ast.expr]) -> bool:
+        """Whether every target writes through an already-declared container.
+
+        A ``name[...] = ...`` statement mutates a binding the class body
+        declared earlier; it can never introduce a new class-attribute
+        binding, so the inventory records nothing and stays silent. The
+        stdlib ships this shape (``http.server``'s
+        ``_control_char_table[ord(...)] = ...``), and a captured stdlib
+        module must inventory, not fail.
+
+        Returns:
+            ``True`` if the mutation is a pure subscript write.
+
+        """
+        return bool(targets) and all(
+            isinstance(target, ast.Subscript) for target in targets
+        )
 
     @staticmethod
     def _mutation_message(
@@ -301,15 +323,38 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @staticmethod
     def _provider_metadata_rebind(
         spec: m.Infra.SourceBindingCollectorSpec,
+        node: ast.Assign | ast.AnnAssign,
         targets: t.SequenceOf[ast.expr],
         bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
     ) -> bool:
-        """Return whether every target only annotates provider metadata."""
+        """Return whether every target only annotates provider metadata.
+
+        A literal written to a dunder of a bound class (the stdlib
+        ``ABCMeta.__module__ = 'abc'``) relabels metadata: it binds no class
+        and changes no base. A dunder name the module never binds is an
+        interpreter-provided module attribute (``Contract.__module__ =
+        __name__``): module metadata, never a class.
+        """
+        value = node.value
+        metadata_value = isinstance(value, ast.Constant) or (
+            isinstance(value, ast.Name)
+            and value.id.startswith("__")
+            and value.id.endswith("__")
+            and value.id not in spec.lexical
+            and value.id not in bindings
+        )
         return spec.allow_conditional and all(
             isinstance(target, ast.Attribute)
             and isinstance(target.value, ast.Name)
             and target.value.id in bindings
-            and bindings[target.value.id] is None
+            and (
+                bindings[target.value.id] is None
+                or (
+                    metadata_value
+                    and target.attr.startswith("__")
+                    and target.attr.endswith("__")
+                )
+            )
             for target in targets
         )
 
@@ -340,39 +385,44 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             attribute=".".join(attributes) if attributes else None,
         )
 
-    @staticmethod
+    @classmethod
     def _module_table_mutation(
+        cls,
         targets: t.SequenceOf[ast.expr],
         bindings: t.MappingKV[str, m.Infra.SourceClassReference | None] | None = None,
     ) -> bool:
-        """Return whether every target is an external runtime table mutation.
+        """Recognize runtime table stores without rebinding a live class.
 
-        Standard-library alias re-registration (CPython's ``collections``
-        publishes ``sys.modules['collections.abc'] = _collections_abc``) is
-        an external runtime table mutation, never a class rebinding — the
-        touched names stay unknown. The same holds for subscript stores
-        through any plain module-level table whose name is not a live class
-        binding (CPython's http.server ``_control_char_table[ord(...)] =
-        ...``): a subscript store cannot redefine a class through a
-        non-class root, so the mutation is a runtime table write regardless
-        of the enclosing conditionality (flext-2klp8).
+        Returns:
+            True when every target writes a module table or non-class root.
 
         """
-        collector = FlextInfraUtilitiesRopeSourceBindingCollector
         return all(
             isinstance(target, ast.Subscript)
-            and (
-                rebind := collector.subscript_rebind_target(
-                    target,
-                )
-            )
-            is not None
-            and (
-                rebind.is_module_table_mutation
-                or bindings is None
-                or bindings.get(rebind.root_name) is None
-            )
+            and cls._is_module_table_target(target, bindings)
             for target in targets
+        )
+
+    @classmethod
+    def _is_module_table_target(
+        cls,
+        target: ast.Subscript,
+        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None] | None,
+    ) -> bool:
+        """Return whether one subscript target only writes a runtime table.
+
+        Returns:
+            True when the typed rule classifies the rebind as a module-table
+            write or the store runs through a non-class table binding.
+
+        """
+        rebind = cls.subscript_rebind_target(target)
+        if rebind is None:
+            return False
+        return (
+            rebind.is_module_table_mutation
+            or bindings is None
+            or bindings.get(rebind.root_name) is None
         )
 
     @staticmethod
@@ -381,107 +431,139 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         targets: t.SequenceOf[ast.expr],
         bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
     ) -> bool:
-        """Return whether the assignment completes a declared class namespace.
+        """Recognize a non-structural store on a bound receiver.
 
-        A class-namespace completion rebind (``base.t = final``): a module
-        completes a deferred base namespace and publishes the RHS class
-        under the attribute name in its own exported namespace.
+        Returns:
+            True when the target shape permits an exact class-member update.
 
         """
         value = node.value
-        if len(targets) != 1 or not isinstance(value, ast.Name):
+        if len(targets) != 1 or not isinstance(value, ast.Name | ast.Call):
             return False
         target = targets[0]
         return (
             isinstance(target, ast.Attribute)
+            and target.attr
+            not in {"__bases__", "__base__", "__mro__", "__class__", "__dict__"}
             and isinstance(target.value, ast.Name)
             and target.value.id in bindings
             and bindings[target.value.id] is not None
         )
 
-    @staticmethod
+    @classmethod
     def _complete_class_namespace(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
         targets: t.SequenceOf[ast.expr],
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> bool:
-        """Publish the RHS class under the attribute name; return handling.
-
-        Only an external provider module (``allow_conditional``) completes a
-        deferred class namespace; in captured project sources the rebind is
-        an unsupported mutation that must never redirect a class binding.
+        """Update only the exact inventoried class receiver's member map.
 
         Returns:
-            True when the assignment completed a class namespace.
+            True when the store updated a known definition, otherwise False.
 
         """
-        if not spec.allow_conditional:
-            return False
-        if not FlextInfraUtilitiesRopeSourceBindingCollector._completes_class_namespace(
-            node,
-            targets,
-            bindings,
+        visible = {**spec.lexical, **bindings}
+        if not spec.allow_conditional or not cls._completes_class_namespace(
+            node, targets, visible
         ):
             return False
-        attribute_target = targets[0]
-        if not isinstance(attribute_target, ast.Attribute):
+        target = targets[0]
+        if not isinstance(target, ast.Attribute):
             return False
-        visible = {**spec.lexical, **bindings}
-        value = node.value
-        if not isinstance(value, ast.Name):
+        receiver = cls._reference(target.value, visible, spec)
+        owner = cls._nested_class_receiver(receiver, spec.definitions)
+        if owner is None:
             return False
-        if value.id in visible and visible[value.id] is not None:
-            reference = FlextInfraUtilitiesRopeSourceBindingCollector._reference(
-                value,
-                visible,
-                spec.module,
-            )
-            bindings[attribute_target.attr] = reference.model_copy(
-                update={
-                    "qualified_base": f"{spec.module}.{attribute_target.attr}",
-                },
-            )
+        definition = spec.definitions[owner.target]
+        members = dict(definition.members)
+        assigned = cls._name_assignment(spec, node, visible)
+        if assigned is None:
+            members.pop(target.attr, None)
+        else:
+            members[target.attr] = assigned
+        spec.definitions[owner.target] = definition.model_copy(
+            update={"members": members},
+        )
         return True
 
     @staticmethod
+    def _nested_class_receiver(
+        reference: m.Infra.SourceClassReference,
+        definitions: t.MappingKV[str, m.Infra.SourceClassDefinition],
+    ) -> m.Infra.SourceClassReference | None:
+        """Resolve a receiver only through inventoried nested class identities.
+
+        Args:
+            reference: The initial class reference to resolve.
+            definitions: A mapping of class targets to their definitions.
+
+        Returns:
+            The resolved nested class reference, or None if it cannot be resolved.
+            Returns None if the resolution fails.
+
+        Raises:
+            ValueError: If a cyclic class namespace receiver is detected.
+
+        """
+        current = reference
+        visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
+        while current.attributes:
+            identity = current.target, current.attributes
+            if identity in visited:
+                message = f"cyclic class namespace receiver: {current.qualified_base}"
+                raise ValueError(message)
+            visited.add(identity)
+            definition = definitions.get(current.target)
+            if definition is None:
+                return None
+            member = definition.members.get(current.attributes[0])
+            if member is None:
+                return None
+            current = member.model_copy(
+                update={
+                    "attributes": (*member.attributes, *current.attributes[1:]),
+                },
+            )
+        return current if current.target in definitions else None
+
+    @classmethod
     def _name_assignment(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
-        targets: t.SequenceOf[ast.expr],
-        bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
-    ) -> None:
-        """Bind one name-target assignment's value as a class reference."""
+        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+    ) -> m.Infra.SourceClassReference | None:
+        """Capture a name assignment's class or real Boolean reference.
+
+        Returns:
+            The captured reference, or None for a non-class value.
+
+        """
         value = node.value
         if value is None:
-            return
+            return None
+        if isinstance(value, ast.Constant) and isinstance(value.value, bool):
+            return m.Infra.SourceClassReference(
+                target="builtins",
+                attributes=(str(value.value),),
+            )
         visible = {**spec.lexical, **bindings}
         head = value
-        while isinstance(head, (ast.Attribute, ast.Subscript)):
+        while isinstance(head, ast.Attribute | ast.Subscript):
             head = head.value
-        reference = (
-            FlextInfraUtilitiesRopeSourceBindingCollector._reference(
-                value,
-                visible,
-                spec.module,
-            )
-            if isinstance(head, ast.Name)
-            and isinstance(value, (ast.Name, ast.Attribute, ast.Subscript))
-            and not (head.id in visible and visible[head.id] is None)
-            else None
-        )
-        for target in targets:
-            if isinstance(target, ast.Name):
-                bindings[target.id] = (
-                    reference.model_copy(
-                        update={"qualified_base": f"{spec.module}.{target.id}"},
-                    )
-                    if reference is not None
-                    else None
-                )
+        if not isinstance(head, ast.Name) or not isinstance(
+            value, ast.Name | ast.Attribute | ast.Subscript
+        ):
+            return None
+        if head.id in visible and visible[head.id] is None:
+            return None
+        return cls._reference(value, visible, spec)
 
-    @staticmethod
+    @classmethod
     def _aug_assign(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.AugAssign,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
@@ -499,95 +581,53 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         """
         if not spec.allow_conditional:
-            message = FlextInfraUtilitiesRopeSourceBindingCollector._mutation_message(
-                spec,
-                node,
-            )
+            message = cls._mutation_message(spec, node)
             raise ValueError(message)
         if isinstance(node.target, ast.Name):
             bindings[node.target.id] = None
 
-    @staticmethod
+    @classmethod
     def _delete(
-        spec: m.Infra.SourceBindingCollectorSpec,
+        cls,
         node: ast.Delete,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
     ) -> None:
-        """Drop one deletion's name bindings when conditionals are allowed.
+        """Drop one deletion's name bindings.
 
-        Captured project sources never delete a binding: keeping the previous
-        class would silently survive the deletion, so the statement fails.
-
-        Raises:
-            ValueError: If a captured project source deletes a binding.
+        Deleting a plain module-level name removes the binding exactly: the
+        name no longer exists, so keeping the previous class would lie about
+        the module's final state, and downstream resolution fails loudly if
+        anything still references it. Attribute-target deletions bind no
+        module-level name and are recorded as nothing.
 
         """
-        if not spec.allow_conditional:
-            message = FlextInfraUtilitiesRopeSourceBindingCollector._mutation_message(
-                spec,
-                node,
-            )
-            raise ValueError(message)
-        if all(isinstance(target, ast.Name) for target in node.targets):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    bindings.pop(target.id, None)
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                bindings.pop(target.id, None)
 
-    @staticmethod
+    @classmethod
     def _if(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.If,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
         scope: str,
     ) -> None:
-        """Index one conditional statement's statically knowable branch."""
-        test = node.test
-        if FlextInfraUtilitiesRopeSourceBindingCollector._is_main_guard(test):
-            FlextInfraUtilitiesRopeSourceBindingCollector.collect(
-                spec,
-                node.body if spec.module == "__main__" else node.orelse,
-                bindings,
-                scope,
-            )
+        """Select a proven branch or conservatively merge unknown alternatives."""
+        selected = cls._runtime_guard(spec, node.test, bindings)
+        if selected is None:
+            cls._bind_conditional_branches(spec, node, bindings, scope)
             return
-        if isinstance(node.test, ast.Constant) and isinstance(
-            node.test.value,
-            bool,
-        ):
-            FlextInfraUtilitiesRopeSourceBindingCollector.collect(
-                spec,
-                node.body if node.test.value else node.orelse,
-                bindings,
-                scope,
-            )
-            return
-        if FlextInfraUtilitiesRopeSourceBindingCollector.type_checking_test(
-            node.test,
-        ):
-            # A TYPE_CHECKING gate never executes at runtime; its imports and
-            # assignments are the module's declared static binding surface,
-            # so they index directly.
-            FlextInfraUtilitiesRopeSourceBindingCollector.collect(
-                spec,
-                node.body,
-                bindings,
-                scope,
-            )
-            return
-        # Non-constant conditions with class declarations (pydantic's own
-        # version-dependent models, read from the runtime environment) have
-        # no statically knowable class-ness: the conditional names bind as
-        # None so the base derivation degrades them exactly like any other
-        # non-class binding.
-        FlextInfraUtilitiesRopeSourceBindingCollector._bind_conditional_branches(
+        cls.collect(
             spec,
-            node,
+            node.body if selected else node.orelse,
             bindings,
             scope,
         )
 
-    @staticmethod
+    @classmethod
     def _bind_conditional_branches(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.If,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
@@ -605,18 +645,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         for name in conditional:
             left[name] = None
             right[name] = None
-        FlextInfraUtilitiesRopeSourceBindingCollector.collect(
-            spec,
-            node.body,
-            left,
-            scope,
-        )
-        FlextInfraUtilitiesRopeSourceBindingCollector.collect(
-            spec,
-            node.orelse,
-            right,
-            scope,
-        )
+        cls.collect(spec, node.body, left, scope)
+        cls.collect(spec, node.orelse, right, scope)
         for name in left.keys() | right.keys():
             bindings[name] = (
                 left[name]
@@ -624,8 +654,9 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 else None
             )
 
-    @staticmethod
+    @classmethod
     def _try(
+        cls,
         spec: m.Infra.SourceBindingCollectorSpec,
         node: ast.Try | ast.TryStar,
         bindings: MutableMapping[str, m.Infra.SourceClassReference | None],
@@ -647,40 +678,57 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             message = f"Conditional exception-backed class bindings in {spec.module}"
             raise ValueError(message)
         conditional: MutableMapping[str, m.Infra.SourceClassReference | None] = {}
-        FlextInfraUtilitiesRopeSourceBindingCollector.collect(
-            spec,
-            node.body,
-            conditional,
-            scope,
-        )
-        FlextInfraUtilitiesRopeSourceBindingCollector.collect(
-            spec,
-            node.orelse,
-            conditional,
-            scope,
-        )
+        cls.collect(spec, node.body, conditional, scope)
+        cls.collect(spec, node.orelse, conditional, scope)
         for handler in node.handlers:
-            FlextInfraUtilitiesRopeSourceBindingCollector.collect(
-                spec,
-                handler.body,
-                conditional,
-                scope,
-            )
+            cls.collect(spec, handler.body, conditional, scope)
         for name in conditional:
             bindings[name] = None
 
-    @staticmethod
-    def _is_main_guard(test: ast.expr) -> bool:
-        """Return whether one condition is the ``__name__ == "__main__"`` guard."""
+    @classmethod
+    def _runtime_guard(
+        cls,
+        spec: m.Infra.SourceBindingCollectorSpec,
+        test: ast.expr,
+        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+    ) -> bool | None:
+        """Resolve only literal guards and captured constant provenance.
+
+        Returns:
+            The proven runtime truth value, or None for an unknown guard.
+
+        """
         match test:
             case ast.Compare(
                 left=ast.Name(id="__name__"),
                 ops=[ast.Eq()],
                 comparators=[ast.Constant(value="__main__")],
             ):
-                return True
+                return spec.module == "__main__"
+            case ast.Constant(value=bool(literal_guard)):
+                return literal_guard
             case _:
-                return False
+                pass
+        if not isinstance(test, ast.Name | ast.Attribute):
+            return None
+        head = test.value if isinstance(test, ast.Attribute) else test
+        if not isinstance(head, ast.Name):
+            return None
+        visible = {**spec.lexical, **bindings}
+        if head.id not in visible or visible[head.id] is None:
+            return None
+        guard = cls._reference(test, visible, spec)
+        selected: bool | None = None
+        match (guard.target, guard.attributes):
+            case ("typing" | "typing_extensions", ("TYPE_CHECKING",)):
+                selected = False
+            case ("builtins", ("True",)):
+                selected = True
+            case ("builtins", ("False",)):
+                selected = False
+            case _:
+                pass
+        return selected
 
     @staticmethod
     def type_checking_test(test: ast.expr) -> bool:
@@ -712,7 +760,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def _reference(
         expression: ast.expr,
         bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
-        module: str,
+        spec: m.Infra.SourceBindingCollectorSpec,
     ) -> m.Infra.SourceClassReference:
         """Capture the binding visible when a base expression is evaluated.
 
@@ -721,15 +769,11 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Raises:
             TypeError: If the expression is not a supported class reference.
-            ValueError: If its lexical binding is not a class.
+            ValueError: If a governed lexical binding is not a class.
 
         """
-        # Unwrap Subscript and Attribute in ONE loop: a chained form like
-        # `_CLUSTERS[0].environment` is Attribute(Subscript(Name)) — consuming
-        # attributes first left the inner Subscript unprocessed and raised
-        # "Unsupported class reference" on every consumer whose SSOT-derived
-        # constants subscript a module-level binding (cosmos-main
-        # tests/constants.py, bead cosmos-gamnt).
+        # Unwrap interleaved attributes and subscriptions before resolving the root.
+        module = spec.module
         attributes: list[str] = []
         while isinstance(expression, ast.Subscript | ast.Attribute):
             if isinstance(expression, ast.Attribute):
@@ -741,11 +785,32 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             )
             raise TypeError(message)
         name = expression.id
+        star_module = bindings.get("*")
         if name in bindings:
             binding = bindings[name]
             if binding is None:
-                message = f"Non-class binding used as a base in {module}: {name}"
-                raise ValueError(message)
+                # Why (fleet-automation 2026-10-12): external modules (the
+                # stdlib above all) legitimately bind classes under runtime
+                # conditionals the lexical walk cannot prove
+                # (socketserver.ForkingMixIn under ``hasattr(os, "fork")``);
+                # a governed module doing the same stays fail-loud.
+                governed = bool(spec.package) and module.startswith(
+                    f"{spec.package}.",
+                )
+                if governed:
+                    message = f"Non-class binding used as a base in {module}: {name}"
+                    raise ValueError(message)
+                binding = m.Infra.SourceClassReference(
+                    target=module,
+                    attributes=(name,),
+                    qualified_base=f"{module}.{name}",
+                )
+        elif star_module is not None and not hasattr(builtins, name):
+            binding = m.Infra.SourceClassReference(
+                target=star_module.target,
+                attributes=(name,),
+                qualified_base=f"{module}.{name}",
+            )
         else:
             binding = m.Infra.SourceClassReference(
                 target="builtins",
@@ -757,3 +822,6 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             attributes=(*binding.attributes, *attributes),
             qualified_base=".".join((binding.qualified_base, *attributes)),
         )
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeSourceBindingCollector"]

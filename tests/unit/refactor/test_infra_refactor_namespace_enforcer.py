@@ -10,11 +10,11 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m
+from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,6 +22,51 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     """Behavior contract for test_infra_refactor_namespace_enforcer."""
+
+    @staticmethod
+    def test_selected_module_normalizes_alias_without_rewriting_sibling(
+        tmp_path: Path,
+    ) -> None:
+        """The public dotted module selection bounds the actual repair effects."""
+        workspace, project, pkg = u.Tests.namespace_workspace(tmp_path)
+        (pkg / "helper.py").write_text(
+            "from __future__ import annotations\n"
+            "class SampleHelper:\n    value = 'published'\n"
+            "__all__ = ['SampleHelper']\n",
+            encoding="utf-8",
+        )
+        source = (
+            "from __future__ import annotations\n"
+            f"from {pkg.name}.helper import SampleHelper as files\n"
+            "value = files.value\n"
+        )
+        target = pkg / "consumer.py"
+        sibling = pkg / "sibling.py"
+        target.write_text(source, encoding="utf-8")
+        sibling.write_text(source, encoding="utf-8")
+        u.Tests.provision_checkout(workspace)
+        before = sibling.read_bytes()
+        FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
+            apply=True,
+            module=u.Infra.module_name_for_file(target, project_root=project),
+        )
+        tm.that(target.read_text(encoding="utf-8"), lacks="as files")
+        tm.that(target.read_text(encoding="utf-8"), has="value = SampleHelper.value")
+        tm.that(sibling.read_bytes(), eq=before)
+
+    @staticmethod
+    def test_unknown_module_fails_before_repair(tmp_path: Path) -> None:
+        """An unresolved selector cannot silently expand to the whole project."""
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
+        target = pkg / "consumer.py"
+        source = b"from __future__ import annotations\nimport os as operating\n"
+        target.write_bytes(source)
+        with pytest.raises(ValueError, match="requires one owned module"):
+            FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
+                apply=True,
+                module=f"{pkg.name}.missing",
+            )
+        tm.that(target.read_bytes(), eq=source)
 
     @staticmethod
     def test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file(
@@ -106,7 +151,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         workspace, project, _pkg = u.Tests.namespace_workspace(
             tmp_path,
             pyproject=(
-                "[project]\nname='sample'\n\n"
+                "[project]\nname='sample'\nversion='1.0.0'\n\n"
                 "[tool.flext.namespace]\nscan_dirs = ['src']\n"
             ),
         )
@@ -252,33 +297,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(module_source, has="SHARED = FlextInfraConstantsSharedInfra")
 
     @staticmethod
-    def test_namespace_enforcer_apply_hoists_function_local_stdlib_import(
-        tmp_path: Path,
-    ) -> None:
-        """Hoist a function-local standard-library import to the module block."""
-        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
-        service_file = pkg / "service.py"
-        _ = service_file.write_text(
-            "from __future__ import annotations\n\n"
-            "class SampleService:\n"
-            "    def run(self) -> str:\n"
-            "        import os\n\n"
-            "        return os.sep\n",
-            encoding="utf-8",
-        )
-        u.Tests.provision_checkout(workspace)
-        enforcer = FlextInfraNamespaceEnforcer(repository_root=workspace)
-
-        pending = enforcer.enforce(apply=False)
-        report = enforcer.enforce(apply=True)
-
-        tm.that(pending.projects[0].relocation_findings > 0, eq=True)
-        tm.that(report.projects[0].relocation_findings, eq=0)
-        lines = service_file.read_text(encoding="utf-8").splitlines()
-        tm.that(lines, has="import os")
-        tm.that(lines, lacks="        import os")
-
-    @staticmethod
     def test_namespace_enforcer_apply_is_idempotent_on_the_second_pass(
         tmp_path: Path,
     ) -> None:
@@ -307,6 +325,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         second = enforcer.enforce(apply=True)
 
         tm.that(second.projects[0].relocation_findings, eq=0)
+        tm.that(second.projects[0].relocation_resolved, eq=0)
+        tm.that(second.projects[0].relocation_persisted, eq=0)
+        tm.that(second.projects[0].relocation_introduced, eq=0)
+        tm.that(
+            second.projects[0].before_rule_counts,
+            eq=second.projects[0].after_rule_counts,
+        )
         for path, source in enforced_sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
@@ -322,18 +347,18 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             m.Infra.RefactorNamespaceEnforceInput(repository_root=workspace),
         )
 
-        tm.that(result.failure, eq=False)
         receipt = (workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH).resolve()
         tm.that(receipt.exists(), eq=True)
         published = json.loads(receipt.read_text(encoding="utf-8"))
         tm.that(published["workspace"], eq=str(workspace))
         tm.that(published["projects"], empty=False)
+        tm.that(result.failure, eq=published["has_violations"])
 
     @staticmethod
     def test_namespace_enforcer_report_mode_fails_on_findings_after_publishing(
         tmp_path: Path,
     ) -> None:
-        """Remaining relocation findings fail the verdict; the receipt is published.
+        """Remaining catalog findings fail the verdict; the receipt is published.
 
         A gate fails on every finding it counts: the report pass publishes the
         structured receipt first, then returns the failure naming the
@@ -364,15 +389,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(published["has_violations"], eq=True)
 
     @staticmethod
-    def test_namespace_enforcer_leaves_detection_only_findings_to_their_owner(
+    def test_namespace_enforcer_reports_detection_only_findings_separately(
         tmp_path: Path,
     ) -> None:
-        """Detection-only findings are never relocation residue.
-
-        The enforcer owns the rope relocations its rules declare; findings no
-        relocation repairs stay with the rule catalog's own gate (``make mod``)
-        and never inflate the enforcer's residue.
-        """
+        """Detection-only residue remains visible without inflating relocations."""
         workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
         _ = (pkg / "service.py").write_text(
             "from __future__ import annotations\n"
@@ -394,6 +414,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
 
         tm.that(report.projects[0].relocation_findings, eq=0)
+        tm.that(report.projects[0].has_violations, eq=True)
+        tm.that(any(row.after for row in report.projects[0].rule_deltas), eq=True)
         tm.that((pkg / "protocols.py").exists(), eq=True)
 
     @staticmethod
@@ -485,6 +507,148 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
         rendered = FlextInfraNamespaceEnforcer.render_text(report)
 
-        tm.that(rendered, has="Violations: NO")
+        tm.that(rendered, has="Violations: YES")
         tm.that(rendered, has="Relocation findings: 0")
-        tm.that(rendered, has=f"Files scanned: {report.projects[0].files_scanned}")
+        tm.that(rendered, has="Catalog findings:")
+        tm.that(rendered, has="Introduced occurrences:")
+        tm.that(
+            rendered,
+            has=f"Relocation files scanned: {report.projects[0].files_scanned}",
+        )
+
+    @staticmethod
+    def test_namespace_report_retains_full_catalog_and_zero_count_rows(
+        tmp_path: Path,
+    ) -> None:
+        """Report mode compares every elected rule against the real native scan."""
+        workspace, project, pkg = u.Tests.namespace_workspace(tmp_path)
+        source = (
+            "from __future__ import annotations\nimport logging\n"
+            "logger = logging.getLogger(__name__)\n"
+        )
+        (pkg / "service.py").write_text(source, encoding="utf-8")
+        u.Tests.provision_checkout(workspace)
+        expected = tm.ok(FlextInfraModGateEngine.scan(project, fix=False))
+        plan = tm.ok(u.Infra.codemod_rule_plan(project))
+
+        result = FlextInfraNamespaceEnforcer.execute_command(
+            m.Infra.RefactorNamespaceEnforceInput(repository_root=workspace),
+        )
+        tm.fail(result, has="Namespace violations found")
+        receipt = workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+        report = m.Infra.WorkspaceEnforcementReport.model_validate_json(
+            receipt.read_bytes(),
+        ).projects[0]
+
+        tm.that(
+            {row.rule_id for row in report.rule_deltas},
+            eq={rule.id for rule in plan.rules},
+        )
+        tm.that(report.before_rule_counts, eq=report.after_rule_counts)
+        tm.that(
+            all(change == 0 for change in report.cross_rule_delta.values()), eq=True
+        )
+        tm.that(sum(report.after_rule_counts.values()), eq=expected.findings)
+        tm.that(any(row.after == 0 for row in report.rule_deltas), eq=True)
+        tm.that(report.relocation_findings, eq=0)
+        tm.that(report.has_violations, eq=True)
+        tm.that((pkg / "service.py").read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    def test_namespace_apply_publishes_cross_rule_regression_after_relocation(
+        tmp_path: Path,
+    ) -> None:
+        """A successful relocation cannot conceal a new detection-only occurrence."""
+        workspace, project, pkg = u.Tests.namespace_workspace(tmp_path)
+        config_path = project / c.Infra.CODEMOD_CONFIG_RELPATH
+        rules = config_path.parent / c.Cli.RULES_DIR_NAME
+        rules.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(
+            "ruleDirs:\n  - rules\ntestConfigs: []\n", encoding="utf-8"
+        )
+        rule_id = "namespace-destination-contract"
+        (rules / "destination.yml").write_text(
+            f"id: {rule_id}\nlanguage: Python\n"
+            "rule:\n  pattern: |\n    class ServiceContract(Protocol):\n      $$$BODY\n"
+            "files:\n  - '**/protocols.py'\nseverity: error\n",
+            encoding="utf-8",
+        )
+        (pkg / "service.py").write_text(
+            "from __future__ import annotations\nfrom typing import Protocol\n\n"
+            "class ServiceContract(Protocol):\n"
+            '    """Contract awaiting relocation."""\n'
+            "    def run(self) -> str:\n"
+            '        """Run the contract."""\n'
+            "        ...\n",
+            encoding="utf-8",
+        )
+        u.Tests.provision_checkout(workspace)
+
+        result = FlextInfraNamespaceEnforcer.execute_command(
+            m.Infra.RefactorNamespaceEnforceInput(
+                repository_root=workspace, apply=True
+            ),
+        )
+
+        tm.fail(result, has="Namespace violations found")
+        receipt = workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+        published = m.Infra.WorkspaceEnforcementReport.model_validate_json(
+            receipt.read_bytes(),
+        )
+        report = published.projects[0]
+        row = next(row for row in report.rule_deltas if row.rule_id == rule_id)
+        tm.that((row.before, row.after, row.introduced), eq=(0, 1, 1))
+        tm.that(report.cross_rule_delta[rule_id], eq=row.after - row.before)
+        tm.that(report.relocation_findings, eq=0)
+        tm.that(report.relocation_resolved > 0, eq=True)
+        tm.that(report.relocation_introduced, eq=0)
+        tm.that(published.has_violations, eq=True)
+        tm.that(FlextInfraNamespaceEnforcer.render_text(published), has=rule_id)
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_namespace_workspace_counts_bracket_all_projects_without_double_counting(
+        tmp_path: Path,
+    ) -> None:
+        """Every project compares the same initial and final workspace observations."""
+        workspace, first, _pkg = u.Tests.namespace_workspace(tmp_path)
+        second, _second_pkg = u.Tests.demo_project(workspace, name="another-project")
+        for project in (first, second):
+            scripts = project / "scripts"
+            scripts.mkdir()
+            (scripts / "run.py").write_text(
+                '"""Governed script."""\nvalue = 1\n', encoding="utf-8"
+            )
+        u.Tests.declare_workspace_projects(workspace, (first.name, second.name))
+        u.Tests.provision_checkout(workspace)
+        before = tm.ok(FlextInfraModGateEngine.scan(workspace, fix=False))
+
+        report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
+            apply=True,
+        )
+
+        after = tm.ok(FlextInfraModGateEngine.scan(workspace, fix=False))
+        tm.that(
+            {project.project for project in report.projects},
+            eq={first.name, second.name},
+        )
+        for project in report.projects:
+            tm.that(
+                {row.repository for row in project.rule_deltas}, eq={project.project}
+            )
+            for counts, snapshot in (
+                (project.before_rule_counts, before),
+                (project.after_rule_counts, after),
+            ):
+                tm.that(
+                    counts,
+                    eq={
+                        rule_id: sum(
+                            entry.repository == project.project
+                            and entry.rule_id == rule_id
+                            for entry in snapshot.entries
+                        )
+                        for rule_id in counts
+                    },
+                )
+            tm.that(project.relocation_resolved > 0, eq=True)

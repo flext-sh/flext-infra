@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer
-from tests import c, m, u
+from flext_infra import config
+from flext_infra.deps import FlextInfraPyprojectModernizer
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -254,8 +254,9 @@ class TestsFlextInfraDepsModernizerMainExtra:
             ),
         )
         u.Tests.write_project_beads_config(workspace, "flext")
-        # The governed tree above the workspace carries the committed Taplo pin.
-        u.Tests.seed_locked_taplo(tmp_path)
+        # The governed tree above the workspace carries the committed Mise
+        # declaration and lock that activate its locked tools.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         external = tmp_path / "gruponos-data"
         (external / "src" / "gruponos_data").mkdir(parents=True)
         external_pyproject = external / c.PYPROJECT_FILENAME
@@ -279,26 +280,45 @@ class TestsFlextInfraDepsModernizerMainExtra:
     @staticmethod
     def test_conform_source_preserves_taplo_process_error(tmp_path: Path) -> None:
         """Return the exact formatter process failure from the public conform path."""
-        u.Tests.write_mise_lock(
-            tmp_path,
-            "taplo",
-            u.Tests.pinned_mise_version(u.Tests.repo_mise_lock(), "taplo"),
+        # A governed tree carries the Mise declaration with its lock; the
+        # formatter resolves through the declared toolchain.
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
+        invalid_glob = "/x/["
+        (tmp_path / c.Infra.TAPLO_CONFIG_FILENAME).write_text(
+            f'include = ["{invalid_glob}"]\n',
+            encoding="utf-8",
         )
-        (tmp_path / ".taplo.toml").write_text('include = ["/x/["]\n', encoding="utf-8")
         source = '[project]\nname = "sample"\nversion = "0.1.0"\n'
+        path = tmp_path / c.PYPROJECT_FILENAME
         modernizer = FlextInfraPyprojectModernizer(repository_root=tmp_path)
+        topology = m.Infra.PyprojectDeclaredTopology()
+        canonical_source = tm.ok(
+            modernizer.conform_source(
+                source,
+                path=path,
+                format_source=False,
+                topology=topology,
+            ),
+        )
+        baseline = u.Infra.format_toml_source(
+            canonical_source,
+            path=path,
+            toolchain_root=tmp_path,
+            taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
+            process_timeout_seconds=(
+                config.Infra.tooling.tools.tomlsort.process_timeout_seconds
+            ),
+        )
 
         result = modernizer.conform_source(
-            source,
-            path=tmp_path / "pyproject.toml",
-            topology=m.Infra.PyprojectDeclaredTopology(),
+            canonical_source,
+            path=path,
+            topology=topology,
         )
 
         error = tm.fail(result)
-        # taplo 0.10.0 drops its final ERROR log line in ~40% of concurrent
-        # runs; the exit code and the verbatim stderr prefix are its contract.
-        config_path = str(tmp_path / ".taplo.toml")
-        tm.that(error, has=["taplo format failed (1)", config_path])
+        tm.that(error, eq=tm.fail(baseline))
+        tm.that(error, has="taplo format failed (1):")
         tm.that(
             error,
             lacks=["couldn't exec process", "pyproject tooling render failed"],

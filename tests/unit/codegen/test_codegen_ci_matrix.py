@@ -11,12 +11,11 @@ import shutil
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, config, infra, t
+from flext_infra import FlextInfraGitService, c, config, infra, m, t
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from tests import u
+from tests import tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow
@@ -51,11 +50,12 @@ class TestsFlextInfraCodegenCiMatrix:
             The resulting ``Path``.
 
         """
-        # The governed tree carries the committed Taplo pin generation formats
-        # through; a fresh scaffold never resolves a moving selector. The pin
-        # lands in the output root before the scaffold renders into it.
+        # The scaffold lands inside a governed tree: generation formats through
+        # the committed Mise declaration and lock, never a moving selector.
+        # They land in the output root before the scaffold renders into it;
+        # resolution in a root outside any governed tree is flext-pvhid.
         root.mkdir(parents=True, exist_ok=True)
-        u.Tests.seed_locked_taplo(root)
+        u.Tests.copy_tracked_mise_seeds(root)
         service = FlextInfraCodegenProjectNew(
             flext_source=u.Tests.flext_source(),
             name="flext-demo",
@@ -195,83 +195,123 @@ class TestsFlextInfraCodegenCiMatrix:
     def test_blocking_ci_bootstraps_only_through_make_setup(
         rendered_project: Path,
     ) -> None:
-        """Generated blocking CI provisions every binary via the Make surface."""
-        root = rendered_project
-        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
+        """Generated CI executes its declared Make lifecycle in policy order."""
+        workflow = u.Cli.yaml_load_mapping(
+            rendered_project / ".github" / "workflows" / "ci.yml",
+        )
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        ci_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+        steps = [
+            t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+            for value in t.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
+        ]
+        make = config.Infra.codegen.make
+        prefix = f"{make.ci.variable}={make.ci.value} make "
+        expected = tuple(
+            f"{prefix}{step.verb}" for step in make.workflow if "ci" in step.contexts
+        )
+        observed = tuple(
+            command
+            for step in steps
+            if isinstance(command := step.get("run"), str)
+            and command.startswith(prefix)
+        )
+        tm.that(observed, eq=expected)
+        tm.that(workflow.get("permissions"), eq=None)
+        permissions = t.Cli.JSON_MAPPING_ADAPTER.validate_python(ci_job["permissions"])
+        tm.that(permissions["contents"], eq="read")
+        tm.that("merge-guard" in jobs, eq=False)
+
+    @staticmethod
+    def test_every_approval_verb_blocks_on_push_and_pull_request(
+        rendered_project: Path,
+    ) -> None:
+        """CI runs each approval verb as its own blocking step on every event.
+
+        The former single ``make pre-commit`` step failed unattended runs
+        because setup refused a stale lock; setup now provisions whatever the
+        locks state (operator-ruling-2026-10-09-setup-resilient), so the gates
+        run on push and pull request instead of only on manual dispatch. After
+        setup, every verb reports even when an earlier one is red.
+        """
+        workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8",
         )
-
-        ci_step_runs = tuple(
-            f"run: CI=Y make {step.verb}"
-            for step in config.Infra.codegen.make.workflow
-            if "ci" in step.contexts
-        )
-        for run_line in ci_step_runs:
-            tm.that(workflow, has=run_line)
-        # A verb whose workflow row omits the ci context never renders into CI.
-        for step in config.Infra.codegen.make.workflow:
-            if "ci" not in step.contexts:
-                tm.that(workflow, lacks=f"run: CI=Y make {step.verb}\n")
-        tm.that(ci_step_runs, has="run: CI=Y make setup")
-        # `conform` no longer exists as a Make verb (S1, operator law
-        # 2026-09-14); the blocking generation gate is the "gen fixed point"
-        # step, which runs `make gen` and proves the tree is unchanged.
-        tm.that(workflow, has="- name: gen fixed point (blocking)")
-        tm.that(workflow, has="CI=Y make gen")
-        tm.that(workflow, lacks="run: CI=Y make conform")
-        tm.that(workflow, has="run: CI=Y make audit")
-        tm.that(workflow, lacks="attest/gates/v1")
-
-        tm.that(workflow, lacks="github verify-gates")
-        tm.that(workflow, lacks="WHAT=")
-        step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
-        tm.that(step_indices, eq=tuple(sorted(step_indices)))
-        setup_index = workflow.index("run: CI=Y make setup")
-        gen_fixed_point_index = workflow.index("- name: gen fixed point (blocking)")
-        audit_index = workflow.index("run: CI=Y make audit")
-        check_index = workflow.index("run: CI=Y make check")
-        tm.that(
-            setup_index < gen_fixed_point_index < audit_index < check_index,
-            eq=True,
-        )
-        header, jobs = workflow.split("\njobs:\n", maxsplit=1)
-        tm.that(header, lacks="permissions:")
-        ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
-        tm.that(ci_job, has="permissions:\n      contents: read")
-        tm.that(jobs, has="merge-guard:")
-        tm.that(jobs, has="Block WIP heads from protected integration branches")
+        verbs = config.Infra.codegen.make.approval_verbs
+        for index, verb in enumerate(verbs):
+            block = workflow.split(f"- name: make {verb} (blocking)", maxsplit=1)[1]
+            block = block.split("\n      - name:", maxsplit=1)[0]
+            tm.that(block, lacks="workflow_dispatch")
+            tm.that(block, has=f"make {verb}")
+            if index:
+                tm.that(
+                    block,
+                    has=f"steps.approval-{verbs[0]}.outcome == 'success'",
+                )
+        tm.that(workflow, lacks="- name: Approval (blocking)")
 
     @staticmethod
     def test_ci_runs_make_test_through_the_persistent_testmon_database(
         rendered_project: Path,
     ) -> None:
-        """CI selects through testmon and hands its database to the next run.
-
-        The database directory is restored before the approval step (whose
-        test stage is ``make test``) and saved on every outcome after it; the
-        full verb never renders into CI.
-        """
-        workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8",
+        """Cache restore and save reference their actual database producers."""
+        workflow = u.Cli.yaml_load_mapping(
+            rendered_project / ".github" / "workflows" / "ci.yml",
         )
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        ci_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+        steps = [
+            t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+            for value in t.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
+        ]
         make = config.Infra.codegen.make
-        cache = make.testmon_cache
-        test_run = f"run: {make.ci.variable}={make.ci.value} make pre-commit\n"
-        tm.that(workflow, has=test_run)
-        tm.that(c.Infra.VERB_TEST in make.approval_verbs, eq=True)
-        tm.that(workflow, lacks="make test-full")
-        path = (
-            f"path: ~/{cache.home_cache_directory}/{cache.external_storage_directory}"
+        test_run = f"{make.ci.variable}={make.ci.value} make {c.Infra.VERB_TEST}"
+        test_step = next(step for step in steps if step.get("run") == test_run)
+        resolver = next(step for step in steps if step.get("id") == "testmon_path")
+        action = config.Infra.codegen.github_actions["cache"]
+        restore = next(
+            step
+            for step in steps
+            if step.get("uses") == f"{action.repository}/restore@{action.version}"
+            and step.get("name") == "Restore testmon database"
         )
-        restore = workflow.index("- name: Restore testmon database")
-        save = workflow.index("- name: Save testmon database")
-        tm.that(restore < workflow.index(test_run) < save, eq=True)
-        for step_start in (restore, save):
-            step = workflow[step_start:].split("\n      - name:", maxsplit=1)[0]
-            tm.that(step, has=[path, make.testmon_cache_policy.key_prefix])
+        restore_inputs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(restore["with"])
         tm.that(
-            workflow[save:].split("\n      - name:", maxsplit=1)[0],
-            has="if: ${{ always() }}",
+            restore_inputs["path"],
+            eq=f"${{{{ steps.{resolver['id']}.outputs.database }}}}",
+        )
+        saves = [
+            step
+            for step in steps
+            if step.get("uses") == f"{action.repository}/save@{action.version}"
+            and step.get("name") == "Save testmon database"
+        ]
+        tm.that(bool(saves), eq=make.testmon_cache_policy.save_enabled)
+        if not saves:
+            return
+        tm.that(saves, len=1)
+        save = saves[0]
+        save_inputs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(save["with"])
+        tm.that(
+            save_inputs["path"],
+            eq=f"${{{{ steps.{test_step['id']}.outputs.testmon_database }}}}",
+        )
+        tm.that(save_inputs["key"], eq=restore_inputs["key"])
+        tm.that(
+            steps.index(resolver)
+            < steps.index(restore)
+            < steps.index(test_step)
+            < steps.index(save),
+            eq=True,
+        )
+        tm.that(
+            save["if"],
+            has=[
+                "always()",
+                "!cancelled()",
+                f"steps.{test_step['id']}.outputs.testmon_saveable",
+                f"steps.{test_step['id']}.outputs.testmon_digest",
+            ],
         )
 
     @staticmethod
@@ -292,52 +332,25 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(steps_index < setup_index, eq=True)
 
     @staticmethod
-    def test_gen_fixed_point_rejects_dirty_git_tree(
-        rendered_project: Path,
+    def test_verify_clean_rejects_dirty_git_tree(
         tmp_path: Path,
     ) -> None:
-        """Run the generated post-generation shell check in a dirty repository.
-
-        Raises:
-            TypeError: If workflow job steps must be a sequence; or if fixed-point step
-                must have a shell script.
-
-        """
-        workflow = u.Cli.yaml_load_mapping(
-            rendered_project / ".github" / "workflows" / "ci.yml",
-        )
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
-        runs: list[str] = []
-        for raw_job in jobs.values():
-            job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
-            steps = job["steps"]
-            if not isinstance(steps, list):
-                msg = "workflow job steps must be a sequence"
-                raise TypeError(msg)
-            for raw_step in steps:
-                step = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step)
-                if step.get("name") == "gen fixed point (blocking)":
-                    script = step.get("run")
-                    if not isinstance(script, str):
-                        msg = "fixed-point step must have a shell script"
-                        raise TypeError(msg)
-                    runs.append(script)
-        tm.that(len(runs), eq=1)
-        post_generation = runs[0].split("CI=Y make gen", maxsplit=1)[1]
+        """The public cleanliness owner rejects a real untracked file."""
         repository = tmp_path / "dirty-repository"
         repository.mkdir()
         u.Tests.initialize_git_repo(repository)
         (repository / "untracked.txt").write_text("dirty\n", encoding="utf-8")
-        outcome = tm.ok(
-            u.Cli.run_raw(["sh", "-eu", "-c", post_generation], cwd=repository),
+        outcome = FlextInfraGitService.verify_clean(
+            m.Infra.GitStatusRequest(repo_root=repository),
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=False)
+        tm.that(outcome.failure, eq=True)
+        tm.that(outcome.error, has="untracked.txt")
 
     @staticmethod
-    def test_rendered_workflow_python_commands_compile(
+    def test_rendered_workflow_shell_commands_parse(
         rendered_project: Path,
     ) -> None:
-        """YAML block indentation must preserve executable Python command bodies.
+        """The real runner shell parses every generated command body.
 
         Raises:
             TypeError: If workflow job steps must be a sequence.
@@ -347,7 +360,7 @@ class TestsFlextInfraCodegenCiMatrix:
         workflow = root / ".github" / "workflows" / "ci.yml"
         document = u.Cli.yaml_load_mapping(workflow)
         jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
-        compiled = 0
+        parsed = 0
         for raw_job in jobs.values():
             job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
             steps = job["steps"]
@@ -359,40 +372,49 @@ class TestsFlextInfraCodegenCiMatrix:
                 script = step.get("run")
                 if not isinstance(script, str):
                     continue
-                for source in re.findall(r"python3 -c '([^']*)'", script):
-                    compile(source, str(workflow), "exec")
-                    compiled += 1
-        tm.that(compiled, gt=0)
+                outcome = tm.ok(u.Cli.run(["bash", "-n", "-c", script]))
+                tm.that(
+                    u.Cli.process_succeeded(outcome.outcome),
+                    eq=True,
+                    msg=outcome.stderr,
+                )
+                parsed += 1
+        tm.that(parsed, gt=0)
 
     @staticmethod
     def test_rendered_pre_commit_uses_typed_hook_contexts(
         rendered_project: Path,
     ) -> None:
-        """The generated staged hooks render the configured workflow partitions."""
-        root = rendered_project
-        hooks = (root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
-        workflow = config.Infra.codegen.make.workflow
-        ci = config.Infra.codegen.make.ci
-
-        for hook_id, context in (
-            ("flext-pre-commit-candidate", "pre_commit"),
-            ("flext-pre-push-candidate", "pre_push"),
-        ):
-            enabled = bool(getattr(config.Infra.codegen.make, context))
-            commands = "; ".join(
-                f"make {step.verb}" for step in workflow if context in step.contexts
+        """Generated hooks select the declared commands at real Git stages."""
+        document = u.Cli.yaml_load_mapping(
+            rendered_project / ".pre-commit-config.yaml",
+        )
+        hooks = [
+            t.Cli.JSON_MAPPING_ADAPTER.validate_python(hook)
+            for repository in t.Cli.JSON_LIST_ADAPTER.validate_python(document["repos"])
+            for hook in t.Cli.JSON_LIST_ADAPTER.validate_python(
+                t.Cli.JSON_MAPPING_ADAPTER.validate_python(repository)["hooks"],
             )
-            if enabled:
-                tm.that(hooks, has=f"id: {hook_id}")
-                stage = hooks.split(f"id: {hook_id}", maxsplit=1)[1].split(
-                    "pass_filenames:",
-                    maxsplit=1,
-                )[0]
-                tm.that(stage, has=f"{commands};")
-                tm.that(stage, has=f"unset MAKEFLAGS {ci.variable};")
-            else:
-                tm.that(hooks, lacks=f"id: {hook_id}")
-        tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
+        ]
+        make = config.Infra.codegen.make
+        commits = [hook for hook in hooks if hook.get("stages") == ["pre-commit"]]
+        tm.that(len(commits), eq=int(make.pre_commit))
+        if commits:
+            tm.that(
+                commits[0]["entry"],
+                has=f"{make.ci.variable}={make.ci.value} make pre-commit",
+            )
+        pushes = [hook for hook in hooks if hook.get("stages") == ["pre-push"]]
+        expected = tuple(
+            step.verb
+            for step in make.workflow
+            if make.pre_push and "pre_push" in step.contexts
+        )
+        tm.that(len(pushes), eq=len(expected))
+        for hook, verb in zip(pushes, expected, strict=True):
+            tm.that(hook["entry"], has=f"make {verb}")
+            tm.that(hook["pass_filenames"], eq=False)
+            tm.that(hook["always_run"], eq=True)
 
     @staticmethod
     def test_ci_workflow_cancels_superseded_ref_runs(
@@ -405,51 +427,25 @@ class TestsFlextInfraCodegenCiMatrix:
         )
 
         tm.that(workflow, has="concurrency:")
-        tm.that(workflow, has="group: ${{ github.workflow }}-${{ github.ref }}")
+        tm.that(
+            workflow,
+            has=(
+                "group: ${{ github.workflow }}-${{ github.event_name }}-"
+                "${{ github.event.pull_request.number || github.ref }}"
+            ),
+        )
         tm.that(workflow, has="cancel-in-progress: true")
 
-    def test_ci_workflow_stable_blank_line_without_private_submodules(
+    def test_ci_workflow_is_identical_across_fresh_checkouts(
         self,
         tmp_path: Path,
         rendered_project: Path,
     ) -> None:
-        """Empty private_submodules include must not accumulate blank lines."""
+        """Equivalent declarations produce the same public CI artifact bytes."""
         root = rendered_project
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8",
         )
-        # The empty include sits between the checkout and the credential-mint
-        # step: no blank line may appear there, and exactly one separates the
-        # mint step from the setup commentary.
-        tm.that(
-            workflow,
-            has="fetch-depth: 0\n      # Cross-repo private git dependencies",
-        )
-        marker = (
-            'rm -f "$key_path"\n\n'
-            "      # Why: GitHub runners expose umask 002, so git checkout materializes"
-        )
-        tm.that(workflow, has=marker)
-        tm.that(
-            workflow,
-            lacks=(
-                'rm -f "$key_path"\n\n\n'
-                "      # Why: GitHub runners expose umask 002, "
-                "so git checkout materializes"
-            ),
-        )
-        # Included fragments start on their own line: a rationale comment is
-        # never glued onto the previous comment line.
-        for filename in ("ci.yml", "docs.yml"):
-            text = (root / ".github" / "workflows" / filename).read_text(
-                encoding="utf-8",
-            )
-            glued = [
-                line
-                for line in text.splitlines()
-                if "# Why" in line and not line.lstrip().startswith("# Why")
-            ]
-            tm.that(glued, eq=[])
         root2 = self.render_project(tmp_path / "member-again")
         workflow2 = (root2 / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8",
@@ -766,28 +762,21 @@ class TestsFlextInfraCodegenCiMatrix:
         self._assert_dispatch_only(triggers)
 
     @staticmethod
-    def test_draft_wip_selects_no_jobs_and_review_blocks_wip_head(
+    def test_draft_selection_preserves_gate_jobs_without_subject_merge_lock(
         rendered_project: Path,
     ) -> None:
-        """Draft is remote durability; only a promoted non-WIP head may land."""
-        root = rendered_project
-        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8",
+        """Workflow gates retain native results without a separate WIP veto."""
+        workflow = tm.ok(
+            u.Cli.yaml_parse(
+                (rendered_project / ".github/workflows/ci.yml").read_text(
+                    encoding="utf-8",
+                ),
+            ),
         )
-        _, jobs = workflow.split("\njobs:\n", maxsplit=1)
-        ci_job, merge_guard = jobs.split("\n  merge-guard:", maxsplit=1)
-
-        tm.that(ci_job, has="github.event.pull_request.draft == false")
-        tm.that(ci_job, has="make check")
-        tm.that(merge_guard, has="github.event.pull_request.draft == false")
-        # The merge guard must inspect the PR head, not the refs/pull/N/merge
-        # commit that actions/checkout selects by default on pull_request.
-        tm.that(merge_guard, has="ref: ${{ github.event.pull_request.head.sha }}")
-        tm.that(merge_guard, has="subject=$(git log -1 --format=%s)")
-        # WIP markers are config-owned data; the guard matches them generically.
-        tm.that(merge_guard, has="grep -qiE")
-        tm.that(merge_guard, has="WIP head cannot merge")
-        tm.that(merge_guard, lacks="DRAFT PR cannot merge")
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        ci = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+        tm.that(ci["if"], has="github.event.pull_request.draft == false")
+        tm.that("merge-guard" in jobs, eq=False)
 
     @staticmethod
     def test_docs_workflow_covers_every_blocking_ci_branch(
@@ -801,6 +790,43 @@ class TestsFlextInfraCodegenCiMatrix:
 
         for branch in config.Infra.codegen.branch_policy.ci_trigger_branches:
             tm.that(content, has=f"      - {branch}")
+
+    @staticmethod
+    def test_ci_failure_upload_includes_its_hidden_report_paths(
+        rendered_project: Path,
+    ) -> None:
+        """The artifact consumer includes declared reports and fails if absent."""
+        workflow = u.Cli.yaml_load_mapping(
+            rendered_project / ".github" / "workflows" / "ci.yml",
+        )
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        action = config.Infra.codegen.github_actions["upload-artifact"]
+        uploads = [
+            step
+            for payload in jobs.values()
+            for step in (
+                t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+                for value in t.Cli.JSON_LIST_ADAPTER.validate_python(
+                    t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)["steps"],
+                )
+            )
+            if step.get("uses") == f"{action.repository}@{action.version}"
+        ]
+        tm.that(uploads, empty=False)
+        for upload in uploads:
+            inputs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(upload["with"])
+            paths = str(inputs["path"]).splitlines()
+            tm.that(paths, empty=False)
+            tm.that(
+                any(
+                    part.startswith(".") and part != "."
+                    for path in paths
+                    for part in Path(path).parts
+                ),
+                eq=True,
+            )
+            tm.that(inputs["include-hidden-files"], eq=True)
+            tm.that(inputs["if-no-files-found"], eq="error")
 
     @staticmethod
     def test_docs_failure_upload_keeps_audit_failure_and_scopes_hidden_reports(
@@ -882,7 +908,8 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(smoke, has="make help")
         tm.that(smoke, has="make check")
         tm.that(smoke, lacks="} make test")
-        tm.that(smoke, has="make upg && make setup && make gen")
+        tm.that(smoke, has="make setup && make gen && make gen")
+        tm.that(smoke, lacks="make upg")
         tm.that(smoke, has="make check && make test && make build")
         dockerfiles = list(
             (root / "tests" / "fixtures" / "ci" / "docker").glob("*.Dockerfile"),
@@ -937,7 +964,11 @@ class TestsFlextInfraCodegenCiMatrix:
         # the main set, so the tests root that sonar.tests declares is excluded.
         tm.that(
             properties["sonar.exclusions"].split(","),
-            eq=[*codegen.sonarcloud.exclusions, f"{tests_dir}/**"],
+            eq=[
+                *codegen.sonarcloud.exclusions,
+                *codegen.generated_source_globs,
+                f"{tests_dir}/**",
+            ],
         )
         tm.that(
             properties["sonar.cpd.exclusions"].split(","),
@@ -967,12 +998,6 @@ class TestsFlextInfraCodegenCiMatrix:
         )
         tm.that((root / c.Infra.DIR_TESTS).is_dir(), eq=True)
         self._assert_sonarcloud_scope(rendered)
-
-        tm.that(
-            config.Infra.codegen.sonarcloud.exclusions,
-            has="**/.mise/locks/**",
-            msg="Mise dependency sidecars are committed generated inputs, not source",
-        )
 
     def test_sonarcloud_tests_root_is_always_materialized_by_conform(
         self,

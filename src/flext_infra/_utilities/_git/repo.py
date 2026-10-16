@@ -81,6 +81,152 @@ class FlextInfraUtilitiesGitRepo:
         return tuple(entries)
 
     @classmethod
+    def _worktree_registry(
+        cls,
+        repo: Repo,
+        porcelain: str,
+    ) -> t.VariadicTuple[m.Infra.GitWorktreeEntry]:
+        """Bind a storage-only primary row to Git-proven checkout identity.
+
+        Returns:
+            Typed registry entries with the primary checkout authenticated by Git.
+
+        Raises:
+            ValueError: If shared storage cannot be bound to a real primary checkout.
+            GitCommandError: If the common-config probe fails outside the tolerated
+                negative exit status.
+
+        """
+        entries = cls._registered_worktree_entries(porcelain)
+        common_dir = Path(
+            repo.git.rev_parse(
+                c.Infra.GIT_REV_PARSE_ABSOLUTE_PATHS,
+                "--git-common-dir",
+            ).strip(),
+        ).resolve()
+        if not entries:
+            msg = "Git worktree registry is empty"
+            raise ValueError(msg)
+        if entries[0].bare or entries[0].path != common_dir:
+            return entries
+        git_dir = Path(
+            repo.git.rev_parse(
+                c.Infra.GIT_REV_PARSE_ABSOLUTE_PATHS,
+                "--git-dir",
+            ).strip(),
+        ).resolve()
+        primary_repo = repo
+        configured_primary: Path | None = None
+        if git_dir != common_dir:
+            try:
+                configured = repo.git.config(
+                    "--file",
+                    str(common_dir / "config"),
+                    "--path",
+                    "--get",
+                    "core.worktree",
+                ).strip()
+            except GitCommandError as exc:
+                if exc.status != c.Infra.GIT_EXIT_NEGATIVE:
+                    raise
+                msg = (
+                    "primary checkout is unproven for storage-only registry row: "
+                    f"{common_dir}; common config declares no core.worktree"
+                )
+                raise ValueError(msg) from exc
+            if not configured:
+                msg = (
+                    "primary checkout is unproven for storage-only registry row: "
+                    f"{common_dir}; common config declares an empty core.worktree"
+                )
+                raise ValueError(msg)
+            configured_primary = cls._primary_from_config(
+                common_dir, configured
+            ).unwrap()
+            primary_repo = cls._repo(configured_primary)
+        checkout = Path(
+            primary_repo.git.rev_parse("--show-toplevel").strip(),
+        ).resolve()
+        primary_git_dir = Path(
+            primary_repo.git.rev_parse(
+                c.Infra.GIT_REV_PARSE_ABSOLUTE_PATHS,
+                "--git-dir",
+            ).strip(),
+        ).resolve()
+        primary_common_dir = Path(
+            primary_repo.git.rev_parse(
+                c.Infra.GIT_REV_PARSE_ABSOLUTE_PATHS,
+                "--git-common-dir",
+            ).strip(),
+        ).resolve()
+        primary_backpointer = Path(
+            repo.git.rev_parse(
+                "--resolve-git-dir",
+                str(checkout / c.Infra.GIT_DIR),
+            ).strip(),
+        ).resolve()
+        if cls._primary_storage_facts_disagree(
+            primary_repo=primary_repo,
+            common_dir=common_dir,
+            checkout=checkout,
+            primary_git_dir=primary_git_dir,
+            primary_common_dir=primary_common_dir,
+        ) or cls._primary_binding_disagrees(
+            primary_repo=primary_repo,
+            common_dir=common_dir,
+            primary_backpointer=primary_backpointer,
+            checkout=checkout,
+            configured_primary=configured_primary,
+        ):
+            msg = f"Git checkout identity disagrees with shared storage: {common_dir}"
+            raise ValueError(msg)
+        return (entries[0].model_copy(update={"path": checkout}), *entries[1:])
+
+    @staticmethod
+    def _primary_storage_facts_disagree(
+        primary_repo: Repo,
+        common_dir: Path,
+        checkout: Path,
+        primary_git_dir: Path,
+        primary_common_dir: Path,
+    ) -> bool:
+        """Whether the primary checkout's own facts contradict shared storage.
+
+        Returns:
+            Whether the working tree, its Git dir, or the common dir disagree
+            with the shared storage the registry row was read from.
+
+        """
+        return (
+            primary_repo.working_tree_dir is None
+            or checkout == common_dir
+            or Path(primary_repo.working_tree_dir).resolve() != checkout
+            or primary_git_dir != common_dir
+            or primary_common_dir != common_dir
+        )
+
+    @staticmethod
+    def _primary_binding_disagrees(
+        primary_repo: Repo,
+        common_dir: Path,
+        primary_backpointer: Path,
+        checkout: Path,
+        configured_primary: Path | None,
+    ) -> bool:
+        """Whether the worktree backpointer or configured primary contradict it.
+
+        Returns:
+            Whether the ``gitdir`` backpointer, the configured ``core.worktree``
+            checkout, or the inside-work-tree probe disprove the primary.
+
+        """
+        return (
+            primary_backpointer != common_dir
+            or (configured_primary is not None and checkout != configured_primary)
+            or primary_repo.git.rev_parse("--is-inside-work-tree").strip() != "true"
+        )
+
+    @classmethod
     def refresh_binary(cls) -> p.Result[bool]:
         """Point GitPython at the absolute path of the canonical git binary.
 
@@ -184,7 +330,9 @@ class FlextInfraUtilitiesGitRepo:
         """
         try:
             git_dir = Path(
-                repo.git.rev_parse("--path-format=absolute", "--git-dir").strip(),
+                repo.git.rev_parse(
+                    c.Infra.GIT_REV_PARSE_ABSOLUTE_PATHS, "--git-dir"
+                ).strip(),
             ).resolve()
             caller_root = Path(
                 repo.git.rev_parse("--show-toplevel").strip(),
@@ -261,7 +409,7 @@ class FlextInfraUtilitiesGitRepo:
             repo = cls._repo(repository_path)
             common_dir = Path(
                 repo.git.rev_parse(
-                    "--path-format=absolute",
+                    c.Infra.GIT_REV_PARSE_ABSOLUTE_PATHS,
                     "--git-common-dir",
                 ).strip(),
             ).resolve()

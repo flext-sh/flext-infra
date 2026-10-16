@@ -9,11 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import c, m, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraRootArtifactOwnership:
@@ -176,6 +175,9 @@ class TestsFlextInfraRootArtifactOwnership:
 
         first = infra.codegen_conform(request)
         result = tm.ok(first)
+        tm.that(result.plan is not None, eq=True)
+        if result.plan is None:
+            pytest.fail("conform did not return its actual plan")
         governed = tuple(file for file in result.plan.files if file.policy is not None)
         tm.that(
             {file.path: file.policy for file in governed},

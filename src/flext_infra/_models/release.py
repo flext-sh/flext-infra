@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Annotated, Self
 
 from flext_core import m
-from flext_infra import t
-from flext_infra._constants import FlextInfraConstantsRelease
+
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
 
 
@@ -121,8 +121,8 @@ class FlextInfraModelsRelease:
         ]
         artifacts: Annotated[
             t.VariadicTuple[FlextInfraModelsRelease.BuildArtifact],
-            m.Field(default=(), description="Validated wheel and sdist artifacts"),
-        ]
+            m.Field(description="Validated wheel and sdist artifacts"),
+        ] = ()
         commit_oid: Annotated[
             t.Infra.ReleaseCommitOid | None,
             m.Field(default=None, description="Source commit object ID"),
@@ -168,7 +168,7 @@ class FlextInfraModelsRelease:
         ]
         next: Annotated[t.NonEmptyStr, m.Field(description="Version to release")]
         bump: Annotated[
-            FlextInfraConstantsRelease.VersionBump,
+            c.Infra.VersionBump,
             m.Field(description="Bump derived from merged PRs"),
         ]
         previous_tag: Annotated[
@@ -198,8 +198,9 @@ class FlextInfraModelsRelease:
 
             Returns:
                 The resulting ``str``.
+
             """
-            return FlextInfraConstantsRelease.TAG_FORMAT.format(version=self.next)
+            return c.Infra.TAG_FORMAT.format(version=self.next)
 
         @m.computed_field
         @property
@@ -208,6 +209,7 @@ class FlextInfraModelsRelease:
 
             Returns:
                 The resulting ``bool``.
+
             """
             return self.declared or self.next != self.current
 
@@ -225,8 +227,8 @@ class FlextInfraModelsRelease:
         ]
         records: Annotated[
             t.VariadicTuple[FlextInfraModelsRelease.BuildRecord],
-            m.Field(default=(), description="Per-project build records"),
-        ]
+            m.Field(description="Per-project build records"),
+        ] = ()
         dry_run: Annotated[bool, m.Field(description="Metadata-only build report")]
         build_constraints_sha256: Annotated[
             t.Infra.ReleaseArtifactSha256,
@@ -302,7 +304,7 @@ class FlextInfraModelsRelease:
 
         dry_run: Annotated[bool, m.Field(description="Dry run flag")] = False
         phase: Annotated[
-            FlextInfraConstantsRelease.ReleasePhase,
+            c.Infra.ReleasePhase,
             m.Field(description="Release phase"),
         ]
         index: Annotated[

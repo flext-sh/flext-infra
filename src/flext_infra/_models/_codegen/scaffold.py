@@ -35,8 +35,8 @@ class FlextInfraModelsCodegenScaffoldModels:
 
         violations: Annotated[
             Sequence[FlextInfraModelsCodegenScaffoldModels.CensusViolation],
-            m.Field(default_factory=list, description="Detected violations"),
-        ]
+            m.Field(description="Detected violations"),
+        ] = m.Field(default_factory=tuple)
         total: Annotated[t.NonNegativeInt, m.Field(description="Total violation count")]
         fixable: Annotated[
             t.NonNegativeInt,
@@ -101,3 +101,6 @@ class FlextInfraModelsCodegenScaffoldModels:
             t.MutableSequenceOf[str],
             m.Field(description="Skipped file accumulator"),
         ]
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenScaffoldModels"]

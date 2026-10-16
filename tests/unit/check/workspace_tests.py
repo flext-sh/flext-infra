@@ -10,11 +10,10 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, main, r
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -173,10 +172,12 @@ class TestsFlextInfraWorkspaceChecker:
         tmp_path: Path,
     ) -> None:
         """Test that lint() returns a GateResult."""
+        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (project_dir / "src" / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
         )
-        result = checker.lint(tmp_path)
+        result = checker.lint(project_dir)
         tm.that(result, is_=r)
         tm.ok(result)
 

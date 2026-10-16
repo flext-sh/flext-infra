@@ -96,9 +96,8 @@ class FlextInfraWorkspaceEnvironmentMixin:
             / f"{destination}.j2"
         )
         render_context = m.Infra.EnvrcRenderSpec(
-            worktree_environment_directory=(
-                config.Infra.codegen.toolchain.worktree_environment_directory
-            ),
+            toolchain=config.Infra.codegen.toolchain,
+            uv_resolution=config.Infra.codegen.make.uv_resolution,
             repository_root_rel=".",
             environment_path_prepends=(
                 config.Infra.codegen.toolchain.environment_path_prepends
@@ -122,6 +121,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
         envrc = request.repository_root / c.Infra.ENVRC_FILENAME
         if not request.apply or not request.allow_direnv or not envrc.is_file():
             return r[bool].ok(value=False)
+        verified = cls._verify_generated_envrc(envrc)
+        if verified.failure:
+            return verified
         runner_service = runner or u.Cli
         result = runner_service.run_raw(
             (c.Infra.CLI_DIRENV, "allow", str(request.repository_root)),
@@ -139,21 +141,62 @@ class FlextInfraWorkspaceEnvironmentMixin:
         return r[bool].ok(value=True)
 
     @classmethod
+    def _verify_generated_envrc(cls, envrc: Path) -> p.Result[bool]:
+        """Authenticate the exact rendered owner bytes before native approval.
+
+        Returns:
+            Owned content identity or an explicit refusal to authorize it.
+
+        """
+        if envrc.is_symlink():
+            return r[bool].fail(f"refusing to authorize symlinked environment: {envrc}")
+        rendered = cls._render_environment_template(c.Infra.ENVRC_FILENAME)
+        if rendered.failure:
+            return r[bool].from_failure(rendered)
+        observed = u.Cli.files_read_text(envrc)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if observed.value != rendered.value:
+            return r[bool].fail(
+                f"refusing to authorize environment not produced by its owner: {envrc}",
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
     def execute_request(
         cls,
         request: m.Infra.WorkspaceEnvironmentSyncRequest,
+        *,
+        scope: c.Infra.CodegenConformScope = c.Infra.CodegenConformScope.SELF,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Run one sync request through the public workspace owner.
+        """Run a serial sync scope through the public workspace owner.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        result = cls.sync_environment_files(request)
+
+        def sync_repository(repository_root: Path) -> p.Result[t.SequenceOf[Path]]:
+            result = cls.sync_environment_files(
+                request.model_copy(
+                    update={"repository_root": repository_root},
+                ),
+            )
+            if result.failure:
+                return r[t.SequenceOf[Path]].from_failure(result)
+            return r[t.SequenceOf[Path]].ok(result.value.changed_files)
+
+        result = u.Infra.repository_operation_batch(
+            request.repository_root,
+            scope,
+            "sync-environment",
+            sync_repository,
+            mutating=request.apply,
+        )
         if result.failure:
             return r[t.Cli.ResultValue].from_failure(result)
         return r[t.Cli.ResultValue].ok(
-            tuple(str(path) for path in result.value.changed_files),
+            tuple(str(path) for path in result.value),
         )
 
     @classmethod

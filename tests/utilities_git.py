@@ -10,10 +10,9 @@ import venv
 from pathlib import Path
 
 from flext_cli import cli as cli_facade
-from flext_tests import tm
 
 from flext_infra import config, u
-from tests import c, m, t
+from tests import c, m, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 
 
@@ -31,9 +30,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         return tm.ok(
             u.Infra.repository_baseline_branch(
                 repo_root,
-                preference=tuple(
-                    config.Infra.codegen.branch_policy.integration_branch_preference,
-                ),
+                declared_branch=config.Infra.codegen.branch_policy.integration_branch,
             ),
         )
 
@@ -140,14 +137,10 @@ class TestsFlextInfraUtilitiesGitMixin:
         # The checkout carries the provider-declared integration branch, so the
         # bare origin publishes that same line as its default target.
         branch = TestsFlextInfraUtilitiesGitMixin.integration_branch(repo_root)
-        tm.ok(
-            u.Infra.git_push_upstream(
-                m.Infra.GitPushRequest(
-                    repo_root=repo_root,
-                    remote=c.Infra.GIT_ORIGIN,
-                    branch=branch,
-                ),
-            ),
+        # Initial remote construction is fixture bootstrap, not lane admission.
+        bootstrap(
+            repo_root,
+            ("push", "-u", c.Infra.GIT_ORIGIN, f"HEAD:refs/heads/{branch}"),
         )
         bootstrap(
             bare_remote,
@@ -196,8 +189,8 @@ class TestsFlextInfraUtilitiesGitMixin:
         behavioral operation is expressed through the typed ``u.Infra.git_*``
         facade, which binds the repository explicitly.
 
-        Isolation is expressed with ``remove_env_keys`` because ``env`` is an
-        overlay that can only add or replace keys, never remove them
+        Isolation is expressed through the typed process options because
+        ``env`` only adds or replaces keys; ``remove_env_keys`` removes them.
         ``overrides`` carries topology the fixture itself requires, such as
         permitting the file transport for a local bare origin.
         """
@@ -205,7 +198,7 @@ class TestsFlextInfraUtilitiesGitMixin:
             cli_facade.run_checked(
                 [c.Infra.GIT, *command],
                 cwd=repo_root,
-                options=u.Cli.ProcessOptions(
+                options=m.Cli.ProcessOptions(
                     env=overrides,
                     remove_env_keys=TestsFlextInfraUtilitiesGitMixin.isolated_git_keys(),
                 ),

@@ -8,16 +8,15 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import runpy
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import config, infra, u
+from flext_infra import config, infra, p, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
-from tests import c, m, t
+from tests import c, m, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
@@ -26,6 +25,38 @@ from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
 class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
     """Typed workspace and project-layout fixture helpers."""
+
+    @staticmethod
+    def prove_contract_migration(
+        consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        source: str,
+    ) -> None:
+        """Prove public runtime equivalence, atomic planning and convergence."""
+        workspace, path = consumer
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            ),
+        )
+        tm.that(len(edits), eq=1)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        updated = edits[0].updated_source
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=workspace,
+                    sources={path: updated},
+                ),
+            ),
+            empty=True,
+        )
 
     @dataclasses.dataclass(frozen=True)
     class BeadsIdentity:
@@ -123,20 +154,27 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         *,
         project_name: str = "sample-proj",
         package_name: str = "sample_pkg",
-        pyproject: str = "[project]\nname='sample'\n",
+        pyproject: str = "[project]\nname='sample'\nversion='1.0.0'\n",
         declare: bool = True,
     ) -> t.Triple[Path, Path, Path]:
         """Materialize the workspace tree the namespace enforcer scans.
 
         Returns ``(workspace, project, package)``. ``declare`` writes the
         governed ``.gitmodules`` row; a scan that must observe an undeclared
-        project sets it to ``False``.
+        project sets it to ``False``. Workspace and project both carry the
+        tracked Mise seeds, as governed repositories do: the rule engine runs
+        ast-grep through the scanned repository's pinned lock, and a bare
+        fixture resolved only a host-global binary (none on CI runners).
 
         Returns:
             The resulting ``t.Triple[Path, Path, Path]``.
 
         """
-        workspace = tmp_path / "workspace"
+        workspace = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.mk_project(
+            tmp_path,
+            "workspace",
+            pyproject=pyproject,
+        )
         project = workspace / project_name
         package = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.src_package(
             project,
@@ -144,6 +182,10 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             pyproject=pyproject,
         )
         (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        for governed_root in (workspace, project):
+            TestsFlextInfraUtilitiesToolingFixtureMixin.copy_tracked_mise_seeds(
+                governed_root,
+            )
         if declare:
             TestsFlextInfraUtilitiesProjectFixtureMixin.declare_workspace_projects(
                 workspace,
@@ -383,22 +425,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         return "".join(part.title() for part in snake.split("_"))
 
     @staticmethod
-    def src_module_files() -> t.StrSequence:
-        """Return canonical FLEXT source-facade filenames.
-
-        Returns:
-            Canonical FLEXT source-facade filenames.
-
-        """
-        return (
-            "constants.py",
-            "typings.py",
-            "protocols.py",
-            "models.py",
-            "utilities.py",
-        )
-
-    @staticmethod
     def create_codegen_project(
         *,
         tmp_path: Path,
@@ -480,7 +506,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").touch()
         if with_all_modules:
-            for mod in TestsFlextInfraUtilitiesWorkspaceFixtureMixin.src_module_files():
+            for mod, _suffix, _base, _description in c.Infra.SRC_MODULES:
                 (pkg / mod).write_text(
                     f"class TestProject{mod.split('.')[0].title()}:\n    pass\n",
                     encoding="utf-8",
@@ -491,22 +517,111 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         """Provide one repository and lane-path contract without collecting tests."""
 
         @staticmethod
-        def add_worktree(repository: Path, branch: str, *, base: str = "HEAD") -> str:
-            """Create one applied worktree and return Git's canonical lane path.
+        def native_lane(
+            repository: Path,
+            branch: str,
+            *,
+            epic_lane: Path | None = None,
+        ) -> Path:
+            """Register ``branch`` as a native linked worktree at its canonical path.
+
+            Lane admission refuses every ``ADD`` until authoritative Beads
+            ownership reaches the native contract (bead flext-itpd1.3.26), so a
+            test whose subject is an existing lane obtains it the way Git
+            itself can: ``git worktree add -b`` at the path the production
+            topology owner reserves for the branch.
 
             Returns:
-                The resulting ``str``.
+                The registered lane path.
 
             """
-            return tm.ok(
-                FlextInfraWorktreeService(
-                    repository_root=repository,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=branch,
-                    base=base,
-                    apply_changes=True,
-                ).execute(),
+            lane = tm.ok(
+                FlextInfraWorktreeService.canonical_lane_path(
+                    repository,
+                    branch,
+                    epic_lane,
+                ),
             )
+            tm.ok(
+                u.Cli.run_checked(
+                    [
+                        c.Infra.GIT,
+                        "worktree",
+                        "add",
+                        "-b",
+                        branch,
+                        str(lane),
+                        c.Infra.GIT_HEAD,
+                    ],
+                    cwd=repository,
+                ),
+            )
+            return lane
+
+        @staticmethod
+        def refused_lane(
+            repository: Path,
+            branch: str,
+            *,
+            base: str = "HEAD",
+            epic_lane: Path | None = None,
+            reason: str = "new lane refused",
+        ) -> Path:
+            """Request ``ADD`` and prove the refusal left Git and disk untouched.
+
+            Like a real lane owner, the fixture fetches the declared remote
+            first, so the refusal is measured against a fresh remote-tracking
+            tip. The refusal must carry ``reason``, the canonical lane path
+            must not exist, and the refs and worktree registry must equal
+            their state before the request.
+
+            Returns:
+                The canonical lane path the refused request would have used.
+
+            """
+            tm.ok(
+                u.Cli.run_checked(
+                    [c.Infra.GIT, "fetch", "--quiet", c.Infra.GIT_ORIGIN],
+                    cwd=repository,
+                ),
+            )
+            state = (
+                tm.ok(u.Cli.capture([c.Infra.GIT, "show-ref"], cwd=repository)),
+                tm.ok(
+                    u.Infra.git_list_worktrees(
+                        m.Infra.GitRepoRequest(repo_root=repository),
+                    ),
+                ).porcelain,
+            )
+            result = FlextInfraWorktreeService(
+                repository_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base=base,
+                epic_lane=epic_lane,
+                apply_changes=True,
+            ).execute()
+            tm.fail(result, has=reason)
+            lane = tm.ok(
+                FlextInfraWorktreeService.canonical_lane_path(
+                    repository,
+                    branch,
+                    epic_lane,
+                ),
+            )
+            tm.that(lane.exists(), eq=False)
+            tm.that(
+                (
+                    tm.ok(u.Cli.capture([c.Infra.GIT, "show-ref"], cwd=repository)),
+                    tm.ok(
+                        u.Infra.git_list_worktrees(
+                            m.Infra.GitRepoRequest(repo_root=repository),
+                        ),
+                    ).porcelain,
+                ),
+                eq=state,
+            )
+            return lane
 
         @staticmethod
         def override_repository_manifest(
@@ -606,19 +721,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             return member
 
         @staticmethod
-        def _lane(primary_root: Path, outermost_project: Path, branch: str) -> Path:
-            """Resolve the lane through the production topology owner.
-
-            Returns:
-                The resulting ``Path``.
-
-            """
-            _ = outermost_project
-            return tm.ok(
-                FlextInfraWorktreeService.canonical_lane_path(primary_root, branch),
-            )
-
-        @staticmethod
         def _repository(tmp_path: Path) -> Path:
             repository = tmp_path / "repository"
             repository.mkdir()
@@ -636,7 +738,58 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 '\t@printf "setting up %s\\n" "$(WORKSPACE)"\n',
                 encoding="utf-8",
             )
+            # Lane admission demands authoritative Beads ownership over a
+            # governed manifest: the fixture declares both, exactly as a real
+            # checkout does.
+            TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
+                repository,
+                "fixture",
+            )
+            TestsFlextInfraUtilitiesWorkspaceFixtureMixin.WorktreeFixture.write_beads_project(
+                repository,
+                workspace="fixture",
+                database="fixture-database",
+                issue_prefix="fixture-prefix",
+            )
             TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(repository)
+            remote = tmp_path / "integration.git"
+            git = TestsFlextInfraUtilitiesGitMixin
+            # A forge remote's HEAD declares its default branch; ADD reads it
+            # live through ``ls-remote --symref``.
+            git.git_bootstrap(
+                tmp_path,
+                (
+                    "init",
+                    "--bare",
+                    "-b",
+                    TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+                    str(remote),
+                ),
+            )
+            policy = config.Infra.codegen.branch_policy
+            action = "set-url" if policy.lane_remote == c.Infra.GIT_ORIGIN else "add"
+            git.git_bootstrap(
+                repository,
+                ("remote", action, policy.lane_remote, str(remote)),
+            )
+            git.git_bootstrap(
+                repository,
+                (
+                    "push",
+                    policy.lane_remote,
+                    "HEAD:refs/heads/"
+                    + TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+                ),
+            )
+            git.git_bootstrap(
+                remote,
+                (
+                    "symbolic-ref",
+                    "HEAD",
+                    "refs/heads/"
+                    + TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+                ),
+            )
             return repository
 
         @staticmethod
@@ -644,7 +797,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             """Commit one deliberate fixture mutation."""
             tm.ok(
                 u.Cli.run_checked(
-                    [c.Infra.GIT, "add", "Makefile", "pyproject.toml"],
+                    [c.Infra.GIT, "add", "Makefile", "pyproject.toml", "config"],
                     cwd=repository,
                 ),
             )
@@ -652,6 +805,15 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 u.Cli.run_checked(
                     [c.Infra.GIT, "commit", "-m", message],
                     cwd=repository,
+                ),
+            )
+            TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+                repository,
+                (
+                    "push",
+                    config.Infra.codegen.branch_policy.lane_remote,
+                    "HEAD:refs/heads/"
+                    + TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
                 ),
             )
 
@@ -722,7 +884,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             # governed fixture must declare both.
             python_required = config.Infra.codegen.toolchain.python_required_version
             pyproject.write_text(
-                f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+                f'[project]\nname = "{distribution}"\n'
+                f'version = "{config.Infra.initial_project_version}"\n'
                 f'description = "{distribution} governed fixture"\n'
                 f'requires-python = "{python_required}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
@@ -812,14 +975,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         ) -> None:
             """Declare and commit ``member`` as a real gitlink of ``parent``."""
             _ = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
-            (parent / c.Infra.GITMODULES).write_text(
-                f'[submodule "{distribution}"]\n'
-                f"\tpath = {relative_path}\n"
-                f"\turl = {cls.governed_repository_url(distribution)}\n"
-                "\tbranch = "
-                f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n",
-                encoding="utf-8",
-            )
+            for key, value in (
+                ("path", relative_path),
+                ("url", cls.governed_repository_url(distribution)),
+                (
+                    "branch",
+                    TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+                ),
+            ):
+                _ = TestsFlextInfraUtilitiesGitMixin.git_run(
+                    parent,
+                    "config",
+                    "--file",
+                    c.Infra.GITMODULES,
+                    f"submodule.{distribution}.{key}",
+                    value,
+                )
             # A workspace parent declares its own role as workspace: the
             # manifest must agree with the topology the detector observes.
             TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(

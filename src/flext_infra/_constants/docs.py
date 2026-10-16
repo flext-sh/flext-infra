@@ -17,9 +17,6 @@ class FlextInfraConstantsDocs:
     """Docs infrastructure constants."""
 
     DEFAULT_DOCS_OUTPUT_DIR: ClassVar[str] = ".reports/docs"
-    # MkDocs logs every strict-mode warning to this logger before it aborts
-    # with only a count; the build captures it so a failure carries its cause.
-    MKDOCS_LOGGER_NAME: ClassVar[str] = "mkdocs"
     # Registered docs CLI action names; make.docs.actions must stay inside this
     # surface so the generated Makefile loop can never dispatch a missing verb.
     DOCS_ACTION_IDS: ClassVar[frozenset[str]] = frozenset({
@@ -44,11 +41,6 @@ class FlextInfraConstantsDocs:
         DOCS_AUDIT_REPORT_FILENAME,
         DOCS_VALIDATE_SUMMARY_FILENAME,
         DOCS_VALIDATE_REPORT_FILENAME,
-    )
-    # Prettier --write lists every processed file as "<path> <duration>ms";
-    # the fmt phase report surfaces exactly that surface per scope.
-    DOCS_PRETTIER_WRITE_LINE_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?P<file>\S+)\s+\d+(?:\.\d+)?ms$",
     )
     DOCS_INSECURE_WEB_SCHEME: ClassVar[str] = "http"
     DOCS_SECURE_WEB_SCHEME: ClassVar[str] = "https"
@@ -214,12 +206,6 @@ class FlextInfraConstantsDocs:
         "zsh",
     })
     """Markdown fence languages whose lines are executable shell commands."""
-    DOCS_FORBIDDEN_MAKE_SELECTOR_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"\b(?:PROJECTS?|MATCH|WHAT|FILES?|FIX|CHANGED_ONLY|CHECK_GATES|"
-        r"DOCS_PHASE|VALIDATE_SCOPE)\s*=",
-        re.IGNORECASE,
-    )
-    """Match selectors outside the canonical root Make grammar."""
     DOCS_APPLY_RE: ClassVar[t.RegexPattern] = re.compile(r"\bAPPLY\s*=")
     """Reject the removed mutation selector for every supplied value."""
     DOCS_COMMAND_CONTRACT_DIRNAMES: ClassVar[frozenset[str]] = frozenset({

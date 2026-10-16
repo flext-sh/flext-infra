@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
+from flext_core import u
+from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
@@ -150,10 +152,24 @@ class FlextInfraModelsCore:
         """Session-owned public collection-hook observations."""
 
         eligible: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin] = (
-            m.Field(default_factory=list, description="Independently parsed origins")
+            m.Field(
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownOrigin"]
+                    )
+                ),
+                description="Independently parsed origins",
+            )
         )
         collected: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
-            m.Field(default_factory=list, description="Observed pre-selection items")
+            m.Field(
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
+                    )
+                ),
+                description="Observed pre-selection items",
+            )
         )
         deselected: t.MutableSequenceOf[str] = m.Field(
             default_factory=list,
@@ -276,11 +292,17 @@ class FlextInfraModelsCore:
             description="Canonical test operation for this report directory",
         )
         testmon_db: Path | None = m.Field(
-            description="External pytest-testmon database; absent for coverage",
+            description=(
+                "External pytest-testmon database shared by incremental and "
+                "full operations; absent for coverage"
+            ),
         )
-        deadline_monotonic: float = m.Field(
+        deadline_monotonic: float | None = m.Field(
             gt=0,
-            description="Shared absolute deadline across all execution phases",
+            description=(
+                "Shared absolute deadline across all execution phases; absent "
+                "for the unbounded full operation"
+            ),
         )
         report_directory: Path | None = m.Field(
             default=None,
@@ -404,6 +426,10 @@ class FlextInfraModelsCore:
             t.NonNegativeInt,
             m.Field(description="Skipped test case count"),
         ]
+        connectivity_skip_cases: t.StrTuple = m.Field(
+            default_factory=tuple,
+            description="Shared-plugin prerequisite skips, not successful connectivity",
+        )
         collection_failed_count: t.NonNegativeInt = m.Field(
             description="Failed collection reports, separate from JUnit cases",
         )
@@ -489,11 +515,29 @@ class FlextInfraModelsCore:
             default_factory=dict,
             description="Runtest phase outcomes keyed by TestReport node ID",
         )
+        connectivity_skip_cases: t.MutableSequenceOf[str] = m.Field(
+            default_factory=list,
+            description="Shared-plugin prerequisite skips retained in JUnit",
+        )
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt
-        ] = m.Field(default_factory=list, description="Call-phase attempt observations")
+        ] = m.Field(
+            default_factory=u.empty(
+                TypeForm(
+                    t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownAttempt"]
+                )
+            ),
+            description="Call-phase attempt observations",
+        )
         markdown_items: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
-            m.Field(default_factory=list, description="Call-phase origin observations")
+            m.Field(
+                default_factory=u.empty(
+                    TypeForm(
+                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
+                    )
+                ),
+                description="Call-phase origin observations",
+            )
         )
         collection_failed_cases: t.MutableSequenceOf[str] = m.Field(
             default_factory=list,

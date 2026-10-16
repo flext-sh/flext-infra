@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import FlextInfraConfig, c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 
 
@@ -27,8 +27,11 @@ class FlextInfraUtilitiesGitignore:
             The resolved template root of the installed flext-infra package.
 
         """
-        package_root = Path(__file__).resolve().parent.parent
-        return (package_root / "templates" / codegen.templates.root).resolve()
+        return (
+            FlextInfraConfig.ssot_config_dir().parent
+            / "templates"
+            / codegen.templates.root
+        ).resolve()
 
     @staticmethod
     def codegen_template_sources(codegen: m.Infra.CodegenConfigSpec) -> frozenset[Path]:
@@ -109,10 +112,14 @@ class FlextInfraUtilitiesGitignore:
         rendered = u.Cli.template_render(templates_root / entry.source, context)
         if rendered.failure or project_dir is None:
             return rendered
+        suffix = FlextInfraUtilitiesGitignore.gitignore_runtime_suffix(codegen)
+        if suffix.failure:
+            return r[str].from_failure(suffix)
         return FlextInfraUtilitiesGitignore.preserve_project_gitignore_blocks(
             rendered.value,
             project_dir,
             preserved_blocks,
+            runtime_suffix=suffix.value,
         )
 
     @staticmethod
@@ -120,6 +127,8 @@ class FlextInfraUtilitiesGitignore:
         rendered: str,
         project_dir: Path,
         blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock],
+        *,
+        runtime_suffix: str = "",
     ) -> p.Result[str]:
         """Compose declared external blocks without taking ownership of their lines.
 
@@ -144,12 +153,65 @@ class FlextInfraUtilitiesGitignore:
         content = snapshot.value.content
         if content is None:
             return r[str].ok(rendered)
-        return FlextInfraUtilitiesGitignore._compose_preserved_blocks(
-            rendered,
+        if runtime_suffix and not rendered.endswith(runtime_suffix):
+            error = ValueError(
+                f"generated gitignore lacks its declared runtime policy: {destination}",
+            )
+            return r[str].fail(str(error), exception=error)
+        prefix = rendered.removesuffix(runtime_suffix) if runtime_suffix else rendered
+        composed = FlextInfraUtilitiesGitignore._compose_preserved_blocks(
+            prefix,
             content,
             blocks,
             markers,
             destination,
+        )
+        return FlextInfraUtilitiesGitignore._apply_runtime_suffix(
+            composed,
+            runtime_suffix,
+        )
+
+    @staticmethod
+    def _apply_runtime_suffix(
+        composed: p.Result[str],
+        runtime_suffix: str,
+    ) -> p.Result[str]:
+        """Re-append the runtime tracking policy after preserved external blocks.
+
+        Returns:
+            The composed gitignore with its declared runtime policy restored.
+
+        """
+        if composed.failure or not runtime_suffix:
+            return composed
+        separator = "" if composed.value.endswith("\n\n") else "\n"
+        return r[str].ok(composed.value + separator + runtime_suffix)
+
+    @staticmethod
+    def gitignore_runtime_suffix(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
+        """Render the final tracking policy from the same typed section owner.
+
+        Returns:
+            The exact final fragment, empty only when no local artifacts are declared.
+
+        """
+        sections = FlextInfraUtilitiesGitignore._runtime_gitignore_sections(codegen)
+        if not sections:
+            return r[str].ok("")
+        entry = next(
+            (
+                item
+                for item in codegen.templates.entries
+                if item.destination == c.Infra.GITIGNORE
+            ),
+            None,
+        )
+        if entry is None or entry.source is None:
+            error = ValueError("gitignore rendering source is not declared")
+            return r[str].fail(str(error), exception=error)
+        return u.Cli.template_render(
+            FlextInfraUtilitiesGitignore.codegen_templates_root(codegen) / entry.source,
+            m.Infra.GitignoreRenderSpec(gitignore_sections=sections),
         )
 
     @staticmethod
@@ -225,7 +287,7 @@ class FlextInfraUtilitiesGitignore:
             The resulting ``p.Result[str]``.
 
         """
-        lines = content.decode(c.Cli.ENCODING_DEFAULT).splitlines(keepends=True)
+        lines = content.decode(c.DEFAULT_ENCODING).splitlines(keepends=True)
         located = FlextInfraUtilitiesGitignore._locate_block_markers(
             lines,
             markers,
@@ -324,7 +386,34 @@ class FlextInfraUtilitiesGitignore:
                     patterns=tuple(project_patterns),
                 ),
             )
+        sections.extend(
+            FlextInfraUtilitiesGitignore._runtime_gitignore_sections(codegen)
+        )
         return tuple(sections)
+
+    @staticmethod
+    def _runtime_gitignore_sections(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]:
+        """Declare final ignore precedence for precisely the runtime-local artifacts.
+
+        Returns:
+            The single derived policy section or an empty declaration.
+
+        """
+        local_projections = tuple(
+            f"/{item.path.as_posix()}"
+            for item in sorted(codegen.managed_file_specs, key=lambda item: item.path)
+            if item.tracking == "runtime-local"
+        )
+        if local_projections:
+            return (
+                m.Infra.ScaffoldGitignoreSectionSpec(
+                    name="RUNTIME: local projections (derived)",
+                    patterns=local_projections,
+                ),
+            )
+        return ()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitignore"]

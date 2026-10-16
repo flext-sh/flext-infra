@@ -1,0 +1,33 @@
+id: class-alias-generic-bound
+valid:
+  - |
+    from flext_infra import t
+
+    def make() -> t.Cli.ResultValue:
+        return result
+  - |
+    class Service[TResult](Base):
+        """Unbounded domain declaration."""
+  - |
+    class Service[TResult: ResultContract](Base):
+        """Concrete class bound."""
+  - |
+    from flext_infra import t
+
+    def handler[TParams, TResult: t.Cli.ResultValue](value: TResult) -> TResult:
+        """Functional bounds retain the real CLI payload contract."""
+        return value
+  - |
+    from flext_infra import t
+
+    class Routes:
+        @staticmethod
+        def handler[TResult: t.Cli.ResultValue](value: TResult) -> TResult:
+            """A method bound must not be mistaken for its containing class."""
+            return value
+invalid:
+  - |
+    from flext_infra import t
+
+    class Service[TResult: t.Cli.ResultValue](Base):
+        """Resolve this class-bound alias without deleting the contract."""

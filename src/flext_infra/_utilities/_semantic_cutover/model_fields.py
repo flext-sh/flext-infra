@@ -13,7 +13,7 @@ import libcst as cst
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 
-from flext_infra._utilities import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
 )
@@ -62,7 +62,9 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         context = CodemodContext()
         AddImportsVisitor.add_needed_import(context, "flext_core", "u")
         updated = (
-            cst.parse_module("".join(lines)).visit(AddImportsVisitor(context)).code
+            AddImportsVisitor(context)
+            .transform_module(cst.parse_module("".join(lines)))
+            .code
         )
         return updated, ("narrowed untrusted model-class boundaries",)
 
@@ -187,7 +189,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             raise ValueError(msg)
         receiver = cls._field_receiver(statement)
         if any(
-            receiver in cls._bound_identifiers(node)
+            receiver in cls.bound_identifiers(node)
             for body in function.body
             for node in ast.walk(body)
         ):

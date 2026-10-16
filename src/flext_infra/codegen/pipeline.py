@@ -11,13 +11,10 @@ from typing import TYPE_CHECKING, override
 from flext_cli import cli
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-from flext_infra.codegen._lazy_init_generation import (
-    FlextInfraCodegenLazyInitGenerationMixin,
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
+    FlextInfraCodegenPipelineStagesMixin,
 )
-from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
-from flext_infra.codegen._mise_artifacts_publication import FlextInfraMisePublication
-from flext_infra.codegen._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -97,7 +94,7 @@ class FlextInfraCodegenPipeline(
     def _run_stage[V](
         self,
         stage_id: str,
-        action: Callable[[], V],
+        action: Callable[[], p.Result[V]],
         emit: Callable[[V], t.JsonMapping],
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run one pipeline stage and preserve the first exception.
@@ -109,11 +106,14 @@ class FlextInfraCodegenPipeline(
             The resulting ``p.Result[m.Cli.PipelineStageResult]``.
 
         """
+        outcome = action()
+        if outcome.failure:
+            return r[m.Cli.PipelineStageResult].from_failure(outcome)
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=stage_id,
                 status=c.Cli.PipelineStageStatus.OK,
-                output=emit(action()),
+                output=emit(outcome.value),
             ),
         )
 
@@ -153,6 +153,7 @@ class FlextInfraCodegenPipeline(
                     "total_skipped": scaffold_skipped,
                 },
                 "auto_fix": {"total_fixed": fixed, "total_skipped": skipped},
+                "lazy_init": {"unmapped_count": self._state.lazy_unmapped_count},
                 "census_after": {
                     "total_violations": after_violations,
                     "total_fixable": after_fixable,
@@ -165,6 +166,7 @@ class FlextInfraCodegenPipeline(
                 f"Scaffold: {scaffold_created} files created",
                 f"Auto-fix: {fixed} violations fixed",
                 f"Census after: {after_violations} violations",
+                f"Lazy-init: {self._state.lazy_unmapped_count} unmapped files",
                 (
                     f"Improvement: {before_violations - after_violations} "
                     f"violations resolved"
@@ -173,10 +175,4 @@ class FlextInfraCodegenPipeline(
         )
 
 
-__all__: list[str] = [
-    "FlextInfraCodegenLazyInitGenerationMixin",
-    "FlextInfraCodegenPipeline",
-    "FlextInfraCodegenPipelineStagesMixin",
-    "FlextInfraMiseArtifactsFiles",
-    "FlextInfraMisePublication",
-]
+__all__: list[str] = ["FlextInfraCodegenPipeline"]

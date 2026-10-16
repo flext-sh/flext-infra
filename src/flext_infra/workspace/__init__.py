@@ -10,16 +10,9 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.workspace._detector_beads import FlextInfraWorkspaceBeadsMixin
-    from flext_infra.workspace._detector_identity import (
-        FlextInfraWorkspaceIdentityMixin,
-    )
-    from flext_infra.workspace._detector_subprojects import (
-        FlextInfraWorkspaceSubprojectsMixin,
-    )
     from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
     from flext_infra.workspace._rope_query import FlextInfraRopeQueryMixin
     from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -31,44 +24,49 @@ if TYPE_CHECKING:
         FlextInfraWorkspaceEnvironmentProvenance,
     )
     from flext_infra.workspace.fleet_gaps import FlextInfraWorkspaceFleetGaps
-    from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
+    from flext_infra.workspace.fleet_verbs import FlextInfraWorkspaceFleetVerbs
+    from flext_infra.workspace.flext_binding import FlextInfraBindingService
+    from flext_infra.workspace.lifecycle import FlextInfraWorkspaceLifecycle
+    from flext_infra.workspace.lock_completeness import (
+        FlextInfraWorkspaceLockCompleteness,
+    )
     from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
 __all__: tuple[str, ...] = (
-    "FlextInfraFlextBindingService",
+    "FlextInfraBindingService",
     "FlextInfraRopeQueryMixin",
     "FlextInfraRopeWorkspace",
-    "FlextInfraWorkspaceBeadsMixin",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceEnvironmentContracts",
     "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceFleetGaps",
+    "FlextInfraWorkspaceFleetVerbs",
     "FlextInfraWorkspaceGovernanceMixin",
-    "FlextInfraWorkspaceIdentityMixin",
+    "FlextInfraWorkspaceLifecycle",
+    "FlextInfraWorkspaceLockCompleteness",
     "FlextInfraWorkspacePropagation",
-    "FlextInfraWorkspaceSubprojectsMixin",
 )
 
 install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "FlextInfraFlextBindingService": ".flext_binding",
+        "FlextInfraBindingService": ".flext_binding",
         "FlextInfraRopeQueryMixin": "._rope_query",
         "FlextInfraRopeWorkspace": ".rope",
-        "FlextInfraWorkspaceBeadsMixin": "._detector_beads",
         "FlextInfraWorkspaceDetector": ".detector",
         "FlextInfraWorkspaceEnvironmentContracts": ".environment_contracts",
         "FlextInfraWorkspaceEnvironmentMixin": ".environment",
         "FlextInfraWorkspaceEnvironmentProvenance": ".environment_provenance",
         "FlextInfraWorkspaceFleetGaps": ".fleet_gaps",
+        "FlextInfraWorkspaceFleetVerbs": ".fleet_verbs",
         "FlextInfraWorkspaceGovernanceMixin": "._governance",
-        "FlextInfraWorkspaceIdentityMixin": "._detector_identity",
+        "FlextInfraWorkspaceLifecycle": ".lifecycle",
+        "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",
         "FlextInfraWorkspacePropagation": ".propagation",
-        "FlextInfraWorkspaceSubprojectsMixin": "._detector_subprojects",
     }),
     public_exports=__all__,
 )

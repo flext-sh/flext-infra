@@ -1,4 +1,4 @@
-"""Apply, rollback, and pytest flows for protected edit workflows.
+"""Apply and validate protected edits while retaining written source.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,23 +7,23 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import secrets
 from pathlib import Path
-from typing import ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r, settings, t
 from flext_infra._utilities import FlextInfraUtilitiesProtectedEditPreview
 
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):
-    """Apply, in-memory rollback, and pytest helpers for protected edits."""
+    """Apply, report validation failures, and retain protected edits."""
 
     @staticmethod
     def _protected_write_test_failure(
         path: Path,
         request: m.Infra.ProtectedSourceWritesRequest,
-        new_errors: t.Infra.LintSnapshot,
+        new_errors: t.Infra.LintSnapshot[t.StrSequence],
     ) -> str | None:
         """Protected write test failure.
 
@@ -46,7 +46,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def _protected_write_reports(
         updates: t.MappingKV[Path, str],
         before_sources: t.MappingKV[Path, str | None],
-        before_lints: t.MappingKV[Path, t.Infra.LintSnapshot],
+        before_lints: t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
         request: m.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Protected write reports.
@@ -62,68 +62,46 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             request.workspace,
             gates=request.gates,
         )
-        dirty = tuple(
-            path
-            for path in updates
-            if FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
-                before_lints[path],
-                after_lints[path],
-            )
-        )
-        if dirty:
-            FlextInfraUtilitiesProtectedEditApply.ruff_fix_files(
-                dirty,
-                request.workspace,
-            )
-            after_lints.update(
-                FlextInfraUtilitiesProtectedEditApply.lint_snapshots(
-                    dirty,
-                    request.workspace,
-                    gates=request.gates,
-                ),
-            )
         for path in updates:
             new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
                 before_lints[path],
                 after_lints[path],
             )
-            test_fail = (
-                FlextInfraUtilitiesProtectedEditApply._protected_write_test_failure(
-                    path,
-                    request,
-                    new_errors,
+            execution_errors = tuple(
+                error
+                for snapshot in (before_lints[path], after_lints[path])
+                for error in (
+                    FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(
+                        snapshot
+                    )
                 )
             )
-            if not new_errors and not test_fail:
+            test_fail = (
+                None
+                if execution_errors
+                else (
+                    FlextInfraUtilitiesProtectedEditApply._protected_write_test_failure(
+                        path,
+                        request,
+                        new_errors,
+                    )
+                )
+            )
+            if not new_errors and not test_fail and not execution_errors:
                 continue
             failed = True
             reports.extend(
-                FlextInfraUtilitiesProtectedEditApply._reverted_report_lines(
+                FlextInfraUtilitiesProtectedEditApply._validation_failure_report_lines(
                     path,
                     request.workspace,
                     before_sources[path] or "",
                     new_errors,
-                    test_fail,
+                    execution_errors=execution_errors,
                 ),
             )
+            if test_fail:
+                reports.append(f"    pytest failure: {test_fail}")
         return (not failed, reports)
-
-    _NO_TESTS_EXIT_CODE = 5
-    _NO_TESTS_MARKERS: ClassVar[frozenset[str]] = frozenset({
-        "no tests collected",
-        "no tests ran",
-    })
-
-    @classmethod
-    def _has_no_tests_marker(cls, text: str) -> bool:
-        """Return whether *text* contains any pytest "no tests" marker.
-
-        Returns:
-            Whether *text* contains any pytest "no tests" marker.
-
-        """
-        lowered = text.lower()
-        return any(marker in lowered for marker in cls._NO_TESTS_MARKERS)
 
     @classmethod
     def _file_contains_tests(cls, py_file: Path) -> bool:
@@ -133,7 +111,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             Whether *py_file* defines pytest-collectable tests.
 
         """
-        tree = ast.parse(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT))
+        tree = ast.parse(py_file.read_text(encoding=c.DEFAULT_ENCODING))
         for node in ast.walk(tree):
             if isinstance(
                 node,
@@ -151,44 +129,72 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         Returns:
             The resulting ``p.Result[bool]``.
 
+        Raises:
+            ValueError: If the profile declares no canonical process directory.
+            NotADirectoryError: If the resolved profile path is not a directory.
+
         """
         if "tests" not in py_file.parts and not py_file.name.startswith("test_"):
             return r[bool].ok(value=True)
         if not cls._file_contains_tests(py_file):
             compile_result = u.Cli.run_raw(
                 [
-                    *cls._workspace_tool_command(workspace, c.Infra.PYTHON),
+                    *cls._workspace_tool_command(c.Infra.PYTHON),
                     "-m",
                     "py_compile",
                     str(py_file),
                 ],
                 cwd=cls._command_cwd(py_file, workspace),
-                options=u.Cli.ProcessOptions(env=cls._command_env()),
+                options=m.Cli.ProcessOptions(
+                    env=cls._command_env(),
+                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                ),
                 timeout=c.Infra.TIMEOUT_SHORT,
             )
             if compile_result.failure:
                 return r[bool].from_failure(compile_result)
+            if not u.Cli.process_succeeded(compile_result.value.outcome):
+                return r[bool].fail(
+                    compile_result.value.stdout + compile_result.value.stderr,
+                )
             return r[bool].ok(value=True)
+        arguments = (str(py_file), "-x", "--tb=short", "-q")
+        profile_root = settings.env_lookup(c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV)
+        if profile_root is not None:
+            if not profile_root or not settings.env_lookup(
+                c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV,
+            ):
+                msg = "protected pytest profile has no canonical process directory"
+                raise ValueError(msg)
+            directory = Path(profile_root).resolve(strict=True)
+            if not directory.is_dir():
+                raise NotADirectoryError(directory)
+            command = (
+                *cls._workspace_tool_command(c.Infra.PYTHON),
+                "-c",
+                c.Infra.PYTEST_PROFILE_LAUNCHER,
+                str(directory / f"{secrets.token_hex(16)}.pstats"),
+                *arguments,
+            )
+        else:
+            command = (*cls._workspace_tool_command("pytest"), *arguments)
         run_result = u.Cli.run_raw(
-            [
-                *cls._workspace_tool_command(workspace, "pytest"),
-                str(py_file),
-                "-x",
-                "--tb=short",
-                "-q",
-            ],
+            command,
             cwd=cls._command_cwd(py_file, workspace),
-            options=u.Cli.ProcessOptions(env=cls._command_env()),
+            options=m.Cli.ProcessOptions(
+                env=cls._command_env(),
+                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+            ),
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if run_result.failure:
             return r[bool].from_failure(run_result)
-        output = (run_result.value.stdout + run_result.value.stderr)[:300]
-        passed_or_no_tests = u.Cli.process_succeeded(run_result.value.outcome) or (
-            run_result.value.outcome.raw_return_code == cls._NO_TESTS_EXIT_CODE
-            and cls._has_no_tests_marker(output)
+        output = run_result.value.stdout + run_result.value.stderr
+        return (
+            r[bool].ok(value=True)
+            if u.Cli.process_succeeded(run_result.value.outcome)
+            else r[bool].fail(output)
         )
-        return r[bool].ok(value=True) if passed_or_no_tests else r[bool].fail(output)
 
     @staticmethod
     def protected_file_edit(
@@ -196,87 +202,53 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         *,
         request: m.Infra.ProtectedFileEditRequest,
     ) -> t.Infra.EditResult:
-        """Apply one edit, validate lint deltas, and restore on failure.
+        """Apply one edit and report lint/test failures without undoing writes.
 
         Returns:
             The resulting ``t.Infra.EditResult``.
 
         """
-        rel = FlextInfraUtilitiesProtectedEditApply._relative_path(
-            py_file,
-            request.workspace,
-        )
         before = FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
             py_file,
             request.workspace,
             gates=request.gates,
         )
 
-        def _restore() -> None:
-            """Restore."""
-            if request.restore_fn is not None:
-                request.restore_fn()
-                return
-            py_file.write_text(request.before_source, encoding=c.Cli.ENCODING_DEFAULT)
-
-        edit_completed = False
-        try:
-            request.edit_fn()
-            new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
-                before,
-                FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
-                    py_file,
-                    request.workspace,
-                    gates=request.gates,
-                ),
+        request.edit_fn()
+        after = FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
+            py_file,
+            request.workspace,
+            gates=request.gates,
+        )
+        new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
+            before, after
+        )
+        execution_errors = tuple(
+            error
+            for snapshot in (before, after)
+            for error in FlextInfraUtilitiesProtectedEditApply.lint_execution_errors(
+                snapshot
             )
-            # Normalize only an edit's new findings, then judge the repaired delta.
-            # A clean delta must not rewrite unrelated pre-existing style.
-            if new_errors:
-                FlextInfraUtilitiesProtectedEditApply.ruff_fix_files(
-                    (py_file,),
-                    request.workspace,
-                )
-                new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
-                    before,
-                    FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
-                        py_file,
-                        request.workspace,
-                        gates=request.gates,
-                    ),
-                )
-            edit_completed = True
-        finally:
-            if not edit_completed:
-                _restore()
+        )
 
         test_fail: str | None = (
             None
-            if new_errors
+            if new_errors or execution_errors
             else FlextInfraUtilitiesProtectedEditApply._pytest_failure(
                 py_file,
                 request.workspace,
             ).fold(on_failure=lambda msg: msg, on_success=lambda _: None)
         )
-        if not new_errors and not test_fail:
+        if not new_errors and not test_fail and not execution_errors:
             return (True, [])
 
-        modified = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        diff = FlextInfraUtilitiesProtectedEditApply.unified_diff_lines(
+        report = FlextInfraUtilitiesProtectedEditApply._validation_failure_report_lines(
+            py_file,
+            request.workspace,
             request.before_source,
-            modified,
-            fromfile=f"a/{rel}",
-            tofile=f"b/{rel}",
-            max_lines=c.Infra.EDIT_DIFF_PREVIEW_MAX_LINES,
+            new_errors,
+            execution_errors=execution_errors,
         )
-        _restore()
-        report: t.MutableSequenceOf[str] = [f"  REVERTED {rel}:"]
-        report.extend(f"    {line.rstrip()}" for line in diff)
-        for tool, messages in new_errors.items():
-            report.extend((
-                f"    NEW {tool} errors:",
-                *(f"      {message}" for message in messages[:5]),
-            ))
         if test_fail:
             report.append(f"    pytest failure: {test_fail}")
         return (False, report)
@@ -287,23 +259,33 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         *,
         request: m.Infra.ProtectedSourceWriteRequest,
     ) -> t.Infra.EditResult:
-        """Write validated source content with protected validation and rollback.
+        """Write source content and retain it with its validation result.
 
         Returns:
             The resulting ``t.Infra.EditResult``.
 
+        Raises:
+            ValueError: If the protected source has no authenticated bytes or mode.
+
         """
-        original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        before_state = u.Cli.atomic_read_binary_file_state(
+            py_file, required=True
+        ).unwrap()
+        if before_state.content is None or before_state.mode is None:
+            msg = f"protected source has no authenticated bytes or mode: {py_file}"
+            raise ValueError(msg)
+        original_source = before_state.content.decode(c.DEFAULT_ENCODING)
+        permission_mode = before_state.mode
         if request.updated_source == original_source:
             return (True, [])
 
         def _write_updated() -> None:
             """Write updated."""
-            py_file.write_text(request.updated_source, encoding=c.Cli.ENCODING_DEFAULT)
-
-        def _restore_original() -> None:
-            """Restore original."""
-            py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
+            u.Cli.atomic_write_binary_file_guarded(
+                before_state,
+                request.updated_source.encode(c.DEFAULT_ENCODING),
+                permission_mode=permission_mode,
+            ).unwrap()
 
         return FlextInfraUtilitiesProtectedEditApply.protected_file_edit(
             py_file,
@@ -311,7 +293,6 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 workspace=request.workspace,
                 before_source=original_source,
                 edit_fn=_write_updated,
-                restore_fn=_restore_original,
                 gates=request.gates,
             ),
         )
@@ -322,7 +303,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         *,
         request: m.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
-        """Write multiple files transactionally with lint delta validation.
+        """Write multiple files and retain each write with validation evidence.
 
         Returns:
             The resulting ``t.Infra.EditResult``.
@@ -340,9 +321,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         }
         for path, expected_source in expected_sources.items():
             current_source = (
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                if path.is_file()
-                else None
+                path.read_text(encoding=c.DEFAULT_ENCODING) if path.is_file() else None
             )
             if current_source != expected_source:
                 return (
@@ -361,34 +340,56 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 gates=request.gates,
             )
         )
-        write_completed = False
-        try:
-            for path, updated_source in normalized_updates.items():
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
-            if request.post_write is not None:
-                request.post_write()
-            ok, reports = (
-                FlextInfraUtilitiesProtectedEditApply._protected_write_reports(
-                    normalized_updates,
-                    before_sources,
-                    before_lints,
-                    request,
-                )
+        before_states: dict[Path, m.Cli.AtomicFileState] = {}
+        for path in normalized_updates:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            observed = u.Cli.atomic_read_binary_file_state(
+                path, required=False
+            ).unwrap()
+            observed_source = (
+                observed.content.decode(c.DEFAULT_ENCODING)
+                if observed.content is not None
+                else None
             )
-            write_completed = True
-        finally:
-            if not write_completed:
-                FlextInfraUtilitiesProtectedEditApply._restore_preview_sources(
-                    before_sources,
+            if observed_source != before_sources[path]:
+                return (
+                    False,
+                    [f"source changed during protected write planning: {path}"],
                 )
-
-        if not ok:
-            FlextInfraUtilitiesProtectedEditApply._restore_preview_sources(
+            before_states[path] = observed
+        publication_errors: list[str] = []
+        written_updates: dict[Path, str] = {}
+        for path, updated_source in normalized_updates.items():
+            before_state = before_states[path]
+            published = u.Cli.atomic_write_binary_file_guarded(
+                before_state,
+                updated_source.encode(c.DEFAULT_ENCODING),
+                permission_mode=(
+                    before_state.mode
+                    if before_state.mode is not None
+                    else c.Infra.CONFIG_SPEC[1]
+                ),
+            )
+            if published.failure:
+                publication_errors.append(
+                    f"PUBLICATION FAILED {path}: {published.error}"
+                )
+                continue
+            written_updates[path] = updated_source
+        if request.post_write is not None and not publication_errors:
+            request.post_write()
+        valid, validation_reports = (
+            FlextInfraUtilitiesProtectedEditApply._protected_write_reports(
+                written_updates,
                 before_sources,
+                before_lints,
+                request,
             )
-            return (False, reports)
-        return (True, [])
+        )
+        return (
+            valid and not publication_errors,
+            [*publication_errors, *validation_reports],
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesProtectedEditApply"]

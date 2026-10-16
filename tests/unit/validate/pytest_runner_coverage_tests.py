@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, config, m, u
-from tests.unit.validate.pytest_runner_support import runner_for, summary
+from flext_infra import config
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPytestRunnerCoverage:
@@ -27,7 +26,7 @@ class TestsFlextInfraPytestRunnerCoverage:
         codegen = config.Infra.codegen
         cache = codegen.make.testmon_cache
         reports_root = cached_runner_project / cache.reports_directory
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
 
         exit_code = tm.ok(runner.execute_coverage())
 
@@ -36,7 +35,7 @@ class TestsFlextInfraPytestRunnerCoverage:
         coverage = reports_root / latest_name / "coverage.xml"
         tm.that(coverage.is_file(), eq=True)
         tm.that(coverage.stat().st_size > 0, eq=True)
-        summary_text = summary(reports_root)
+        summary_text = u.Tests.PytestRunner.summary(reports_root)
         tm.that(summary_text, has=["executed=1", "failed=0", "exit=0"])
         command = tm.ok(
             u.Cli.files_read_text(reports_root / latest_name / "command.txt"),
@@ -65,7 +64,7 @@ class TestsFlextInfraPytestRunnerCoverage:
         cached_runner_project: Path,
     ) -> None:
         """No-cov-on-fail omits coverage without hiding the failed test evidence."""
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         (cached_runner_project / runner.target / "test_coverage_failure.py").write_text(
             "def test_coverage_failure() -> None:\n"
             "    assert False, 'original coverage suite failure'\n",
@@ -101,7 +100,7 @@ class TestsFlextInfraPytestRunnerCoverage:
             has="original coverage suite failure",
         )
         tm.that(
-            summary(reports_root),
+            u.Tests.PytestRunner.summary(reports_root),
             has=["failed=1", "accounting_complete=True", f"exit={exit_code}"],
         )
         tm.that(runner.testmon_db.exists(), eq=False)

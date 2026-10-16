@@ -13,10 +13,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-from tests import c, m, u
+from flext_infra.validate import FlextInfraValidateFreshImport
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -139,22 +138,33 @@ class TestsFlextInfraFreshImport:
         tm.that(report.passed, eq=True, msg=str(report.violations))
 
     @staticmethod
-    @pytest.mark.parametrize("missing_export", [False, True])
+    @pytest.mark.parametrize(
+        ("content", "missing_export"),
+        [
+            ("", False),
+            ("__all__ = ()\n", False),
+            ("__all__ = ('missing_export',)\n", True),
+        ],
+    )
     def test_preserved_initializer_uses_real_publication_contract(
         tmp_path: Path,
+        content: str,
         *,
         missing_export: bool,
     ) -> None:
         """A preserved package is imported and its live exports must resolve."""
         repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         initializer = package / c.Infra.INIT_PY
-        content = "__all__ = ('missing_export',)\n" if missing_export else ""
-        initializer.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+        initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
+        before = initializer.read_bytes()
         analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
-        publication = next(
-            plan for plan in analysis.publications if plan.context.pkg_dir == package
+        tm.that(
+            any(
+                file.path == initializer and u.Infra.codegen_file_requires_effect(file)
+                for file in analysis.files
+            ),
+            eq=False,
         )
-        tm.that(publication.action, eq=c.Infra.LazyInitAction.SKIP)
 
         report = tm.ok(
             FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
@@ -164,7 +174,7 @@ class TestsFlextInfraFreshImport:
         )
 
         tm.that(report.passed, eq=not missing_export, msg=str(report.violations))
-        tm.that(initializer.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=content)
+        tm.that(initializer.read_bytes(), eq=before)
         if missing_export:
             tm.that(report.violations[0], has="missing_export")
             tm.that(report.violations[0], has="Traceback")
@@ -180,7 +190,7 @@ class TestsFlextInfraFreshImport:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text(
             f"{c.Infra.AUTOGEN_HEADER}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
         publication = next(
@@ -211,7 +221,7 @@ class TestsFlextInfraFreshImport:
         repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         (package / c.Infra.INIT_PY).write_text(
             "value = 17\n__all__ = ('value',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         report = tm.ok(
@@ -231,7 +241,7 @@ class TestsFlextInfraFreshImport:
         repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         (package / c.Infra.INIT_PY).write_text(
             "__all__ = ('missing_export',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
         report = tm.ok(
@@ -258,11 +268,11 @@ class TestsFlextInfraFreshImport:
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_probe_script"
         package.mkdir(parents=True)
         initializer = package / c.Infra.INIT_PY
-        initializer.write_text("__all__ = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        initializer.write_text("__all__ = ()\n", encoding=c.DEFAULT_ENCODING)
         if target_exists:
             (package / "cli.py").write_text(
                 "VALUE = 1\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-probe-script"\nversion = "1.0"\n\n'
@@ -306,10 +316,10 @@ class TestsFlextInfraFreshImport:
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_probe_script"
         package.mkdir(parents=True)
         initializer = package / c.Infra.INIT_PY
-        initializer.write_text("__all__ = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        initializer.write_text("__all__ = ()\n", encoding=c.DEFAULT_ENCODING)
         (package / "cli.py").write_text(
             "from flext_probe_script import gone\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-probe-script"\nversion = "1.0"\n\n'
@@ -346,7 +356,7 @@ class TestsFlextInfraFreshImport:
         package.mkdir(parents=True)
         (package / c.Infra.INIT_PY).write_text(
             "__all__ = ('missing_export',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         report = tm.ok(
             FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
@@ -370,17 +380,17 @@ class TestsFlextInfraFreshImport:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text(
             "__all__ = ()\n" + ("required = 17\n" if dependency_present else ""),
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (package / "consumer.py").write_text(
             f"from {package.name} import required\n"
             "def main():\n    raise RuntimeError('entrypoint must not execute')\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n'
             f'[project.scripts]\nprobe = "{package.name}.consumer:main"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publication = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
@@ -420,11 +430,11 @@ class TestsFlextInfraFreshImport:
         initializer.write_text(
             "".join(f"{name} = {index}\n" for index, name in enumerate(exports))
             + f"__all__ = {exports!r}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publication = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
@@ -460,17 +470,17 @@ class TestsFlextInfraFreshImport:
         foreign.mkdir()
         (foreign / "dependency.py").write_text(
             "value = 17\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         initializer = package / c.Infra.INIT_PY
         initializer.write_text(
             f"__path__ = [{str(foreign)!r}]\n"
             "from .dependency import value\n__all__ = ('value',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publication = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
@@ -494,7 +504,9 @@ class TestsFlextInfraFreshImport:
             ),
         )
         tm.that(report.passed, eq=False)
-        tm.that(report.violations[0], has="is outside")
+        tm.that(report.violations[0], has="ImportError")
+        tm.that(report.violations[0], has=f"{package.name}.dependency")
+        tm.that(report.violations[0], has=str(package))
         tm.that(report.violations[0], has=str(foreign))
 
     @staticmethod
@@ -513,18 +525,18 @@ class TestsFlextInfraFreshImport:
         foreign.mkdir()
         (foreign / "dependency.py").write_text(
             "value = 17\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         initializer = package / c.Infra.INIT_PY
         initializer.write_text(
             f"__path__ = [{str(foreign)!r}]\n"
             "from .dependency import value\n"
             "__all__ = ('value', 'phantom_export')\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publication = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
@@ -549,7 +561,9 @@ class TestsFlextInfraFreshImport:
             ),
         )
         tm.that(report.passed, eq=False)
-        tm.that(report.violations[0], has="is outside")
+        tm.that(report.violations[0], has="ImportError")
+        tm.that(report.violations[0], has=f"{package.name}.dependency")
+        tm.that(report.violations[0], has=str(package))
         tm.that(report.violations[0], has=str(foreign))
         tm.that(report.violations[0], lacks="has no attribute")
 
@@ -569,15 +583,15 @@ class TestsFlextInfraFreshImport:
         subpackage.mkdir(parents=True)
         (package / c.Infra.INIT_PY).write_text(
             "value = 17\n__all__ = ('value',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (subpackage / c.Infra.INIT_PY).write_text(
             "leaf = 1\n__all__ = ('leaf',)\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         publications = tuple(
             m.Infra.LazyInitPlan(

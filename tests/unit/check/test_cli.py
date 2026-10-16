@@ -6,14 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, main
+from flext_infra import c, config, m, main
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -121,6 +122,36 @@ class TestsFlextInfraWorkspaceCheckCli:
 
         tm.that(exit_code, eq=1)
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        "entrypoint",
+        [("flext-infra",), (sys.executable, "-m", "flext_infra")],
+        ids=["installed_console", "module"],
+    )
+    def test_process_entrypoints_preserve_rejected_gate_exit(
+        tmp_path: Path,
+        entrypoint: t.StrSequence,
+    ) -> None:
+        """Both shipped entrypoints retain a failed Result's native exit status."""
+        workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
+        gate = "invalid-exit-contract-gate"
+        output = tm.ok(
+            u.Cli.run_raw([
+                *entrypoint,
+                "check",
+                "run",
+                "--repository-root",
+                str(workspace),
+                "--projects",
+                "flext-core",
+                "--gates",
+                gate,
+            ])
+        )
+
+        tm.that(output.outcome.raw_return_code, eq=c.Cli.EXIT_CODE_FAILURE)
+        tm.that(output.stdout + output.stderr, has=f"unknown gate '{gate}'")
+
     @pytest.mark.parametrize("reports_directory", [None, "artifacts/check"])
     def test_run_cli_handles_multiple_projects(
         self,
@@ -148,7 +179,8 @@ class TestsFlextInfraWorkspaceCheckCli:
             arguments.extend(["--reports-dir", reports_directory])
         caller = tmp_path / "caller"
         caller.mkdir()
-        relative_reports = reports_directory or f"{c.Infra.REPORTS_DIR_NAME}/check"
+        default_reports = m.Infra.RunCommand(repository_root=workspace).reports_dir
+        relative_reports = reports_directory or default_reports
         report_name = c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
         caller_report = caller / relative_reports / report_name
         caller_report.parent.mkdir(parents=True)
@@ -158,7 +190,8 @@ class TestsFlextInfraWorkspaceCheckCli:
             exit_code = main(arguments)
 
         tm.that(exit_code, eq=0)
-        report = (workspace / relative_reports / report_name).read_text(
+        (report_path,) = (workspace / relative_reports).glob(f"*/{report_name}")
+        report = report_path.read_text(
             encoding="utf-8",
         )
         tm.that(report, has=["proj1", "proj2"])
@@ -166,6 +199,76 @@ class TestsFlextInfraWorkspaceCheckCli:
             caller_report.read_text(encoding="utf-8"),
             eq="Caller report must survive.\n",
         )
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("parallel", [False, True])
+    @pytest.mark.parametrize("directory_option", [None, "--reports-dir"])
+    def test_real_cli_invocations_preserve_independent_reports(
+        tmp_path: Path,
+        *,
+        parallel: bool,
+        directory_option: str | None,
+    ) -> None:
+        """Real native failures retain both runs, including concurrent CLI calls."""
+        workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(
+            tmp_path,
+            project_names=("proj1",),
+        )
+        TestsFlextInfraWorkspaceCheckCli._write_module(
+            workspace,
+            "proj1",
+            "def broken(:\n",
+        )
+        request = m.Infra.RunCommand(repository_root=workspace)
+        reports_root = request.reports_dir_path
+        command = [
+            sys.executable,
+            "-m",
+            "flext_infra",
+            "check",
+            "run",
+            "--repository-root",
+            str(workspace),
+            "--projects",
+            "proj1",
+            "--gates",
+            c.Infra.LINT,
+        ]
+        if directory_option is not None:
+            reports_root = tmp_path / "reports with spaces"
+            command.extend([directory_option, str(reports_root)])
+        reports_root.mkdir(parents=True)
+        historical = reports_root / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
+        historical.write_text("Unowned history.\n", encoding="utf-8")
+        if parallel:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(u.Cli.run_raw, command) for _ in range(2)]
+                outputs = [tm.ok(future.result()) for future in futures]
+        else:
+            outputs = [tm.ok(u.Cli.run_raw(command)) for _ in range(2)]
+        reports = tuple(
+            reports_root.glob(f"*/{c.Infra.CHECK_REPORT_MARKDOWN_FILENAME}"),
+        )
+        tm.that(len(reports), eq=2)
+        tm.that(historical.read_text(encoding="utf-8"), eq="Unowned history.\n")
+        for output in outputs:
+            tm.that(output.outcome.raw_return_code, eq=1)
+            tm.that(output.stdout + output.stderr, lacks="published another identity")
+            tm.that(
+                sum(str(report) in output.stdout + output.stderr for report in reports),
+                eq=1,
+            )
+        for report in reports:
+            tm.that(report.read_text(encoding="utf-8"), has=f"- {c.Infra.LINT}: FAIL")
+            findings = tm.ok(
+                u.Infra.check_report_findings(workspace, reports_dir=report.parent),
+            )
+            tm.that(findings, empty=False)
+            (receipt,) = report.parent.glob(
+                f"*/{c.Infra.LINT}{config.Infra.tooling.raw_check_receipt_suffix}",
+            )
+            tm.that(receipt.read_text(encoding="utf-8"), has=findings[0].message)
 
     def test_run_cli_fix_completes_and_keeps_remaining_findings(
         self,
@@ -191,7 +294,9 @@ class TestsFlextInfraWorkspaceCheckCli:
 
         # Ruff completes and reports the syntax error as a finding of the
         # code: the verb does not break, and the module is never rewritten.
-        tm.that(exit_code, eq=0)
+        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
+        # a fix run that leaves findings exits 1.
+        tm.that(exit_code, eq=1)
         tm.that(
             module_path.read_text(encoding="utf-8"),
             eq='"""Fixture module."""\n\ndef broken(:\n',
@@ -201,7 +306,11 @@ class TestsFlextInfraWorkspaceCheckCli:
     def test_run_cli_fix_declares_static_methods_beside_an_unparsable_module(
         tmp_path: Path,
     ) -> None:
-        """A no-self-use repair completes when another module cannot parse."""
+        """A no-self-use repair applies beside a module that cannot parse.
+
+        The repair lands in the parsable module; the unparsable one stays
+        untouched and its residual finding stays for check.
+        """
         workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
         broken = TestsFlextInfraWorkspaceCheckCli._write_module(
             workspace,
@@ -236,7 +345,9 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
         ])
 
-        tm.that(exit_code, eq=0)
+        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
+        # an unparsable neighbour leaves findings, so the fix run exits 1.
+        tm.that(exit_code, eq=1)
         tm.that(
             sample.read_text(encoding="utf-8"),
             has="    @staticmethod\n    def value() -> int:\n",

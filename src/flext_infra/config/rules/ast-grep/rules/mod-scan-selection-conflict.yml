@@ -1,0 +1,38 @@
+id: mod-scan-selection-conflict
+language: Python
+severity: error
+message: Scanner rule IDs and a composed plan cannot compete for selection.
+metadata:
+  context:
+    CALL:
+      is: resolved-symbol
+      arg: flext_infra.codemod.batch_gates FlextInfraModGateEngine.scan
+rule:
+  all:
+    - pattern: $CALL($$$ARGS)
+    - has:
+        field: arguments
+        kind: argument_list
+        all:
+          - has:
+              kind: keyword_argument
+              has:
+                field: name
+                regex: "^(rule_ids|plan)$"
+          - any:
+              - has:
+                  kind: keyword_argument
+                  has:
+                    field: name
+                    regex: "^selection$"
+              - all:
+                  - has:
+                      kind: keyword_argument
+                      has:
+                        field: name
+                        regex: "^rule_ids$"
+                  - has:
+                      kind: keyword_argument
+                      has:
+                        field: name
+                        regex: "^plan$"

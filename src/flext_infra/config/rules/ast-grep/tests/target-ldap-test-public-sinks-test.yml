@@ -1,0 +1,36 @@
+id: target-ldap-test-public-target-import
+valid:
+  - from flext_target_ldap import FlextTargetLdap
+invalid:
+  - from flext_target_ldap._models.sinks import FlextTargetLdapModelsSinks as Sinks
+---
+id: target-ldap-test-public-sink-facades
+valid:
+  - from tests import m, p, tm
+  - from tests import tm
+invalid:
+  - |
+    from tests import tm
+    def consume(sink: Sinks.FlextTargetLdapModels.BaseSink) -> None: pass
+---
+id: target-ldap-test-public-target-type
+valid:
+  - 'def consume(target: FlextTargetLdap) -> None: pass'
+invalid:
+  - 'def consume(target: Sinks.FlextTargetLdapModels.Target) -> None: pass'
+---
+id: target-ldap-test-public-sink-constructor
+valid:
+  - m.TargetLdap.UsersSink(target=target, stream_name=name, schema=schema, key_properties=keys)
+invalid:
+  - Sinks.FlextTargetLdapModels.UsersSink(target=target, stream_name=name, schema=schema, key_properties=keys)
+  - Sinks.FlextTargetLdapModels.BaseSink(target=target, stream_name=name, schema=schema, key_properties=keys)
+---
+id: target-ldap-test-public-sink-contract
+valid:
+  - 'def consume(sink: p.TargetLdap.Sink) -> None: pass'
+  - Sinks.FlextTargetLdapModels.UsersSink(target=target)
+  - 'description = "Sinks.FlextTargetLdapModels.UsersSink"'
+invalid:
+  - 'def consume(sink: Sinks.FlextTargetLdapModels.UsersSink) -> None: pass'
+  - 'def consume(sink: Sinks.FlextTargetLdapModels.OrganizationalUnitsSink) -> None: pass'

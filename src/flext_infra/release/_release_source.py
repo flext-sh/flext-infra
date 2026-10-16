@@ -10,7 +10,7 @@ import tarfile
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.release._release_artifact import FlextInfraReleaseArtifactMixin
+from flext_infra.release import FlextInfraReleaseArtifactMixin
 
 
 class FlextInfraReleaseSourceMixin(FlextInfraReleaseArtifactMixin):
@@ -210,7 +210,7 @@ class FlextInfraReleaseSourceMixin(FlextInfraReleaseArtifactMixin):
             ],
             cwd=gitleaks_config.parent,
             timeout=c.Infra.TIMEOUT_LONG,
-            options=u.Cli.ProcessOptions(
+            options=m.Cli.ProcessOptions(
                 remove_env_keys=c.Infra.GITLEAKS_POLICY_ENV_KEYS,
             ),
         )

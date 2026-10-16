@@ -54,8 +54,6 @@ class FlextInfraCodegenGenerationPathsMixin:
             Whether a root export belongs in the frozen ``__all__`` ABI.
 
         """
-        if export_name in c.Infra.INFRA_ONLY_EXPORTS | c.Infra.PUBLISHED_ALL_EXCLUDE:
-            return False
         target = lazy_filtered.get(export_name)
         if target is None:
             return True

@@ -15,6 +15,8 @@ from flext_infra import m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticNestingTypes,
 )
 
@@ -324,11 +326,11 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         module = project.get_pymodule(resource)
         expression: str | None = None
 
-        def replacement(scope: p.Infra.RopeScope, node: ast.expr) -> str | None:
+        def replacement(scope: p.Infra.RopeScope, value: str) -> str | None:
             nonlocal expression
             if not runtime.same_name(
                 move.declaration,
-                runtime.resolve_symbol(scope, node),
+                runtime.expression_name(scope, value),
             ):
                 return None
             if expression is None:

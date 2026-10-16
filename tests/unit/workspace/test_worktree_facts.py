@@ -10,10 +10,7 @@ import os
 import time
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import m
-from tests import u
+from tests import m, tm, u
 
 
 class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):

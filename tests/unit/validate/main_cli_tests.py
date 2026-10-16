@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import main
-from tests import c
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -61,6 +59,7 @@ class TestsFlextInfraValidateCli:
             "dependencies = []\n",
             encoding="utf-8",
         )
+        u.Tests.copy_tracked_mise_seeds(project)
         config_path.write_text(
             f"ruleDirs: [{c.Cli.RULES_DIR_NAME}]\n",
             encoding="utf-8",
@@ -84,6 +83,9 @@ class TestsFlextInfraValidateCli:
             '"""Namespace contract fixture."""\n\n'
             "from __future__ import annotations\n\nVALUE = 1\n",
         )
+        # The rule engine runs ast-grep through the project's own declared
+        # Mise toolchain, which every governed project carries.
+        tm.that((project / c.Infra.MISE_TOML_FILENAME).is_file(), eq=True)
 
         exit_code = main([
             "validate",

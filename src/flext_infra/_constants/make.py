@@ -10,13 +10,13 @@ import re
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._constants.check import FlextInfraConstantsCheck
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraConstantsMake:
+class FlextInfraConstantsMake(FlextInfraConfigVocabulary):
     """One canonical vocabulary shared by generated Make and its services."""
 
     class PytestExecutionMode(StrEnum):
@@ -25,20 +25,6 @@ class FlextInfraConstantsMake:
         INCREMENTAL = "incremental"
         FULL = "full"
         COVERAGE = "coverage"
-
-    class PytestCacheEnvironment(StrEnum):
-        """OS and pytest-testmon environment keys in the generated Make contract."""
-
-        DATA_HOME = "XDG_CACHE_HOME"
-        USER_HOME = "HOME"
-        DATABASE_FILE = "TESTMON_DATAFILE"
-
-    class MypyCacheEnvironment(StrEnum):
-        """Mypy cache and XDG environment keys in the shared analysis cache."""
-
-        CACHE_DIR = "MYPY_CACHE_DIR"
-        DATA_HOME = "XDG_CACHE_HOME"
-        USER_HOME = "HOME"
 
     MAKE_ASSIGNMENT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?=",
@@ -51,11 +37,6 @@ class FlextInfraConstantsMake:
     )
     MAKE_REPOSITORY_ROOT: ClassVar[str] = "REPOSITORY_ROOT"
     "Make variable the workspace orchestrator passes to attached members."
-    RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
-    "Ruff CLI flag that applies unsafe fixes; never part of the lint repair."
-
-    VERB_CHECK: ClassVar[str] = "check"
-    VERB_TEST: ClassVar[str] = "test"
     VERB_CLEAN: ClassVar[str] = "clean"
     VERB_VALIDATE: ClassVar[str] = "validate"
     VERB_PUBLISH: ClassVar[str] = "publish"
@@ -88,25 +69,6 @@ class FlextInfraConstantsMake:
     TIMEOUT_COMMAND: ClassVar[str] = "timeout"
     TIMEOUT_KILL_AFTER_SECONDS: ClassVar[int] = 5
 
-    # Every read-only gate this package implements, derived from the gate SSOT
-    # (c.Infra.SARIF_TOOL_INFO) so registering a gate makes it available to
-    # the generated Make command surface without a second vocabulary.
-    # Mutating gates (`format`) are excluded: they rewrite files, so they are
-    # owned by `make fmt` / `make fix` and a read-only verb
-    # must never invoke them.
-    CANONICAL_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(
-        gate
-        for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
-        if gate not in FlextInfraConstantsCheck.MUTATING_GATES
-    )
-    CANONICAL_FIXABLE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = (
-        "lint",
-        "markdown",
-        "markdown-code",
-    )
-    # markdown-format is deliberately absent: prettier is a formatter, so the
-    # gate's mutating side is owned by `make fmt` (check = `prettier --check`),
-    # never by `make fix` — one operation per tool per verb, never repeated.
     ORCHESTRATOR_REMOVE_ENV_KEYS: ClassVar[t.StrSequence] = (
         "GNUMAKEFLAGS",
         "MAKEFLAGS",
@@ -135,6 +97,7 @@ class FlextInfraConstantsMake:
     ORCHESTRATOR_ENV_PATH_SEPARATOR: ClassVar[str] = ":"
 
     PYTEST_ENV_REPORTS: ClassVar[str] = "FLEXT_PYTEST_REPORTS_RAW"
+    PYTEST_ENV_REPOSITORY_ROOT: ClassVar[str] = "PROJECT_ROOT"
     PYTEST_ENV_TARGET: ClassVar[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_TARGET_FILE: ClassVar[str] = "FLEXT_PYTEST_TARGET_FILE"
     PYTEST_ENV_CI: ClassVar[str] = "CI"

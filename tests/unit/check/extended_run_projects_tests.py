@@ -9,10 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -89,7 +88,10 @@ class TestsFlextInfraRunProjects:
 
         tm.ok(result)
         tm.that(tuple(result.value[0].gates), eq=("lint",))
-        tm.that((tmp_path / "reports" / report_name).exists(), eq=True)
+        receipt = result.value[0].gates["lint"].raw_receipt
+        assert receipt is not None
+        tm.that((receipt.parent.parent / report_name).exists(), eq=True)
+        tm.that(receipt.parent.parent.parent, eq=tmp_path / "reports")
 
     @staticmethod
     def test_run_projects_creates_project_scoped_reports_dir(
@@ -107,7 +109,10 @@ class TestsFlextInfraRunProjects:
         )
 
         tm.ok(result)
-        tm.that((tmp_path / "reports" / "p1").is_dir(), eq=True)
+        receipt = result.value[0].gates["lint"].raw_receipt
+        assert receipt is not None
+        tm.that(receipt.parent.name, eq="p1")
+        tm.that(receipt.parent.parent.parent, eq=tmp_path / "reports")
 
     @staticmethod
     def test_fail_fast_stops_after_first_failed_project(tmp_path: Path) -> None:

@@ -11,11 +11,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra, m, t
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import c, u
+from tests import c, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -31,6 +30,28 @@ _HOOK_TEMPLATE = (
     / "base"
     / ".pre-commit-config.yaml.j2"
 )
+
+
+def _conform(
+    root: Path,
+    workspace: m.Infra.WorkspaceSpec,
+    mode: c.Infra.CodegenConformMode,
+) -> p.Result[m.Infra.CodegenResult]:
+    """Run one conform operation through its public owner.
+
+    Returns:
+        The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+    """
+    return infra.codegen_conform(
+        u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=mode,
+        ),
+        initial_workspace=workspace,
+    )
 
 
 class TestsFlextInfraCodegenHookConformance:
@@ -71,15 +92,7 @@ class TestsFlextInfraCodegenHookConformance:
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[m.Infra.CodegenResult]:
-        return infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            ),
-            initial_workspace=workspace,
-        )
+        return _conform(root, workspace, c.Infra.CodegenConformMode.CHECK)
 
     def test_check_never_requires_runtime_hook_installation(
         self,
@@ -101,15 +114,7 @@ class TestsFlextInfraCodegenHookConformance:
         workspace = self._standalone_workspace(root)
         hooks_dir = root / ".git" / "hooks"
 
-        infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=workspace,
-        )
+        _conform(root, workspace, c.Infra.CodegenConformMode.APPLY)
 
         for stage in ("pre-commit", "pre-push"):
             hook = hooks_dir / stage
@@ -191,7 +196,7 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.run_raw(
                 shlex.split(entry),
                 cwd=root,
-                options=u.Cli.ProcessOptions(
+                options=m.Cli.ProcessOptions(
                     env={
                         policy.ci.variable: (
                             policy.ci.value
@@ -235,15 +240,7 @@ class TestsFlextInfraCodegenHookConformance:
             (hooks_dir / stage).write_text(foreign, encoding="utf-8")
 
         self._check(root, workspace)
-        infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=workspace,
-        )
+        _conform(root, workspace, c.Infra.CodegenConformMode.APPLY)
 
         for stage in ("pre-commit", "pre-push"):
             tm.that((hooks_dir / stage).read_text(encoding="utf-8"), eq=foreign)

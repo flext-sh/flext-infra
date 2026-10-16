@@ -11,8 +11,7 @@ from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod._rename_sources import FlextInfraRenameSources
-from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
+from flext_infra.codemod import FlextInfraRenameSources, FlextInfraRenameSymbols
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 
@@ -26,9 +25,10 @@ class FlextInfraApplyRenames:
         roots: t.SequenceOf[Path],
         pairs: t.SequenceOf[t.Pair[str, str]],
     ) -> t.Pair[t.VariadicTuple[m.Infra.SemanticFilePlan], int]:
+
         inventory = FlextInfraRenameSources.inventory(roots, params)
         sources = {
-            path: state.content.decode(c.Cli.ENCODING_DEFAULT)
+            path: state.content.decode(c.DEFAULT_ENCODING)
             for path, state in inventory.items()
             if state.content is not None
         }
@@ -46,6 +46,7 @@ class FlextInfraApplyRenames:
                 python,
                 pairs,
                 params.bindings,
+                rename_definitions=params.rename_definitions,
             )
             for path, source in sources.items():
                 edits = list(symbols.get(path, ()))
@@ -63,7 +64,7 @@ class FlextInfraApplyRenames:
                     changed = u.Infra.content_change(resource, source, edits)
                     if path in python:
                         ast.parse(changed.new_contents, filename=str(path))
-                    desired = changed.new_contents.encode(c.Cli.ENCODING_DEFAULT)
+                    desired = changed.new_contents.encode(c.DEFAULT_ENCODING)
                 plans.append(
                     m.Infra.SemanticFilePlan(
                         project=root,
@@ -112,7 +113,7 @@ class FlextInfraApplyRenames:
         csv_path, driver = state
         plans, pending = planned
 
-        def verify() -> p.Result[bool]:
+        def verify(candidate_root: Path) -> p.Result[bool]:
             nonlocal pending
             current_driver = u.Cli.atomic_read_binary_file_state(
                 csv_path,
@@ -122,11 +123,15 @@ class FlextInfraApplyRenames:
                 return r[bool].fail(
                     f"rename campaign driver changed during publish: {csv_path}",
                 )
-            _fresh, remaining = cls._plan(params, roots, pairs)
+            publication_root = Path(commonpath(roots))
+            candidate_roots = tuple(
+                candidate_root / path.relative_to(publication_root) for path in roots
+            )
+            _fresh, remaining = cls._plan(params, candidate_roots, pairs)
             pending = remaining
             if remaining:
                 return r[bool].fail(
-                    f"CSV campaign post-scan found {remaining} pending edits",
+                    f"CSV campaign candidate scan found {remaining} pending edits",
                 )
             return r[bool].ok(value=True)
 
@@ -141,15 +146,50 @@ class FlextInfraApplyRenames:
         publication = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (*plans, driver_plan),
             repository_root=Path(commonpath(roots)),
-            validator=verify,
+            options=m.Infra.SemanticPublicationOptions(validator=verify),
         )
         if publication.failure:
-            return r[t.Pair[t.SequenceOf[Path], int]].from_failure(publication)
+            return cls._compensate_refused_campaign(publication, plans)
         changed = publication.value
         # Empty transactions do not invoke the publisher's validator.
         if not changed:
-            verify().unwrap()
+            verify(Path(commonpath(roots))).unwrap()
         return r[t.Pair[t.SequenceOf[Path], int]].ok((changed, pending))
+
+    @staticmethod
+    def _compensate_refused_campaign(
+        publication: p.Result[t.VariadicTuple[Path]],
+        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+    ) -> p.Result[t.Pair[t.SequenceOf[Path], int]]:
+        """Restore every planned campaign file after a refused publication.
+
+        The publication preserves its gains by contract; the campaign owner
+        compensates them, so a drifted driver never leaves half-applied renames
+        behind.
+
+        Returns:
+            The original publication failure, enriched when compensation fails.
+
+        """
+        compensation_errors: list[str] = []
+        for plan in plans:
+            state = plan.before
+            if plan.desired_content is None or state.content is None:
+                continue
+            restored = u.Cli.files_write_binary(state.path, state.content)
+            if restored.failure:
+                compensation_errors.append(f"{state.path}: {restored.error}")
+        if compensation_errors:
+            return r[t.Pair[t.SequenceOf[Path], int]].fail(
+                publication.error or "campaign publication failed",
+                error_code=publication.error_code,
+                exception=publication.exception,
+                error_data={
+                    **(publication.error_data or {}),
+                    "compensation_errors": compensation_errors,
+                },
+            )
+        return r[t.Pair[t.SequenceOf[Path], int]].from_failure(publication)
 
     @classmethod
     def run(
@@ -173,7 +213,7 @@ class FlextInfraApplyRenames:
                 f"rename CSV disappeared: {csv_path}",
             )
         pairs = FlextInfraRenameSources.pairs(
-            driver.content.decode(c.Cli.ENCODING_DEFAULT),
+            driver.content.decode(c.DEFAULT_ENCODING),
         )
         plans, pending = cls._plan(params, roots, pairs)
         changed: t.SequenceOf[Path] = ()

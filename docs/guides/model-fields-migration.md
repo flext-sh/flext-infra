@@ -26,10 +26,22 @@ severity, and reports each finding with its native severity. Failed rule discove
 incomplete scans, invalid diagnostics, and other native scanner failures also block,
 with their own failure diagnostics.
 
-The same semantic pipeline resolves elected self-facade imports before deferring them
-into function bodies. Module/class execution, decorators, defaults and other eager uses
-remain errors. Import identity comes from matched source and qualified bindings, not
-diagnostic prose or a module-name catalog.
+The standalone `refactor ast` mechanical circuit remains full-corpus only. Until
+both mechanical inventories, publication preconditions, and expected-count receipts
+share an exact resolved target scope, `--module`, `--namespace`, and project filters
+fail before rule planning or scanning. Non-text `--output-format` requests also fail
+before scanning rather than returning a text report mislabeled as JSON. This is a
+safety boundary, not implemented bounded selection or structured reporting.
+`--dry-run` and `--check` take precedence over `--apply`: they report findings without
+applying either cascade. Scan evidence publication remains part of the scan contract;
+read-only source mode does not mean an artifact-free invocation.
+
+Authored declaration layers cannot import their own namespace at any scope, including
+function bodies and annotation-only guards. The shared import-law owner identifies
+these declarations from the family catalog. Declaration relocation resolves imports
+to identity-proven external public exports through Rope; dependencies without a lawful
+owner remain typed findings. Generated facades alone compose local declarations through
+lazy packages. Moving an import into a method does not repair its ownership.
 
 Dynamic environment reads require a resolved OS import and a config-owned key, either
 directly or through an unambiguous same-function alias. The destination settings source

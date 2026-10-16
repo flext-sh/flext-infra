@@ -14,13 +14,12 @@ if TYPE_CHECKING:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
-class _RequirementProvenance:
+class FlextInfraUtilitiesPyprojectRequirementsProvenance:
     """Workspace provenance consulted while canonicalizing requirement lines."""
 
     declared_sources: t.StrMapping
     candidate_sources: t.StrMapping
     family_line: str | None
-    workspace_members: t.StrSequence = ()
 
 
 __all__: list[str] = []

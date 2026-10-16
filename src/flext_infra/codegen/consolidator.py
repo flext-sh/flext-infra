@@ -9,12 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base import s
-from flext_infra.codegen._consolidator_steps import (
-    FlextInfraCodegenConsolidatorStepsMixin,
-)
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.codegen import FlextInfraCodegenConsolidatorStepsMixin
+from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMixin):

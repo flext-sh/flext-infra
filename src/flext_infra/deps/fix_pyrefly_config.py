@@ -10,15 +10,14 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
+from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra.deps import FlextInfraConfigFixerSteps
 
 
 class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bool]):
     """Fix pyrefly configuration across workspace projects."""
 
-    _repository_root: Path
+    _repository_root: Path = u.PrivateAttr()
 
     def __init__(self, repository_root: Path | None = None) -> None:
         """Initialize pyrefly settings fixer."""
@@ -184,11 +183,11 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
             The resulting ``p.Result[bool]``.
 
         """
-        tool_table = doc[c.Infra.TOOL]
-        if not isinstance(tool_table, MutableMapping):
+        tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
+        if tool_table is None:
             return r[bool].fail(f"invalid {path} [tool] table")
-        pyrefly_table = tool_table[c.Infra.PYREFLY]
-        if not isinstance(pyrefly_table, MutableMapping):
+        pyrefly_table = u.Cli.toml_table_child(tool_table, c.Infra.PYREFLY)
+        if pyrefly_table is None:
             return r[bool].fail(f"invalid {path} [tool.pyrefly] table")
         # Reassign only changed keys so an untouched
         # nested table retains adjacent managed comments and TOML trivia.

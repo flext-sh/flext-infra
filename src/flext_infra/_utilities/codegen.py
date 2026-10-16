@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
+from flext_infra._config_make_contract import FlextInfraMakeContract
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -20,6 +21,7 @@ from flext_infra._utilities import (
 
 
 class FlextInfraUtilitiesCodegen(
+    FlextInfraMakeContract,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesGitignore,
@@ -39,10 +41,12 @@ class FlextInfraUtilitiesCodegen(
             The sole typed context every generated ``.envrc`` renders from.
 
         """
-        toolchain = config.Infra.codegen.toolchain
         return m.Infra.EnvrcRenderSpec(
-            worktree_environment_directory=toolchain.worktree_environment_directory,
-            environment_path_prepends=toolchain.environment_path_prepends,
+            toolchain=config.Infra.codegen.toolchain,
+            uv_resolution=config.Infra.codegen.make.uv_resolution,
+            environment_path_prepends=(
+                config.Infra.codegen.toolchain.environment_path_prepends
+            ),
         )
 
     @staticmethod

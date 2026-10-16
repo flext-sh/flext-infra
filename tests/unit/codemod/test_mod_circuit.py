@@ -10,10 +10,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import main
-from tests import c, m, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from tests import t
@@ -23,14 +22,149 @@ if TYPE_CHECKING:
 class TestsFlextInfraModCliRoute:
     """Exercise reporter behavior only through exported CLI and utility facades.
 
-    Every test here drives the real ``refactor mod`` CLI, which runs ast-grep
-    over a workspace, so they all belong to the declared slow class. Only one
-    method carried the marker while its four identical siblings ran under the
-    10s per-case budget: measured at 9.55s on an idle machine,
-    ``test_scan_keeps_prefix_rule_ids_exact`` exceeded it under parallel load
-    and failed as ``Timeout (>10.0s)``. The class-level marker states the cost
-    once instead of leaving four tests one scheduling decision away from red.
+    Every test drives the real ``refactor mod`` CLI over a workspace, so this
+    integration harness shares the declared slow policy.
     """
+
+    @staticmethod
+    def test_jsonl_keeps_unicode_separators_inside_native_captures(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """JSONL separates records at LF, preserving Unicode inside JSON strings."""
+        source = 'value = "\u2028🚦"\n'
+        path = mod_workspace / "unicode_source.py"
+        tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rule_id = "require-future-annotations"
+        exit_code = main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            "--rules",
+            rule_id,
+        ])
+        console = capsys.readouterr()
+        evidence = m.Infra.ModScanEvidence.model_validate_json(
+            (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        tm.that(exit_code, ne=0, msg=console.out + console.err)
+        tm.that(evidence.totals_by_rule[rule_id], eq=1)
+        tm.that(evidence.entries[0].text, eq=source)
+        with u.Infra.mod_native_readers(evidence.native_artifacts) as readers:
+            tm.that(
+                u.Infra.mod_native_payload(evidence.entries[0], readers)["text"],
+                eq=source,
+            )
+
+    @staticmethod
+    def test_assert_rewrite_proves_matcher_binding_at_each_occurrence(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """A local shadow blocks emission while an unrelated scope stays eligible."""
+        source = mod_workspace / "tests" / "assertions.py"
+        tm.ok(u.Cli.ensure_dir(source.parent))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                "from __future__ import annotations\n"
+                "from flext_tests import tm\n"
+                "def ordinary(left: int, right: int) -> None:\n"
+                "    assert left == right\n"
+                "def shadowed(tm: int, left: int, right: int) -> None:\n"
+                "    assert left == right\n",
+            )
+        )
+        rules = ("rewire-test-assert-eq", "test-assert-tm-binding-required")
+        exit_code = main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+            "--rules",
+            ",".join(rules),
+        ])
+        console = capsys.readouterr()
+        state = tm.ok(
+            u.Cli.atomic_read_binary_file_state(
+                mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH,
+                required=True,
+            )
+        )
+        evidence = m.Infra.ModScanEvidence.model_validate_json(
+            tm.not_none(state.content)
+        )
+        tm.that(exit_code, ne=0, msg=console.out + console.err)
+        tm.that(evidence.totals_by_rule[rules[0]], eq=1)
+        tm.that(evidence.totals_by_rule[rules[1]], eq=1)
+        tm.that(evidence.actionable, eq=1)
+
+    @staticmethod
+    def test_workspace_rule_ownership_matches_member_scan(
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Shared scans exempt the declared library owner, never its consumers."""
+        rule_id = "ban-direct-pydantic-import"
+        plan = tm.ok(u.Infra.codemod_rule_plan(mod_workspace, rule_ids=(rule_id,)))
+        owner_name = tm.not_none(plan.rules[0].owner)
+        owner = u.Tests.mk_project(
+            mod_workspace,
+            owner_name,
+            pyproject=f'[project]\nname = "{owner_name}"\ndependencies = []\n',
+            with_src=True,
+        )
+        consumer = u.Tests.mk_project(
+            mod_workspace,
+            "library-consumer",
+            pyproject='[project]\nname = "library-consumer"\ndependencies = []\n',
+            with_src=True,
+        )
+        for project in (owner, consumer):
+            u.Tests.initialize_git_repo(project)
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    project / "library_use.py",
+                    "from __future__ import annotations\nimport pydantic\n",
+                )
+            )
+        u.Tests.declare_workspace_projects(
+            mod_workspace,
+            (owner.name, consumer.name),
+        )
+        planned = tm.ok(u.Infra.codemod_rule_plan(mod_workspace, rule_ids=(rule_id,)))
+        tm.that(rule_id in planned.project_rule_ids[owner.resolve()], eq=False)
+        tm.that(rule_id in planned.project_rule_ids[consumer.resolve()], eq=True)
+        for root in (mod_workspace, consumer):
+            exit_code = main([
+                "refactor",
+                "ast",
+                "--repository-root",
+                str(root),
+                "--rules",
+                rule_id,
+            ])
+            console = capsys.readouterr()
+            state = tm.ok(
+                u.Cli.atomic_read_binary_file_state(
+                    root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH,
+                    required=True,
+                )
+            )
+            evidence = m.Infra.ModScanEvidence.model_validate_json(
+                tm.not_none(state.content),
+            )
+            tm.that(exit_code, ne=0, msg=console.out + console.err)
+            tm.that(evidence.totals_by_repository[consumer.name], eq=1)
+            tm.that(evidence.totals_by_repository.get(owner.name, 0), eq=0)
+            tm.that(
+                any(
+                    entry.file == (consumer / "library_use.py").relative_to(root)
+                    for entry in evidence.entries
+                ),
+                eq=True,
+            )
 
     @staticmethod
     def _run_mod_scan(
@@ -124,36 +258,42 @@ class TestsFlextInfraModCliRoute:
             TestsFlextInfraModCliRoute._run_mod_scan(mod_workspace, capsys)
         )
 
-        tm.that(second_exit, eq=0)
+        tm.that(
+            second_exit,
+            eq=0,
+            msg=second_console + second_evidence.model_dump_json(indent=2),
+        )
         tm.that(second_evidence.findings, eq=0)
         tm.that(second_evidence.actionable, eq=0)
         tm.that(second_evidence.detection_only, eq=0)
         tm.that(second_evidence.non_actionable_with_fix, eq=0)
         tm.that(second_evidence.entries, empty=True)
-        tm.that(tuple(second_evidence.totals_by_repository), empty=True)
-        tm.that(tuple(second_evidence.totals_by_rule), empty=True)
+        tm.that(
+            second_evidence.totals_by_repository,
+            eq={mod_workspace.name: 0},
+        )
+        elected = tm.ok(u.Infra.codemod_rule_plan(mod_workspace))
+        tm.that(
+            second_evidence.totals_by_rule,
+            eq={rule.id: 0 for rule in elected.rules},
+        )
         tm.that(second_digest, ne=first_digest)
         tm.that(second_console, has=str(report_path))
         tm.that(second_console, has=second_digest)
         tm.that(second_console, lacks=first_digest)
 
     @staticmethod
-    def test_apply_reports_detection_only_residue_and_still_succeeds(
+    def test_apply_preserves_generated_artifacts_and_rejects_missing_runtime(
         mod_workspace: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Repair applies every rewrite, reports what it cannot act on, exits zero.
-
-        A detection-only rule carries no ``fix``: no iteration of the apply loop
-        can ever consume its finding. Failing the repair verb on it returned the
-        verdict verb's answer and stalled the canonical chain on a defect the
-        verb was never able to repair. The residue is reported by rule id and
-        the verdict stays with ``check``.
-        """
+        """A real rewrite never turns an unprovisioned runtime into acceptance."""
         actionable_path = mod_workspace / "actionable.py"
         generated_path = mod_workspace / "generated.py"
         generated_source = (
-            f"{c.Infra.AUTOGEN_HEADER}\nlock.serialization_lock_execute()\n"
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            "from __future__ import annotations\n\n"
+            "from flext_core import r\npublication = r[int].ok(1)\n"
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -172,25 +312,27 @@ class TestsFlextInfraModCliRoute:
         ])
         console_capture = capsys.readouterr()
         console = console_capture.out + console_capture.err
+        tm.that(exit_code, ne=0)
+        tm.that(console, has="quality checks failed")
         updated = tm.not_none(
             tm.ok(
                 u.Cli.atomic_read_binary_file_state(actionable_path, required=True),
             ).content,
-        ).decode(c.Cli.ENCODING_DEFAULT)
+        ).decode(c.DEFAULT_ENCODING)
 
-        tm.that(exit_code, eq=0)
         tm.that(updated, has="r[int].ok(1)")
         tm.that(updated, lacks="p.Result[int].ok(1)")
         tm.that(generated_path.read_text(encoding="utf-8"), eq=generated_source)
-        tm.that(console, has="detection-only")
-        tm.that(console, has="owner repair")
-        tm.that(console, has="ban-make-serialization")
+        tm.that(console, has="fresh-import target interpreter is missing")
+        tm.that(console, lacks="Could not find name `lock`")
 
     @staticmethod
     def test_apply_repeats_new_actionable_rule_cascades_until_fixed_point(
         mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Carry findings exposed by one rewrite into the next apply iteration."""
+        tm.ok(u.Tests.create_python_environment(mod_workspace))
         u.Tests.declare_codemod_rules(
             mod_workspace,
             {
@@ -199,15 +341,15 @@ class TestsFlextInfraModCliRoute:
                     "language: Python\n"
                     "rule:\n"
                     "  pattern: value = dict()\n"
-                    "fix: value = list()\n"
+                    "fix: value = {}\n"
                     "severity: warning\n"
                 ),
                 "second": (
                     "id: second\n"
                     "language: Python\n"
                     "rule:\n"
-                    "  pattern: value = list()\n"
-                    "fix: value = tuple()\n"
+                    "  pattern: value = {}\n"
+                    "fix: value = dict[str, int]()\n"
                     "severity: warning\n"
                 ),
             },
@@ -222,19 +364,28 @@ class TestsFlextInfraModCliRoute:
             str(mod_workspace),
             "--apply",
         ])
+        captured = capsys.readouterr()
+        console = captured.out + captured.err
         updated = tm.not_none(
             tm.ok(
                 u.Cli.atomic_read_binary_file_state(sample_path, required=True),
             ).content,
-        ).decode(c.Cli.ENCODING_DEFAULT)
+        ).decode(c.DEFAULT_ENCODING)
 
-        tm.that(exit_code, eq=0)
+        report_path = mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
+        evidence = m.Infra.ModScanEvidence.model_validate_json(report_path.read_bytes())
+        tm.that(evidence.actionable, eq=0)
+        tm.that(evidence.findings, gt=0)
+        tm.that(exit_code, ne=0)
+        tm.that(console, has="detection-only")
+        tm.that(console, has="owner repair")
+        tm.that(console, lacks="with zero findings")
         # Publication runs the canonical formatter, so the cascade's result is
         # already normalized: the rewrite landed and the module is formatted,
         # rather than leaving whitespace for a human to repair afterwards.
-        tm.that(updated, has="value = tuple()")
+        tm.that(updated, has="value = dict[str, int]()")
         tm.that(updated, lacks="value = dict()")
-        tm.that(updated, lacks="value = list()")
+        tm.that(updated, lacks="value = {}")
         tm.that(updated.startswith("from __future__ import annotations"), eq=True)
 
     @staticmethod
@@ -249,6 +400,7 @@ class TestsFlextInfraModCliRoute:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 config_path,
+                f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
                 f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\n",
             ),
         )
@@ -398,7 +550,7 @@ class TestsFlextInfraModCliRoute:
             eq=expected_rule_files,
         )
         tm.that(
-            {str(entry.payload["severity"]) for entry in provider_entries.values()},
+            {entry.severity for entry in provider_entries.values()},
             eq={"warning", "hint"},
         )
 
@@ -510,3 +662,64 @@ class TestsFlextInfraModCliRoute:
         }
 
         tm.that(flagged, eq={"tests/bare.py", "examples/helper.py"})
+
+    @staticmethod
+    def test_member_class_stems_match_root_and_local_scans(
+        mod_workspace: Path,
+    ) -> None:
+        """Nested test and source ownership keeps both positive and negative cases."""
+        name = "sample-member"
+        member = u.Tests.mk_project(
+            mod_workspace,
+            name,
+            pyproject=(
+                f'[project]\nname = "{name}"\nversion = "1.0.0"\ndependencies = []\n'
+            ),
+            with_src=True,
+        )
+        u.Tests.initialize_git_repo(member)
+        u.Tests.write_workspace_manifest(
+            mod_workspace,
+            mod_workspace.name.replace("_", "-"),
+            role=c.Infra.MakeProfile.WORKSPACE,
+        )
+        u.Tests.write_workspace_manifest(member, name)
+        u.Tests.declare_workspace_projects(mod_workspace, (name,))
+        stem = u.derive_class_stem(name)
+        package = name.replace("-", "_")
+        modules = {
+            "tests/valid.py": f"Tests{stem}Valid",
+            "tests/bare.py": f"{stem}Bare",
+            f"src/{package}/valid.py": f"{stem}Valid",
+            f"src/{package}/wrong.py": "Foreign",
+        }
+        for relative, class_name in modules.items():
+            path = member / relative
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path,
+                    '"""Public class-stem scan input."""\n\n'
+                    f"class {class_name}:\n"
+                    '    """Namespace analyzed by the real scanner."""\n',
+                )
+            )
+        expected = {"tests/bare.py", f"src/{package}/wrong.py"}
+        for root in (mod_workspace, member):
+            _ = main(["refactor", "mod", "--repository-root", str(root)])
+            state = tm.ok(
+                u.Cli.atomic_read_binary_file_state(
+                    root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH,
+                    required=True,
+                )
+            )
+            evidence = m.Infra.ModScanEvidence.model_validate_json(
+                tm.not_none(state.content),
+            )
+            flagged = {
+                (root / entry.file).relative_to(member).as_posix()
+                for entry in evidence.entries
+                if entry.rule_id == "require-project-class-stem"
+                and (root / entry.file).is_relative_to(member)
+            }
+            tm.that(flagged, eq=expected)

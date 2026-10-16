@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
@@ -18,6 +17,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeStructure,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyReferences,
 )
 
@@ -352,29 +353,20 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             resource = project.get_resource(path.relative_to(root).as_posix())
             module = project.get_pymodule(resource)
             covered = rewrites.get(path, ())
-            for node in ast.walk(ast.parse(source)):
-                if (
-                    not isinstance(node, ast.Attribute)
-                    or node.attr not in flatten.names
-                ):
+            for start, end in cls.reference_regions(source):
+                prefix, separator, name = source[start:end].rpartition(".")
+                if not separator or name not in flatten.names:
                     continue
-                start, end = cls._expression_range(source, node)
                 if any(edit.start <= start and end <= edit.end for edit in covered):
                     continue
                 scope = runtime.scope_at(module, start)
-                resolved = runtime.resolve_symbol(scope, node.value)
+                resolved = runtime.expression_name(scope, prefix)
                 if runtime.same_name(flatten.wrapper, resolved):
                     return True
                 # An unresolved attribute that still spells the wrapper is a
                 # caller the occurrence finder did not bind (a lazy facade).
                 # Flattening would drop that name.
-                value = node.value
-                spells_wrapper = (
-                    isinstance(value, ast.Name) and value.id == flatten.wrapper_name
-                ) or (
-                    isinstance(value, ast.Attribute)
-                    and value.attr == flatten.wrapper_name
-                )
+                spells_wrapper = prefix.rpartition(".")[2] == flatten.wrapper_name
                 if resolved is None and spells_wrapper:
                     return True
         return False

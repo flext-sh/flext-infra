@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, infra, m
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraCodegenConformProgress:
@@ -53,8 +52,10 @@ class TestsFlextInfraCodegenConformProgress:
             where=bool,
             msg=captured[-3000:],
         )
+        # The Makefile surface takes the bootstrap path: it renders and
+        # compares the Makefile after the per-repository topology stage.
         tm.that(
-            "stage=pyproject" in captured or "stage=templates" in captured,
+            "stage=topology repository=" in captured,
             where=bool,
             msg=captured[-3000:],
         )

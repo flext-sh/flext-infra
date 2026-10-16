@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 from flext_cli import m
 
 from flext_infra import c, t
+from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
 
 
 class FlextInfraModelsDepsToml:
@@ -21,11 +22,51 @@ class FlextInfraModelsDepsToml:
     class DepsToml:
         """Declarative TOML sync model domain."""
 
+        class MemberRequirements(
+            FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations
+        ):
+            """Typed dependency declarations needed to provision one member."""
+
+            name: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Declared distribution identity"),
+            ]
+            dependencies: Annotated[
+                t.StrTuple,
+                m.Field(description="Production requirement lines"),
+            ]
+            optional_dependencies: Annotated[
+                t.MappingKV[str, t.StrTuple],
+                m.Field(description="Every declared optional requirement group"),
+            ]
+
+            @m.field_validator(
+                "dependencies",
+                "optional_dependencies",
+                mode="before",
+            )
+            @classmethod
+            def toml_arrays(cls, value: t.JsonValue) -> t.JsonPayload:
+                """Freeze TOML arrays before validating their strict element types.
+
+                Returns:
+                    The same declarations with array containers converted to tuples.
+
+                """
+                if isinstance(value, list):
+                    return tuple(value)
+                if isinstance(value, dict):
+                    return {
+                        name: tuple(entries) if isinstance(entries, list) else entries
+                        for name, entries in value.items()
+                    }
+                return value
+
         class SetOp(m.ContractModel):
             """Set one TOML key to one JSON-compatible value."""
 
-            kind: Literal[c.Infra.TomlOperationKind.SET] = m.Field(
-                c.Infra.TomlOperationKind.SET,
+            kind: Literal["set"] = m.Field(
+                "set",
                 description="Operation kind",
                 validate_default=True,
             )
@@ -35,8 +76,8 @@ class FlextInfraModelsDepsToml:
         class ListOp(m.ContractModel):
             """Set or merge one TOML string list."""
 
-            kind: Literal[c.Infra.TomlOperationKind.LIST] = m.Field(
-                c.Infra.TomlOperationKind.LIST,
+            kind: Literal["list"] = m.Field(
+                "list",
                 description="Operation kind",
                 validate_default=True,
             )
@@ -54,8 +95,8 @@ class FlextInfraModelsDepsToml:
         class RemoveOp(m.ContractModel):
             """Remove one TOML key, optionally from a nested relative table."""
 
-            kind: Literal[c.Infra.TomlOperationKind.REMOVE] = m.Field(
-                c.Infra.TomlOperationKind.REMOVE,
+            kind: Literal["remove"] = m.Field(
+                "remove",
                 description="Operation kind",
                 validate_default=True,
             )

@@ -575,16 +575,25 @@ class FlextInfraUtilitiesPrivateImportFacades:
         bindings: t.MappingKV[str, set[str]],
         class_bases: t.MappingKV[str, t.VariadicTuple[str]],
     ) -> str | None:
-        """Resolve one private class to exactly one inherited facade path.
+        """Resolve one imported binding to exactly one inherited facade path.
 
         Returns:
             The resulting ``str | None``.
 
         Raises:
             ValueError: If ambiguous public facade references for; or if cyclic public
-                facade inheritance; or if ambiguous public facade base identity.
+                facade inheritance; or if ambiguous public facade base identity;
+                or if ambiguous or cyclic public export identity.
 
         """
+        identities = cls._export_identities(bindings, qualified, frozenset())
+        if len(identities) != 1:
+            msg = (
+                f"ambiguous private symbol identity for {qualified}: "
+                f"{sorted(identities)}"
+            )
+            raise ValueError(msg)
+        identity = identities.pop()
         references: set[str] = set()
         for tree, facade_alias, root_name, facade_file in owners:
             root_class = next(
@@ -599,7 +608,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 continue
             cls._collect_facade_references(
                 references,
-                (bindings, class_bases, qualified),
+                (bindings, class_bases, identity),
                 root_class,
                 facade_alias,
                 f"{package}.{Path(facade_file).stem}.{root_name}",
@@ -689,7 +698,13 @@ class FlextInfraUtilitiesPrivateImportFacades:
         ``resolvers`` carries ``(bindings, class_bases, qualified)``.
         """
         bindings, class_bases, qualified = resolvers
-        if any(
+        if cls._inherits_facade(
+            bindings,
+            class_bases,
+            qualified,
+            identity,
+            frozenset(),
+        ) or any(
             cls._inherits_facade(bindings, class_bases, qualified, base, frozenset())
             for base in class_bases[identity]
         ):
@@ -757,8 +772,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
             raise ValueError(msg)
         return next(iter(roots), None)
 
-    @staticmethod
+    @classmethod
     def require_unshadowed_alias(
+        cls,
         tree: ast.Module,
         package: str,
         alias: str,
@@ -790,7 +806,18 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 for imported in node.names
             )
         }
-        for node in ast.walk(tree):
+        rewritten_bindings = {
+            imported.asname or imported.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom)
+            and node.module is not None
+            and node.module in removals
+            for imported in node.names
+            if imported.name in removals[node.module]
+        }
+        for node in cls._lexical_binding_nodes(tree, rewritten_bindings):
+            if isinstance(node, ast.Global) and alias in node.names:
+                break
             if isinstance(node, ast.ImportFrom | ast.Import):
                 if id(node) in allowed_imports:
                     continue
@@ -799,14 +826,20 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     for imported in node.names
                 ):
                     break
-            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
-                if node.id == alias:
-                    break
-            elif isinstance(node, ast.arg) and node.arg == alias:
+            elif (
+                isinstance(node, ast.Name)
+                and isinstance(node.ctx, ast.Store)
+                and node.id == alias
+            ) or (isinstance(node, ast.arg) and node.arg == alias):
                 break
             elif isinstance(
                 node,
-                ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+                ast.FunctionDef
+                | ast.AsyncFunctionDef
+                | ast.ClassDef
+                | ast.TypeVar
+                | ast.TypeVarTuple
+                | ast.ParamSpec,
             ):
                 if node.name == alias:
                     break
@@ -814,6 +847,108 @@ class FlextInfraUtilitiesPrivateImportFacades:
             return
         msg = f"public facade alias {alias} is shadowed in {file_path}"
         raise ValueError(msg)
+
+    @classmethod
+    def _lexical_binding_nodes(
+        cls,
+        tree: ast.Module,
+        rewritten_bindings: AbstractSet[str],
+    ) -> t.IterableOf[ast.AST]:
+        """Exclude class attributes, but retain lexical bindings in methods.
+
+        Yields:
+            Nodes whose bindings can capture a public module facade.
+
+        """
+        pending: list[tuple[ast.AST, bool]] = [(tree, False)]
+        deferred_annotations = any(
+            isinstance(statement, ast.ImportFrom)
+            and statement.module == "__future__"
+            and any(imported.name == "annotations" for imported in statement.names)
+            for statement in tree.body
+        )
+        while pending:
+            node, class_scope = pending.pop()
+            # Class dictionaries are not enclosing lexical scopes of methods.
+            child_scope = class_scope
+            if isinstance(node, ast.ClassDef):
+                child_scope = not cls._class_body_references(
+                    node,
+                    rewritten_bindings,
+                    deferred_annotations=deferred_annotations,
+                )
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+                child_scope = False
+            pending.extend((child, child_scope) for child in ast.iter_child_nodes(node))
+            if not class_scope or isinstance(node, ast.Global | ast.type_param):
+                yield node
+
+    @classmethod
+    def _class_body_references(
+        cls,
+        declaration: ast.ClassDef,
+        bindings: AbstractSet[str],
+        *,
+        deferred_annotations: bool,
+    ) -> bool:
+        """Keep class bindings when cutover references execute in that dictionary.
+
+        Returns:
+            Whether a rewritten binding is evaluated in the class body.
+
+        """
+        pending: list[ast.AST] = list(declaration.body)
+        while pending:
+            node = pending.pop()
+            if isinstance(node, ast.Name) and node.id in bindings:
+                return True
+            pending.extend(
+                cls._class_evaluation_children(
+                    node,
+                    deferred_annotations=deferred_annotations,
+                )
+            )
+        return False
+
+    @staticmethod
+    def _class_evaluation_children(
+        node: ast.AST,
+        *,
+        deferred_annotations: bool,
+    ) -> t.IterableOf[ast.AST]:
+        """Select expressions that retain the enclosing class namespace.
+
+        Yields:
+            Definition expressions, excluding bodies and postponed annotations.
+
+        """
+        if isinstance(node, ast.ClassDef):
+            yield from node.decorator_list
+            yield from node.bases
+            yield from (keyword.value for keyword in node.keywords)
+            yield from node.type_params
+        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            yield from node.args.defaults
+            yield from (item for item in node.args.kw_defaults if item is not None)
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                yield from node.decorator_list
+                # PEP 695/696 bounds and defaults keep their annotation scope.
+                yield from node.type_params
+                if not deferred_annotations:
+                    yield from node.args.posonlyargs
+                    yield from node.args.args
+                    yield from node.args.kwonlyargs
+                    for expression in (node.args.vararg, node.args.kwarg, node.returns):
+                        if expression is not None:
+                            yield expression
+        elif isinstance(node, ast.AnnAssign):
+            yield node.target
+            if node.value is not None:
+                yield node.value
+            if node.simple and not deferred_annotations:
+                yield node.annotation
+        else:
+            yield from ast.iter_child_nodes(node)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPrivateImportFacades"]

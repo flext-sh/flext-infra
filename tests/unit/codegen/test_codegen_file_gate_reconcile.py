@@ -9,11 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, u
+from tests import c, m, tm, u
 
 pytestmark = [pytest.mark.slow]
 
@@ -127,6 +126,9 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
                 ],
             )
             tm.that(rendered, has="export FLEXT_FILE_GATE_FILE := $(value FILE)")
+            selection = body.split(' --gates "', 1)[1].split('"', 1)[0]
+            tm.that(len(selection.split(",")), gt=1)
+            tm.that(selection, lacks=" ")
             tm.that(body, lacks=["|| true", "-m ruff", "ast-grep scan", 'typos "'])
 
     @staticmethod
@@ -150,7 +152,9 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
                     f"FILE={selection}",
                 ],
                 cwd=root,
-                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                options=m.Cli.ProcessOptions(
+                    remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                ),
             ),
         )
         tm.that(process.outcome.raw_return_code, ne=0)

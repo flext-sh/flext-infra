@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, t
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraCiDeclaredSecretsContract:
@@ -107,7 +105,7 @@ class TestsFlextInfraCiDeclaredSecretsContract:
         referenced = self._referenced_secret_names(workflow_path)
         referenced.discard("GITHUB_TOKEN")
 
-        tm.that(referenced - set(declared), eq=set())
+        tm.that(referenced - set(declared), empty=True)
         for contract in declared.values():
             specification = t.Cli.JSON_MAPPING_ADAPTER.validate_python(contract)
             tm.that(specification["required"], eq=False)

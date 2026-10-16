@@ -6,28 +6,90 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._models import (
-    FlextInfraModelsCodegenJournalModels,
-    FlextInfraModelsCodegenToolchain,
-)
+from flext_infra import c, p, t
+from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
+from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
+from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
+from flext_infra._models.check import FlextInfraModelsCheck
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
 class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
 
-    class CodegenTransactionJournal(m.ArbitraryTypesModel):
+    class StagePackagePlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
+        """Pinned package/dependency inputs and the declared public facade contract."""
+
+        package: str = m.Field(description="Selected canonical package namespace")
+        module: str = m.Field(description="Selected public facade module")
+        classname: str = m.Field(description="Published class preserved by projection")
+        owner_module: str = m.Field(description="Canonical complete private owner")
+        upstream: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+            description="Declared upstream base imports"
+        )
+        members: t.StrSequence = m.Field(
+            description="Owner declarations inherited by the public facade"
+        )
+        layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
+            description="Pinned package layouts"
+        )
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            description="Pinned source/resource/metadata states"
+        )
+        workspace_packages: t.StrSequence = m.Field(
+            description="Workspace namespaces requiring sealed origins"
+        )
+
+    class StageSourcePlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
+        """Pinned project closure and desired bytes for effect-free validation."""
+
+        workspace: Path = m.Field(description="Canonical source workspace root")
+        roots: t.VariadicTuple[Path] = m.Field(
+            description="Discovered project roots covering the pinned source closure"
+        )
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            description="Exact source and configuration observations"
+        )
+        updates: t.MappingKV[Path, str] = m.Field(
+            description="Desired source updates keyed by live destination"
+        )
+        layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
+            description="Original project layouts in the desired import closure",
+        )
+        workspace_packages: t.VariadicTuple[str] = m.Field(
+            description="Declared workspace namespaces with sealed candidate origins",
+        )
+
+    class StagePackageView(m.ImmutableValueModel, m.ArbitraryTypesModel):
+        """Journal-owned materialized package view, never another source of truth."""
+
+        plan: FlextInfraModelsCodegenTransactionModels.StagePackagePlan = m.Field(
+            description="Pinned input and public-feature contract"
+        )
+        root: Path = m.Field(
+            description="Runtime artifact inside a registered transaction root"
+        )
+        layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
+            description="Actual materialized package origins"
+        )
+        manifest: m.Cli.AtomicPhysicalTreeManifest = m.Field(
+            description="Descriptor-authenticated candidate tree"
+        )
+        target: m.Cli.AtomicPhysicalTreeEntry = m.Field(
+            description="Exact desired facade bytes and physical identity"
+        )
+
+    class CodegenTransactionJournal(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Persisted recovery contract for one workspace-wide generation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
         version: Annotated[
-            Literal[8],
+            Literal[9],
             m.Field(description="Exact journal schema version"),
         ]
         transaction_id: Annotated[
@@ -46,7 +108,7 @@ class FlextInfraModelsCodegenTransactionModels:
             m.Field(gt=0, strict=True, description="Scope directory inode"),
         ]
         state: Annotated[
-            Literal["staging", "prepared", "recovering", "committed"],
+            Literal["staging", "prepared", "committed"],
             m.Field(description="Durable publication transition state"),
         ]
         projects: Annotated[
@@ -61,6 +123,38 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalSource],
             m.Field(description="Source identities used by staging"),
         ]
+        outputs: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Complete output proof, including no-ops")
+        generator_sources: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Captured loaded generator implementation")
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Producer resource membership before planning"
+        )
+        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+            default=(), description="Immutable producer module election"
+        )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None,
+                description="Immutable native producer epoch before effects",
+            )
+        )
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(),
+            description="Source-owner directory witnesses for observation",
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Source-owner roots for topology observation",
+        )
+        source_scope: Path | None = m.Field(
+            default=None, description="Member elected by the native docs source owner"
+        )
+        phase: c.Infra.CodegenStagedFilePhase | None = m.Field(
+            default=None, description="Actual publication phase"
+        )
         directories: Annotated[
             t.VariadicTuple[
                 FlextInfraModelsCodegenJournalModels.CodegenJournalDirectory
@@ -71,6 +165,10 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalEntry],
             m.Field(description="Recoverable artifact transitions"),
         ]
+        staging_intents: Annotated[
+            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenStagingIntent],
+            m.Field(description="Durable authority for staging bytes before creation"),
+        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_lifecycle(self) -> Self:
@@ -88,14 +186,14 @@ class FlextInfraModelsCodegenTransactionModels:
                     must be unique; or if codegen journal entry has no project
                     participant; or if codegen journal directory paths must be unique;
                     or if codegen journal directory has no project participant; or if
-                    recovering codegen journal lacks rollback identities; or if
-                    non-recovering codegen journal contains rollback identities.
+                    a source dependency is duplicated or lacks same-phase authority.
 
             """
-            selectors = tuple(
-                project.selector
-                for project in (*self.projects, *self.file_participants)
-            )
+            participants: t.VariadicTuple[
+                FlextInfraModelsCodegenJournalModels.CodegenJournalProject
+                | FlextInfraModelsCodegenToolchain.CodegenFileParticipant
+            ] = (*self.projects, *self.file_participants)
+            selectors = tuple(project.selector for project in participants)
             if not selectors:
                 msg = "generation journal requires an explicit participant"
                 raise ValueError(msg)
@@ -107,7 +205,21 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             self._validate_staging_authority()
             self._validate_participant_coverage(selectors)
-            self._validate_recovery_state()
+            source_keys = {(source.phase, source.path) for source in self.sources}
+            for entry in self.entries:
+                if len(set(entry.source_paths)) != len(entry.source_paths):
+                    msg = "journal entry source dependencies must be unique"
+                    raise ValueError(msg)
+                if any(
+                    (entry.phase, path) not in source_keys
+                    for path in entry.source_paths
+                ):
+                    msg = "journal entry source dependency has no same-phase authority"
+                    raise ValueError(msg)
+            staging_paths = tuple(intent.before.path for intent in self.staging_intents)
+            if len(set(staging_paths)) != len(staging_paths):
+                msg = "staging intention paths must have unique authority"
+                raise ValueError(msg)
             return self
 
         def _validate_staging_authority(self) -> None:
@@ -149,6 +261,15 @@ class FlextInfraModelsCodegenTransactionModels:
 
             """
             entry_paths = tuple(entry.path for entry in self.entries)
+            staging_paths = tuple(
+                path
+                for entry in self.entries
+                for path in (entry.desired_staging, entry.original_staging)
+                if path is not None
+            )
+            if len(set(staging_paths)) != len(staging_paths):
+                msg = "journal preimage/replacement staging has competing owners"
+                raise ValueError(msg)
             if len(set(entry_paths)) != len(entry_paths):
                 msg = "codegen journal destination paths must be unique"
                 raise ValueError(msg)
@@ -165,28 +286,67 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "codegen journal directory has no project participant"
                 raise ValueError(msg)
 
-        def _validate_recovery_state(self) -> None:
-            """Bind rollback identities to the journal's recovery state.
+    class CodegenFootprint(m.Value):
+        """Effect-free observed journal and requested publication footprint."""
 
-            Raises:
-                ValueError: If recovering codegen journal lacks rollback identities; or
-                    if non-recovering codegen journal contains rollback identities.
+        scope_root: Path = m.Field(description="Authenticated coordination root")
+        journal_path: Path = m.Field(description="Canonical journal anchor")
+        snapshot_identity: str = m.Field(
+            description="Normalized canonical file-state fields excluding raw content",
+        )
+        snapshot_sha256: str | None = m.Field(
+            description="Digest of the exact observed journal bytes, or absent",
+        )
+        journal_version: int | None = m.Field(
+            description="Schema version read from the typed journal, or absent",
+        )
+        transaction_id: str | None = m.Field(
+            description="Transaction identity read from the typed journal, or absent",
+        )
+        normalized_journal_sha256: str | None = m.Field(
+            description="Digest of the parsed journal representation, not disk bytes",
+        )
+        authorized_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Physical roots authorized by current topology",
+        )
+        journal_state: Literal["absent", "staging", "prepared", "committed"] = m.Field(
+            description="Observed durable state, never a readiness or green receipt",
+        )
+        pending_roots: t.VariadicTuple[Path] = m.Field(
+            description="Actual recorded participant roots",
+        )
+        pending_destinations: t.VariadicTuple[str] = m.Field(
+            description="Journal-relative destination selectors",
+        )
+        pending_directories: t.VariadicTuple[str] = m.Field(
+            description="Journal-relative directory selectors",
+        )
+        pending_staging: t.VariadicTuple[Path] = m.Field(
+            description="Absolute recorded staging paths",
+        )
+        planned_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Roots selected by the public conform plan",
+        )
+        planned_destinations: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Absolute requested publication paths",
+        )
+        journal: (
+            FlextInfraModelsCodegenTransactionModels.CodegenTransactionJournal | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Typed observed recovery authority",
+        )
+        snapshot: m.Cli.AtomicFileState = m.Field(
+            exclude=True,
+            description="Exact journal observation retained for revalidation",
+        )
 
-            """
-            recovery_declared = tuple(
-                entry.rollback_exists is not None for entry in self.entries
-            )
-            if self.state == "recovering" and not all(recovery_declared):
-                msg = "recovering codegen journal lacks rollback identities"
-                raise ValueError(msg)
-            if self.state != "recovering" and any(recovery_declared):
-                msg = "non-recovering codegen journal contains rollback identities"
-                raise ValueError(msg)
-
-    class CodegenFileSessionPlan(m.ArbitraryTypesModel):
+    class CodegenFileSessionPlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """File-only transaction topology; contains no Mise artifact snapshot."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainWorkspaceLayout,
@@ -200,10 +360,8 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenTransactionSession(m.ArbitraryTypesModel):
+    class CodegenTransactionSession(m.ImmutableValueModel, m.ArbitraryTypesModel):
         """Immutable cursor for one live prepared generation transaction."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         plan: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainWorkspacePlan
@@ -222,6 +380,24 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[Path],
             m.Field(description="Ordered destinations published by completed phases"),
         ] = ()
+        published_files: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenStagedFile
+        ] = m.Field(
+            default=(), exclude=True, description="Actual admitted states across phases"
+        )
+        retained_files: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Authored destinations retained during per-file election",
+        )
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+            default=(),
+            description="Publication failures retained across successful phases",
+        )
+        exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native publication cause",
+        )
 
         @m.model_validator(mode="after")
         def _validate_cursor(self) -> Self:
@@ -232,3 +408,48 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "codegen session layout and journal transaction ids differ"
                 raise ValueError(msg)
             return self
+
+    class CodegenPhasePublicationPolicy(m.ImmutableValueModel, m.ArbitraryTypesModel):
+        """Caller-owned directories and native admission for one publication."""
+
+        directories: t.VariadicTuple[Path] = m.Field(
+            description="Exact generated directories requested by the caller",
+        )
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(), description="Authenticated source directory ancestry"
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(), description="Source membership roots for this publication"
+        )
+        source_scope: Path | None = m.Field(
+            default=None,
+            description="Selected source scope within the membership roots",
+        )
+        admission: FlextInfraModelsCodegenPipelineModels.CodegenPhaseOutcome | None = (
+            m.Field(
+                default=None,
+                exclude=True,
+                description="Exact prior batch admission when the caller captured it",
+            )
+        )
+        staged_validator: (
+            Callable[
+                [
+                    FlextInfraModelsCodegenTransactionModels.CodegenTransactionSession,
+                    t.VariadicTuple[
+                        FlextInfraModelsCodegenJournalModels.CodegenStagedFile
+                    ],
+                ],
+                p.Result[
+                    FlextInfraModelsCodegenTransactionModels.CodegenTransactionSession
+                ],
+            ]
+            | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Real staged consumer required before publishing this batch",
+        )
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenTransactionModels"]

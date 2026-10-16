@@ -10,13 +10,29 @@ from importlib.util import resolve_name
 from pathlib import Path
 from types import MappingProxyType
 
-import pytest
-from flext_tests import tm
-
 import flext_core
-from flext_infra import c, config, m, t, u
+import pytest
+
+from flext_infra import config
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from tests import c, m, t, tm, u
+
+
+def _assert_side_effect_free_lazy_bootstrap(plan: m.Infra.LazyInitPlan) -> None:
+    """Render, compile, and assert a side-effect-free lazy bootstrap initializer.
+
+    A lazy bootstrap root publishes an empty public contract and imports
+    neither the lazy runtime facade nor its installer until a consumer asks
+    for an exported name.
+
+    """
+    init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+    compile(init_content, "__init__.py", "exec")
+    tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
+    tm.that(init_content, lacks="from flext_core.lazy import")
+    tm.that(init_content, lacks="install_lazy_exports")
 
 
 class TestsFlextInfraCodegenGeneration:
@@ -385,12 +401,7 @@ class TestsFlextInfraCodegenGeneration:
             }),
         )
 
-        init_content = FlextInfraCodegenGeneration.render_init(plan)
-
-        compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
-        tm.that(init_content, lacks="from flext_core.lazy import")
-        tm.that(init_content, lacks="install_lazy_exports")
+        _assert_side_effect_free_lazy_bootstrap(plan)
 
     def test_lazy_typings_bootstrap_initializer_is_side_effect_free(self) -> None:
         """Keep the lazy runtime's typing dependency free of import callbacks."""
@@ -402,12 +413,7 @@ class TestsFlextInfraCodegenGeneration:
             }),
         )
 
-        init_content = FlextInfraCodegenGeneration.render_init(plan)
-
-        compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
-        tm.that(init_content, lacks="from flext_core.lazy import")
-        tm.that(init_content, lacks="install_lazy_exports")
+        _assert_side_effect_free_lazy_bootstrap(plan)
 
     def test_normal_package_initializer_keeps_full_lazy_map(self) -> None:
         """Keep ordinary package boundaries backed by the lazy runtime."""
@@ -466,7 +472,7 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from flext_tests import tm")
+        tm.that(init_content, contains="from tests import tm")
         tm.that(init_content, contains='"c": ".constants",')
         tm.that(init_content, contains='"u": ".utilities",')
         import_block = init_content.split(
@@ -480,7 +486,7 @@ class TestsFlextInfraCodegenGeneration:
         module_offsets = tuple(
             import_block.index(module)
             for module in (
-                "from flext_tests import tm",
+                "from tests import tm",
                 "from tests.base import",
                 "from tests.constants import",
                 "from tests.models import",
@@ -491,7 +497,7 @@ class TestsFlextInfraCodegenGeneration:
             )
         )
         tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
-        tm.that(import_block, contains="from flext_tests import tm\n")
+        tm.that(import_block, contains="from tests import tm\n")
         tm.that(init_content, contains="if TYPE_CHECKING:")
         tm.that(init_content, contains="install_lazy_exports")
         tm.that(init_content, lacks="TestsDemoCase")
@@ -610,6 +616,8 @@ class TestsFlextInfraCodegenGeneration:
             'authors = [{ name = "Fixture Author" }]\n',
             encoding="utf-8",
         )
+        # A FLEXT project is a Git repository; workspace detection reads it.
+        u.Tests.initialize_git_repo(project_root)
         plan = m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
                 pkg_dir=wrapper_root,
@@ -668,6 +676,8 @@ class TestsFlextInfraCodegenGeneration:
             f'authors = [{{ name = "Fixture Author" }}]\n{table}',
             encoding="utf-8",
         )
+        # A FLEXT project is a Git repository; workspace detection reads it.
+        u.Tests.initialize_git_repo(tmp_path)
         plan = self._plan(
             "examples",
             ("extra", "external"),

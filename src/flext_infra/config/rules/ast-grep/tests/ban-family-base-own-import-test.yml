@@ -1,0 +1,17 @@
+id: ban-family-base-own-import
+valid:
+  - |
+    from flext_core._models._base_parts.flextmodelsbase_part_03 import FlextModelsBasePart
+invalid:
+  - |
+    if TYPE_CHECKING:
+        from flext_infra import t
+  - |
+    import flext_infra
+  - |
+    import flext_infra._settings
+  - |
+    import flext_infra._constants.make as make
+  - |
+    if TYPE_CHECKING:
+        import flext_infra._models

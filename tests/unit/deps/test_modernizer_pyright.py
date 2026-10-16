@@ -9,15 +9,13 @@ from __future__ import annotations
 from collections.abc import MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from flext_infra import (
+from flext_infra import config
+from flext_infra.deps import (
     FlextInfraEnsurePyrightConfigPhase,
     FlextInfraPyprojectModernizer,
-    FlextInfraWorkspaceDetector,
-    config,
 )
-from tests import m, t, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
+from tests import m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -56,7 +54,7 @@ class TestsFlextInfraDepsModernizerPyright:
             The resulting ``Path``.
 
         """
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         project_dir = tmp_path / "flext-sample"
         source_dir = project_dir / source_dir_name / "flext_sample"
         source_dir.mkdir(parents=True)

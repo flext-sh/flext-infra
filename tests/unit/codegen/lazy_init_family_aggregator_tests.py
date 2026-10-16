@@ -20,9 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from tests import c, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraLazyInitFamilyAggregator:

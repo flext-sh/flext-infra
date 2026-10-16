@@ -9,14 +9,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, r, t
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
-from tests import m, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -504,9 +503,9 @@ class TestsFlextInfraDocsGenerator:
         )
         _ = u.Tests.publish_docs_bundle(generator)
         project = workspace / "flext-a"
-        config_path = project / c.Infra.PRETTIER_CONFIG_FILENAME
+        config_path = project / c.Infra.MARKDOWNLINT_CONFIG_FILENAME
         config_path.write_text(
-            (request.config.rootpath / c.Infra.PRETTIER_CONFIG_FILENAME).read_text(
+            (request.config.rootpath / c.Infra.MARKDOWNLINT_CONFIG_FILENAME).read_text(
                 encoding="utf-8",
             ),
             encoding="utf-8",

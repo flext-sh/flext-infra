@@ -11,12 +11,11 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, t
 
-from flext_infra._constants import FlextInfraConstantsCodegenProject
-from flext_infra._models import (
-    FlextInfraConfigModelsBeads,
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsMake,
-)
+from flext_infra import c
+from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.make import FlextInfraConfigModelsMake
+from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
 
 
 class FlextInfraConfigModelsRepository:
@@ -263,13 +262,13 @@ class FlextInfraConfigModelsRepository:
             m.Field(description="POSIX path relative to its workspace root"),
         ]
         role: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Repository role in the declared topology"),
         ]
         state: Annotated[
-            FlextInfraConstantsCodegenProject.RepositoryState,
+            c.Infra.RepositoryState,
             m.Field(description="Repository lifecycle state"),
-        ] = FlextInfraConstantsCodegenProject.RepositoryState.ACTIVE
+        ] = c.Infra.RepositoryState.ACTIVE
         checkout: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -288,7 +287,7 @@ class FlextInfraConfigModelsRepository:
             ),
         ]
         kind: Annotated[
-            FlextInfraConstantsCodegenProject.ProjectKind,
+            c.Infra.ProjectKind,
             m.Field(
                 description=(
                     "Governance kind; only internal_flext repositories are "
@@ -301,9 +300,9 @@ class FlextInfraConfigModelsRepository:
                     "at all -- and a consumer is allowed to lag."
                 ),
             ),
-        ] = FlextInfraConstantsCodegenProject.ProjectKind.INTERNAL_FLEXT
+        ] = c.Infra.ProjectKind.INTERNAL_FLEXT
         codegen: Annotated[
-            FlextInfraConstantsCodegenProject.CodegenKind,
+            c.Infra.CodegenKind,
             m.Field(description="Repository code-generation policy"),
         ]
         package: Annotated[
@@ -347,6 +346,16 @@ class FlextInfraConfigModelsRepository:
                 ),
             ),
         ] = ()
+        examples_module: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                pattern=r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$",
+                description=(
+                    "Explicit dotted examples module with a repository-relative "
+                    "Python source file; absence does not select an entrypoint"
+                ),
+            ),
+        ] = None
         extra_verbs: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
             m.Field(
@@ -379,8 +388,24 @@ class FlextInfraConfigModelsRepository:
             Path,
             m.Field(description="Resolved repository root receiving conformance"),
         ]
+        toolchain_root: Annotated[
+            Path,
+            m.Field(
+                description="Composition root owning the active generation toolchain"
+            ),
+        ]
+        vscode_spec: Annotated[
+            FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
+            m.Field(description="Repository-rooted resolved editor declarations"),
+        ] = None
+        vscode_sources: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True, description="Exact consulted editor declaration inputs"
+            ),
+        ] = ()
         make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Make profile inferred from live Git topology"),
         ]
         beads: Annotated[
@@ -427,18 +452,6 @@ class FlextInfraConfigModelsRepository:
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
 
-    class ManagedGitlinkSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One governed submodule with its provider-owned baseline branch."""
-
-        repository: Annotated[
-            FlextInfraConfigModelsRepository.RepositoryRef,
-            m.Field(description="Governed repository identity"),
-        ]
-        branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Declared gitlink branch (. follows the superproject)"),
-        ]
-
     class ScriptDispatchSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
 
@@ -461,3 +474,6 @@ class FlextInfraConfigModelsRepository:
                 ),
             ),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsRepository"]

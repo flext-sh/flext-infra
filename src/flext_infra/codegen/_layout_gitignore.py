@@ -13,9 +13,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen._layout_plan import FlextInfraCodegenLayoutPlanMixin
-from flext_infra.codegen._mise_artifacts_publication import FlextInfraMisePublication
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.codegen import (
+    FlextInfraCodegenLayoutPlanMixin,
+    FlextInfraMisePublication,
+)
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenLayoutGitignoreMixin:
@@ -78,8 +80,8 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             project=project_dir,
             path=gitignore_path,
             before=before.value,
-            desired_content=rendered.value.encode(c.Cli.ENCODING_DEFAULT),
-            desired_mode=0o644,
+            desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
+            desired_mode=config.Infra.codegen.modes.file_default,
             owner="codegen",
             policy="full",
         )
@@ -133,8 +135,8 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             project=project_dir,
             path=gitignore_path,
             before=before.value,
-            desired_content=text.encode(c.Cli.ENCODING_DEFAULT),
-            desired_mode=0o644,
+            desired_content=text.encode(c.DEFAULT_ENCODING),
+            desired_mode=config.Infra.codegen.modes.file_default,
             owner="codegen",
             policy="merge",
         )

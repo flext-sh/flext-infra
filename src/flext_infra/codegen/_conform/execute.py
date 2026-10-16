@@ -6,26 +6,42 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import traceback
+from functools import partial
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenTransaction
-from flext_infra.codegen._conform.execute_scaffold import (
-    FlextInfraCodegenConformExecuteScaffold,
+from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenPreconditions,
+    FlextInfraCodegenTransaction,
+    FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
+from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
+
+# The surfaces a partial apply plan may publish; every other non-ALL surface is
+# prohibited outside the complete managed run.
+_PARTIAL_PLAN_SURFACES: frozenset[c.Infra.CodegenConformSurface] = frozenset((
+    c.Infra.CodegenConformSurface.MAKEFILE,
+    c.Infra.CodegenConformSurface.DOCS_CONFIG,
+    c.Infra.CodegenConformSurface.ENVRC,
+    c.Infra.CodegenConformSurface.PYPROJECT,
+    c.Infra.CodegenConformSurface.MISE_CONFIG,
+    c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
+))
 
 
-class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
+class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     """Transactional execution of conformance plans.
 
     The chain is linear in dependency order, so execution statically inherits
     everything it calls: bootstrap (service root, request state) <- gitignore
     <- docs ownership <- beads routes <- file plans <- pyproject policy <-
     context render <- artifact render <- existing plan <- scaffold plan <- plan
-    <- execute scaffold <- execute.
+    <- execute scaffold <- directed file publication <- execute.
     """
 
     @classmethod
@@ -45,52 +61,37 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
-        root = request.root.expanduser().resolve()
-        bootstrap: t.VariadicTuple[m.Cli.AtomicDirectoryState] = ()
-        initialized_git = False
-        prelude = cls._validated_request_prelude(root, initial_workspace)
-        if prelude.failure:
-            return r[m.Infra.CodegenResult].from_failure(prelude)
-        if initial_workspace is not None and not root.is_dir():
-            created = cls._bootstrap_request_root(root)
-            if created.failure:
-                return r[m.Infra.CodegenResult].from_failure(created)
-            bootstrap = tuple(created.value)
-        if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
-            initialized = cls._initialize_request_git(root, initial_workspace)
-            if initialized.failure:
-                return r[m.Infra.CodegenResult].from_failure(initialized)
-            initialized_git = True
-        service = cls(
-            repository_root=root,
-            request=request,
-            initial_workspace=initial_workspace,
-            ports=ports,
-        )
-        try:
-            result = service.execute()
-        except Exception as exc:
-            rollback = cls._rollback_request_bootstrap(
-                root,
-                initialized_git=initialized_git,
-                directories=bootstrap,
+        with FlextInfraWorkspaceNativeReference.compilation_scope():
+            if (
+                c.Infra.CodegenConformMode(request.mode)
+                is c.Infra.CodegenConformMode.CHECK
+            ):
+                return cls._observe_publication(request)
+            root = request.root.expanduser().resolve()
+            producer = FlextInfraCodegenPreconditions.capture_producer(
+                root, entrypoint=cls.execute_request
             )
-            if rollback.failure:
-                exc.add_note(f"scaffold bootstrap rollback failed: {rollback.error}")
-            raise
-        if result.success:
-            return result
-        rollback = cls._rollback_request_bootstrap(
-            root,
-            initialized_git=initialized_git,
-            directories=bootstrap,
-        )
-        if rollback.failure:
-            return r[m.Infra.CodegenResult].fail(
-                f"{result.error or 'generation failed'}; "
-                f"scaffold bootstrap rollback failed: {rollback.error}",
+            if producer.failure:
+                return r[m.Infra.CodegenResult].from_failure(producer)
+            prelude = cls._validated_request_prelude(root, initial_workspace)
+            if prelude.failure:
+                return r[m.Infra.CodegenResult].from_failure(prelude)
+            if initial_workspace is not None and not root.is_dir():
+                created = cls._bootstrap_request_root(root)
+                if created.failure:
+                    return r[m.Infra.CodegenResult].from_failure(created)
+            if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
+                initialized = cls._initialize_request_git(root, initial_workspace)
+                if initialized.failure:
+                    return r[m.Infra.CodegenResult].from_failure(initialized)
+            service = cls(
+                repository_root=root,
+                request=request,
+                initial_workspace=initial_workspace,
+                ports=ports,
+                producer=producer.value,
             )
-        return result
+            return service.execute()
 
     @staticmethod
     def _validated_request_prelude(
@@ -194,7 +195,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
             return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(planned)
         created = u.Cli.atomic_create_directory_chain_guarded(
             planned.value,
-            permission_mode=0o755,
+            permission_mode=config.Infra.codegen.modes.directory_generated,
         )
         if created.failure:
             return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(created)
@@ -219,61 +220,38 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
                 "initial branch is required to initialize the repository "
                 "Git: declare --repository-branch",
             )
-        initialized = u.Cli.run_checked([
-            c.Infra.GIT,
-            "init",
-            "--initial-branch",
-            initial_workspace.integration.branch,
-            str(root),
-        ])
-        if initialized.failure:
-            return r[bool].from_failure(initialized)
-        remote = u.Cli.run_checked([
-            c.Infra.GIT,
-            "-C",
-            str(root),
-            "remote",
-            "add",
-            c.Infra.GIT_DEFAULT_REMOTE,
-            initial_workspace.repository.url,
-        ])
-        if remote.failure:
-            return r[bool].from_failure(remote)
-        committed = u.Cli.run_checked([
-            c.Infra.GIT,
-            "-C",
-            str(root),
-            "commit",
-            "--allow-empty",
-            "-m",
-            "chore: initialize generated project",
-        ])
-        if committed.failure:
-            return r[bool].from_failure(committed)
+        commands: t.SequenceOf[t.StrSequence] = (
+            (
+                c.Infra.GIT,
+                "init",
+                "--initial-branch",
+                initial_workspace.integration.branch,
+                str(root),
+            ),
+            (
+                c.Infra.GIT,
+                "-C",
+                str(root),
+                "remote",
+                "add",
+                c.Infra.GIT_DEFAULT_REMOTE,
+                initial_workspace.repository.url,
+            ),
+            (
+                c.Infra.GIT,
+                "-C",
+                str(root),
+                "commit",
+                "--allow-empty",
+                "-m",
+                "chore: initialize generated project",
+            ),
+        )
+        for command in commands:
+            executed = u.Cli.run_checked(command)
+            if executed.failure:
+                return r[bool].from_failure(executed)
         return r[bool].ok(value=True)
-
-    @classmethod
-    def _rollback_request_bootstrap(
-        cls,
-        root: Path,
-        *,
-        initialized_git: bool,
-        directories: t.VariadicTuple[m.Cli.AtomicDirectoryState],
-    ) -> p.Result[bool]:
-        """Undo only Git and root directories created by this invocation.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if initialized_git:
-            inventory = u.Cli.atomic_inventory_physical_tree(root / c.Infra.GIT_DIR)
-            if inventory.failure:
-                return r[bool].fail(f"Git rollback inventory failed: {inventory.error}")
-            cleaned = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
-            if cleaned.failure:
-                return r[bool].fail(f"Git rollback failed: {cleaned.error}")
-        return cls._rollback_scaffold_directories(directories)
 
     @override
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
@@ -286,6 +264,84 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.repository_root,
         )
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+            return self._observe_publication(request)
+        inputs = self._capture_current_codegen_inputs(request)
+        if inputs.failure:
+            return r[m.Infra.CodegenResult].from_failure(inputs)
+        blocked = self._migrate_declarations_for_apply(request, inputs.value.spec)
+        if blocked is not None:
+            return blocked
+        return self._dispatch_conform_surface(request)
+
+    def _capture_current_codegen_inputs(
+        self,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Capture the verified provenance producer and the current inputs.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenInputs]``.
+
+        """
+        if self.producer is None:
+            producer = FlextInfraCodegenPreconditions.capture_producer(
+                self.repository_root,
+                entrypoint=self.execute,
+            )
+            if producer.failure:
+                return r[m.Infra.CodegenInputs].from_failure(producer)
+            self.producer = producer.value
+        verified_producer = FlextInfraCodegenPreconditions.producer_current(
+            self.producer
+        )
+        if verified_producer.failure:
+            return r[m.Infra.CodegenInputs].from_failure(verified_producer)
+        return u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+
+    def _migrate_declarations_for_apply(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        spec: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[m.Infra.CodegenResult] | None:
+        """Migrate repository declarations on governed apply surfaces.
+
+        Returns:
+            The failing conform result when a migration fails without a
+            retained planning receipt, or ``None`` to continue the run.
+
+        """
+        if (
+            c.Infra.CodegenConformMode(request.mode)
+            is not c.Infra.CodegenConformMode.APPLY
+        ):
+            return None
+        if not (
+            self.surface_contract(
+                c.Infra.CodegenConformSurface(request.what),
+                codegen=spec,
+            ).complete_governed
+            or request.declaration_kind is not None
+        ):
+            return None
+        migrated = self._migrate_repository_declarations(request)
+        if migrated.failure and (
+            migrated.error_code != c.Infra.ToolOutcome.ERROR.value
+            or not self.planning_issues
+        ):
+            return r[m.Infra.CodegenResult].from_failure(migrated)
+        return None
+
+    def _dispatch_conform_surface(
+        self,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Dispatch the request's conform surface to its owning executor.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
         surface = c.Infra.CodegenConformSurface(request.what)
         if surface in {
             c.Infra.CodegenConformSurface.LAZY_INIT,
@@ -295,124 +351,198 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
         if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
-            if surface in {
-                c.Infra.CodegenConformSurface.MAKEFILE,
-                c.Infra.CodegenConformSurface.DOCS_CONFIG,
-                c.Infra.CodegenConformSurface.PYPROJECT,
-            }:
+            if surface in _PARTIAL_PLAN_SURFACES:
                 return self._execute_plan(request)
             mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
-            transaction = FlextInfraCodegenTransaction(mise_owner)
+            transaction = FlextInfraCodegenTransaction(
+                mise_owner, producer=self.producer
+            )
             return transaction.run_locked(
                 prepare=False,
                 operation=lambda _scope_root: self._execute_plan(request),
             )
         return self._execute_plan(request)
 
-    def _execute_lazy_init(
+    def _migrate_repository_declarations(
         self,
         request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Run the initializer-only surface under the existing file transaction.
+    ) -> p.Result[bool]:
+        """Publish explicit input migration before any runtime detector read.
 
         Returns:
-            The checked or atomically published initializer plan.
+            A complete migration receipt, retaining per-file failures and gains.
 
         """
+        targets = u.Infra.repository_operation_targets(
+            request.root,
+            c.Infra.CodegenConformScope(request.scope),
+        )
+        if targets.failure:
+            return r[bool].from_failure(targets)
+        selected = tuple(
+            target
+            for target in targets.value
+            if target.managed is not False
+            and (
+                u.Infra.workspace_manifest_path(target.root).is_file()
+                or (
+                    request.declaration_kind is not None
+                    and target.root.resolve() == request.root.resolve()
+                )
+            )
+        )
+        if not selected:
+            return r[bool].ok(value=True)
+        roots = {
+            f"@repository-declaration-{index}": target.root
+            for index, target in enumerate(selected)
+        }
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
+            producer=self.producer,
         )
-        roots = {f"@{request.what}-0": request.root.expanduser().resolve()}
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            return self._execute_lazy_init_locked(
-                request,
-                transaction,
-                roots,
-                request.root.expanduser().resolve(),
-            )
-        return transaction.run_files_locked(
-            roots,
-            lambda scope_root: self._execute_lazy_init_locked(
-                request,
-                transaction,
-                roots,
+
+        def publish(scope_root: Path) -> p.Result[bool]:
+            analysis = self._collect_declaration_migration_plans(request, selected)
+            if analysis.failure:
+                return r[bool].from_failure(analysis)
+            published = transaction.publish_file_phase_locked(
                 scope_root,
-            ),
-        )
+                roots,
+                analysis.value,
+                m.Infra.CodegenPhasePublicationPolicy(
+                    directories=tuple(
+                        sorted({
+                            file.path.parent
+                            for file in analysis.value.files
+                            if not file.path.parent.is_dir()
+                        }),
+                    ),
+                ),
+            )
+            if published.failure:
+                if published.error_code == c.Infra.ToolOutcome.ERROR.value:
+                    retained = self._retain_completed_migration_issues(published)
+                    if retained.failure:
+                        return retained
+                return r[bool].from_failure(published)
+            return r[bool].ok(value=True)
 
-    def _execute_lazy_init_locked(
+        return transaction.run_files_locked(roots, publish)
+
+    def _collect_declaration_migration_plans(
         self,
         request: m.Infra.CodegenConformRequest,
-        transaction: FlextInfraCodegenTransaction,
-        roots: t.MappingKV[str, Path],
-        scope_root: Path,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Plan after lease acquisition and publish the exact authenticated receipt.
+        selected: t.SequenceOf[m.Infra.WorkspaceOperationTarget],
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Plan every selected target's declaration migration into one analysis.
 
         Returns:
-            The initializer result, retaining any planner or transaction failure.
+            The combined bootstrap-phase analysis, retaining per-file
+            failures and gains.
 
         """
-        planned = self._plan_single_surface(request)
-        if planned.failure:
-            return r[m.Infra.CodegenResult].from_failure(planned)
-        plan, analysis = planned.value
-        if request.what == c.Infra.CodegenConformSurface.FACADES:
-            u.Cli.info(f"stage=facades-plan files={len(plan.files)} environments=0")
-            for file in plan.files:
-                u.Cli.info(f"  destination={file.path}")
-        changed = tuple(
-            file
-            for file in analysis.files
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            drift = self._drift_message(changed, str(request.what))
-            if drift is not None:
-                return r[m.Infra.CodegenResult].fail(drift)
-            return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
-        if not changed:
-            return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
-        published = transaction.publish_file_phase_locked(
-            scope_root,
-            roots,
-            analysis,
-            tuple(
-                sorted({
-                    file.path.parent
-                    for file in changed
-                    if not file.path.parent.is_dir()
-                }),
+        files: list[m.Infra.CodegenFilePlan] = []
+        inputs: list[m.Cli.AtomicFileState] = []
+        issues: list[m.Infra.Issue] = []
+        first_exception: BaseException | None = None
+        for target in selected:
+            captured = u.Infra.load_codegen_inputs(target.root)
+            if captured.failure:
+                planned: p.Result[m.Infra.CodegenPhaseAnalysis] = r[
+                    m.Infra.CodegenPhaseAnalysis
+                ].from_failure(captured)
+            elif request.declaration_kind is not None:
+                planned = self.repository_kind_declaration_plans(
+                    target.root,
+                    captured.value,
+                    request.declaration_kind,
+                )
+            else:
+                planned = self.repository_declaration_migration_plans(
+                    target.root,
+                    captured.value,
+                )
+            if planned.failure:
+                issues.append(
+                    m.Infra.Issue(
+                        file=str(u.Infra.workspace_manifest_path(target.root)),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=planned.error
+                        or "repository declaration migration failed",
+                    ),
+                )
+                if first_exception is None:
+                    first_exception = planned.exception
+                continue
+            files.extend(planned.value.files)
+            inputs.extend(planned.value.inputs)
+            issues.extend(planned.value.issues)
+            if first_exception is None:
+                first_exception = planned.value.exception
+        snapshots = FlextInfraCodegenPreconditions.unique_states(tuple(inputs))
+        if snapshots.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                files=tuple(files),
+                inputs=snapshots.value,
+                issues=tuple(issues),
+                exception=first_exception,
             ),
-            lambda: self._verify_lazy_init(request, analysis),
-        )
-        if published.failure:
-            return r[m.Infra.CodegenResult].from_failure(published)
-        return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=plan, written_files=published.value),
         )
 
-    def _verify_lazy_init(
+    def _retain_completed_migration_issues(
         self,
-        request: m.Infra.CodegenConformRequest,
-        analysis: m.Infra.CodegenPhaseAnalysis,
+        published: p.Result[t.VariadicTuple[Path]],
     ) -> p.Result[bool]:
-        """Authenticate published bytes and require an initializer fixed point.
+        """Carry a settled red publication into the existing final plan report.
 
         Returns:
-            Whether the unchanged sources reproduce every published initializer.
+            Typed residual issues retained with their original first cause.
 
         """
-        receipt = FlextInfraCodegenTransaction.validate_phase_analysis_locked(analysis)
-        if receipt.failure:
-            return receipt
-        planned = self._plan_single_surface(request)
-        if planned.failure:
-            return r[bool].from_failure(planned)
-        return u.Infra.codegen_fixed_point(
-            planned.value[1].files,
-            subject=str(request.what),
-        )
+        metadata = published.error_data
+        if metadata is None:
+            return r[bool].fail(
+                "completed migration failure has no structured publication receipt",
+                exception=published.exception,
+            )
+
+        def parse() -> t.VariadicTuple[m.Infra.Issue]:
+            serialized = u.Cli.json_dumps(metadata["issues"]).unwrap()
+            wire = u.type_adapter(tuple[t.JsonMapping, ...]).validate_json(serialized)
+            return tuple(
+                m.Infra.Issue.model_validate_json(
+                    u.Cli.json_dumps(
+                        {
+                            key: value
+                            for key, value in issue.items()
+                            if key not in m.Infra.Issue.model_computed_fields
+                        },
+                    ).unwrap(),
+                )
+                for issue in wire
+            )
+
+        parsed = r[t.VariadicTuple[m.Infra.Issue]].create_from_callable(parse)
+        if parsed.failure:
+            return r[bool].fail(
+                parsed.error or "invalid completed migration issue receipt",
+                exception=published.exception or parsed.exception,
+            )
+        if not parsed.value:
+            return r[bool].fail(
+                "completed migration failure has no residual issue",
+                exception=published.exception,
+            )
+        self.planning_issues.extend(parsed.value)
+        if self.planning_exception is None:
+            self.planning_exception = published.exception
+        return r[bool].ok(value=True)
 
     def _execute_plan(
         self,
@@ -424,6 +554,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+            return self._observe_publication(request)
         u.Cli.header("Codegen Conform")
         u.Cli.info(
             f"stage=plan mode={request.mode} scope={request.scope} "
@@ -433,74 +565,49 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
-        mode = c.Infra.CodegenConformMode(request.mode)
-        changed = tuple(
-            file for file in plan.files if u.Infra.codegen_file_requires_effect(file)
-        )
-        if mode is c.Infra.CodegenConformMode.CHECK:
-            if changed:
-                paths = ", ".join(str(file.path) for file in changed)
-                return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
-            return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         surface = c.Infra.CodegenConformSurface(request.what)
-        if surface not in {
-            c.Infra.CodegenConformSurface.MAKEFILE,
-            c.Infra.CodegenConformSurface.DOCS_CONFIG,
-            c.Infra.CodegenConformSurface.PYPROJECT,
-        }:
+        if surface not in _PARTIAL_PLAN_SURFACES:
             return r[m.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",
             )
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
-        transaction = FlextInfraCodegenTransaction(mise_owner)
+        transaction = FlextInfraCodegenTransaction(mise_owner, producer=self.producer)
         root = request.root.expanduser().resolve()
-        roots = {"@bootstrap-0": root}
-        return transaction.run_files_locked(
-            roots,
-            lambda scope_root: self._publish_bootstrap_locked(
+        roots = {
+            f"@bootstrap-{index}": (root / repository.path).resolve()
+            for index, repository in enumerate(plan.repositories)
+        }
+        receipts: list[m.Infra.CodegenPhaseOutcome] = []
+
+        def publish(scope_root: Path) -> p.Result[m.Infra.CodegenResult]:
+            written = self._publish_bootstrap_phase(
                 request,
+                plan,
                 transaction,
-                roots,
-                scope_root,
-            ),
-        )
+                (scope_root, roots),
+                publication_receipts=receipts,
+            )
+            if written.failure:
+                return r[m.Infra.CodegenResult].from_failure(written)
+            return r[m.Infra.CodegenResult].ok(
+                m.Infra.CodegenResult(plan=plan, written_files=written.value),
+            )
 
-    def _publish_bootstrap_locked(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        transaction: FlextInfraCodegenTransaction,
-        roots: t.MappingKV[str, Path],
-        scope_root: Path,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Publish the entire declared bootstrap surface in one journaled phase.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
-        """
-        planned = self.plan(request)
-        if planned.failure:
-            return r[m.Infra.CodegenResult].from_failure(planned)
-        plan = planned.value
-        written = self._publish_bootstrap_phase(
+        published = transaction.run_files_locked(roots, publish)
+        if published.failure:
+            return published
+        qualified = transaction.publish_operation_receipt(
             request,
-            plan,
-            transaction,
-            roots,
-            scope_root,
+            tuple(receipts),
+            scope_roots=tuple(roots.values()),
+            completed=True,
         )
-        if written.failure:
-            return r[m.Infra.CodegenResult].from_failure(written)
-        verified = self.plan(request)
-        if verified.failure:
-            return r[m.Infra.CodegenResult].from_failure(verified)
-        fixed_point = u.Infra.codegen_fixed_point(
-            verified.value.files,
-            subject="Makefile bootstrap",
-        )
-        if fixed_point.failure:
-            return r[m.Infra.CodegenResult].from_failure(fixed_point)
+        if qualified.failure:
+            return r[m.Infra.CodegenResult].from_failure(qualified)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified.value, written_files=written.value),
+            published.value.model_copy(
+                update={"publication_receipt": qualified.value},
+            ),
         )
 
     def _publish_bootstrap_phase(
@@ -508,8 +615,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
         request: m.Infra.CodegenConformRequest,
         plan: m.Infra.CodegenPlan,
         transaction: FlextInfraCodegenTransaction,
-        roots: t.MappingKV[str, Path],
-        scope_root: Path,
+        publication_scope: t.Pair[Path, t.MappingKV[str, Path]],
+        *,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Authorize the surface contract, then publish its changed files.
 
@@ -518,18 +626,24 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
             bootstrap files.
 
         """
+        scope_root, roots = publication_scope
         surface = c.Infra.CodegenConformSurface(request.what)
-        destinations = self.surface_contract(surface).destinations
-        if not destinations:
-            return r[t.VariadicTuple[Path]].fail(
-                f"bootstrap requires declared destinations for {surface}",
-            )
-        expected_paths = {
-            request.root.expanduser().resolve() / path for path in destinations
+        expected = self._bootstrap_expected_surface(request, plan, surface)
+        if expected.failure:
+            return r[t.VariadicTuple[Path]].from_failure(expected)
+        expected_paths, expected_owners = expected.value
+        planned_paths = {file.path for file in plan.files}
+        failed_paths = {Path(issue.file).resolve() for issue in plan.issues}
+        unaccounted = {
+            path
+            for path in expected_paths - planned_paths - failed_paths
+            if expected_owners[path] not in failed_paths
         }
-        if {file.path for file in plan.files} != expected_paths:
+        if unaccounted or planned_paths - expected_paths:
             return r[t.VariadicTuple[Path]].fail(
-                f"bootstrap plan does not own the declared destinations for {surface}",
+                f"bootstrap plan does not own the declared destinations for {surface}: "
+                f"missing={sorted(map(str, unaccounted))}; "
+                f"unexpected={sorted(map(str, planned_paths - expected_paths))}",
             )
         changed = tuple(
             file for file in plan.files if u.Infra.codegen_file_requires_effect(file)
@@ -541,8 +655,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
             return r[t.VariadicTuple[Path]].fail(
                 f"bootstrap cannot delete a declared destination for {surface}",
             )
-        if not changed:
-            return r[t.VariadicTuple[Path]].ok(())
         inputs = {
             state.path: state for file in plan.files for state in file.source_states
         }
@@ -550,101 +662,395 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
             files=plan.files,
             inputs=tuple(inputs.values()),
+            issues=plan.issues,
+            exception=plan.exception,
         )
         return transaction.publish_file_phase_locked(
             scope_root,
             roots,
             analysis,
-            tuple(
-                sorted({
-                    file.path.parent
-                    for file in changed
-                    if not file.path.parent.is_dir()
-                }),
+            m.Infra.CodegenPhasePublicationPolicy(
+                directories=tuple(
+                    sorted({
+                        file.path.parent
+                        for file in changed
+                        if not file.path.parent.is_dir()
+                    }),
+                ),
+                staged_validator=(
+                    partial(self._validate_mise_stage, plans=plan.files)
+                    if surface is c.Infra.CodegenConformSurface.MISE_CONFIG
+                    else partial(self._validate_pyproject_stage, plans=plan.files)
+                    if surface is c.Infra.CodegenConformSurface.PYPROJECT
+                    else None
+                )
+                if changed
+                else None,
             ),
-            lambda: self._verify_bootstrap(request),
+            publication_receipts=publication_receipts,
         )
 
-    def _verify_bootstrap(
+    def _bootstrap_expected_surface(
         self,
         request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[bool]:
-        """Validate the public conform plan reaches a fixed point before commit.
+        plan: m.Infra.CodegenPlan,
+        surface: c.Infra.CodegenConformSurface,
+    ) -> p.Result[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]]:
+        """Resolve the bootstrap surface's expected paths and their owning roots.
+
+        Returns:
+            The expected destination paths paired with each path's owning
+            repository root.
+
+        """
+        result_type = r[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]]
+        expected_owners: t.MutableMappingKV[Path, Path] = {}
+        for repository in plan.repositories:
+            repository_root = (
+                request.root.expanduser().resolve() / repository.path
+            ).resolve()
+            inputs = u.Infra.load_codegen_inputs(repository_root)
+            if inputs.failure:
+                return result_type.from_failure(inputs)
+            destinations = self.surface_contract(
+                surface,
+                codegen=inputs.value.spec,
+            ).destinations
+            if not destinations:
+                return result_type.fail(
+                    f"bootstrap requires declared destinations for {surface}",
+                )
+            expected_owners.update(
+                {
+                    (repository_root / path).resolve(): repository_root
+                    for path in destinations
+                },
+            )
+        expected_paths = set(expected_owners)
+        dependencies = {
+            path
+            for file in plan.files
+            if file.index_before is not None
+            for path in file.tracking_dependencies
+        }
+        if dependencies:
+            permitted = {
+                path
+                for repository in plan.repositories
+                for path in FlextInfraConfig.config_layer_paths_for_repository(
+                    (request.root.expanduser().resolve() / repository.path).resolve(),
+                    filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+                )[1:]
+            }
+            if (
+                surface is not c.Infra.CodegenConformSurface.RUNTIME_BINDINGS
+                or not dependencies.issubset(permitted)
+            ):
+                error = ValueError(
+                    "runtime tracking dependencies escape declared config layers"
+                )
+                return result_type.fail(str(error), exception=error)
+            expected_paths.update(dependencies)
+            expected_owners.update(
+                {
+                    dependency: file.project
+                    for file in plan.files
+                    for dependency in file.tracking_dependencies
+                },
+            )
+        return result_type.ok(
+            (expected_paths, expected_owners),
+        )
+
+    @staticmethod
+    def _bootstrap_validation_paths(
+        session: m.Infra.CodegenTransactionSession,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Authenticate the exact staged effects or unchanged physical plans.
+
+        Returns:
+            Paths admitted for consumption, or the first plan identity failure.
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        if not plans or len({plan.path for plan in plans}) != len(plans):
+            return result_type.fail("bootstrap validation requires unique file plans")
+        expected = {
+            plan.path: (plan.project, plan.desired_content, plan.desired_mode)
+            for plan in plans
+            if u.Infra.codegen_file_requires_effect(plan)
+        }
+        actual = {
+            publication.before.path: (
+                publication.project,
+                publication.replacement.content,
+                publication.replacement.mode,
+            )
+            for publication in publications
+            if publication.replacement is not None
+        }
+        if len(actual) != len(publications) or actual != expected:
+            return result_type.fail("bootstrap replacements differ from file plans")
+        current = FlextInfraMiseArtifactsVerification.plans_current(
+            plans, journal=session.journal
+        )
+        if current.failure:
+            return result_type.from_failure(current)
+        staged_paths = {
+            publication.before.path: publication.replacement.path
+            for publication in publications
+            if publication.replacement is not None
+        }
+        return result_type.ok(
+            tuple(staged_paths.get(plan.path, plan.path) for plan in plans)
+        )
+
+    @classmethod
+    def _validate_pyproject_stage(
+        cls,
+        session: m.Infra.CodegenTransactionSession,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        *,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Parse every staged or retained plan through the real TOML consumer.
+
+        Returns:
+            The unchanged session or the native TOML parser failure.
+
+        """
+        result_type = r[m.Infra.CodegenTransactionSession]
+        paths = cls._bootstrap_validation_paths(session, publications, plans)
+        if paths.failure:
+            return result_type.from_failure(paths)
+        for path in paths.value:
+            parsed = u.Cli.toml_read_document(path)
+            if parsed.failure:
+                return result_type.from_failure(parsed)
+        current = FlextInfraMiseArtifactsVerification.plans_current(
+            plans, journal=session.journal
+        )
+        if current.failure:
+            return result_type.from_failure(current)
+        u.Cli.info(
+            f"stage=pyproject-staged-validation files={len(paths.value)} "
+            "semantic-analysis=next-gen",
+        )
+        return result_type.ok(session)
+
+    @classmethod
+    def _validate_mise_stage(
+        cls,
+        session: m.Infra.CodegenTransactionSession,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        *,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Validate staged or retained Mise TOML before completing its phase.
+
+        Returns:
+            The unchanged session or the exact declaration failure.
+
+        """
+        result_type = r[m.Infra.CodegenTransactionSession]
+        if len(plans) != 1:
+            return result_type.fail("mise-config requires one file plan")
+        paths = cls._bootstrap_validation_paths(session, publications, plans)
+        if paths.failure:
+            return result_type.from_failure(paths)
+        checked = FlextInfraCodegenMiseArtifacts.validate_config_file(
+            paths.value[0],
+        )
+        if checked.failure:
+            return result_type.from_failure(checked)
+        current = FlextInfraMiseArtifactsVerification.plans_current(
+            plans, journal=session.journal
+        )
+        if current.failure:
+            return result_type.from_failure(current)
+        u.Cli.info("stage=mise-config-staged-validation files=1 installs=0")
+        return result_type.ok(session)
+
+    def _seed_declared_beads_identity(self, root: Path) -> p.Result[bool]:
+        """Materialize the scaffold's declared Beads identity before governance.
+
+        The participant-policy snapshot resolves repository governance through
+        the workspace detector, which reads the repository-local Beads
+        identity. A fresh scaffold root has no local history for the detector
+        to read yet, while the declared workspace already carries the derived
+        identity: writing it first makes the repository self-consistent from
+        the first governed effect. The template render of the same identity
+        follows later in the cycle and is byte-identical.
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
-        planned = self.plan(request)
-        if planned.failure:
-            return r[bool].from_failure(planned)
-        return u.Infra.codegen_fixed_point(planned.value.files, subject="bootstrap")
+        workspace = self.initial_workspace
+        if workspace is None or workspace.beads is None:
+            return r[bool].ok(value=True)
+        beads = workspace.beads
+        destination = root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
+        if destination.is_file():
+            return r[bool].ok(value=True)
+        quoted = tuple(
+            u.Cli.json_dumps(value)
+            for value in (beads.workspace, beads.database, beads.issue_prefix)
+        )
+        failed = next((item for item in quoted if item.failure), None)
+        if failed is not None:
+            return r[bool].from_failure(failed)
+        workspace_name, database, issue_prefix = (item.value for item in quoted)
+        payload = (
+            f"version: {beads.version}\n"
+            f"workspace: {workspace_name}\n"
+            f"database: {database}\n"
+            f"issue_prefix: {issue_prefix}\n"
+        )
+        written = u.Cli.atomic_write_text_file(destination, payload)
+        if written.failure:
+            return r[bool].from_failure(written)
+        return r[bool].ok(value=True)
 
     def _execute_managed(
         self,
         request: m.Infra.CodegenConformRequest,
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Run complete conformance inside the sole generation lock.
+        """Plan outside the lease and publish through locked generation phases.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
-        ports = self.ports
-        if ports is None:
-            return r[m.Infra.CodegenResult].fail(
-                "complete conform requires the facade-wired docs and fresh-import "
-                "ports; run it through FlextInfra.codegen_conform",
-            )
-        mode = c.Infra.CodegenConformMode(request.mode)
-        mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
-        transaction = FlextInfraCodegenTransaction(mise_owner)
-        return transaction.run_locked(
-            prepare=mode is c.Infra.CodegenConformMode.APPLY,
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+            return self._observe_publication(request)
+        configured = self._managed_policy(request)
+        if configured.failure:
+            return r[m.Infra.CodegenResult].from_failure(configured)
+        policy, producer = configured.value
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=request.root),
+            participant_policy=policy,
+            producer=producer,
+        )
+        prepared = transaction.run_locked(
+            prepare=True,
             operation=lambda scope_root: self._execute_managed_locked(
                 request,
                 scope_root,
-                transaction,
-                ports,
             ),
         )
+        if prepared.failure:
+            return r[m.Infra.CodegenResult].from_failure(prepared)
+        planned = self._prepare_managed_plan(request)
+        if planned.failure:
+            return r[m.Infra.CodegenResult].from_failure(planned)
+        batches: list[m.Infra.CodegenPhaseOutcome] = []
+        published = transaction.run_locked(
+            prepare=True,
+            operation=lambda scope_root: self._execute_managed_locked_prepared(
+                planned.value,
+                scope_root,
+                transaction,
+                batches,
+            ),
+        )
+        if published.failure:
+            return published
+        return self._publish_docs_batches(
+            request,
+            published.value,
+            tuple(batches),
+        )
+
+    def _managed_policy(
+        self,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[
+        t.Pair[m.Infra.CodegenParticipantPolicy, m.Infra.CodegenPhaseAnalysis]
+    ]:
+        """Bind the declared participant policy to its original producer.
+
+        Returns:
+            The policy and original producer, or their first prerequisite failure.
+
+        """
+        result = r[
+            t.Pair[m.Infra.CodegenParticipantPolicy, m.Infra.CodegenPhaseAnalysis]
+        ]
+        ports = self.ports
+        producer = self.producer
+        if ports is None or producer is None:
+            return result.fail(
+                "complete conform requires the facade-wired docs and fresh-import "
+                "ports and an authenticated producer; "
+                "run it through FlextInfra.codegen_conform",
+            )
+        seeded = self._seed_declared_beads_identity(request.root)
+        if seeded.failure:
+            return result.from_failure(seeded)
+        policy = ports.participant_policy(
+            request.root,
+            initial_workspace=self.initial_workspace,
+            producer=producer,
+        )
+        if policy.failure:
+            return result.from_failure(policy)
+        return result.ok((policy.value, producer))
 
     def _execute_managed_locked(
         self,
         request: m.Infra.CodegenConformRequest,
         scope_root: Path,
-        transaction: FlextInfraCodegenTransaction,
-        ports: m.Infra.CodegenConformPorts,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Materialize scaffold parents, then run one locked generation cycle.
+    ) -> p.Result[Path]:
+        """Prepare scaffold parents after locked recovery, before source planning.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The reconciled scope root, or the original preparation failure.
 
         """
         prepared = self._prepare_scaffold_directories(request)
         if prepared.failure:
-            return r[m.Infra.CodegenResult].from_failure(prepared)
+            return r[Path].from_failure(prepared)
+        return r[Path].ok(scope_root)
+
+    @staticmethod
+    def lazy_repository_task(root: Path) -> m.Infra.CodegenPhaseOutcome:
+        """Analyze one repository's lazy-init surface in a fleet worker.
+
+        Returns:
+            The repository's lazy-init analysis, or its failure as data.
+
+        """
         try:
-            result = self._execute_managed_locked_prepared(
-                request,
-                scope_root,
-                transaction,
-                ports,
+            analysis = FlextInfraCodegenLazyInit(
+                repository_root=root,
+                project_scope_roots=(root,),
+            ).plan_files()
+        except (OSError, SyntaxError, ValueError) as exc:
+            path = (
+                exc.filename
+                if isinstance(exc, SyntaxError) and exc.filename is not None
+                else str(root)
             )
-        except Exception as exc:
-            rollback = self._rollback_scaffold_directories(prepared.value)
-            if rollback.failure:
-                exc.add_note(f"scaffold directory rollback failed: {rollback.error}")
-            raise
-        if result.success:
-            return result
-        rollback = self._rollback_scaffold_directories(prepared.value)
-        if rollback.failure:
-            return r[m.Infra.CodegenResult].fail(
-                f"{result.error or 'generation failed'}; "
-                f"scaffold directory rollback failed: {rollback.error}",
+            return m.Infra.CodegenPhaseOutcome(
+                issues=(
+                    m.Infra.Issue(
+                        file=path,
+                        line=exc.lineno or 0 if isinstance(exc, SyntaxError) else 0,
+                        column=exc.offset or 0 if isinstance(exc, SyntaxError) else 0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=traceback.format_exc(),
+                    ),
+                ),
             )
-        return result
+        if analysis.failure:
+            return m.Infra.CodegenPhaseOutcome(
+                error=analysis.error or f"lazy-init analysis failed: {root}",
+            )
+        return m.Infra.CodegenPhaseOutcome(analysis=analysis.value)
 
     @staticmethod
     def _lazy_phase(
@@ -653,8 +1059,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Plan each selected repository through its own Rope boundary.
 
-        One call site; both CHECK (drift detection) and APPLY
-        (phase publication + receipt) consume the same analysis.
+        APPLY captures this analysis before phase publication.
         ADR-014: lazy-init ownership stays inside conform's
         transaction. Lazy-init plans exactly the repositories conform
         rewrites: the selected mutable ``internal_flext`` repositories of
@@ -667,25 +1072,36 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
         files: list[m.Infra.CodegenFilePlan] = []
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         publications: list[m.Infra.LazyInitPlan] = []
-        for repository in plan.repositories:
-            if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
-                continue
-            root = (request.root / repository.path).resolve()
-            analysis = FlextInfraCodegenLazyInit(
-                repository_root=root,
-                project_scope_roots=(root,),
-            ).plan_files()
-            if analysis.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(analysis)
-            files.extend(analysis.value.files)
-            publications.extend(analysis.value.publications)
-            for state in analysis.value.inputs:
-                existing = inputs.get(state.path)
-                if existing is not None and existing != state:
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"lazy-init input changed across repository plans: "
-                        f"{state.path}",
+        issues: list[m.Infra.Issue] = []
+        roots = tuple(
+            (request.root / repository.path).resolve()
+            for repository in plan.repositories
+            if repository.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+        )
+        # Each repository analyzes through its own Rope boundary, read-only,
+        # so the fleet runs them across worker processes in declaration order.
+        outcomes = u.Infra.fleet_map(
+            FlextInfraCodegenConformExecute.lazy_repository_task,
+            roots,
+        )
+        for root, outcome in zip(roots, outcomes, strict=True):
+            issues.extend(outcome.issues)
+            if outcome.analysis is None:
+                if outcome.error:
+                    issues.append(
+                        m.Infra.Issue(
+                            file=str(root),
+                            line=0,
+                            column=0,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=outcome.error,
+                        ),
                     )
+                continue
+            files.extend(outcome.analysis.files)
+            issues.extend(outcome.analysis.issues)
+            publications.extend(outcome.analysis.publications)
+            for state in outcome.analysis.inputs:
                 inputs[state.path] = state
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
@@ -693,180 +1109,99 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
                 files=tuple(files),
                 inputs=tuple(inputs[path] for path in sorted(inputs)),
                 publications=tuple(publications),
+                issues=tuple(issues),
             ),
         )
 
-    def _execute_managed_locked_prepared(
+    def _prepare_managed_plan(
         self,
         request: m.Infra.CodegenConformRequest,
-        scope_root: Path,
-        transaction: FlextInfraCodegenTransaction,
-        ports: m.Infra.CodegenConformPorts,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Plan, publish, and validate one prepared locked generation cycle.
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Plan sources and capture the actual Docs producer outside the lease.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The immutable plan, or the original planning or capture failure.
 
         """
         u.Cli.header("Codegen Conform")
         u.Cli.info(
             f"stage=plan mode={request.mode} scope={request.scope} "
-            f"what={request.what} root={request.root} lock_scope={scope_root}",
+            f"what={request.what} root={request.root} lease=unheld",
         )
         planned = self.plan(request)
         if planned.failure:
-            return r[m.Infra.CodegenResult].from_failure(planned)
+            return r[m.Infra.CodegenPlan].from_failure(planned)
         plan = planned.value
+        owned = tuple(
+            repository.name
+            for repository in plan.repositories
+            if repository.path == Path()
+        )
+        self.docs_planner = None
+        self.docs_producer = None
+        if owned:
+            ports = self.ports
+            if ports is None:
+                return r[m.Infra.CodegenPlan].fail(
+                    "docs planning requires the facade-wired planner before effects"
+                )
+            planner = ports.docs_planner(
+                repository_root=request.root,
+                projects=owned,
+                include_root=True,
+            )
+            captured = FlextInfraCodegenPreconditions.capture_producer(
+                request.root,
+                entrypoint=planner.prepare_batches,
+                collaborators=(planner.publish_batch, ports.docs_planner),
+            )
+            if captured.failure:
+                return r[m.Infra.CodegenPlan].from_failure(captured)
+            self.docs_planner = planner
+            self.docs_producer = captured.value
+        return planned
+
+    def _execute_managed_locked_prepared(
+        self,
+        plan: m.Infra.CodegenPlan,
+        scope_root: Path,
+        transaction: FlextInfraCodegenTransaction,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Reauthenticate the captured plan and publish one locked generation cycle.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
+
+        """
+        request = plan.request
         config_plans = self.mise_config_plans(plan)
         if config_plans.failure:
             return r[m.Infra.CodegenResult].from_failure(config_plans)
-        mode = c.Infra.CodegenConformMode(request.mode)
-        if mode is c.Infra.CodegenConformMode.CHECK:
-            return self._execute_managed_check(
-                request,
-                transaction,
-                scope_root,
-                plan,
-                ports,
-            )
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
         if session.failure:
             return r[m.Infra.CodegenResult].from_failure(session)
+        recorded = transaction.record_publication(
+            session.value.model_copy(
+                update={
+                    "issues": (*session.value.issues, *plan.issues),
+                    "exception": session.value.exception or plan.exception,
+                },
+            ),
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM,
+        )
+        if recorded.failure:
+            return r[m.Infra.CodegenResult].from_failure(recorded)
         return transaction.publish_prepared_locked(
-            session.value,
+            recorded.value,
             lambda current: self._publish_managed_locked(
                 request,
                 plan,
                 transaction=transaction,
                 session=current,
-                ports=ports,
+                publication_receipts=publication_receipts,
             ),
         )
-
-    def _execute_managed_check(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        transaction: FlextInfraCodegenTransaction,
-        scope_root: Path,
-        plan: m.Infra.CodegenPlan,
-        ports: m.Infra.CodegenConformPorts,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Prove the conform, lazy-init, and docs surfaces drift-free in check mode.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
-
-        """
-        config_plans = self.mise_config_plans(plan)
-        if config_plans.failure:
-            return r[m.Infra.CodegenResult].from_failure(config_plans)
-        static = self._check_codegen_and_lazy_drift(
-            request,
-            plan,
-            transaction,
-            scope_root,
-            config_plans.value,
-        )
-        if static.failure:
-            return r[m.Infra.CodegenResult].from_failure(static)
-        return self._check_docs_drift(request, plan, ports)
-
-    def _check_codegen_and_lazy_drift(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        plan: m.Infra.CodegenPlan,
-        transaction: FlextInfraCodegenTransaction,
-        scope_root: Path,
-        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> p.Result[bool]:
-        """Run the workspace routes, the locked reality check, and both drifts.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        routes = self.conform_workspace_beads_routes(request)
-        if routes.failure:
-            return r[bool].from_failure(routes)
-        reality = transaction.validate_locked(scope_root, config_plans)
-        if reality.failure:
-            return r[bool].from_failure(reality)
-        changed = tuple(
-            file for file in plan.files if u.Infra.codegen_file_requires_effect(file)
-        )
-        if (drift := self._drift_message(changed, "codegen")) is not None:
-            return r[bool].fail(drift)
-        lazy_analysis = self._lazy_phase(request, plan)
-        if lazy_analysis.failure:
-            return r[bool].from_failure(lazy_analysis)
-        lazy_changed = tuple(
-            file
-            for file in lazy_analysis.value.files
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if (lazy_drift := self._drift_message(lazy_changed, "lazy-init")) is not None:
-            return r[bool].fail(lazy_drift)
-        return r[bool].ok(value=True)
-
-    def _check_docs_drift(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        plan: m.Infra.CodegenPlan,
-        ports: m.Infra.CodegenConformPorts,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Plan and drift-check the docs surface, then report the fixed point.
-
-        Why (X-47): DECLARED scope excludes the workspace root repository
-        from ``plan.repositories``; docs generation must not render the root
-        as an output scope either, or its report_dir escapes the transaction
-        layout that already excludes root for that same scope. Root guides
-        remain readable sources for members regardless of this flag.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
-
-        """
-        docs_include_root = any(
-            repository.name == plan.workspace.repository.name
-            for repository in plan.repositories
-        )
-        docs_generator = ports.docs_planner(
-            repository_root=request.root,
-            projects=tuple(repository.name for repository in plan.repositories),
-            include_root=docs_include_root,
-        )
-        docs_bundle = docs_generator.prepare_bundle()
-        if docs_bundle.failure:
-            return r[m.Infra.CodegenResult].from_failure(docs_bundle)
-        docs_plans = docs_generator.plan_files(docs_bundle.value)
-        if docs_plans.failure:
-            return r[m.Infra.CodegenResult].from_failure(docs_plans)
-        docs_changed = tuple(
-            file
-            for file in self.owned_docs_files(request, docs_plans.value)
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if (docs_drift := self._drift_message(docs_changed, "docs")) is not None:
-            return r[m.Infra.CodegenResult].fail(docs_drift)
-        return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
-
-    @staticmethod
-    def _drift_message(
-        changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        label: str,
-    ) -> str | None:
-        """Render the drift failure message for a changed file set, if any.
-
-        Returns:
-            The drift message, or None when the set is empty.
-
-        """
-        if not changed:
-            return None
-        paths = ", ".join(str(file.path) for file in changed)
-        report = u.Infra.codegen_file_drift_report(changed)
-        return f"{label} drift detected: {paths}\n{report}"
 
     def _publish_managed_locked(
         self,
@@ -874,7 +1209,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
         plan: m.Infra.CodegenPlan,
         transaction: FlextInfraCodegenTransaction,
         session: m.Infra.CodegenTransactionSession,
-        ports: m.Infra.CodegenConformPorts,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[m.Infra.CodegenResult]:
         """Complete every post-begin phase through prepared-state recovery.
 
@@ -885,21 +1220,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
         lazy = self._append_lazy_phase(request, plan, transaction, session)
         if lazy.failure:
             return r[m.Infra.CodegenResult].from_failure(lazy)
-        session, owned_lazy_analysis = lazy.value
-        docs = self._append_docs_phase(request, plan, transaction, session, ports)
-        if docs.failure:
-            return r[m.Infra.CodegenResult].from_failure(docs)
-        with_docs, docs_analysis = docs.value
-        verified_plan: list[m.Infra.CodegenPlan] = []
+        session, _owned_lazy_analysis = lazy.value
         published = transaction.commit_locked(
-            with_docs,
-            lambda: self._validate_managed_fixed_point(
-                request,
-                with_docs,
-                owned_lazy_analysis,
-                docs_analysis,
-                verified_plan,
-            ),
+            session,
+            publication_receipts=publication_receipts,
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
@@ -910,7 +1234,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
         if allowed.failure:
             return r[m.Infra.CodegenResult].from_failure(allowed)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified_plan[0], written_files=published.value),
+            m.Infra.CodegenResult(plan=plan, written_files=published.value),
         )
 
     def _append_lazy_phase(
@@ -941,7 +1265,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
         if lazy_analysis.failure:
             aborted = transaction.abort_locked(
                 session,
-                lazy_analysis.error or "lazy-init planning failed",
+                lazy_analysis,
             )
             return result_type.from_failure(aborted)
         conform_paths = frozenset(file.path for file in plan.files)
@@ -954,86 +1278,85 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
             ),
             inputs=lazy_analysis.value.inputs,
             publications=lazy_analysis.value.publications,
+            issues=lazy_analysis.value.issues,
         )
         extended = transaction.append_phase_locked(
             session,
             owned_lazy_analysis.phase,
             owned_lazy_analysis.files,
+            issues=owned_lazy_analysis.issues,
         )
         if extended.failure:
             return result_type.from_failure(extended)
         return result_type.ok((extended.value, owned_lazy_analysis))
 
-    def _append_docs_phase(
+    def _publish_docs_batches(
         self,
         request: m.Infra.CodegenConformRequest,
-        plan: m.Infra.CodegenPlan,
-        transaction: FlextInfraCodegenTransaction,
-        session: m.Infra.CodegenTransactionSession,
-        ports: m.Infra.CodegenConformPorts,
-    ) -> p.Result[
-        t.Pair[m.Infra.CodegenTransactionSession, m.Infra.CodegenPhaseAnalysis]
-    ]:
-        """Authorize docs directories, publish the docs files, and analyze them.
-
-        Why (X-47): DECLARED scope excludes the workspace root repository
-        from ``plan.repositories``; docs generation must not render the root
-        as an output scope either, or its report_dir escapes the transaction
-        layout that already excludes root for that same scope. Root guides
-        remain readable sources for members regardless of this flag.
+        result: m.Infra.CodegenResult,
+        batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Publish only invocation-owned docs after the managed batch releases.
 
         Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.CodegenTransactionSession,
-                m.Infra.CodegenPhaseAnalysis]]``.
+            The resulting ``p.Result[m.Infra.CodegenResult]``.
 
         """
-        result_type = r[
-            t.Pair[m.Infra.CodegenTransactionSession, m.Infra.CodegenPhaseAnalysis]
-        ]
-        docs_include_root = any(
-            repository.name == plan.workspace.repository.name
-            for repository in plan.repositories
+        if result.plan is None:
+            return r[m.Infra.CodegenResult].fail(
+                "docs publication requires its actual generation plan",
+            )
+        owned = tuple(
+            repository.name
+            for repository in result.plan.repositories
+            if repository.path == Path()
         )
-        docs_generator = ports.docs_planner(
-            repository_root=request.root,
-            projects=tuple(repository.name for repository in plan.repositories),
-            include_root=docs_include_root,
-        )
-        docs_bundle = docs_generator.prepare_bundle()
-        if docs_bundle.failure:
-            return result_type.from_failure(docs_bundle)
-        docs_directories = docs_generator.required_directories(docs_bundle.value)
-        if docs_directories.failure:
-            return result_type.from_failure(docs_directories)
-        owned_docs_directories = self._owned_docs_directories(
+        written = list(result.written_files)
+        receipts = list(batches)
+        if owned:
+            docs_generator = self.docs_planner
+            producer = self.docs_producer
+            if docs_generator is None or producer is None:
+                return r[m.Infra.CodegenResult].fail(
+                    "docs publication lacks its original planner and producer"
+                )
+            for prepared in docs_generator.prepare_batches(
+                producer=producer,
+                publication_receipts=receipts,
+            ):
+                if prepared.failure:
+                    return r[m.Infra.CodegenResult].from_failure(prepared)
+                published = docs_generator.publish_batch(
+                    prepared.value,
+                    publication_receipts=receipts,
+                )
+                if published.failure:
+                    return r[m.Infra.CodegenResult].from_failure(published)
+                written.extend(
+                    Path(item.path)
+                    for report in published.value
+                    for item in report.items
+                    if item.written
+                )
+        qualified = FlextInfraCodegenTransaction.publish_operation_receipt(
             request,
-            plan,
-            docs_directories.value,
+            tuple(receipts),
+            scope_roots=tuple(
+                (request.root / repository.path).resolve()
+                for repository in result.plan.repositories
+            ),
+            completed=True,
         )
-        with_directories = transaction.append_directories_locked(
-            session,
-            "docs",
-            owned_docs_directories,
+        if qualified.failure:
+            return r[m.Infra.CodegenResult].from_failure(qualified)
+        return r[m.Infra.CodegenResult].ok(
+            result.model_copy(
+                update={
+                    "written_files": tuple(written),
+                    "publication_receipt": qualified.value,
+                },
+            ),
         )
-        if with_directories.failure:
-            return result_type.from_failure(with_directories)
-        docs_plans = docs_generator.plan_files(docs_bundle.value)
-        if docs_plans.failure:
-            return result_type.from_failure(docs_plans)
-        owned_docs_files = self.owned_docs_files(request, docs_plans.value)
-        docs_analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.DOCS,
-            files=owned_docs_files,
-            inputs=docs_bundle.value.source_states,
-        )
-        with_docs = transaction.append_phase_locked(
-            with_directories.value,
-            "docs",
-            owned_docs_files,
-        )
-        if with_docs.failure:
-            return result_type.from_failure(with_docs)
-        return result_type.ok((with_docs.value, docs_analysis))
 
     @staticmethod
     def _allow_direnv_after_apply(
@@ -1078,71 +1401,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteScaffold):
                     f"direnv allow failed for {root}: "
                     f"{result.value.stderr.strip() or result.value.stdout.strip()}",
                 )
-        return r[bool].ok(value=True)
-
-    def _validate_managed_fixed_point(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        session: m.Infra.CodegenTransactionSession,
-        lazy_analysis: m.Infra.CodegenPhaseAnalysis,
-        docs_analysis: m.Infra.CodegenPhaseAnalysis,
-        verified_plan: list[m.Infra.CodegenPlan],
-    ) -> p.Result[bool]:
-        """Replan conform against live bytes before the journal can commit.
-
-        This re-plan is the cycle's authoritative final plan: nothing that
-        changes generated content publishes between it and the journal commit,
-        so the caller reuses ``verified_plan`` as its result instead of
-        planning the whole fleet a second time.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        u.Cli.info("stage=verify-fixed-point")
-        verified = self.plan(request)
-        if verified.failure:
-            return r[bool].from_failure(verified)
-        verified_plan.append(verified.value)
-        residual = tuple(
-            file
-            for file in verified.value.files
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if residual:
-            paths = ", ".join(str(file.path) for file in residual)
-            drift = u.Infra.codegen_file_drift_report(residual)
-            return r[bool].fail(
-                f"codegen publication did not reach a fixed point: {paths}\n{drift}",
-            )
-        u.Cli.info("stage=verify-lazy-init-receipt")
-        lazy_fixed_point = FlextInfraCodegenTransaction.validate_phase_analysis_locked(
-            lazy_analysis,
-        )
-        if lazy_fixed_point.failure:
-            return r[bool].from_failure(lazy_fixed_point)
-        u.Cli.info("stage=verify-docs-receipt")
-        docs_fixed_point = FlextInfraCodegenTransaction.validate_phase_analysis_locked(
-            docs_analysis,
-        )
-        if docs_fixed_point.failure:
-            return r[bool].from_failure(docs_fixed_point)
-        mise = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
-        plan = session.plan
-        if isinstance(plan, m.Infra.MiseToolchainWorkspacePlan):
-            project_layouts = tuple(project.layout for project in plan.projects)
-        else:
-            project_layouts = plan.layout.projects
-        for project_layout in project_layouts:
-            validated = mise.validate_artifacts(
-                project_layout.root,
-                plan.layout.scope_root,
-            )
-            if validated.failure:
-                return r[bool].from_failure(validated)
-        # The fresh-process import proof needs the runtime make setup
-        # provisions, so it belongs to make check (the fresh-import gate):
-        # generation must publish a project that has no runtime yet.
         return r[bool].ok(value=True)
 
 

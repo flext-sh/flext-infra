@@ -13,10 +13,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraCliRouteService, c, config, main
-from tests import m, t, u
+from flext_infra import c, config, main
+from flext_infra.services import FlextInfraCliRouteService
+from tests import m, t, tm, u
 
 
 class TestsFlextInfraCodegenMain:
@@ -36,9 +36,7 @@ class TestsFlextInfraCodegenMain:
         """
         repository = u.Tests.repository_ref(repo.name)
         infra = u.Tests.repository_ref("flext-infra")
-        integration = config.Infra.codegen.branch_policy.integration_branch_preference[
-            0
-        ]
+        integration = config.Infra.codegen.branch_policy.integration_branch
         (repo / "pyproject.toml").write_text(
             f'[project]\nname = "{repository.distribution}"\nversion = "0.1.0"\n'
             'requires-python = "'
@@ -285,8 +283,10 @@ class TestsFlextInfraCodegenMain:
             infra_git_repo: Path,
         ) -> None:
             """Report a managed conflict without touching live bytes or journals."""
-            pyproject = TestsFlextInfraCodegenMain._seed_managed_conflict(
-                infra_git_repo,
+            pyproject = (
+                TestsFlextInfraCodegenMain.TestsMainEntryPoint._seed_managed_conflict(
+                    infra_git_repo,
+                )
             )
             before = pyproject.read_bytes()
             journal, transaction = TestsFlextInfraCodegenMain._mise_transaction_state(
@@ -306,7 +306,11 @@ class TestsFlextInfraCodegenMain:
         ) -> None:
             """Publish the conformed bytes through the transaction, then hold still."""
             root = infra_git_repo
-            pyproject = TestsFlextInfraCodegenMain._seed_managed_conflict(root)
+            pyproject = (
+                TestsFlextInfraCodegenMain.TestsMainEntryPoint._seed_managed_conflict(
+                    root,
+                )
+            )
             journal, transaction = TestsFlextInfraCodegenMain._mise_transaction_state(
                 root,
             )
@@ -328,9 +332,7 @@ class TestsFlextInfraCodegenMain:
             )
             tm.that(
                 ini_options["addopts"],
-                has=(
-                    f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"
-                ),
+                eq=list(config.Infra.tooling.tools.pytest.standard_addopts),
             )
             tm.that(journal.exists(), eq=False)
             tm.that(transaction.exists(), eq=False)
@@ -356,7 +358,7 @@ class TestsFlextInfraCodegenMain:
             # the message, not the terminal the suite happens to run in.
             result = u.Cli.run_raw(
                 [sys.executable, "-m", "flext_infra", "codegen", "unknown-command"],
-                options=u.Cli.ProcessOptions(env={"COLUMNS": "200"}),
+                options=m.Cli.ProcessOptions(env={"COLUMNS": "200"}),
             )
 
             tm.ok(result)

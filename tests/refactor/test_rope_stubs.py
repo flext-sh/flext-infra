@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,3 +46,6 @@ class TestsFlextInfraRefactorRopeStubs:
             tm.that(len(hits) > 0, eq=True)
         finally:
             project.close()
+
+
+__all__: list[str] = ["TestsFlextInfraRefactorRopeStubs"]

@@ -10,14 +10,77 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_core import e
 
-from flext_infra import c, config, m
-from tests import t, u
+from flext_infra import c, config, m, p
+from tests import t, tm, u
 
 
 class TestsFlextInfraCodegenPyprojectConform:
     """Tests for ``FlextInfraCodegenPyprojectConform``."""
+
+    def test_workspace_provisions_member_toml_arrays(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Member extras and included groups reach the root provisioning contract."""
+        member = self._repository(
+            "fixture-member",
+            role=c.Infra.MakeProfile.STANDALONE,
+            path="fixture-member",
+        )
+        workspace = u.Tests.workspace_spec(
+            self._repository(
+                "workspace",
+                role=c.Infra.MakeProfile.WORKSPACE,
+                path=".",
+            ),
+            subprojects=(member,),
+        )
+        path = tmp_path / member.path / c.PYPROJECT_FILENAME
+        path.parent.mkdir()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                path,
+                '[project]\nname = "fixture-member"\n'
+                'dependencies = ["fixture-runtime>=1"]\n'
+                "[project.optional-dependencies]\n"
+                'feature = ["fixture-extra>=2"]\n'
+                "[dependency-groups]\n"
+                'base = ["fixture-tool>=3"]\n'
+                'dev = [{include-group = "base"}, "fixture-checker>=4"]\n',
+            ),
+        )
+        options = u.Infra.PyprojectConformOptions(repository_root=tmp_path)
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                '[project]\nname = "workspace"\ndependencies = []\n',
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
+                options=options,
+            ),
+        )
+        dev = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
+        tm.that(dev, has=["fixture-tool>=3", "fixture-checker>=4"])
+        assert workspace.integration is not None
+        tm.that(
+            dev,
+            has=(
+                f"{member.distribution}[feature] @ "
+                f"git+{member.url}@{workspace.integration.branch}"
+            ),
+        )
+        repeated = tm.ok(
+            u.Infra.pyproject_conform(
+                rendered,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
+                options=options,
+            ),
+        )
+        tm.that(repeated, eq=rendered)
 
     @staticmethod
     def _repository(
@@ -49,18 +112,21 @@ class TestsFlextInfraCodegenPyprojectConform:
         return u.Tests.workspace_spec(
             self._repository("workspace", role=role, path="."),
             subprojects=(
-                self._repository(
-                    "flext-core",
-                    role=c.Infra.MakeProfile.STANDALONE,
-                    path="flext-core",
-                ),
+                (
+                    self._repository(
+                        "flext-core",
+                        role=c.Infra.MakeProfile.STANDALONE,
+                        path="flext-core",
+                    ),
+                )
+                if role is c.Infra.MakeProfile.STANDALONE
+                else ()
             ),
         )
 
     @staticmethod
     def _uv_resolution(
-        toolchain: m.Infra.ToolchainSpec,
-        exclusions: t.VariadicTuple[m.Infra.UvScopedDependencyExclusionSpec] = (),
+        toolchain: p.Infra.ToolchainSpec,
     ) -> m.Infra.UvResolutionSpec:
         """Route the toolchain's uv resolver keys the way conform declares them.
 
@@ -71,7 +137,6 @@ class TestsFlextInfraCodegenPyprojectConform:
         return m.Infra.UvResolutionSpec(
             link_mode=toolchain.uv_link_mode,
             constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
-            exclude_dependencies=exclusions,
             environments=tuple(toolchain.uv_environments),
         )
 
@@ -204,6 +269,24 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq="sample.plugin:main",
         )
 
+    @pytest.mark.parametrize("invalid_surface", ["rendered", "live"])
+    def test_overlay_retains_native_toml_failure_context(
+        self,
+        invalid_surface: str,
+    ) -> None:
+        """A parse failure identifies its input and retains the native cause."""
+        valid = "[project]\n"
+        invalid = "[project]\nkey =\n"
+        result = u.Infra.overlay_preserved(
+            invalid if invalid_surface == "rendered" else valid,
+            invalid if invalid_surface == "live" else valid,
+        )
+        tm.fail(result, has=f"{invalid_surface} pyproject is not valid TOML")
+        native = tm.not_none(result.exception)
+        tm.that(type(native).__name__, eq="TOMLDecodeError")
+        tm.that(result.error, has=str(native))
+        tm.that(result.error, has=f"line {len(invalid.splitlines())}")
+
     @staticmethod
     def test_overlay_defaults_only_the_omitted_policy() -> None:
         """Explicit empty policies survive default resolution of the other policy."""
@@ -244,6 +327,65 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq="live",
         )
 
+    @pytest.mark.parametrize(
+        ("table_path", "key", "expected"),
+        [
+            (("ruff", "lint"), "select", config.Infra.tooling.tools.ruff.lint.select),
+            (
+                ("ruff", "lint"),
+                "extend-safe-fixes",
+                config.Infra.tooling.tools.ruff.lint.extend_safe_fixes,
+            ),
+            (
+                ("ruff", "lint"),
+                "unfixable",
+                config.Infra.tooling.tools.ruff.lint.unfixable,
+            ),
+            (
+                ("coverage", "report"),
+                "exclude_also",
+                config.Infra.tooling.tools.coverage.exclude_also,
+            ),
+            (("coverage", "run"), "omit", config.Infra.tooling.tools.coverage.omit),
+            (
+                ("pytest", "ini_options"),
+                "addopts",
+                config.Infra.tooling.tools.pytest.standard_addopts,
+            ),
+            (
+                ("pytest", "ini_options"),
+                "markers",
+                config.Infra.tooling.tools.pytest.standard_markers,
+            ),
+        ],
+    )
+    def test_overlay_replaces_duplicated_managed_lists(
+        self,
+        table_path: t.StrSequence,
+        key: str,
+        expected: t.StrSequence,
+    ) -> None:
+        """Replace stale multiplicity without changing SSOT or CUSTOM tables."""
+        header = f'[project]\nname = "workspace"\n[tool.{".".join(table_path)}]\n'
+        rendered = header + f"{key} = {tm.ok(u.Cli.json_dumps(list(expected)))}\n"
+        live = (
+            header
+            + f"{key} = {tm.ok(u.Cli.json_dumps([*expected, *expected]))}\n"
+            + '[tool.recovery_regression]\nvalue = "custom"\n'
+        )
+
+        first = tm.ok(u.Infra.overlay_preserved(rendered, live))
+
+        tm.that(
+            u.Tests.toml_strings_at(first, "tool", *table_path, key),
+            eq=tuple(expected),
+        )
+        tm.that(
+            u.Tests.toml_table_at(first, "tool", "recovery_regression")["value"],
+            eq="custom",
+        )
+        tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
+
     def test_custom_typing_and_feature_extras_survive_conformance(self) -> None:
         """CUSTOM PEP 621 extras survive projection and dependency normalization."""
         live = (
@@ -278,20 +420,18 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
 
     @pytest.mark.parametrize(
-        ("role", "attached"),
+        "role",
         [
-            (c.Infra.MakeProfile.STANDALONE, False),
-            (c.Infra.MakeProfile.STANDALONE, True),
-            (c.Infra.MakeProfile.WORKSPACE, False),
+            c.Infra.MakeProfile.STANDALONE,
+            c.Infra.MakeProfile.WORKSPACE,
         ],
     )
     def test_generated_dev_floors_follow_publication_topology(
         self,
+        tmp_path: Path,
         role: c.Infra.MakeProfile,
-        *,
-        attached: bool,
     ) -> None:
-        """Members publish inline sources; only the root keeps bare local floors."""
+        """All profiles retain Git floors; only the root selects local paths."""
         provider = u.Tests.provider()
         branch = u.Tests.provider_branch()
         floors = tuple(config.Infra.codegen.scaffold.project.dev)
@@ -317,7 +457,14 @@ class TestsFlextInfraCodegenPyprojectConform:
                 if is_root
                 else ()
             ),
-        ).model_copy(update={"superproject_members": internal if attached else ()})
+        )
+        for member in workspace.subprojects:
+            path = tmp_path / member.path / c.PYPROJECT_FILENAME
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                f'[project]\nname = "{member.distribution}"\nversion = "0.1.0"\n',
+                encoding="utf-8",
+            )
         dependency_source = m.Infra.WorkspaceIntegrationSpec(
             provider=provider.name,
             branch=branch,
@@ -328,8 +475,11 @@ class TestsFlextInfraCodegenPyprojectConform:
                 '[project]\nname = "consumer"\ndependencies = []\n',
                 workspace=workspace,
                 required_dev_dependencies=floors,
-                flext_line=dependency_source,
                 uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
+                options=u.Infra.PyprojectConformOptions(
+                    flext_line=dependency_source,
+                    repository_root=tmp_path,
+                ),
             ),
         )
         dev = u.Tests.toml_strings_at(first, "dependency-groups", "dev")
@@ -340,18 +490,30 @@ class TestsFlextInfraCodegenPyprojectConform:
         # or standalone, it carries git-sourced floors and no fleet source, so
         # it installs from a clone. Only the workspace root redirects members.
         for name in internal:
-            expected = name if is_root else u.Tests.flext_source(name)
+            expected = (
+                f"{name} @ git+{dependency_source.base_url}/{name}.git"
+                f"@{dependency_source.branch}"
+            )
             tm.that(expected in dev, eq=True)
             tm.that(name in sources, eq=is_root)
             if is_root:
-                tm.that(sources[name], eq={"workspace": True})
+                member = next(
+                    ref for ref in workspace.subprojects if ref.distribution == name
+                )
+                tm.that(
+                    sources[name],
+                    eq={"path": member.path.as_posix(), "editable": member.editable},
+                )
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
                 workspace=workspace,
                 required_dev_dependencies=floors,
-                flext_line=dependency_source,
                 uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
+                options=u.Infra.PyprojectConformOptions(
+                    flext_line=dependency_source,
+                    repository_root=tmp_path,
+                ),
             ),
         )
         tm.that(second, eq=first)
@@ -370,10 +532,12 @@ class TestsFlextInfraCodegenPyprojectConform:
                 ),
             ),
             required_dev_dependencies=(),
-            flext_line=m.Infra.WorkspaceIntegrationSpec(
-                provider=provider.name,
-                branch=u.Tests.provider_branch(),
-                base_url=provider.base_url,
+            options=u.Infra.PyprojectConformOptions(
+                flext_line=m.Infra.WorkspaceIntegrationSpec(
+                    provider=provider.name,
+                    branch=u.Tests.provider_branch(),
+                    base_url=provider.base_url,
+                ),
             ),
             uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
         )
@@ -399,10 +563,12 @@ class TestsFlextInfraCodegenPyprojectConform:
                     ),
                 ),
                 required_dev_dependencies=(floor,),
-                flext_line=m.Infra.WorkspaceIntegrationSpec(
-                    provider=provider.name,
-                    branch=u.Tests.provider_branch(),
-                    base_url=provider.base_url,
+                options=u.Infra.PyprojectConformOptions(
+                    flext_line=m.Infra.WorkspaceIntegrationSpec(
+                        provider=provider.name,
+                        branch=u.Tests.provider_branch(),
+                        base_url=provider.base_url,
+                    ),
                 ),
                 uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
             ),
@@ -421,7 +587,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         unattached = config.Infra.codegen.infra_repository.distribution
         result = u.Infra.pyproject_conform(
             f'[project]\nname = "external-consumer"\ndependencies = ["{unattached}"]\n',
-            workspace=self._workspace(),
+            workspace=self._workspace(role=c.Infra.MakeProfile.STANDALONE),
             required_dev_dependencies=(),
             uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
         )
@@ -473,7 +639,7 @@ constraint-dependencies = ["uv>=0"]
 
     def test_standalone_rejects_non_https_manifest_provenance(self) -> None:
         """Test standalone rejects non https manifest provenance."""
-        workspace = self._workspace()
+        workspace = self._workspace(role=c.Infra.MakeProfile.STANDALONE)
         member = workspace.subprojects[0]
         declared = (
             f"{member.distribution} @ git+{member.url}@{u.Tests.provider_branch()}"
@@ -617,17 +783,16 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
         tm.that("rumdl>=0.2.46" not in dev_group, eq=True)
         tm.that("custom-tool>=1" in dev_group, eq=True)
 
-    def test_exclude_dependencies_emit_for_standalone_without_project_key(self) -> None:
-        """Standalone member CI needs scoped excludes without the routing key."""
-        workspace = self._workspace()
-        exclusion = m.Infra.UvScopedDependencyExclusionSpec(
-            project="flext-infra",
-            package=m.Infra.UvPackageSelectorSpec(name="flext-tests"),
-            dependencies=("flext-infra",),
-        )
-        source = """[project]
-name = "flext-infra"
-dependencies = []
+    def test_conform_retires_dependency_edge_suppression(self) -> None:
+        """Conformance preserves real declared edges and removes retired suppression."""
+        workspace = self._workspace(role=c.Infra.MakeProfile.STANDALONE)
+        dependency = "example-dependency>=1"
+        exclusion = '{ package = {name="example-dependency"}, dependencies=["other"] }'
+        source = f"""[project]
+name = "{workspace.repository.distribution}"
+dependencies = ["{dependency}"]
+[tool.uv]
+exclude-dependencies = [{exclusion}]
 """
         conformed = tm.ok(
             u.Infra.pyproject_conform(
@@ -636,47 +801,26 @@ dependencies = []
                 required_dev_dependencies=self._detached_dev_floors(),
                 uv_resolution=self._uv_resolution(
                     config.Infra.codegen.toolchain,
-                    (exclusion,),
                 ),
             ),
         )
         uv = u.Tests.toml_table_at(conformed, "tool", "uv")
-        excludes = u.Tests.toml_list(uv["exclude-dependencies"])
-        tm.that(
-            excludes,
-            eq=[{"package": {"name": "flext-tests"}, "dependencies": ["flext-infra"]}],
-        )
-        tm.that("project" not in u.Tests.toml_mapping(excludes[0]), eq=True)
+        tm.that("exclude-dependencies" not in uv, eq=True)
+        project = u.Tests.toml_table_at(conformed, "project")
+        tm.that(dependency in u.Tests.toml_strings(project["dependencies"]), eq=True)
 
     @staticmethod
-    def test_workspace_root_routes_only_exclusions_of_local_projects(
+    def test_workspace_root_keeps_dependency_resolution_unsuppressed(
         tmp_path: Path,
     ) -> None:
-        """An exclusion for an absent project would drop its only install edge."""
-        configured = config.Infra.codegen.uv_exclude_dependencies
-        member = configured[0].project
+        """Adding a declared member never manufactures dependency-edge exclusions."""
         rendered = u.Tests.scaffold_text(
             tmp_path / "fixture-project",
             c.PYPROJECT_FILENAME,
-            members=(member,),
+            members=("fixture-member",),
         )
         uv = u.Tests.toml_table_at(rendered, "tool", "uv")
-        local = {"fixture-project", member}
-        tm.that(
-            u.Tests.toml_list(uv["exclude-dependencies"]),
-            eq=[
-                {
-                    key: value
-                    for key, value in item.model_dump(
-                        mode="json",
-                        exclude_none=True,
-                    ).items()
-                    if key != "project"
-                }
-                for item in configured
-                if item.project in local
-            ],
-        )
+        tm.that("exclude-dependencies" not in uv, eq=True)
 
     @staticmethod
     def test_scaffold_mypy_policy_matches_ssot_and_converges(tmp_path: Path) -> None:
@@ -704,6 +848,63 @@ dependencies = []
             u.Tests.scaffold_text(root, c.PYPROJECT_FILENAME, what=surface),
             eq=first,
         )
+
+    @staticmethod
+    @pytest.mark.parametrize("members", [(), ("fixture-member",)])
+    def test_scaffold_pyrefly_policy_matches_ssot_and_converges(
+        tmp_path: Path,
+        members: t.StrSequence,
+    ) -> None:
+        """Both repository roles render each declared diagnostic exactly once."""
+        root = tmp_path / "fixture-project"
+        surface = c.Infra.CodegenConformSurface.PYPROJECT
+        first = u.Tests.scaffold_text(
+            root,
+            c.PYPROJECT_FILENAME,
+            members=members,
+            what=surface,
+        )
+        policy = config.Infra.tooling.tools.pyrefly
+        tm.that(
+            u.Tests.toml_table_at(first, "tool", "pyrefly", "errors"),
+            eq=dict.fromkeys(policy.strict_errors, "error"),
+        )
+        tm.that(
+            u.Tests.scaffold_text(
+                root,
+                c.PYPROJECT_FILENAME,
+                members=members,
+                what=surface,
+            ),
+            eq=first,
+        )
+
+    @staticmethod
+    def test_pyrefly_policy_rejects_duplicate_diagnostic_declarations() -> None:
+        """Ambiguous SSOT input fails before the TOML template can emit it."""
+        payload = config.Infra.tooling.tools.pyrefly.model_dump(by_alias=True)
+        payload["strict-errors"] = ("bad-argument-count", "bad-argument-count")
+        with pytest.raises(e.PydanticValidationError, match="duplicate diagnostic"):
+            m.Infra.PyreflyConfig.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize("selection", ["reordered", "subset", "empty"])
+    def test_pyrefly_policy_preserves_valid_diagnostic_selections(
+        selection: str,
+    ) -> None:
+        """Validation does not freeze the selected diagnostic set or its order."""
+        policy = config.Infra.tooling.tools.pyrefly
+        errors = tuple(policy.strict_errors)
+        if selection == "reordered":
+            selected = tuple(reversed(errors))
+        elif selection == "subset":
+            selected = errors[::2]
+        else:
+            selected = ()
+        payload = policy.model_dump(by_alias=True)
+        payload["strict-errors"] = selected
+        validated = m.Infra.PyreflyConfig.model_validate(payload)
+        tm.that(tuple(validated.strict_errors), eq=selected)
 
     @staticmethod
     def _assert_unmanaged_tool_tables_survive(

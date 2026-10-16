@@ -10,10 +10,9 @@ import dataclasses
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,6 +47,69 @@ class WrapperFamilyFixture:
 
 class TestsFlextInfraFamilyFlatten:
     """Exercise the real module graph, not mocked semantic identities."""
+
+    @staticmethod
+    def test_duplicate_facade_namespace_uses_declared_inherited_owner(
+        tmp_path: Path,
+    ) -> None:
+        """Consolidate consumers without publishing or altering a homonym."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        tier = root / "tests"
+        tier.mkdir()
+        (tier / "__init__.py").write_text(
+            "from tests.utilities import u\n", encoding="utf-8"
+        )
+        directory = (
+            tier / u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        )
+        directory.mkdir()
+        (directory / "__init__.py").write_text("", encoding="utf-8")
+        declaration = directory / "support.py"
+        declaration.write_text(
+            "class Support:\n    pass\n\n__all__ = ['Support']\n",
+            encoding="utf-8",
+        )
+        owner = f"Tests{u.derive_class_stem(root.name)}Utilities"
+        path = tier / "utilities.py"
+        path.write_text(
+            "import tests._utilities.support\n\n"
+            f"class {owner}:\n"
+            "    class Support:\n"
+            "        class Entity:\n"
+            "            VALUE = 'payload'\n"
+            "    class Tests(tests._utilities.support.Support):\n"
+            "        pass\n\n"
+            f"u = {owner}\n__all__ = ['{owner}', 'u']\n",
+            encoding="utf-8",
+        )
+        consumer = tier / "consumer.py"
+        consumer.write_text(
+            "from tests import u\n\n"
+            "class Consumer(u.Support):\n    pass\n"
+            "VALUE = u.Support.Entity.VALUE\n",
+            encoding="utf-8",
+        )
+        sources = {
+            item: item.read_text(encoding="utf-8")
+            for item in (path, declaration, consumer, tier / "__init__.py")
+        }
+        with infra.rope_workspace(root) as rope:
+            result = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources=sources,
+            )
+            tm.ok(result)
+            proposed = dict(sources)
+            proposed.update({
+                edit.file_path: edit.updated_source for edit in result.value
+            })
+            tm.that(proposed[consumer], has="class Consumer(u.Tests):")
+            tm.that(proposed[consumer], has="VALUE = u.Tests.Entity.VALUE")
+            tm.that(proposed[declaration], has="class Entity:")
+            tm.that(proposed[path], lacks="class Support:")
+        for item, original in sources.items():
+            tm.that(item.read_text(encoding="utf-8"), eq=original)
 
     @staticmethod
     def _seed_wrapper_family(
@@ -262,7 +324,13 @@ class TestsFlextInfraFamilyFlatten:
     @staticmethod
     @pytest.mark.parametrize(
         "reference",
-        ["ALIAS = {owner}.Wrapper", 'alias: "{owner}.Wrapper"'],
+        [
+            "ALIAS = {owner}.Wrapper",
+            "different_name = {owner}.Wrapper",
+            "first = {owner}.Wrapper\nsecond = first",
+            "instance = {owner}.Wrapper()",
+            'alias: "{owner}.Wrapper"',
+        ],
     )
     def test_wrapper_used_as_an_entity_is_preserved_without_edits(
         tmp_path: Path,

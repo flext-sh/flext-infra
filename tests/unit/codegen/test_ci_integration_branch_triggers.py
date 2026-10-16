@@ -10,10 +10,9 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m
-from tests import u
+from tests import t, tm, u
 
 
 class TestsFlextInfraCiIntegrationBranchTriggers:
@@ -26,6 +25,29 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     baseline_branches = tuple(config.Infra.codegen.branch_policy.ci_trigger_branches)
 
     @classmethod
+    def _render_workflow(
+        cls,
+        *,
+        dist: str,
+        make_profile: c.Infra.MakeProfile,
+        repository_branch: str,
+        ci_trigger_branches: t.VariadicTuple[t.NonEmptyStr],
+    ) -> tuple[m.Infra.GithubWorkflowRenderSpec, str]:
+        """Render one CI workflow and return its typed spec and rendered text.
+
+        Returns:
+            The render spec and its rendered workflow.
+
+        """
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
+            dist=dist,
+            make_profile=make_profile,
+            repository_branch=repository_branch,
+            ci_trigger_branches=ci_trigger_branches,
+        )
+        return spec, tm.ok(u.Cli.template_render(cls.ci_template, spec))
+
+    @classmethod
     def render_ci(cls, *, repository_branch: str) -> str:
         """Provide ``render_ci``.
 
@@ -33,7 +55,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             The resulting ``str``.
 
         """
-        spec = u.CodegenTestSupport.Ci.workflow_spec(
+        _, rendered = cls._render_workflow(
             dist="mcb",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch=repository_branch,
@@ -43,7 +65,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 dict.fromkeys((*cls.baseline_branches, repository_branch)),
             ),
         )
-        return tm.ok(u.Cli.template_render(cls.ci_template, spec))
+        return rendered
 
     @staticmethod
     def _trigger_section(rendered: str) -> str:
@@ -88,10 +110,10 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
-    def test_ci_and_hook_share_the_mandatory_public_approval(
+    def test_ci_and_hook_share_the_check_and_test_workflow(
         profile: c.Infra.MakeProfile,
     ) -> None:
-        """Both projected profiles invoke the same typed approval."""
+        """CI approval and the commit hook share their check and test operations."""
         codegen = config.Infra.codegen
         spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="approval-consumer",
@@ -110,18 +132,26 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             ),
         )
         steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
-        approval = tuple(step for step in steps if step.get("id") == "approval")
-        tm.that(approval, len=1)
-        tm.that(
-            approval[0]["run"],
-            eq=f"{codegen.make.ci.variable}={codegen.make.ci.value} make pre-commit",
+        approval = tuple(
+            step for step in steps if str(step.get("id", "")).startswith("approval-")
         )
-        # CI never executes a mutating or resolving verb; the workflow comments
-        # may still explain why (e.g. "CI never runs `make upg`"), so the
-        # contract is checked on the executed step commands.
-        run_commands = " ".join(str(step.get("run", "")) for step in steps)
-        tm.that(run_commands, lacks=["make gen", "make upg", "make dep"])
-        tm.that(rendered, lacks=["Candidate cleanliness", "continue-on-error"])
+        tm.that(
+            tuple(step["run"] for step in approval),
+            eq=tuple(
+                f"{codegen.make.ci.variable}={codegen.make.ci.value} make {verb}"
+                for verb in codegen.make.approval_verbs
+            ),
+        )
+        # Quoted diagnostics may recommend a local resolver without executing it.
+        for step in steps:
+            for line in str(step.get("run", "")).splitlines():
+                command = c.Infra.DOCS_MAKE_COMMAND_RE.match(line)
+                if command is not None:
+                    tm.that(
+                        command.group("verb") in {"gen", "upg", "dep"},
+                        eq=False,
+                    )
+        tm.that(rendered, lacks=["continue-on-error", "make pre-commit"])
         hook = tm.ok(
             u.Cli.template_render(
                 root / ".pre-commit-config.yaml.j2",
@@ -131,28 +161,148 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(hook, has="make pre-commit")
         tm.that(hook, lacks=["make fmt", "make fix"])
         tm.that(
-            codegen.make.approval_verbs,
-            eq=tuple(
+            tuple(
                 step.verb
                 for step in codegen.make.workflow
                 if "pre_commit" in step.contexts
             ),
+            eq=(c.Infra.VERB_CHECK, c.Infra.VERB_TEST),
         )
 
     @staticmethod
-    def test_testmon_save_requires_a_trusted_fresh_project_receipt() -> None:
-        """Actions archives only the typed project database, never a cache tree."""
-        spec = u.CodegenTestSupport.Ci.workflow_spec(
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    def test_ci_preserves_original_execution_receipts_on_every_outcome(
+        profile: c.Infra.MakeProfile,
+    ) -> None:
+        """The rendered Actions upload preserves causal evidence without logs."""
+        spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
+            dist="receipt-consumer",
+            make_profile=profile,
+            repository_branch="integration/receipt-consumer",
+            ci_trigger_branches=(),
+        )
+        steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
+        upload = next(
+            step
+            for step in steps
+            if step.get("uses")
+            == (
+                f"{spec.github_actions['upload-artifact'].repository}"
+                f"@{spec.github_actions['upload-artifact'].version}"
+            )
+        )
+        tm.that(upload["if"], eq="${{ always() }}")
+        inputs = u.Cli.json_as_mapping(upload["with"])
+        tm.that(inputs["if-no-files-found"], eq="error")
+        tm.that(inputs["include-hidden-files"], eq=True)
+        paths = str(inputs["path"]).splitlines()
+        for filename in (
+            "suite-outcome.json",
+            "selection-outcome.json",
+            "inventory-outcome.json",
+            "run-context.json",
+            "selection-plan.json",
+            "testmon-selection.json",
+            "testmon-inventory.json",
+            "run-accounting.json",
+            "diagnostics.json",
+            "cache-before.json",
+            "cache-after.json",
+            "cache-policy.json",
+            "markdown-reconciliation.json",
+        ):
+            tm.that(paths, has=f".reports/tests/**/{filename}")
+        tm.that(
+            paths,
+            has=[".reports/check/**/*.sarif", ".reports/check/**/*.md"],
+        )
+        tm.that(
+            paths,
+            has=[
+                f"{spec.make.gate_receipts_directory}/**/{spec.gate_original_receipt_filename}",
+                f"{spec.make.gate_receipts_directory}/**/check/**/*.sarif",
+                f"{spec.make.gate_receipts_directory}/**/check/**/*.md",
+                f".reports/tests/**/{spec.gate_original_receipt_filename}",
+            ],
+        )
+        for private_name in (
+            c.Infra.GATE_CAPTURE_START_FILENAME,
+            c.Infra.GATE_CAPTURE_RESULT_FILENAME,
+            "command.txt",
+        ):
+            tm.that(any(path.endswith(private_name) for path in paths), eq=False)
+        publication = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
+        tm.that(
+            paths,
+            has=[
+                c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix(),
+                publication.as_posix(),
+                f"{c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH.as_posix()}/**/*.json",
+                f"{c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY.as_posix()}/*.json",
+            ],
+        )
+        tm.that(any(path.endswith(".log") for path in paths), eq=False)
+        tm.that(rendered, lacks=["continue-on-error"])
+
+    @staticmethod
+    def test_tool_cache_keeps_new_generations_after_completed_failures() -> None:
+        """A rendered cache contract restores progress and never overwrites it."""
+        spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
             dist="cache-consumer",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="integration/cache-consumer",
             ci_trigger_branches=(),
         )
-        rendered = tm.ok(
-            u.Cli.template_render(
-                TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
-                spec,
-            ),
+        steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
+        restore = next(step for step in steps if step.get("id") == "tool-cache")
+        save = next(step for step in steps if step.get("name") == "Save tool caches")
+        restore_inputs = u.Cli.json_as_mapping(restore["with"])
+        save_inputs = u.Cli.json_as_mapping(save["with"])
+        primary_key = restore_inputs["key"]
+        prefixes_text = restore_inputs["restore-keys"]
+        assert isinstance(primary_key, str)
+        assert isinstance(prefixes_text, str)
+        prefixes = prefixes_text.splitlines()
+        tm.that(len(prefixes), eq=2)
+        tm.that(primary_key.startswith(prefixes[0]), eq=True)
+        tm.that(prefixes[0].startswith(prefixes[1]), eq=True)
+        tm.that(prefixes[0] != prefixes[1], eq=True)
+        tm.that(prefixes[1], has=spec.python_version)
+        tm.that(
+            primary_key,
+            has=["${{ github.run_id }}", "${{ github.run_attempt }}"],
+        )
+        tm.that(
+            save_inputs["key"],
+            eq="${{ steps.tool-cache.outputs.cache-primary-key }}",
+        )
+        tm.that(
+            save["if"],
+            has=[
+                "always()",
+                "!cancelled()",
+                "steps.tool-cache.outcome == 'success'",
+                "steps.tool-cache.outputs.cache-primary-key != ''",
+                "github.event_name == 'workflow_dispatch'",
+                "github.event.pull_request.head.repo.full_name == github.repository",
+            ],
+        )
+        tm.that(save["if"], lacks=["cache-hit", "success()"])
+        tm.that(save_inputs["path"], eq=restore_inputs["path"])
+        cache_action = spec.github_actions["cache"]
+        tm.that(
+            save["uses"],
+            eq=f"{cache_action.repository}/save@{cache_action.version}",
+        )
+
+    @staticmethod
+    def test_testmon_save_requires_a_trusted_fresh_project_receipt() -> None:
+        """Actions archives only the typed project database, never a cache tree."""
+        spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
+            dist="cache-consumer",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            repository_branch="integration/cache-consumer",
+            ci_trigger_branches=(),
         )
         steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
         saves = tuple(
@@ -160,33 +310,127 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         )
         tm.that(bool(saves), eq=spec.make.testmon_cache_policy.save_enabled)
         if saves:
+            resolver = next(step for step in steps if step.get("id") == "testmon_path")
+            resolver_environment = u.Cli.json_as_mapping(resolver["env"])
             tm.that(
                 saves[0]["if"],
                 has=[
-                    "github.event_name == 'push'",
+                    "always()",
                     "!cancelled()",
+                    "steps.testmon_path.outputs.save_allowed == 'true'",
                     "testmon_saveable",
                     "testmon_digest",
-                    *spec.make.testmon_cache_policy.allowed_save_refs,
                 ],
             )
-            if (
-                spec.repository_branch
-                not in spec.make.testmon_cache_policy.allowed_save_refs
-            ):
-                tm.that(saves[0]["if"], lacks=spec.repository_branch)
+            tm.that(
+                resolver_environment["CACHE_WRITE_ALLOWED"],
+                has=[
+                    "github.event_name == 'push'",
+                    "startsWith(github.ref, 'refs/heads/')",
+                    "github.event_name == 'pull_request'",
+                    (
+                        "github.event.pull_request.head.repo.full_name "
+                        "== github.repository"
+                    ),
+                ],
+            )
+            tm.that(
+                resolver_environment["CACHE_BRANCH"],
+                eq="${{ github.head_ref || github.ref_name }}",
+            )
             cache_input = u.Cli.json_as_mapping(saves[0]["with"])
             restore = next(
                 step for step in steps if step.get("name") == "Restore testmon database"
             )
+            test_step = next(
+                step
+                for step in steps
+                if step.get("run")
+                == f"{spec.make.ci.variable}={spec.make.ci.value} make "
+                f"{c.Infra.VERB_TEST}"
+            )
             tm.that(
                 cache_input["path"],
-                eq="${{ steps.approval.outputs.testmon_database }}",
+                eq=f"${{{{ steps.{test_step['id']}.outputs.testmon_database }}}}",
             )
             tm.that(
                 cache_input["key"],
                 eq=u.Cli.json_as_mapping(restore["with"])["key"],
             )
+            restore_inputs = u.Cli.json_as_mapping(restore["with"])
+            tm.that(
+                str(restore_inputs["restore-keys"]).splitlines(),
+                eq=[
+                    (
+                        "${{ steps.testmon_path.outputs.namespace }}"
+                        "${{ hashFiles('uv.lock', 'mise.lock', "
+                        "'pyproject.toml', 'config/**') }}-"
+                    ),
+                    "${{ steps.testmon_path.outputs.namespace }}",
+                    "${{ steps.testmon_path.outputs.seed_namespace }}",
+                ],
+            )
+
+    @staticmethod
+    def test_testmon_resolver_keeps_branch_and_generation_identity(
+        tmp_path: Path,
+    ) -> None:
+        """Run the rendered cache resolver with distinct inputs and branches."""
+        spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
+            dist="cache-consumer",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            repository_branch="integration/cache-consumer",
+            ci_trigger_branches=(),
+        )
+        resolver = next(
+            step
+            for step in u.CodegenTestSupport.Ci.ci_job_steps(rendered)
+            if step.get("id") == "testmon_path"
+        )
+        receipts: list[str] = []
+        for index, (branch, inputs) in enumerate((
+            ("feature/cache", "before"),
+            ("feature/cache", "after"),
+            ("feature/other-cache", "after"),
+        )):
+            output = tmp_path / f"output-{index}"
+            outcome = tm.ok(
+                u.Cli.run(
+                    ["bash", "-c", str(resolver["run"])],
+                    options=m.Cli.ProcessOptions(
+                        env={
+                            "CACHE_BRANCH": branch,
+                            "CACHE_SEED_BRANCH": spec.repository_branch,
+                            "CACHE_WRITE_ALLOWED": "true",
+                            "CACHE_INPUTS": inputs,
+                            "CACHE_PLATFORM": "fixture-platform",
+                            "CACHE_GENERATION": str(index),
+                            "GITHUB_OUTPUT": str(output),
+                            spec.make.testmon_cache.data_home_environment_variable: str(
+                                tmp_path,
+                            ),
+                        },
+                    ),
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+            receipts.append(output.read_text(encoding="utf-8"))
+        namespaces = tuple(
+            next(line for line in receipt.splitlines() if line.startswith("namespace="))
+            for receipt in receipts
+        )
+        seeds = tuple(
+            next(
+                line
+                for line in receipt.splitlines()
+                if line.startswith("seed_namespace=")
+            )
+            for receipt in receipts
+        )
+        tm.that(namespaces[0], eq=namespaces[1])
+        tm.that(namespaces[1] != namespaces[2], eq=True)
+        tm.that(len(set(seeds)), eq=1)
+        tm.that(len(set(receipts)), eq=len(receipts))
 
     @staticmethod
     @pytest.mark.parametrize("missing", ["setup", "audit", "check", "test"])

@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
@@ -55,7 +54,7 @@ class TestsFlextInfraCodegenConformHatchHook:
                 m.Infra.CodegenConformRequest, m.Infra.CodegenFilePlan]``.
 
         """
-        u.Tests.seed_locked_taplo(root.parent)
+        u.Tests.copy_tracked_mise_seeds(root.parent)
         service, request = TestsFlextInfraConformSupport.check_conform_service(
             root,
             TestsFlextInfraCodegenConformHatchHook._hook_workspace(hook_path),

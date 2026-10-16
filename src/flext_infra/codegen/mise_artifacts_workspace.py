@@ -10,14 +10,15 @@ import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, u
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
+from flext_infra import c, config, m, r, t, u
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraMiseWorkspacePlanner:
@@ -105,8 +106,14 @@ class FlextInfraMiseWorkspacePlanner:
         scope_root: Path | None = None,
         *,
         transaction_id: str | None = None,
+        initial_workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Resolve governed topology after the stable workspace lock is held.
+
+        A scaffold (``codegen new``) declares its workspace before rendering
+        any of its own configuration, so ``initial_workspace`` is the topology
+        authority until the generated repository carries its declaration;
+        ``None`` reads the committed declaration of the coordination root.
 
         Returns:
             The resulting ``p.Result[m.Infra.MiseToolchainWorkspaceLayout]``.
@@ -119,7 +126,11 @@ class FlextInfraMiseWorkspacePlanner:
         if resolved_scope.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(resolved_scope)
         scope_root = resolved_scope.value
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
+        workspace = (
+            FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
+            if initial_workspace is None
+            else r[m.Infra.WorkspaceSpec].ok(initial_workspace)
+        )
         if workspace.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
         if requested != scope_root and not any(
@@ -194,7 +205,7 @@ class FlextInfraMiseWorkspacePlanner:
         for selector, root in sorted(roots.items()):
             if not root.is_absolute() or ".." in root.parts or root.resolve() != root:
                 return result_type.fail(f"file capability root is not physical: {root}")
-            physical = files.physical_directory_identity(root)
+            physical = FlextInfraMiseArtifactsFiles.physical_directory_identity(root)
             if physical.failure:
                 return result_type.from_failure(physical)
             staging = self._state_root(root)
@@ -409,53 +420,140 @@ class FlextInfraMiseWorkspacePlanner:
         )
 
     @staticmethod
-    def _project_state(
+    def _project_replacement(
         layout: m.Infra.MiseToolchainProjectLayout,
+        before: m.Cli.AtomicFileState,
         config_plan: m.Infra.CodegenFilePlan | None,
-    ) -> p.Result[m.Infra.MiseToolchainProjectState]:
-        config_state = files.read_state(
-            layout.config,
-            required=config_plan is None,
-        )
-        if config_state.failure:
-            return r[m.Infra.MiseToolchainProjectState].from_failure(config_state)
+    ) -> p.Result[t.Pair[bytes, int]]:
+        """Resolve the exact replacement content and mode for one project config.
+
+        Args:
+            layout: Project layout whose configuration destination is planned.
+            before: Authenticated preflight state of the live configuration.
+            config_plan: Planned configuration change, or ``None`` when the
+                project is not directly governed by a generated plan.
+
+        Returns:
+            The exact replacement bytes with their permission mode, or the
+            first resolution failure.
+
+        """
+        failure = r[t.Pair[bytes, int]]
         if config_plan is None:
-            if config_state.value.content is None:
-                return r[m.Infra.MiseToolchainProjectState].fail(
+            if before.content is None:
+                return failure.fail(
                     f"committed Mise configuration is absent: {layout.config}",
                 )
-            replacement_content = config_state.value.content
-        else:
-            if config_plan.desired_content is None:
-                return r[m.Infra.MiseToolchainProjectState].fail(
-                    f"invalid Mise configuration plan: {config_plan.path}",
+            declarations = tuple(
+                item
+                for item in config.Infra.codegen.managed_file_specs
+                if item.path == Path(c.Infra.CONFIG_SPEC[0])
+            )
+            if len(declarations) != 1:
+                return failure.fail(
+                    "Mise configuration requires exactly one managed file declaration",
                 )
-            replacement_content = config_plan.desired_content
+            return failure.ok((before.content, declarations[0].mode))
+        if config_plan.desired_content is None or config_plan.desired_mode is None:
+            return failure.fail(f"invalid Mise configuration plan: {config_plan.path}")
+        return failure.ok((config_plan.desired_content, config_plan.desired_mode))
+
+    @staticmethod
+    def _project_config_sources(
+        layout: m.Infra.MiseToolchainProjectLayout,
+        config_plan: m.Infra.CodegenFilePlan | None,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Resolve the authoritative configuration source baseline for a project.
+
+        Args:
+            layout: Project layout whose configuration sources are baselined.
+            config_plan: Planned configuration change, or ``None`` when no
+                pre-publication provenance exists.
+
+        Returns:
+            The ordered configuration source states, or the first failure.
+
+        """
         if (
             config_plan is not None
             and isinstance(config_plan.before, m.Cli.AtomicFileState)
             and config_plan.before.content is not None
         ):
-            config_sources = config_plan.source_states
-        else:
-            # A first publication (scaffold or newly governed project) has no
-            # pre-publication provenance: the transaction itself publishes the
-            # config sources, so the authoritative barrier baseline is the
-            # on-disk reality at transaction begin.
-            current_sources = u.Infra.snapshot_config_sources(layout.root)
-            if current_sources.failure:
-                return r[m.Infra.MiseToolchainProjectState].from_failure(
-                    current_sources,
+            authenticated = FlextInfraMiseArtifactsVerification.states_current(
+                config_plan.source_states,
+            )
+            if authenticated.failure:
+                return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
+                    authenticated
                 )
-            config_sources = current_sources.value
+            # The complete render inputs remain authenticated, but set equality
+            # owns only this project's direct configuration sources.
+            return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(
+                tuple(
+                    sorted(
+                        (
+                            source
+                            for source in config_plan.source_states
+                            if u.Infra.direct_config_source(layout.root, source.path)
+                        ),
+                        key=lambda source: source.path,
+                    )
+                )
+            )
+        # A first publication (scaffold or newly governed project) has no
+        # pre-publication provenance: the transaction itself publishes the
+        # config sources, so the authoritative barrier baseline is the
+        # on-disk reality at transaction begin.
+        current_sources = u.Infra.snapshot_config_sources(layout.root)
+        if current_sources.failure:
+            return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
+                current_sources,
+            )
+        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(current_sources.value)
+
+    @staticmethod
+    def _project_state(
+        layout: m.Infra.MiseToolchainProjectLayout,
+        config_plan: m.Infra.CodegenFilePlan | None,
+    ) -> p.Result[m.Infra.MiseToolchainProjectState]:
+        """Snapshot one project's destination, replacement and source baseline.
+
+        Args:
+            layout: Project layout whose state is snapshotted.
+            config_plan: Planned configuration change, or ``None``.
+
+        Returns:
+            The immutable project state, or the first snapshot failure.
+
+        """
+        config_state = FlextInfraMiseArtifactsFiles.read_state(
+            layout.config,
+            required=config_plan is None,
+        )
+        if config_state.failure:
+            return r[m.Infra.MiseToolchainProjectState].from_failure(config_state)
+        replacement = FlextInfraMiseWorkspacePlanner._project_replacement(
+            layout,
+            config_state.value,
+            config_plan,
+        )
+        if replacement.failure:
+            return r[m.Infra.MiseToolchainProjectState].from_failure(replacement)
+        sources = FlextInfraMiseWorkspacePlanner._project_config_sources(
+            layout,
+            config_plan,
+        )
+        if sources.failure:
+            return r[m.Infra.MiseToolchainProjectState].from_failure(sources)
+        content, mode = replacement.value
         return r[m.Infra.MiseToolchainProjectState].ok(
             m.Infra.MiseToolchainProjectState(
                 layout=layout,
                 config=m.Infra.MiseToolchainConfigState(
                     before=config_state.value,
-                    replacement_content=replacement_content,
-                    replacement_mode=c.Infra.CONFIG_SPEC[1],
-                    sources=config_sources,
+                    replacement_content=content,
+                    replacement_mode=mode,
+                    sources=sources.value,
                 ),
             ),
         )

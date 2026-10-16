@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 from flext_infra._utilities import (
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesRopeSource,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
 
@@ -33,7 +35,7 @@ class FlextInfraUtilitiesSemanticCutoverModuleLayout(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Move each reported top-level statement after the module's last one.
 
@@ -76,7 +78,7 @@ class FlextInfraUtilitiesSemanticCutoverModuleLayout(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Move each reported docstring's notice paragraph after its other text.
 

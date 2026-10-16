@@ -28,11 +28,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             shape: t.Quad[str, str, str, str],
             owner: str,
             owner_bound: bool,
+            local_rebound: bool,
         ) -> None:
             super().__init__()
             self.module, self.imported, self.local, self.facade = shape
             self.owner = owner
             self.owner_bound = owner_bound
+            self.local_rebound = local_rebound
             self.depth = 0
 
         @override
@@ -81,7 +83,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
         ) -> cst.Name:
             # A private import alias is never rebound, so every read of it is
             # the parent class; the letter itself keeps its deferred reads.
-            if self.local != self.imported and original_node.value == self.local:
+            if (
+                not self.local_rebound
+                and self.local != self.imported
+                and original_node.value == self.local
+            ):
                 return updated_node.with_changes(value=self.owner)
             return updated_node
 
@@ -166,13 +172,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             if (
                 self.depth
                 or not isinstance(original_node.target, cst.Name)
-                or original_node.target.value != self.imported
+                or original_node.target.value
+                != (self.local if self.local_rebound else self.imported)
                 or not isinstance(original_node.value, cst.Name)
                 or original_node.value.value != self.facade
             ):
                 return updated_node
             return cst.Assign(
-                targets=[cst.AssignTarget(target=cst.Name(self.imported))],
+                targets=[cst.AssignTarget(target=original_node.target)],
                 value=cst.Name(self.facade),
             )
 
@@ -184,6 +191,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
         shape: t.Quad[str, str, str, str],
         owner: str,
         owner_bound: bool,
+        local_rebound: bool,
     ) -> str:
         """Return the facade source extending ``owner`` with its layout kept.
 
@@ -199,6 +207,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
                     shape=shape,
                     owner=owner,
                     owner_bound=owner_bound,
+                    local_rebound=local_rebound,
                 ),
             )
             .code

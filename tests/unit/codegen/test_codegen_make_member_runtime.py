@@ -9,9 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from tests import c, t, u
+from tests import c, m, t, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -117,7 +116,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
                         "OBSERVED_VENV_DIR",
                     ),
                     cwd=entry,
-                    options=u.Cli.ProcessOptions(
+                    options=m.Cli.ProcessOptions(
                         remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
                     ),
                 ),
@@ -174,6 +173,44 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
                 values[name],
                 eq=str(u.Infra.runtime_environment_dir(member, runtime_root=workspace)),
             )
+
+    def test_attached_member_upg_delegates_to_the_runtime_root(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An attached member hands ``upg`` to its superproject's Makefile.
+
+        The member never resolves locks itself: the runtime root's ``upg`` is
+        what runs. The runtime root here declares a ``upg`` that prints a
+        marker, so the observable result is that marker on the member's run.
+        The local (non-hosted) context is declared explicitly because hosted
+        CI rejects attached members before delegation.
+        """
+        member_source, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        workspace = self._workspace_with_member(tmp_path, member_source)
+        marker = "runtime-root-upg"
+        (workspace / c.Infra.MAKEFILE_FILENAME).write_text(
+            f"upg:\n\t@printf '%s\\n' '{marker}'\n",
+            encoding="utf-8",
+        )
+
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "upg"],
+                cwd=workspace / member_source.name,
+                env={"GITHUB_ACTIONS": "false"},
+            ),
+        )
+
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(process.stdout, has=marker)
 
     @pytest.mark.parametrize("linked", [False, True])
     @pytest.mark.parametrize("attached", [False, True])

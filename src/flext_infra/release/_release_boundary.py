@@ -10,8 +10,7 @@ from pathlib import Path, PurePosixPath
 
 from packaging.version import InvalidVersion, Version
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, p, r, t, u
 
 
 class FlextInfraReleaseBoundaryMixin(FlextInfraProjectSelectionServiceBase[bool]):
@@ -68,7 +67,7 @@ class FlextInfraReleaseBoundaryMixin(FlextInfraProjectSelectionServiceBase[bool]
             return f"operational {kind} path: {name}"
         codegen = config.Infra.codegen
         if name in {entry.destination for entry in codegen.templates.entries} or any(
-            name == item.path.as_posix() for item in codegen.managed_files
+            name == item.path.as_posix() for item in codegen.managed_file_specs
         ):
             return ""
         for part in (part.casefold() for part in path.parts):

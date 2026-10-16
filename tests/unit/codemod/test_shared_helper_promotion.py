@@ -12,11 +12,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra
 from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import c, m, t, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraSharedHelperPromotion:
@@ -104,7 +103,7 @@ class TestsFlextInfraSharedHelperPromotion:
             u.Cli.run(
                 [sys.executable, "-c", probe],
                 cwd=root,
-                options=u.Cli.ProcessOptions(env=env),
+                options=m.Cli.ProcessOptions(env=env),
             ),
         )
         return outcome.stdout.strip()

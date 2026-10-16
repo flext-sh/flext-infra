@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, main
-from tests import c, u
+from tests import c, tm, u
 
 # The fixture resolves and installs a real consumer environment from Git/index
 # sources; this is an external integration boundary owned by ``test-full``.
@@ -101,7 +100,7 @@ class TestsFlextInfraDepsDetectorMain:
     @staticmethod
     @pytest.mark.parametrize(
         "real_detector_project",
-        [("requests", "pytz"), ("requests", "pytz", "six")],
+        c.Tests.DETECTOR_MODULE_SCENARIOS[1:],
         indirect=True,
     )
     def test_apply_typings_follows_governed_policy_and_preserves_source(
@@ -121,7 +120,7 @@ class TestsFlextInfraDepsDetectorMain:
                 u.Tests.toml_mapping(before["dependency-groups"])["dev"],
             )
         }
-        tm.that(declared_dev & set(expected.values()), eq=set())
+        tm.that(declared_dev & set(expected.values()), empty=True)
         outcome = tm.ok(
             u.Tests.run_real_detector(
                 root,
@@ -143,7 +142,9 @@ class TestsFlextInfraDepsDetectorMain:
             for item in u.Infra.project_dependency_names_from_payload(before)
             if item in expected
         ]
-        added = set() if followed else {expected[item] for item in requirements}
+        added: set[str] = (
+            set() if followed else {expected[item] for item in requirements}
+        )
         typing_specs = u.Tests.toml_strings(
             u.Tests.toml_mapping(
                 u.Tests.toml_mapping(after["project"])["optional-dependencies"],

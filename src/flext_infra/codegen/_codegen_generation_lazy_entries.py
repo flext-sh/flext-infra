@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.codegen._codegen_generation_type_checking import (
-    FlextInfraCodegenGenerationTypeCheckingMixin,
-)
+from flext_infra.codegen import FlextInfraCodegenGenerationTypeCheckingMixin
 
 if TYPE_CHECKING:
     from flext_infra import t

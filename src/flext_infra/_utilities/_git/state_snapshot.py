@@ -13,10 +13,8 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitWorktreeIO,
-)
+from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
 class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
@@ -63,11 +61,21 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
         )
 
     @classmethod
-    def _state_snapshot_index(
+    def state_snapshot_index(
         cls,
         root: Path,
         paths: t.SequenceOf[Path],
     ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+        """Read the exact stage-zero index entries for the requested paths.
+
+        Returns:
+            The resolved index entries for the requested pathspecs.
+
+        Raises:
+            ValueError: If an entry carries assume-unchanged/skip-worktree
+                flags or is not resolved to stage zero.
+
+        """
         repo = cls._repo(root)
         pathspecs = cls._state_pathspecs(paths)
         for row in repo.git.ls_files("-v", "-z", "--", *pathspecs).split("\0"):
@@ -206,9 +214,7 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
         if Path(repo.working_tree_dir or "").resolve() != root:
             msg = "snapshot requires the repository root"
             raise ValueError(msg)
-        entries = (
-            cls._state_snapshot_index(root, request.paths) if request.paths else ()
-        )
+        entries = cls.state_snapshot_index(root, request.paths) if request.paths else ()
         files = (
             cls._state_snapshot_files(root, request.paths, entries)
             if request.paths

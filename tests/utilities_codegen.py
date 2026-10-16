@@ -10,13 +10,11 @@ import os
 import sys
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import config, r, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from tests import c, m, p, t
+from tests import c, m, p, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -160,6 +158,24 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         # A governed repository carries its committed Mise lock; generation
         # formats through the release it pins and never resolves a selector.
         TestsFlextInfraUtilitiesToolingFixtureMixin.copy_tracked_mise_seeds(root)
+        for name in members:
+            manifest = root / name / c.PYPROJECT_FILENAME
+            if not manifest.exists():
+                manifest.parent.mkdir(parents=True, exist_ok=True)
+                tm.ok(
+                    u.Cli.toml_write_mapping(
+                        manifest,
+                        {
+                            "project": {
+                                "name": name,
+                                "version": tm.ok(
+                                    u.Infra.current_workspace_version(Path.cwd()),
+                                ),
+                                "dependencies": [],
+                            },
+                        },
+                    ),
+                )
         repository = fixture.repository_ref(
             "fixture-project",
             role=(
@@ -257,7 +273,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return (
             None
             if match is None or match.desired_content is None
-            else tm.not_none(match.desired_content).decode(c.Cli.ENCODING_DEFAULT)
+            else tm.not_none(match.desired_content).decode(c.DEFAULT_ENCODING)
         )
 
     @staticmethod
@@ -267,13 +283,14 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         project_name: str = "flext-test-project",
         package_name: str = "flext_test_project",
     ) -> t.Pair[Path, Path]:
-        """Provide the typed test helper `create_lazy_init_workspace`.
+        """Create a real workspace with an empty, generation-eligible initializer.
 
         Returns:
             The resulting ``t.Pair[Path, Path]``.
 
         """
         repository_root = tmp_path / project_name
+        project = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(project_name)
         package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / package_name
         package_root.mkdir(parents=True)
         (repository_root / "Makefile").write_text(
@@ -283,7 +300,8 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         (repository_root / c.PYPROJECT_FILENAME).write_text(
             (
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'
-                'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n\n'
+                f'authors = [{{name = "{project.author_name}", '
+                f'email = "{project.author_email}"}}]\n\n'
                 + TestsFlextInfraUtilitiesCodegenMixin.ruff_per_file_ignores_toml()
             ),
             encoding=c.Infra.ENCODING_DEFAULT,
@@ -315,16 +333,18 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """Write a namespace module fixture for lazy-export tests."""
         export_list = f'"{class_name}", "{alias}"'
         extra_classes = "".join(
-            f"\nclass {extra_class_name}:\n    pass\n"
+            f'\nclass {extra_class_name}:\n    """Additional namespace '
+            f'declaration."""\n'
             for extra_class_name in extra_class_names
         )
+        notice = u.Infra.copyright_notice(module_path.parent, module=module_path)
         module_path.write_text(
             (
-                f'"""{docstring}"""\n\n'
+                f'"""{docstring}\n\n{notice}\n"""\n\n'
                 "from __future__ import annotations\n\n"
                 f"__all__: list[str] = [{export_list}]\n\n"
                 f"class {class_name}:\n"
-                "    pass\n\n"
+                '    """Public namespace declaration."""\n\n'
                 f"{alias} = {class_name}\n"
                 f"{extra_classes}"
             ),
@@ -345,6 +365,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         *,
         python_paths: t.StrSequence,
         cwd: Path | None = None,
+        arguments: t.StrSequence = (),
     ) -> t.StrSequence:
         """Run ``probe`` in a fresh interpreter importing generated packages.
 
@@ -359,8 +380,8 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
         result = tm.ok(
             u.Cli.run(
-                [sys.executable, "-c", probe],
-                options=u.Cli.ProcessOptions(env=probe_env),
+                [sys.executable, "-c", probe, *arguments],
+                options=m.Cli.ProcessOptions(env=probe_env),
                 cwd=cwd,
             ),
         )

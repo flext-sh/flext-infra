@@ -8,12 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen._conform.existing_plan import (
-    FlextInfraCodegenConformExistingPlan,
-)
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra import c, m, p, r, t, u
+from flext_infra.codegen._conform import FlextInfraCodegenConformExistingPlan
+from flext_infra.deps import FlextInfraPyprojectModernizer
 
 
 class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):
@@ -80,11 +77,11 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         # root aggregates subproject trees it has not declared here.
         tooling_result = modernizer.resolve_tooling_context(
             m.Infra.ToolingContextRequest(
+                planned_sources={},
                 project_name=target.repository.distribution,
                 package_name=project.package_name,
                 path=root / c.PYPROJECT_FILENAME,
                 scaffold_project=codegen.scaffold.project,
-                upstream=project.upstream,
                 runtime_dependency_overlay=project.runtime_dependency_overlay,
                 declared_project_dependencies=(),
                 topology=m.Infra.PyprojectDeclaredTopology(
@@ -301,7 +298,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
 
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        root = render_inputs.target.root
         pyproject_entry = next(
             (
                 entry
@@ -312,43 +308,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         )
         if pyproject_entry is None:
             return result_type.ok(planned)
-        planned_sources = {
-            plan.path: plan.desired_content.decode(c.Cli.ENCODING_DEFAULT)
-            for plan in planned
-            if plan.path.suffix == c.Infra.EXT_PYTHON
-            and plan.desired_content is not None
-        }
-        tooling = render_inputs.tooling_runtime
-        rebinds = u.Infra.facade_rebind_modules(root, planned_sources)
-        type_checking = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
-        runtime_bases = u.Infra.runtime_evaluated_base_classes(
-            root,
-            planned_sources,
-            type_checking.runtime_evaluated_roots,
-        )
-        first_party = tuple(
-            FlextInfraToolTablesPhase.first_party_namespaces(
-                path=root,
-                planned_sources=tuple(planned_sources),
-            ),
-        )
-        if (
-            rebinds == tuple(tooling.mypy_facade_rebind_modules)
-            and first_party == tuple(tooling.first_party)
-            and runtime_bases == tuple(tooling.ruff_runtime_evaluated_base_classes)
-        ):
+        final_inputs = self.planned_source_render_inputs(render_inputs, planned)
+        if final_inputs is render_inputs:
             return result_type.ok(planned)
-        final_inputs = render_inputs.model_copy(
-            update={
-                "tooling_runtime": tooling.model_copy(
-                    update={
-                        "mypy_facade_rebind_modules": rebinds,
-                        "ruff_runtime_evaluated_base_classes": runtime_bases,
-                        "first_party": first_party,
-                    },
-                ),
-            },
-        )
         context = self._project_render_context(
             final_inputs,
             planned_data_files=tuple(
@@ -406,8 +368,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         rendered_content = self.compose_project_artifact(
             root,
             destination,
-            rendered.value,
+            rendered.value.rendered,
             render_inputs=render_inputs,
+            source_states=rendered.value.source_states,
         )
         if rendered_content.failure:
             return result_type.from_failure(rendered_content)
@@ -436,21 +399,21 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         workspace: m.Infra.WorkspaceSpec,
         render_inputs: m.Infra.CodegenRenderInputs,
         context: m.Infra.ProjectRenderContext,
-    ) -> p.Result[str]:
+    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Render one scaffold entry's source bytes.
 
         Returns:
-            The resulting ``p.Result[str]``.
+            Rendered artifact and its captured template sources.
 
         """
         project = workspace.project
         if project is None:
-            return r[str].fail(
+            return r[m.Infra.CodegenArtifactComposition].fail(
                 f"scaffold workspace has no project metadata: {workspace.name}",
             )
         if entry.delegate != c.Infra.TemplateDelegate.MANIFEST:
             if entry.source is None:
-                return r[str].fail(
+                return r[m.Infra.CodegenArtifactComposition].fail(
                     f"render entry has no template source: {destination}",
                 )
             return self._rendered_artifact_source(
@@ -465,7 +428,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
         manifest_path = Path(c.CONFIG_DIR_NAME) / c.Infra.WORKSPACE_MANIFEST_FILENAME
         if Path(destination) != manifest_path:
-            return r[str].fail(
+            return r[m.Infra.CodegenArtifactComposition].fail(
                 f"manifest delegate has an invalid destination: {destination}",
             )
         manifest = m.Infra.WorkspaceManifestSpec(
@@ -479,12 +442,14 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             integration=workspace.integration,
         )
         return u.Cli.yaml_roundtrip_dump_text(
-            manifest.model_dump(
-                mode="json",
-                exclude_none=True,
-                exclude_computed_fields=True,
+            u.Cli.yaml_deep_to_commented(
+                manifest.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                    exclude_computed_fields=True,
+                ),
             ),
-        )
+        ).map(lambda content: m.Infra.CodegenArtifactComposition(rendered=content))
 
 
 __all__: list[str] = ["FlextInfraCodegenConformScaffoldPlan"]

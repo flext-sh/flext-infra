@@ -14,10 +14,8 @@ from flext_cli import u
 from git import GitCommandError
 
 from flext_infra import c, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
-    FlextInfraUtilitiesGitWorktreeIO,
-)
+from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeDiscoveryMixin
 
 if TYPE_CHECKING:
     from git import Repo
@@ -274,7 +272,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 ".",
                 *pathspecs,
                 strip_newline_in_stdout=False,
-            ).encode(c.Cli.ENCODING_DEFAULT, errors="surrogateescape")
+            ).encode(c.DEFAULT_ENCODING, errors="surrogateescape")
             for layer in ((), ("--cached",))
         )
         deleted = frozenset(

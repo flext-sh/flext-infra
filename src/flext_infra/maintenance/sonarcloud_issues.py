@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.maintenance.sonarcloud_client import FlextInfraSonarcloudClient
+from flext_infra.maintenance import FlextInfraSonarcloudClient
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -28,6 +28,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``t.VariadicTuple[t.Pair[str, str]]``.
+
         """
         return (
             ("componentKeys", project_key),
@@ -41,9 +42,24 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
     def execute(self) -> p.Result[bool]:
         """Read every page, then print findings only after complete accounting.
 
+        A missing ``SONAR_TOKEN`` is the operator-ruled declared skip
+        (run-if-available-else-skip, 2026-10-08): loud, green, and never a
+        failure; a present but malformed token still fails.
+
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
+        token_result = self.optional_token()
+        if token_result.failure:
+            return r[bool].from_failure(token_result)
+        if not token_result.value.get_secret_value():
+            u.Cli.info(
+                "SKIP: sonarcloud-issues — SONAR_TOKEN not available "
+                "(ai-hub credential ingress); operator ruling 2026-10-08 "
+                "run-if-available-else-skip",
+            )
+            return r[bool].ok(value=False)
         authenticated = self._authenticated_scope()
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
@@ -71,9 +87,9 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
         if credentials.failure:
             return result_type.from_failure(credentials)
         token, key = credentials.value
-        branch = u.Infra.repository_baseline_branch(
+        branch = u.Infra.resolve_integration_branch(
             self.repository_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
         if branch.failure:
             return result_type.from_failure(branch)
@@ -133,7 +149,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
                     )
                 seen.add(issue.key)
                 findings.append(issue)
-            if total is not None and len(findings) > total:
+            if len(findings) > total:
                 return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
                     "SonarCloud returned more issues than its total",
                 )

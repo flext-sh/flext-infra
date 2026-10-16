@@ -12,7 +12,7 @@ from typing import Annotated, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
 class FlextInfraConfigModelsMakeDocs:
@@ -93,13 +93,6 @@ class FlextInfraConfigModelsMakeDocs:
                 description="Placeholder GitHub orgs that must be rewritten",
             ),
         ] = ("organization",)
-        github_repos: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMakeDocs.DocsGithubRepoSpec],
-            m.Field(
-                default=(),
-                description="Governed org/repo/branch map for cross-repo doc URLs",
-            ),
-        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_actions(self) -> Self:

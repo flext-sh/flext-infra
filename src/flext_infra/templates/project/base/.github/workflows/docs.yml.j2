@@ -36,6 +36,7 @@ jobs:
     # backend in Sync workspace toolchain), and docs generation reads the
     # governed sibling repos. The job token authenticates both, as in CI.
     env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
       GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
     steps:
       - name: Checkout
@@ -80,13 +81,13 @@ jobs:
         run: |
           set -eu
           for report_root in .reports apps; do
-            if [ -d "$report_root" ]; then
-              find "$report_root" \
+            if [ -d "${report_root}" ]; then
+              find "${report_root}" \
                 \( {% for name in docs_report_filenames %}{% if not loop.first %}-o {% endif %}-path '*/{{ name }}' {% endfor %}\) \
                 -type f -exec sh -eu -c '
                   for report_file do
-                    printf "::group::%s\n" "$report_file"
-                    tail -n 80 "$report_file"
+                    printf "::group::%s\n" "${report_file}"
+                    tail -n 80 "${report_file}"
                     printf "::endgroup::\n"
                   done
                 ' sh {} +
@@ -121,6 +122,7 @@ jobs:
       pages: write
     # Why: same authenticated toolchain and docs-source resolution as docs-quality.
     env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
       GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
     steps:
       - name: Checkout

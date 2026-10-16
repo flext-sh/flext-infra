@@ -11,10 +11,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra, settings
-from tests import c, m, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDynamicEnvironmentCutover:
@@ -81,12 +80,12 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         tm.that(remaining, empty=True)
         path.write_text(sources[path], encoding="utf-8")
         key = str(config.Infra.codegen.make.mypy_cache.data_home_environment_variable)
-        environment: dict[str, str] = {} if value is None else {key: value}
+        environment: t.StrDict = {} if value is None else {key: value}
         mode = "missing-required" if required and value is None else "value"
         output = tm.ok(
             u.Cli.run_raw(
                 (sys.executable, "-I", str(path), mode),
-                options=u.Cli.ProcessOptions(
+                options=m.Cli.ProcessOptions(
                     env=environment,
                     remove_env_keys=(key,) if value is None else (),
                 ),
@@ -118,11 +117,11 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         tm.fail(result, has="typed-config provenance")
 
     @staticmethod
-    def _finding(path: Path, access: str) -> m.Infra.ModScanFinding:
+    def _finding(path: Path, access: str) -> m.Infra.ModOccurrence:
         rule = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[
             c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
         ]
-        return m.Infra.ModScanFinding(
+        return m.Infra.ModOccurrence(
             rule_file=f"{rule}.yml",
             rule_id=rule,
             repository="fixture",
@@ -131,5 +130,4 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             text=access,
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )

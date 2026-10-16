@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-from tests import c, t, u
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

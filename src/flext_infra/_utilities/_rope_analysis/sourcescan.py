@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import ast
 from collections.abc import MutableMapping
+from functools import cache
 from typing import ClassVar
 
 from flext_infra import t
-from flext_infra._utilities import FlextInfraUtilitiesRopeAnalysisAstHelpers
+from flext_infra._utilities._rope_analysis.asthelpers import (
+    FlextInfraUtilitiesRopeAnalysisAstHelpers,
+)
 
 
 class FlextInfraUtilitiesRopeAnalysisSourceScan:
@@ -386,8 +389,73 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 and value.args
             ):
                 value = value.args[0]
+            if (
+                isinstance(value, ast.Call)
+                and isinstance(value.func, ast.Name)
+                and value.func.id == "build_lazy_import_map"
+                and value.args
+            ):
+                inner = value.args[0]
+                if (
+                    isinstance(inner, ast.Call)
+                    and isinstance(inner.func, ast.Name)
+                    and inner.func.id == "MappingProxyType"
+                    and inner.args
+                ):
+                    inner = inner.args[0]
+                value = (
+                    FlextInfraUtilitiesRopeAnalysisSourceScan._expanded_lazy_import_map(
+                        inner,
+                    )
+                )
             return value if isinstance(value, ast.Dict) else None
         return None
+
+    @staticmethod
+    def _expanded_lazy_import_map(mapping: ast.expr) -> ast.expr | None:
+        """Expand the declared ``module: alias-tuple`` build input.
+
+        ``build_lazy_import_map`` receives the authoring shape — one entry
+        per module mapping to its export aliases — while the installer
+        consumes the resolved shape, one entry per alias pointing back at
+        its module. The scanner reads the authoring shape and expands it
+        statically, so a generated module declares exactly what it
+        installs and the declared-mapping invariant holds for the idiom
+        the base template emits.
+
+        Returns:
+            The expanded literal dict node, or None when the input is not
+            a static string mapping.
+
+        """
+        if not isinstance(mapping, ast.Dict):
+            return None
+        keys: list[ast.expr | None] = []
+        values: list[ast.expr] = []
+        for module_key, aliases in zip(mapping.keys, mapping.values, strict=True):
+            if not isinstance(module_key, ast.Constant) or not isinstance(
+                module_key.value,
+                str,
+            ):
+                return None
+            if not isinstance(aliases, ast.Tuple | ast.List):
+                return None
+            for alias in aliases.elts:
+                if not isinstance(alias, ast.Constant) or not isinstance(
+                    alias.value,
+                    str,
+                ):
+                    return None
+                keys.append(ast.Constant(value=alias.value))
+                values.append(
+                    ast.Tuple(
+                        elts=[
+                            ast.Constant(value=module_key.value),
+                            ast.Constant(value=""),
+                        ],
+                    ),
+                )
+        return ast.Dict(keys=keys, values=values)
 
     @staticmethod
     def _first_call(source: str, function_name: str) -> ast.Call | None:
@@ -441,11 +509,14 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return ((), FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(public_exports))
 
     @classmethod
+    @cache
     def lazy_import_mapping_source(
         cls,
         source: str,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Read elected installer targets, including immutable inline mappings.
+
+        Cache parsing by exact source content, not a path or filesystem timestamp.
 
         Returns:
             Target modules and their export names, plus referenced map symbols.
@@ -533,3 +604,6 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                         )
                         target_map[local] = module_name
         return target_map
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisSourceScan"]

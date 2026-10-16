@@ -14,10 +14,9 @@ from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra, p
-from tests import c, t, u
+from tests import c, t, tm, u
 
 # NOTE(flext-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
 # the only fixture owner; conftest must not re-export or shadow its fixtures.
@@ -33,6 +32,21 @@ _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
 
 
 @pytest.fixture
+def rope_contract_consumer(
+    tmp_path: Path,
+) -> Iterator[t.Pair[p.Infra.RopeWorkspaceDsl, Path]]:
+    """Compose the inherited workspace factory with a real public Rope session.
+
+    Yields:
+        The live workspace and its isolated consumer source path.
+
+    """
+    root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+    with infra.rope_workspace(root) as workspace:
+        yield workspace, package / "consumer.py"
+
+
+@pytest.fixture
 def rope_workspace(tmp_path: Path) -> Iterator[p.Infra.RopeWorkspaceDsl]:
     """Provide one real Rope workspace through the public composition root.
 
@@ -44,13 +58,76 @@ def rope_workspace(tmp_path: Path) -> Iterator[p.Infra.RopeWorkspaceDsl]:
         yield workspace
 
 
+@pytest.fixture
+def constants_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+    """Use the shared real project factory for constants phase consumers.
+
+    Returns:
+        The governed workspace root and its package directory.
+
+    """
+    return u.Tests.create_lazy_init_workspace(tmp_path)
+
+
+@pytest.fixture
+def constant_candidate(
+    constants_workspace: t.Pair[Path, Path],
+) -> t.Tests.SourceCandidate:
+    """Publish a public constants plan only after its complete fixed-point check.
+
+    Returns:
+        A factory that checks and publishes the complete source candidate.
+
+    """
+    root, _package = constants_workspace
+
+    def candidate(
+        sources: t.MappingKV[Path, str], expected_paths: t.VariadicTuple[Path]
+    ) -> t.MappingKV[Path, str]:
+        """Validate the phase through its public entry point.
+
+        Returns:
+            The published sources after a proven fixed point.
+
+        """
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        with infra.rope_workspace(root) as workspace:
+            phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=workspace, sources=sources
+                )
+            )
+            tm.that(tuple(edit.file_path for edit in edits), eq=expected_paths)
+            proposed = {
+                **sources,
+                **{edit.file_path: edit.updated_source for edit in edits},
+            }
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        phase, rope_workspace=workspace, sources=proposed
+                    )
+                ),
+                empty=True,
+            )
+        for path, source in proposed.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        return proposed
+
+    return candidate
+
+
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Isolate the suite's FLEXT caches and snapshot the tracked codegen config.
 
     Gates resolve their persistent caches (codemod rule catalogs, Mypy) below
     ``XDG_CACHE_HOME``; a unit test writes only inside session-owned storage,
     so the session scopes that home to one temporary directory per worker and
-    restores the environment on exit.
+    restores the environment on exit. The native UV source cache selected
+    before that isolation is preserved, so hermetic Git fixtures can read the
+    provisioned objects.
 
     Root cause (flext-eles2): dependency-floor rewrite tests exercised the
     public ``--rewrite-constraints`` entry point through workspaces that never
@@ -64,12 +141,14 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     suite, current and future.
     """
     spec = config.Infra.codegen.make.codemod_rules_cache
+    uv_cache = u.Cli.capture([c.Infra.UV, "cache", "dir"]).unwrap().strip()
     isolation = ExitStack()
     cache_home = isolation.enter_context(
         tempfile.TemporaryDirectory(prefix="xdg-cache-"),
     )
     isolation.enter_context(
         u.Tests.env_vars_context({
+            "UV_CACHE_DIR": uv_cache,
             spec.data_home_environment_variable: cache_home,
         }),
     )
@@ -100,6 +179,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
     Raises:
         ValueError: If requires_engine arguments must be canonical engine names.
+
     """
     policy = config.Infra.codegen.make.ci
     if u.Infra.env_value(policy.variable).strip() != policy.value:
@@ -172,22 +252,22 @@ def infra_test_workspace(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def infra_subprocess() -> u.Cli:
+def infra_subprocess() -> p.Cli.CommandRunner:
     """Provide the public CLI utility facade for subprocess tests.
 
     Returns:
-        The resulting ``u.Cli``.
+        The public command runner implemented by ``u.Cli``.
 
     """
     return u.Cli()
 
 
 @pytest.fixture
-def infra_toml() -> u.Cli:
+def infra_toml() -> p.Cli.CommandRunner:
     """Provide the public CLI utility facade for TOML tests.
 
     Returns:
-        The resulting ``u.Cli``.
+        The public command runner implemented by ``u.Cli``.
 
     """
     return u.Cli()
@@ -250,7 +330,7 @@ def infra_selection() -> u.Infra:
 
 @pytest.fixture
 def infra_safe_command_output(
-    infra_subprocess: u.Cli,
+    infra_subprocess: p.Cli.CommandRunner,
     infra_test_workspace: Path,
 ) -> str:
     """Capture successful public command output inside the test workspace.
@@ -288,8 +368,12 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
     """
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    # The governed tree above the clone carries the committed Taplo pin.
-    u.Tests.seed_locked_taplo(infra_test_workspace.parent)
+    # The governed tree above the clone carries the committed Mise
+    # declaration and lock that activate its locked tools.
+    u.Tests.copy_tracked_mise_seeds(infra_test_workspace.parent)
+    # The repository carries its own committed lock: the declaration the
+    # conform publishes into it resolves only against its sibling mise.lock.
+    u.Tests.seed_locked_taplo(repo)
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
     u.Tests.write_project_beads_config(repo, config.Infra.name)

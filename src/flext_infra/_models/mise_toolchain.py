@@ -6,9 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
+from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-from flext_core import m, t
+from flext_core import m
+
+from flext_infra import c, t
 
 
 class FlextInfraModelsMiseToolchain:
@@ -96,6 +100,150 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
+    class MiseToolVersionProbe(_ConfigContract):
+        """Declared command whose output proves the provisioned tool version.
+
+        The setup reality proof resolves ``binary`` through ``mise which``,
+        runs it with ``arguments``, and searches the output for ``pattern``
+        with its single ``{version}`` placeholder replaced by the escaped
+        mise.lock version. The probe is data; no tool has a default probe.
+        """
+
+        tool: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Declared prerequisite tool key owning an external probe executable"
+                )
+            ),
+        ] = None
+        resources: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Exact relative installed resources authenticated before an "
+                    "external probe"
+                )
+            ),
+        ] = ()
+        binary: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Executable name resolved through `mise which`"),
+        ]
+        arguments: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Arguments that make the binary print its version"),
+        ]
+        pattern: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Multiline regular expression the probe output must match; "
+                    "exactly one `{version}` placeholder stands for the escaped "
+                    "mise.lock version"
+                ),
+            ),
+        ]
+        environment: Annotated[
+            t.StrMapping,
+            m.Field(
+                description=(
+                    "Environment overrides the probe process receives; empty "
+                    "for every tool whose version command prints only its "
+                    "identity"
+                ),
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
+
+        @m.model_validator(mode="after")
+        def _validate_pattern(self) -> Self:
+            """Require one version placeholder and a compilable expression.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If the pattern carries no single placeholder.
+
+            """
+            placeholder = "{version}"
+            if self.pattern.count(placeholder) != 1:
+                msg = (
+                    "version_probe.pattern must carry exactly one "
+                    f"{placeholder} placeholder: {self.pattern}"
+                )
+                raise ValueError(msg)
+            # A malformed expression raises re.PatternError unchanged here.
+            re.compile(self.pattern.replace(placeholder, "0"))
+            if self.tool is not None and not self.resources:
+                msg_0 = "external version probes require installed resources"
+                raise ValueError(msg_0)
+            for resource in self.resources:
+                parts = resource.split("/")
+                if any(
+                    not part or part in {".", ".."} or "\\" in part or "\0" in part
+                    for part in parts
+                ):
+                    msg_0 = "version probe resources require exact relative components"
+                    raise ValueError(msg_0)
+            return self
+
+    class MiseHttpToolOptions(_ConfigContract):
+        """Native HTTP backend declarations, projected without URL inference."""
+
+        url: Annotated[
+            t.NonEmptyStr, m.Field(description="Native HTTP artifact URL template")
+        ]
+        version_list_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Authoritative native release-list URL"),
+        ] = None
+        version_json_path: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native jq-like version extraction path"),
+        ] = None
+        version_regex: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native release-list extraction regular expression"),
+        ] = None
+        version_expr: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Native release-list expression")
+        ] = None
+        version_order: Annotated[
+            Literal["source", "semver"] | None,
+            m.Field(description="Native ordering of discovered releases"),
+        ] = None
+        checksum: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Declared native artifact digest")
+        ] = None
+        checksum_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Authoritative published checksum URL"),
+        ] = None
+        checksum_expr: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native checksum manifest expression"),
+        ] = None
+        format: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Native archive format")
+        ] = None
+        strip_components: Annotated[
+            int | None, m.Field(ge=0, description="Native archive directory stripping")
+        ] = None
+        bin_path: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native install-relative executable directory"),
+        ] = None
+
+    class MisePostinstallOptions(_ConfigContract):
+        """Native per-tool postinstall contract, including warm installation policy."""
+
+        run: Annotated[t.NonEmptyStr, m.Field(description="Native postinstall command")]
+        when: Annotated[
+            Literal["always"] | None,
+            m.Field(description="Run on every installation when explicitly declared"),
+        ] = None
+
     class MiseToolEntry(_ConfigContract):
         """One declarative fleet tool rendered into generated ``.mise.toml``.
 
@@ -117,8 +265,8 @@ class FlextInfraModelsMiseToolchain:
             m.Field(
                 default=None,
                 description=(
-                    "Full Mise selector (npm:, aqua:, github:) rendered as the "
-                    "[tools] key"
+                    "Full Mise selector (aqua:, github:) rendered as the "
+                    "[tools] key; the fleet toolchain has no npm: backend"
                 ),
             ),
         ] = None
@@ -141,17 +289,58 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = None
         form: Annotated[
-            Literal["scalar", "inline", "table"],
+            Literal["scalar", "table"],
             m.Field(
                 default="scalar",
                 description=(
                     "Rendered [tools] shape; the projection byte contract. "
-                    "scalar (default) is the bare assignment, inline declares "
-                    "the npm lifecycle approval (allow_builds derives from the "
-                    "npm selector), table carries version_prefix"
+                    "scalar (default) is the bare assignment, table carries "
+                    "version_prefix"
                 ),
             ),
         ] = "scalar"
+        http: Annotated[
+            FlextInfraModelsMiseToolchain.MiseHttpToolOptions | None,
+            m.Field(
+                description="Native HTTP backend options for a declared source artifact"
+            ),
+        ] = None
+        depends: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Declared tool keys installed before this tool"),
+        ] = ()
+        install_env: Annotated[
+            t.StrMapping,
+            m.Field(
+                description="Native installation environment, part of the tool identity"
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
+        postinstall: Annotated[
+            FlextInfraModelsMiseToolchain.MisePostinstallOptions | None,
+            m.Field(
+                description="Native source build or qualification after installation"
+            ),
+        ] = None
+        lock_checksum: Annotated[
+            bool,
+            m.Field(
+                default=True,
+                description=(
+                    "Whether the tool's current-platform mise.lock section "
+                    "must carry a checksum; false only for a tool whose "
+                    "upstream release metadata publishes none"
+                ),
+            ),
+        ] = True
+        version_probe: Annotated[
+            FlextInfraModelsMiseToolchain.MiseToolVersionProbe,
+            m.Field(
+                description=(
+                    "Command whose output proves the provisioned version in "
+                    "the setup reality proof; every tool declares one"
+                ),
+            ),
+        ]
 
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
@@ -170,15 +359,6 @@ class FlextInfraModelsMiseToolchain:
                     "Python toolchain line: major.minor ('3.13') or the full "
                     "install pin ('3.13.15') when the mise asset registry "
                     "requires it"
-                ),
-            ),
-        ]
-        worktree_environment_directory: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                pattern=r"^\.[A-Za-z][A-Za-z0-9._-]*$",
-                description=(
-                    "Sibling directory for physical linked-worktree environments"
                 ),
             ),
         ]
@@ -220,6 +400,20 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = ()
+        uv_override_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "PEP 508 overrides rendered into every generated "
+                    "[tool.uv] override-dependencies from this SSOT. Declared "
+                    "for consumers whose transitive dependency graph pins a "
+                    "flext family member on a different integration ref than "
+                    "the declared line: the override resolves the whole "
+                    "family to one provider and ref. The declared value "
+                    "replaces any retained value; empty removes the key."
+                ),
+            ),
+        ] = ()
         environment_path_prepends: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -243,14 +437,12 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = True
-        mise_locked: Annotated[
+        mise_disable_update_warning: Annotated[
             bool,
             m.Field(
                 description=(
-                    "Rendered as [settings] locked, [tool_config] locked, "
-                    "and bootstrap MISE_LOCKED. "
-                    "Keep true so setup installs only what mise.lock pins. "
-                    "Override toolchain.mise_locked."
+                    "Rendered as [settings] disable_update_warning. "
+                    "The self-managed Mise release moves through make upg."
                 ),
             ),
         ] = True
@@ -297,17 +489,6 @@ class FlextInfraModelsMiseToolchain:
                     "MISE_PYTHON_COMPILE. False restricts Python resolution "
                     "and installation to precompiled builds. "
                     "Override toolchain.python_compile."
-                ),
-            ),
-        ]
-        npm_package_manager: Annotated[
-            Literal["aube", "bun"],
-            m.Field(
-                description=(
-                    "Mise npm installer. aube replays the locked dependency "
-                    "graph; bun installs faster with --trust lifecycle "
-                    "approval and no aube sidecars (the lock keeps the "
-                    "top-level pin only). Operator choice 2026-10-05"
                 ),
             ),
         ]
@@ -366,6 +547,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``str``.
+
             """
             major, minor = self.python_version.split(".")[:2]
             next_minor = int(minor) + 1
@@ -378,6 +560,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``str``.
+
             """
             return self.python_version
 
@@ -388,6 +571,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: self.tool_version_pins.get(entry.name, entry.version)
@@ -401,6 +585,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: entry.selector
@@ -410,11 +595,53 @@ class FlextInfraModelsMiseToolchain:
 
         @m.computed_field
         @property
+        def tool_keys(self) -> t.MappingKV[str, str]:
+            """The [tools] key (selector, else name) of every fleet tool.
+
+            The same key names the tool's ``mise.lock`` table.
+
+            Returns:
+                The resulting ``t.MappingKV[str, str]``.
+
+            """
+            return {entry.name: entry.selector or entry.name for entry in self.tools}
+
+        @m.computed_field
+        @property
+        def mise_platforms_by_host(self) -> t.MappingKV[str, str]:
+            """Project the canonical host identities into shell case keys."""
+            return {
+                f"{system}/{machine}": platform
+                for (system, machine), platform in c.Infra.MISE_PLATFORM_BY_HOST.items()
+            }
+
+        @m.computed_field
+        @property
+        def mise_install_keys(self) -> t.VariadicTuple[str]:
+            """Every [tools] key the project declares, in projection order.
+
+            ``make setup``/``make upg`` pass this explicit list to
+            ``mise install`` so only the declared toolchain is provisioned,
+            never a tool from the operator's global Mise registry.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return (
+                "python",
+                self.mise_selector,
+                *(entry.selector or entry.name for entry in self.tools),
+            )
+
+        @m.computed_field
+        @property
         def tool_version_prefixes(self) -> t.MappingKV[str, str]:
             """Declared release tag prefix of every prefix-bearing fleet tool.
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: entry.version_prefix
@@ -486,15 +713,51 @@ class FlextInfraModelsMiseToolchain:
                     duplicate_names,
                 )
                 raise ValueError(msg)
-            keyless = sorted(
+            declared_keys = {"python", self.mise_selector, *self.tool_keys.values()}
+            undeclared_dependencies = sorted(
+                f"{entry.name}:{dependency}"
+                for entry in self.tools
+                for dependency in entry.depends
+                if dependency not in declared_keys
+            )
+            if undeclared_dependencies:
+                msg = (
+                    "tool installation dependencies must be declared tools: "
+                    + ", ".join(undeclared_dependencies)
+                )
+                raise ValueError(msg)
+            invalid_probes = sorted(
                 entry.name
                 for entry in self.tools
-                if entry.form in {"inline", "table"} and entry.selector is None
+                if entry.version_probe.tool is not None
+                and entry.version_probe.tool not in entry.depends
             )
-            if keyless:
+            if invalid_probes:
+                raise ValueError(
+                    "external probe tools must be declared installation dependencies: "
+                    + ", ".join(invalid_probes)
+                )
+            non_http = sorted(
+                entry.name
+                for entry in self.tools
+                if entry.http is not None
+                and not (entry.selector or entry.name).startswith("http:")
+            )
+            if non_http:
+                msg = "HTTP options require native HTTP selectors: " + ", ".join(
+                    non_http
+                )
+                raise ValueError(msg)
+            npm_backed = sorted(
+                entry.name
+                for entry in self.tools
+                if (entry.selector or entry.name).startswith("npm:")
+            )
+            if npm_backed:
                 msg = (
-                    "toolchain tools with inline/table form must declare their "
-                    "selector: " + ", ".join(keyless)
+                    "the fleet toolchain has no npm backend (ADR-025); "
+                    "declare a checksum-locked native selector for: "
+                    + ", ".join(npm_backed)
                 )
                 raise ValueError(msg)
             return self

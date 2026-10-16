@@ -113,6 +113,20 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ]
 
+    class RuffPylintConfig(m.ArbitraryTypesModel):
+        """Ruff Pylint policy for operator-approved native type descriptors."""
+
+        allow_dunder_method_names: Annotated[
+            t.SequenceOf[Literal["__base__", "__bases__"]],
+            m.Field(
+                alias="allow-dunder-method-names",
+                description=(
+                    "Only Python type.__base__ and type.__bases__ read-only "
+                    "protocol properties are authorized by the operator."
+                ),
+            ),
+        ]
+
     class RuffTypeCheckingConfig(m.ArbitraryTypesModel):
         """Ruff flake8-type-checking settings loaded from YAML."""
 
@@ -156,12 +170,69 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             m.Field(description="Why the rules cannot hold for this scope."),
         ]
 
+    class BanditAuthorizedException(m.ArbitraryTypesModel):
+        """One operator-authorized Bandit exception, scoped to owner modules.
+
+        Bandit applies a skip to a whole invocation and reads no per-path
+        exception, so the security gate audits the matching files in their own
+        invocation that skips only these tests; every other file keeps every
+        test. An entry missing its authority or reason is refused at load.
+        """
+
+        tests: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(min_length=1, description="Bandit test IDs the owners may raise."),
+        ]
+        files: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Project-relative globs of the owner modules, matched "
+                    "with full-path glob semantics."
+                ),
+            ),
+        ]
+        authority: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Operator ruling that authorized the exception."),
+        ]
+        reason: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Why the tests cannot hold for these owners."),
+        ]
+
+    class BanditConfig(m.ArbitraryTypesModel):
+        """Bandit security gate settings loaded from YAML."""
+
+        authorized_exceptions: Annotated[
+            tuple[FlextInfraModelsDepsToolConfigLinters.BanditAuthorizedException, ...],
+            m.Field(
+                alias="authorized-exceptions",
+                description=(
+                    "Operator-authorized Bandit exceptions, each audited in "
+                    "its own invocation that skips only its tests."
+                ),
+            ),
+        ]
+
     class RuffLintConfig(m.ArbitraryTypesModel):
         """Ruff lint settings loaded from YAML."""
 
         select: Annotated[
             t.StrSequence,
             m.Field(description="Ruff lint rule selectors."),
+        ] = m.Field(default_factory=tuple)
+        extend_select: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="extend-select",
+                description=(
+                    "Selectors enabled on top of the baseline selection; "
+                    "explicit selectors take precedence over the pydocstyle "
+                    "convention baseline in Ruff."
+                ),
+            ),
         ] = m.Field(default_factory=tuple)
         unfixable: Annotated[
             t.StrSequence,
@@ -213,11 +284,36 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
+        fix_recipe_phases: Annotated[
+            t.VariadicTuple[t.VariadicTuple[c.Infra.LintFixRecipe]],
+            m.Field(
+                alias="fix-recipe-phases",
+                description=(
+                    "Recipe phases make fix applies in order; Ruff re-reads "
+                    "the tree after each phase so a later phase sees the "
+                    "findings an earlier one created or cured."
+                ),
+            ),
+        ]
+        fix_recipe_residual: Annotated[
+            frozenset[c.Infra.LintFixRecipe],
+            m.Field(
+                alias="fix-recipe-residual",
+                description=(
+                    "Recipes whose findings may survive by law: their "
+                    "remainder stays a visible check finding for manual "
+                    "repair instead of failing make fix."
+                ),
+            ),
+        ]
         isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = m.Field(
             description="Ruff isort configuration",
         )
         pydocstyle: FlextInfraModelsDepsToolConfigLinters.RuffPydocstyleConfig = (
             m.Field(description="Ruff pydocstyle configuration")
+        )
+        pylint: FlextInfraModelsDepsToolConfigLinters.RuffPylintConfig = m.Field(
+            description="Ruff Pylint native type descriptor policy",
         )
         flake8_type_checking: Annotated[
             FlextInfraModelsDepsToolConfigLinters.RuffTypeCheckingConfig,
@@ -244,6 +340,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
             Returns:
                 The resulting ``t.StrSequence``.
+
             """
             return tuple(
                 sorted({
@@ -261,6 +358,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
             Returns:
                 The resulting ``t.Infra.PerFileIgnores``.
+
             """
             return {
                 pattern: tuple(

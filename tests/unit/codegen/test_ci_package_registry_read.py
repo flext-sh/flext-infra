@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c
-from tests import t, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraCiPackageRegistryRead:
@@ -49,7 +47,6 @@ class TestsFlextInfraCiPackageRegistryRead:
 
         tm.that(permissions["ci"], eq={"contents": "read", "packages": "read"})
         tm.that(permissions["release-plan"], eq={"contents": "read"})
-        tm.that(permissions["merge-guard"], eq={"contents": "read"})
 
     def test_undeclared_consumer_stays_contents_only(self) -> None:
         """Test undeclared consumer stays contents only."""

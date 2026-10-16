@@ -10,16 +10,15 @@ import ast
 import operator
 from collections.abc import MutableMapping
 from functools import cache
-from importlib import import_module
 from inspect import getfile
-from os.path import commonpath
 from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_cli import r, u
+import flext_core
+from flext_cli import u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
@@ -56,11 +55,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             ValueError: If ``not bound``.
 
         """
-        core = import_module(c.Infra.PKG_CORE_UNDERSCORE)
-        core_dir = Path(getfile(core)).parent
+        core_dir = Path(getfile(flext_core)).parent
         bound: MutableMapping[str, t.StrPair] = {}
         for layer in config.Infra.tooling.lazy_init.import_layer_order:
-            facade = getattr(core, layer, None)
+            facade = getattr(flext_core, layer, None)
             if not isinstance(facade, type):
                 continue
             module = facade.__module__.rpartition(".")[2]
@@ -69,7 +67,20 @@ class FlextInfraUtilitiesCodegenNamespace:
         if not bound:
             msg = f"{c.Infra.PKG_CORE_UNDERSCORE} binds no facade family"
             raise ValueError(msg)
-        stem = commonpath([name for _, name in bound.values()])
+        # The stem is the shared leading text of the class names, compared
+        # character by character: ``os.path.commonpath`` compares path
+        # components and yields "" for bare names, leaving full class names
+        # as suffixes (owners such as ``FlextFlextUtilitiesMapper``).
+        names = [name for _, name in bound.values()]
+        shortest = min(names, key=len)
+        stem = next(
+            (
+                shortest[:index]
+                for index, char in enumerate(shortest)
+                if any(name[index] != char for name in names)
+            ),
+            shortest,
+        )
         return MappingProxyType({
             letter: m.Infra.FacadeFamily(
                 letter=letter,
@@ -158,19 +169,6 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @classmethod
-    def surface_name(cls, package_name: str) -> str:
-        """Return the configured surface name for one import package.
-
-        Returns:
-            The configured surface name for one import package.
-
-        """
-        parts = tuple(part for part in package_name.split(".") if part)
-        if not parts:
-            return ""
-        return parts[0] if parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS else "src"
-
-    @classmethod
     def matches_project_namespace_package(cls, package_name: str) -> bool:
         """Return whether a package behaves like a project namespace root.
 
@@ -244,11 +242,11 @@ class FlextInfraUtilitiesCodegenNamespace:
         return root
 
     @classmethod
-    def _runtime_aliases(cls, package_dir: Path) -> t.StrSequence:
+    def _runtime_aliases(cls, package_dir: Path) -> t.VariadicTuple[str]:
         """Read root aliases from declarations, never from initializer outputs.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The canonical immutable alias tuple.
 
         """
         return tuple(
@@ -275,10 +273,9 @@ class FlextInfraUtilitiesCodegenNamespace:
             The resulting ``t.StrSequence``.
 
         Raises:
-            ValueError: If ``not isinstance(literal, (list, tuple)) or not
-                all((isinstance(item, str) for item in literal))``; or if a
-                ``(ValueError, SyntaxError)`` is caught; or if ``source_name not in
-                assignments``.
+            ValueError: If the ``tuple(<name>)`` alias names a missing
+                assignment, the value is not a Python literal, or the literal
+                is not a sequence of strings.
 
         """
         assignments: MutableMapping[str, ast.expr] = {}
@@ -313,12 +310,14 @@ class FlextInfraUtilitiesCodegenNamespace:
         except (ValueError, SyntaxError) as exc:
             msg = f"{file_path}: invalid __all__: {exc}"
             raise ValueError(msg) from exc
-        if not isinstance(literal, (list, tuple)) or not all(
-            isinstance(item, str) for item in literal
-        ):
+        # A str sequence contract rejects a bare string, a set or a mapping and
+        # every non-string item, so the literal is typed once at this boundary.
+        try:
+            names = t.Infra.STR_SEQ_ADAPTER.validate_python(literal)
+        except m.ValidationError as exc:
             msg = f"{file_path}: __all__ must contain only strings"
-            raise ValueError(msg)
-        return tuple(literal)
+            raise ValueError(msg) from exc
+        return tuple(names)
 
     @classmethod
     def _declared_exports(cls, file_path: Path) -> t.StrSequence:
@@ -756,6 +755,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         rope_project: t.Infra.RopeProject,
         rel_path: Path | None = None,
         current_pkg: str = "",
+        project_layout: m.Infra.RopeProjectLayout | None = None,
     ) -> m.Infra.NamespaceModulePolicy:
         """Enrich publication declarations with repair and inherited-shape evidence.
 
@@ -771,12 +771,19 @@ class FlextInfraUtilitiesCodegenNamespace:
             rope_project=rope_project,
             rel_path=rel_path,
             current_pkg=current_pkg,
+            project_layout=project_layout,
         )
-        project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+        project_root = (
+            project_layout.project_root
+            if project_layout is not None
+            else FlextInfraUtilitiesDiscovery.project_root(file_path)
+        )
         # A stub is never a facade source (Rope loads only Python sources).
         if project_root is None or file_path.suffix != c.Infra.EXT_PYTHON:
             return policy
-        layout = cls.layout(project_root)
+        layout = (
+            project_layout if project_layout is not None else cls.layout(project_root)
+        )
         if file_path.parent.parent != project_root and (
             layout is None or file_path.parent != layout.package_dir
         ):
@@ -1060,7 +1067,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         module_path = project_path / module
         if not module_path.is_file():
             return ()
-        return module_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
+        return module_path.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
 
     @classmethod
     def _build_violation_key(

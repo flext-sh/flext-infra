@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 from flext_infra import c, t
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeStatusMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeStatusMixin
 
 
 class FlextInfraUtilitiesGitWorktreeMeasureMixin(

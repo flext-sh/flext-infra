@@ -9,10 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_cli import r
-
-from flext_infra import c, m, p, t, u
-from flext_infra.base import s
+from flext_infra import FlextInfraGitLanes, c, m, p, r, s, t, u
 
 
 class FlextInfraWorktreeService(s[str]):
@@ -239,7 +236,7 @@ class FlextInfraWorktreeService(s[str]):
 
     @classmethod
     def setup_lane(cls, lane: Path) -> p.Result[bool]:
-        """Provision an isolated environment inside one lane.
+        """Provision one lane in its own physical environment inside the lane.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -280,13 +277,34 @@ class FlextInfraWorktreeService(s[str]):
             return r[str].fail("worktree add requires --apply")
         if base.startswith("-"):
             return r[str].fail(f"invalid base commitish: {base}")
-        base_oid = self._resolved_base(primary_root, base)
-        if base_oid.failure:
-            return r[str].from_failure(base_oid)
-        lane = self._new_lane_path(primary_root, branch)
-        if lane.failure:
-            return r[str].from_failure(lane)
-        return self._create_lane(primary_root, lane.value, branch, base_oid.value)
+        return (
+            u.Infra
+            .git_verify_lane(
+                m.Infra.GitLaneVerificationRequest(
+                    repo_root=self.repository_root,
+                    operation="create",
+                    candidate=base,
+                ),
+            )
+            .flat_map(lambda _admitted: self._resolved_base(primary_root, base))
+            .flat_map(
+                lambda base_oid: (
+                    FlextInfraGitLanes
+                    .admit_lane(primary_root, branch, base_oid)
+                    .flat_map(
+                        lambda _admission: self._new_lane_path(primary_root, branch)
+                    )
+                    .flat_map(
+                        lambda lane: self._create_lane(
+                            primary_root,
+                            lane,
+                            branch,
+                            base_oid,
+                        ),
+                    )
+                ),
+            )
+        )
 
     @staticmethod
     def _resolved_base(primary_root: Path, base: str) -> p.Result[str]:
@@ -472,10 +490,12 @@ class FlextInfraWorktreeService(s[str]):
                 f"worktree remove refuses lane {branch} while children are "
                 f"registered: {nested}",
             )
-        removed = u.Infra.git_remove_clean_worktree(primary_root, lane)
-        if removed.failure:
-            return r[str].from_failure(removed)
-        return r[str].ok(str(lane))
+        integrated = FlextInfraGitLanes.verify_retirement(primary_root, branch)
+        if integrated.failure:
+            return r[str].from_failure(integrated)
+        return u.Infra.git_remove_clean_worktree(primary_root, lane).map(
+            lambda _: str(lane),
+        )
 
     def _update(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
         """Merge-forward one clean canonical lane to the requested base.

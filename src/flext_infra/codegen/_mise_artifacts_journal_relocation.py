@@ -1,4 +1,4 @@
-"""Relocation of a durable generation journal onto a moved physical worktree.
+"""Authenticated physical-scope relocation for durable generation journals.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,13 +9,85 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import m, p, r, t, u
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
 
 
 class FlextInfraMiseArtifactsJournalRelocation:
-    """Rebind authenticated journal paths when the same worktree was moved."""
+    """Rebind paths only after proving the journal's unchanged physical owners."""
+
+    @classmethod
+    def source_record(
+        cls,
+        phase: str,
+        source: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
+        previous: m.Infra.CodegenJournalSource | None = None,
+        *,
+        path: Path | None = None,
+    ) -> p.Result[m.Infra.CodegenJournalSource]:
+        """Encode the physical source witness shared by journals and verification.
+
+        Returns:
+            The authenticated source record or its original witness failure.
+
+        """
+        if isinstance(source, m.Cli.AtomicDirectoryChainPlan):
+            if path is None or path.parent != source.target:
+                return r[m.Infra.CodegenJournalSource].fail(
+                    "absent output requires its exact captured parent witness",
+                )
+            return r[m.Infra.CodegenJournalSource].ok(
+                m.Infra.CodegenJournalSource(
+                    phase=phase,
+                    path=path,
+                    parent_device=None,
+                    parent_inode=None,
+                    sha256=None,
+                    mode=None,
+                    device=None,
+                    inode=None,
+                    link_count=None,
+                    absent_parent=source,
+                )
+            )
+        absent_parent = None
+        if source.parent_device is None or source.parent_inode is None:
+            if previous is not None:
+                absent_parent = previous.absent_parent
+            else:
+                witness = u.Cli.atomic_plan_directory_chain(source.path.parent)
+                if witness.failure:
+                    return r[m.Infra.CodegenJournalSource].from_failure(witness)
+                absent_parent = witness.value
+        incomplete_source = source.content is not None and any((
+            source.mode is None,
+            source.device is None,
+            source.inode is None,
+            source.link_count is None,
+            source.link_count is not None and source.link_count < 1,
+        ))
+        if incomplete_source:
+            return r[m.Infra.CodegenJournalSource].fail(
+                f"generation source identity is incomplete: {source.path}",
+            )
+        return r[m.Infra.CodegenJournalSource].ok(
+            m.Infra.CodegenJournalSource(
+                phase=phase,
+                path=source.path,
+                role=previous.role if previous is not None else None,
+                parent_device=source.parent_device,
+                parent_inode=source.parent_inode,
+                sha256=files.digest(source.content)
+                if source.content is not None
+                else None,
+                mode=source.mode,
+                device=source.device,
+                inode=source.inode,
+                link_count=source.link_count,
+                file_attributes=source.file_attributes,
+                reparse_tag=source.reparse_tag,
+                absent_parent=absent_parent,
+            ),
+        )
 
     @classmethod
     def _relocate_journal(
@@ -39,7 +111,7 @@ class FlextInfraMiseArtifactsJournalRelocation:
         relocated = cls._relocated_bodies(layout, journal, relocation_root)
         if relocated.failure:
             return result_type.from_failure(relocated)
-        sources, directories = relocated.value
+        sources, directories, staging_intents = relocated.value
         validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
             m.Infra.CodegenTransactionJournal,
             {
@@ -47,6 +119,7 @@ class FlextInfraMiseArtifactsJournalRelocation:
                 "file_participants": layout.file_participants,
                 "sources": sources,
                 "directories": directories,
+                "staging_intents": staging_intents,
             },
         )
         if validated.failure:
@@ -81,6 +154,29 @@ class FlextInfraMiseArtifactsJournalRelocation:
             return r[t.Pair[Path, bool]].ok((layout.scope_root, False))
         return r[t.Pair[Path, bool]].ok((recorded_root.value, True))
 
+    @staticmethod
+    def _verified_relocation_participants(
+        recorded_participants: t.MappingKV[str, m.Infra.CodegenFileParticipant],
+        current_participants: t.MappingKV[str, m.Infra.CodegenFileParticipant],
+    ) -> p.Result[bool]:
+        """Require identical participant inventories and physical identities.
+
+        Returns:
+            Whether the recorded participants match the current layout.
+
+        """
+        if recorded_participants.keys() != current_participants.keys():
+            return r[bool].fail(
+                "generation journal file participant inventory changed",
+            )
+        for selector, recorded in recorded_participants.items():
+            current = current_participants[selector]
+            if (recorded.device, recorded.inode) != (current.device, current.inode):
+                return r[bool].fail(
+                    f"generation journal file participant changed: {selector}",
+                )
+        return r[bool].ok(value=True)
+
     @classmethod
     def _relocated_bodies(
         cls,
@@ -88,23 +184,23 @@ class FlextInfraMiseArtifactsJournalRelocation:
         journal: m.Infra.CodegenTransactionJournal,
         recorded_root: Path,
     ) -> p.Result[
-        t.Pair[
+        t.Triple[
             t.VariadicTuple[m.Infra.CodegenJournalSource],
             t.VariadicTuple[m.Infra.CodegenJournalDirectory],
+            t.VariadicTuple[m.Infra.CodegenStagingIntent],
         ]
     ]:
-        """Rebind every journal source and directory onto the current scope.
+        """Rebind sources, directories, and staging intentions onto the scope.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.VariadicTuple[
-                m.Infra.CodegenJournalSource], t.VariadicTuple[
-                m.Infra.CodegenJournalDirectory]]]``.
+            The three ordered inventories with their physical identities retained.
 
         """
         result_type = r[
-            t.Pair[
+            t.Triple[
                 t.VariadicTuple[m.Infra.CodegenJournalSource],
                 t.VariadicTuple[m.Infra.CodegenJournalDirectory],
+                t.VariadicTuple[m.Infra.CodegenStagingIntent],
             ]
         ]
         recorded_participants = {
@@ -115,16 +211,12 @@ class FlextInfraMiseArtifactsJournalRelocation:
             participant.selector: participant
             for participant in layout.file_participants
         }
-        if recorded_participants.keys() != current_participants.keys():
-            return result_type.fail(
-                "generation journal file participant inventory changed",
-            )
-        for selector, recorded in recorded_participants.items():
-            current = current_participants[selector]
-            if (recorded.device, recorded.inode) != (current.device, current.inode):
-                return result_type.fail(
-                    f"generation journal file participant changed: {selector}",
-                )
+        verified = cls._verified_relocation_participants(
+            recorded_participants,
+            current_participants,
+        )
+        if verified.failure:
+            return result_type.from_failure(verified)
         sources: list[m.Infra.CodegenJournalSource] = []
         directories: list[m.Infra.CodegenJournalDirectory] = []
         for source in journal.sources:
@@ -154,7 +246,33 @@ class FlextInfraMiseArtifactsJournalRelocation:
             if relocated.failure:
                 return result_type.from_failure(relocated)
             directories.append(relocated.value)
-        return result_type.ok((tuple(sources), tuple(directories)))
+        intents: list[m.Infra.CodegenStagingIntent] = []
+        for intent in journal.staging_intents:
+            previous_root, current_root = cls._relocation_roots(
+                intent.before.path,
+                recorded_root,
+                layout.scope_root,
+                recorded_participants,
+                current_participants,
+            )
+            rebound = cls._relocated_path(
+                intent.before.path,
+                previous_root,
+                current_root,
+            )
+            if rebound.failure:
+                return result_type.from_failure(rebound)
+            created = intent.created
+            if created is not None:
+                created = created.model_copy(update={"path": rebound.value})
+            intents.append(
+                m.Infra.CodegenStagingIntent.model_validate({
+                    **intent.model_dump(),
+                    "before": intent.before.model_copy(update={"path": rebound.value}),
+                    "created": created,
+                }),
+            )
+        return result_type.ok((tuple(sources), tuple(directories), tuple(intents)))
 
     @classmethod
     def _relocated_directory(
@@ -221,7 +339,12 @@ class FlextInfraMiseArtifactsJournalRelocation:
         journal: m.Infra.CodegenTransactionJournal,
         current_scope: Path,
     ) -> p.Result[Path]:
-        candidates: set[Path] = set()
+        candidates = {
+            participant.root
+            for participant in journal.file_participants
+            if (participant.device, participant.inode)
+            == (journal.scope_device, journal.scope_inode)
+        }
         participants = {
             participant.selector: participant.root
             for participant in journal.file_participants

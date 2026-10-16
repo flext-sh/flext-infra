@@ -1,0 +1,10 @@
+id: rewire-test-assert-result-not-ok
+valid:
+  - assert not result.success
+  - |
+    from tests import tm
+    assert not result.success, 'rejected'
+invalid:
+  - |
+    from tests import tm
+    assert not result.success

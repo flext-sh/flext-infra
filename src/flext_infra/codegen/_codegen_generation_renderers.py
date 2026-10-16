@@ -9,10 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import u
-from flext_infra.codegen._codegen_generation_lazy_entries import (
-    FlextInfraCodegenGenerationLazyEntriesMixin,
-)
+from flext_infra import FlextInfraConfig, u
+from flext_infra.codegen import FlextInfraCodegenGenerationLazyEntriesMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -36,7 +34,9 @@ class FlextInfraCodegenGenerationRenderersMixin(
             ValueError: If lazy-init template escapes its source root.
 
         """
-        template_root = (Path(__file__).resolve().parent.parent / "templates").resolve()
+        template_root = (
+            FlextInfraConfig.ssot_config_dir().parent / "templates"
+        ).resolve()
         template_path = (template_root / template_name).resolve()
         if not template_path.is_relative_to(template_root):
             msg = f"lazy-init template escapes its source root: {template_name}"

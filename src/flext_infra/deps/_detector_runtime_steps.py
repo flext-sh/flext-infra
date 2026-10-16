@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra._settings import settings
+from flext_infra import c, m, p, r, settings, t, u
 
 
 class FlextInfraDependencyDetectorRuntimeSteps:
@@ -107,12 +106,9 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         if deptry_result.failure:
             return r[bool].from_failure(deptry_result)
         issues, _ = deptry_result.value
-        governed = deps_service.govern_deptry_issues(project_path, issues)
-        if governed.failure:
-            return r[bool].from_failure(governed)
         project_payload = deps_service.build_project_report(
             project_name,
-            governed.value,
+            issues,
         )
         projects_report[project_name] = dict(project_payload.model_dump())
         run_typings_for_project = (

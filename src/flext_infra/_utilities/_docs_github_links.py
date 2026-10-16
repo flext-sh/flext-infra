@@ -1,7 +1,6 @@
 """GitHub cross-repo doc URL policy for the flext-infra docs engine.
 
-Resolves governed org/repo/branch maps from ``make.docs.github_repos`` and
-rewrites stale placeholder organizations / wrong working-line branches.
+Resolves repository identity and branch facts from native Git declarations.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,13 +10,22 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from flext_infra import c, m, t
-from flext_infra._config import FlextInfraConfig, config
+from flext_infra import FlextInfraConfig, c, config, m, t
+from flext_infra._utilities._git.remote import FlextInfraUtilitiesGitRemote
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 
 # Concrete-owner imports: this module resolves during the root's lazy ``u``
 # export, when the root namespace is still initializing — a root from-import
 # would re-enter the partial namespace and fail.
+
+_GITHUB_REPO_PATH_SEGMENTS = 2
+"""A GitHub repository path is exactly ``<organization>/<repository>``."""
 
 
 class FlextInfraUtilitiesDocsGithubLinks:
@@ -29,14 +37,87 @@ class FlextInfraUtilitiesDocsGithubLinks:
         return config
 
     @staticmethod
-    def docs_github_repos() -> t.VariadicTuple[m.Infra.DocsGithubRepoSpec]:
-        """Return the typed GitHub repo map from make.docs SSOT.
+    def docs_github_repos(
+        repository_root: Path,
+    ) -> t.VariadicTuple[m.Infra.DocsGithubRepoSpec]:
+        """Derive typed GitHub repositories from origin and .gitmodules.
 
         Returns:
-            The typed GitHub repo map from make.docs SSOT.
+            Declared URL, branch and exact local checkout facts.
+
+        Raises:
+            ValueError: If documentation Git declaration has no branch; or if GitHub
+                declaration must name one owner and repository.
 
         """
-        return config.Infra.codegen.make.docs.github_repos
+        root = (
+            FlextInfraUtilitiesGit
+            .git_repository_root(
+                m.Infra.GitRepoRequest(repo_root=repository_root),
+            )
+            .unwrap()
+            .repository_root
+        )
+        identity = FlextInfraUtilitiesGit.git_identity(
+            m.Infra.GitRepoRequest(repo_root=root),
+        ).unwrap()
+        if identity.superproject_root is not None:
+            root = identity.superproject_root
+            identity = FlextInfraUtilitiesGit.git_identity(
+                m.Infra.GitRepoRequest(repo_root=root),
+            ).unwrap()
+        inputs = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+            root
+        ).unwrap()
+        integration = FlextInfraUtilitiesRepository.resolve_integration_branch(
+            root,
+            policy_branch=inputs.spec.branch_policy.integration_branch,
+            inputs=inputs,
+        ).unwrap()
+        declarations: list[t.Triple[str, str, Path]] = []
+        if identity.origin_remote is not None:
+            declarations.append(
+                (
+                    identity.origin_remote,
+                    integration,
+                    root,
+                ),
+            )
+        members = FlextInfraUtilitiesGit.git_submodule_declarations(
+            root,
+        ).unwrap()
+        for member in members:
+            branch = integration if member.branch == "." else member.branch
+            if not branch:
+                message = f"documentation Git declaration has no branch: {member.path}"
+                raise ValueError(message)
+            declarations.append((member.url, branch, root / member.path))
+        repositories: list[m.Infra.DocsGithubRepoSpec] = []
+        for url, branch, checkout in declarations:
+            canonical = FlextInfraUtilitiesGitRemote.canonical_origin_remote(url)
+            if canonical.startswith("git@github.com:"):
+                path = canonical.removeprefix("git@github.com:")
+            else:
+                parsed = urlsplit(canonical)
+                if parsed.hostname != "github.com":
+                    continue
+                path = parsed.path.strip("/")
+            pieces = path.removesuffix(".git").split("/")
+            if len(pieces) != _GITHUB_REPO_PATH_SEGMENTS or not all(pieces):
+                message = (
+                    f"GitHub declaration must name one owner and repository: {url}"
+                )
+                raise ValueError(message)
+            organization, repository = pieces
+            repositories.append(
+                m.Infra.DocsGithubRepoSpec(
+                    organization=organization,
+                    repository=repository,
+                    branch=branch,
+                    local_checkout=str(checkout),
+                ),
+            )
+        return tuple(repositories)
 
     @staticmethod
     def docs_stale_github_organizations() -> frozenset[str]:
@@ -54,6 +135,8 @@ class FlextInfraUtilitiesDocsGithubLinks:
     def docs_github_repo_lookup(
         organization: str,
         repository: str,
+        *,
+        repository_root: Path,
     ) -> m.Infra.DocsGithubRepoSpec | None:
         """Find one governed repo by organization and repository name.
 
@@ -61,19 +144,11 @@ class FlextInfraUtilitiesDocsGithubLinks:
             The resulting ``m.Infra.DocsGithubRepoSpec | None``.
 
         """
-        for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos():
+        for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(
+            repository_root
+        ):
             if repo.organization == organization and repo.repository == repository:
                 return repo
-        # Monorepo members published under flext-sh/<member> map to flext checkout.
-        if organization == "flext-sh" and repository.startswith("flext-"):
-            for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos():
-                if repo.organization == "flext-sh" and repo.repository == "flext":
-                    return m.Infra.DocsGithubRepoSpec(
-                        organization=repo.organization,
-                        repository=repository,
-                        branch=repo.branch,
-                        local_checkout=repo.local_checkout,
-                    )
         return None
 
     @staticmethod
@@ -123,6 +198,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
         path: str,
         *,
         is_dir: bool = False,
+        repository_root: Path,
     ) -> str | None:
         """Build a canonical GitHub URL for a governed repository path.
 
@@ -133,6 +209,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
         repo = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup(
             organization,
             repository,
+            repository_root=repository_root,
         )
         if repo is None:
             return None
@@ -143,7 +220,11 @@ class FlextInfraUtilitiesDocsGithubLinks:
         )
 
     @staticmethod
-    def docs_rewrite_github_url(target: str) -> str | None:
+    def docs_rewrite_github_url(
+        target: str,
+        *,
+        repository_root: Path,
+    ) -> str | None:
         """Rewrite a stale org placeholder when the ref is the governed branch.
 
         A different ref is never rewritten: refs may contain ``/``, so its
@@ -171,14 +252,20 @@ class FlextInfraUtilitiesDocsGithubLinks:
         stale = FlextInfraUtilitiesDocsGithubLinks.docs_stale_github_organizations()
         lookup_org = org
         if org in stale:
-            # Prefer flext-sh for flext-* repos; otherwise leave unresolved.
-            if repository == "flext" or repository.startswith("flext-"):
-                lookup_org = "flext-sh"
-            else:
+            matches = tuple(
+                repo
+                for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(
+                    repository_root,
+                )
+                if repo.repository == repository
+            )
+            if len(matches) != 1:
                 return None
+            lookup_org = matches[0].organization
         repo = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup(
             lookup_org,
             repository,
+            repository_root=repository_root,
         )
         if repo is None:
             return None
@@ -196,7 +283,11 @@ class FlextInfraUtilitiesDocsGithubLinks:
         )
 
     @staticmethod
-    def docs_github_local_path(target: str) -> Path | None:
+    def docs_github_local_path(
+        target: str,
+        *,
+        repository_root: Path,
+    ) -> Path | None:
         """Resolve a governed GitHub URL to a local checkout path when configured.
 
         Returns:
@@ -213,6 +304,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
         repo = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup(
             org,
             repository,
+            repository_root=repository_root,
         )
         if repo is None:
             return None
@@ -229,16 +321,12 @@ class FlextInfraUtilitiesDocsGithubLinks:
             return None
         return FlextInfraUtilitiesDocsGithubLinks._github_member_path(
             root,
-            repo,
-            repository,
             governed_path,
         )
 
     @staticmethod
     def _github_member_path(
         root: Path,
-        repo: m.Infra.DocsGithubRepoSpec,
-        repository: str,
         path: str,
     ) -> Path:
         """Join one local checkout root with its governed relative path.
@@ -247,17 +335,6 @@ class FlextInfraUtilitiesDocsGithubLinks:
             The resulting ``Path``.
 
         """
-        # Member repos under flext monorepo: flext-sh/flext-core -> ~/flext/flext-core
-        if (
-            repo.organization == "flext-sh"
-            and repository.startswith("flext-")
-            and repository != "flext"
-            and repo.repository == repository
-        ):
-            member_root = root / repository if root.name == "flext" else root
-            return member_root / path
-        if repository.startswith("flext-") and repo.repository == "flext":
-            return root / repository / path
         return root / path
 
     @staticmethod
@@ -267,6 +344,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
         line_number: int,
         raw: str,
         target: str,
+        repository_root: Path,
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Emit audit issues for stale or locally-missing GitHub doc URLs.
 
@@ -296,6 +374,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
         repo = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup(
             org,
             repository,
+            repository_root=repository_root,
         )
         if (
             repo is not None
@@ -316,7 +395,10 @@ class FlextInfraUtilitiesDocsGithubLinks:
                     ),
                 ),
             )
-        local = FlextInfraUtilitiesDocsGithubLinks.docs_github_local_path(target)
+        local = FlextInfraUtilitiesDocsGithubLinks.docs_github_local_path(
+            target,
+            repository_root=repository_root,
+        )
         if local is not None and not local.exists():
             issues.append(
                 m.Infra.AuditIssue(

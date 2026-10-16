@@ -11,10 +11,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraConfig, c, infra, m
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraRenameCampaignMod:
@@ -67,7 +66,7 @@ class TestsFlextInfraRenameCampaignMod:
                     str(mod_workspace),
                     *(("--apply",) if apply else ()),
                 ),
-                options=u.Cli.ProcessOptions(
+                options=m.Cli.ProcessOptions(
                     env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
                 ),
             ),
@@ -177,7 +176,7 @@ class TestsFlextInfraRenameCampaignMod:
                     str(mod_workspace),
                     "--apply",
                 ),
-                options=u.Cli.ProcessOptions(
+                options=m.Cli.ProcessOptions(
                     env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
                 ),
             ),
@@ -232,7 +231,7 @@ class TestsFlextInfraRenameCampaignMod:
                     str(mod_workspace),
                     "--apply",
                 ),
-                options=u.Cli.ProcessOptions(
+                options=m.Cli.ProcessOptions(
                     env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
                 ),
             ),

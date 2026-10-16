@@ -17,8 +17,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesIterationWorkspace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeSourceBases,
+)
+from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope_source_bases_runtime import (
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 
 
@@ -148,6 +152,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
             Returns:
                 The resulting ``set[str]``.
+
             """
             names = set[str]()
             for base in node.bases:
@@ -243,24 +248,21 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # Generated package inits are projections excluded from the class
         # inventory, yet their install_lazy_exports maps own the namespace
         # aliases (m, p, t and siblings) that facade-qualified bases resolve
-        # through. Read those maps from disk so resolution can rewrite
+        # through. Read those captured maps so resolution can rewrite
         # ``<pkg>.<alias>`` targets to their provider modules.
-        extra_module_aliases: dict[str, str] = {}
-        owned = {path for path, _ in sources.values()}
-        for init_path in sorted(root.rglob("__init__.py")):
-            resolved = init_path.resolve()
-            if resolved in owned or not init_path.is_file():
+        extra_module_aliases: t.StrDict = {}
+        for init_module, (init_path, init_source) in sorted(sources.items()):
+            if init_path.name != c.Infra.INIT_PY:
                 continue
-            init_module = cls.module_name_for_file(init_path, project_root=root)
-            if not init_module:
-                continue
+            # Include the project's own barrel aliases; planned bytes already
+            # override disk in the captured source mapping.
             for (
                 alias,
                 absolute,
             ) in FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 init_module,
                 init_path,
-                init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                init_source,
             ).items():
                 extra_module_aliases.setdefault(
                     f"{init_module}.{alias}",
@@ -291,11 +293,14 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 if member.is_dir() and (member / "src").is_dir()
             ),
         ]
-        with FlextInfraUtilitiesRopeCore.open_project(
-            workspace_root,
-            project_roots=project_roots,
-        ) as project:
-            return FlextInfraUtilitiesRopeSourceBases.runtime_bases(
+        with (
+            FlextInfraUtilitiesRopeCore.open_project(
+                workspace_root,
+                project_roots=project_roots,
+            ) as project,
+            project.frozen_layout(),
+        ):
+            return FlextInfraUtilitiesRopeSourceBasesRuntime.runtime_bases(
                 project,
                 sources,
                 roots,
@@ -320,7 +325,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             ).unwrap()
             for file_path in files:
                 source = file_path.read_text(
-                    encoding=c.Cli.ENCODING_DEFAULT,
+                    encoding=c.DEFAULT_ENCODING,
                 )
                 sources[file_path.resolve()] = source
         for file_path, source in planned_sources.items():
@@ -337,7 +342,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         """
         if file_path.name != c.Infra.INIT_PYI:
             return False
-        return file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).startswith(
+        return file_path.read_text(encoding=c.DEFAULT_ENCODING).startswith(
             c.Infra.AUTOGEN_HEADERS,
         )
 
@@ -481,43 +486,37 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         rope_project: t.Infra.RopeProject,
         resolved_root: Path,
     ) -> t.VariadicTuple[Path]:
-        """Return indexed sources, declared wrapper modules, and typing stubs.
+        """Return Python and stub sources in the canonical declared source scope.
 
         Returns:
-            Indexed sources, declared wrapper modules, and typing stubs.
+            Python and stub sources in the canonical declared source scope.
 
         """
+        rope_root = Path(rope_project.address).resolve()
         governed_roots = cls._governed_roots(resolved_root)
-        python_paths = {
-            path.resolve()
-            for path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project)
-            if not set(path.relative_to(resolved_root).parts) & cls._excluded_parts()
-            and not cls._inside_nested_repository(
-                path,
-                resolved_root,
-                governed_roots=governed_roots,
+        source_paths = (
+            (resolved_root / relative).resolve()
+            for relative in (
+                FlextInfraUtilitiesProjectDiscovery.ast_grep_scan_targets(resolved_root)
             )
-        }
-        # Rope's source roots omit tests/examples/scripts;
-        # index those declared wrapper surfaces so explicitly targeted codegen
-        # can update their generated initializers without textual fallbacks.
-        wrapper_paths = {
-            path.resolve()
-            for wrapper_name in c.Infra.ROOT_WRAPPER_SEGMENTS
-            for wrapper_root in (resolved_root / wrapper_name,)
-            if wrapper_root.is_dir()
-            for path in wrapper_root.rglob("*.py")
-            if path.is_file()
-            and not set(path.relative_to(resolved_root).parts) & cls._excluded_parts()
-            and not cls._inside_nested_repository(
-                path,
-                resolved_root,
-                governed_roots=governed_roots,
-            )
-        }
-        stub_paths = cls._pruned_stub_file_paths(resolved_root)
+        )
         return tuple(
-            sorted(python_paths | wrapper_paths | stub_paths, key=Path.as_posix),
+            sorted(
+                {
+                    path
+                    for path in source_paths
+                    if path.is_relative_to(resolved_root)
+                    and path.is_relative_to(rope_root)
+                    and not set(path.relative_to(resolved_root).parts)
+                    & cls._excluded_parts()
+                    and not cls._inside_nested_repository(
+                        path,
+                        resolved_root,
+                        governed_roots=governed_roots,
+                    )
+                },
+                key=Path.as_posix,
+            ),
         )
 
     @classmethod

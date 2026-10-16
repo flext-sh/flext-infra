@@ -10,28 +10,34 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p, t
-from flext_infra.gates.bandit import FlextInfraBanditGate
+from flext_cli import u
+
+from flext_infra import c, p, r, t
+from flext_infra.gates import (
+    FlextInfraBanditGate,
+    FlextInfraConflictMarkersGate,
+    FlextInfraDepsGate,
+    FlextInfraDirenvGate,
+    FlextInfraDuplicationGate,
+    FlextInfraFreshImportGate,
+    FlextInfraIndexDeclarationsGate,
+    FlextInfraLayoutGate,
+    FlextInfraLocCapGate,
+    FlextInfraMarkdownCodeGate,
+    FlextInfraMarkdownFormatGate,
+    FlextInfraMarkdownGate,
+    FlextInfraMypyGate,
+    FlextInfraPyreflyGate,
+    FlextInfraPyrightGate,
+    FlextInfraRuffFormatGate,
+    FlextInfraRuffLintGate,
+    FlextInfraRuntimeCensusGate,
+    FlextInfraSmellsGate,
+)
 from flext_infra.gates.codemod import FlextInfraCodemodGate
-from flext_infra.gates.direnv import FlextInfraDirenvGate
-from flext_infra.gates.duplication import FlextInfraDuplicationGate
-from flext_infra.gates.fresh_import import FlextInfraFreshImportGate
-from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
-from flext_infra.gates.layout import FlextInfraLayoutGate
-from flext_infra.gates.loc_cap import FlextInfraLocCapGate
-from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
-from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
-from flext_infra.gates.mypy import FlextInfraMypyGate
-from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
-from flext_infra.gates.smells import FlextInfraSmellsGate
 
 if TYPE_CHECKING:
-    from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates import FlextInfraGate
 
 
 class FlextInfraGateRegistry:
@@ -83,6 +89,8 @@ class FlextInfraGateRegistry:
         """
         return (
             FlextInfraRuffLintGate,
+            FlextInfraConflictMarkersGate,
+            FlextInfraDepsGate,
             FlextInfraRuffFormatGate,
             FlextInfraPyreflyGate,
             FlextInfraMypyGate,
@@ -110,6 +118,48 @@ class FlextInfraGateRegistry:
 
         """
         return self._gates.get(gate_id)
+
+    def runtime_identity(
+        self,
+        gate_ids: t.StrSequence,
+        *,
+        installed_identity: str,
+    ) -> p.Result[str]:
+        """Fingerprint selected provisioned scanners through their existing owners.
+
+        Python module tools are bound by the shared installed-distribution owner.
+        Only declared scanner binaries participate here; no project/tool roster
+        is introduced.
+
+        Returns:
+            An opaque digest of actual selected external executable identities.
+
+        """
+        observed: list[str] = []
+        for gate_id in gate_ids:
+            gate = self.get(gate_id)
+            if gate is None:
+                return r[str].fail(
+                    f"unregistered gate has no runtime identity: {gate_id}"
+                )
+            if not gate.scanner_binary:
+                continue
+            executable = gate.resolve_binary()
+            if executable is None:
+                return r[str].fail(
+                    f"selected scanner is not provisioned: {gate.scanner_binary}",
+                )
+            content = u.Cli.files_read_binary(executable)
+            if content.failure:
+                return r[str].from_failure(content)
+            observed.append(
+                f"{gate_id}:{gate.scanner_binary}:{u.Cli.sha256_bytes(content.value)}",
+            )
+        return r[str].ok(
+            u.Cli.sha256_content(
+                "\n".join((installed_identity, *observed)),
+            )
+        )
 
     def create(self, gate_id: str, repository_root: Path) -> FlextInfraGate | None:
         """Instantiate one registered gate for ``repository_root`` when available.

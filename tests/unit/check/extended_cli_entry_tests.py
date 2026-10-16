@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import main
-from tests import c, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraExtendedCliEntry:
@@ -158,11 +156,9 @@ class TestsFlextInfraExtendedCliEntry:
                 str(relative_reports),
             ])
         tm.that(exit_code, eq=0)
-        tm.ok(u.Infra.check_report_findings(workspace, reports_dir=relative_reports))
-        tm.that(
-            (
-                workspace / relative_reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
-            ).is_file(),
-            eq=True,
+        (report_path,) = (workspace / relative_reports).glob(
+            f"*/{c.Infra.CHECK_REPORT_MARKDOWN_FILENAME}",
         )
+        tm.ok(u.Infra.check_report_findings(workspace, reports_dir=report_path.parent))
+        tm.that(report_path.is_file(), eq=True)
         tm.that((caller / relative_reports).exists(), eq=False)

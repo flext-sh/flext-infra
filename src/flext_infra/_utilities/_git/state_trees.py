@@ -10,10 +10,8 @@ import tempfile
 from pathlib import Path
 
 from flext_infra import m, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitStateSnapshotMixin,
-    FlextInfraUtilitiesGitWorktreeIO,
-)
+from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
+from flext_infra._utilities._git import FlextInfraUtilitiesGitStateSnapshotMixin
 
 
 class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotMixin):
@@ -46,7 +44,7 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
         return tuple(entries)
 
     @classmethod
-    def _state_index_update(
+    def state_index_update(
         cls,
         root: Path,
         removed: t.SequenceOf[Path],
@@ -54,7 +52,7 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
         *,
         index_file: Path | None = None,
     ) -> None:
-
+        """Apply removals and additions to the index selected by ``index_file``."""
         repo = cls._repo(root)
         with repo.git.custom_environment(
             GIT_INDEX_FILE=str(index_file) if index_file else None,
@@ -78,6 +76,15 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
         snapshot: m.Infra.GitWorktreeStateSnapshot,
         entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
     ) -> str:
+        """Write the captured tree through an isolated index and return its OID.
+
+        Returns:
+            The native Git object identifier without conversion.
+
+        Raises:
+            TypeError: If write-tree returned a non-text object identifier.
+
+        """
         repo = cls._repo(snapshot.repo_root)
         with tempfile.TemporaryDirectory(dir=repo.common_dir) as staging:
             index_path = str(Path(staging) / "index")
@@ -96,13 +103,17 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
                     if snapshot.paths
                     else ()
                 )
-                cls._state_index_update(
+                cls.state_index_update(
                     snapshot.repo_root,
                     removed,
                     entries,
                     index_file=Path(index_path),
                 )
-                return repo.git.write_tree()
+                oid = repo.git.write_tree()
+                if not isinstance(oid, str):
+                    msg = "write-tree returned a non-text object identifier"
+                    raise TypeError(msg)
+                return oid
 
     @classmethod
     def _state_working_entries(

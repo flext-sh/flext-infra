@@ -87,13 +87,10 @@ declares `script_dispatch`.
 
 ## Recovering this work
 
-For the namespace/runtime stabilization, start with
-`docs/roadmap/namespace-automation-handoff-2026-09-14.md`. Its opening table records the
-latest operator scope, branch/PR, measured runtime, first failed gate and next action;
-its body links the execution plan, ADRs and canonical Beads. Read that context before
-restarting discovery. Historical receipts do not validate a changed revision.
-`docs/guides/execution-context.md` defines how to keep this context useful without
-creating another tracker.
+For namespace/runtime stabilization, read `docs/guides/execution-context.md` and the
+active canonical Bead before restarting discovery. Preserve the declared scope,
+branch/PR, measured runtime, first failed gate and next action. Historical receipts
+do not validate a changed revision; execution context never becomes another tracker.
 
 ## Commands
 
@@ -102,8 +99,11 @@ consumer paths first, then make tests verify that contract. Never alter the envi
 to preserve an obsolete fixture or treat a passing test as proof of integrated runtime
 behavior.
 
-Generation performs one transaction per invocation. A changed source fails with its
-original diagnostic after authenticated rollback; it is never replanned automatically.
+Generation journals file effects and reports failures at each affected target.
+Independently valid effects remain published when another target fails; a changed
+unrelated file cannot invalidate the whole invocation. Preserve the first original
+exception and its traceback. Never roll back published files or restore old source;
+repair the causal owner forward and resume through the canonical command.
 Journal contention waits only for native EACCES/EAGAIN/EWOULDBLOCK and retains the lock file's
 identity. Other lease errors escape unchanged. Every Mise warning and failed declared
 entrypoint blocks publication; no message classifier converts either to success.
@@ -115,13 +115,15 @@ stops setup without disabling the declared lock policy or retrying. Repair the l
 through `make upg`. Generation and runtime verbs use those installed identities without
 installing or upgrading tools, and ignore host Mise tool declarations. Fix the
 configuration/templates when the lifecycle is wrong; do not install, resolve or
-synchronize dependencies manually. `APPLY` stays removed. Git dependencies follow
-each repository's declared integration branch tip unless `project.dependency_revisions`
-in `config/workspace.yaml` declares a full commit SHA for that external provider
-dependency. Codegen renders these pins into every dependency group and the matching uv
-transitive overrides; local workspace members cannot be overridden. Publish the validated change through
-a merge-commit PR into that integration branch and verify the remote merge SHA before
-claiming delivery.
+synchronize dependencies manually. `APPLY` stays removed. Preserve each dependency's
+declared source, constraints, extras and markers: a name/version requirement uses its
+package registry, and an explicit Git requirement keeps its declared URL and ref.
+Only upgrade advances resolved lock provenance. Git and `pyproject.toml` own
+repository identity, `.gitmodules` owns composition, and each repository owns its
+configuration differences. Local editable bindings are development environment
+facts, not distributed dependency metadata. Publish the validated change through a
+merge-commit PR into the declared integration branch and verify the remote merge SHA
+before claiming delivery.
 
 Every checkout owns its physical `.venv` directory. Setup and runtime verbs reject
 symlinked environments before bootstrap, environment activation, or hooks; they never

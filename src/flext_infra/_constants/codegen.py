@@ -14,12 +14,12 @@ from enum import StrEnum, unique
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._constants.codegen_detection import FlextInfraConstantsCodegenDetection
-from flext_infra._constants.codegen_lazy import FlextInfraConstantsCodegenLazy
-from flext_infra._constants.codegen_render_names import (
+from flext_infra._constants import (
+    FlextInfraConstantsCodegenDetection,
+    FlextInfraConstantsCodegenLazy,
     FlextInfraConstantsCodegenRenderNames,
+    FlextInfraConstantsWorkspace,
 )
-from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -33,6 +33,9 @@ class FlextInfraConstantsCodegen(
     """Namespace for all codegen-related constants."""
 
     MISE_ARTIFACTS_STATE_DIRECTORY: ClassVar[Path] = Path(".state") / "mise-artifacts"
+
+    MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: ClassVar[str] = "MISE_DATA_DIR"
+    """Env key routing the packaged mise bootstrap to its storage root."""
 
     CONFIG_SPEC: ClassVar[t.Pair[str, int]] = (
         FlextInfraConstantsWorkspace.MISE_TOML_FILENAME,

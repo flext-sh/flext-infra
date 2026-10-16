@@ -16,6 +16,69 @@ class FlextInfraUtilitiesManagedConflicts:
     """Recover only merge blocks authorized by the document owner."""
 
     @staticmethod
+    def _toml_quote_after_line(line: str, quote: str | None) -> str | None:
+        """Track TOML strings so apparent headers inside strings remain data.
+
+        Returns:
+            The delimiter of an open string, or None outside a string.
+
+        """
+        index = 0
+        while index < len(line):
+            character = line[index]
+            if quote is None:
+                if character == "#":
+                    break
+                if character in {"'", '"'}:
+                    quote = (
+                        character * c.Infra.TOML_MULTILINE_QUOTE_LENGTH
+                        if line.startswith(
+                            character * c.Infra.TOML_MULTILINE_QUOTE_LENGTH,
+                            index,
+                        )
+                        else character
+                    )
+                    index += len(quote)
+                    continue
+            elif quote.startswith('"') and character == "\\":
+                index += 2
+                continue
+            elif line.startswith(quote, index):
+                length = len(quote)
+                if length == c.Infra.TOML_MULTILINE_QUOTE_LENGTH:
+                    while line.startswith(quote[0], index + length):
+                        length += 1
+                index += length
+                quote = None
+                continue
+            index += 1
+        return quote
+
+    @classmethod
+    def pyproject_regeneration_source(cls, source: str) -> p.Result[str]:
+        """Keep custom TOML while declared tool tables regenerate from their owner.
+
+        Returns:
+            Custom source bytes, or the original ownership declaration failure.
+
+        """
+        spec = cls.pyproject_managed_file()
+        if spec.failure:
+            return r[str].from_failure(spec)
+        owned = tuple(f"tool.{name}" for name in spec.value.managed_tool_tables)
+        preserved: list[str] = []
+        quote: str | None = None
+        managed = False
+        for line in source.splitlines(keepends=True):
+            header = c.Infra.TOML_SECTION_HEADER_RE.match(line)
+            if quote is None and header is not None:
+                managed = cls.toml_section_is_owned(header.group(1), owned)
+            if not managed:
+                preserved.append(line)
+            quote = cls._toml_quote_after_line(line, quote)
+        return r[str].ok("".join(preserved))
+
+    @staticmethod
     def recover_managed_assignments(
         content: str,
         *,
@@ -25,6 +88,7 @@ class FlextInfraUtilitiesManagedConflicts:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         if u.Cli.toml_mapping_from_text(content) is not None:
             return r[str].ok(content)
@@ -88,7 +152,7 @@ class FlextInfraUtilitiesManagedConflicts:
             The pyproject ManagedFileSpec. Missing declaration is a bug.
 
         """
-        for item in config.Infra.codegen.managed_files:
+        for item in config.Infra.codegen.managed_file_specs:
             if item.path.as_posix() == c.PYPROJECT_FILENAME:
                 return r[m.Infra.ManagedFileSpec].ok(item)
         return r[m.Infra.ManagedFileSpec].fail(
@@ -168,7 +232,7 @@ class FlextInfraUtilitiesManagedConflicts:
                 recovered.append(line)
                 index += 1
                 continue
-            if control != "current":
+            if control != c.Infra.MergeConflictControl.CURRENT:
                 return r[str].fail("orphan TOML merge-control marker")
             if not FlextInfraUtilitiesManagedConflicts.toml_section_is_owned(
                 section,
@@ -221,7 +285,7 @@ class FlextInfraUtilitiesManagedConflicts:
         """
         while index < len(lines):
             control = FlextInfraUtilitiesBase.merge_conflict_control(lines[index])
-            if control == "separator":
+            if control == c.Infra.MergeConflictControl.SEPARATOR:
                 return r[int].ok(index)
             if control is not None:
                 return r[int].fail("nested or malformed TOML merge conflict")
@@ -244,7 +308,7 @@ class FlextInfraUtilitiesManagedConflicts:
         control = ""
         while index < len(lines):
             control = FlextInfraUtilitiesBase.merge_conflict_control(lines[index])
-            if control in {"ancestor", "separator"}:
+            if control in c.Infra.MERGE_CONFLICT_BRANCH_BOUNDARIES:
                 break
             if control is not None:
                 return pair.fail("nested or malformed TOML merge conflict")
@@ -252,7 +316,7 @@ class FlextInfraUtilitiesManagedConflicts:
             index += 1
         if index >= len(lines):
             return pair.fail("TOML merge conflict has no separator")
-        if control == "ancestor":
+        if control == c.Infra.MergeConflictControl.ANCESTOR:
             skipped = FlextInfraUtilitiesManagedConflicts._skipped_ancestor_side(
                 lines,
                 index + 1,
@@ -279,7 +343,7 @@ class FlextInfraUtilitiesManagedConflicts:
         """
         while index < len(lines):
             control = FlextInfraUtilitiesBase.merge_conflict_control(lines[index])
-            if control == "incoming":
+            if control == c.Infra.MergeConflictControl.INCOMING:
                 return r[int].ok(index)
             if control is not None:
                 return r[int].fail("nested or malformed TOML merge conflict")

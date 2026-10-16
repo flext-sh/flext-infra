@@ -9,17 +9,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, config, m, p, r, u
-from flext_infra.base import s
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import c, config, m, p, r, s, u
+from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraWorkspacePropagation(s[bool]):
-    """Carry this workspace's flext-infra projections and locks to every member.
+    """Carry this workspace's flext-infra projections to every member.
 
-    Each governed member is settled (conform, then lock) inside its own
-    publication lane; a member whose projections and lock do not change
+    Each governed member is conformed inside its own
+    publication lane; a member whose projections do not change
     publishes nothing. The first failure ends the run, nothing is merged, and
     every member checkout is left on its integration branch, so a rerun
     continues the same lanes and commits nothing new.
@@ -28,14 +27,13 @@ class FlextInfraWorkspacePropagation(s[bool]):
     conform_collaborators: Annotated[
         m.Infra.CodegenConformPorts | None,
         m.Field(
-            default=None,
             exclude=True,
             description=(
                 "Docs port bound by the FlextInfra facade; the settling "
                 "conform fails before any effect without it"
             ),
         ),
-    ]
+    ] = None
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -55,27 +53,33 @@ class FlextInfraWorkspacePropagation(s[bool]):
         revision = u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=root)
         if revision.failure:
             return r[bool].from_failure(revision)
-        for member in workspace.subprojects:
-            # Generation rewrites only mutable internal FLEXT repositories.
-            if (
-                member.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT
-                or member.codegen is c.Infra.CodegenKind.NONE
-                or member.read_only
-            ):
-                continue
-            propagated = self._propagate_member(
-                workspace,
-                member,
-                revision.value.strip(),
-            )
-            if propagated.failure:
-                return propagated
+        propagated = self._propagate_members(workspace, revision.value.strip())
+        if propagated.failure:
+            return propagated
         for consumer in workspace.external_consumers:
             propagated = self._propagate_external_consumer(
                 workspace,
                 consumer,
                 revision.value.strip(),
             )
+            if propagated.failure:
+                return propagated
+        return r[bool].ok(value=True)
+
+    def _propagate_members(
+        self,
+        workspace: m.Infra.WorkspaceSpec,
+        revision: str,
+    ) -> p.Result[bool]:
+        """Propagate mutable internal FLEXT projections without resolving locks.
+
+        Returns:
+            True when every member propagated, else the first failure.
+
+        """
+        members = u.Infra.mutable_flext_members(workspace)
+        for member in members:
+            propagated = self._propagate_member(workspace, member, revision)
             if propagated.failure:
                 return propagated
         return r[bool].ok(value=True)
@@ -103,7 +107,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
             )
         base = u.Infra.resolve_integration_branch(
             consumer_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
             declared=consumer.integration_branch,
         )
         if base.failure:
@@ -142,10 +146,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
             The resulting ``p.Result[bool]``.
 
         """
-        verbs: list[str] = []
-        if consumer.advance_locks:
-            verbs.append("upg")
-        verbs.append("gen")
+        verbs: list[str] = ["gen"]
         if consumer.fix_namespace:
             verbs.append("fix-namespace")
         if consumer.fix_accessors:
@@ -160,6 +161,21 @@ class FlextInfraWorkspacePropagation(s[bool]):
                 return r[bool].from_failure(settled)
         return r[bool].ok(value=True)
 
+    def _report_directory(self) -> p.Result[Path]:
+        """Ensure and return the propagation report directory.
+
+        Returns:
+            The resulting ``p.Result[Path]``.
+
+        """
+        return u.Cli.ensure_dir(
+            u.Cli.resolve_report_dir(
+                self.root,
+                c.Infra.PROJECT,
+                c.Infra.PROPAGATION_REPORT_KEY,
+            ),
+        )
+
     def _write_external_body(
         self,
         workspace: m.Infra.WorkspaceSpec,
@@ -172,13 +188,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
             The resulting ``p.Result[Path]``.
 
         """
-        directory = u.Cli.ensure_dir(
-            u.Cli.resolve_report_dir(
-                self.root,
-                c.Infra.PROJECT,
-                c.Infra.PROPAGATION_REPORT_KEY,
-            ),
-        )
+        directory = self._report_directory()
         if directory.failure:
             return r[Path].from_failure(directory)
         body = directory.value / f"external-{consumer.name}.md"
@@ -187,7 +197,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
             f"# Propagate the workspace flext-infra to {consumer.name}\n\n"
             f"`make propagate` at `{workspace.repository.name}` {revision} "
             "advanced this consumer's lane through its own canonical verbs "
-            "(upg, gen, fix-namespace, fix-accessors, fix, fmt). Nothing else"
+            "(gen, declared namespace/accessor repairs, fix, fmt). Nothing else"
             " changed.\n",
         )
         return written.map(lambda _written: body)
@@ -207,7 +217,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
         member_root = self.root / member.path
         base = u.Infra.resolve_integration_branch(
             member_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
             declared=(
                 workspace.integration.branch
                 if workspace.integration is not None
@@ -227,11 +237,14 @@ class FlextInfraWorkspacePropagation(s[bool]):
                 subject=c.Infra.PROPAGATION_COMMIT_SUBJECT,
                 body_file=body.value,
             ),
-            lambda: FlextInfraCodegenConform.settle_repository(
-                member_root,
+            lambda: FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=member_root,
+                    scope=c.Infra.CodegenConformScope.ALL,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                ),
                 ports=self.conform_collaborators,
-                refresh_git_peers=True,
-            ),
+            ).map(lambda _conformed: True),
         )
         if published.failure:
             return published
@@ -256,13 +269,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
             The resulting ``p.Result[Path]``.
 
         """
-        directory = u.Cli.ensure_dir(
-            u.Cli.resolve_report_dir(
-                self.root,
-                c.Infra.PROJECT,
-                c.Infra.PROPAGATION_REPORT_KEY,
-            ),
-        )
+        directory = self._report_directory()
         if directory.failure:
             return directory
         body = directory.value / f"{member.name}.md"
@@ -270,8 +277,8 @@ class FlextInfraWorkspacePropagation(s[bool]):
             body,
             f"# Propagate the workspace flext-infra to {member.name}\n\n"
             f"`make propagate` at `{workspace.repository.name}` {revision} "
-            "settled this member's managed projections (codegen conform) and "
-            "its lock (`uv lock`, no upgrade). Nothing else changed.\n",
+            "settled this member's managed projections (codegen conform). "
+            "Dependency resolution remains exclusive to explicit `make upg`.\n",
         )
         return written.map(lambda _written: body)
 

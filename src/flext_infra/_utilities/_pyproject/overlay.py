@@ -6,14 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import r, u
+from flext_cli import u
 
-from flext_infra import c, p, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesManagedConflicts,
+)
+from flext_infra._utilities._pyproject.requirements import (
     FlextInfraUtilitiesPyprojectRequirements,
 )
+
+_MEMBER_DEV_PROVENANCE = "flext: derived member environment"
 
 
 class FlextInfraUtilitiesPyprojectOverlay:
@@ -74,8 +78,10 @@ class FlextInfraUtilitiesPyprojectOverlay:
         owned_names = {
             FlextInfraUtilitiesDependencies.dep_name(item) for item in required
         }
-        return list[t.JsonValue](
-            sorted(
+        # The list display widens the sorted ``str`` items to the JSON value
+        # list the caller stores, in the single pass that materializes them.
+        return [
+            *sorted(
                 dict.fromkeys((
                     *required,
                     *(
@@ -87,7 +93,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 )),
                 key=FlextInfraUtilitiesPyprojectRequirements.dependency_order_key,
             ),
-        )
+        ]
 
     @classmethod
     def _overlay_project_surface(
@@ -122,18 +128,174 @@ class FlextInfraUtilitiesPyprojectOverlay:
         return r[t.JsonDict].ok(project)
 
     @staticmethod
+    def custom_dev_additions(
+        live_payload: t.JsonMapping,
+        live: str | None,
+        *,
+        group: str = str(c.Infra.DEV),
+    ) -> p.Result[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]:
+        """Remove only entries carrying this generator's explicit provenance.
+
+        Returns:
+            Native ordered CUSTOM entries, or their original parse failure.
+
+        """
+        groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+            tuple(groups),
+            group,
+        )
+        result_type = r[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]
+        values = u.validate_value(
+            m.Infra.DependencyGroupEntries,
+            groups.get(group, ()),
+        )
+        if values.failure:
+            return result_type.from_failure(values)
+        entries = values.value.root
+        if not entries or live is None:
+            return (
+                result_type.ok(())
+                if not entries
+                else result_type.fail("dev provenance requires its parsed source")
+            )
+        document = u.Cli.toml_parse_text(live)
+        if document is None:
+            return result_type.fail("dev provenance source is invalid TOML")
+        group_table = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if group_table is None:
+            return result_type.fail("dev provenance dependency groups are missing")
+        comments = u.Cli.toml_array_item_comments(group_table, group)
+        if len(comments) != len(entries):
+            return result_type.fail("dev provenance occurrence counts differ")
+        return result_type.ok(
+            tuple(
+                value
+                for value, comment in zip(entries, comments, strict=True)
+                if not isinstance(value, str)
+                or comment.removeprefix("#").strip() != _MEMBER_DEV_PROVENANCE
+            ),
+        )
+
+    @staticmethod
+    def sync_member_dev_provenance(
+        document: t.Cli.TomlDocument,
+        *,
+        custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        group: str = str(c.Infra.DEV),
+    ) -> None:
+        """Tag generated additions in the existing dev group, not another registry."""
+        groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
+        group_names: tuple[str, ...] = tuple(groups)
+        group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+            group_names,
+            group,
+        )
+        values = FlextInfraUtilitiesPyprojectRequirements.read_dependency_group(
+            groups,
+            group,
+        )
+        if not values:
+            return
+        custom_values = frozenset(custom)
+        generated = u.Cli.toml_array(()).multiline(multiline=False)
+        for value in values:
+            generated.add_line(
+                (
+                    value
+                    if isinstance(value, str)
+                    else value.model_dump(mode="json", by_alias=True)
+                ),
+                comment=(
+                    None
+                    if not isinstance(value, str) or value in custom_values
+                    else _MEMBER_DEV_PROVENANCE
+                ),
+            )
+        generated.add_line(indent="")
+        groups[group] = generated
+
+    @staticmethod
     def _overlay_dev_group(
         merged: t.MutableJsonMapping,
         live_payload: t.JsonMapping,
-    ) -> None:
-        """Preserve the live project dev additions before conformance floors."""
-        groups = dict(u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {})
+        live: str | None,
+    ) -> p.Result[bool]:
+        """Preserve CUSTOM environment additions before conformance floors.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        rendered_groups = dict(
+            u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {},
+        )
         live_groups = (
             u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
         )
-        if str(c.Infra.DEV) in live_groups:
-            groups[str(c.Infra.DEV)] = live_groups[str(c.Infra.DEV)]
-            merged[c.Infra.DEPENDENCY_GROUPS] = groups
+        groups = dict(rendered_groups)
+        for name, entries in live_groups.items():
+            authored_name = (
+                FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                    tuple(live_groups),
+                    name,
+                )
+            )
+            previous = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                tuple(groups),
+                authored_name,
+            )
+            if previous != authored_name:
+                groups.pop(previous, None)
+            groups[authored_name] = entries
+        for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
+            selected = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                tuple(groups),
+                str(group),
+            )
+            custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
+                live_payload,
+                live,
+                group=group,
+            )
+            if custom.failure:
+                return r[bool].from_failure(custom)
+            if group == c.Infra.DependencyGroup.CODEGEN:
+                required = u.validate_value(
+                    m.Infra.DependencyGroupEntries,
+                    rendered_groups.get(
+                        FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
+                            tuple(rendered_groups),
+                            str(group),
+                        ),
+                        (),
+                    ),
+                    strict=True,
+                )
+                if required.failure:
+                    return r[bool].from_failure(required)
+                groups[selected] = (
+                    FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
+                        FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
+                            required.value.root,
+                            custom.value,
+                        ),
+                    )
+                )
+            else:
+                groups[selected] = (
+                    FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
+                        custom.value,
+                    )
+                )
+        validated = u.validate_value(
+            m.Infra.DependencyGroupDeclarations,
+            {"dependency-groups": groups},
+        )
+        if validated.failure:
+            return r[bool].from_failure(validated)
+        merged[c.Infra.DEPENDENCY_GROUPS] = groups
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _overlay_tool_tables(
@@ -178,25 +340,39 @@ class FlextInfraUtilitiesPyprojectOverlay:
             if managed_tool_tables is None
             else managed_tool_tables
         )
-        rendered_payload = u.Cli.toml_mapping_from_text(rendered)
+        rendered_payload = u.Cli.toml_mapping_from_text_result(rendered)
         # An absent live file takes the same canonicalization path as a present
         # one: the projection is the parse-merge-dump form, so first publication
         # and every later conform produce byte-identical output (fixed point).
         empty_payload: t.JsonMapping = {}
         live_payload = (
-            u.Cli.toml_mapping_from_text(live) if live is not None else empty_payload
+            u.Cli.toml_mapping_from_text_result(live)
+            if live is not None
+            else r[t.JsonMapping].ok(empty_payload)
         )
-        if rendered_payload is None:
-            return r[str].fail("rendered pyproject is not valid TOML")
-        if live_payload is None:
-            return r[str].fail("live pyproject is not valid TOML")
-        merged = dict(rendered_payload)
-        project = cls._overlay_project_surface(merged, live_payload, project_keys)
+        if rendered_payload.failure:
+            return r[str].fail(
+                f"rendered pyproject is not valid TOML: {rendered_payload.error}",
+                error_code=rendered_payload.error_code,
+                error_data=rendered_payload.error_data,
+                exception=rendered_payload.exception,
+            )
+        if live_payload.failure:
+            return r[str].fail(
+                f"live pyproject is not valid TOML: {live_payload.error}",
+                error_code=live_payload.error_code,
+                error_data=live_payload.error_data,
+                exception=live_payload.exception,
+            )
+        merged = dict(rendered_payload.value)
+        project = cls._overlay_project_surface(merged, live_payload.value, project_keys)
         if project.failure:
             return r[str].from_failure(project)
         merged[c.Infra.PROJECT] = project.value
-        cls._overlay_dev_group(merged, live_payload)
-        cls._overlay_tool_tables(merged, live_payload, tool_tables)
+        dev = cls._overlay_dev_group(merged, live_payload.value, live)
+        if dev.failure:
+            return r[str].from_failure(dev)
+        cls._overlay_tool_tables(merged, live_payload.value, tool_tables)
         return r[str].ok(u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(merged)))
 
 

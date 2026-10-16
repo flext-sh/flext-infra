@@ -11,21 +11,16 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from flext_cli import m
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
-from flext_infra import t
-from flext_infra._constants import (
-    FlextInfraConstantsCodegenProject,
-    FlextInfraConstantsPromoted,
-    FlextInfraConstantsWorkspace,
-)
-from flext_infra._models import (
-    FlextInfraConfigModelsBeads,
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsMake,
-    FlextInfraConfigModelsRepository,
-    FlextInfraConfigModelsScaffold,
-    FlextInfraModelsDepsToolConfig,
-)
+from flext_infra import c, t
+from flext_infra._models import FlextInfraModelsDepsToolConfig
+from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.make import FlextInfraConfigModelsMake
+from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
+from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 
 
 class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
@@ -38,6 +33,20 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr,
             m.Field(description="Installed infrastructure CLI command"),
         ]
+        examples_module: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Repository-declared public examples module"),
+        ] = None
+        workspace_repositories: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
+            m.Field(description="Ordered workspace subproject records"),
+        ] = ()
+        environment_imports: Annotated[
+            t.VariadicTuple[t.Pair[t.NonEmptyStr, Path]],
+            m.Field(
+                description="Declared package names and source roots for diagnostics"
+            ),
+        ]
         pytest: Annotated[
             FlextInfraModelsDepsToolConfig.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
@@ -45,26 +54,30 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         environment_directory: Annotated[
             t.NonEmptyStr,
             m.Field(description="Runtime-root-local development environment"),
-        ] = FlextInfraConstantsWorkspace.ENVIRONMENT_DIRECTORY
-        worktree_environment_directory: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Declared sibling directory for linked worktree environments"
-                ),
-            ),
-        ]
+        ] = c.Infra.ENVIRONMENT_DIRECTORY
         contract_env_values: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="OPTIONS or HELP values that display a verb contract"),
-        ] = tuple(sorted(FlextInfraConstantsPromoted.PROMOTED_ENV_ENABLED_VALUES))
+        ] = tuple(sorted(c.Infra.PROMOTED_ENV_ENABLED_VALUES))
 
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
 
+        bootstrap_report_shell_literal: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Shell-quoted elected operation report scalar transport"
+            ),
+        ]
+        bootstrap_report_relative_path: Annotated[
+            Path,
+            m.Field(
+                description="Repository-relative early bootstrap evidence destination"
+            ),
+        ]
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
         package: Annotated[
@@ -79,13 +92,13 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.VariadicTuple[str],
             m.Field(description="Declared workspace subproject paths"),
         ] = ()
-        workspace_gitlinks: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.ManagedGitlinkSpec],
-            m.Field(description="Provider-resolved governed Git submodules"),
-        ] = ()
         uv_link_mode: Annotated[
             t.NonEmptyStr,
             m.Field(description="Configured uv installation link mode"),
+        ]
+        toolchain: Annotated[
+            FlextInfraConfigModelsContract.ToolchainSpec,
+            m.Field(description="Canonical toolchain consumed by native bootstrap"),
         ]
         mise_selector: Annotated[
             t.NonEmptyStr,
@@ -95,6 +108,17 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr,
             m.Field(
                 description="Declared mise release the running binary must match",
+            ),
+        ]
+        mise_install_tools: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Explicit [tools] keys `mise install` provisions in setup "
+                    "and upg, so the operator's global Mise registry is never "
+                    "installed by a project verb"
+                ),
             ),
         ]
         python_version: Annotated[
@@ -142,6 +166,12 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
+        owns_workspace_manifest: Annotated[
+            bool,
+            m.Field(
+                description="Whether this repository owns the workspace manifest",
+            ),
+        ] = False
         make: Annotated[
             FlextInfraConfigModelsMake.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -193,7 +223,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ]
         make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Generated Make execution profile"),
         ]
         repository_root_rel: Annotated[
@@ -210,14 +240,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         workspace_subprojects: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Ordered workspace subproject paths"),
-        ] = ()
-        workspace_repositories: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
-            m.Field(description="Ordered workspace subproject records"),
-        ] = ()
-        workspace_gitlinks: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.ManagedGitlinkSpec],
-            m.Field(description="Provider-resolved governed Git submodules"),
         ] = ()
         extra_verbs: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
@@ -248,10 +270,11 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         docs_audit: Annotated[
             FlextInfraConfigModelsContract.DocsAuditOverridesSpec,
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.DocsAuditOverridesSpec,
                 description="Repository-owned documentation audit declarations",
             ),
-        ]
+        ] = m.Field(
+            default_factory=FlextInfraConfigModelsContract.DocsAuditOverridesSpec
+        )
         namespace_scan_dirs: Annotated[
             t.StrSequence,
             m.Field(
@@ -280,35 +303,36 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
             Returns:
                 The resulting ``str``.
+
             """
             return f"{self.dist.upper().replace('-', '_')}_"
 
         @property
         def _config_base(self) -> FlextInfraConfigModelsScaffold.ScaffoldConfigBaseSpec:
-            """ENFORCE-042 config base selected from the declared profile.
+            """ENFORCE-042 config base selected from declared requirements.
 
-            The fleet-converged ``_config.py`` composes ``FlextSettings`` FIRST
-            with the project's capability base. The base is a property of the
-            declared dependency profile, never a per-project hand choice: the
+            The fleet-converged ``_config.py`` inherits only the project's frozen
+            config capability base, independently of runtime settings. The base
+            is a property of the target's own dependencies, never a per-project
+            hand choice: the
             first entry of ``scaffold.project.config_bases`` whose distribution
-            the profile depends on (its runtime requirements or its upstream).
+            target depends on (its runtime requirements or its upstream).
 
             Raises:
                 ValueError: If scaffold.project.config_bases declares no base for the
-                    dependency profile of.
+                    declared requirements of.
 
             """
-            profile = self.dependency_profile
             depended = {
-                requirement.split(">")[0].split("=")[0].split("[")[0].strip()
-                for requirement in profile.runtime
-            } | {profile.upstream.replace("_", "-")}
+                canonicalize_name(Requirement(requirement).name)
+                for requirement in self.project_dependencies
+            } | {canonicalize_name(self.upstream)}
             for base in self.scaffold.project.config_bases:
                 if base.distribution in depended:
                     return base
             msg = (
                 "scaffold.project.config_bases declares no base for the "
-                f"dependency profile of {self.dist}: {sorted(depended)}"
+                f"declared requirements of {self.dist}: {sorted(depended)}"
             )
             raise ValueError(msg)
 
@@ -319,6 +343,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
             Returns:
                 The resulting ``str``.
+
             """
             return self._config_base.class_name
 
@@ -329,6 +354,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
             Returns:
                 The resulting ``str``.
+
             """
             return self._config_base.module
 
@@ -347,9 +373,13 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
                 ),
             ),
         ]
-        dependency_profile: Annotated[
-            FlextInfraConfigModelsScaffold.ScaffoldDependencyProfileSpec,
-            m.Field(description="Resolved upstream dependency profile"),
+        project_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Target-owned runtime requirements"),
+        ]
+        development_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Development policy composed for the target's kind"),
         ]
         tooling: Annotated[
             FlextInfraModelsDepsToolConfig.ToolConfigDocument,
@@ -384,6 +414,14 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         packaged_data_files: Annotated[
             t.StrSequence,
             m.Field(description="Validated individually declared data files"),
+        ]
+        project_declaration_resource: Annotated[
+            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
+            m.Field(
+                description=(
+                    "Producer declaration source and wheel resource destination"
+                ),
+            ),
         ]
         packaged_data_excludes: Annotated[
             t.StrSequence,
@@ -555,16 +593,15 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         test_dirs: Annotated[
             t.VariadicTuple[str],
             m.Field(
-                default=(),
                 description="Directories holding rule fixtures and snapshots",
             ),
-        ]
+        ] = ()
 
     class ProfileSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Execution semantics for one generated Make profile."""
 
         name: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
+            c.Infra.MakeProfile,
             m.Field(description="Closed Make profile name"),
         ]
         environment_scope: Annotated[
@@ -583,3 +620,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             Literal["gitmodules", "none"],
             m.Field(description="repository-local discovery authority"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsContexts"]

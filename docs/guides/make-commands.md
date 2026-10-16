@@ -14,6 +14,7 @@
 - [Repair selector verbs and the mod loop](#repair-selector-verbs-and-the-mod-loop)
 - [Fleet automation verbs](#fleet-automation-verbs)
 - [Mandatory unsafe repair channel (operator law 2026-10-05)](#mandatory-unsafe-repair-channel-operator-law-2026-10-05)
+- [Native type descriptor policy](#native-type-descriptor-policy)
 - [Markdown quality pipeline](#markdown-quality-pipeline)
 - [Test contract](#test-contract)
 - [Failure contract](#failure-contract)
@@ -56,6 +57,9 @@ The consecutive generation passes prove the fixed point after structural rewrite
 first pass derives Ruff source roots from the declared template outputs, including test
 directories it will create, so the verification pass sees the same topology.
 `make build` packages the validated candidate; it does not replace runtime verification.
+Release builds require a readable, valid root `uv.lock`. Internal Git dependency pins
+come from its canonical typed package inventory; workspace declarations retain
+precedence. A missing or malformed lock fails the release before artifact construction.
 Each verb executes its declared operation directly. No project, file, pattern, action,
 phase, fix, or changed-only selector may be attached to a standard verb. When
 `make setup` initializes an absent governed submodule, it uses the explicit GitHub
@@ -77,6 +81,11 @@ and inline instructions; descriptions of internal tools are not shell guidance.
 
 ## Codemod rule fixtures
 
+Rule and test files may contain multiple YAML documents. Their readers use
+`u.Cli.yaml_parse_documents`, backed by the same canonical YAML engine as single
+document parsing. Reconciliation includes every document's invalid cases; an empty
+test stream or a malformed later document fails before native fixture execution.
+
 Every ast-grep rule has a test (`<rule-id>-test.yml` with `valid` and `invalid` cases)
 and, for each invalid case, a committed snapshot of what the rule reports and rewrites.
 `make mod` verifies them with `ast-grep test` and never rewrites a snapshot: a changed
@@ -88,22 +97,40 @@ rules this repository owns from their tests, prints every created, updated or re
 snapshot, and leaves the diff for review in the same commit as the rule change.
 Inherited rule providers keep the snapshots their owner ships.
 
+`make mod` applies safe actionable rewrites before judging the final inventory.
+Detection-only, non-actionable-with-fix, generated-owner, and text findings remain
+blocking at that fixed point; zero actionable findings alone is not acceptance.
+The constants census must also retain zero violations before the verb succeeds.
+Accepted repairs remain available for fix-forward when the final inventory is red.
+
 For private imports, `make mod` first resolves whether the importing file and target
 module share an owner. Same-owner imports become relative imports without inspecting an
 installed package with the same top-level name. Only cross-owner imports require
 installed public-facade discovery; invalid relative imports in that dependency remain
 errors.
 
+Root-alias normalization retains external providers in declaration families and in
+modules that construct their own facade. This boundary derives from the project's
+runtime import graph and lazy export providers, not a filename exception. A helper
+must not import the facade that is loading that helper.
+
+Functional generic bounds retain their typed payload contract. Class-bound lazy alias
+deferral is a detection-only repair at the canonical typings owner, never an automatic
+deletion of constraints.
+
 ## Verb single-pass contract
 
 Each mutating verb owns exactly one operation per tool, and `make check` is strictly
 read-only — no verb repeats another verb's work across the canonical sequence
-`make fix && make fmt && make check`:
+`make fix && make fmt && make check`. Gates execute serially in their declared order,
+including whole-program type checkers. Read-only checks preserve every executed
+verdict; fail-fast checks and mutating operations stop at their first failed gate.
+Unexecuted gates never acquire a passing receipt:
 
 | Gate / tool                       | `make check` (read-only)           | `make fmt` (formatters) | `make fix` (one mutation)                  |
 | --------------------------------- | ---------------------------------- | ----------------------- | ------------------------------------------ |
 | `lint` — ruff                     | read-only `ruff` verdict           | —                       | one `ruff` repair pass                     |
-| `format` — ruff                   | — (mutating)                       | `ruff` format pass      | —                                          |
+| `format` — ruff                   | read-only `ruff format --check`    | `ruff` format pass      | —                                          |
 | `markdown` — rumdl                | `rumdl check`                      | —                       | `rumdl check --fix`                        |
 | `markdown-format` — prettier      | `prettier --check`                 | `prettier --write`      | —                                          |
 | `markdown-code` — ruff (embedded) | format verdict on parseable blocks | —                       | one format pass, clean round-trips spliced |
@@ -134,6 +161,25 @@ namespace-enforce` / `refactor accessor-migrate` without `--apply` reports
   without writing) and publish their structured receipts under
   `.reports/refactor/`; a second run over a converged tree writes nothing.
 
+`flext-infra refactor namespace-enforce --module <dotted-module> --apply` limits
+import normalization and declared relocations to one owned source module. An unknown
+or ambiguous module fails before effects. The shared import-normalization phase also
+removes own-package import aliases, preserves shadowed homonyms and rejects canonical
+name capture; `make mod` consumes that same owner.
+
+The public `flext-infra refactor move-module` command moves an existing module
+through the same Rope engine and rewrites its import references. Its required
+`--repository-root`, `--source-file`, and `--destination-directory` arguments
+declare the actual owners; relative paths resolve inside that repository.
+Both source and destination must belong to the repository, the destination must
+exist, and a competing destination module fails before any write. The command
+does not copy a loader, add an alias, restore a snapshot, or change package exports.
+After a structural move, regenerate and exercise the real package consumer.
+In particular, a lazy installer cannot depend on a generated parent package that
+imports that same installer before its declaration is available. Move the actual
+implementation ownership out of that cycle rather than suppressing declared
+exports or introducing a special initializer.
+
 ## Fleet automation verbs
 
 Two surfaces compose the per-repository verbs into fleet-scale loops. Both are
@@ -143,18 +189,50 @@ Two surfaces compose the per-repository verbs into fleet-scale loops. Both are
   members and external consumers and publishes `.reports/fleet-gaps.json`:
   per repository, its porcelain dirty paths, its open pull requests (a
   failing `gh` degrades to an empty list), its local branches not merged into
-  the integration line, the lint, pyrefly and codemod counts its own
-  `.reports` carry (an absent artifact counts zero), and the standards
+  the integration line, explicitly selected lint/Pyrefly execution counts,
+  the codemod count its own `.reports` carries (an absent mod artifact counts
+  zero), and the standards
   presence columns (`AGENTS.md`, `.agents/skills/.flext-stamp.json` with its
   `distribution_version`, `.beads/config.yaml`). The report carries no
   timestamp: an unchanged tree re-publishes a byte-identical receipt.
-- `flext-infra refactor violations-sweep` measures the repository's mod scan
-  totals, runs the canonical repair sequence (`make fix`, `make fmt`,
-  `make mod`) in order, measures again, and publishes
-  `.reports/refactor/violations-sweep.json`. The command FAILS the moment any
-  total increased: automation may reduce a tree's violations, never grow
-  them. A sweep over a tree the repair sequence cannot improve is a
-  zero-delta success.
+  `--quality-receipts path/to/check-report.sarif[,other/check-report.sarif]`
+  selects exact published check invocations, with relative paths resolved from
+  `--repository-root`. Their typed SARIF properties bind execution verdicts to
+  canonical project roots. No selection, missing gates, unreached projects and
+  file-scoped checks yield `null` (unknown/not executed), not zero or PASS.
+  Missing/malformed selected receipts, unrelated roots, native tool errors,
+  missing native output and duplicate full-project repo/gate selections fail
+  before hygiene probes. The auditor never searches by time or combines counts
+  from multiple captures of the same repo/gate.
+- `flext-infra refactor violations-sweep` observes the full governed mod catalog
+  before and after an ordered canonical Make sequence. Its default comes from
+  `Infra.codegen.make.violations_sweep_repair_verbs`; `--repair-verbs` accepts a
+  comma-separated sequence from the typed selector-free Make vocabulary,
+  including generation, namespace repair and audit. `--rules` validates exact
+  rule IDs for audit-only focus; a focused request refuses unfiltered repair
+  verbs before effects. Isolated mutation belongs to `refactor ast --rules`.
+  Focus never hides other rules or projects from regression detection. Audit
+  runs independently against every discovered project's Makefile from the
+  workspace root and must preserve the authenticated Python source/catalog
+  bytes, rule plan and inventory. Receipts retain each operation's cwd, timing,
+  raw process outcome, audit snapshots and failed/unexecuted verdicts. Introduced
+  occurrences, increased totals, operation failures and audit mutations remain
+  failures, with the first cause preserved after inspection/publication failure.
+  The latest receipt is `.reports/refactor/violations-sweep.json`; full
+  invocation-local before/after evidence remains preserved alongside it. Root
+  audit success or unchanged totals alone never prove every project green.
+
+  The default is an independent ordered sweep policy, not a second public-verb
+  registry. `MakeVerbSpec` declares names, arguments, descriptions, activation
+  production and profile applicability, but no repair-effect classification.
+  Registry order and `make.workflow` therefore cannot derive the sweep sequence:
+  the workflow also includes provisioning and validation and omits structural
+  repair. `check_gates_fixable` describes gates consumed by one repair operation,
+  not the ordering or selection of Make operations. Even mutating operations may
+  generate projections, remove artifacts or publish releases, so mutation alone
+  is not sweep eligibility. Keep this policy explicit until a canonical semantic
+  operation contract can determine both its membership and execution order;
+  never infer either from verb names, help text or Make recipes.
 
 ## Mandatory unsafe repair channel (operator law 2026-10-05)
 
@@ -181,6 +259,24 @@ and `make gen` renders it into every generated `pyproject.toml`:
 `print(x, file=sys.stderr)`, `print(x, file=sys.stdout)` and a literal `flush` rewritten
 to `cli.display_text(x)` by the codemod rule `rewire-print-to-cli-display-text`. Every
 other form stays a reported T201 finding for its author.
+
+## Native type descriptor policy
+
+Operator approval on 2026-10-09, **"Parametrizar Dois Descritores"**, authorizes only
+`__base__` and `__bases__` through
+`Infra.tooling.tools.ruff.lint.pylint.allow-dunder-method-names` in
+`config/tooling.yaml`. The typed model rejects unrelated names; generation and Ruff
+conformance derive the managed `tool.ruff.lint.pylint` table from that owner.
+
+Python documents [`type.__base__`][python-type-base] as the single base responsible for
+instance memory layout and [`type.__bases__`][python-type-bases] as the tuple of direct
+bases. Protocols retain read-only properties, their signatures, and native identity.
+[Ruff PLW3201][ruff-dunder] supports this exact setting: the rule remains enabled for
+other unrecognized dunders, without `noqa`, per-file ignores, or rule disabling.
+
+[python-type-base]: https://docs.python.org/3.13/reference/datamodel.html#type.__base__
+[python-type-bases]: https://docs.python.org/3.13/reference/datamodel.html#type.__bases__
+[ruff-dunder]: https://docs.astral.sh/ruff/rules/bad-dunder-method-name/
 
 ## Markdown quality pipeline
 

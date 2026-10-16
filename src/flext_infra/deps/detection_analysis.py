@@ -6,15 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping
 from pathlib import Path
-from typing import override
 
-from flext_core import c as core_c, r
-from flext_infra import c, config, m, p, t, u
-from flext_infra.deps._detection_runners import (
-    FlextInfraDependencyDetectionRunnersMixin,
-)
+from flext_infra import c, config, m, p, r, t, u
+from flext_infra.deps import FlextInfraDependencyDetectionRunnersMixin
 
 
 class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunnersMixin):
@@ -34,64 +30,6 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         return r[t.JsonMapping].ok(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value),
         )
-
-    @override
-    def _to_toml_config(self, payload: t.MappingKV[str, t.JsonValue]) -> t.JsonMapping:
-        """To toml config.
-
-        Returns:
-            The resulting ``t.JsonMapping``.
-
-        """
-        normalized: MutableMapping[str, t.JsonValue] = {}
-        for key, value in payload.items():
-            if value is None:
-                normalized[key] = None
-                continue
-            converted = FlextInfraDependencyDetectionAnalysis.to_infra_value(value)
-            if converted is None:
-                continue
-            normalized[key] = converted
-        return normalized
-
-    @staticmethod
-    def to_infra_value(value: t.JsonValue | None) -> t.JsonValue | None:
-        """Convert container value to namespaced infra value.
-
-        Returns:
-            The resulting ``t.JsonValue | None``.
-
-        """
-        if value is None:
-            return None
-        if isinstance(value, core_c.PRIMITIVES_TYPES):
-            primitive: t.JsonValue = value
-            return primitive
-        scalar_types = core_c.PRIMITIVES_TYPES
-        if isinstance(value, list):
-            sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
-            converted: t.MutableSequenceOf[t.JsonValue] = []
-            for item in sequence:
-                if item is None:
-                    converted.append(None)
-                    continue
-                conv = FlextInfraDependencyDetectionAnalysis.to_infra_value(item)
-                if conv is None or not isinstance(conv, scalar_types):
-                    return None
-                converted.append(conv)
-            return list(t.Cli.JSON_LIST_ADAPTER.validate_python(converted))
-        mapping_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        converted_map: MutableMapping[str, t.JsonValue] = {}
-        for key, map_item in mapping_value.items():
-            if map_item is None:
-                converted_map[key] = None
-                continue
-            conv = FlextInfraDependencyDetectionAnalysis.to_infra_value(map_item)
-            if conv is None or not isinstance(conv, scalar_types):
-                return None
-            converted_map[key] = conv
-        mapping: t.JsonValue = t.json_dict_adapter().validate_python(converted_map)
-        return mapping
 
     def read_current_typings_from_pyproject(
         self,
@@ -160,101 +98,6 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
                 read_result.error,
             )
         return r[t.Pair[Path, t.JsonMapping]].ok((pyproject, read_result.value))
-
-    def governed_profile_dependencies(
-        self,
-        project_path: Path,
-    ) -> p.Result[t.StrSequence]:
-        """Return the runtime requirement names a declared dependency profile injects.
-
-        The profile is selected from the typed codegen config exactly as the
-        pyproject projection selects it; a project no shared profile governs
-        injects nothing.
-
-        Returns:
-            The runtime requirement names a declared dependency profile injects.
-
-        """
-        table = self._project_table(project_path)
-        if table.failure:
-            return r[t.StrSequence].from_failure(table)
-        pyproject, data = table.value
-        project = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-            data.get(c.Infra.PROJECT, {}),
-        )
-        name = project.get(c.Infra.NAME)
-        distribution = u.Infra.dep_name(name) if isinstance(name, str) else None
-        if distribution is None:
-            return r[t.StrSequence].fail(
-                f"[project].name must be declared: {pyproject}",
-            )
-        runtime_names = {
-            dependency
-            for item in t.Infra.STR_SEQ_ADAPTER.validate_python(
-                project.get(c.Infra.DEPENDENCIES, []),
-            )
-            if (dependency := u.Infra.dep_name(item))
-        }
-        profiles = config.Infra.codegen.scaffold.project.dependency_profiles
-        upstreams = u.Infra.dependency_profile_upstreams(
-            profiles,
-            distribution=distribution,
-            runtime_names=runtime_names,
-        )
-        if len(upstreams) > 1:
-            return r[t.StrSequence].fail(
-                "scaffold.project.dependency_profiles.upstream must match live "
-                f"dependencies at most once at {pyproject}: {tuple(upstreams)}",
-            )
-        rows = (
-            u.Infra.dependency_profile_rows(
-                profiles,
-                upstream=upstreams[0],
-                distribution=distribution,
-            )
-            if upstreams
-            else ()
-        )
-        return r[t.StrSequence].ok(
-            tuple(
-                sorted({
-                    dependency
-                    for row in rows
-                    for requirement in row.runtime
-                    if (dependency := u.Infra.dep_name(requirement))
-                }),
-            ),
-        )
-
-    def govern_deptry_issues(
-        self,
-        project_path: Path,
-        issues: t.SequenceOf[t.JsonMapping],
-    ) -> p.Result[t.SequenceOf[t.JsonMapping]]:
-        """Drop unused-dependency findings for profile-injected requirements.
-
-        Conform renders the selected profile's runtime requirements into every
-        governed consumer, so declaring them is policy, not a finding.
-
-        Returns:
-            The resulting ``p.Result[t.SequenceOf[t.JsonMapping]]``.
-
-        """
-        governed = self.governed_profile_dependencies(project_path)
-        if governed.failure:
-            return r[t.SequenceOf[t.JsonMapping]].from_failure(governed)
-        names = frozenset(governed.value)
-        return r[t.SequenceOf[t.JsonMapping]].ok(
-            tuple(
-                issue
-                for issue in issues
-                if not (
-                    u.Cli.json_as_mapping(issue.get(c.Infra.ERROR)).get(c.Infra.CODE)
-                    == c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE
-                    and u.Infra.dep_name(str(issue.get(c.Infra.MODULE, ""))) in names
-                )
-            ),
-        )
 
     def untyped_imports_followed(self, project_path: Path) -> p.Result[bool]:
         """Return the governed mypy ``follow_untyped_imports`` policy for a project.

@@ -9,16 +9,35 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
-from flext_infra._settings import settings
-from flext_infra.base import s
+from flext_infra import c, m, r, s, settings, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraSonarcloudClient[TResult](s[TResult]):
+class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
     """Derive one project identity and authenticate without persisting secrets."""
+
+    @staticmethod
+    def optional_token() -> p.Result[t.SecretStr]:
+        """Return ``SONAR_TOKEN``; the empty secret is the typed absence.
+
+        The operator ruling (run-if-available-else-skip) makes a missing
+        credential a declared skip, never a failure; the railway result bans
+        ``None`` success payloads, so absence is the empty ``SecretStr``.
+        A present-but-malformed token is still a failure — a mistyped
+        credential is not an absence.
+
+        Returns:
+            The resulting ``p.Result[t.SecretStr]``.
+
+        """
+        if settings.Infra.sonar_token is None:
+            return r[t.SecretStr].ok(t.SecretStr(""))
+        validated = FlextInfraSonarcloudClient.required_token()
+        if validated.failure:
+            return r[t.SecretStr].from_failure(validated)
+        return r[t.SecretStr].ok(validated.value)
 
     @staticmethod
     def required_token() -> p.Result[t.SecretStr]:
@@ -42,6 +61,7 @@ class FlextInfraSonarcloudClient[TResult](s[TResult]):
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         origin = u.Infra.git_remote_url(
             m.Infra.GitRemoteUrlRequest(repo_root=repository_root),
@@ -63,6 +83,7 @@ class FlextInfraSonarcloudClient[TResult](s[TResult]):
 
         Returns:
             The ``(token, project key)`` pair every authenticated call needs.
+
         """
         token = self.required_token()
         if token.failure:
@@ -83,6 +104,7 @@ class FlextInfraSonarcloudClient[TResult](s[TResult]):
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         method, path, form = request
         return u.Infra.http_bearer_text(

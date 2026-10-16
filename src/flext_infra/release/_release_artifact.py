@@ -18,7 +18,7 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.release._release_boundary import FlextInfraReleaseBoundaryMixin
+from flext_infra.release import FlextInfraReleaseBoundaryMixin
 
 
 class FlextInfraReleaseArtifactMixin(FlextInfraReleaseBoundaryMixin):

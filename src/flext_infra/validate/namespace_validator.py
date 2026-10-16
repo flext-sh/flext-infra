@@ -13,9 +13,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, override
 
-from flext_infra import m, p, r, t, u
-from flext_infra.base import s
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra import m, p, r, s, t, u
+from flext_infra.codemod import FlextInfraModGateEngine
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -100,8 +99,8 @@ class FlextInfraNamespaceValidator(s[bool]):
             TypeError: If ast-grep finding without a message.
 
         """
-        message = entry.payload.get("message")
-        if not isinstance(message, str):
+        message = entry.message
+        if message is None:
             msg = f"ast-grep finding without a message: {entry.rule_id}"
             raise TypeError(msg)
         return " ".join(message.split())
