@@ -117,11 +117,11 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         tm.fail(result, has="typed-config provenance")
 
     @staticmethod
-    def _finding(path: Path, access: str) -> m.Infra.ModScanFinding:
+    def _finding(path: Path, access: str) -> m.Infra.ModOccurrence:
         rule = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[
             c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
         ]
-        return m.Infra.ModScanFinding(
+        return m.Infra.ModOccurrence(
             rule_file=f"{rule}.yml",
             rule_id=rule,
             repository="fixture",
@@ -130,5 +130,4 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             text=access,
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )

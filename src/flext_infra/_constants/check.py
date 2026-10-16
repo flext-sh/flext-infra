@@ -24,9 +24,15 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Run every independent quality gate unless fail-fast is requested."""
     SERVICE_FAIL_FAST: ClassVar[bool] = True
     """Stop mutating service workflows at the first failed project or rule."""
+    NATIVE_CODE_WITNESS_MARSHAL_VERSION: ClassVar[int] = 2
+    """Complete CPython code encoding without reference or interning flags."""
+    NATIVE_TUPLE_REPEAT_LIMIT: ClassVar[int] = 255
+    """Largest literal repeat count read as closed tuple constructor data."""
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
+    PYTEST_CASE_TIMEOUT_DISABLED_SECONDS: ClassVar[int] = 0
+    """Native pytest-timeout sentinel disabling per-item deadlines."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_PROFILE_PROCESS_DIRECTORY_ENV: ClassVar[str] = (
         "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
@@ -62,10 +68,16 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         "from importlib.machinery import PathFinder\n"
         "from importlib.util import module_from_spec\n"
         f"output = Path(os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
-        "clock.FlextInfraPytestClock.register_signal_checkpoint("
-        "profile, output / f'{os.getpid()}.pstats')\n"
-        "atexit.register(clock.FlextInfraPytestClock.publish_profile, "
-        "profile, output / f'{os.getpid()}.pstats')\n"
+        "profile_output = output / f'{os.getpid()}.pstats'\n"
+        "entry_index = len(sys.orig_argv) - len(sys.argv)\n"
+        "native_profile = (sys.argv[:1] == ['-m'] and entry_index >= 1 "
+        "and sys.orig_argv[entry_index - 1:entry_index + 1] == "
+        "['-m', 'cProfile'])\n"
+        "if not native_profile:\n"
+        "    clock.FlextInfraPytestClock.register_signal_checkpoint("
+        "profile, profile_output)\n"
+        "    atexit.register(clock.FlextInfraPytestClock.publish_profile, "
+        "profile, profile_output)\n"
         "startup = str(Path(__file__).parent)\n"
         "original = PathFinder.find_spec('sitecustomize', "
         "[path for path in sys.path if path != startup])\n"
@@ -73,6 +85,9 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         "    module = module_from_spec(original)\n"
         "    sys.modules['sitecustomize'] = module\n"
         "    original.loader.exec_module(module)\n"
+        "if native_profile:\n"
+        "    clock.FlextInfraPytestClock.publish_profile(profile, profile_output)\n"
+        "    profile.disable()\n"
     )
     PYTEST_PROFILE_LAUNCHER: ClassVar[str] = (
         PYTEST_PROFILE_BOOTSTRAP + "import os, runpy, sys\n"
@@ -308,6 +323,7 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         "**/api_cases/**",
         "**/_cases/**",
         "**/rules/ast-grep/tests/**",
+        "**/rules/ast-grep/rules/**",
         "**/_cov.py",
         "**/_parts/**",
         "**/package-lock.json",
@@ -317,6 +333,15 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     "fixtures mirror their rule pattern/fix text by design (the fix output IS "
     "the next stage's valid input), so jscpd would always report the fixture "
     "pair; the corpus is validated by `ast-grep test`, never by clone count. "
+    "The rules corpus joins it under the same authority: ast-grep's "
+    "declarative format mandates one document per rule id with the shared "
+    "files/ignores/constraints blocks repeated, per-verb and per-position "
+    "rule twins whose bodies differ only in offsets (transforms cannot branch "
+    "or capitalize inside replace templates), and no data sharing across "
+    "documents or files — the twin shape is the format, not authored "
+    "duplication; the corpus is likewise validated by `ast-grep test` "
+    "(operator per-change authorization under the 2026-09-24 suppression "
+    "ruling, granted 2026-10-13 after a deep engine review). "
     "package-lock.json is npm's emission, not authored code: sibling packages "
     "of one tool family share resolved dependency lines by construction, so "
     "their overlap is a data coincidence the resolver owns, never a clone to "

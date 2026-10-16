@@ -183,10 +183,7 @@ class TestsFlextInfraTransactionLease:
                 eq=True,
             )
             tm.ok(
-                transaction.commit_locked(
-                    session,
-                    lambda: owner.validate_artifacts(root, scope_root),
-                ),
+                transaction.commit_locked(session),
             )
             return r[bool].ok(value=True)
 

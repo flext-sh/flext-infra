@@ -97,6 +97,7 @@ class FlextInfraConstantsMake(FlextInfraConfigVocabulary):
     ORCHESTRATOR_ENV_PATH_SEPARATOR: ClassVar[str] = ":"
 
     PYTEST_ENV_REPORTS: ClassVar[str] = "FLEXT_PYTEST_REPORTS_RAW"
+    PYTEST_ENV_REPOSITORY_ROOT: ClassVar[str] = "PROJECT_ROOT"
     PYTEST_ENV_TARGET: ClassVar[str] = "FLEXT_PYTEST_TARGET_RAW"
     PYTEST_ENV_TARGET_FILE: ClassVar[str] = "FLEXT_PYTEST_TARGET_FILE"
     PYTEST_ENV_CI: ClassVar[str] = "CI"

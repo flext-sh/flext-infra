@@ -46,18 +46,13 @@ class FlextInfraModelsDepsToolConfig(
     class DeptryConfig(m.ArbitraryTypesModel):
         """Deptry namespace and dependency-group policy."""
 
-        known_first_party: Annotated[
+        optional_dependencies_dev_groups: Annotated[
             t.StrTuple,
             m.Field(
-                alias="known-first-party",
-                description="Base first-party namespaces extended by project metadata.",
-            ),
-        ]
-        pep621_dev_dependency_groups: Annotated[
-            t.StrTuple,
-            m.Field(
-                alias="pep621-dev-dependency-groups",
-                description="PEP 735 groups treated as development dependencies.",
+                alias="optional-dependencies-dev-groups",
+                description=(
+                    "PEP 621 optional groups treated as development dependencies."
+                ),
             ),
         ]
 
@@ -820,6 +815,13 @@ class FlextInfraModelsDepsToolConfig(
             t.JsonMapping,
             m.Field(description="Conformed pyrefly table"),
         ]
+        pyrefly_project_includes: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath("pyrefly", "project-includes"),
+                description="Conformed Pyrefly analysis scope",
+            ),
+        ]
         pyrefly_search_path: Annotated[
             t.StrTuple,
             m.Field(
@@ -869,6 +871,10 @@ class FlextInfraModelsDepsToolConfig(
         first_party: Annotated[
             t.StrTuple,
             m.Field(description="Resolved first-party namespaces"),
+        ]
+        deptry_first_party: Annotated[
+            t.StrTuple,
+            m.Field(description="Target-owned live and planned production packages"),
         ]
         mypy_path: Annotated[
             t.StrTuple,

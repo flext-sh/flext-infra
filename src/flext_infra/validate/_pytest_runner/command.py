@@ -8,58 +8,28 @@ from __future__ import annotations
 
 import hashlib
 import sys
-from functools import lru_cache
 from pathlib import Path
 from typing import ClassVar
 
 from flext_infra import c, config, m, t, u
 from flext_infra._pytest_collection import FlextInfraPytestCollection
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 
 
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """Build the single supported pytest command family.
 
-    One suite builder owns every flag; the testmon, coverage and full verbs
-    are selections over it (testmon 2.x refuses branch coverage through the
-    cov plugin, so the two never share a process; the full verb loads
-    neither and runs without any time limit).
+    One suite builder owns every flag. Incremental and complete phases share
+    the persistent testmon database. Coverage runs separately because testmon
+    refuses branch coverage through the cov plugin. The full operation runs
+    both testmon phases without a time limit.
     """
 
     _NO_COVERAGE: ClassVar[t.VariadicTuple[str]] = ("--no-cov",)
-
-    @staticmethod
-    @lru_cache(maxsize=1)
-    def installed_toolchain_identity() -> str:
-        """Fingerprint the interpreter and installed distribution provenance.
-
-        Git branch dependencies can change commits while retaining the same
-        package version, so their PEP 610 receipts participate in cache identity.
-        Registry distributions legitimately have no direct-URL receipt. An
-        editable install names a checkout path, not a toolchain: testmon already
-        tracks that source by file checksum, so every checkout of one project
-        on the same lock shares one environment record.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        provenance: t.MutableSequenceOf[str] = []
-        for distribution in u.installed_distributions():
-            receipt = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
-            dir_info = (
-                None
-                if receipt is None
-                else m.Infra.DirectUrlReceipt.model_validate_json(receipt).dir_info
-            )
-            identity = (
-                "editable" if dir_info is not None and dir_info.editable else receipt
-            )
-            provenance.append(
-                f"{distribution.name}={distribution.version}:{identity!r}",
-            )
-        fingerprint = "\n".join((sys.version, *sorted(provenance)))
-        return hashlib.sha256(fingerprint.encode()).hexdigest()
+    _UNBOUNDED_LIMITS: ClassVar[t.VariadicTuple[str]] = (
+        f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}",
+    )
 
     def carries_slow_items(self, execution_mode: c.Infra.PytestExecutionMode) -> bool:
         """Whether this invocation may run slow-marked items.
@@ -67,9 +37,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         The budgeted incremental phase deselects the slow marker and the slow
         phase selects it: each is its own process on its own clock
         (gate-budget law). A declared file runs its slow items. The coverage
-        and the full operations run the whole suite in one process, slow items
-        included. One predicate drives both the marker expression and the stop
-        reserve, so an in-flight slow item always has its slow drain.
+        operation and the complete phase include slow items. One predicate
+        drives both the marker expression and the stop reserve, so an in-flight
+        slow item always has its slow drain.
 
         Returns:
             The resulting ``bool``.
@@ -148,10 +118,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         scope = hashlib.sha256(
             self._marker_expression(execution_mode).encode(),
         ).hexdigest()[:8]
-        return (
-            f"toolchain-{self.installed_toolchain_identity()[:12]}-"
-            f"{self._config_testmon_digest()}-{scope}"
+        toolchain = (
+            FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
         )
+        return f"toolchain-{toolchain[:12]}-{self._config_testmon_digest()}-{scope}"
 
     def _config_testmon_digest(self) -> str:
         """Fingerprint the project's current ``config/*.yaml`` behavior inputs.
@@ -308,6 +278,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *self._plugin_policy_args(execution_mode=execution_mode),
             "--benchmark-disable",
             "--strict-markers",
+            *self._UNBOUNDED_LIMITS,
             "-o",
             "filterwarnings=",
             "-p",
@@ -337,6 +308,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """Build the testmon suite argv (never the cov plugin).
 
         A resolved plan carries the selected IDs and their manifest together.
+        Workers record dependencies without selecting those IDs a second time.
 
         Returns:
             The resulting ``t.VariadicTuple[str]``.
@@ -387,7 +359,12 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     else ()
                 ),
                 "--testmon",
-                *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
+                *(
+                    ("--testmon-noselect",)
+                    if selection_plan is not None
+                    or execution_mode == c.Infra.PytestExecutionMode.FULL
+                    else ("--testmon-forceselect",)
+                ),
                 "--testmon-env",
                 f"'{self.testmon_environment(execution_mode)}'",
                 *self._NO_COVERAGE,
@@ -443,12 +420,15 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         if self.unbounded:
-            return ()
+            return self._UNBOUNDED_LIMITS
         suite_stop = self.suite_stop_monotonic(
             serial=workers == "0",
             execution_mode=execution_mode,
         )
-        return (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
+        return (
+            *self._UNBOUNDED_LIMITS,
+            f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
+        )
 
     def _suite_argv(
         self,

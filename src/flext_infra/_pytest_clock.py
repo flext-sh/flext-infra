@@ -35,6 +35,7 @@ class FlextInfraPytestClock:
 
         Returns:
             The active profiler owned by this process.
+
         """
         if cls.profiler is None:
             cls.profiler = cProfile.Profile()
@@ -51,6 +52,7 @@ class FlextInfraPytestClock:
 
         Raises:
             OSError: If the live device and inode differ from ``identity``.
+
         """
         current = staging.stat(follow_symlinks=False)
         if (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
@@ -67,6 +69,7 @@ class FlextInfraPytestClock:
 
         Raises:
             OSError: If cleanup fails while no earlier exception is active.
+
         """
         failure = sys.exception()
         try:
@@ -85,6 +88,7 @@ class FlextInfraPytestClock:
         Args:
             profile: The real profiler whose current stats are recorded.
             output: The destination elected by the profiling invocation.
+
         """
         descriptor, name = tempfile.mkstemp(
             dir=output.parent,
@@ -118,6 +122,7 @@ class FlextInfraPytestClock:
 
         Raises:
             RuntimeError: If the native termination handler cannot be observed.
+
         """
         previous = signal.getsignal(signal.SIGTERM)
         if previous is None:
@@ -136,3 +141,6 @@ class FlextInfraPytestClock:
                     signal.raise_signal(signum)
 
         signal.signal(signal.SIGTERM, checkpoint)
+
+
+__all__: list[str] = ["FlextInfraPytestClock"]

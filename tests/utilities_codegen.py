@@ -283,13 +283,14 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         project_name: str = "flext-test-project",
         package_name: str = "flext_test_project",
     ) -> t.Pair[Path, Path]:
-        """Provide the typed test helper `create_lazy_init_workspace`.
+        """Create a real workspace with an empty, generation-eligible initializer.
 
         Returns:
             The resulting ``t.Pair[Path, Path]``.
 
         """
         repository_root = tmp_path / project_name
+        project = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(project_name)
         package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / package_name
         package_root.mkdir(parents=True)
         (repository_root / "Makefile").write_text(
@@ -299,7 +300,8 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         (repository_root / c.PYPROJECT_FILENAME).write_text(
             (
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'
-                'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n\n'
+                f'authors = [{{name = "{project.author_name}", '
+                f'email = "{project.author_email}"}}]\n\n'
                 + TestsFlextInfraUtilitiesCodegenMixin.ruff_per_file_ignores_toml()
             ),
             encoding=c.Infra.ENCODING_DEFAULT,
@@ -363,6 +365,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         *,
         python_paths: t.StrSequence,
         cwd: Path | None = None,
+        arguments: t.StrSequence = (),
     ) -> t.StrSequence:
         """Run ``probe`` in a fresh interpreter importing generated packages.
 
@@ -377,7 +380,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
         result = tm.ok(
             u.Cli.run(
-                [sys.executable, "-c", probe],
+                [sys.executable, "-c", probe, *arguments],
                 options=m.Cli.ProcessOptions(env=probe_env),
                 cwd=cwd,
             ),

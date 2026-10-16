@@ -19,10 +19,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 import libcst as cst
+from flext_cli import u
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import RemoveImportsVisitor
-
-from flext_cli import u
 
 from flext_infra import c, config, m, r, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
@@ -49,6 +48,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Normalized source, or the original Ruff subprocess failure.
+
         """
         executable = cls._workspace_tool_command(c.Infra.RUFF)[0]
         project_root = cls._command_cwd(path, repository_root)
@@ -99,6 +99,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             The candidate retaining existing unused, string, and exported bindings.
+
         """
         before = ast.parse(original)
         after = ast.parse(proposed)
@@ -156,6 +157,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Raises:
             RuntimeError: If a Ruff subprocess rejects the touched files.
+
         """
         grouped: MutableMapping[Path, list[str]] = {}
         for path in sorted({path.resolve() for path in paths if path.is_file()}):
@@ -650,6 +652,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Diagnostic evidence and the independent first execution failure.
+
         """
         if executed.failure:
             return m.Infra.LintGateResult(
@@ -709,32 +712,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Complete diagnostic lines, or the original malformed-report failure.
+
         """
         result = r[t.StrSequence]
         if tool_name == c.Infra.MYPY:
             return cls._mypy_report_errors(source)
         if tool_name == c.Infra.PYRIGHT:
-            report = u.validate_value(
-                m.Infra.PyrightReport, source, from_json=True, strict=True
-            )
-            return report.flat_map(
-                lambda observed: (
-                    result.ok(
-                        tuple(
-                            f"{entry.file}:"
-                            f"{entry.range.start.line + 1 if entry.range else 0}:"
-                            f"{entry.range.start.character + 1 if entry.range else 0}: "
-                            f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
-                            for entry in observed.general_diagnostics
-                            if entry.severity in {"error", "warning"}
-                        )
-                    )
-                    if observed.summary.files_analyzed
-                    else result.fail(
-                        "pyright analyzed no files for the selected source"
-                    )
-                )
-            )
+            return cls._pyright_report_errors(source)
         if tool_name == c.Infra.PYREFLY:
             pyrefly = u.validate_value(
                 m.Infra.PyreflyReport, source, from_json=True, strict=True
@@ -752,11 +736,40 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return cls._ruff_report_errors(source)
 
     @staticmethod
+    def _pyright_report_errors(source: str) -> p.Result[t.StrSequence]:
+        """Validate native diagnostics and require actual analyzed sources.
+
+        Returns:
+            Complete findings or the original malformed/empty-analysis failure.
+
+        """
+        result = r[t.StrSequence]
+        report = u.validate_value(
+            m.Infra.PyrightReport, source, from_json=True, strict=True
+        )
+        if report.failure:
+            return result.from_failure(report)
+        observed = report.value
+        if not observed.summary.files_analyzed:
+            return result.fail("pyright analyzed no files for the selected source")
+        return result.ok(
+            tuple(
+                f"{entry.file}:"
+                f"{entry.range.start.line + 1 if entry.range else 0}:"
+                f"{entry.range.start.character + 1 if entry.range else 0}: "
+                f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
+                for entry in observed.general_diagnostics
+                if entry.severity in {"error", "warning"}
+            ),
+        )
+
+    @staticmethod
     def _mypy_report_errors(source: str) -> p.Result[t.StrSequence]:
         """Validate every native JSON-lines diagnostic, retaining hints and failures.
 
         Returns:
             Complete diagnostic lines, or the original malformed-report failure.
+
         """
         result = r[t.StrSequence]
         lines: list[str] = []
@@ -782,6 +795,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Complete diagnostic lines, or the original malformed-report failure.
+
         """
         result = r[t.StrSequence]
         loaded = u.Cli.json_parse(source)
@@ -832,6 +846,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Returns:
             Every native execution failure in declared tool order.
+
         """
         return tuple(
             result.execution_error
@@ -873,6 +888,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Raises:
             ValueError: If source snapshots select a tool other than Ruff.
+
         """
         selected_tools = cls._selected_lint_tools(gates)
         if source is not None:

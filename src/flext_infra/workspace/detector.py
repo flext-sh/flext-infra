@@ -10,9 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, s, t, u
-from flext_infra._utilities.workspace_inventory import (
-    FlextInfraUtilitiesWorkspaceInventory,
-)
 from flext_infra.workspace import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
@@ -24,6 +21,211 @@ class FlextInfraWorkspaceDetector(
     s[c.Infra.MakeProfile],
 ):
     """Classify a repository only from files and Git facts inside that checkout."""
+
+    @classmethod
+    def resolution_context(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.WorkspaceRuntimeContext]:
+        """Elect native resolution inputs without package metadata or members.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.WorkspaceRuntimeContext]``.
+
+        """
+        result_type = r[m.Infra.WorkspaceRuntimeContext]
+        request = m.Infra.GitRepoRequest(repo_root=repository_root)
+        identity = u.Infra.git_show_toplevel(request)
+        if identity.failure:
+            return result_type.from_failure(identity)
+        git_root = identity.value.repository_root.resolve()
+        submitted = repository_root.expanduser().resolve()
+        project_root = next(
+            (
+                directory
+                for directory in (submitted, *submitted.parents)
+                if directory.is_relative_to(git_root)
+                and (directory / c.PYPROJECT_FILENAME).is_file()
+            ),
+            git_root,
+        )
+        inputs = u.Infra.load_codegen_inputs(project_root)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        policy = inputs.value.spec.make.uv_resolution
+        standalone = (
+            u.Infra.env_value(policy.hosted_variable).strip() == policy.hosted_value
+        )
+        runtime_root = project_root
+        if not standalone:
+            runtime = u.Infra.git_repository_root(request)
+            if runtime.failure:
+                return result_type.from_failure(runtime)
+            attached = runtime.value.repository_root.resolve()
+            if attached != git_root and (attached / c.PYPROJECT_FILENAME).is_file():
+                runtime_root = attached
+            else:
+                scope = cls._native_resolution_scope(project_root, git_root)
+                if scope.failure:
+                    return result_type.from_failure(scope)
+                if scope.value != project_root:
+                    native = cls._native_resolution_owner(project_root, scope.value)
+                    if native.failure:
+                        return result_type.from_failure(native)
+                    runtime_root = native.value
+        return cls._uv_runtime_context(
+            project_root,
+            runtime_root,
+            standalone=standalone,
+        )
+
+    @staticmethod
+    def _uv_runtime_context(
+        project_root: Path,
+        runtime_root: Path,
+        *,
+        standalone: bool,
+    ) -> p.Result[m.Infra.WorkspaceRuntimeContext]:
+        """Resolve paths after authenticating the runtime and hosted isolation.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.WorkspaceRuntimeContext]``.
+
+        """
+        result_type = r[m.Infra.WorkspaceRuntimeContext]
+        inputs = u.Infra.load_codegen_inputs(runtime_root)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        policy = inputs.value.spec.make.uv_resolution
+        directory = (
+            policy.standalone_directory if standalone else policy.local_directory
+        )
+        resolution_root = runtime_root / directory
+        if not resolution_root.resolve().is_relative_to(runtime_root):
+            return result_type.fail(
+                "UV resolution directory leaves its physical runtime"
+            )
+        return result_type.ok(
+            m.Infra.WorkspaceRuntimeContext(
+                project_root=project_root,
+                runtime_root=runtime_root,
+                resolution_root=resolution_root,
+                pyproject_path=resolution_root / c.PYPROJECT_FILENAME,
+                lock_path=resolution_root / c.Infra.UV_LOCK_FILENAME,
+                environment_path=runtime_root / c.Infra.ENVIRONMENT_DIRECTORY,
+                standalone=standalone,
+            ),
+        )
+
+    @classmethod
+    def _native_resolution_scope(
+        cls,
+        project_root: Path,
+        git_root: Path,
+    ) -> p.Result[Path]:
+        """Authenticate an actual Python ancestor before requiring its native reader.
+
+        Returns:
+            The resulting ``p.Result[Path]``.
+
+        """
+        result_type = r[Path]
+        enclosing = next(
+            (
+                parent
+                for parent in project_root.parents
+                if (project_root == git_root or parent.is_relative_to(git_root))
+                and (parent / c.PYPROJECT_FILENAME).is_file()
+            ),
+            None,
+        )
+        if enclosing is None:
+            return result_type.ok(project_root)
+        scope = cls._enclosing_git_scope(project_root, enclosing)
+        if scope.failure:
+            return result_type.from_failure(scope)
+        return result_type.ok(scope.value)
+
+    @staticmethod
+    def _enclosing_git_scope(
+        project_root: Path,
+        enclosing: Path,
+    ) -> p.Result[Path]:
+        """Reconcile an enclosing manifest project against its Git ownership.
+
+        Returns:
+            The resulting ``p.Result[Path]``.
+
+        """
+        result_type = r[Path]
+        ownership = u.Infra.git_mutation_scope(
+            m.Infra.GitRepoRequest(repo_root=enclosing),
+        )
+        if ownership.failure:
+            return result_type.from_failure(ownership)
+        if ownership.value.git_dir is None:
+            return result_type.ok(project_root)
+        identity = u.Infra.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=enclosing),
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
+        scope = identity.value.repository_root.resolve()
+        if not project_root.is_relative_to(scope):
+            return result_type.fail(
+                "native association is outside its containing Git repository",
+            )
+        return result_type.ok(
+            scope if (scope / c.PYPROJECT_FILENAME).is_file() else enclosing,
+        )
+
+    @staticmethod
+    def _native_resolution_owner(
+        project_root: Path, reader_root: Path
+    ) -> p.Result[Path]:
+        """Let managed UV resolve monorepo membership, including native exclusions.
+
+        Returns:
+            The resulting ``p.Result[Path]``.
+
+        """
+        result_type = r[Path]
+        identity = u.Infra.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=reader_root),
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
+        git_root = identity.value.repository_root.resolve()
+        binary = u.Infra.managed_mise_binary(c.Infra.UV, reader_root)
+        if binary.failure:
+            return result_type.from_failure(binary)
+        discovered = u.Cli.run_raw(
+            (
+                str(binary.value),
+                "workspace",
+                "dir",
+                "--project",
+                str(project_root),
+            ),
+            cwd=project_root,
+            timeout=c.Infra.TIMEOUT_SHORT,
+        )
+        if discovered.failure:
+            return result_type.from_failure(discovered)
+        process = discovered.value
+        if not u.Cli.process_succeeded(process.outcome) or process.stderr.strip():
+            return result_type.fail(process.stderr or process.stdout)
+        owner = Path(process.stdout.strip())
+        if (
+            not owner.is_absolute()
+            or not owner.is_dir()
+            or not owner.resolve().is_relative_to(git_root)
+            or not project_root.is_relative_to(owner.resolve())
+        ):
+            return result_type.fail(
+                f"native UV workspace owner leaves the project's Git boundary: {owner}",
+            )
+        return result_type.ok(owner.resolve())
 
     @classmethod
     def _resolved_beads(
@@ -206,7 +408,7 @@ class FlextInfraWorkspaceDetector(
         values = observed.model_dump(round_trip=True)
         values.update(
             declaration.model_dump(
-                include=frozenset(m.Infra.RepositoryRef.model_fields),
+                include=set(m.Infra.RepositoryRef.model_fields),
                 round_trip=True,
             ),
         )
@@ -220,6 +422,39 @@ class FlextInfraWorkspaceDetector(
             declaration.gascity_enabled,
             declaration.project,
         ))
+
+    @classmethod
+    def _reconciled_origin(
+        cls,
+        repository_root: Path,
+        *,
+        path: Path,
+        declared_url: str | None,
+    ) -> p.Result[t.Pair[str, str]]:
+        """Reconcile the live origin with its declared URL and provider identity.
+
+        Returns:
+            The resulting ``(live origin URL, declared provider name)`` pair.
+
+        """
+        result_type = r[t.Pair[str, str]]
+        origin = cls._git_origin_url(repository_root)
+        if origin.failure:
+            return result_type.from_failure(origin)
+        if declared_url is not None and u.Infra.git_remote_identity(
+            origin.value,
+        ) != u.Infra.git_remote_identity(declared_url):
+            return result_type.fail(
+                f"subproject origin differs from its .gitmodules URL: "
+                f"{path.as_posix()}",
+            )
+        provider_result = cls._declared_provider_name(
+            repository_root,
+            origin_url=origin.value,
+        )
+        if provider_result.failure:
+            return result_type.from_failure(provider_result)
+        return result_type.ok((origin.value, provider_result.value))
 
     @classmethod
     def _local_repository_ref(
@@ -236,52 +471,39 @@ class FlextInfraWorkspaceDetector(
             The resulting ``p.Result[m.Infra.RepositoryRef]``.
 
         """
-        metadata = u.Infra.read_project_metadata_result(repository_root)
+        metadata = u.Infra.read_project_metadata_state(repository_root)
         if metadata.failure:
             return r[m.Infra.RepositoryRef].from_failure(metadata)
-        project_name = metadata.value.project.name
-        origin = cls._git_origin_url(repository_root)
+        project_name = metadata.value.metadata.project.name
+        origin = cls._reconciled_origin(
+            repository_root,
+            path=path,
+            declared_url=declared_url,
+        )
         if origin.failure:
             return r[m.Infra.RepositoryRef].from_failure(origin)
-        if declared_url is not None and u.Infra.git_remote_identity(
-            origin.value,
-        ) != u.Infra.git_remote_identity(declared_url):
-            return r[m.Infra.RepositoryRef].fail(
-                f"subproject origin differs from its .gitmodules URL: "
-                f"{path.as_posix()}",
-            )
-        canonical_url = u.Infra.validate_git_remote_url(declared_url or origin.value)
+        origin_url, provider_name = origin.value
+        canonical_url = u.Infra.validate_git_remote_url(declared_url or origin_url)
         if canonical_url.failure:
             return r[m.Infra.RepositoryRef].from_failure(canonical_url)
         effective_url = canonical_url.value
-        provider_result = cls._declared_provider_name(
-            repository_root,
-            origin_url=origin.value,
-        )
-        if provider_result.failure:
-            return r[m.Infra.RepositoryRef].from_failure(provider_result)
         role = (
             c.Infra.MakeProfile.WORKSPACE
             if (repository_root / c.Infra.GITMODULES).is_file()
             else c.Infra.MakeProfile.STANDALONE
         )
         _, separator, repository_name = u.Infra.git_remote_identity(
-            origin.value,
+            origin_url,
         ).partition("/")
         if not separator or not repository_name:
             return r[m.Infra.RepositoryRef].fail(
-                f"Git origin does not identify a repository: {origin.value}",
+                f"Git origin does not identify a repository: {origin_url}",
             )
         # The manifest is the identity authority: the provider key is the one
         # the repository itself declares and the declared URL organization was
         # just reconciled against the live origin, so no catalog may override
-        # either. Package participation stays an observed fact for a
-        # manifest-less checkout (the observed state IS the identity): the
-        # canonical layout resolution returns the typed "not a Python package
-        # project" signal for such roots, and declaring a package there made
-        # the fresh-import guard demand an importable layout no repository
-        # publishes. A flext-* checkout that cannot resolve its package fails
-        # the discovery contract loudly instead of being declared one.
+        # either. Native packaging declarations own participation; source
+        # exports remain independently accountable to their actual check owner.
         return r[m.Infra.RepositoryRef].ok(
             m.Infra.RepositoryRef(
                 name=repository_name,
@@ -289,10 +511,12 @@ class FlextInfraWorkspaceDetector(
                 url=effective_url,
                 path=path,
                 role=role,
-                provider=provider_result.value,
+                provider=provider_name,
                 kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                 codegen=c.Infra.CodegenKind.CONFORM,
-                package=u.Infra.layout(repository_root) is not None,
+                package=u.Infra.project_package_participation(
+                    metadata.value.packaging,
+                ),
                 # The checkout's own root package is its environment's
                 # editable install by the uv contract — the lock records
                 # `editable = "."` for the project root in every standalone
@@ -389,7 +613,8 @@ class FlextInfraWorkspaceDetector(
         retain an unprovisioned entry as its parsed Git declaration only.
 
         Returns:
-                    The resulting ``p.Result[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]``.
+            The resulting ``p.Result[m.Infra.RepositoryRef | Path |
+            m.Infra.GitSubmoduleDeclaration]``.
 
         """
         result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
@@ -462,6 +687,7 @@ class FlextInfraWorkspaceDetector(
 
         Returns:
             Its observed identity, or its pending Git declaration for setup.
+
         """
         result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
         if not (subproject_root / c.Infra.GIT_DIR).exists():
@@ -579,31 +805,6 @@ class FlextInfraWorkspaceDetector(
         return result_type.ok(configured.value[0])
 
     @classmethod
-    def load_repository_ref(
-        cls,
-        repository_root: Path,
-    ) -> p.Result[m.Infra.RepositoryRef]:
-        """Load this repository's identity without requiring member checkouts.
-
-        Returns:
-            The declared repository reconciled with native Git and PEP 621.
-        """
-        root = repository_root.expanduser().resolve()
-        observed = cls._local_repository_ref(root)
-        if observed.failure:
-            return r[m.Infra.RepositoryRef].from_failure(observed)
-        inputs = u.Infra.load_repository_declaration_inputs(root)
-        if inputs.failure:
-            return r[m.Infra.RepositoryRef].from_failure(inputs)
-        configured = cls._configured_repository_ref(
-            inputs.value.spec,
-            observed=observed.value,
-        )
-        if configured.failure:
-            return r[m.Infra.RepositoryRef].from_failure(configured)
-        return r[m.Infra.RepositoryRef].ok(configured.value[0])
-
-    @classmethod
     def load_workspace_spec(
         cls,
         repository_root: Path,
@@ -624,15 +825,109 @@ class FlextInfraWorkspaceDetector(
         if authenticated.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(authenticated)
         identity = authenticated.value
-        if inputs is None:
-            captured = u.Infra.load_codegen_inputs(resolved_root)
-            if captured.failure:
-                return r[m.Infra.WorkspaceSpec].from_failure(captured)
-            inputs = captured.value
-        declaration = inputs.spec.repository or m.Infra.RepositoryDeltaSpec()
+        resolved_inputs = cls._resolved_codegen_inputs(resolved_root, inputs)
+        if resolved_inputs.failure:
+            return r[m.Infra.WorkspaceSpec].from_failure(resolved_inputs)
+        inputs_value = resolved_inputs.value
+        declaration = inputs_value.spec.repository or m.Infra.RepositoryDeltaSpec()
+        workspace = cls._resolved_workspace_topology(
+            resolved_root,
+            identity,
+            inputs=inputs_value,
+            declaration=declaration,
+            allow_unprovisioned_members=allow_unprovisioned_members,
+        )
+        if workspace.failure:
+            return r[m.Infra.WorkspaceSpec].from_failure(workspace)
+        external_consumers = u.Infra.discover_external_consumers(
+            resolved_root,
+            inputs_value,
+        )
+        if external_consumers.failure:
+            return r[m.Infra.WorkspaceSpec].from_failure(external_consumers)
+        (workspace_beads, resolved_refs, name) = workspace.value
+        return r[m.Infra.WorkspaceSpec].ok(
+            m.Infra.WorkspaceSpec(
+                name=name,
+                beads=workspace_beads,
+                gascity_enabled=resolved_refs[0][1],
+                repository=resolved_refs[0][0],
+                project=resolved_refs[0][2],
+                namespace_scan_dirs=declaration.namespace_scan_dirs,
+                integration=declaration.integration,
+                candidate_dependencies=declaration.candidate_dependencies,
+                candidate_bootstrap_targets=declaration.candidate_bootstrap_targets,
+                docs_audit=declaration.docs_audit,
+                subprojects=tuple(resolved_refs[1][0]),
+                pending_subprojects=tuple(resolved_refs[1][2]),
+                external_dependency_paths=tuple(resolved_refs[1][1]),
+                external_consumers=external_consumers.value,
+            ),
+        )
+
+    @classmethod
+    def _resolved_codegen_inputs(
+        cls,
+        resolved_root: Path,
+        inputs: m.Infra.CodegenInputs | None,
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Return the given codegen inputs or load them from the checkout.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenInputs]``.
+
+        """
+        if inputs is not None:
+            return r[m.Infra.CodegenInputs].ok(inputs)
+        return u.Infra.load_codegen_inputs(resolved_root)
+
+    @classmethod
+    def _resolved_workspace_topology(
+        cls,
+        resolved_root: Path,
+        identity: m.Infra.GitIdentityReport,
+        *,
+        inputs: m.Infra.CodegenInputs,
+        declaration: m.Infra.RepositoryDeltaSpec,
+        allow_unprovisioned_members: bool,
+    ) -> p.Result[
+        t.Triple[
+            m.Infra.BeadsProjectSpec | None,
+            t.Pair[
+                t.Triple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None],
+                t.Triple[
+                    t.SequenceOf[m.Infra.RepositoryRef],
+                    t.SequenceOf[Path],
+                    t.SequenceOf[m.Infra.GitSubmoduleDeclaration],
+                ],
+            ],
+            str,
+        ]
+    ]:
+        """Resolve the Beads ledger, repository refs, and workspace name.
+
+        Returns:
+            The resulting ``(beads ledger, resolved refs, workspace name)``
+            triple.
+
+        """
+        result_type = r[
+            t.Triple[
+                m.Infra.BeadsProjectSpec | None,
+                t.Pair[
+                    t.Triple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None],
+                    t.Triple[
+                        t.SequenceOf[m.Infra.RepositoryRef],
+                        t.SequenceOf[Path],
+                        t.SequenceOf[m.Infra.GitSubmoduleDeclaration],
+                    ],
+                ],
+                str,
+            ]
+        ]
         beads = cls._effective_workspace_beads(resolved_root, identity, declaration)
         if beads.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(beads)
+            return result_type.from_failure(beads)
         workspace_beads = beads.value[0] if beads.value else None
         refs = cls._resolved_workspace_refs(
             resolved_root,
@@ -642,38 +937,11 @@ class FlextInfraWorkspaceDetector(
             allow_unprovisioned_members=allow_unprovisioned_members,
         )
         if refs.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(refs)
-        (
-            (repository_ref, gascity_enabled, declared_project),
-            (subprojects, external, pending),
-        ) = refs.value
-        named = cls._workspace_name(workspace_beads, repository_ref)
+            return result_type.from_failure(refs)
+        named = cls._workspace_name(workspace_beads, refs.value[0][0])
         if named.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(named)
-        external_consumers = (
-            FlextInfraUtilitiesWorkspaceInventory.discover_external_consumers(
-                resolved_root,
-                inputs,
-            )
-        )
-        if external_consumers.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(external_consumers)
-        return r[m.Infra.WorkspaceSpec].ok(
-            m.Infra.WorkspaceSpec(
-                name=named.value,
-                beads=workspace_beads,
-                gascity_enabled=gascity_enabled,
-                repository=repository_ref,
-                project=declared_project,
-                namespace_scan_dirs=declaration.namespace_scan_dirs,
-                integration=declaration.integration,
-                docs_audit=declaration.docs_audit,
-                subprojects=tuple(subprojects),
-                pending_subprojects=tuple(pending),
-                external_dependency_paths=tuple(external),
-                external_consumers=external_consumers.value,
-            ),
-        )
+            return result_type.from_failure(named)
+        return result_type.ok((workspace_beads, refs.value, named.value))
 
     @classmethod
     def _authenticated_identity(

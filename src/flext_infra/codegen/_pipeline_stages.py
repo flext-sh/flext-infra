@@ -9,13 +9,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen import FlextInfraCodegenCensus
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+from flext_infra.codegen import (
+    FlextInfraCodegenCensus,
+    FlextInfraCodegenConform,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPyTyped,
+    FlextInfraCodegenScaffolder,
+)
+from flext_infra.deps import FlextInfraRuntimeDevDependencyDetector
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -103,13 +105,25 @@ class FlextInfraCodegenPipelineStagesMixin:
                 ports=self.conform_collaborators,
             )
 
+        def _emit(result: m.Infra.CodegenResult) -> t.JsonMapping:
+            plan = result.plan
+            if plan is not None:
+                count = len(plan.repositories)
+            else:
+                proof = result.verified_publication
+                if proof is None:
+                    msg = "conform outcome has no publication proof"
+                    raise ValueError(msg)
+                count = len(proof.scope_roots)
+            return {
+                "repositories_conformed": count,
+                "files_written": len(result.written_files),
+            }
+
         return self._run_stage(
             c.Infra.PipelineStage.TOOLCHAIN,
             _action,
-            lambda result: {
-                "repositories_conformed": len(result.plan.repositories),
-                "files_written": len(result.written_files),
-            },
+            _emit,
         )
 
     def _stage_deps(

@@ -230,5 +230,17 @@ class FlextInfraModelsGitWorktreeState:
             ),
         ]
 
+    class GitLaneOwnershipReceipt(m.ContractModel):
+        """Existing owned Git state retained remotely and integrated before a new lane."""
+
+        checkpoint: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeStateCheckpoint,
+            m.Field(description="Full-repository capture identifying the prior owned branch"),
+        ]
+        publication: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeCheckpointPublication,
+            m.Field(description="Live independently retained checkpoint publication"),
+        ]
+
 
 __all__: list[str] = ["FlextInfraModelsGitWorktreeState"]

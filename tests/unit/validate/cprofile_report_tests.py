@@ -14,11 +14,230 @@ import pytest
 from flext_infra import config
 from flext_infra.services import FlextInfraValidationCommandRoutes
 from flext_infra.validate import FlextInfraCProfileReport
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "arguments",
+        [("--help",), ("validate", "cprofile-report", "--invalid-profile-option")],
+    )
+    def test_profile_publication_failure_preserves_the_native_cli_status(
+        tmp_path: Path, arguments: t.StrTuple
+    ) -> None:
+        """A real invalid parent cannot replace a failing CLI's returned status."""
+        blocked = tmp_path / "blocked-parent"
+        blocked.write_text("not a directory\n", encoding=c.DEFAULT_ENCODING)
+        reference = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-m", "flext_infra", *arguments), cwd=tmp_path
+            )
+        )
+        profiled = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-m",
+                    "flext_infra._profile_entry",
+                    str(blocked / "profile.pstats"),
+                    *arguments,
+                ),
+                cwd=tmp_path,
+            )
+        )
+        tm.that(profiled.stdout, eq=reference.stdout)
+        tm.that(profiled.stderr, has="NotADirectoryError")
+        tm.that(profiled.stderr, has=str(blocked))
+        if u.Cli.process_succeeded(reference.outcome):
+            tm.that(u.Cli.process_succeeded(profiled.outcome), eq=False)
+        else:
+            tm.that(
+                profiled.outcome.raw_return_code, eq=reference.outcome.raw_return_code
+            )
+
+    @staticmethod
+    def test_profile_publication_failure_keeps_the_original_cli_exception(
+        tmp_path: Path,
+    ) -> None:
+        """A closed native stdout raises first; a real flush failure remains a note."""
+        blocked = tmp_path / "blocked-parent"
+        blocked.write_text("not a directory\n", encoding=c.DEFAULT_ENCODING)
+        consumer = (
+            "import runpy, sys\n"
+            "from flext_cli import cli\n"
+            "from flext_infra import main\n"
+            "sys.stdout.close()\n"
+            "module = sys.argv[1]\n"
+            "sys.argv = sys.argv[1:]\n"
+            "runpy.run_module(module, run_name='__main__')\n"
+        )
+        reference = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", consumer, "flext_infra", "--help"),
+                cwd=tmp_path,
+            )
+        )
+        profiled = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    consumer,
+                    "flext_infra._profile_entry",
+                    str(blocked / "profile.pstats"),
+                    "--help",
+                ),
+                cwd=tmp_path,
+            )
+        )
+        tm.that(u.Cli.process_succeeded(reference.outcome), eq=False)
+        tm.that(
+            profiled.outcome.raw_return_code,
+            eq=reference.outcome.raw_return_code,
+            msg=reference.stderr + profiled.stderr,
+        )
+        tm.that(reference.stderr, lacks="KeyboardInterrupt")
+        for executed in (reference, profiled):
+            tm.that(executed.outcome.timed_out, eq=False)
+            tm.that(executed.outcome.forwarded_signal, eq=None)
+        tm.that(reference.stderr, has="ValueError: I/O operation on closed file.")
+        primary_trace, secondary_trace = profiled.stderr.split(
+            "profile publication failed:\n", maxsplit=1
+        )
+        tm.that(primary_trace, has="ValueError: I/O operation on closed file.")
+        tm.that(primary_trace, lacks="NotADirectoryError")
+        tm.that(secondary_trace, has="NotADirectoryError")
+        tm.that(secondary_trace, has=str(blocked))
+        tm.that(secondary_trace, lacks="ValueError: I/O operation on closed file.")
+
+    @staticmethod
+    def test_source_view_filters_before_its_row_limit(tmp_path: Path) -> None:
+        """A busy external caller cannot hide captured repository functions."""
+        root = tmp_path / "project"
+        root.mkdir()
+        owned = root / "owned_workload.py"
+        owned.write_text(
+            "class OwnedWorkload:\n"
+            "    @staticmethod\n"
+            "    def run():\n"
+            "        return 'owned'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        external = tmp_path / "external"
+        external.mkdir()
+        driver = external / "driver.py"
+        driver.write_text(
+            "import sys\n"
+            f"sys.path.insert(0, {str(root)!r})\n"
+            "from owned_workload import OwnedWorkload\n"
+            "for _ in range(5):\n"
+            "    sum(range(100_000))\n"
+            "OwnedWorkload.run()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        reports = root / c.Infra.REPORTS_DIR_NAME
+        reports.mkdir()
+        profile = reports / "workload.pstats"
+        output = profile.with_suffix(".txt")
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    sys.executable,
+                    "-m",
+                    "cProfile",
+                    "-o",
+                    str(profile),
+                    str(driver),
+                ],
+                cwd=external,
+            ),
+        )
+        tm.ok(
+            FlextInfraCProfileReport(
+                repository_root=root,
+                profile=profile,
+                output=output,
+                sort="cumulative",
+                limit=1,
+            ).execute(),
+        )
+        full, focused = output.read_text(encoding=c.DEFAULT_ENCODING).split(
+            "Repository source functions:\n",
+        )
+        tm.that(full, lacks=str(owned))
+        tm.that(focused, has=str(owned))
+        tm.that(focused, lacks=str(driver))
+
+    @staticmethod
+    @pytest.mark.parametrize("absolute_profile", [False, True])
+    def test_entry_renders_member_profile_from_workspace_root(
+        tmp_path: Path,
+        *,
+        absolute_profile: bool,
+    ) -> None:
+        """The real transport elects the member owning its report artifact."""
+        workspace_name = "flext-profile-workspace"
+        workspace, _ = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name=workspace_name,
+            package_name=workspace_name.replace("-", "_"),
+        )
+        u.Tests.write_workspace_manifest(
+            workspace,
+            workspace_name,
+            role=c.Infra.MakeProfile.WORKSPACE,
+        )
+        member_name = "flext-profile-consumer"
+        member, _ = u.Tests.create_lazy_init_workspace(
+            workspace,
+            project_name=member_name,
+            package_name=member_name.replace("-", "_"),
+        )
+        u.Tests.write_workspace_manifest(member, member_name)
+        u.Tests.declare_workspace_projects(workspace, (member_name,))
+        policy = config.Infra.tooling.tools.pytest
+        report_dir = member / c.Infra.REPORTS_DIR_NAME / "profiles"
+        report_dir.mkdir(parents=True)
+        profile_path = report_dir / policy.profile_suite_filename
+        profile_target = member / "profile_target.py"
+        profile_target.write_text(
+            "_ = sum(range(10))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    sys.executable,
+                    "-m",
+                    "cProfile",
+                    "-o",
+                    str(profile_path),
+                    str(profile_target),
+                ],
+                cwd=workspace,
+            ),
+        )
+        selected_profile = (
+            profile_path if absolute_profile else profile_path.relative_to(workspace)
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    sys.executable,
+                    "-m",
+                    "flext_infra._cprofile_entry",
+                    str(selected_profile),
+                ],
+                cwd=workspace,
+            ),
+        )
+        rendered = profile_path.with_suffix(".txt").read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(rendered, has="function calls")
 
     @staticmethod
     @pytest.mark.parametrize("inventory_only", [False, True])

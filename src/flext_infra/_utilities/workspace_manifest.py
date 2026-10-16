@@ -40,6 +40,7 @@ class FlextInfraUtilitiesWorkspaceManifest:
 
         Returns:
             The validated declaration belonging to the document's own repository.
+
         """
         result_type = r[m.Infra.RepositoryDeltaSpec]
         fields = set(m.Infra.RepositoryDeltaSpec.model_fields)
@@ -65,6 +66,11 @@ class FlextInfraUtilitiesWorkspaceManifest:
                         include=fields.intersection(
                             m.Infra.RepositoryPolicyOverlaySpec.model_fields,
                         ),
+                        # Why: the overlay's ``project`` is the selector that
+                        # matched this policy (the distribution name string);
+                        # the delta's ``project`` is ProjectSpec metadata. The
+                        # selector is admission, never delta content.
+                        exclude={"project"},
                         exclude_computed_fields=True,
                     ),
                 )

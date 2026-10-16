@@ -237,7 +237,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             has=[
                 c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix(),
                 publication.as_posix(),
-                f"{publication.with_suffix('').as_posix()}/**/*.json",
+                f"{c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH.as_posix()}/**/*.json",
                 f"{c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY.as_posix()}/*.json",
             ],
         )
@@ -246,7 +246,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     def test_tool_cache_keeps_new_generations_after_completed_failures() -> None:
-        """A rendered cache contract restores progress and never overwrites a generation."""
+        """A rendered cache contract restores progress and never overwrites it."""
         spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
             dist="cache-consumer",
             make_profile=c.Infra.MakeProfile.STANDALONE,

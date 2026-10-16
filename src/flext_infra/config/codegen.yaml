@@ -135,7 +135,7 @@ Infra:
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
       # the pyright wrapper, qlty, jscpd, waza). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
-      # in its own config/codegen-org.yaml under Infra.codegen.toolchain.tools;
+      # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
       # lists its consumers' tools (DI).
       tools:
@@ -298,8 +298,8 @@ Infra:
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
     # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
     # with "Repository not found" before any code runs. Only projects that
-    # really exercise their subprojects in CI opt in through
-    # config/codegen-overrides.yaml.
+    # really exercise their subprojects in CI opt in through their own
+    # config/codegen.yaml.
     checkout_submodules: "false"
     # CI consumes installed locked providers, never member checkouts.
     checkout_submodules_overrides: {}
@@ -315,12 +315,12 @@ Infra:
     # Distributions whose CI gates resolve GitHub Packages (private GHCR OCI
     # dependencies). Least privilege: only these grant the generated ci job
     # packages: read; every other distribution and job stays contents-only.
-    # Org repositories declare themselves in their own config/codegen-org.yaml.
+    # Org repositories declare themselves in their own config/codegen.yaml.
     ci_package_registry_read: []
     # Per-distribution private composed-project auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; projects that need
-    # private submodules declare read-only deploy-key secrets via
-    # config/codegen-overrides.yaml, which the generated workflow materializes
+    # private submodules declare read-only deploy-key secrets in their own
+    # config/codegen.yaml, which the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
     ci_private_submodules: {}
     ci_private_dependency_auth: {}
@@ -361,7 +361,7 @@ Infra:
     branch_policy:
       lane_remote: origin
       lane_pr_limit: 1000
-      lane_governance_file: null
+      lane_governance_file:
       lane_temporary_roots:
       - /tmp
       # Pushes to these branches trigger the generated CI workflow. The renderer
@@ -396,6 +396,11 @@ Infra:
       - "**/.scannerwork/**"
       cpd_exclusions:
       - "tests/**"
+      # Package __init__.py files are AUTO-GENERATED lazy-export projections:
+      # their TYPE_CHECKING import list mirrors the facade module that composes
+      # the same families, so duplication there measures the generator's
+      # contract, never governed source.
+      - "**/__init__.py"
       # Web API that `make sonarcloud-sync` writes the server-side issue
       # exclusions through. The project key is derived from
       # the checkout's origin identity as <organization>_<repository>.
@@ -485,7 +490,7 @@ Infra:
       # fixture repository created there.
       pytest_scratch:
         user_home_environment_variable: HOME
-        home_relative_directory: tmp
+        home_relative_directory: .local/state
         state_directory_name: .flext-runtime
         namespace: scratch
       # Actions-cache policy for the shared testmon database: two-phase
@@ -524,6 +529,13 @@ Infra:
       ruff_cache:
         external_storage_directory: flext/infra/ruff
       # Public verbs execute their declared operation without mode selectors.
+      uv_resolution:
+        local_directory: .flext/uv/local
+        standalone_directory: .flext/uv/standalone
+        hosted_variable: GITHUB_ACTIONS
+        hosted_value: 'true'
+        virtual_distribution_suffix: '-resolution'
+        member_group_separator: '-'
       ci:
         variable: CI
         value: Y
@@ -558,11 +570,11 @@ Infra:
       pre_commit: true
       pre_push: true
       # Public refactor violations-sweep default; custom sequences use verbs below.
-      violations_sweep_repair_verbs: [fix, fmt, mod]
+      violations_sweep_repair_verbs: [ fix, fmt, mod ]
       workflow:
       - { verb: setup, contexts: [ local, ci ] }
+      - { verb: gen, contexts: [ local, ci ] }
       - { verb: audit, contexts: [ local, ci ] }
-      - { verb: gen, contexts: [ local ] }
       - { verb: fmt, contexts: [ local ] }
       - { verb: fix, contexts: [ local ] }
       - { verb: check, contexts: [ local, ci, pre_push, pre_commit ] }
@@ -573,6 +585,27 @@ Infra:
       # The generation fixed point and the clean tree close every CI run and
       # every push: a projection that drifts from its source is red.
       - { verb: verify-clean, contexts: [ local, ci, pre_push ] }
+      # Root mutation verbs own their existing member fanout. Per-repository
+      # consumers run from the invoking root with the member's Makefile.
+      lifecycle_steps:
+      - { verb: help, scope: root, contexts: [ local, ci ] }
+      - { verb: setup, scope: root, contexts: [ local, ci ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: upg, scope: root, contexts: [ local ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: mod, scope: root, contexts: [ local, ci ] }
+      - { verb: fix, scope: root, contexts: [ local, ci ] }
+      - { verb: fmt, scope: root, contexts: [ local, ci ] }
+      - { verb: check, scope: each, contexts: [ local, ci ] }
+      - { verb: test, scope: each, contexts: [ local, ci ] }
+      - { verb: build, scope: each, contexts: [ local, ci ] }
+      - { verb: examples, scope: each, contexts: [ local, ci ] }
+      - { verb: docs, scope: each, contexts: [ local, ci ] }
+      - { verb: status, scope: each, contexts: [ local, ci ] }
+      - { verb: audit, scope: each, contexts: [ local, ci ] }
+      - { verb: verify-clean, scope: each, contexts: [ local, ci ] }
+      lifecycle_observed_files: [ Makefile, pyproject.toml, uv.lock, mise.lock ]
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -615,7 +648,7 @@ Infra:
         stale_github_organizations:
         - organization
       # Private cross-repo doc-link entries (checkouts outside this public
-      # registry) belong in config/codegen-overrides.local.yaml; the
+      # registry) belong in the gitignored config/codegen.local.yaml; the
       # lookup appends local entries and resolves first match.
       verbs:
       - name: help
@@ -630,12 +663,11 @@ Infra:
         arguments: [ SOURCE_ROOT, SOURCE_URL_PREFIX, SOURCE_REF_FROM, SOURCE_REF_TO ]
         description: Migrate an explicitly selected dependency Git reference through the current tool owner before the consumer resolves its own locks.
       - name: validate-lifecycle
-        description: Serially run setup, gen, upg, setup, gen, gen in the root and every governed member, publishing typed receipts and stopping at the first failure.
-        profiles: [ workspace ]
+        description: Execute the declared public runtime acceptance steps serially, with root-owned mutation fanout and typed first-failure receipts.
       # Workspace-only (topology owns applicability): a standalone Makefile
       # never declares it. Never merges; a rerun continues the same lanes.
       - name: propagate
-        description: Apply this workspace's flext-infra to every declared member (conform, then lock) and publish one pull-request lane per member whose projections or lock change; unchanged members publish nothing.
+        description: Apply this workspace's flext-infra projections to every declared member and publish one pull-request lane per changed member; lock updates belong exclusively to make upg.
         profiles: [ workspace ]
       - name: build
         description: Build the project distribution artifacts.
@@ -653,7 +685,7 @@ Infra:
         description: Run incremental tests through the persistent testmon cache.
       - name: test-full
         arguments: [ FILE ]
-        description: Run every test once, including slow, external and CI-excluded markers, locally only, without testmon and without any time limit.
+        description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
       - name: test-file
         arguments: [ FILE ]
         description: Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
@@ -665,6 +697,10 @@ Infra:
         description: Profile the canonical pytest entry and its collection children on the same persistent testmon database, without the outer bounded-gate wrapper.
       - name: profile-test-report
         description: Render the parent pytest profile and the aggregated child profiles from that run.
+      - name: profile-environment
+        description: Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
+      - name: profile-environment-report
+        description: Render the profile retained by the canonical environment provenance guard.
       - name: profile-mod
         description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
       - name: profile-mod-report
@@ -710,7 +746,7 @@ Infra:
         description: Inspect the pending generation journal and declared physical effect footprint without leases, recovery, or publication.
         produces_activation: true
       - name: initialize
-        description: Materialize the declared package initializer graph.
+        description: Bootstrap this target's own declaration and canonical Makefile.
       - name: mod
         description: Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
       - name: mod-rules
@@ -852,8 +888,8 @@ Infra:
         python.analysis.includeVenvInWorkspaceSymbols: false
         # Attached projects share one physical workspace environment. Avoid
         # virtual workspaces isolating sources from the native Pyright context.
-        python.analysis.useNearestConfiguration: false
-        python.analysis.usePerProjectEnvironments: false
+        python.analysis.useNearestConfiguration: true
+        python.analysis.usePerProjectEnvironments: true
         python.analysis.userFileIndexingLimit: 2000
         python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
         python.languageServer: Pylance
@@ -924,12 +960,11 @@ Infra:
       - python.analysis.typeCheckingMode
       - python.analysis.diagnosticSeverityOverrides
       # The current Ruff extension always uses its native server.
-      - ruff.nativeServer
 
-    # Declarative project-layout SSOT consumed by
-    # the layout engine (codegen/layout.py) and the layout quality gate. Every
-    # move/archive/gitignore decision derives from this section — the engine
-    # carries zero hardcoded layout knowledge. Every violation fails the check.
+      # Declarative project-layout SSOT consumed by
+      # the layout engine (codegen/layout.py) and the layout quality gate. Every
+      # move/archive/gitignore decision derives from this section — the engine
+      # carries zero hardcoded layout knowledge. Every violation fails the check.
     layout:
       version: 1
       # Archive-not-delete root: archived entries land in <archive_root>/<project>/.
@@ -1110,8 +1145,9 @@ Infra:
       - external-docs
       # Per-project overrides: extra archives (with the matching .gitignore
       # additions), explicit nested moves, and empty-directory archives.
-      # Project-specific entries live in config/codegen-overrides.yaml so
-      # codegen.yaml stays an immutable fleet-wide rule set.
+      # Project-specific entries live in each project's own
+      # config/codegen.yaml so this file stays an immutable fleet-wide rule
+      # set that never lists its consumers.
       project_overrides: {}
 
     managed_files:
@@ -1305,7 +1341,6 @@ Infra:
         # every project owning src/, so the tool it shells out to must be a
         # declared dev dependency of every generated project.
         - bandit>=1.9.4
-        - flext-tests
         # Floors let uv select released tools without a cap or downgrade path.
         # Every diagnostic from the resolved release remains blocking.
         - mkdocs
@@ -1318,7 +1353,7 @@ Infra:
         - mkdocs-redirects>=1.2.3
         - mkdocs-section-index>=0.3.12
         - mkdocstrings>=1.0.6
-        - mkdocstrings-python>=2.0.8
+        - mkdocstrings-python>=2.0.9
         # uv installs this as a side effect of the editable root install
         # (hatchling editable-detection backend) but a later sync prunes it,
         # breaking editable wheel builds (release/wheel tests) after any
@@ -1364,122 +1399,7 @@ Infra:
         retired_dev:
         - types-flask
         - types-werkzeug
-        dependency_profiles:
-        # NOTE: a workspace manifest may declare an upstream distribution;
-        # conformance must model that upstream relationship generically.
-        - upstream: flext_core
-          runtime:
-          - flext-core
-          - annotated-types>=0.8.0
-          - beartype>=0.23.1
-          - dependency-injector>=4.49.1
-          - packaging>=26.3
-          - pydantic>=2.14.1,<3
-          - pydantic-settings>=2.15.0
-          - pyyaml>=6.0.3
-          - structlog>=26.1.0
-          - typing-extensions>=4.16.0
-          codegen: [ flext-infra ]
-        - upstream: flext_cli
-          runtime:
-          - flext-cli
-          - flext-core
-          - pydantic>=2.14.1,<3
-          - pydantic-settings>=2.15.0
-          codegen: [ flext-infra ]
-        # Project-scoped requirements extend the shared profile without
-        # leaking API/Web dependencies into core consumers. Unbounded entries
-        # are resolved by deps; its floor writer updates this same owner.
-        - upstream: flext_core
-          project: flext-api
-          runtime: [ flext-web, httpx>=0.28.1, msgpack>=1.2.3 ]
-        - upstream: flext_core
-          project: flext-auth
-          runtime: [ flext-api, bcrypt>=5.0.0, PyJWT>=2.15.1 ]
-        - upstream: flext_core
-          project: flext-cli
-          runtime: [ click>=8.5.0, typer>=0.27.3, jinja2>=3.1.6, jsonschema>=4.26.0, tomlkit>=0.15.1, ruamel.yaml>=0.19.1, defusedxml>=0.7.1, openpyxl>=3.1.5, python-docx>=1.2.0, python-pptx>=1.0.2 ]
-        - upstream: flext_cli
-          project: flext-infra
-          runtime: [ flext-cli, defusedxml>=0.7.1, GitPython>=3.2.0, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.11, "rope @ git+https://github.com/marlon-costa-dc/rope.git@datacosmos", pytest>=9.1.1, mkdocs>=1.6.1 ]
-        - upstream: flext_cli
-          project: flext-tests
-          runtime: [ flext-cli, flext-infra, pytest>=9.1.1, pytest-timeout>=2.4.0, docker>=7.2.0, python-on-whales>=0.81.0 ]
-        - upstream: flext_cli
-          project: flext-grpc
-          runtime: [ flext-cli, grpcio>=1.84.0, protobuf>=7.36.2 ]
-        - upstream: flext_cli
-          project: flext-observability
-          runtime: [ flext-cli, flask>=3.1.3, starlette>=1.7.0, psutil>=7.2.2 ]
-        - upstream: flext_cli
-          project: flext-plugin
-          runtime: [ flext-cli ]
-        - upstream: flext_cli
-          project: flext-quality
-          runtime: [ flext-cli, flext-web, flext-api, fastmcp>=4.1.0, requests>=2.34.2, aiohttp>=3.14.5, flask>=3.1.3, jinja2>=3.1.6, schedule>=1.2.2, pytest>=9.1.1 ]
-        - upstream: flext_cli
-          project: flext-web
-          runtime: [ flext-cli, flask>=3.1.3, uvicorn>=0.54.0, fastapi>=0.143.0, starlette>=1.7.0, werkzeug>=3.1.9 ]
-        - upstream: flext_cli
-          project: flext-db-oracle
-          runtime: [ flext-cli, oracledb>=26.0.1, sqlalchemy>=2.0.54 ]
-        - upstream: flext_cli
-          project: flext-ldif
-          runtime: [ flext-cli ]
-        - upstream: flext_core
-          project: flext-ldap
-          runtime: [ flext-ldif, ldap3>=2.10.2rc4 ]
-        - upstream: flext_cli
-          project: flext-meltano
-          runtime: [ flext-cli, meltano>=4.4.1, singer-sdk>=0.54.7, sqlalchemy>=2.0.54, psycopg2-binary>=2.9.13, redis>=8.1.0 ]
-        - upstream: flext_cli
-          project: flext-oracle-oic
-          runtime: [ flext-cli, flext-auth, flext-api ]
-        - upstream: flext_cli
-          project: flext-oracle-wms
-          runtime: [ flext-cli, flext-api ]
-        - upstream: flext_core
-          project: flext-dbt-ldap
-          runtime: [ flext-meltano, flext-ldap, flext-cli, flext-ldif ]
-        - upstream: flext_core
-          project: flext-dbt-ldif
-          runtime: [ flext-meltano, flext-ldif ]
-        - upstream: flext_core
-          project: flext-dbt-oracle
-          runtime: [ flext-meltano, flext-db-oracle ]
-        - upstream: flext_core
-          project: flext-dbt-oracle-wms
-          runtime: [ flext-meltano, flext-oracle-wms ]
-        - upstream: flext_core
-          project: flext-tap-ldap
-          runtime: [ flext-meltano, flext-ldap ]
-        - upstream: flext_core
-          project: flext-tap-ldif
-          runtime: [ flext-meltano, flext-ldif ]
-        - upstream: flext_core
-          project: flext-tap-oracle
-          runtime: [ flext-meltano, flext-db-oracle ]
-        - upstream: flext_core
-          project: flext-tap-oracle-oic
-          runtime: [ flext-meltano, flext-oracle-oic, flext-api ]
-        - upstream: flext_core
-          project: flext-tap-oracle-wms
-          runtime: [ flext-meltano, flext-oracle-wms, singer-sdk>=0.54.7 ]
-        - upstream: flext_core
-          project: flext-target-ldap
-          runtime: [ flext-meltano, flext-ldap ]
-        - upstream: flext_core
-          project: flext-target-ldif
-          runtime: [ flext-meltano, flext-ldif ]
-        - upstream: flext_core
-          project: flext-target-oracle
-          runtime: [ flext-meltano, flext-db-oracle, flext-cli ]
-        - upstream: flext_core
-          project: flext-target-oracle-oic
-          runtime: [ flext-meltano, flext-oracle-oic, flext-api ]
-        - upstream: flext_core
-          project: flext-target-oracle-wms
-          runtime: [ flext-meltano, flext-oracle-wms, flext-cli ]
+        required_flext_dev: [ flext-infra, flext-tests ]
         # Precedence order: a generated _config.py composes the first base
         # whose distribution is among the project's runtime requirements or
         # its declared upstream.
@@ -1727,9 +1647,11 @@ Infra:
         - ".claude/*.agents-governance.json"
         - ".gemini/*.agents-governance.json"
         - ".claude/settings.local.json"
-      - name: "Private local config overrides"
+      # The repository loader merges config/<file>.local.yaml after the
+      # tracked config/<file>.yaml; that layer carries operator-private data.
+      - name: "Private local config layers"
         patterns:
-        - "/config/codegen-overrides.local.yaml"
+        - "/config/*.local.yaml"
       - name: "Gas City skill projections (runtime state, never source)"
         patterns:
         - ".agents/skills/.gc-skill-ownership.json"
@@ -2242,10 +2164,9 @@ Infra:
         destination: "src/{package_name}/services/ping.py"
         profiles: [ workspace, standalone ]
         delegate: render
-      # Runtime config is app-owned and loaded
-      # by FlextConfig from the project-root config directory.
+      # Runtime defaults belong to the declaring import-package resource.
       - source: base/src/config/ns.yaml.j2
-        destination: "config/{ns}.yaml"
+        destination: "src/{package_name}/config/{ns}.yaml"
         profiles: [ workspace, standalone ]
         delegate: render
       # Config/settings declarations live in

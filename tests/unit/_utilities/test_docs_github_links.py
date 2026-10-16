@@ -19,6 +19,7 @@ def docs_repository(tmp_path: Path) -> Path:
 
     Returns:
         The resulting ``Path``.
+
     """
     root = tmp_path / "docs-owner"
     root.mkdir()
@@ -127,13 +128,6 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
         )
         rewritten = u.Infra.docs_rewrite_github_url(
             stale, repository_root=docs_repository
-        )
-        repo = tm.not_none(
-            u.Infra.docs_github_repo_lookup(
-                "example-owner",
-                "root-docs",
-                repository_root=docs_repository,
-            )
         )
         tm.that(rewritten, none=True)
         issues = u.Infra.docs_github_link_issues(

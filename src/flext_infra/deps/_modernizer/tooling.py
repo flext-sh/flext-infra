@@ -9,13 +9,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra.deps._modernizer.document import RenderPolicy
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import p
+    from flext_infra.deps._modernizer.document import RenderPolicySpec
 
 
 class FlextInfraPyprojectModernizerTooling:
@@ -55,9 +58,7 @@ class FlextInfraPyprojectModernizerTooling:
             state: m.Infra.PyprojectDocumentState,
             changes: t.StrSequence,
             *,
-            dry_run: bool,
-            skip_comments: bool,
-            format_source: bool = True,
+            policy: RenderPolicySpec,
         ) -> p.Result[t.StrSequence]: ...
 
     def conform_source(
@@ -80,29 +81,54 @@ class FlextInfraPyprojectModernizerTooling:
             One canonical pyproject using the same phases as workspace apply.
 
         """
+        conformed = self._conformed_document_state(source, path=path, topology=topology)
+        if conformed.failure:
+            return r[str].from_failure(conformed)
+        state, changes = conformed.value
+        rendered = self._render_document_state(
+            state,
+            changes,
+            policy=RenderPolicy(
+                dry_run=True,
+                skip_comments=False,
+                format_source=format_source,
+            ),
+        )
+        if rendered.failure:
+            return r[str].from_failure(rendered)
+        return r[str].ok(state.rendered)
+
+    def _conformed_document_state(
+        self,
+        source: str,
+        *,
+        path: Path,
+        topology: m.Infra.PyprojectDeclaredTopology,
+    ) -> p.Result[t.Pair[m.Infra.PyprojectDocumentState, t.StrSequence]]:
+        """Read and apply canonical phases before a consumer chooses rendering.
+
+        Returns:
+            The validated document state and its phase changes.
+
+        """
+        result_type = r[t.Pair[m.Infra.PyprojectDocumentState, t.StrSequence]]
         state = self._read_document_state(path, source=source)
         if state.failure:
-            return r[str].from_failure(state)
+            return result_type.from_failure(state)
         canonical_dev: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             u.Infra.canonical_dev_dependencies_from_payload(state.value.payload),
         )
         if canonical_dev.failure:
-            return r[str].fail_op("pyproject model validation", canonical_dev.error)
-        rendered = self._render_document_state(
+            return result_type.fail_op(
+                "pyproject model validation", canonical_dev.error
+            )
+        changes = self._apply_document_phases(
             state.value,
-            self._apply_document_phases(
-                state.value,
-                canonical_dev=canonical_dev.value,
-                topology=topology,
-            ),
-            dry_run=True,
-            skip_comments=False,
-            format_source=format_source,
+            canonical_dev=canonical_dev.value,
+            topology=topology,
         )
-        if rendered.failure:
-            return r[str].from_failure(rendered)
-        return r[str].ok(state.value.rendered)
+        return result_type.ok((state.value, changes))
 
     def resolve_tooling_context(
         self,
@@ -123,7 +149,6 @@ class FlextInfraPyprojectModernizerTooling:
             (
                 request.runtime_dependency_overlay,
                 request.declared_project_dependencies,
-                request.upstream,
             ),
         )
         if conformed.failure:
@@ -138,24 +163,13 @@ class FlextInfraPyprojectModernizerTooling:
             if declared_python_dirs
             else u.Cli.json_as_sequence(tools.pyright.get("executionEnvironments"))
         )
-        # One owner for the includes: the live tree intersected with the
-        # declared env dirs, with the scaffold's own roots passed as the
-        # generated roots they are so a plan that is still materializing
-        # tests/ converges on its first write.
-        declared_pyrefly_includes = FlextInfraExtraPathsManager(
-            repository_root=self.repository_root,
-            generated_python_roots=declared_python_dirs,
-        ).pyrefly_project_includes(
-            project_dir=project_dir,
-            is_root=not request.topology.declared_python_dirs_are_complete,
-        )
         # Seed for a project whose analyzer paths were never synced yet. The
         # manager derives from directories that EXIST, so before src/ is
         # written it returns []. Writing that empty list made the next plan
         # re-derive ['src', '.'], so apply never reached its fixed point.
         # Prefer the DECLARED roots, exactly like the ensure-pyrefly phase.
         seed_manager = FlextInfraExtraPathsManager(repository_root=self.root)
-        declared_roots, derived_search_path, derived_mypy_path = self._derived_paths(
+        declared_roots, derived_mypy_path = self._derived_paths(
             project_dir,
             declared_python_dirs,
             seed_manager,
@@ -188,6 +202,12 @@ class FlextInfraPyprojectModernizerTooling:
                     request.topology.project_kind,
                 ),
                 "first_party": tools.first_party,
+                "deptry_first_party": tuple(
+                    FlextInfraToolTablesPhase.deptry_first_party_namespaces(
+                        path=project_dir,
+                        planned_sources=tuple(request.planned_sources),
+                    ),
+                ),
                 "mypy_path": (
                     derived_mypy_path
                     if declared_roots
@@ -211,12 +231,8 @@ class FlextInfraPyprojectModernizerTooling:
                         config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
                     )
                 ),
-                "pyrefly_search_path": (
-                    derived_search_path
-                    if declared_roots
-                    else tools.pyrefly_search_path or derived_search_path
-                ),
-                "pyrefly_project_includes": declared_pyrefly_includes,
+                "pyrefly_search_path": tools.pyrefly_search_path,
+                "pyrefly_project_includes": tools.pyrefly_project_includes,
                 "pyrefly_project_excludes": u.Infra.pyrefly_project_excludes(
                     config.Infra.tooling.tools.pyrefly.project_exclude_globs,
                 ),
@@ -292,7 +308,7 @@ class FlextInfraPyprojectModernizerTooling:
         topology: m.Infra.PyprojectDeclaredTopology,
         scaffold_project: m.Infra.ScaffoldProjectSpec,
         names: t.Pair[t.NonEmptyStr, t.NonEmptyStr],
-        overlays: t.Triple[t.StrSequence, t.StrSequence, t.NonEmptyStr],
+        overlays: t.Pair[t.StrSequence, t.StrSequence],
     ) -> p.Result[t.Pair[m.Infra.ToolingConformedTools, t.MappingKV[str, t.JsonValue]]]:
         """Conform a seeded document and validate its derived tool tables.
 
@@ -301,55 +317,49 @@ class FlextInfraPyprojectModernizerTooling:
 
         """
         project_name, package_name = names
-        runtime_dependency_overlay, declared_project_dependencies, upstream = overlays
+        runtime_dependency_overlay, declared_project_dependencies = overlays
         result_type = r[
             t.Pair[m.Infra.ToolingConformedTools, t.MappingKV[str, t.JsonValue]]
         ]
-        profile = u.Infra.composed_dependency_profile(
-            scaffold_project.dependency_profiles,
-            upstream=upstream,
-            distribution=project_name,
-        )
-        if profile is None:
-            return result_type.fail(f"unsupported scaffold upstream: {upstream}")
+        declaration = u.Infra.load_repository_declaration_inputs(path.parent)
+        if declaration.failure:
+            return result_type.from_failure(declaration)
         live_dev_result = self._live_dev_dependencies(path)
         if live_dev_result.failure:
             return result_type.from_failure(live_dev_result)
         live_dev = live_dev_result.value
-        # Seed the declared dependency families before Ruff derives its
-        # first-party sections. The template emits the profile/config rows and
-        # preserves live project dependencies, so docs and tool tables agree.
+        # Seed only the target's requirements before deriving analyzer ownership.
         seed: t.JsonMapping = {
             c.Infra.PROJECT: {
                 c.Infra.NAME: project_name,
                 c.Infra.DEPENDENCIES: [
                     *declared_project_dependencies,
                     *runtime_dependency_overlay,
-                    *(item for item in profile.runtime if item != project_name),
                 ],
             },
             c.Infra.DEPENDENCY_GROUPS: {
-                "codegen": [item for item in profile.codegen if item != project_name],
-                c.Infra.DEV: [
-                    *(item for item in scaffold_project.dev if item != project_name),
-                    *live_dev,
-                ],
+                c.Infra.DEV: list(
+                    u.Infra.project_development_requirements(
+                        scaffold_project,
+                        distribution=project_name,
+                        kind=declaration.value.spec.kind,
+                        declared=live_dev,
+                    )
+                ),
             },
             c.Infra.TOOL: {"flext": {"docs": {"package_name": package_name}}},
         }
         # Atomic scaffolds provide validated future roots;
         # existing repositories keep filesystem discovery through empty ones.
-        conformed = self.conform_source(
+        conformed = self._conformed_document_state(
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(seed)),
             path=path,
-            format_source=False,
             topology=topology,
         )
         if conformed.failure:
             return result_type.from_failure(conformed)
-        payload = u.Cli.toml_mapping_from_text(conformed.value)
-        if payload is None:
-            return result_type.fail(f"tooling resolution produced invalid TOML: {path}")
+        state, _ = conformed.value
+        payload = state.payload
         tools_result: p.Result[m.Infra.ToolingConformedTools] = u.validate_value(
             m.Infra.ToolingConformedTools,
             u.Cli.toml_mapping_child(payload, c.Infra.TOOL) or {},
@@ -366,11 +376,11 @@ class FlextInfraPyprojectModernizerTooling:
         project_dir: Path,
         declared_python_dirs: t.StrSequence,
         seed_manager: FlextInfraExtraPathsManager,
-    ) -> t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]:
+    ) -> t.Pair[t.StrSequence, t.StrSequence]:
         """Derive the declared or discovered analyzer search roots.
 
         Returns:
-            The ``(declared_roots, search_path, mypy_path)`` triple.
+            The ``(declared_roots, mypy_path)`` pair.
 
         """
         path_rules = config.Infra.tooling.tools.pyrefly.path_rules
@@ -410,7 +420,7 @@ class FlextInfraPyprojectModernizerTooling:
             if declared_roots
             else derived_search_path
         )
-        return (declared_roots, derived_search_path, derived_mypy_path)
+        return (declared_roots, derived_mypy_path)
 
     @staticmethod
     def _pyright_environments(

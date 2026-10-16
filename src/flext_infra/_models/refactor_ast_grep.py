@@ -11,7 +11,7 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsCodemod
 
 
@@ -27,17 +27,26 @@ class FlextInfraModelsRefactorGrep:
                 t.Infra.RopeResource | None,
             ],
             m.Field(
-                default_factory=dict,
                 description=(
                     "Elected native module resources keyed by invocation identity"
                 ),
             ),
+        ] = m.Field(default_factory=dict)
+        source_folders: Annotated[
+            tuple[p.Infra.RopeRoot, ...],
+            m.Field(description="Project-owned roots in the native search order"),
+        ]
+        python_folders: Annotated[
+            tuple[p.Infra.RopeRoot, ...],
+            m.Field(description="Native shared Python path roots in search order"),
+        ]
+        python_modules: Annotated[
+            t.MutableMappingKV[t.Pair[str, str], t.Infra.RopeResource | None],
+            m.Field(description="Shared native Python-root elections for this capture"),
         ]
 
-    class CodemodContextCondition(m.ArbitraryTypesModel):
+    class CodemodContextCondition(FlextInfraModelsBase.FrozenArbitrary):
         """One project-context condition over a captured metavariable."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         variable: Annotated[
             t.NonEmptyStr,
@@ -80,10 +89,8 @@ class FlextInfraModelsRefactorGrep:
             ),
         ] = ()
 
-    class CodemodEnsureImport(m.ArbitraryTypesModel):
+    class CodemodEnsureImport(FlextInfraModelsBase.FrozenArbitrary):
         """One module import a rule's applied rewrites require in the file."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         module: Annotated[
             t.NonEmptyStr,
@@ -94,10 +101,8 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Top-level name the applied rewrite references"),
         ]
 
-    class CodemodRule(m.ArbitraryTypesModel):
+    class CodemodRule(FlextInfraModelsBase.FrozenArbitrary):
         """One validated ast-grep rule document from a composed provider."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Canonical ast-grep rule ID")]
         digest: Annotated[
@@ -178,10 +183,8 @@ class FlextInfraModelsRefactorGrep:
             ),
         ] = ()
 
-    class CodemodRuleset(m.ArbitraryTypesModel):
+    class CodemodRuleset(FlextInfraModelsBase.FrozenArbitrary):
         """One provider config and its elected, conflict-free rule IDs."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         provider: Annotated[
             t.NonEmptyStr,
@@ -200,10 +203,8 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Elected rule IDs that declare an automated fix"),
         ]
 
-    class CodemodRulePlan(m.ArbitraryTypesModel):
+    class CodemodRulePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Topologically composed dependency rules followed by the local delta."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         provider_order: Annotated[
             t.StrSequence,
@@ -274,10 +275,8 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Import packages of the runtime dependency closure"),
         ]
 
-    class CodemodAdmission(m.ArbitraryTypesModel):
+    class CodemodAdmission(FlextInfraModelsBase.FrozenArbitrary):
         """One finding's admission inputs against its rule's project context."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         root: Annotated[
             Path,
@@ -302,7 +301,9 @@ class FlextInfraModelsRefactorGrep:
         snapshot: Annotated[
             FlextInfraModelsCodemod.CodemodBindingSnapshot | None,
             m.Field(
-                description="Precomputed binding snapshot; absent builds one on demand",
+                description=(
+                    "Captured binding snapshot, required for binding predicates"
+                ),
             ),
         ] = None
 
@@ -358,10 +359,8 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Canonical API origin this rewrite is tied to"),
         ] = ""
 
-    class AccessorMigrationChange(m.ArbitraryTypesModel):
+    class AccessorMigrationChange(FlextInfraModelsBase.FrozenArbitrary):
         """Single automated rename or manual warning emitted by accessor migration."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         line: Annotated[

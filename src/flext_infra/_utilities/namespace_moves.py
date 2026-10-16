@@ -11,6 +11,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_core import u as core_u
+
 from flext_infra import c, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProtectedEdit,
@@ -21,10 +22,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSource,
-    FlextInfraUtilitiesTransformerHeader,
 )
 from flext_infra._utilities._rope_analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
+)
+from flext_infra._utilities.transformer_header import (
+    FlextInfraUtilitiesTransformerHeader,
 )
 
 
@@ -43,6 +46,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             ValueError: If a consumer path is outside the project.
+
         """
         for path in py_files:
             if not path.resolve().is_relative_to(project_root.resolve()):
@@ -56,8 +60,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 gates=gates,
             )
 
-    @staticmethod
+    @classmethod
     def rewrite_manual_typing_alias_violations(
+        cls,
         *,
         project_root: Path,
         names_by_file: t.MappingKV[Path, t.Infra.StrSet],
@@ -65,7 +70,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> None:
         """Relocate the named typing declarations of each file to its typings owner."""
         for source_file, alias_names in names_by_file.items():
-            FlextInfraUtilitiesRefactorNamespaceMoves._move_typing_alias_lines(
+            cls._move_typing_alias_lines(
                 project_root=project_root,
                 source_file=source_file,
                 alias_names=alias_names,
@@ -355,6 +360,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             ValueError: If typing alias move requires an independent statement span.
+
         """
         module = ast.parse("\n".join(lines))
         moved_lines: list[str] = []
@@ -533,6 +539,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             RuntimeError: If the protected writer rejects the candidate.
+
         """
         candidate_writes = {
             path: FlextInfraUtilitiesProtectedEditLinting.normalize_source(
@@ -637,6 +644,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             RuntimeError: If the destination imports conflict.
+
         """
         source = source_file.read_text(encoding=c.DEFAULT_ENCODING)
         moved_lines, kept_lines, _first_moved_line = cls._split_alias_lines(
@@ -710,6 +718,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             RuntimeError: If module identities or destination bindings conflict.
+
         """
         source_resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
             rope_project,
@@ -768,6 +777,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             RuntimeError: If the destination imports its moved declarations.
+
         """
         target_file = next(path for path in writes if path != source_file)
         with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:
@@ -840,8 +850,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         import_line = f"from {target_module} import {', '.join(referenced_aliases)}"
         return [import_line] if import_line not in kept_source.splitlines() else ()
 
-    @staticmethod
-    def _strip_self_bound_aliases(*, import_line: str, target_source: str) -> str:
+    @classmethod
+    def _strip_self_bound_aliases(cls, *, import_line: str, target_source: str) -> str:
         """Drop names already bound locally in the move target from an import.
 
         A facade-root module (``typings.py``, ``constants.py``, ...) binds its

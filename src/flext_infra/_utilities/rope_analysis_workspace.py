@@ -152,6 +152,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
             Returns:
                 The resulting ``set[str]``.
+
             """
             names = set[str]()
             for base in node.bases:
@@ -247,24 +248,21 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # Generated package inits are projections excluded from the class
         # inventory, yet their install_lazy_exports maps own the namespace
         # aliases (m, p, t and siblings) that facade-qualified bases resolve
-        # through. Read those maps from disk so resolution can rewrite
+        # through. Read those captured maps so resolution can rewrite
         # ``<pkg>.<alias>`` targets to their provider modules.
         extra_module_aliases: t.StrDict = {}
-        owned = {path for path, _ in sources.values()}
-        for init_path in sorted(root.rglob("__init__.py")):
-            resolved = init_path.resolve()
-            if resolved in owned or not init_path.is_file():
+        for init_module, (init_path, init_source) in sorted(sources.items()):
+            if init_path.name != c.Infra.INIT_PY:
                 continue
-            init_module = cls.module_name_for_file(init_path, project_root=root)
-            if not init_module:
-                continue
+            # Include the project's own barrel aliases; planned bytes already
+            # override disk in the captured source mapping.
             for (
                 alias,
                 absolute,
             ) in FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 init_module,
                 init_path,
-                init_path.read_text(encoding=c.DEFAULT_ENCODING),
+                init_source,
             ).items():
                 extra_module_aliases.setdefault(
                     f"{init_module}.{alias}",

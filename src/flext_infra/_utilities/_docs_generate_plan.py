@@ -123,8 +123,10 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
                 plans.append(
                     planned.value.model_copy(
-                        update={"dependency_group": scoped.scope.path.as_posix()},
-                    ),
+                        update={
+                            "dependency_group": scoped.scope.path.as_posix(),
+                        }
+                    )
                 )
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(plans))
 

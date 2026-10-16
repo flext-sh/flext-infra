@@ -30,6 +30,21 @@ class TestsFlextInfraMiseToolchainProof:
     CHECKSUM = "sha256:00"
 
     @staticmethod
+    def test_setup_proof_requires_the_declared_runtime_lint_tools() -> None:
+        """The real setup proof validates the lint inventory in its own runtime."""
+        root = tm.ok(
+            u.Infra.git_repository_root(
+                m.Infra.GitRepoRequest(repo_root=Path(__file__).parent)
+            )
+        ).repository_root
+        uv = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+        tm.ok(
+            FlextInfraCodegenMiseToolchainProof(
+                repository_root=root, uv_executable=uv
+            ).execute()
+        )
+
+    @staticmethod
     def test_uv_binary_belongs_to_its_declared_mise_installation() -> None:
         """A bundled executable from another tool cannot own UV resolution."""
         root = tm.ok(

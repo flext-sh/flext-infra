@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
+import os
 import sys
 from pathlib import Path
 
@@ -28,8 +28,9 @@ class TestsFlextInfraUtilityFacadeProjection:
         *,
         parenthesized: bool,
     ) -> None:
-        """Publish unchanged-MRO facades under independently validated SSOT widths."""
+        """Preserve MRO and lazy exports under SSOT-derived consumer budgets."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        self._write(package / c.Infra.INIT_PY, "")
         width = config.Infra.tooling.tools.ruff.line_length
         owner = "Owner" + "X" * (width // 2)
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
@@ -54,11 +55,6 @@ class TestsFlextInfraUtilityFacadeProjection:
             '    marker = "facade"\n\n\n'
             'u = Utilities\n\n__all__ = ["Utilities", "u"]\n',
         )
-        self._write(
-            root / "config" / "codegen-overrides.local.yaml",
-            "Infra:\n  tooling:\n    tools:\n      ruff:\n"
-            f"        line-length: {width + width_delta}\n",
-        )
         script = (
             "from pathlib import Path\n"
             "from flext_infra import config, u\n"
@@ -67,7 +63,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             f"package = Path({str(package)!r})\n"
             f"facade = Path({str(facade)!r})\n"
             "assert config.Infra.tooling.tools.ruff.line_length == "
-            f"{width + width_delta}\n"
+            f"{width}\n"
             "from importlib import import_module\n"
             f"before = import_module({(package.name + '.utilities')!r}).u\n"
             "expected = tuple(item.__name__ for item in before.__mro__)\n"
@@ -115,7 +111,21 @@ class TestsFlextInfraUtilityFacadeProjection:
                 options=m.Cli.ProcessOptions(env=environment),
             )
         )
-        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True, msg=consumer.stderr)
+        tm.that(
+            u.Cli.process_succeeded(consumer.outcome),
+            eq=True,
+            msg=(
+                f"consumer stderr:\n{consumer.stderr}\n"
+                f"consumer stdout:\n{consumer.stdout}\n"
+                f"publisher stdout:\n{result.stdout}\n"
+                "published __init__.py:\n"
+                f"{
+                    (package / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)
+                }\n"
+                "published utilities.py:\n"
+                f"{facade.read_text(encoding=c.DEFAULT_ENCODING)}"
+            ),
+        )
         tm.that(result.stdout.endswith(consumer.stdout), eq=True)
         checked = tm.ok(
             u.Cli.run_raw(
@@ -145,6 +155,96 @@ class TestsFlextInfraUtilityFacadeProjection:
         path.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.atomic_write_text_file(path, source))
 
+    def test_moved_service_retires_its_utility_composition(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A service moved out of the family uses its utility without reentry."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        upstream = package.with_name(f"{package.name}_upstream")
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        facade = package / c.Infra.UTILITIES_PY
+        sources = {
+            upstream / "__init__.py": (
+                f"from {upstream.name}.utilities import ParentUtilities\n"
+                "__all__ = ['ParentUtilities']\n"
+            ),
+            upstream / "utilities.py": (
+                "class ParentUtilities:\n"
+                "    class Domain:\n"
+                "        @staticmethod\n"
+                "        def upstream_value():\n"
+                "            return 'upstream-value'\n"
+                "__all__ = ['ParentUtilities']\n"
+            ),
+            package / "__init__.py": (
+                f"from {package.name}.utilities import Utilities, u\n"
+                "__all__ = ['Utilities', 'u']\n"
+            ),
+            package / directory / "__init__.py": (
+                f"from {package.name}.{directory}.client import ClientOwner\n"
+                "__all__ = ['ClientOwner']\n"
+            ),
+            package / directory / "client.py": (
+                "class ClientOwner:\n"
+                "    class Target:\n"
+                "        def __init__(self, value):\n"
+                "            self.value = value\n"
+                "        def read(self):\n"
+                "            return self.value\n"
+                "__all__ = ['ClientOwner']\n"
+            ),
+            package / "services" / "__init__.py": (
+                f"from {package.name}.services.runtime import ServiceRuntime\n"
+                "__all__ = ['ServiceRuntime']\n"
+            ),
+            package / "services" / "runtime.py": (
+                f"from {package.name} import u\n"
+                "class ServiceRuntime:\n"
+                "    @staticmethod\n"
+                "    def create(value):\n"
+                "        return u.Domain.Target(value).read()\n"
+                "__all__ = ['ServiceRuntime']\n"
+            ),
+            facade: (
+                f"from {upstream.name} import ParentUtilities\n"
+                f"from {package.name}.{directory} import ClientOwner\n"
+                f"from {package.name}.services import ServiceRuntime\n"
+                "class Utilities(ParentUtilities):\n"
+                "    class Domain("
+                "ClientOwner, ServiceRuntime, ParentUtilities.Domain):\n"
+                "        pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+        }
+        for path, source in sources.items():
+            self._write(path, source)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name} import u; "
+                        f"from {package.name}.services import ServiceRuntime; "
+                        "assert u.Domain.Target('client-value').read() "
+                        "== 'client-value'; "
+                        "assert u.Domain.upstream_value() == 'upstream-value'; "
+                        "assert not hasattr(u.Domain, 'create'); "
+                        "print(ServiceRuntime.create('service-value'))"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout.strip(), eq="service-value")
+
     @staticmethod
     def _behavior_package(
         package: Path,
@@ -154,6 +254,7 @@ class TestsFlextInfraUtilityFacadeProjection:
 
         Returns:
             The resulting source mapping.
+
         """
         directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
         return {
@@ -194,6 +295,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             The projected sources: the planned edits applied to a copy of
             ``sources`` when ``relocated``; otherwise ``sources`` itself, after
             proving the sources already plan no edit.
+
         """
         with infra.rope_workspace(root) as rope:
             edits = tm.ok(
@@ -232,6 +334,7 @@ class TestsFlextInfraUtilityFacadeProjection:
 
         Returns:
             The rendered facade source that was projected and executed.
+
         """
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
         cls._write(facade, rendered)
@@ -561,6 +664,94 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout, has="nested")
 
+    @pytest.mark.parametrize("alias", ["leaf", "u\u0301"])
+    def test_aliased_owner_projection_preserves_unicode_and_lexical_scopes(
+        self,
+        tmp_path: Path,
+        alias: str,
+    ) -> None:
+        """Native scopes retain normalized aliases, defaults and local shadows."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = self._behavior_package(package, "int")
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        sources[package / directory / "adapter.py"] = (
+            "from pydantic import TypeAdapter\n"
+            "class AdapterOwner:\n"
+            "    @staticmethod\n"
+            "    def value_adapter() -> TypeAdapter[int]:\n"
+            "        return TypeAdapter(int)\n"
+            "    @staticmethod\n"
+            "    def header_adapter() -> TypeAdapter[str]:\n"
+            "        return TypeAdapter(str)\n"
+            "__all__ = ['AdapterOwner']\n"
+        )
+        sources[package / directory / "unused.py"] = (
+            "class FirstUnusedOwner:\n"
+            "    @staticmethod\n"
+            "    def shadow_only() -> str:\n"
+            "        return 'first'\n"
+            "class SecondUnusedOwner:\n"
+            "    @staticmethod\n"
+            "    def shadow_only() -> str:\n"
+            "        return 'second'\n"
+            "__all__ = ['FirstUnusedOwner', 'SecondUnusedOwner']\n"
+        )
+        sources[package / "runtime.py"] = (
+            f"from {package.name}.{directory}.adapter import AdapterOwner as {alias}\n"
+            "class Local:\n"
+            "    @staticmethod\n"
+            "    def shadow_only() -> str:\n"
+            "        return 'local'\n"
+            "class Runtime:\n"
+            "    @staticmethod\n"
+            "    def parse(value):\n"
+            f"        prefix = 'caf\u00e9'; return "
+            f"{alias}.value_adapter().validate_python(value)\n"
+            "    @staticmethod\n"
+            f"    def default_alias({alias}={alias}.header_adapter()):\n"
+            f"        return {alias}.validate_python('header')\n"
+            "    @staticmethod\n"
+            f"    def parameter_shadow({alias}):\n"
+            f"        prefix = 'caf\u00e9'; return {alias}.shadow_only()\n"
+            "    @staticmethod\n"
+            "    def local_shadow():\n"
+            f"        {alias} = Local()\n"
+            f"        prefix = 'caf\u00e9'; return {alias}.shadow_only()\n"
+        )
+        facade = package / c.Infra.UTILITIES_PY
+        sources[facade] = (
+            f"from {package.name}.runtime import Runtime\n"
+            "class Utilities:\n    class Domain(Runtime):\n        pass\n"
+            "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+        )
+        for path, source in sources.items():
+            self._write(path, source)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name} import u\n"
+                        f"from {package.name}.runtime import Local\n"
+                        "assert u.Domain.parse('7') == 7\n"
+                        "assert u.Domain.default_alias() == 'header'\n"
+                        "assert u.Domain.header_adapter().validate_python('header') == "
+                        "'header'\n"
+                        "assert u.Domain.parameter_shadow(Local()) == 'local'\n"
+                        "assert u.Domain.local_shadow() == 'local'\n"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+
     @pytest.mark.parametrize("conflict", ["ownership", "shadowing"])
     def test_behavior_cutover_rejects_ambiguity_without_mutation(
         self,
@@ -575,32 +766,52 @@ class TestsFlextInfraUtilityFacadeProjection:
         consumer = root / "consumer.py"
         source = (
             f"from {package.name} import t\n"
-            f"def consume({package.name}):\n    return t.value_adapter()\n"
+            f"def consume({c.Infra.FacadeFamily.U}):\n    return t.value_adapter()\n"
             if conflict == "shadowing"
             else f"from {package.name} import t\nvalue = t.value_adapter()\n"
         )
-        sources = {
-            consumer: source,
-            package / "__init__.py": (
-                "class Types:\n    pass\nt = Types\n__all__ = ['Types', 't']\n"
-            ),
-        }
-        for name in ("First", "Second") if conflict == "ownership" else ("First",):
-            sources[family / f"{name.lower()}.py"] = (
-                f"class {name}:\n"
-                "    @staticmethod\n"
-                "    def value_adapter() -> int:\n        return 7\n"
-                f"__all__ = ['{name}']\n"
-            )
+        sources = (
+            self._behavior_package(package, "int")
+            if conflict == "shadowing"
+            else {
+                package / "__init__.py": (
+                    "class Types:\n    pass\nt = Types\n__all__ = ['Types', 't']\n"
+                ),
+            }
+        )
+        sources[consumer] = source
+        if conflict == "ownership":
+            for name in ("First", "Second"):
+                sources[family / f"{name.lower()}.py"] = (
+                    f"class {name}:\n"
+                    "    @staticmethod\n"
+                    "    def value_adapter() -> int:\n        return 7\n"
+                    f"__all__ = ['{name}']\n"
+                )
         for path, content in sources.items():
             self._write(path, content)
         with infra.rope_workspace(root) as rope:
-            result = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                rope_workspace=rope,
-                sources=sources,
-            )
-        tm.fail(result)
+            if conflict == "shadowing":
+                with pytest.raises(
+                    ValueError,
+                    match=(
+                        "relocated behavior receiver is shadowed: "
+                        f"{c.Infra.FacadeFamily.U}"
+                    ),
+                ):
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=sources,
+                    )
+            else:
+                tm.fail(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=sources,
+                    )
+                )
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
     @pytest.mark.parametrize(
@@ -787,11 +998,42 @@ class TestsFlextInfraUtilityFacadeProjection:
         self._write(facade, original)
         rendered = u.Infra.render_utility_facade(package)
         assert rendered is not None
-        tm.that(rendered, has="from flext_sample._utilities.owner import")
-        tm.that("ForeignOwner" in rendered, eq=False)
         tm.that(facade.read_text(), eq=original)
         self._write(facade, rendered)
         tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(
+            u.Tests.materialize_lazy_init(
+                u.Tests.create_lazy_init_service(package.parent.parent),
+            ),
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from flext_sample import u; "
+                        "from flext_sample._utilities import Owner; "
+                        "from foreign_facade import u as foreign; "
+                        "assert u.Sample.required is Owner.required; "
+                        "assert u.Sample.required() == 'local'; "
+                        "assert not hasattr(u.Sample, 'foreign_only'); "
+                        "assert foreign.Sample.foreign_only() == 'foreign'; "
+                        "print('identities-proven')"
+                    ),
+                ),
+                cwd=package.parent.parent,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "PYTHONPATH": os.pathsep.join(
+                            (str(package.parent), str(foreign.parent)),
+                        ),
+                    },
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout.strip(), eq="identities-proven")
 
     def test_unresolved_consumer_import_fails_before_projection(
         self,
@@ -817,24 +1059,35 @@ class TestsFlextInfraUtilityFacadeProjection:
         self, tmp_path: Path
     ) -> None:
         """A pure MRO aggregate preserves its defining owner's public behavior."""
-        package = tmp_path / "src" / "flext_sample"
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
+        provider = package.with_name(f"{package.name}_provider")
         self._write(package / "__init__.py", "from .utilities import u\n")
         self._write(
             package / "consumer.py", "from flext_sample import u\nu.Sample.read()\n"
         )
         self._write(
-            package / "_utilities" / "reader.py",
+            provider / "reader.py",
             "class Reader:\n"
             "    @classmethod\n"
             "    def read(cls) -> str:\n"
             "        return cls._value()\n"
             "    @staticmethod\n"
             "    def _value() -> str:\n"
-            "        return 'read'\n",
+            "        return 'read'\n"
+            "__all__ = ['Reader']\n",
+        )
+        self._write(
+            provider / "__init__.py",
+            f"from {provider.name}.reader import Reader\n__all__ = ['Reader']\n",
         )
         self._write(
             package / "_utilities" / "document.py",
-            "from .reader import Reader\nclass Document(Reader):\n    pass\n",
+            f"from {provider.name} import Reader\n"
+            "class Document(Reader):\n    pass\n__all__ = ['Document']\n",
         )
         facade = package / "utilities.py"
         source = (
@@ -844,7 +1097,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             "u = Utilities\n__all__ = ['Utilities', 'u']\n"
         )
         self._write(facade, source)
-        tm.that(u.Infra.render_utility_facade(package), eq=source)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        tm.that(facade.read_text(), eq=source)
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -852,13 +1109,13 @@ class TestsFlextInfraUtilityFacadeProjection:
                     "-c",
                     "from flext_sample import u\nprint(u.Sample.read())\n",
                 ),
-                cwd=tmp_path,
+                cwd=root,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             )
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout.strip(), eq="read")
-        tm.that(facade.read_text(), eq=source)
+        tm.that(facade.read_text(), eq=rendered)
 
     def test_rejects_ambiguous_method_ownership(self, tmp_path: Path) -> None:
         """Fail before projection when two local owners claim one method."""
@@ -914,7 +1171,10 @@ class TestsFlextInfraUtilityFacadeProjection:
     def test_rejects_owners_without_a_public_facade(self, tmp_path: Path) -> None:
         """Utility owners without a facade have no public surface at all."""
         package = tmp_path / "src" / "flext_sample"
-        self._write(package / "_utilities" / "owner.py", "class Owner:\n    pass\n")
+        self._write(
+            package / "_utilities" / "owner.py",
+            "class Owner:\n    pass\n__all__ = ['Owner']\n",
+        )
 
         with pytest.raises(ValueError, match="have no public facade"):
             u.Infra.render_utility_facade(package)
@@ -1005,7 +1265,10 @@ class TestsFlextInfraUtilityFacadeProjection:
     ) -> None:
         """Only generated propagation is excluded from authored consumer analysis."""
         package = tmp_path / "src" / "flext_sample"
-        self._write(package / "_utilities" / "owner.py", "class Owner:\n    pass\n")
+        self._write(
+            package / "_utilities" / "owner.py",
+            "class Owner:\n    pass\n__all__ = ['Owner']\n",
+        )
         original = (
             "from flext_sample._utilities.owner import Owner\n"
             "class Facade:\n    class Domain(Owner):\n        pass\n"
@@ -1019,7 +1282,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         self._write(initializer, conflicted)
 
         if generated:
-            tm.that(u.Infra.render_utility_facade(package), eq=original)
+            tm.not_none(u.Infra.render_utility_facade(package))
+            tm.that((package / "utilities.py").read_text(), eq=original)
         else:
             with pytest.raises(SyntaxError):
                 u.Infra.render_utility_facade(package)
@@ -1077,7 +1341,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         self._write(package / "__init__.py", "")
         self._write(
-            package / "_models" / "payload.py",
+            package / "services" / "payload.py",
             "from flext_sample import p\n"
             "def consume(value: p.Sample.Payload) -> None:\n    pass\n"
             "def foreign(value: p.Other.Unused) -> None:\n    pass\n",
@@ -1086,9 +1350,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             package / "_protocols" / "payload.py",
             "from typing import Protocol, runtime_checkable\n"
             "class PayloadOwner:\n"
+            "    preserved = 'unchanged'\n"
             "    @runtime_checkable\n"
             "    class Payload(Protocol):\n"
-            "        value: str\n",
+            "        value: str\n"
+            "__all__ = ['PayloadOwner']\n",
         )
         self._write(
             package / "_protocols" / "unused.py",
@@ -1119,7 +1385,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             "from flext_core import FlextProtocols\n\n"
             "class FlextSampleProtocols(FlextProtocols):\n"
             + header
-            + "        preserved = 'unchanged'\n\np = FlextSampleProtocols\n\n"
+            + "        pass\n\np = FlextSampleProtocols\n\n"
             + '__all__ = ["FlextSampleProtocols", "p"]\n'
         )
         self._write(facade, original)
@@ -1160,19 +1426,31 @@ class TestsFlextInfraUtilityFacadeProjection:
         *,
         multiline: bool,
     ) -> None:
-        """A projected owner keeps ``Protocol`` as the namespace's last base."""
-        package = tmp_path / "src" / "flext_sample"
+        """Both source forms import and expose the real structural protocol."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
         self._write(package / "__init__.py", "")
         self._write(
-            package / "_models" / "payload.py",
+            package.parent / "upstream.py",
+            "from typing import Protocol\n"
+            "class ParentProtocols(Protocol):\n    pass\n"
+            "p = ParentProtocols\n__all__ = ['ParentProtocols', 'p']\n",
+        )
+        self._write(
+            package / "services" / "payload.py",
             "from flext_sample import p\n"
             "def consume(value: p.Sample.Payload) -> None:\n    pass\n",
         )
         self._write(
             package / "_protocols" / "payload.py",
-            "from typing import Protocol\n\n"
+            "from typing import Protocol, runtime_checkable\n\n"
             "class PayloadOwner(Protocol):\n"
-            "    class Payload(Protocol):\n        pass\n",
+            "    @runtime_checkable\n"
+            "    class Payload(Protocol):\n        value: str\n"
+            "__all__ = ['PayloadOwner']\n",
         )
         facade = package / "protocols.py"
         header = (
@@ -1192,18 +1470,31 @@ class TestsFlextInfraUtilityFacadeProjection:
         updated = u.Infra.render_utility_facade(package, family="p")
 
         assert updated is not None
-        facade_class = next(
-            node for node in ast.parse(updated).body if isinstance(node, ast.ClassDef)
-        )
-        namespace = next(
-            node for node in facade_class.body if isinstance(node, ast.ClassDef)
-        )
-        tm.that(
-            [ast.unparse(base) for base in namespace.bases],
-            eq=["p", "PayloadOwner", "Protocol"],
-        )
         self._write(facade, updated)
         tm.that(u.Infra.render_utility_facade(package, family="p"), eq=updated)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from flext_sample import p\n"
+                        "from flext_sample._protocols import PayloadOwner\n"
+                        "class Value:\n    value = 'payload'\n"
+                        "class Missing:\n    pass\n"
+                        "assert p.Sample.Payload is PayloadOwner.Payload\n"
+                        "assert isinstance(Value(), p.Sample.Payload)\n"
+                        "assert not isinstance(Missing(), p.Sample.Payload)\n"
+                        "print('protocol-proven')\n"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout.strip(), eq="protocol-proven")
 
     @staticmethod
     def test_codegen_models_are_usable_through_the_composed_facade() -> None:
@@ -1299,3 +1590,165 @@ class TestsFlextInfraUtilityFacadeProjection:
             msg=result.stderr or result.stdout,
         )
         tm.that(u.Infra.render_utility_facade(package, family="m"), eq=rendered)
+
+    def test_declared_behavior_roundtrip_keeps_bootstrap_lower_dependency(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A real consumer imports the projected facade without a reverse cycle."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        owners = (
+            package / u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        )
+        typings = (
+            package / u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY).directory
+        )
+        owner = owners / "adapter.py"
+        runtime = owners / "runtime.py"
+        facade = package / "utilities.py"
+        consumer = root / "consumer.py"
+        sources = {
+            package / "__init__.py": (
+                f"from {package.name}.typings import t\n"
+                f"from {package.name}.utilities import u\n"
+            ),
+            package / "typings.py": (
+                f"from {package.name}.{typings.name}.base import Types\n"
+                "t = Types\n__all__ = ['Types', 't']\n"
+            ),
+            typings / "__init__.py": "",
+            typings / "base.py": "class Types:\n    pass\n__all__ = ['Types']\n",
+            owners / "__init__.py": "",
+            owner: (
+                "from pydantic import TypeAdapter\n"
+                "class AdapterOwner:\n"
+                "    @staticmethod\n"
+                "    def value_adapter() -> TypeAdapter[int]:\n"
+                "        return TypeAdapter(int)\n"
+                "__all__ = ['AdapterOwner']\n"
+            ),
+            runtime: (
+                "class Runtime:\n"
+                "    @classmethod\n"
+                "    def parse(cls, value):\n"
+                "        first = cls.value_adapter().validate_python(value)\n"
+                "        return cls.value_adapter().validate_python(first)\n"
+                "    @staticmethod\n"
+                "    def shadowed(t):\n"
+                "        return t.value_adapter()\n"
+                "__all__ = ['Runtime']\n"
+            ),
+            facade: (
+                f"from {package.name}.{owners.name} import Runtime\n"
+                "class Utilities(Runtime):\n    pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+            consumer: (
+                f"from {package.name} import t\n"
+                "assert t.value_adapter().validate_python('7') == 7\n"
+            ),
+        }
+        for path, source in sources.items():
+            self._write(path, source)
+        rendered = u.Infra.render_utility_facade(package)
+        assert rendered is not None
+        self._write(facade, rendered)
+        sources[facade] = rendered
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        sources = {path: tm.ok(u.Cli.files_read_text(path)) for path in sources}
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+            proposed = dict(sources)
+            proposed.update({edit.file_path: edit.updated_source for edit in edits})
+            tm.that(len(edits) > 0, eq=True)
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                        rope_workspace=rope,
+                        sources=proposed,
+                    )
+                ),
+                empty=True,
+            )
+        for path, source in proposed.items():
+            self._write(path, source)
+        rendered = u.Infra.render_utility_facade(package)
+        assert rendered is not None
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name} import u; "
+                        f"import runpy; runpy.run_path({str(consumer)!r}); "
+                        "from pydantic import ValidationError; "
+                        "assert u.parse('7') == 7; "
+                        "assert u.value_adapter().validate_python('8') == 8; "
+                        "assert u.shadowed(u).validate_python('9') == 9\n"
+                        "try:\n    u.parse([])\n"
+                        "except ValidationError:\n    print('rejected')\n"
+                        "else:\n    raise AssertionError('invalid payload accepted')\n"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout, has="rejected")
+
+    def test_nested_facade_composes_declared_behavior(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Declared runtime behavior uses the composed namespace without a cycle."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = self._behavior_package(package, "int")
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        sources[package / directory / "runtime.py"] = (
+            "class Runtime:\n    @classmethod\n    def parse(cls, value):\n"
+            "        return cls.value_adapter().validate_python(value)\n"
+            "__all__ = ['Runtime']\n"
+        )
+        facade = package / "utilities.py"
+        sources[facade] = (
+            f"from {package.name}.{directory} import Runtime\n"
+            "class Utilities:\n    class Domain(Runtime):\n        pass\n"
+            "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+        )
+        for path, source in sources.items():
+            self._write(path, source)
+        rendered = u.Infra.render_utility_facade(package)
+        assert rendered is not None
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name} import u; "
+                        "assert u.Domain.parse('7') == 7; "
+                        "assert u.Domain.value_adapter().validate_python('8') == 8; "
+                        "print('nested')"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout, has="nested")

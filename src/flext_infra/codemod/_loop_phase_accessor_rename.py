@@ -59,18 +59,7 @@ class FlextInfraAccessorRenamePhase(
                 gates=tuple(u.Infra.snapshot_lint_gates()),
             ),
             source_preview=self.source_preview,
-            inputs=tuple(
-                state
-                for finding in preflight.entries
-                for state in (
-                    *(
-                        (finding.source_state,)
-                        if finding.source_state is not None
-                        else ()
-                    ),
-                    *finding.binding_states,
-                )
-            ),
+            inputs=u.Infra.mod_scan_inputs(preflight).states,
         )
         if planned.failure:
             return r[bool].from_failure(planned)

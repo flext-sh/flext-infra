@@ -10,8 +10,8 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from flext_core import e
+
 from flext_infra import c, config, m, p
 from tests import t, tm, u
 
@@ -787,11 +787,12 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
         """Conformance preserves real declared edges and removes retired suppression."""
         workspace = self._workspace(role=c.Infra.MakeProfile.STANDALONE)
         dependency = "example-dependency>=1"
+        exclusion = '{ package = {name="example-dependency"}, dependencies=["other"] }'
         source = f"""[project]
 name = "{workspace.repository.distribution}"
 dependencies = ["{dependency}"]
 [tool.uv]
-exclude-dependencies = [{{ package = {{name="example-dependency"}}, dependencies=["other"] }}]
+exclude-dependencies = [{exclusion}]
 """
         conformed = tm.ok(
             u.Infra.pyproject_conform(

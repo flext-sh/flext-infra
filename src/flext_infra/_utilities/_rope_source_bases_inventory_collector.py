@@ -257,6 +257,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             return
         if cls._opaque_attribute_mutation(targets, node):
             return
+        if cls._subscript_mutation(targets):
+            return
         message = cls._mutation_message(spec, node)
         raise ValueError(message)
 
@@ -276,11 +278,31 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         Returns:
             ``True`` if the mutation is an opaque computed attribute rebind,
             ``False`` otherwise.
+
         """
         if not isinstance(node.value, ast.Call):
             return False
         return bool(targets) and all(
             isinstance(target, ast.Attribute) for target in targets
+        )
+
+    @staticmethod
+    def _subscript_mutation(targets: t.SequenceOf[ast.expr]) -> bool:
+        """Whether every target writes through an already-declared container.
+
+        A ``name[...] = ...`` statement mutates a binding the class body
+        declared earlier; it can never introduce a new class-attribute
+        binding, so the inventory records nothing and stays silent. The
+        stdlib ships this shape (``http.server``'s
+        ``_control_char_table[ord(...)] = ...``), and a captured stdlib
+        module must inventory, not fail.
+
+        Returns:
+            ``True`` if the mutation is a pure subscript write.
+
+        """
+        return bool(targets) and all(
+            isinstance(target, ast.Subscript) for target in targets
         )
 
     @staticmethod
@@ -373,6 +395,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             True when every target writes a module table or non-class root.
+
         """
         return all(
             isinstance(target, ast.Subscript)
@@ -412,6 +435,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             True when the target shape permits an exact class-member update.
+
         """
         value = node.value
         if len(targets) != 1 or not isinstance(value, ast.Name | ast.Call):
@@ -438,6 +462,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             True when the store updated a known definition, otherwise False.
+
         """
         visible = {**spec.lexical, **bindings}
         if not spec.allow_conditional or not cls._completes_class_namespace(
@@ -480,6 +505,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Raises:
             ValueError: If a cyclic class namespace receiver is detected.
+
         """
         current = reference
         visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
@@ -513,6 +539,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             The captured reference, or None for a non-class value.
+
         """
         value = node.value
         if value is None:
@@ -669,6 +696,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Returns:
             The proven runtime truth value, or None for an unknown guard.
+
         """
         match test:
             case ast.Compare(
@@ -794,3 +822,6 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             attributes=(*binding.attributes, *attributes),
             qualified_base=".".join((binding.qualified_base, *attributes)),
         )
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeSourceBindingCollector"]

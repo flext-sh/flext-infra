@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from importlib.resources import files
 from pathlib import Path
 from typing import override
 
 from flext_cli import FlextCliConfig
 
-from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 
@@ -24,13 +25,20 @@ class FlextInfraConfig(FlextCliConfig):
 
     @classmethod
     def ssot_config_dir(cls) -> Path:
-        """Public resolution of the packaged/workspace ``config/`` directory.
+        """Resolve defaults from the installed namespace's owned package data.
 
         Returns:
             The resulting ``Path``.
 
+        Raises:
+            TypeError: If the config namespace is not a filesystem package.
+
         """
-        return cls._config_dir()
+        package = files(cls.__module__.partition(".")[0])
+        if not isinstance(package, Path):
+            msg = "packaged config source requires a filesystem package"
+            raise TypeError(msg)
+        return package / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
 
     @classmethod
     @override
@@ -61,6 +69,7 @@ class FlextInfraConfig(FlextCliConfig):
         Raises:
             ValueError: If the filename is not one repository-local YAML file.
             FileNotFoundError: If the declared packaged default is absent.
+
         """
         candidates = cls.config_layer_paths_for_repository(
             repository_root,
@@ -90,6 +99,7 @@ class FlextInfraConfig(FlextCliConfig):
 
         Raises:
             ValueError: If the root or owned YAML filename is not explicit.
+
         """
         relative = Path(filename)
         if (

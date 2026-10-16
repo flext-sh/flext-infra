@@ -16,6 +16,80 @@ class FlextInfraMiseArtifactsJournalRelocation:
     """Rebind paths only after proving the journal's unchanged physical owners."""
 
     @classmethod
+    def source_record(
+        cls,
+        phase: str,
+        source: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
+        previous: m.Infra.CodegenJournalSource | None = None,
+        *,
+        path: Path | None = None,
+    ) -> p.Result[m.Infra.CodegenJournalSource]:
+        """Encode the physical source witness shared by journals and verification.
+
+        Returns:
+            The authenticated source record or its original witness failure.
+
+        """
+        if isinstance(source, m.Cli.AtomicDirectoryChainPlan):
+            if path is None or path.parent != source.target:
+                return r[m.Infra.CodegenJournalSource].fail(
+                    "absent output requires its exact captured parent witness",
+                )
+            return r[m.Infra.CodegenJournalSource].ok(
+                m.Infra.CodegenJournalSource(
+                    phase=phase,
+                    path=path,
+                    parent_device=None,
+                    parent_inode=None,
+                    sha256=None,
+                    mode=None,
+                    device=None,
+                    inode=None,
+                    link_count=None,
+                    absent_parent=source,
+                )
+            )
+        absent_parent = None
+        if source.parent_device is None or source.parent_inode is None:
+            if previous is not None:
+                absent_parent = previous.absent_parent
+            else:
+                witness = u.Cli.atomic_plan_directory_chain(source.path.parent)
+                if witness.failure:
+                    return r[m.Infra.CodegenJournalSource].from_failure(witness)
+                absent_parent = witness.value
+        incomplete_source = source.content is not None and any((
+            source.mode is None,
+            source.device is None,
+            source.inode is None,
+            source.link_count is None,
+            source.link_count is not None and source.link_count < 1,
+        ))
+        if incomplete_source:
+            return r[m.Infra.CodegenJournalSource].fail(
+                f"generation source identity is incomplete: {source.path}",
+            )
+        return r[m.Infra.CodegenJournalSource].ok(
+            m.Infra.CodegenJournalSource(
+                phase=phase,
+                path=source.path,
+                role=previous.role if previous is not None else None,
+                parent_device=source.parent_device,
+                parent_inode=source.parent_inode,
+                sha256=files.digest(source.content)
+                if source.content is not None
+                else None,
+                mode=source.mode,
+                device=source.device,
+                inode=source.inode,
+                link_count=source.link_count,
+                file_attributes=source.file_attributes,
+                reparse_tag=source.reparse_tag,
+                absent_parent=absent_parent,
+            ),
+        )
+
+    @classmethod
     def _relocate_journal(
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,

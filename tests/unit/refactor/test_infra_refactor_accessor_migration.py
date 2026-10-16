@@ -44,6 +44,7 @@ def _materialize_fixture(tmp_path: Path) -> t.Triple[Path, Path, Path]:
 
     Returns:
         The resulting ``t.Triple[Path, Path, Path]``.
+
     """
     workspace, project, pkg = u.Tests.namespace_workspace(
         tmp_path,
@@ -379,7 +380,12 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     def test_local_functions_retain_nested_class_method_discovery(
         tmp_path: Path,
     ) -> None:
-        """Local bindings and nested introducing classes remain in the same inventory."""
+        """Local bindings and nested introducing classes remain in the same inventory.
+
+        Args:
+            tmp_path: Temporary path provided by pytest for isolated test files.
+
+        """
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
         policy = m.MethodShapeParams.model_validate(
             c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]

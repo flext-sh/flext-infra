@@ -1,6 +1,144 @@
 id: ban-silent-failure-sentinel
 snapshots:
   ? |
+    def iterate(result):
+        if result.failure:
+            r[int].from_failure(result)
+            return
+  : labels:
+    - source: return
+      style: primary
+      start: 88
+      end: 94
+    - source: result.failure
+      style: secondary
+      start: 28
+      end: 42
+    - source: |-
+        if result.failure:
+                r[int].from_failure(result)
+                return
+      style: secondary
+      start: 25
+      end: 94
+    - source: |-
+        r[int].from_failure(result)
+                return
+      style: secondary
+      start: 52
+      end: 94
+  ? |
+    def iterate(result):
+        if result.failure:
+            yield None
+            return
+  : labels:
+    - source: return
+      style: primary
+      start: 71
+      end: 77
+    - source: result.failure
+      style: secondary
+      start: 28
+      end: 42
+    - source: |-
+        if result.failure:
+                yield None
+                return
+      style: secondary
+      start: 25
+      end: 77
+    - source: |-
+        yield None
+                return
+      style: secondary
+      start: 52
+      end: 77
+  ? |
+    def iterate(result):
+        if result.failure:
+            yield r[int].from_failure(result)
+            record()
+            return
+  : labels:
+    - source: return
+      style: primary
+      start: 111
+      end: 117
+    - source: result.failure
+      style: secondary
+      start: 28
+      end: 42
+    - source: |-
+        if result.failure:
+                yield r[int].from_failure(result)
+                record()
+                return
+      style: secondary
+      start: 25
+      end: 117
+    - source: |-
+        yield r[int].from_failure(result)
+                record()
+                return
+      style: secondary
+      start: 52
+      end: 117
+  ? |
+    def iterate(result):
+        if result.failure:
+            yield r[int].from_failure(result)
+            return False
+  : labels:
+    - source: return False
+      style: primary
+      start: 94
+      end: 106
+    - source: result.failure
+      style: secondary
+      start: 28
+      end: 42
+    - source: |-
+        if result.failure:
+                yield r[int].from_failure(result)
+                return False
+      style: secondary
+      start: 25
+      end: 106
+    - source: |-
+        yield r[int].from_failure(result)
+                return False
+      style: secondary
+      start: 52
+      end: 106
+  ? |
+    def iterate(result, other):
+        if result.failure:
+            yield r[int].from_failure(other)
+            return
+  : labels:
+    - source: return
+      style: primary
+      start: 100
+      end: 106
+    - source: result.failure
+      style: secondary
+      start: 35
+      end: 49
+    - source: |-
+        if result.failure:
+                yield r[int].from_failure(other)
+                return
+      style: secondary
+      start: 32
+      end: 106
+    - source: |-
+        yield r[int].from_failure(other)
+                return
+      style: secondary
+      start: 59
+      end: 106
+  ? |
     def run() -> bool:
         try:
             return parse()

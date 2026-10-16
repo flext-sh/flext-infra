@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, settings, t, u
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.transformers import FlextInfraSemanticPublication
@@ -68,6 +68,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Existing typed publication plans and unvalidated per-file evidence.
+
         """
         result_type = r[
             t.Pair[
@@ -154,6 +155,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Measured per-file evidence or the original protected failure.
+
         """
         result_type = r[t.SequenceOf[m.Infra.AccessorMigrationFile]]
         planned = self._plan_files(rope_project, py_files, params=params, inputs=inputs)
@@ -198,6 +200,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Per-file reports retaining explicit not-executed empty snapshots.
+
         """
         before, after = evidence
         tools = tuple(u.Infra.selected_lint_tool_names(gates))
@@ -231,6 +234,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Original/candidate lint evidence, or a pre-publication rejection.
+
         """
         paths = tuple(
             state.path
@@ -260,7 +264,10 @@ class FlextInfraAccessorMigrationReportMixin:
             plan.updates,
             validate,
             inputs=plan.inputs,
-            runtime_root=plan.workspace,
+            runtime_root=u.Infra.runtime_environment_dir(
+                plan.workspace,
+                runtime_root=type(settings).fetch_global().Infra.runtime_root,
+            ).parent,
         )
         if previewed.failure:
             return r[

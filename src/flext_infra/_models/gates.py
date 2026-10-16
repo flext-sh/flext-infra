@@ -15,9 +15,8 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsDuplication
-
-# Gate models use base type primitives; importing the composing project facade
-# here creates unresolved aliases while Pydantic analyzes nested root models.
+from flext_infra._models.deps import FlextInfraModelsDeps
+from flext_infra._protocols.deps import FlextInfraProtocolsDeps
 
 
 class FlextInfraModelsGates(FlextInfraModelsDuplication):
@@ -60,6 +59,99 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class SccReport(m.RootModel[tuple[SccLanguage, ...]]):
         """Native SCC groups, including an empty scan; malformed JSON fails."""
 
+    class DeptryError(m.ContractModel):
+        """Native deptry rule identity and complete diagnostic message."""
+
+        code: Annotated[
+            str,
+            m.Field(min_length=1, strict=True, description="Deptry rule code"),
+        ]
+        message: Annotated[
+            str,
+            m.Field(min_length=1, strict=True, description="Deptry diagnostic message"),
+        ]
+
+    class DeptryLocation(m.ContractModel):
+        """Native deptry location; dependency declarations have null positions."""
+
+        file: Annotated[
+            str,
+            m.Field(min_length=1, strict=True, description="Diagnostic file path"),
+        ]
+        line: Annotated[
+            int | None,
+            m.Field(
+                ge=0, strict=True, description="Source line, null for declarations"
+            ),
+        ]
+        column: Annotated[
+            int | None,
+            m.Field(
+                ge=0, strict=True, description="Source column, null for declarations"
+            ),
+        ]
+
+    class DeptryDiagnostic(m.ContractModel):
+        """Required deptry JSON record, never a partially recognized mapping."""
+
+        error: Annotated[
+            FlextInfraModelsGates.DeptryError,
+            m.Field(description="Deptry rule and diagnostic message"),
+        ]
+        module: Annotated[
+            str,
+            m.Field(
+                min_length=1, strict=True, description="Reported module or dependency"
+            ),
+        ]
+        location: Annotated[
+            FlextInfraModelsGates.DeptryLocation,
+            m.Field(description="Diagnostic file and nullable source positions"),
+        ]
+
+    class DeptryNativeReport(m.RootModel[tuple[DeptryDiagnostic, ...]]):
+        """Native deptry JSON array; only a valid empty array means no findings."""
+
+    class DeptryScan(m.Value):
+        """Native findings bound to the exact settings and report bytes."""
+
+        scanned_files: Annotated[
+            int,
+            m.Field(
+                ge=1, strict=True, description="Native extractor's executed file count"
+            ),
+        ]
+        venv_bin: Annotated[
+            Path,
+            m.Field(description="Explicit runtime binary directory owning the scanner"),
+        ]
+        source: Annotated[
+            m.Cli.AtomicPhysicalTreeManifest,
+            m.Field(description="Production tree consumed by the native scanner"),
+        ]
+        native: Annotated[
+            m.Cli.CommandOutput,
+            m.Field(description="Native deptry process completion and raw output"),
+        ]
+        settings: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Consumed pyproject state"),
+        ]
+        report_state: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Fresh native report state"),
+        ]
+        report_sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$", description="Exact native report digest"
+            ),
+        ]
+        report: Annotated[
+            FlextInfraModelsGates.DeptryNativeReport,
+            m.Field(description="Complete native findings"),
+        ]
+
     class GateContext(m.ContractModel):
         """Quality gate execution context and configuration."""
 
@@ -81,6 +173,16 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             bool,
             m.Field(description="Never write files even when fix mode is requested"),
         ] = False
+        runtime_dependency_inputs: Annotated[
+            FlextInfraModelsDeps.RuntimeDependencyInputs | None,
+            m.Field(
+                description="Target-runtime dependency proof injected at composition"
+            ),
+        ] = None
+        runtime_dependency_collector: Annotated[
+            FlextInfraProtocolsDeps.RuntimeDependencyCollector | None,
+            m.Field(description="Explicit composition-owned target supplier collector"),
+        ] = None
         ruff_args: Annotated[
             t.StrSequence,
             m.Field(description="Extra arguments for Ruff"),
@@ -95,6 +197,26 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 description="Validated literal file selection; empty means project"
             ),
         ] = ()
+
+        @m.model_validator(mode="after")
+        def dependency_provenance_selection(self) -> Self:
+            """Reject competing dependency suppliers at the composition boundary.
+
+            Returns:
+                The validated model instance.
+
+            Raises:
+                ValueError: If both a runtime dependency input and a collector
+                    are supplied.
+
+            """
+            if (
+                self.runtime_dependency_inputs is not None
+                and self.runtime_dependency_collector is not None
+            ):
+                msg = "dependency provenance has competing providers"
+                raise ValueError(msg)
+            return self
 
     class MypyDiagnostic(m.ContractModel):
         """One complete record from Mypy's native JSON formatter."""

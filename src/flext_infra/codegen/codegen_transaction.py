@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
+    FlextInfraMisePublication,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -26,10 +26,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenTransaction(
-    FlextInfraCodegenTransactionGeneration,
-    FlextInfraCodegenTransactionPhases,
-):
+class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     """Keep every generation phase recoverable until one final fixed point."""
 
     def preview_sources[T](
@@ -52,7 +49,13 @@ class FlextInfraCodegenTransaction(
 
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
+
+
         """
+        if self._source_authority is not None and updates:
+            return r[T].fail(
+                "cold source authority permits an unchanged reference view only",
+            )
         planned = FlextInfraStagedPackage.plan_sources(
             workspace,
             updates,
@@ -107,22 +110,40 @@ class FlextInfraCodegenTransaction(
                 )
                 if barrier.failure:
                     return r[T].from_failure(barrier)
-                cleaned = self._recover_prepared(prepared.plan.layout)
-                if cleaned.failure:
-                    return r[T].fail(
-                        cleaned.error or "source preview staging cleanup failed",
-                        error_code=cleaned.error_code,
-                        exception=cleaned.exception,
-                        error_data={
-                            **(cleaned.error_data or {}),
-                            "cleanup_error": cleaned.error,
-                        },
-                    )
-                return r[T].ok(value)
+                return self._cleaned_source_preview_value(prepared, value)
 
             return self.publish_prepared_locked(session, validate_prepared)
 
         return self.run_files_locked(roots, validate_locked)
+
+    def _cleaned_source_preview_value[T](
+        self,
+        prepared: m.Infra.CodegenTransactionSession,
+        value: T,
+    ) -> p.Result[T]:
+        """Recover the prepared source preview and release its captured value.
+
+        Args:
+            prepared: The prepared session owning the staging layout.
+            value: The validated value captured from the live source view.
+
+        Returns:
+            The captured value after clean recovery, or the recovery failure
+            annotated with its residual cleanup error.
+
+        """
+        cleaned = self._recover_prepared(prepared.plan.layout)
+        if cleaned.failure:
+            return r[T].fail(
+                cleaned.error or "source preview staging cleanup failed",
+                error_code=cleaned.error_code,
+                exception=cleaned.exception,
+                error_data={
+                    **(cleaned.error_data or {}),
+                    "cleanup_error": cleaned.error,
+                },
+            )
+        return r[T].ok(value)
 
     def _materialize_source_preview(
         self,
@@ -136,6 +157,7 @@ class FlextInfraCodegenTransaction(
 
         Returns:
             The prepared cursor and its authenticated candidate manifest.
+
         """
         return self._materialize_package_writes(
             session,
@@ -156,11 +178,14 @@ class FlextInfraCodegenTransaction(
 
         Returns:
             Actual native consumer success or its first causal failure.
+
         """
         if runtime_root is None:
             return r[bool].ok(value=True)
-        environment = u.Infra.runtime_environment_dir(runtime_root)
-        interpreter = u.Infra.runtime_python(runtime_root)
+        environment = u.Infra.runtime_environment_dir(
+            plan.workspace, runtime_root=runtime_root
+        )
+        interpreter = u.Infra.runtime_python(plan.workspace, runtime_root=runtime_root)
         if environment.is_symlink() or not environment.is_dir():
             return r[bool].fail(f"candidate runtime must be physical: {environment}")
         observed = u.Cli.atomic_plan_directory_chain(environment)
@@ -273,6 +298,7 @@ class FlextInfraCodegenTransaction(
 
         Returns:
             Success only while every pre-consumer observation remains current.
+
         """
         current = u.Cli.atomic_inventory_physical_tree(manifest.root.path)
         if current.failure:
@@ -294,7 +320,7 @@ class FlextInfraCodegenTransaction(
         originals = FlextInfraStagedPackage.source_inputs_current(plan)
         if originals.failure:
             return r[bool].from_failure(originals)
-        journal = FlextInfraCodegenPreconditions.unchanged_journal(
+        journal = FlextInfraMiseArtifactsState.unchanged_journal(
             session,
             "source preview journal changed during validation",
         )
@@ -315,6 +341,8 @@ class FlextInfraCodegenTransaction(
         """
         writes: list[tuple[Path, bytes, int]] = []
         for before in plan.inputs:
+            if not before.path.is_relative_to(plan.workspace):
+                continue
             content = (
                 plan.updates[before.path].encode(c.DEFAULT_ENCODING)
                 if before.path in plan.updates
@@ -394,6 +422,9 @@ class FlextInfraCodegenTransaction(
             The scope identity report of the transaction scope.
 
         """
+        producer = self._file_session_authority()
+        if producer.failure:
+            return r[m.Infra.GitIdentityReport].from_failure(producer)
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[m.Infra.GitIdentityReport].from_failure(identity)
@@ -450,33 +481,30 @@ class FlextInfraCodegenTransaction(
         roots: t.MappingKV[str, Path],
         inputs: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Create a durable file-only cursor using the existing journal lifecycle.
+        """Authenticate the producer before creating a durable file-only cursor.
+
+        Authority is re-proven before preparing a layout or opening its journal.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
-        if set(roots.values()) - self._file_leases.keys():
-            return result_type.fail("file session requires every destination lease")
-        transaction_id = secrets.token_hex(16)
-        prepared = self._planner.file_layout(
-            scope_root,
-            roots,
-            transaction_id=transaction_id,
-        )
+        authority = self._file_session_authority()
+        if authority.failure:
+            return result_type.from_failure(authority)
+        prepared = self._leased_file_layout(scope_root, roots)
         if prepared.failure:
             return result_type.from_failure(prepared)
         layout = prepared.value
-        mismatch = self._file_lease_mismatch(layout)
-        if mismatch is not None:
-            return result_type.fail(mismatch)
+        if layout.transaction_id is None:
+            return result_type.fail("file session lacks its invocation identity")
         plan = m.Infra.CodegenFileSessionPlan(layout=layout)
         opened = self._open_file_transaction_journal(
             layout,
             plan,
             inputs,
-            transaction_id,
+            layout.transaction_id,
         )
         if opened.failure:
             return result_type.from_failure(opened)
@@ -487,6 +515,58 @@ class FlextInfraCodegenTransaction(
                 journal=journal,
                 journal_state=journal_state,
             ),
+        )
+
+    def _leased_file_layout(
+        self,
+        scope_root: Path,
+        roots: t.MappingKV[str, Path],
+    ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
+        """Bind one invocation identity to authenticated, leased physical roots.
+
+        This layout proof checks destination leases and their physical identities;
+        the publication admission or journal entrypoint owns producer authority.
+
+        Returns:
+            The physical participant layout carrying its invocation identity.
+
+        """
+        result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
+        if set(roots.values()) - self._file_leases.keys():
+            return result_type.fail("file session requires every destination lease")
+        prepared = self._planner.file_layout(
+            scope_root,
+            roots,
+            transaction_id=secrets.token_hex(16),
+        )
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        layout = prepared.value
+        mismatch = self._file_lease_mismatch(layout)
+        if mismatch is not None:
+            return result_type.fail(mismatch)
+        return result_type.ok(layout)
+
+    def _file_session_authority(self) -> p.Result[bool]:
+        """Resolve the current producer or cold source authority receipt.
+
+        Returns:
+            Whether the active authority is current, or its first failure.
+
+        """
+        if self._source_authority is not None:
+            return FlextInfraCodegenPreconditions.source_authority_current(
+                self._source_authority,
+            )
+        if self._producer.failure:
+            return r[bool].from_failure(self._producer)
+        return FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            self._prior_publications,
+            reference=self._producer.value.generator_reference,
+        ).flat_map(
+            lambda outputs: FlextInfraCodegenPreconditions.producer_current(
+                self._producer.value, outputs=outputs
+            )
         )
 
     def _file_lease_mismatch(
@@ -566,6 +646,11 @@ class FlextInfraCodegenTransaction(
             transaction_id=transaction_id,
             sources=tuple(("docs", source) for source in inputs),
             directories=directories,
+            producer=(
+                self._source_authority
+                if self._source_authority is not None
+                else self._producer.value
+            ),
         )
         if journal.failure:
             return result_type.from_failure(journal)
@@ -582,7 +667,7 @@ class FlextInfraCodegenTransaction(
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    prepared_journal.error or "file preparation failed",
+                    r[bool].from_failure(prepared_journal),
                 ),
             )
         ready = self._write_journal(
@@ -594,7 +679,7 @@ class FlextInfraCodegenTransaction(
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    ready.error or "file cursor persistence failed",
+                    r[bool].from_failure(ready),
                 ),
             )
         return result_type.ok((prepared_journal.value, ready.value))
@@ -606,13 +691,7 @@ class FlextInfraCodegenTransaction(
         analysis: m.Infra.CodegenPhaseAnalysis,
         policy: m.Infra.CodegenPhasePublicationPolicy,
         *,
-        staged_validator: Callable[
-            [
-                m.Infra.CodegenTransactionSession,
-                t.VariadicTuple[m.Infra.CodegenStagedFile],
-            ],
-            p.Result[m.Infra.CodegenTransactionSession],
-        ]
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
         | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Compose file publication through the same durable phase lifecycle.
@@ -622,28 +701,145 @@ class FlextInfraCodegenTransaction(
 
         """
         result_type = r[t.VariadicTuple[Path]]
-        started = self.begin_files_locked(scope_root, roots, analysis.inputs)
-        if started.failure:
-            return result_type.from_failure(started)
-        prepared = self.append_directories_locked(
-            started.value.model_copy(
-                update={"exception": started.value.exception or analysis.exception},
-            ),
-            analysis.phase,
-            policy.directories,
+        if self._producer.failure:
+            return result_type.from_failure(self._producer)
+        admitted = FlextInfraMisePublication.admit_batch(
+            analysis,
+            producer=self._producer.value,
+            admission=policy.admission,
+            prior_publications=self._prior_publications,
         )
+        if admitted.failure:
+            return result_type.from_failure(admitted)
+        if admitted.value.analysis is None:
+            return result_type.fail("publication lacks its admitted producer analysis")
+        analysis = admitted.value.analysis
+        admission = admitted.value.model_copy(
+            update={
+                "source_topology": policy.source_topology
+                if "source_topology" in policy.model_fields_set
+                else admitted.value.source_topology,
+                "scope_roots": policy.scope_roots
+                if "scope_roots" in policy.model_fields_set
+                else admitted.value.scope_roots,
+                "source_scope": policy.source_scope
+                if "source_scope" in policy.model_fields_set
+                else admitted.value.source_scope,
+            }
+        )
+        effect_free = (
+            bool(analysis.files)
+            and not analysis.issues
+            and analysis.exception is None
+            and not any(
+                u.Infra.codegen_file_requires_effect(file) for file in analysis.files
+            )
+        )
+        if effect_free and not policy.directories and policy.staged_validator is None:
+            return self._publish_unchanged_file_phase(
+                scope_root,
+                roots,
+                admission,
+                publication_receipts=publication_receipts,
+            )
+        session = self.begin_files_locked(scope_root, roots, analysis.inputs)
+        if session.failure:
+            return result_type.from_failure(session)
+
+        def publish(
+            started: m.Infra.CodegenTransactionSession,
+        ) -> p.Result[t.VariadicTuple[Path]]:
+            """Publish the admitted phase under the prepared journal's recovery.
+
+            Returns:
+                The committed paths, or the first publication failure.
+
+            """
+            bound = self.bind_publication_proof(
+                started,
+                analysis.files,
+                topology=admission,
+                phase=analysis.phase,
+                batch_admission=admission,
+            )
+            if bound.failure:
+                return result_type.from_failure(bound)
+            recorded = self.record_publication(bound.value, phase=analysis.phase)
+            if recorded.failure:
+                return result_type.from_failure(recorded)
+            prepared = self.append_directories_locked(
+                recorded.value.model_copy(
+                    update={
+                        "exception": recorded.value.exception or analysis.exception
+                    },
+                ),
+                analysis.phase,
+                policy.directories,
+            )
+            if prepared.failure:
+                return result_type.from_failure(prepared)
+            published = self.append_phase_locked(
+                prepared.value,
+                analysis.phase,
+                analysis.files,
+                issues=analysis.issues,
+                publication_policy=policy.model_copy(update={"admission": admission}),
+            )
+            return published.flat_map(
+                lambda ready: self.commit_locked(
+                    ready,
+                    publication_receipts=publication_receipts,
+                )
+            )
+
+        return self.publish_prepared_locked(
+            session.value,
+            publish,
+        )
+
+    def _publish_unchanged_file_phase(
+        self,
+        scope_root: Path,
+        roots: t.MappingKV[str, Path],
+        admission: m.Infra.CodegenPhaseOutcome,
+        *,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome] | None,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Publish observed no-op outputs without authorizing staging or effects.
+
+        Returns:
+            No written paths after the complete admitted observation is proven.
+
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        prepared = self._leased_file_layout(scope_root, roots)
         if prepared.failure:
             return result_type.from_failure(prepared)
-        published = self.append_phase_locked(
-            prepared.value,
-            analysis.phase,
-            analysis.files,
-            issues=analysis.issues,
-            staged_validator=staged_validator,
+        layout = prepared.value
+        outcome = self._file_transaction_guard(layout).flat_map(
+            lambda _guarded: FlextInfraMiseArtifactsJournal.observed_outcome(
+                layout,
+                admission,
+                producer=(
+                    self._source_authority
+                    if self._source_authority is not None
+                    else self._producer.value
+                ),
+            )
         )
-        if published.failure:
-            return result_type.from_failure(published)
-        return self.commit_locked(published.value, policy.validator)
+        if outcome.failure:
+            return result_type.from_failure(outcome)
+        current = FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            (*self._prior_publications, outcome.value),
+            reference=self._producer.value.generator_reference,
+            destinations=tuple(output.path for output in outcome.value.outputs),
+        ).flat_map(lambda _current: self.publish_outcome(scope_root, outcome.value))
+        if current.failure:
+            return result_type.from_failure(current)
+        if publication_receipts is not None:
+            publication_receipts.append(outcome.value)
+        return result_type.ok(())
 
     def validate(
         self,
@@ -716,6 +912,8 @@ class FlextInfraCodegenTransaction(
     @staticmethod
     def validate_phase_analysis_locked(
         analysis: m.Infra.CodegenPhaseAnalysis,
+        *,
+        session: m.Infra.CodegenTransactionSession | None = None,
     ) -> p.Result[bool]:
         """Validate a published phase from its immutable planning receipt.
 
@@ -723,7 +921,9 @@ class FlextInfraCodegenTransaction(
             The resulting ``p.Result[bool]``.
 
         """
-        return FlextInfraMiseArtifactsVerification.phase_analysis_live(analysis)
+        return FlextInfraMiseArtifactsVerification.phase_analysis_live(
+            analysis, session=session
+        )
 
     def run_locked[T](
         self,
@@ -774,9 +974,9 @@ class FlextInfraCodegenTransaction(
     def abort_locked(
         self,
         session: m.Infra.CodegenTransactionSession,
-        failure: str,
+        failure: p.FailureLike,
     ) -> p.Result[bool]:
-        """Recover the complete prepared transaction and preserve the cause.
+        """Recover a native failure; reject a success before touching its journal.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -807,21 +1007,18 @@ class FlextInfraCodegenTransaction(
         try:
             outcome = operation(session)
         except Exception as exc:
-            self._recover_failure(layout, str(exc), exception=exc)
+            self._recover_failure(layout, r[bool].fail(str(exc), exception=exc))
             raise
-        if outcome.success or (
-            outcome.error_data is not None and "cleanup_error" in outcome.error_data
-        ):
-            return outcome
-        return r[T].from_failure(
-            self._recover_failure(
-                layout,
-                outcome.error or "generation phase failed",
-                exception=outcome.exception,
-                error_code=outcome.error_code,
-                error_data=outcome.error_data,
-            ),
-        )
+        if outcome.failure:
+            if outcome.error_data is not None and "cleanup_error" in outcome.error_data:
+                return outcome
+            return r[T].from_failure(
+                self._recover_failure(
+                    layout,
+                    outcome,
+                ),
+            )
+        return outcome
 
 
 __all__: list[str] = ["FlextInfraCodegenTransaction"]

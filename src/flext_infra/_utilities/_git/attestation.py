@@ -11,17 +11,44 @@ import platform
 import re
 import shlex
 import sys
+from base64 import b64decode
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Protocol
 
 from flext_cli import u
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesGitRemote
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentityMixin
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRemote,
+    FlextInfraUtilitiesGitSemanticIdentityMixin,
+)
+
+
+class GateAttestationRuntimeContext(Protocol):
+    """Read-only elected resolution inputs the toolchain trust anchor hashes.
+
+    The attestation layer never resolves the workspace itself: the caller
+    elects the current runtime context once at the workspace boundary and
+    provides it explicitly, keeping the dependency direction downward.
+    """
+
+    @property
+    def runtime_root(self) -> Path:
+        """Physical runtime owner of the elected resolution input."""
+        ...
+
+    @property
+    def pyproject_path(self) -> Path:
+        """Declaration file the resolver elected."""
+        ...
+
+    @property
+    def lock_path(self) -> Path:
+        """Lock file the resolver elected."""
+        ...
 
 
 class FlextInfraUtilitiesGitAttestationMixin(
@@ -46,6 +73,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             Declared public metadata and each native configuration query outcome.
+
         """
         root = request.repo_root.expanduser().resolve()
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
@@ -58,27 +86,54 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 return r[m.Infra.GitSigningIdentityReport].from_failure(observed)
             observations.append(observed.value)
         signing_format, signing_key, allowed_signers = observations
-        if not signing_key.value or not allowed_signers.value:
+        if any(item.value is not None and not item.value for item in observations):
             return r[m.Infra.GitSigningIdentityReport].fail(
-                "native Git signing configuration declares an empty key "
-                "or trust reference",
+                "native Git signing configuration declares an empty reference",
             )
-        inline = signing_format.value == "ssh" and signing_key.value.startswith("key::")
+        if signing_format.value not in {None, "openpgp", "x509", "ssh"}:
+            return r[m.Infra.GitSigningIdentityReport].fail(
+                "native Git signing configuration declares an unsupported format",
+            )
+        key = signing_key.value
+        trust = allowed_signers.value
+        ssh = signing_format.value == "ssh"
+        inline = ssh and key is not None and key.startswith(("key::", "ssh-"))
+        if inline and key is not None:
+            try:
+                cls._validate_inline_ssh_key(key)
+            except ValueError as error:
+                return r[m.Infra.GitSigningIdentityReport].fail(
+                    "native Git signing configuration declares a malformed public key",
+                    exception=error,
+                )
         return r[m.Infra.GitSigningIdentityReport].ok(
             m.Infra.GitSigningIdentityReport(
                 repo_root=root,
                 signing_format=signing_format.value,
-                key_path=(
-                    Path(signing_key.value)
-                    if signing_format.value == "ssh" and not inline
-                    else None
-                ),
+                key_path=Path(key) if ssh and key is not None and not inline else None,
                 inline_public_key=inline,
                 public_fingerprint=None,
-                allowed_signers_path=(Path(allowed_signers.value)),
+                allowed_signers_path=Path(trust) if trust is not None else None,
                 observations=tuple(observations),
             ),
         )
+
+    @staticmethod
+    def _validate_inline_ssh_key(key: str) -> None:
+        """Decode one inline SSH public key envelope and verify its key material.
+
+        Raises:
+            ValueError: If the envelope does not split into a key kind plus
+                base64 payload, the payload is not valid base64, or the
+                decoded blob does not start with its declared key kind.
+
+        """
+        kind, encoded, *_ = key.removeprefix("key::").split(maxsplit=2)
+        blob = b64decode(encoded, validate=True)
+        size = int.from_bytes(blob[:4], "big")
+        if len(blob) <= 4 + size or blob[4 : 4 + size] != kind.encode("ascii"):
+            msg = "malformed SSH public key envelope"
+            raise ValueError(msg)
 
     @staticmethod
     def _signing_config_observation(
@@ -89,6 +144,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The effective scope/origin/value, or a native absent-key observation.
+
         """
         query = u.Cli.run_raw(
             ("git", "config", "get", "--null", "--show-origin", "--show-scope", key),
@@ -108,16 +164,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
             and not output.stdout
             and not output.stderr
         ):
-            return r[m.Infra.GitSigningConfigObservation].ok(
-                m.Infra.GitSigningConfigObservation(
-                    key=key,
-                    scope=None,
-                    origin=None,
-                    value=None,
-                    process=process,
-                ),
-            )
-        if not u.Cli.process_succeeded(process):
+            scope = origin = value = None
+        elif not u.Cli.process_succeeded(process):
             if not output.stderr:
                 return r[m.Infra.GitSigningConfigObservation].fail(
                     f"native Git signing query failed: {key}; "
@@ -128,14 +176,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GitSigningConfigObservation].fail(
                 output.stderr,
             )
-        fields = output.stdout.split("\0")
-        match fields:
-            case [scope, origin, value, ""] if scope and origin:
-                pass
-            case _:
-                return r[m.Infra.GitSigningConfigObservation].fail(
-                    "native Git signing configuration returned malformed origin data",
-                )
+        else:
+            match output.stdout.split("\0"):
+                case [scope, origin, value, ""] if scope and origin:
+                    pass
+                case _:
+                    return r[m.Infra.GitSigningConfigObservation].fail(
+                        "native Git signing configuration returned "
+                        "malformed origin data",
+                    )
         return r[m.Infra.GitSigningConfigObservation].ok(
             m.Infra.GitSigningConfigObservation(
                 key=key,
@@ -159,6 +208,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The resulting ``p.Result[m.Infra.GateCaptureReport]``.
+
         """
         root = request.repository_root.resolve()
         directory = inputs.spec.make.gate_receipts_directory
@@ -292,6 +342,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The digest of the effective configuration and execution context.
+
         """
         sources = "\n".join(
             f"{source.path.name}:"
@@ -426,6 +477,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.GateReportEvidence]]``.
+
         """
         reports: list[m.Infra.GateReportEvidence] = []
         for path, kind in paths:
@@ -459,6 +511,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The resulting ``p.Result[m.Infra.GateCommandEvidence]``.
+
         """
         if not reports:
             return r[m.Infra.GateCommandEvidence].fail(
@@ -519,6 +572,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def _attestation_predicate(
         cls,
         request: m.Infra.GateAttestationCreateRequest,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
 
         repo_root = Path(request.workspace).expanduser().resolve()
@@ -558,7 +612,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             checked = validation()
             if checked.failure:
                 return r[m.Infra.GateAttestationPredicate].from_failure(checked)
-        toolchain = cls._toolchain_digest(repo_root)
+        toolchain = cls._toolchain_digest(repo_root, context)
         predicate = m.Infra.GateAttestationPredicate(
             repository=repository,
             commit_sha=identity.value.head_oid,
@@ -688,6 +742,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The resulting ``p.Result[c.Infra.ToolOutcome]``.
+
         """
         result_type = r[c.Infra.ToolOutcome]
         try:
@@ -705,6 +760,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         Returns:
             The producer classification or its first admission failure.
+
         """
         result_type = r[c.Infra.ToolOutcome]
         if evidence.gate == c.Infra.VERB_CHECK:
@@ -928,15 +984,18 @@ class FlextInfraUtilitiesGitAttestationMixin(
         return r[bool].ok(value=True)
 
     @classmethod
-    def _toolchain_digest(cls, repo_root: Path, commit_sha: str | None = None) -> str:
-
+    def _toolchain_digest(
+        cls,
+        repo_root: Path,
+        context: GateAttestationRuntimeContext,
+        commit_sha: str | None = None,
+    ) -> str:
         repo = cls._repo(repo_root)
         commit = repo.commit(commit_sha) if commit_sha is not None else repo.head.commit
         names = (
             ".mise.toml",
             ".python-version",
             "pyproject.toml",
-            "uv.lock",
             "mise.lock",
             "config",
         )
@@ -948,6 +1007,30 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 continue
             blob = commit.tree / name
             tracked.append(f"{name}:{blob.hexsha}")
+        runtime_repo = cls._repo(context.runtime_root)
+        runtime_commit = (
+            commit
+            if Path(repo.git_dir).resolve() == Path(runtime_repo.git_dir).resolve()
+            else runtime_repo.head.commit
+        )
+        for path in (context.pyproject_path, context.lock_path):
+            relative = path.relative_to(context.runtime_root).as_posix()
+            # GitPython's ``Tree.__contains__`` matches only the direct entries'
+            # repo-relative paths, so a nested resolver input
+            # (``.flext/uv/local/pyproject.toml``) is located one tree level at
+            # a time by its cumulative path.
+            node = runtime_commit.tree
+            prefix: list[str] = []
+            for part in relative.split("/"):
+                prefix.append(part)
+                if "/".join(prefix) not in node:
+                    msg = (
+                        "selected resolver input is absent from the runtime commit: "
+                        f"{relative}"
+                    )
+                    raise FileNotFoundError(msg)
+                node = node / part
+            tracked.append(f"runtime:{relative}:{node.hexsha}")
         content = "\n".join(tracked)
         return f"sha256:{u.Cli.sha256_content(content)}"
 
@@ -955,8 +1038,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def git_create_gate_attestation(
         cls,
         request: m.Infra.GateAttestationCreateRequest,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         """Create the exact signed tag for a validated HEAD predicate.
+
+        Args:
+            request: The validated create request for the candidate HEAD.
+            context: The elected runtime context the caller resolved at the
+                workspace boundary; its toolchain inputs are hashed into the
+                predicate's trust anchor.
 
         Returns:
             The resulting ``p.Result[m.Infra.GateAttestationReport]``.
@@ -968,7 +1058,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationReport].fail(
                 f"allowed_signers file not found: {allowed}",
             )
-        predicate_result = cls._attestation_predicate(request)
+        predicate_result = cls._attestation_predicate(request, context)
         if predicate_result.failure:
             return r[m.Infra.GateAttestationReport].from_failure(predicate_result)
         predicate = predicate_result.value
@@ -987,7 +1077,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
             policy=predicate.commands[0].policy,
             policy_digest=predicate.commands[0].policy_digest,
         )
-        return cls._publish_gate_tag(verification_request, predicate, serialized.value)
+        return cls._publish_gate_tag(
+            verification_request, predicate, serialized.value, context
+        )
 
     @classmethod
     def _publish_gate_tag(
@@ -995,6 +1087,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateAttestationVerifyRequest,
         predicate: m.Infra.GateAttestationPredicate,
         serialized: str,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()
@@ -1007,13 +1100,21 @@ class FlextInfraUtilitiesGitAttestationMixin(
                     repo_root,
                     allowed,
                     tag,
+                    context,
                 )
                 if existing.failure:
                     return r[m.Infra.GateAttestationReport].from_failure(existing)
                 if existing.value != predicate:
+                    stored = existing.value.model_dump(mode="json")
+                    current = predicate.model_dump(mode="json")
+                    fields = sorted(
+                        name
+                        for name in stored.keys() | current.keys()
+                        if stored.get(name) != current.get(name)
+                    )
                     return r[m.Infra.GateAttestationReport].fail(
                         f"existing immutable stage proof differs from original "
-                        f"evidence: {tag}",
+                        f"evidence: {tag}; fields={','.join(fields)}",
                     )
                 return r[m.Infra.GateAttestationReport].ok(
                     cls._attestation_report(tag, predicate, reused=True),
@@ -1033,6 +1134,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             repo_root,
             allowed,
             tag,
+            context,
         )
         if verified.failure:
             return r[m.Infra.GateAttestationReport].from_failure(verified)
@@ -1044,8 +1146,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def git_verify_gate_attestation(
         cls,
         request: m.Infra.GateAttestationVerifyRequest,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         """Verify signature, signer, HEAD identity, and exact gate coverage.
+
+        Args:
+            request: The verification request carrying the expected digest.
+            context: The current runtime context the caller resolved at the
+                workspace boundary; hashing it must reproduce the attested
+                toolchain digest or verification fails.
 
         Returns:
             The resulting ``p.Result[m.Infra.GateAttestationReport]``.
@@ -1072,6 +1181,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             repo_root,
             allowed,
             tag,
+            context,
         )
         if predicate_result.failure:
             return r[m.Infra.GateAttestationReport].from_failure(predicate_result)
@@ -1090,6 +1200,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo_root: Path,
         allowed: Path,
         tag: str,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
         """Verify the tag signature and gate coverage against the predicate.
 
@@ -1122,7 +1233,12 @@ class FlextInfraUtilitiesGitAttestationMixin(
         if predicate_result.failure:
             return r[m.Infra.GateAttestationPredicate].from_failure(predicate_result)
         predicate = predicate_result.value
-        return cls._verify_predicate_evidence(request, predicate, verification.value)
+        return cls._verify_predicate_evidence(
+            request,
+            predicate,
+            verification.value,
+            context,
+        )
 
     @classmethod
     def _verify_predicate_evidence(
@@ -1130,12 +1246,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateAttestationVerifyRequest,
         predicate: m.Infra.GateAttestationPredicate,
         output: p.Cli.CommandOutput,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
         repo_root = Path(request.workspace).expanduser().resolve()
         checked = cls._attestation_predicate_from_value(
             repo_root,
             predicate,
             request.commit_sha,
+            context,
         )
         if checked.failure:
             return r[m.Infra.GateAttestationPredicate].from_failure(checked)
@@ -1267,6 +1385,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo_root: Path,
         predicate: m.Infra.GateAttestationPredicate,
         commit_sha: str,
+        context: GateAttestationRuntimeContext,
     ) -> p.Result[bool]:
 
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=repo_root))
@@ -1279,7 +1398,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         if origin is None:
             return r[bool].fail("selected candidate has no declared origin")
         actual_repository = FlextInfraUtilitiesGitRemote.canonical_origin_remote(origin)
-        actual_toolchain = cls._toolchain_digest(repo_root, commit_sha)
+        actual_toolchain = cls._toolchain_digest(repo_root, context, commit_sha)
         mismatches = tuple(
             field
             for field, matches in (

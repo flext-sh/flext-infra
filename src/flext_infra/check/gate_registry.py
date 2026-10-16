@@ -10,11 +10,13 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p, r, t
 from flext_cli import u
+
+from flext_infra import c, p, r, t
 from flext_infra.gates import (
     FlextInfraBanditGate,
     FlextInfraConflictMarkersGate,
+    FlextInfraDepsGate,
     FlextInfraDirenvGate,
     FlextInfraDuplicationGate,
     FlextInfraFreshImportGate,
@@ -35,7 +37,7 @@ from flext_infra.gates import (
 from flext_infra.gates.codemod import FlextInfraCodemodGate
 
 if TYPE_CHECKING:
-    from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates import FlextInfraGate
 
 
 class FlextInfraGateRegistry:
@@ -88,6 +90,7 @@ class FlextInfraGateRegistry:
         return (
             FlextInfraRuffLintGate,
             FlextInfraConflictMarkersGate,
+            FlextInfraDepsGate,
             FlextInfraRuffFormatGate,
             FlextInfraPyreflyGate,
             FlextInfraMypyGate,
@@ -130,6 +133,7 @@ class FlextInfraGateRegistry:
 
         Returns:
             An opaque digest of actual selected external executable identities.
+
         """
         observed: list[str] = []
         for gate_id in gate_ids:

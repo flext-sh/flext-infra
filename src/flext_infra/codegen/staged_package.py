@@ -11,6 +11,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsVerification
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraStagedPackage:
@@ -33,13 +34,13 @@ class FlextInfraStagedPackage:
 
         Returns:
             A result wrapping the planned stage source or the first failure encountered.
+
         """
         result_type = r[m.Infra.StageSourcePlan]
         workspace = workspace.resolve()
         discovered = cls._normalized_updates(
             workspace,
             updates,
-            inputs=inputs,
         ).flat_map(
             lambda normalized: cls._workspace_layouts(workspace).map(
                 lambda layouts: (normalized, layouts),
@@ -56,31 +57,43 @@ class FlextInfraStagedPackage:
                 before.path
                 for before in inputs
                 if before.path.suffix in {".py", ".pyi"}
+                # Read-only evidence needs no pinned rope layout: the
+                # rule-fixture scratch lives outside the workspace, and a
+                # standalone consumer's venv lives INSIDE its checkout —
+                # installed packages are exactly the site-packages segment
+                # (platform convention, not a declared list).
+                and before.path.is_relative_to(workspace)
+                and "site-packages" not in before.path.parts
             ),
         ))
         for path in source_paths:
+            root = u.Infra.project_root(path)
+            if any(item.project_root == root for item in selected):
+                continue
             resolved = cls._source_layout(path, layouts)
             if resolved.failure:
-                return result_type.from_failure(resolved)
+                if path in normalized:
+                    return result_type.from_failure(resolved)
+                # Evidence-only inputs (an installed family package inside a
+                # standalone consumer's venv, the rule-fixture scratch) are
+                # read outside any rope layout; only rewrite targets need one.
+                continue
             local = resolved.value
-            if not any(item.project_root == local.project_root for item in selected):
-                pinned = cls._pin_closure(
-                    local,
-                    layouts,
-                    selected,
-                    states,
-                    updates=normalized,
-                )
-                if pinned.failure:
-                    return result_type.from_failure(pinned)
+            pinned = cls._pin_closure(
+                local,
+                layouts,
+                selected,
+                states,
+                updates=normalized,
+            )
+            if pinned.failure:
+                return result_type.from_failure(pinned)
         metadata = cls._pin_workspace_metadata(workspace, states)
         if metadata.failure:
             return result_type.from_failure(metadata)
-        for before in inputs:
-            if states.get(before.path) != before:
-                return result_type.fail(
-                    f"candidate original source identity changed: {before.path}",
-                )
+        verified = cls._verified_input_originals(states, inputs, normalized)
+        if verified.failure:
+            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.StageSourcePlan(
                 workspace=workspace,
@@ -98,20 +111,55 @@ class FlextInfraStagedPackage:
         )
 
     @staticmethod
+    def _verified_input_originals(
+        states: t.MappingKV[Path, m.Cli.AtomicFileState],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        normalized: t.MappingKV[Path, str],
+    ) -> p.Result[bool]:
+        """Verify every caller input kept its pinned original identity.
+
+        Args:
+            states: Freshly pinned states keyed by path.
+            inputs: Original caller snapshots to verify.
+            normalized: Rewrite targets of the candidate.
+
+        Returns:
+            Whether every original input kept its identity, or the first
+            identity failure.
+
+        """
+        for before in inputs:
+            observed = states.get(before.path)
+            if observed is None:
+                # Evidence-only input: never pinned (installed packages and
+                # scratch views live outside every rope layout), so it owns
+                # no fresh observation. A rewrite target always has one.
+                if before.path in normalized:
+                    return r[bool].fail(
+                        f"candidate original source identity changed: {before.path}",
+                    )
+                continue
+            if observed != before:
+                return r[bool].fail(
+                    f"candidate original source identity changed: {before.path}",
+                )
+        return r[bool].ok(value=True)
+
+    @staticmethod
     def _normalized_updates(
         workspace: Path,
         updates: t.MappingKV[Path, str],
-        *,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[dict[Path, str]]:
         """Elect one contained physical destination per desired source.
 
+        Every desired destination must be a contained, physical, unambiguous
+        workspace path.
+
         Returns:
             Desired sources or the first ambiguous, foreign or symlinked path.
+
         """
         result_type = r[dict[Path, str]]
-        if any(not before.path.is_relative_to(workspace) for before in inputs):
-            return result_type.fail("candidate original source escapes workspace")
         normalized: dict[Path, str] = {}
         for path, content in updates.items():
             if any(item.is_symlink() for item in (path, *path.parents)):
@@ -127,12 +175,13 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _source_layout(
         path: Path,
-        layouts: dict[str, m.Infra.RopeProjectLayout],
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
     ) -> p.Result[m.Infra.RopeProjectLayout]:
         """Resolve a source owner without replacing another package's identity.
 
         Returns:
             The unique source layout or the first ownership failure.
+
         """
         result_type = r[m.Infra.RopeProjectLayout]
         root = u.Infra.project_root(path)
@@ -153,6 +202,7 @@ class FlextInfraStagedPackage:
 
         Returns:
             Success only while every original source path remains in the closure.
+
         """
         current = FlextInfraMiseArtifactsVerification.states_current(plan.inputs)
         if current.failure:
@@ -164,15 +214,10 @@ class FlextInfraStagedPackage:
                 return r[bool].from_failure(paths)
             actual.update(path for path in paths.value if path.is_file())
         actual.update(path for path in plan.updates if path.is_file())
-        actual.update(
-            path
-            for path in (
-                plan.workspace / c.PYPROJECT_FILENAME,
-                plan.workspace / ".gitmodules",
-                plan.workspace / "uv.lock",
-            )
-            if path.is_file()
-        )
+        metadata = cls._workspace_metadata_paths(plan.workspace)
+        if metadata.failure:
+            return r[bool].from_failure(metadata)
+        actual.update(path for path in metadata.value if path.is_file())
         expected = {item.path for item in plan.inputs if item.content is not None}
         if actual != expected:
             return r[bool].fail("candidate original source inventory changed")
@@ -184,6 +229,7 @@ class FlextInfraStagedPackage:
 
         Returns:
             The superproject root or the standalone repository root.
+
         """
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         if identity.failure:
@@ -200,6 +246,7 @@ class FlextInfraStagedPackage:
 
         Returns:
             The immutable candidate plan or the first discovery failure.
+
         """
         result_type = r[m.Infra.StagePackagePlan]
         workspace = cls.workspace_root(root)
@@ -229,16 +276,39 @@ class FlextInfraStagedPackage:
     def _workspace_layouts(
         workspace: Path,
     ) -> p.Result[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]:
+        """Retain Python providers independently of their generation participation.
 
+        Returns:
+            The mutable package-name to source-layout mapping of every
+            retained provider, or the first applicability failure.
+
+        """
         result_type = r[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]
-        declarations = u.Infra.git_submodule_declarations(workspace)
-        if declarations.failure:
-            return result_type.from_failure(declarations)
-        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
-        for repository in (
+        targets = u.Infra.repository_operation_targets(
             workspace,
-            *(workspace / declaration.path for declaration in declarations.value),
-        ):
+            c.Infra.CodegenConformScope.ALL,
+        )
+        if targets.failure:
+            return result_type.from_failure(targets)
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
+        for target in targets.value:
+            repository = target.root
+            manifest = repository / c.PYPROJECT_FILENAME
+            if not manifest.is_file():
+                applicability = u.Infra.repository_operation_applicability(
+                    target,
+                    mutating=False,
+                )
+                if applicability.failure:
+                    return result_type.from_failure(applicability)
+                if not applicability.value.applicable:
+                    continue
+                required = u.Cli.atomic_read_binary_file_state(
+                    manifest,
+                    required=True,
+                )
+                if required.failure:
+                    return result_type.from_failure(required)
             layout = u.Infra.layout(repository)
             if layout is not None:
                 if layout.package_name in layouts:
@@ -337,7 +407,7 @@ class FlextInfraStagedPackage:
     def _pin_layout(
         cls,
         layout: m.Infra.RopeProjectLayout,
-        states: dict[Path, m.Cli.AtomicFileState],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
         *,
         updates: t.MappingKV[Path, str] | None = None,
     ) -> p.Result[tuple[str, ...]]:
@@ -386,7 +456,7 @@ class FlextInfraStagedPackage:
         local: m.Infra.RopeProjectLayout,
         layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
         selected: list[m.Infra.RopeProjectLayout],
-        states: dict[Path, m.Cli.AtomicFileState],
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
         *,
         updates: t.MappingKV[Path, str] | None = None,
     ) -> p.Result[bool]:
@@ -409,15 +479,45 @@ class FlextInfraStagedPackage:
         return r[bool].ok(value=True)
 
     @staticmethod
+    def _workspace_metadata_paths(
+        workspace: Path,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Name the source and selected resolver metadata from physical ownership.
+
+        Returns:
+            The deduplicated resolver, manifest, lock and codegen source
+            paths, or the first resolution failure.
+
+        """
+        context = FlextInfraWorkspaceDetector.resolution_context(workspace)
+        if context.failure:
+            return r[t.VariadicTuple[Path]].from_failure(context)
+        inputs = u.Infra.load_codegen_inputs(context.value.runtime_root)
+        if inputs.failure:
+            return r[t.VariadicTuple[Path]].from_failure(inputs)
+        return r[t.VariadicTuple[Path]].ok(
+            tuple(
+                dict.fromkeys(
+                    (
+                        context.value.runtime_root / c.PYPROJECT_FILENAME,
+                        context.value.runtime_root / c.Infra.GITMODULES,
+                        context.value.pyproject_path,
+                        context.value.lock_path,
+                        *(state.path for state in inputs.value.sources),
+                    ),
+                ),
+            ),
+        )
+
+    @staticmethod
     def _pin_workspace_metadata(
         workspace: Path,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
-        for path in (
-            workspace / c.PYPROJECT_FILENAME,
-            workspace / ".gitmodules",
-            workspace / "uv.lock",
-        ):
+        paths = FlextInfraStagedPackage._workspace_metadata_paths(workspace)
+        if paths.failure:
+            return r[bool].from_failure(paths)
+        for path in paths.value:
             if path in states:
                 continue
             observed = u.Cli.atomic_read_binary_file_state(path, required=False)

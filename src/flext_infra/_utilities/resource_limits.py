@@ -169,6 +169,7 @@ class FlextInfraUtilitiesResourceLimits:
 
         Returns:
             The resulting ``Path``.
+
         """
         return FlextInfraUtilitiesResourceLimits.project_cache_directory(
             project_dir,
@@ -186,6 +187,7 @@ class FlextInfraUtilitiesResourceLimits:
 
         Returns:
             The resulting ``Path``.
+
         """
         return FlextInfraUtilitiesResourceLimits.project_cache_directory(
             project_dir,
@@ -208,6 +210,7 @@ class FlextInfraUtilitiesResourceLimits:
 
         Raises:
             ValueError: If the project metadata cannot be read.
+
         """
         metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
             project_dir,

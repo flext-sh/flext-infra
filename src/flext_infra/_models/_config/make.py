@@ -44,6 +44,59 @@ class FlextInfraConfigModelsMake(
             ),
         ] = FlextInfraConfigVocabulary.MypyCacheEnvironment.USER_HOME.value
 
+    class MakeUvResolutionSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Native resolver views independent of the physical environment and gates."""
+
+        local_directory: Annotated[
+            Path,
+            m.Field(description="Runtime-root-relative local resolution directory"),
+        ]
+        standalone_directory: Annotated[
+            Path,
+            m.Field(description="Runtime-root-relative hosted resolution directory"),
+        ]
+        hosted_variable: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Actual hosted runner environment key"),
+        ]
+        hosted_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Value identifying the actual hosted runner"),
+        ]
+        virtual_distribution_suffix: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Suffix of the generated virtual distribution name"),
+        ]
+        member_group_separator: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Separator between member and native group names"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_directories(self) -> Self:
+            """Keep both resolver views distinct and inside their physical owner.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If a UV resolution directory is not a nonempty
+                    relative path or the two views share a directory.
+
+            """
+            for directory in (self.local_directory, self.standalone_directory):
+                if (
+                    directory.is_absolute()
+                    or ".." in directory.parts
+                    or not directory.parts
+                ):
+                    msg = "UV resolution directories must be nonempty relative paths"
+                    raise ValueError(msg)
+            if self.local_directory == self.standalone_directory:
+                msg = "UV resolution views must use distinct directories"
+                raise ValueError(msg)
+            return self
+
     class MakeCiSpec(FlextInfraConfigModelsContract.ConfigContract):
         """The only permitted environment delta between local and CI execution."""
 
@@ -78,6 +131,7 @@ class FlextInfraConfigModelsMake(
 
             Raises:
                 ValueError: If make.ci.local_check_gates contains unknown gates.
+
             """
             allowed = set(FlextInfraConfigVocabulary.CANONICAL_GATE_IDS)
             unknown = sorted(set(self.local_check_gates) - allowed)
@@ -120,6 +174,21 @@ class FlextInfraConfigModelsMake(
                 ),
             ),
         ] = tuple(FlextInfraConfigVocabulary.MakeProfile)
+
+    class MakeLifecycleStepSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One public command in the declared runtime acceptance sequence."""
+
+        verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public Make verb")]
+        scope: Annotated[
+            Literal["root", "each"],
+            m.Field(description="Run once at the root or in every eligible repository"),
+        ]
+        contexts: Annotated[
+            t.VariadicTuple[Literal["local", "ci"]],
+            m.Field(
+                min_length=1, description="Contexts where this acceptance step applies"
+            ),
+        ]
 
     class MakeWorkflowStepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One canonical workflow step."""
@@ -212,6 +281,7 @@ class FlextInfraConfigModelsMake(
             Raises:
                 ValueError: If testmon cache quota ladder must ascend warning <
                     maintenance < block <= 100.
+
             """
             full_scale = 100
             if not (
@@ -263,6 +333,7 @@ class FlextInfraConfigModelsMake(
 
             Raises:
                 ValueError: If mypy cache.
+
             """
             for name, actual, expected in (
                 (
@@ -561,9 +632,25 @@ class FlextInfraConfigModelsMake(
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeWorkflowStepSpec],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
+        lifecycle_steps: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeLifecycleStepSpec],
+            m.Field(
+                min_length=1, description="Ordered public runtime acceptance steps"
+            ),
+        ]
+        lifecycle_observed_files: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1, description="Relative files observed around each step"
+            ),
+        ]
         ci: Annotated[
             FlextInfraConfigModelsMake.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
+        ]
+        uv_resolution: Annotated[
+            FlextInfraConfigModelsMake.MakeUvResolutionSpec,
+            m.Field(description="Native resolver view selection and naming policy"),
         ]
         testmon_cache: Annotated[
             TestmonCacheSpec,
@@ -756,7 +843,7 @@ class FlextInfraConfigModelsMake(
             # mandatory canonical verb, so the inverted check rejected every
             # valid configuration and `flext_infra.config` could not be built at
             # all. The serialized set no longer exists; the guard has no object.
-            self._validate_workflow(declared)
+            self._validate_workflow(declared, admissible)
             self._validate_docs_verb(declared)
             return self
 
@@ -806,25 +893,17 @@ class FlextInfraConfigModelsMake(
                 msg = "make standalone_check_gates must route each gate once"
                 raise ValueError(msg)
 
-        def _validate_workflow(self, declared: set[str]) -> None:
+        def _validate_workflow(self, declared: set[str], admissible: set[str]) -> None:
             """Validate the workflow verbs against the declared public verbs.
 
-            Why (hq-36xk, flext-lq86m): the guard that lived here read
-            ``if "setup" in serialized`` and protected ``make setup`` from being
-            placed in the serialized mutation set, so it could never require
-            the managed validation environment it is supposed to CREATE.
-            3e5fbc747 exterminated the serialize-make lifecycle and deleted
-            ``self.serialization``, but rebound this condition to ``declared``
-            instead of removing it with the concept it guarded. ``setup`` is a
-            mandatory canonical verb, so the inverted check rejected every
-            valid configuration and ``flext_infra.config`` could not be built
-            at all. The serialized set no longer exists; the guard has no
-            object.
+            CI provisions first and verifies a clean tree last. Configured phases
+            may surround the ordered audit, integrity, and test milestones.
 
             Raises:
                 ValueError: If make workflow verbs must be unique; or if make
                     workflow verbs are not declared public verbs; or if make
-                    workflow verbs must exist in every profile; or if make pre-commit
+                    workflow verbs must be selector-free in every profile; or if CI
+                    approval boundaries or milestone order are invalid; or if pre-commit
                     must be declared in every profile.
 
             """
@@ -839,38 +918,47 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(sorted(unknown_workflow))}"
                 )
                 raise ValueError(msg)
-            # Every profile renders the workflow, so a workflow verb must exist
-            # in every profile's Makefile.
+            unknown_lifecycle = {step.verb for step in self.lifecycle_steps} - declared
+            if unknown_lifecycle:
+                msg = (
+                    "make lifecycle verbs are not declared public verbs: "
+                    f"{', '.join(sorted(unknown_lifecycle))}"
+                )
+                raise ValueError(msg)
+            for path in self.lifecycle_observed_files:
+                if Path(path).is_absolute() or ".." in Path(path).parts:
+                    msg = f"make lifecycle observed file escapes its repository: {path}"
+                    raise ValueError(msg)
+            # Every consumer invokes workflow verbs without selectors in every profile.
             partial_workflow = sorted(
                 verb.name
                 for verb in self.verbs
                 if verb.name in {*workflow_verbs, "pre-commit"}
-                and set(verb.profiles) != set(FlextInfraConfigVocabulary.MakeProfile)
+                and verb.name not in admissible
             )
             if partial_workflow:
                 msg = (
-                    "make workflow verbs must exist in every profile: "
+                    "make workflow verbs must be selector-free in every profile: "
                     f"{', '.join(partial_workflow)}"
                 )
                 raise ValueError(msg)
-            approval = tuple(
-                step.verb for step in self.workflow if "ci" in step.contexts
+            approval = self.approval_verbs
+            milestones = (
+                "audit",
+                FlextInfraConfigVocabulary.VERB_CHECK,
+                FlextInfraConfigVocabulary.VERB_TEST,
             )
-            if approval != ("setup", "audit", "check", "test", "verify-clean"):
+            if (
+                approval[:1] != ("setup",)
+                or approval[-1:] != ("verify-clean",)
+                or tuple(verb for verb in approval if verb in milestones) != milestones
+            ):
                 msg = "CI requires the setup/audit/check/test/verify-clean workflow"
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            if hook != tuple(
-                verb
-                for verb in approval
-                if verb
-                in {
-                    FlextInfraConfigVocabulary.VERB_CHECK,
-                    FlextInfraConfigVocabulary.VERB_TEST,
-                }
-            ):
+            if hook != milestones[1:]:
                 msg = "the pre-commit hook requires the CI check and test workflow"
                 raise ValueError(msg)
             if "pre-commit" not in declared:
@@ -924,6 +1012,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return (
                 *FlextInfraConfigVocabulary.CANONICAL_GATE_IDS,
@@ -946,6 +1035,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return self.check_gates_default
 
@@ -956,6 +1046,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             local = frozenset(self.ci.local_check_gates)
             return tuple(gate for gate in self.check_gates_default if gate not in local)
@@ -971,6 +1062,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return FlextInfraConfigVocabulary.CANONICAL_FIXABLE_GATE_IDS
 
@@ -990,6 +1082,7 @@ class FlextInfraConfigModelsMake(
             Returns:
                 The resulting ``Mapping[str,
                     FlextInfraConfigModelsMake.CustomHandlerPolicy]``.
+
             """
             base = self.custom_handler_policy
             overrides = self.custom_handler_profile_overrides

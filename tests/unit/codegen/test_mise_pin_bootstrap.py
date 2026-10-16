@@ -1,20 +1,25 @@
 """Exercise missing-pin recovery through native Mise and generated Make.
 
+Release assets belong to the declared toolchain, not an application service
+configured in a test ``.env``. Provisioning failures must reach these tests.
+
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlsplit
 
 import pytest
+from packaging.version import Version
 
 from flext_infra import c, config, m
-from tests import tm, u
+from tests import t, tm, u
 
 
 class TestsFlextInfraMisePinBootstrap:
@@ -35,10 +40,64 @@ class TestsFlextInfraMisePinBootstrap:
         ]
 
     @staticmethod
-    def _project(tmp_path: Path, *, git_metadata: bool = True) -> None:
+    def environment(root: Path) -> t.StrMapping:
+        """Confine native Mise configuration, installs, state and caches.
+
+        Returns:
+            The resulting ``t.StrMapping``.
+
+        """
+        return {
+            "HOME": str(root / "home"),
+            "XDG_CONFIG_HOME": str(root / "xdg-config"),
+            "XDG_DATA_HOME": str(root / "data"),
+            "XDG_STATE_HOME": str(root / "state"),
+            "XDG_CACHE_HOME": str(root / "cache"),
+            "MISE_CONFIG_DIR": str(root / "xdg-config/mise"),
+            "MISE_DATA_DIR": str(root / "data/mise"),
+            "MISE_STATE_DIR": str(root / "state/mise"),
+            "MISE_CACHE_DIR": str(root / "cache/mise"),
+            "MISE_TMP_DIR": str(root / "tmp/mise"),
+            "MISE_INSTALLS_DIR": str(root / "data/mise/installs"),
+            "MISE_DOWNLOADS_DIR": str(root / "data/mise/downloads"),
+            "MISE_PLUGINS_DIR": str(root / "data/mise/plugins"),
+            "MISE_SHIMS_DIR": str(root / "data/mise/shims"),
+        }
+
+    @staticmethod
+    def system_path_without_mise(root: Path) -> Path:
+        """Expose real system executables with the host Mise deliberately absent.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        destination = root / "system-bin"
+        destination.mkdir()
+        for directory in dict.fromkeys(os.defpath.split(os.pathsep)):
+            for source in Path(directory).iterdir():
+                target = destination / source.name
+                if (
+                    source.name != "mise"
+                    and not target.exists()
+                    and source.is_file()
+                    and os.access(source, os.X_OK)
+                ):
+                    target.symlink_to(source.resolve())
+        tm.that(shutil.which("mise", path=str(destination)), eq=None)
+        return destination
+
+    @staticmethod
+    def _project(
+        tmp_path: Path,
+        *,
+        git_metadata: bool = True,
+        mise_version: str | None = None,
+    ) -> None:
         """Render the real bootstrap macro with the declared self-managed tool."""
         if git_metadata:
             u.Tests.initialize_git_repo(tmp_path)
+        (tmp_path / "home").mkdir()
         toolchain = config.Infra.codegen.toolchain
         template_root = u.Infra.codegen_templates_root(config.Infra.codegen)
         shutil.copyfile(
@@ -50,7 +109,9 @@ class TestsFlextInfraMisePinBootstrap:
             '{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe %}'
             '{{ tool_bootstrap_recipe("bootstrap", "$(PROJECT_ROOT)", '
             "toolchain, [toolchain.mise_selector], "
-            '"printf recovered > recovered.txt", make, '
+            "\"sh -ec 'command -v mise > runtime-mise-path.txt; "
+            "mise --version > runtime-mise-version.txt; "
+            "printf recovered > recovered.txt'\", make, "
             "bootstrap_report_shell_literal, bootstrap_report_relative_path, false) }}",
             encoding="utf-8",
         )
@@ -79,10 +140,18 @@ class TestsFlextInfraMisePinBootstrap:
         (tmp_path / ".mise.toml").write_text(
             f"[settings]\nlockfile = {str(toolchain.mise_lockfile).lower()}\n"
             "[tools]\n"
-            f'"{toolchain.mise_selector}" = "{toolchain.mise_version}"\n',
+            f'"{toolchain.mise_selector}" = '
+            f'"{mise_version or toolchain.mise_version}"\n',
             encoding="utf-8",
         )
-        tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
+        tm.ok(
+            u.Cli.run_checked(
+                ["mise", "trust", str(tmp_path / ".mise.toml")],
+                options=m.Cli.ProcessOptions(
+                    env=TestsFlextInfraMisePinBootstrap.environment(tmp_path),
+                ),
+            ),
+        )
 
     @pytest.mark.parametrize("git_metadata", [False, True])
     def test_setup_preserves_a_missing_self_pin(
@@ -90,7 +159,11 @@ class TestsFlextInfraMisePinBootstrap:
     ) -> None:
         """Frozen setup cannot resolve a missing lock or start its lifecycle."""
         self._project(tmp_path, git_metadata=git_metadata)
-        setup = tm.ok(u.Tests.run_isolated_make(["setup"], cwd=tmp_path))
+        setup = tm.ok(
+            u.Tests.run_isolated_make(
+                ["setup"], cwd=tmp_path, env=self.environment(tmp_path)
+            )
+        )
         tm.that(u.Cli.process_succeeded(setup.outcome), eq=False)
         tm.that(
             setup.stderr,
@@ -164,12 +237,81 @@ class TestsFlextInfraMisePinBootstrap:
         )
         tm.that("tool_config" in document, eq=False)
 
+    @staticmethod
+    def test_native_http_source_options_survive_the_public_toml_consumer() -> None:
+        """Typed backend inputs round-trip without table scope swallowing tools."""
+        toolchain = config.Infra.codegen.toolchain
+        dependency = toolchain.tools[0]
+        source = m.Infra.MiseToolEntry(
+            name="source-contract-fixture",
+            selector="http:source-contract-fixture",
+            version="latest",
+            http=m.Infra.MiseHttpToolOptions(
+                url="https://example.invalid/source-{{version}}.tar.xz",
+                version_list_url="https://example.invalid/releases",
+                version_json_path=".[].tag_name",
+                version_order="semver",
+                checksum_url="https://example.invalid/checksums/{{version}}",
+                checksum_expr="body",
+                strip_components=1,
+                bin_path="bin",
+            ),
+            depends=(dependency.selector or dependency.name,),
+            install_env={"BUILD_INPUT_IDENTITY": "fixture-owned-input"},
+            postinstall=m.Infra.MisePostinstallOptions(
+                run='printf "%s\\n" "$MISE_TOOL_INSTALL_PATH"',
+                when="always",
+            ),
+            version_probe=dependency.version_probe,
+        )
+        selected = m.Infra.ToolchainSpec.model_validate(
+            toolchain.model_copy(
+                update={"tools": (source, *toolchain.tools)},
+            ).model_dump(round_trip=True),
+        )
+        rendered = tm.ok(
+            u.Cli.template_render(
+                u.Infra.codegen_templates_root(config.Infra.codegen)
+                / "base"
+                / ".mise.toml.j2",
+                selected,
+            ),
+        )
+        document = u.Tests.toml_payload(rendered)
+        tools = u.Tests.toml_mapping(document["tools"])
+        observed = u.Tests.toml_mapping(tools[source.selector or source.name])
+        tm.that(observed["version"], eq=selected.tool_versions[source.name])
+        for key, value in (
+            tm.not_none(source.http).model_dump(exclude_none=True).items()
+        ):
+            tm.that(observed[key], eq=value)
+        tm.that(observed["depends"], eq=list(source.depends))
+        tm.that(observed["install_env"], eq=dict(source.install_env))
+        tm.that(
+            observed["postinstall"],
+            eq=tm.not_none(source.postinstall).model_dump(exclude_none=True),
+        )
+        tm.that(
+            set(tools),
+            eq={"python", selected.mise_selector, *selected.tool_keys.values()},
+        )
+
     @pytest.mark.slow
-    @pytest.mark.remote
-    def test_upgrade_recovers_a_missing_self_pin(self, tmp_path: Path) -> None:
-        """Upgrade resolves the first pin and runs the verified native release."""
+    @pytest.mark.parametrize("pin_present", [False, True])
+    def test_upgrade_qualifies_the_final_self_pin(
+        self, tmp_path: Path, *, pin_present: bool
+    ) -> None:
+        """The real upgraded lock governs the release executing the lifecycle."""
         self._project(tmp_path)
-        upgrade = tm.ok(u.Tests.run_isolated_make(["upg"], cwd=tmp_path))
+        if pin_present:
+            (tmp_path / "mise.lock").write_text(
+                u.Tests.repo_mise_lock(), encoding=c.DEFAULT_ENCODING
+            )
+        upgrade = tm.ok(
+            u.Tests.run_isolated_make(
+                ["upg"], cwd=tmp_path, env=self.environment(tmp_path)
+            )
+        )
         tm.that(
             u.Cli.process_succeeded(upgrade.outcome),
             eq=True,
@@ -177,6 +319,205 @@ class TestsFlextInfraMisePinBootstrap:
         )
         tm.that((tmp_path / "mise.lock").exists(), eq=True)
         tm.that((tmp_path / "recovered.txt").read_text(), eq="recovered")
+        pin = u.Tests.pinned_mise_version(
+            (tmp_path / "mise.lock").read_text(encoding=c.DEFAULT_ENCODING),
+            config.Infra.codegen.toolchain.mise_selector,
+        )
+        tm.that(
+            (tmp_path / "runtime-mise-version.txt").read_text().split()[0],
+            eq=pin,
+        )
+
+    def test_cached_probe_failure_preserves_native_exit_and_artifact(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A genuinely broken executable is a failed probe, never cache absence."""
+        self._project(tmp_path)
+        lock = u.Tests.repo_mise_lock()
+        (tmp_path / "mise.lock").write_text(lock, encoding=c.DEFAULT_ENCODING)
+        pin = u.Tests.pinned_mise_version(
+            lock,
+            config.Infra.codegen.toolchain.mise_selector,
+        )
+        cache = tmp_path / "cache"
+        cached = cache / "flext/infra/mise-bootstrap" / pin / "mise"
+        cached.parent.mkdir(parents=True)
+        native = Path(tm.not_none(shutil.which("mise"))).resolve().read_bytes()
+        damaged = native[:16]
+        tm.that(b"\x00" in damaged, eq=True)
+        cached.write_bytes(damaged)
+        cached.chmod(0o755)
+        probe = tm.ok(
+            u.Cli.run_raw(
+                ["/bin/sh", "-c", '"$1" --version', "probe", str(cached)],
+                cwd=tmp_path,
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(probe.outcome), eq=False)
+
+        setup = tm.ok(
+            u.Tests.run_isolated_make(
+                ["setup"],
+                cwd=tmp_path,
+                env=self.environment(tmp_path),
+            ),
+        )
+
+        tm.that(u.Cli.process_succeeded(setup.outcome), eq=False)
+        report = m.Infra.WorkspaceOperationReport.model_validate_json(
+            (tmp_path / c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        tm.that(
+            report.receipts[0].native_exit_code,
+            eq=probe.outcome.raw_return_code,
+        )
+        tm.that(report.receipts[0].stage, eq="release-verification")
+        tm.that(setup.stderr, has=str(cached))
+        tm.that(cached.read_bytes(), eq=damaged)
+        tm.that((tmp_path / "recovered.txt").exists(), eq=False)
+
+    @pytest.mark.slow
+    def test_locked_setup_runs_without_host_mise_from_cold_and_warm_cache(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A real pinned release bootstraps both cache states without host Mise."""
+        self._project(tmp_path)
+        lock = u.Tests.repo_mise_lock()
+        lock_path = tmp_path / "mise.lock"
+        lock_path.write_text(lock, encoding=c.DEFAULT_ENCODING)
+        pin = u.Tests.pinned_mise_version(
+            lock, config.Infra.codegen.toolchain.mise_selector
+        )
+        environment = {
+            **self.environment(tmp_path),
+            "PATH": str(self.system_path_without_mise(tmp_path)),
+        }
+        cold = tm.ok(
+            u.Tests.run_isolated_make(["setup"], cwd=tmp_path, env=environment)
+        )
+        tm.that(
+            u.Cli.process_succeeded(cold.outcome),
+            eq=True,
+            msg=cold.stdout + cold.stderr,
+        )
+        executable = Path((tmp_path / "runtime-mise-path.txt").read_text().strip())
+        tm.that(executable.is_relative_to(tmp_path), eq=True)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(executable, required=True))
+
+        warm = tm.ok(
+            u.Tests.run_isolated_make(["setup"], cwd=tmp_path, env=environment)
+        )
+
+        tm.that(
+            u.Cli.process_succeeded(warm.outcome),
+            eq=True,
+            msg=warm.stdout + warm.stderr,
+        )
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(executable, required=True)),
+            eq=before,
+        )
+        tm.that(
+            (tmp_path / "runtime-mise-version.txt").read_text().split()[0],
+            eq=pin,
+        )
+        tm.that(lock_path.read_text(encoding=c.DEFAULT_ENCODING), eq=lock)
+        tm.that((tmp_path / "recovered.txt").read_text(), eq="recovered")
+
+    @pytest.mark.slow
+    def test_wrong_real_cached_release_is_replaced_before_lifecycle(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A successful probe of another genuine release triggers pinned recovery."""
+        current = tmp_path / "current"
+        current.mkdir()
+        self._project(current)
+        selector = config.Infra.codegen.toolchain.mise_selector
+        lock = u.Tests.repo_mise_lock()
+        (current / "mise.lock").write_text(lock, encoding=c.DEFAULT_ENCODING)
+        pin = u.Tests.pinned_mise_version(lock, selector)
+        environment = self.environment(current)
+        available = tm.ok(
+            u.Cli.capture(
+                ["mise", "ls-remote", selector, pin.partition(".")[0]],
+                cwd=current,
+                options=m.Cli.ProcessOptions(env=environment),
+            ),
+        )
+        older = str(
+            max(
+                version
+                for item in available.splitlines()
+                if (version := Version(item.removeprefix("v"))) < Version(pin)
+                and not version.is_prerelease
+                and not version.is_devrelease
+            ),
+        )
+        previous = tmp_path / "previous"
+        previous.mkdir()
+        self._project(previous, mise_version=older)
+        tm.ok(
+            u.Cli.run_checked(
+                ["mise", "-C", str(previous), "lock"],
+                cwd=previous,
+                options=m.Cli.ProcessOptions(env=self.environment(previous)),
+            ),
+        )
+        previous_lock = (previous / "mise.lock").read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(u.Tests.pinned_mise_version(previous_lock, selector), eq=older)
+        for project in (previous, current):
+            installed = tm.ok(
+                u.Tests.run_isolated_make(
+                    ["setup"], cwd=project, env=self.environment(project)
+                ),
+            )
+            tm.that(
+                u.Cli.process_succeeded(installed.outcome),
+                eq=True,
+                msg=installed.stdout + installed.stderr,
+            )
+        previous_executable = Path(
+            (previous / "runtime-mise-path.txt").read_text().strip(),
+        )
+        current_executable = Path(
+            (current / "runtime-mise-path.txt").read_text().strip(),
+        )
+        current_bytes = current_executable.read_bytes()
+        shutil.copyfile(previous_executable, current_executable)
+        observed = tm.ok(
+            u.Cli.capture(
+                [str(current_executable), "--version"],
+                cwd=current,
+                options=m.Cli.ProcessOptions(env=environment),
+            ),
+        )
+        tm.that(observed.split()[0], eq=older)
+
+        recovered = tm.ok(
+            u.Tests.run_isolated_make(
+                ["setup"],
+                cwd=current,
+                env={
+                    **environment,
+                    "PATH": str(self.system_path_without_mise(current)),
+                },
+            ),
+        )
+
+        tm.that(
+            u.Cli.process_succeeded(recovered.outcome),
+            eq=True,
+            msg=recovered.stdout + recovered.stderr,
+        )
+        tm.that(current_executable.read_bytes(), eq=current_bytes)
+        tm.that(
+            (current / "runtime-mise-version.txt").read_text().split()[0],
+            eq=pin,
+        )
+        tm.that((current / "mise.lock").read_text(encoding=c.DEFAULT_ENCODING), eq=lock)
 
     @staticmethod
     def test_git_mirrors_use_native_uv_cache(tmp_path: Path) -> None:

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 from flext_infra.refactor import FlextInfraImportNormalization
 
 if TYPE_CHECKING:
@@ -38,6 +38,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
         Returns:
             The resulting ``t.StrMapping``.
+
         """
         return {
             **(super()._check_env(project_dir, ctx) or {}),
@@ -250,6 +251,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
         Raises:
             FileNotFoundError: If ``before.content is None``.
+
         """
         if before.content is None:
             raise FileNotFoundError(before.path)
@@ -429,13 +431,9 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             issues,
             c.Infra.RUFF,
         )
-        # A declared findings status reports violations, not a tool failure:
-        # the verdict below is issue-driven, so the parse must not treat the
-        # findings exit code as a crash (errors still exit with another code).
-        return (
-            passed or result.outcome.raw_return_code in self._findings_exit_codes(),
-            parsed,
-        )
+        # Ruff's findings exit is a valid scanner result, but every reported
+        # finding still blocks the lint gate under the current quality baseline.
+        return passed and not parsed, parsed
 
     @staticmethod
     @override

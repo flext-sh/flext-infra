@@ -25,6 +25,7 @@ class FlextInfraUtilitiesDependencyRequirements:
 
         Returns:
             Requirement strings retained from the declared arrays.
+
         """
         if isinstance(raw, Mapping):
             values: list[str] = []

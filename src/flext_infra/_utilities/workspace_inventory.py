@@ -11,7 +11,6 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, e, m, p, r, t
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesWorkspaceInventory:
@@ -27,6 +26,7 @@ class FlextInfraUtilitiesWorkspaceInventory:
 
         Returns:
             Governing guests, or the first transport or inventory failure.
+
         """
         result = r[t.VariadicTuple[m.Infra.ExternalConsumerSpec]]
         command = inputs.spec.repository.workspace_inventory_command
@@ -58,6 +58,7 @@ class FlextInfraUtilitiesWorkspaceInventory:
 
         Returns:
             Ordered guest contracts, or the first rejected entry.
+
         """
         result = r[t.VariadicTuple[m.Infra.ExternalConsumerSpec]]
         inventory = m.Infra.HostWorkspaceInventory.model_validate_json(payload)
@@ -89,17 +90,6 @@ class FlextInfraUtilitiesWorkspaceInventory:
                 return result.fail(
                     f"host governing checkout is not a directory: {external_root}"
                 )
-            project_file = external_root / c.PYPROJECT_FILENAME
-            dependencies: t.StrSequence = ()
-            if project_file.is_file():
-                loaded = u.Cli.toml_read_document(project_file)
-                if loaded.failure:
-                    return result.from_failure(loaded)
-                dependencies = (
-                    FlextInfraUtilitiesDependencies.flext_dependency_namespaces(
-                        loaded.value
-                    )
-                )
             own_flext = (
                 entry.project_profile is c.Infra.ProjectKind.INTERNAL_FLEXT
                 and entry.upstream_project_id is None
@@ -109,7 +99,6 @@ class FlextInfraUtilitiesWorkspaceInventory:
                     name=entry.project_id,
                     root=external_root,
                     integration_branch=entry.effective_ref,
-                    advance_locks=bool(dependencies),
                     fix_namespace=own_flext,
                     fix_accessors=own_flext,
                 )

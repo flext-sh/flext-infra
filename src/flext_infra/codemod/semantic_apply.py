@@ -35,6 +35,7 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             A reversible authenticated artifact, without changing live sources.
+
         """
         decisions = tuple(
             m.Infra.SemanticRenameDecision(
@@ -96,6 +97,7 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             The first authentication/runtime failure, or the accepted candidate.
+
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         loaded = cls._load_rename_artifact(root, request)
@@ -202,9 +204,11 @@ class FlextInfraCodemodSemanticApply:
         authenticated = u.Cli.atomic_verify_binary_file_states((driver,))
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
-        if request.apply and not request.check and not request.dry_run_mode:
-            return cls._publish_authenticated_rename(root, request, artifact, driver)
-        return r[bool].ok(value=True)
+        return (
+            cls._publish_authenticated_rename(root, artifact, driver)
+            if request.apply and not request.check and not request.dry_run_mode
+            else r[bool].ok(value=True)
+        )
 
     @staticmethod
     def _authenticate_rename_candidate(
@@ -237,7 +241,6 @@ class FlextInfraCodemodSemanticApply:
     @staticmethod
     def _publish_authenticated_rename(
         root: Path,
-        request: m.Infra.ModCommand,
         artifact: m.Infra.SemanticRenamePlan,
         driver: m.Cli.AtomicFileState,
     ) -> p.Result[bool]:
@@ -281,7 +284,7 @@ class FlextInfraCodemodSemanticApply:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
         """
-        inventory = m.Infra.ModScanReport(
+        inventory = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset(),
             entries=(),
         )
@@ -302,14 +305,16 @@ class FlextInfraCodemodSemanticApply:
             if planned.failure:
                 return planned
             cls._apply_plan(working, planned.value, changed)
-            if phase is c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS:
-                constant_edits = planned.value
+            constant_edits = planned.value
 
-        verified = cls._verify_census_phases(working, rope_workspace, phases)
-        if verified.failure:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
-                verified,
-            )
+        # Empty plans already prove both phases on the same authenticated input.
+        # Edits invalidate that proof; staged and published runtime checks remain.
+        if changed:
+            verified = cls._verify_census_phases(working, rope_workspace, phases)
+            if verified.failure:
+                return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
+                    verified,
+                )
         u.Infra.preflight_semantic_import_graph(rope_workspace, original, working)
         definition_time = cls._check_definition_time(original, working, changed)
         if definition_time.failure:
@@ -358,8 +363,7 @@ class FlextInfraCodemodSemanticApply:
         return cls._publish(
             root,
             original,
-            working,
-            changed,
+            {path: working[path] for path in changed},
             source_preview=source_preview,
             validator=verify,
         ).map(lambda _: constant_edits)
@@ -375,6 +379,7 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             The first phase failure or the verified joint fixed point.
+
         """
         for phase in phases:
             fixed_point = cls._check_residue(
@@ -390,10 +395,10 @@ class FlextInfraCodemodSemanticApply:
         return r[bool].ok(value=True)
 
     @classmethod
-    def source_fingerprint(
+    def source_fingerprint[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
     ) -> t.VariadicTuple[t.Pair[str, str]]:
         """Identify the complete governed source state between mod phases.
 
@@ -407,10 +412,10 @@ class FlextInfraCodemodSemanticApply:
         )
 
     @classmethod
-    def relocation_findings(
+    def relocation_findings[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> t.VariadicTuple[m.Infra.DeclarationRelocationFinding]:
         """Return every payload declaration whose relocation owner is unresolved.
@@ -425,10 +430,10 @@ class FlextInfraCodemodSemanticApply:
         )
 
     @classmethod
-    def plan_transaction_paths(
+    def plan_transaction_paths[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Return one immutable Rope callback for the mod loop's progress identity.
@@ -458,15 +463,18 @@ class FlextInfraCodemodSemanticApply:
         changed: set[Path] = set()
         cls._apply_plan(working, edits, changed)
         cls._publish(
-            root, original, working, changed, source_preview=source_preview
+            root,
+            original,
+            {path: working[path] for path in changed},
+            source_preview=source_preview,
         ).unwrap()
         cli.display_text(f"mod: Rope transaction paths changed_files={len(changed)}")
 
     @classmethod
-    def apply(
+    def apply[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         source_preview: p.Infra.SourcePreview,
@@ -560,8 +568,7 @@ class FlextInfraCodemodSemanticApply:
             lambda _: cls._publish(
                 root,
                 original,
-                working,
-                changed,
+                {path: working[path] for path in changed},
                 source_preview=source_preview,
                 validator=validator,
             ),
@@ -596,11 +603,11 @@ class FlextInfraCodemodSemanticApply:
         return residue
 
     @classmethod
-    def _validate_candidate(
+    def _validate_candidate[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
         *,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
         reports_root: Path,
     ) -> p.Result[bool]:
@@ -608,15 +615,16 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         with workspace_factory(root, None) as workspace:
             return cls._validate_published(root, preflight, workspace, reports_root)
 
     @classmethod
-    def _validate_published(
+    def _validate_published[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         reports_root: Path,
     ) -> p.Result[bool]:
@@ -705,9 +713,9 @@ class FlextInfraCodemodSemanticApply:
         )
 
     @staticmethod
-    def _phase_future_annotations(
+    def _phase_future_annotations[FindingT: m.Infra.ModOccurrence](
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         working: MutableMapping[Path, str],
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan the future-annotations phase; the pipeline applies the edits.
@@ -805,11 +813,11 @@ class FlextInfraCodemodSemanticApply:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _verify_fixed_point(
+    def _verify_fixed_point[FindingT: m.Infra.ModOccurrence](
         cls,
         root: Path,
         working: MutableMapping[Path, str],
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Replan every phase against the proposed or reread published sources.
@@ -843,9 +851,9 @@ class FlextInfraCodemodSemanticApply:
         return verified
 
     @staticmethod
-    def _source_inventory(
+    def _source_inventory[FindingT: m.Infra.ModOccurrence](
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
     ) -> t.MappingKV[Path, str]:
         """Read governed sources and every Python path reported by preflight.
 
@@ -878,7 +886,9 @@ class FlextInfraCodemodSemanticApply:
             if (path := (root / finding.file).resolve()).suffix == c.Infra.EXT_PYTHON
             and not ignored.intersection(path.relative_to(root).parts[:-1])
         )
-        for target in u.Infra.ast_grep_scan_targets(root):
+        for target in u.Infra.ast_grep_scan_targets(
+            root, refactor_config=refactor_config
+        ):
             candidate = root / target
             if ignored.intersection(candidate.relative_to(root).parts):
                 continue
@@ -958,7 +968,6 @@ class FlextInfraCodemodSemanticApply:
         root: Path,
         original: t.MappingKV[Path, str],
         updated: t.MappingKV[Path, str],
-        changed: set[Path],
         *,
         source_preview: p.Infra.SourcePreview,
         validator: Callable[[Path], p.Result[bool]] | None = None,
@@ -967,9 +976,6 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             The resulting ``p.Result[bool]``.
-
-        Raises:
-            ValueError: If source changed after semantic preflight.
 
         """
         semantic_plans: list[m.Infra.SemanticFilePlan] = []
@@ -984,13 +990,10 @@ class FlextInfraCodemodSemanticApply:
             return r[bool].fail("source changed after semantic preflight")
         states = {state.path: state for state in inputs}
         candidate_updates: t.MutableMappingKV[Path, str] = {}
-        consumer_first = sorted(changed, key=cls._path_key)
+        consumer_first = sorted(updated, key=cls._path_key)
         for path in consumer_first:
             state = states[path]
             content = state.content
-            if content is None or content.decode(c.DEFAULT_ENCODING) != original[path]:
-                msg = f"source changed after semantic preflight: {path}"
-                raise ValueError(msg)
             project_root = u.Infra.project_root(path)
             if project_root is None:
                 project_root = root
@@ -1036,9 +1039,10 @@ class FlextInfraCodemodSemanticApply:
         return FlextInfraSemanticPublication.publish_semantic_file_plans(
             semantic_plans,
             repository_root=root,
-            validator=(lambda: validator(root)) if validator is not None else None,
-            projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
-            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
+                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            ),
         ).map(lambda _: True)
 
     @staticmethod

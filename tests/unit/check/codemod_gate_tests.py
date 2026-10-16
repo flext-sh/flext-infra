@@ -115,6 +115,7 @@ class TestsFlextInfraCodemodGate:
 
         Returns:
             The sorted project-relative files the real scan reported.
+
         """
         execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
         return sorted(

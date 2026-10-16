@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from yaml.parser import ParserError
 
 from flext_infra import FlextInfraConfig, c, config, infra, t
 from flext_infra.codegen import FlextInfraCodegenConform
@@ -72,7 +71,7 @@ class TestsFlextInfraVscodeOwnerMerge:
     def test_repository_policy_does_not_admit_unrelated_editor_policy(
         tmp_path: Path,
     ) -> None:
-        """Topology validates its own policy while editor rejection retains its cause."""
+        """Topology validates its policy while editor rejection retains its cause."""
         directory = tmp_path / c.CONFIG_DIR_NAME
         directory.mkdir()
         path = directory / c.Infra.CODEGEN_CONFIG_FILENAME
@@ -114,13 +113,16 @@ class TestsFlextInfraVscodeOwnerMerge:
         first = tm.ok(u.Infra.read_codegen_config_document(original))
         nested = t.Cli.JSON_MAPPING_ADAPTER.validate_python(first["Infra"])
         values = t.Cli.JSON_MAPPING_ADAPTER.validate_python(nested["values"])
-        assert isinstance(first, dict)
-        first["Infra"] = {"values": {"nested": ["changed"]}}
+        mutable = tm.not_none(
+            first if isinstance(first, dict) else None,
+            msg="the parsed document is the caller's own mutable mapping",
+        )
+        mutable["Infra"] = {"values": {"nested": ["changed"]}}
         again = tm.ok(u.Infra.read_codegen_config_document(original))
         tm.that(again, eq={"Infra": {"values": {"nested": ["first"]}}})
         tm.that(values["nested"], eq=["first"])
         malformed = b"Infra: [\n"
-        with pytest.raises(ParserError):
+        with pytest.raises(u.Yaml.YAMLError):
             u.Infra.read_codegen_config_document(malformed)
         corrected = tm.ok(
             u.Infra.read_codegen_config_document(
@@ -216,6 +218,9 @@ class TestsFlextInfraVscodeOwnerMerge:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         published = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.that(published.plan is not None, eq=True)
+        if published.plan is None:
+            pytest.fail("conform did not return its actual plan")
         targets = {
             root / entry.path
             for entry in config.Infra.codegen.managed_files
@@ -242,6 +247,9 @@ class TestsFlextInfraVscodeOwnerMerge:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         first = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.that(first.plan is not None, eq=True)
+        if first.plan is None:
+            pytest.fail("conform did not return its actual plan")
         before = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(file.path, required=True))
             for file in first.plan.files

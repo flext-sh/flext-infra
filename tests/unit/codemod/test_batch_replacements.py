@@ -21,6 +21,151 @@ class TestsFlextInfraBatchReplacements:
     """Only authenticated authored bytes may receive engine-proposed edits."""
 
     @staticmethod
+    def _scanned_consumer(
+        root: Path,
+    ) -> t.Quad[m.Infra.ModScanReport, Path, Path, Path]:
+        """Scan a real public consumer against a locally declared rewrite.
+
+        Returns:
+            The admitted report and its consumer, rule and config paths.
+
+        """
+        rule_name = "publish-consumer-value"
+        u.Tests.declare_codemod_rules(
+            root,
+            {
+                rule_name: (
+                    f"id: {rule_name}\n"
+                    "language: Python\n"
+                    "severity: warning\n"
+                    "rule:\n"
+                    "  pattern: '\"before\"'\n"
+                    "fix: '\"after\"'\n"
+                ),
+            },
+        )
+        stem = u.derive_class_stem(root.name.replace("_", "-"))
+        consumer = root / "public_consumer.py"
+        consumer.write_text(
+            '"""Public value consumer."""\n'
+            "from __future__ import annotations\n"
+            "from typing import ClassVar\n\n"
+            f"class {stem}Consumer:\n"
+            '    """Own a value observed by a real process."""\n'
+            '    value: ClassVar[str] = "before"\n\n'
+            f"print({stem}Consumer.value)\n"
+            f'__all__ = ["{stem}Consumer"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        config_path = root / c.Infra.CODEMOD_CONFIG_RELPATH
+        rule_path = config_path.parent / c.Cli.RULES_DIR_NAME / f"{rule_name}.yml"
+        report = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        return report, consumer, rule_path, config_path
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_admitted_report_publishes_the_real_consumer(mod_workspace: Path) -> None:
+        """Reuse admitted bytes through the same public CAS publisher."""
+        report, consumer, _, _ = TestsFlextInfraBatchReplacements._scanned_consumer(
+            mod_workspace
+        )
+        tm.ok(FlextInfraModGateEngine.apply_report(mod_workspace, report))
+        output = tm.ok(u.Cli.run_raw((sys.executable, "-I", str(consumer))))
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout.strip(), eq="after")
+        published = consumer.read_bytes()
+        tm.fail(FlextInfraModGateEngine.apply_report(mod_workspace, report))
+        tm.that(consumer.read_bytes(), eq=published)
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_changed_companion_input_prevents_consumer_publication(
+        mod_workspace: Path,
+    ) -> None:
+        """A changed captured companion rejects the entire unchanged scan report."""
+        companion = mod_workspace / "companion.py"
+        companion.write_text(
+            '"""Independent public scan input."""\n'
+            "from __future__ import annotations\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        report, consumer, _, _ = TestsFlextInfraBatchReplacements._scanned_consumer(
+            mod_workspace
+        )
+        original = consumer.read_bytes()
+        concurrent = companion.read_bytes() + b"\n# concurrent input edit\n"
+        companion.write_bytes(concurrent)
+
+        tm.fail(
+            FlextInfraModGateEngine.apply_report(mod_workspace, report),
+            has=str(companion),
+        )
+        tm.that(consumer.read_bytes(), eq=original)
+        tm.that(companion.read_bytes(), eq=concurrent)
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "mutation",
+        [
+            "missing-proof",
+            "source-change",
+            "source-add",
+            "source-remove",
+            "rule-change",
+            "rule-add",
+            "rule-remove",
+            "config-change",
+        ],
+    )
+    def test_admitted_report_rejects_changed_inputs(
+        mod_workspace: Path,
+        mutation: str,
+    ) -> None:
+        """Changed ownership or physical inputs never publish stale replacements."""
+        report, consumer, rule_path, config_path = (
+            TestsFlextInfraBatchReplacements._scanned_consumer(mod_workspace)
+        )
+        original = consumer.read_bytes()
+        if mutation == "missing-proof":
+            report = report.model_copy(update={"source_states": None})
+        elif mutation == "source-change":
+            consumer.write_bytes(original + b"\n# changed consumer\n")
+        elif mutation == "source-add":
+            (mod_workspace / "new_consumer.py").write_text(
+                '"""New scanner input."""\n',
+                encoding=c.DEFAULT_ENCODING,
+            )
+        elif mutation == "source-remove":
+            consumer.unlink()
+        elif mutation == "rule-change":
+            rule_path.write_text(
+                rule_path.read_text(encoding=c.DEFAULT_ENCODING) + "\n# changed rule\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        elif mutation == "rule-add":
+            added = rule_path.with_name("new-consumer-rule.yml")
+            added.write_text(
+                "id: new-consumer-rule\nlanguage: Python\n"
+                "severity: warning\nrule:\n  pattern: NEVER_MATCHED\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        elif mutation == "rule-remove":
+            rule_path.unlink()
+        else:
+            config_path.write_text(
+                config_path.read_text(encoding=c.DEFAULT_ENCODING)
+                + "\n# changed scanner configuration\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        before = consumer.read_bytes() if consumer.exists() else None
+        tm.fail(FlextInfraModGateEngine.apply_report(mod_workspace, report))
+        tm.that(
+            consumer.read_bytes() if consumer.exists() else None,
+            eq=before,
+        )
+
+    @staticmethod
     def _report(
         path: Path,
         content: bytes,
@@ -28,8 +173,7 @@ class TestsFlextInfraBatchReplacements:
         generated: bool = False,
         replacement: bytes = b"after",
         matched: bytes = b"before",
-        rule_id: str = "fixture-rewrite",
-    ) -> m.Infra.ModScanReport:
+    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
         policy = path.parent / "pyproject.toml"
         if not policy.exists():
             policy.write_text(
@@ -40,9 +184,9 @@ class TestsFlextInfraBatchReplacements:
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
         start = content.index(matched)
         offsets: t.JsonDict = {"start": start, "end": start + len(matched)}
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file=str(path.parent / "rule.yaml"),
-            rule_id=rule_id,
+            rule_id="fixture-rewrite",
             repository=path.parent.name,
             file=path,
             source_owner="generator" if generated else "authored",
@@ -52,9 +196,9 @@ class TestsFlextInfraBatchReplacements:
             replacement=replacement.decode(),
             actionable=True,
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
-            payload={"replacementOffsets": offsets, "severity": "error"},
+            replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
         )
-        return m.Infra.ModScanReport(
+        return m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({path}),
             entries=(finding,),
         )
@@ -90,7 +234,9 @@ class TestsFlextInfraBatchReplacements:
                 "text": statement.decode(),
                 "replacement": 'value = "after"',
                 "range": {"byteOffset": offsets},
-                "payload": {"replacementOffsets": offsets, "severity": "error"},
+                "replacement_offsets": m.Infra.ModReplacementOffsets.model_validate(
+                    offsets
+                ),
             }
         )
         report = report.model_copy(update={"entries": (finding,)})
@@ -326,7 +472,10 @@ class TestsFlextInfraBatchReplacements:
         rejected = self._report(bad, bad_before).entries[0]
         result = FlextInfraModReplacements.publish(
             root,
-            FlextInfraModGateEngine.recounted((accepted, rejected)),
+            m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+                entries=(accepted, rejected),
+                files=frozenset({good, bad}),
+            ),
         )
         tm.fail(result)
         tm.that(result.error, has="F821")
@@ -358,7 +507,7 @@ class TestsFlextInfraBatchReplacements:
         statement = b'__all__ = ["X"]'
         start = original.index(statement)
         offsets: t.JsonDict = {"start": start, "end": start + len(statement)}
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file=str(root / "rule.yaml"),
             rule_id="ban-test-suite-module-all",
             repository=root.name,
@@ -370,9 +519,9 @@ class TestsFlextInfraBatchReplacements:
             replacement="",
             actionable=True,
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
-            payload={"replacementOffsets": offsets, "severity": "error"},
+            replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
         )
-        report = m.Infra.ModScanReport(
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({path}),
             entries=(finding,),
         )

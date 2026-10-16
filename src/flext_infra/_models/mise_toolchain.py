@@ -11,6 +11,7 @@ from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_core import m
+
 from flext_infra import c, t
 
 
@@ -108,6 +109,23 @@ class FlextInfraModelsMiseToolchain:
         mise.lock version. The probe is data; no tool has a default probe.
         """
 
+        tool: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Declared prerequisite tool key owning an external probe executable"
+                )
+            ),
+        ] = None
+        resources: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Exact relative installed resources authenticated before an "
+                    "external probe"
+                )
+            ),
+        ] = ()
         binary: Annotated[
             t.NonEmptyStr,
             m.Field(description="Executable name resolved through `mise which`"),
@@ -157,7 +175,74 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             # A malformed expression raises re.PatternError unchanged here.
             re.compile(self.pattern.replace(placeholder, "0"))
+            if self.tool is not None and not self.resources:
+                msg_0 = "external version probes require installed resources"
+                raise ValueError(msg_0)
+            for resource in self.resources:
+                parts = resource.split("/")
+                if any(
+                    not part or part in {".", ".."} or "\\" in part or "\0" in part
+                    for part in parts
+                ):
+                    msg_0 = "version probe resources require exact relative components"
+                    raise ValueError(msg_0)
             return self
+
+    class MiseHttpToolOptions(_ConfigContract):
+        """Native HTTP backend declarations, projected without URL inference."""
+
+        url: Annotated[
+            t.NonEmptyStr, m.Field(description="Native HTTP artifact URL template")
+        ]
+        version_list_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Authoritative native release-list URL"),
+        ] = None
+        version_json_path: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native jq-like version extraction path"),
+        ] = None
+        version_regex: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native release-list extraction regular expression"),
+        ] = None
+        version_expr: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Native release-list expression")
+        ] = None
+        version_order: Annotated[
+            Literal["source", "semver"] | None,
+            m.Field(description="Native ordering of discovered releases"),
+        ] = None
+        checksum: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Declared native artifact digest")
+        ] = None
+        checksum_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Authoritative published checksum URL"),
+        ] = None
+        checksum_expr: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native checksum manifest expression"),
+        ] = None
+        format: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Native archive format")
+        ] = None
+        strip_components: Annotated[
+            int | None, m.Field(ge=0, description="Native archive directory stripping")
+        ] = None
+        bin_path: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Native install-relative executable directory"),
+        ] = None
+
+    class MisePostinstallOptions(_ConfigContract):
+        """Native per-tool postinstall contract, including warm installation policy."""
+
+        run: Annotated[t.NonEmptyStr, m.Field(description="Native postinstall command")]
+        when: Annotated[
+            Literal["always"] | None,
+            m.Field(description="Run on every installation when explicitly declared"),
+        ] = None
 
     class MiseToolEntry(_ConfigContract):
         """One declarative fleet tool rendered into generated ``.mise.toml``.
@@ -214,6 +299,28 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = "scalar"
+        http: Annotated[
+            FlextInfraModelsMiseToolchain.MiseHttpToolOptions | None,
+            m.Field(
+                description="Native HTTP backend options for a declared source artifact"
+            ),
+        ] = None
+        depends: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Declared tool keys installed before this tool"),
+        ] = ()
+        install_env: Annotated[
+            t.StrMapping,
+            m.Field(
+                description="Native installation environment, part of the tool identity"
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
+        postinstall: Annotated[
+            FlextInfraModelsMiseToolchain.MisePostinstallOptions | None,
+            m.Field(
+                description="Native source build or qualification after installation"
+            ),
+        ] = None
         lock_checksum: Annotated[
             bool,
             m.Field(
@@ -440,6 +547,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``str``.
+
             """
             major, minor = self.python_version.split(".")[:2]
             next_minor = int(minor) + 1
@@ -452,6 +560,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``str``.
+
             """
             return self.python_version
 
@@ -462,6 +571,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: self.tool_version_pins.get(entry.name, entry.version)
@@ -475,6 +585,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: entry.selector
@@ -491,6 +602,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {entry.name: entry.selector or entry.name for entry in self.tools}
 
@@ -514,6 +626,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return (
                 "python",
@@ -528,6 +641,7 @@ class FlextInfraModelsMiseToolchain:
 
             Returns:
                 The resulting ``t.MappingKV[str, str]``.
+
             """
             return {
                 entry.name: entry.version_prefix
@@ -599,15 +713,39 @@ class FlextInfraModelsMiseToolchain:
                     duplicate_names,
                 )
                 raise ValueError(msg)
-            keyless = sorted(
+            declared_keys = {"python", self.mise_selector, *self.tool_keys.values()}
+            undeclared_dependencies = sorted(
+                f"{entry.name}:{dependency}"
+                for entry in self.tools
+                for dependency in entry.depends
+                if dependency not in declared_keys
+            )
+            if undeclared_dependencies:
+                msg = (
+                    "tool installation dependencies must be declared tools: "
+                    + ", ".join(undeclared_dependencies)
+                )
+                raise ValueError(msg)
+            invalid_probes = sorted(
                 entry.name
                 for entry in self.tools
-                if entry.form == "table" and entry.selector is None
+                if entry.version_probe.tool is not None
+                and entry.version_probe.tool not in entry.depends
             )
-            if keyless:
-                msg = (
-                    "toolchain tools with table form must declare their "
-                    "selector: " + ", ".join(keyless)
+            if invalid_probes:
+                raise ValueError(
+                    "external probe tools must be declared installation dependencies: "
+                    + ", ".join(invalid_probes)
+                )
+            non_http = sorted(
+                entry.name
+                for entry in self.tools
+                if entry.http is not None
+                and not (entry.selector or entry.name).startswith("http:")
+            )
+            if non_http:
+                msg = "HTTP options require native HTTP selectors: " + ", ".join(
+                    non_http
                 )
                 raise ValueError(msg)
             npm_backed = sorted(

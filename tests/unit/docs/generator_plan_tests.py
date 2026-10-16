@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import c, m, tm, u
 
@@ -44,7 +45,13 @@ class TestsFlextInfraDocsGeneratorPlan:
         sibling = project / "docs/api-reference/generated/modules/api/v1/private.md"
         source_state = u.Cli.atomic_read_binary_file_state(source, required=True)
         tm.ok(source_state)
+        producer = FlextInfraCodegenPreconditions.capture_producer(
+            Path.cwd(),
+            entrypoint=FlextInfraCodegenPreconditions.capture_producer,
+        )
+        tm.ok(producer)
         bundle = m.Infra.DocsGenerationBundle(
+            producer=producer.value,
             scopes=(
                 m.Infra.DocsScopeArtifacts(
                     scope=m.Infra.DocScope(

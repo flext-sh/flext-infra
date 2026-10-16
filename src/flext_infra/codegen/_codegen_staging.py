@@ -322,48 +322,25 @@ class FlextInfraCodegenStaging:
             replacement: m.Cli.AtomicFileState | None = None
             original_replacement: m.Cli.AtomicFileState | None = None
             if file_plan.dependency_group is not None and before.content is not None:
-                original_path = replacement_input[0] / f"{index:06d}.original"
-                intent = next(
-                    (item for item in intents if item.before.path == original_path),
-                    None,
-                )
-                if intent is None or before.mode is None:
-                    return result_type.fail("group preimage has no durable intention")
-                original = process.write_new(
-                    original_path,
+                original = FlextInfraCodegenStaging._write_group_preimage(
+                    index,
+                    replacement_input,
                     before.content,
                     before.mode,
-                    intent=intent,
+                    intents,
                 )
                 if original.failure:
                     return result_type.from_failure(original)
-                observed = files.read_state(original_path, required=True)
-                if observed.failure:
-                    return result_type.from_failure(observed)
-                original_replacement = observed.value
+                original_replacement = original.value
             if staged_present:
-                phase_root, desired_content, desired_mode = replacement_input
-                staged_path = phase_root / f"{index:06d}.replacement"
-                intent = next(
-                    (item for item in intents if item.before.path == staged_path),
-                    None,
-                )
-                if intents and intent is None:
-                    return result_type.fail(
-                        f"replacement has no durable intention: {staged_path}",
-                    )
-                staged = process.write_new(
-                    staged_path,
-                    desired_content,
-                    desired_mode,
-                    intent=intent,
+                staged = FlextInfraCodegenStaging._write_staged_replacement(
+                    index,
+                    replacement_input,
+                    intents,
                 )
                 if staged.failure:
                     return result_type.from_failure(staged)
-                staged_state = files.read_state(staged_path, required=True)
-                if staged_state.failure:
-                    return result_type.from_failure(staged_state)
-                replacement = staged_state.value
+                replacement = staged.value
             publications.append(
                 m.Infra.CodegenStagedFile(
                     dependency_group=file_plan.dependency_group,
@@ -379,6 +356,90 @@ class FlextInfraCodegenStaging:
                 ),
             )
         return result_type.ok(tuple(publications))
+
+    @staticmethod
+    def _write_group_preimage(
+        index: int,
+        replacement_input: tuple[Path, bytes, int],
+        content: bytes,
+        mode: int | None,
+        intents: t.VariadicTuple[m.Infra.CodegenStagingIntent] = (),
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Write the dependency-group preimage and read back its state.
+
+        Args:
+            index: Staged-file index used to derive the preimage path.
+            replacement_input: Staged replacement tuple carrying the phase root.
+            content: Pre-staging content bytes to preserve as the preimage.
+            mode: Pre-staging permission bits, or None when absent.
+            intents: Durable staging intents consulted for the write.
+
+        Returns:
+            The resulting ``p.Result[m.Cli.AtomicFileState]``.
+
+        """
+        result_type = r[m.Cli.AtomicFileState]
+        original_path = replacement_input[0] / f"{index:06d}.original"
+        intent = next(
+            (item for item in intents if item.before.path == original_path),
+            None,
+        )
+        if intent is None or mode is None:
+            return result_type.fail("group preimage has no durable intention")
+        original = process.write_new(
+            original_path,
+            content,
+            mode,
+            intent=intent,
+        )
+        if original.failure:
+            return result_type.from_failure(original)
+        observed = files.read_state(original_path, required=True)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        return result_type.ok(observed.value)
+
+    @staticmethod
+    def _write_staged_replacement(
+        index: int,
+        replacement_input: tuple[Path, bytes, int],
+        intents: t.VariadicTuple[m.Infra.CodegenStagingIntent] = (),
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Write the staged replacement file and read back its state.
+
+        Args:
+            index: Staged-file index used to derive the replacement path.
+            replacement_input: Staged replacement tuple with phase root, content,
+                and mode.
+            intents: Durable staging intents consulted for the write.
+
+        Returns:
+            The resulting ``p.Result[m.Cli.AtomicFileState]``.
+
+        """
+        result_type = r[m.Cli.AtomicFileState]
+        phase_root, desired_content, desired_mode = replacement_input
+        staged_path = phase_root / f"{index:06d}.replacement"
+        intent = next(
+            (item for item in intents if item.before.path == staged_path),
+            None,
+        )
+        if intents and intent is None:
+            return result_type.fail(
+                f"replacement has no durable intention: {staged_path}",
+            )
+        staged = process.write_new(
+            staged_path,
+            desired_content,
+            desired_mode,
+            intent=intent,
+        )
+        if staged.failure:
+            return result_type.from_failure(staged)
+        staged_state = files.read_state(staged_path, required=True)
+        if staged_state.failure:
+            return result_type.from_failure(staged_state)
+        return result_type.ok(staged_state.value)
 
 
 __all__: list[str] = ["FlextInfraCodegenStaging"]

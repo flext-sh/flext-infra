@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import importlib.util
 import sys
 from pathlib import Path
@@ -20,8 +19,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
-from flext_infra.codemod import FlextInfraCodemodSemanticApply
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import c, m, t, tm, u
 
@@ -73,7 +71,7 @@ class TestsFlextInfraDeclarationRelocation:
                     sources=sources,
                 ),
             )
-            tm.that(len(planned), eq=1)
+            tm.that(planned, eq=())
             proposed = dict(sources)
             proposed.update({edit.file_path: edit.updated_source for edit in planned})
             tm.that(consumer.read_text(encoding="utf-8"), eq=sources[consumer])
@@ -83,6 +81,8 @@ class TestsFlextInfraDeclarationRelocation:
             )
             tm.that(proposed[consumer], has="._models import ConfigPayload as Payload")
             tm.that(proposed[consumer], has="._models.base import ModelsBase")
+            findings = u.Infra.declaration_relocation_findings(rope, proposed)
+            tm.that(len(findings), eq=2)
             repeated = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
@@ -111,6 +111,54 @@ class TestsFlextInfraDeclarationRelocation:
             ),
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+
+    @staticmethod
+    def test_own_reexport_rebinds_to_its_real_external_provider(
+        tmp_path: Path,
+    ) -> None:
+        """Rope proves the external identity before changing a declaration import."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = package / "_models"
+        family.mkdir()
+        consumer = package / "_config.py"
+        sources = {
+            family / "__init__.py": "from flext_core import m\n__all__ = ['m']\n",
+            consumer: (
+                f"from {package.name}._models import m\n"
+                "class Config(m.BaseModel):\n    value: str\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+            proposed = dict(sources)
+            proposed.update({edit.file_path: edit.updated_source for edit in edits})
+            tm.that(u.Infra.declaration_relocation_findings(rope, proposed), eq=())
+        for path, source in proposed.items():
+            path.write_text(source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.{consumer.stem} import Config; "
+                        "print(Config(value='real-value').value)"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.that(result.stdout.strip(), eq="real-value")
 
     @staticmethod
     def test_settings_imports_preserve_external_lazy_package(
@@ -163,6 +211,8 @@ class TestsFlextInfraDeclarationRelocation:
                 ),
             )
             tm.that(planned, eq=())
+            findings = u.Infra.declaration_relocation_findings(rope, sources)
+            tm.that(len(findings), eq=1)
 
     @staticmethod
     def _seed(
@@ -240,6 +290,13 @@ class TestsFlextInfraDeclarationRelocation:
         }
         for path, source in sources.items():
             path.write_text(source, encoding="utf-8")
+        if "uncomposed" not in variants:
+            facade_path = package / c.Infra.MODELS_PY
+            rendered = tm.not_none(
+                u.Infra.render_utility_facade(package, family="m"),
+            )
+            sources[facade_path] = rendered
+            facade_path.write_text(rendered, encoding="utf-8")
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         return root, sources
 
@@ -254,12 +311,26 @@ class TestsFlextInfraDeclarationRelocation:
 
         Raises:
             RuntimeError: If Published payload module has no loader.
+
         """
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
             variants=frozenset({"existing_imports"} if existing_imports else ()),
         )
         with infra.rope_workspace(root) as rope:
+            origin = next(
+                path
+                for path in sources
+                if path.parent.name
+                == u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+            )
+            binding = u.Infra.payload_declaration(
+                rope.rope_project,
+                origin,
+                f"{u.derive_class_stem(root.name)}UtilitiesPayload.Payload",
+            )
+            tm.that(binding, none=False)
+            tm.that(u.Infra.declaration_relocation_findings(rope, sources), eq=())
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                 rope_workspace=rope,
@@ -271,19 +342,6 @@ class TestsFlextInfraDeclarationRelocation:
             proposed.update({
                 edit.file_path: edit.updated_source for edit in planned.value
             })
-            trees = {
-                path.name + path.parent.name: ast.parse(source)
-                for path, source in proposed.items()
-            }
-            consumer = next(
-                tree for name, tree in trees.items() if name.startswith("consumer.py")
-            )
-            constants = [
-                node.value
-                for node in ast.walk(consumer)
-                if isinstance(node, ast.Constant)
-            ]
-            tm.that(constants.count("Original.Payload"), eq=3)
             remaining = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                 rope_workspace=rope,
@@ -307,17 +365,41 @@ class TestsFlextInfraDeclarationRelocation:
             raise RuntimeError(msg)
         loaded = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(loaded)
-        owner = next(
-            node.name
-            for node in ast.parse(sources[target]).body
-            if isinstance(node, ast.ClassDef)
-        )
+        owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
         payload = getattr(loaded, owner).Payload
         tm.that(
             payload.model_validate({"value": "consumer"}).model_dump(),
             eq={"value": "consumer"},
         )
         tm.that(payload.model_validate({}).model_dump(), eq={"value": "payload"})
+        for path, source in proposed.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        consumer = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-B",
+                    "-c",
+                    (
+                        "from typing import get_args, get_type_hints; "
+                        f"from {target.parent.parent.name} import m; "
+                        f"from {target.parent.parent.name} import consumer; "
+                        "assert consumer.build().__class__ is m.Payload; "
+                        "assert get_type_hints(consumer.build)['return'] is m.Payload; "
+                        "assert consumer.text == 'Original.Payload'; "
+                        "hints = get_type_hints(consumer, include_extras=True); "
+                        "assert get_args(hints['literal']) == ('Original.Payload',); "
+                        "assert get_args(hints['metadata']) == (str, "
+                        "'Original.Payload')"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(target.parent.parent.parent)}
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -435,6 +517,7 @@ class TestsFlextInfraDeclarationRelocation:
 
         Raises:
             RuntimeError: If Published decimal payload has no loader.
+
         """
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
@@ -471,11 +554,7 @@ class TestsFlextInfraDeclarationRelocation:
         sys.modules[spec.name] = loaded
         try:
             spec.loader.exec_module(loaded)
-            owner = next(
-                node.name
-                for node in ast.parse(target.original_source).body
-                if isinstance(node, ast.ClassDef)
-            )
+            owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
             payload = getattr(loaded, owner).Payload
             tm.that(
                 payload.model_validate({"amount": "2.5"}).model_dump_json(),
@@ -605,7 +684,7 @@ class TestsFlextInfraDeclarationRelocation:
         origin.write_text(sources[origin], encoding="utf-8")
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="unresolved/outer dependency.*Amount"),
+            pytest.raises(ValueError, match=r"unresolved/outer dependency.*Amount"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
@@ -624,7 +703,7 @@ class TestsFlextInfraDeclarationRelocation:
         *,
         independent_group: bool,
     ) -> None:
-        """A native destination refusal recovers only its invocation's dependent group."""
+        """A destination refusal recovers only its invocation's dependent group."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
             body="count: int = Field(default=3)",
@@ -709,7 +788,9 @@ class TestsFlextInfraDeclarationRelocation:
                 started.value,
                 c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 tuple(plans),
-                staged_validator=refuse_destination,
+                publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(), staged_validator=refuse_destination
+                ),
             )
             if admitted.failure:
                 return r[t.VariadicTuple[Path]].from_failure(admitted)
@@ -755,7 +836,7 @@ class TestsFlextInfraDeclarationRelocation:
         *,
         accepted: bool,
     ) -> None:
-        """A fresh consumer accepts the full cutover, never a rejected partial runtime."""
+        """A fresh consumer accepts the full cutover, never a partial runtime."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
             body="count: int = Field(default=3)",
@@ -790,7 +871,7 @@ class TestsFlextInfraDeclarationRelocation:
                 )
             )
 
-        def consume() -> p.Result[bool]:
+        def consume(candidate_root: Path) -> p.Result[bool]:
             result = u.Cli.run(
                 (
                     sys.executable,
@@ -805,8 +886,14 @@ class TestsFlextInfraDeclarationRelocation:
                         "{'count': 4}"
                     ),
                 ),
-                cwd=root,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+                cwd=candidate_root,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "PYTHONPATH": str(
+                            candidate_root / package.parent.relative_to(root)
+                        ),
+                    },
+                ),
             )
             if result.failure:
                 return r[bool].from_failure(result)
@@ -815,13 +902,15 @@ class TestsFlextInfraDeclarationRelocation:
         result = FlextInfraSemanticPublication.publish_semantic_file_plans(
             plans,
             repository_root=root,
-            projection_roots=(root,),
-            dependency_group=package.name,
-            validator=consume,
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(root,),
+                dependency_group=package.name,
+                validator=consume,
+            ),
         )
         if accepted:
             tm.ok(result)
-            tm.that(tm.ok(consume()), eq=True)
+            tm.that(tm.ok(consume(root)), eq=True)
             with infra.rope_workspace(root) as rope:
                 tm.that(
                     tm.ok(
@@ -883,11 +972,17 @@ class TestsFlextInfraDeclarationRelocation:
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    def test_validator_and_computed_field_runtime_preserved(tmp_path: Path) -> None:
+    @pytest.mark.parametrize("nested_local", [False, True])
+    def test_validator_and_computed_field_runtime_preserved(
+        tmp_path: Path,
+        *,
+        nested_local: bool,
+    ) -> None:
         """Test validator and computed field runtime preserved.
 
         Raises:
             RuntimeError: If Published validator has no loader.
+
         """
         root, sources = TestsFlextInfraDeclarationRelocation._seed(
             tmp_path,
@@ -896,8 +991,13 @@ class TestsFlextInfraDeclarationRelocation:
                 "        @field_validator('value')\n"
                 "        @classmethod\n"
                 "        def normalize(cls, value: int) -> int:\n"
-                "            return value * 2\n"
-                "        @computed_field\n"
+                + (
+                    "            scratch = [item * 2 for item in (value,)]\n"
+                    "            return scratch[0]\n"
+                    if nested_local
+                    else "            return value * 2\n"
+                )
+                + "        @computed_field\n"
                 "        @property\n"
                 "        def derived(self) -> int:\n"
                 "            return self.value + 1"
@@ -934,45 +1034,19 @@ class TestsFlextInfraDeclarationRelocation:
             raise RuntimeError(msg)
         loaded = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(loaded)
-        owner = next(
-            node.name
-            for node in ast.parse(target.original_source).body
-            if isinstance(node, ast.ClassDef)
-        )
+        owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
         tm.that(
             getattr(loaded, owner).Payload.model_validate({"value": 3}).model_dump(),
             eq={"value": 6, "derived": 7},
         )
 
     @staticmethod
-    @pytest.mark.parametrize("guard", ["generated", "nested-validator"])
-    def test_unsafe_sources_refuse_the_whole_plan(tmp_path: Path, guard: str) -> None:
+    def test_generated_sources_refuse_the_whole_plan(tmp_path: Path) -> None:
         """Test unsafe sources refuse the whole plan."""
         root, sources = TestsFlextInfraDeclarationRelocation._seed(tmp_path)
-        if guard == "generated":
-            path = next(path for path in sources if path.name == "consumer.py")
-            sources[path] = c.Infra.AUTOGEN_HEADERS[0] + "\n" + sources[path]
-            expected = "generated consumer"
-        else:
-            path = next(
-                path
-                for path in sources
-                if path.parent.name
-                == u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
-            )
-            sources[path] = sources[path].replace(
-                "value: str = Field(default='payload')",
-                (
-                    "value: str = Field(default='payload')\n"
-                    "        @field_validator('value')\n"
-                    "        @classmethod\n"
-                    "        def normalize(cls, value: str) -> str:\n"
-                    "            scratch = [value for value in ()]\n"
-                    "            return value"
-                ),
-            )
-            sources[path] = "from pydantic import field_validator\n" + sources[path]
-            expected = "unproven nested validator scope"
+        path = next(path for path in sources if path.name == "consumer.py")
+        sources[path] = c.Infra.AUTOGEN_HEADERS[0] + "\n" + sources[path]
+        expected = "generated consumer"
         path.write_text(sources[path], encoding="utf-8")
         with (
             infra.rope_workspace(root) as rope,
@@ -1005,10 +1079,20 @@ class TestsFlextInfraDeclarationRelocation:
             findings = u.Infra.declaration_relocation_findings(rope, sources)
         tm.ok(planned)
         tm.that(len(planned.value), eq=3)
-        tm.that(len(findings), eq=1)
-        tm.that(findings[0].declaration, eq=f"{stem}StrayHolder.Stray")
-        tm.that(findings[0].expected_owner, eq=f"{stem}UtilitiesPayload")
-        tm.that(findings[0].reason, has="unresolved source owner")
+        unresolved = tuple(
+            finding
+            for finding in findings
+            if finding.declaration == f"{stem}StrayHolder.Stray"
+        )
+        tm.that(len(unresolved), eq=1)
+        tm.that(unresolved[0].expected_owner, eq=f"{stem}UtilitiesPayload")
+        tm.that(bool(unresolved[0].reason), eq=True)
+        tm.that(
+            all(
+                finding.file_path in sources and finding.reason for finding in findings
+            ),
+            eq=True,
+        )
         for path, source in sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
@@ -1201,5 +1285,45 @@ class TestsFlextInfraDeclarationRelocation:
                     sources=sources,
                 )
             )
-        tm.that(len(findings), eq=1 if competing else 0)
+        payload_findings = tuple(
+            finding
+            for finding in findings
+            if finding.declaration == f"{stem}UtilitiesPayload.Payload"
+        )
+        tm.that(bool(payload_findings), eq=competing)
+        tm.that(
+            all(
+                finding.file_path in sources and finding.reason for finding in findings
+            ),
+            eq=True,
+        )
         tm.that(bool(planned), eq=not competing)
+        if competing:
+            return
+        proposed = dict(sources)
+        proposed.update({edit.file_path: edit.updated_source for edit in planned})
+        for path, source in proposed.items():
+            path.write_text(source, encoding="utf-8")
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {target.parent.parent.name} import m; "
+                        "from pydantic import ValidationError; "
+                        "assert m.Payload.model_validate({'value': 'consumer'}).value "
+                        "== 'consumer'\n"
+                        "try:\n    m.Payload.model_validate({'value': []})\n"
+                        "except ValidationError:\n    print('rejected')\n"
+                        "else:\n    raise AssertionError('invalid payload accepted')\n"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(target.parent.parent.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout.strip(), eq="rejected")

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -286,9 +286,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         if loaded.failure:
             return r[t.StrSequence].from_failure(loaded)
         repository = loaded.value.spec.repository
-        return r[t.StrSequence].ok(
-            repository.duplication_trees if repository is not None else (),
-        )
+        return r[t.StrSequence].ok(repository.duplication_trees)
 
     def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.

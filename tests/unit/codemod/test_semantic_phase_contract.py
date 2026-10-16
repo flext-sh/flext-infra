@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_cli import u as cli_u
-
 from flext_core import u as core_u
+
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, t, tm, u
@@ -835,9 +835,6 @@ class TestsFlextInfraSemanticPhaseContract:
     ) -> None:
         """Test annotations and nesting complete in one atomic cutover."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        # Publication runs through the codegen transaction, which coordinates
-        # only inside an exact Git worktree root, exactly as in production.
-        u.Tests.initialize_git_repo(root)
         family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
         owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
         path = package / "constants.py"
@@ -853,10 +850,7 @@ class TestsFlextInfraSemanticPhaseContract:
             "",
         )
         path.write_text(source, encoding="utf-8")
-        # Semantic publication runs inside a codegen transaction, which only
-        # coordinates through a real repository rooted at the project.
-        u.Tests.initialize_git_repo(root)
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="require-future-annotations.yml",
             rule_id="require-future-annotations",
             repository=root.name,
@@ -865,9 +859,8 @@ class TestsFlextInfraSemanticPhaseContract:
             text=source,
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
-        report = m.Infra.ModScanReport(
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({path}),
             entries=(finding,),
         )

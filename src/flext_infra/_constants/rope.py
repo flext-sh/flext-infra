@@ -101,5 +101,21 @@ class FlextInfraConstantsRope:
     })
     "Decorator names that mark Python descriptors / Pydantic computed fields."
 
+    PYDANTIC_PAYLOAD_DECORATORS: ClassVar[t.VariadicTuple[str]] = (
+        "pydantic.field_validator",
+        "pydantic.model_validator",
+        "pydantic.field_serializer",
+        "pydantic.model_serializer",
+        "pydantic.computed_field",
+    )
+    "Native Pydantic declaration decorators, resolved by Rope identity."
+
+    PAYLOAD_DESCRIPTOR_DECORATORS: ClassVar[t.VariadicTuple[str]] = (
+        "__builtins__.classmethod",
+        "__builtins__.staticmethod",
+        "__builtins__.property",
+    )
+    "Native descriptors permitted around a Pydantic declaration decorator."
+
 
 __all__: list[str] = ["FlextInfraConstantsRope"]

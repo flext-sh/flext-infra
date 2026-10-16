@@ -215,7 +215,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
 
     @staticmethod
-    def test_root_distribution_owns_its_dependency_profile(
+    def test_root_distribution_preserves_its_runtime_requirements(
         tmp_path: Path,
     ) -> None:
         """The tree's root declares no flext runtime dependency and still conforms.
@@ -224,18 +224,8 @@ class TestsFlextInfraCodegenManifestlessExisting:
         consumes; a manifestless root declares it the way a real member does,
         through its development group's direct Git source.
         """
-        profile = next(
-            item
-            for item in config.Infra.codegen.scaffold.project.dependency_profiles
-            if item.project is None
-            and not any(
-                other.upstream.replace("_", "-")
-                in {u.Infra.dep_name(dependency) for dependency in item.runtime}
-                for other in config.Infra.codegen.scaffold.project.dependency_profiles
-                if other is not item and other.project is None
-            )
-        )
-        distribution = profile.upstream.replace("_", "-")
+        base = config.Infra.codegen.scaffold.project.config_bases[-1]
+        distribution = base.distribution
         # Every internal development dependency the SSOT requires carries its
         # own direct Git source, exactly as a real standalone member declares.
         internal_dev = tuple(
@@ -245,6 +235,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
                 for requirement in (
                     config.Infra.codegen.infra_repository.distribution,
                     *config.Infra.codegen.scaffold.project.dev,
+                    *config.Infra.codegen.scaffold.project.required_flext_dev,
                 )
             )
             if name is not None and name.startswith("flext-")
@@ -255,7 +246,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
         u.Tests.copy_tracked_mise_seeds(tmp_path)
         root = tmp_path / distribution
-        package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
+        package = root / c.Infra.DEFAULT_SRC_DIR / base.module
         package.mkdir(parents=True)
         tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))
         tm.ok(
@@ -290,14 +281,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         rendered = u.Tests.codegen_file_text(
             next(file for file in plan.files if file.path.name == "pyproject.toml"),
         )
-        owned_runtime = tuple(
-            dependency
-            for dependency in profile.runtime
-            if u.Infra.dep_name(dependency) != distribution
-        )
         tm.that(
-            set(owned_runtime).issubset(
-                u.Tests.toml_strings_at(rendered, "project", "dependencies"),
-            ),
-            eq=True,
+            u.Tests.toml_strings_at(rendered, "project", "dependencies"),
+            eq=(),
         )

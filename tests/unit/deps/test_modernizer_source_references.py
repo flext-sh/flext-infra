@@ -7,12 +7,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 from flext_infra import main
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraModernizerSourceReferences:
@@ -100,39 +102,36 @@ class TestsFlextInfraModernizerSourceReferences:
         tm.that(published, has="constraint-dependencies = [\n")
         payload = u.Tests.toml_payload(published)
         declared = u.Tests.toml_mapping(payload["project"])
+        migrated = requirement.replace(f"@{old_ref}", f"@{new_ref}")
         tm.that(
             declared["dependencies"],
-            eq=[
-                requirement.replace(f"@{old_ref}", f"@{new_ref}"),
-                "requests>=2,<3",
-                unrelated,
-            ],
+            eq=[migrated, "requests>=2,<3", unrelated],
         )
-        optional = u.Tests.toml_mapping(declared["optional-dependencies"])
-        groups = u.Tests.toml_mapping(payload["dependency-groups"])
         tm.that(
-            optional["feature"], eq=[requirement.replace(f"@{old_ref}", f"@{new_ref}")]
+            u.Tests.toml_mapping(declared["optional-dependencies"])["feature"],
+            eq=[migrated],
         )
-        tm.that(groups["dev"], eq=[requirement.replace(f"@{old_ref}", f"@{new_ref}")])
+        tm.that(
+            u.Tests.toml_mapping(payload["dependency-groups"])["dev"],
+            eq=[migrated],
+        )
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["uv"])
-        tm.that(
-            uv["override-dependencies"],
-            eq=[requirement.replace(f"@{old_ref}", f"@{new_ref}"), "requests<3"],
-        )
-        tm.that(
-            uv["constraint-dependencies"],
-            eq=[requirement.replace(f"@{old_ref}", f"@{new_ref}")],
-        )
+        tm.that(uv["override-dependencies"], eq=[migrated, "requests<3"])
+        tm.that(uv["constraint-dependencies"], eq=[migrated])
         uv_source = u.Tests.toml_mapping(
             u.Tests.toml_mapping(uv["sources"])["table-kit"]
         )
         tm.that(uv_source["git"], eq=remote)
         tm.that(uv_source["branch"], eq=new_ref)
         tm.that(uv_source["marker"], eq='sys_platform == "linux"')
-        poetry = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["poetry"])
         poetry_source = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(poetry["dependencies"])["poetry-kit"],
-        )
+            u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["poetry"])[
+                "dependencies"
+            ]
+        )["poetry-kit"]
+        poetry_source = tm.not_none(poetry_source)
+        tm.that(poetry_source, is_=Mapping)
+        poetry_source = cast("t.JsonMapping", poetry_source)
         tm.that(poetry_source["git"], eq=remote)
         tm.that(poetry_source["rev"], eq=new_ref)
         tm.that(poetry_source["optional"], eq=True)
