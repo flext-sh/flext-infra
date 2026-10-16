@@ -54,6 +54,14 @@ class FlextInfraWorkspaceNativeReference:
     _compilation_facts: ClassVar[ContextVar[t.Infra.NativeInvocationFacts | None]] = (
         ContextVar("native_compilation_facts", default=None)
     )
+    # Last module-file index and the exact registry state it derives from.
+    _module_file_index: ClassVar[
+        t.Pair[
+            t.Pair[str, t.VariadicTuple[t.Pair[str, int]]],
+            t.MappingKV[str, t.VariadicTuple[str]],
+        ]
+        | None
+    ] = None
 
     @classmethod
     @contextmanager
@@ -3473,6 +3481,9 @@ class FlextInfraWorkspaceNativeReference:
                 f"producer class has no native qualified name: {binding}",
             )
         context.sources.add((f"{supplier}::{qualname}", source, ""))
+        if FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(supplier):
+            name = cls._type_attr("__name__", value, type(value))
+            return cls._capture_runtime_binding(context, supplier, name, qualname)
         return cls._capture_class_body(
             context,
             value,
@@ -3988,6 +3999,40 @@ class FlextInfraWorkspaceNativeReference:
         return r[str].ok(aliases[0])
 
     @classmethod
+    def _module_file_owners(cls) -> t.MappingKV[str, t.VariadicTuple[str]]:
+        """Index registered modules by the absolute file their namespace declares.
+
+        Every compiler-input election used to rescan the whole ``sys.modules``
+        and build two ``Path`` objects per module (flext-zd80z: thousands of
+        modules per election, ~44 s of a cold capture). The index is a pure
+        derivation of the exact registry state (module name and object
+        identity) and the working directory, rebuilt whenever either changes,
+        so an import or replacement during capture is always observed.
+
+        Returns:
+            Absolute declared file path -> names of the modules declaring it.
+
+        """
+        registry = tuple(
+            (name, id(module)) for name, module in tuple(sys.modules.items())
+        )
+        cwd = str(Path.cwd())
+        cached = cls._module_file_index
+        if cached is not None and cached[0] == (cwd, registry):
+            return cached[1]
+        index: t.MutableMappingKV[str, t.VariadicTuple[str]] = {}
+        for name, module in tuple(sys.modules.items()):
+            if name == "__main__" or type(module) is not ModuleType:
+                continue
+            declared = cls._module_namespace(module).get("__file__")
+            if isinstance(declared, str):
+                key = str(Path(cwd, declared))
+                index[key] = (*index.get(key, ()), name)
+        frozen = dict(index)
+        cls._module_file_index = ((cwd, registry), frozen)
+        return frozen
+
+    @classmethod
     def _compiler_input_module(cls, path: Path) -> p.Result[str]:
         """Name the one registered module whose physical file is a compiler input.
 
@@ -3999,16 +4044,10 @@ class FlextInfraWorkspaceNativeReference:
             The unique registered module owning the physical input file.
 
         """
-        if path.absolute() == Path(sys.executable).resolve():
+        target = path.absolute()
+        if target == Path(sys.executable).resolve():
             return r[str].ok("builtins")
-        owners = sorted(
-            name
-            for name, module in tuple(sys.modules.items())
-            if name != "__main__"
-            and type(module) is ModuleType
-            and type(declared := cls._module_namespace(module).get("__file__")) is str
-            and Path(declared).absolute() == path.absolute()
-        )
+        owners = sorted(cls._module_file_owners().get(str(target), ()))
         if len(owners) != 1:
             return r[str].fail(
                 f"generated compiler input has no unique registered module: {path}; "
@@ -4559,6 +4598,15 @@ class FlextInfraWorkspaceNativeReference:
         if captured.failure:
             return r[bool].from_failure(captured)
         facts = captured.value
+        if (
+            not facts.generated
+            and FlextInfraWorkspaceEnvironmentProvenance.runtime_supplier(
+                facts.supplier
+            )
+        ):
+            return cls._capture_runtime_binding(
+                context, facts.supplier, value.__name__, value.__qualname__
+            )
         cls._function_namespaces(context, facts, graph[2])
         if context.lexical:
             attributes = cls._function_attribute_edges(context, facts, graph[2])
@@ -4567,6 +4615,34 @@ class FlextInfraWorkspaceNativeReference:
             cls._function_descriptor_edges(context, facts)
         cls._enqueue_function_operands(context, facts)
         cls._capture_function_evidence(context, facts, kind)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _capture_runtime_binding(
+        context: m.Infra.NativeObservationContext,
+        supplier: str,
+        name: str,
+        qualname: str,
+    ) -> p.Result[bool]:
+        """End the walk at an interpreter-owned standard-library identity.
+
+        The interpreter identity (runtime, prefix and the stdlib origin its
+        provenance proves) authenticates the binding; its live module globals
+        are interpreter state, never producer source.
+
+        Returns:
+            Success after recording the runtime identity evidence.
+
+        """
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind="runtime",
+                supplier=supplier,
+                name=name,
+                qualname=qualname,
+            )
+        )
         return r[bool].ok(value=True)
 
     @classmethod
