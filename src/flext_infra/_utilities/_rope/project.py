@@ -124,6 +124,19 @@ class FlextInfraRopeProject(Project):
             raise TypeError(message)
         return super().find_module(modname, folder)
 
+    @override
+    def validate(self, folder: Folder | p.Infra.RopeRoot | None = None) -> None:
+        """Validate the selected native folder, or the complete project root.
+
+        Raises:
+            TypeError: The supplied folder is not a native Rope folder.
+
+        """
+        if folder is not None and not isinstance(folder, Folder):
+            message = "Rope validation requires a native folder"
+            raise TypeError(message)
+        super().validate(self.root if folder is None else folder)
+
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
 
@@ -291,7 +304,7 @@ class FlextInfraRopeProject(Project):
         ignored_resources: t.SequenceOf[str] = (),
         *,
         python_path_folders: t.SequenceOf[str] = (),
-    ) -> Self:
+    ) -> p.Infra.RopeProject:
         """Construct a fresh Rope identity graph without persistent state.
 
         Args:
@@ -306,7 +319,7 @@ class FlextInfraRopeProject(Project):
                 must read the same captured inventory as project modules.
 
         Returns:
-            The resulting ``Self``.
+            The native project through its typed semantic boundary.
 
         Raises:
             ValueError: If Rope snapshot root must already exist.

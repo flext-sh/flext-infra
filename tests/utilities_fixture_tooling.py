@@ -146,6 +146,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                     options=m.Cli.ProcessOptions(
                         env=u.Cli.process_env(
                             overrides={
+                                c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(runner.root),
                                 c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                                 c.Infra.PYTEST_ENV_TARGET_FILE: str(
                                     target_file

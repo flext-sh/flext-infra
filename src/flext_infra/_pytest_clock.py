@@ -82,12 +82,18 @@ class FlextInfraPytestClock:
             failure.add_note(f"profile staging cleanup failed: {cleanup_failure}")
 
     @staticmethod
-    def publish_profile(profile: cProfile.Profile, output: Path) -> None:
+    def publish_profile(
+        profile: cProfile.Profile,
+        output: Path,
+        *,
+        immutable_output: Path | None = None,
+    ) -> None:
         """Publish native pstats atomically without exposing an incomplete artifact.
 
         Args:
             profile: The real profiler whose current stats are recorded.
             output: The destination elected by the profiling invocation.
+            immutable_output: Optional invocation-owned link to the staged inode.
 
         """
         descriptor, name = tempfile.mkstemp(
@@ -104,6 +110,8 @@ class FlextInfraPytestClock:
                 stream.flush()
                 os.fsync(stream.fileno())
             FlextInfraPytestClock._guard_staging_identity(staging, identity)
+            if immutable_output is not None:
+                immutable_output.hardlink_to(staging)
             Path(staging).replace(output)
         finally:
             FlextInfraPytestClock._discard_staging(staging, identity)
