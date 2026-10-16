@@ -2314,8 +2314,29 @@ class FlextInfraWorkspaceGeneratedFunction:
                 return ()
             nodes = parents[0].body
 
+        # abc.abstractmethod returns the same function, marked
+        # __isabstractmethod__; when the function carries that native mark, its
+        # innermost decorator may be exactly that binding in its own globals.
+        abc_module = sys.modules.get("abc")
+        marker = vars(abc_module).get("abstractmethod") if abc_module else None
+        abstract = marker is not None and (
+            vars(function).get("__isabstractmethod__") is True
+        )
+
+        def abstract_marker(expression: ast.expr) -> bool:
+            match expression:
+                case ast.Name(id=name):
+                    return function.__globals__.get(name) is marker
+                case ast.Attribute(value=ast.Name(id=owner), attr="abstractmethod"):
+                    return function.__globals__.get(owner) is abc_module
+                case _:
+                    return False
+
         def decorated(node: ast.FunctionDef) -> bool:
-            match node.decorator_list:
+            decorators = node.decorator_list
+            if abstract and decorators and abstract_marker(decorators[-1]):
+                decorators = decorators[:-1]
+            match decorators:
                 case []:
                     return decorator is None
                 case [ast.Name(id=name)]:
