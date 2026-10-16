@@ -864,13 +864,15 @@ class FlextInfraWorkspaceGeneratedFunction:
             msg = "native dataclass accessor is not an exact Python function"
             raise TypeError(msg)
         seen: set[int] = set()
+        wrapper: FunctionType | None = None
         while type(value) is FunctionType:
             if id(value) in seen:
                 msg = "native dataclass method has a cyclic raw wrapper"
                 raise ValueError(msg)
             seen.add(id(value))
-            self._physical_function(value, decorator=decorator)
+            self._physical_function(value, decorator=decorator, wrapper=wrapper)
             decorator = None
+            wrapper = value
             value = vars(value).get("__wrapped__")
         if value is not None:
             msg = "native dataclass method has callback-bearing descriptor storage"
@@ -2205,6 +2207,7 @@ class FlextInfraWorkspaceGeneratedFunction:
         function: p.AttributeProbe | None,
         *,
         decorator: str | None = None,
+        wrapper: FunctionType | None = None,
     ) -> t.Triple[ast.FunctionDef, ast.Module, t.MappingKV[str, p.AttributeProbe]]:
         if type(function) is not FunctionType:
             msg = "closed compiler callback is not an exact Python function"
@@ -2221,7 +2224,9 @@ class FlextInfraWorkspaceGeneratedFunction:
             # ``<name>.setter``/``.deleter`` are the property's own methods.
             self._builtin(decorator, namespace)
         path, tree = self._source(self._module(module_name))
-        candidates = self._function_declarations(function, tree, decorator=decorator)
+        candidates = self._function_declarations(
+            function, tree, decorator=decorator, wrapper=wrapper
+        )
         pending = [self._codes[path]]
         matched = False
         while pending:
@@ -2337,12 +2342,15 @@ class FlextInfraWorkspaceGeneratedFunction:
         tree: ast.Module,
         *,
         decorator: str | None = None,
+        wrapper: FunctionType | None = None,
     ) -> t.VariadicTuple[ast.FunctionDef]:
         """Locate the physical module or class method without running its body.
 
         ``decorator`` names the sole native method descriptor (``classmethod``
         or ``staticmethod``) the declaration may carry; the code's first line
-        is then the decorator line, as CPython records it.
+        is then the decorator line, as CPython records it. ``wrapper`` is the
+        outer function of a raw ``__wrapped__`` chain: the innermost decorator
+        may then be the factory whose own code nests the wrapper's code object.
 
         Returns:
             Declarations matching the native qualified code identity and carrying
@@ -2404,8 +2412,30 @@ class FlextInfraWorkspaceGeneratedFunction:
                 case _:
                     return False
 
+        def factory_marker(expression: ast.expr) -> bool:
+            match expression:
+                case ast.Name(id=name):
+                    factory = function.__globals__.get(name)
+                case ast.Attribute(value=ast.Name(id=owner), attr=member) if (
+                    type(function.__globals__.get(owner)) is ModuleType
+                ):
+                    factory = vars(function.__globals__[owner]).get(member)
+                case _:
+                    return False
+            if wrapper is None or type(factory) is not FunctionType:
+                return False
+            pending = [factory.__code__]
+            while pending:
+                code = pending.pop()
+                if code is wrapper.__code__:
+                    return True
+                pending.extend(item for item in code.co_consts if type(item) is CodeType)
+            return False
+
         def decorated(node: ast.FunctionDef) -> bool:
             decorators = node.decorator_list
+            if wrapper is not None and decorators and factory_marker(decorators[-1]):
+                decorators = decorators[:-1]
             if abstract and decorators and abstract_marker(decorators[-1]):
                 decorators = decorators[:-1]
             if wrapped and decorators and wraps_marker(decorators[-1]):
