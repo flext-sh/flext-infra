@@ -610,11 +610,20 @@ class FlextInfraWorkspaceNativeReference:
             The first differing construction input, or None when all agree.
 
         """
-        if not cls._code_matches(
-            cls._code_evidence(value.__code__),
-            cls._code_evidence(expected.code),
-        ):
-            return "code"
+        observed_code = cls._code_evidence(value.__code__)
+        expected_code = cls._code_evidence(expected.code)
+        if not cls._code_matches(observed_code, expected_code):
+            observed_fields = observed_code.model_dump()
+            expected_fields = expected_code.model_dump()
+            fields = sorted(
+                name
+                for name in observed_fields
+                if observed_fields[name] != expected_fields.get(name)
+            )
+            return (
+                f"code {fields} observed={observed_code.filename[:120]}"
+                f" expected={expected_code.filename[:120]}"
+            )
         observed_globals = value.__globals__
         differing = sorted(
             key
