@@ -131,10 +131,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 min_length=1, description="Production trees consumed by the scanner"
             ),
         ]
-        declarations: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(description="Configuration states declaring production roots"),
-        ]
         native: Annotated[
             m.Cli.CommandOutput,
             m.Field(description="Native deptry process completion and raw output"),

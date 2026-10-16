@@ -518,7 +518,6 @@ class FlextInfraUtilitiesDependencies(FlextInfraUtilitiesDependencyRequirements)
                     ),
                     scan.settings,
                     scan.report_state,
-                    *scan.declarations,
                 ),
             )
         )
