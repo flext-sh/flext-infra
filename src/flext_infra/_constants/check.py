@@ -28,6 +28,12 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Complete CPython code encoding without reference or interning flags."""
     NATIVE_TUPLE_REPEAT_LIMIT: ClassVar[int] = 255
     """Largest literal repeat count read as closed tuple constructor data."""
+    NATIVE_DATACLASS_SDK_CLASSES: ClassVar[tuple[str, ...]] = (
+        "Field",
+        "_DataclassParams",
+        "_FuncBuilder",
+    )
+    """Dataclass SDK classes the closed compiler instantiates during emission."""
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
