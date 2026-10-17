@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import traceback
 from functools import partial
 from pathlib import Path
 from typing import Self, override
@@ -21,18 +20,6 @@ from flext_infra.codegen import (
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
 from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
-
-# The surfaces a partial apply plan may publish; every other non-ALL surface is
-# prohibited outside the complete managed run.
-_PARTIAL_PLAN_SURFACES: frozenset[c.Infra.CodegenConformSurface] = frozenset((
-    c.Infra.CodegenConformSurface.MAKEFILE,
-    c.Infra.CodegenConformSurface.DOCS_CONFIG,
-    c.Infra.CodegenConformSurface.ENVRC,
-    c.Infra.CodegenConformSurface.PYPROJECT,
-    c.Infra.CodegenConformSurface.MISE_CONFIG,
-    c.Infra.CodegenConformSurface.RUNTIME_BINDINGS,
-    c.Infra.CodegenConformSurface.WORKFLOWS,
-))
 
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
@@ -952,6 +939,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 scope_root,
             ),
         ).flat_map(lambda _: self._prepare_managed_plan(request))
+        cause = planned.exception
+        if cause is not None:
+            raise cause
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
         operation = transaction.publish_operation_receipt(
@@ -979,6 +969,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 operation.value,
             ).map(lambda lazy: (*bootstrap, *lazy)),
         )
+        cause = published.exception
+        if cause is not None:
+            raise cause
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
         written = published.value
@@ -1094,37 +1087,24 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """Analyze one repository's lazy-init surface in a fleet worker.
 
         Returns:
-            The repository's lazy-init analysis, or its failure as data.
+            The repository's lazy-init analysis, or its logical failure as data.
 
         """
-        try:
-            analysis = FlextInfraCodegenLazyInit(
-                repository_root=root,
-                project_scope_roots=(root,),
-            ).plan_files()
-        except (OSError, SyntaxError, ValueError) as exc:
-            path = (
-                exc.filename
-                if isinstance(exc, SyntaxError) and exc.filename is not None
-                else str(root)
-            )
-            return m.Infra.CodegenPhaseOutcome(
-                exception=exc,
-                issues=(
-                    m.Infra.Issue(
-                        file=path,
-                        line=exc.lineno or 0 if isinstance(exc, SyntaxError) else 0,
-                        column=exc.offset or 0 if isinstance(exc, SyntaxError) else 0,
-                        code=c.Infra.ToolOutcome.ERROR.value,
-                        message=traceback.format_exc(),
-                    ),
-                ),
-            )
+        analysis = FlextInfraCodegenLazyInit(
+            repository_root=root,
+            project_scope_roots=(root,),
+        ).plan_files()
+        cause = analysis.exception
+        if cause is not None:
+            raise cause
         if analysis.failure:
             return m.Infra.CodegenPhaseOutcome(
                 error=analysis.error or f"lazy-init analysis failed: {root}",
                 exception=analysis.exception,
             )
+        cause = analysis.value.exception
+        if cause is not None:
+            raise cause
         return m.Infra.CodegenPhaseOutcome(analysis=analysis.value)
 
     @staticmethod
@@ -1212,9 +1192,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             f"what={request.what} root={request.root} lease=unheld",
         )
         planned = self.plan(request)
+        cause = planned.exception
+        if cause is not None:
+            raise cause
         if planned.failure:
             return r[m.Infra.CodegenPlan].from_failure(planned)
         plan = planned.value
+        if plan.exception is not None:
+            raise plan.exception
         if not plan.files and (plan.issues or plan.exception is not None):
             return r[m.Infra.CodegenPlan].fail(
                 "\n".join(issue.formatted for issue in plan.issues)
@@ -1423,6 +1408,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[t.VariadicTuple[Path]]
+        if analysis.exception is not None:
+            raise analysis.exception
         first_failure = (
             result_type.fail(
                 "\n".join(issue.formatted for issue in analysis.issues)
@@ -1442,6 +1429,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 policy,
                 receipts,
             )
+            cause = published.exception
+            if cause is not None:
+                raise cause
             if published.failure:
                 if first_failure is None:
                     first_failure = published
@@ -1453,6 +1443,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             scope_roots=operation.scope_roots,
             operation=operation,
         )
+        cause = recorded.exception
+        if cause is not None:
+            raise cause
         if recorded.failure:
             if first_failure is not None:
                 u.Cli.error(
