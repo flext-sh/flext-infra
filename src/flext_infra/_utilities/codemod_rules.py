@@ -819,7 +819,7 @@ class FlextInfraUtilitiesCodemodRules(
         context: t.VariadicTuple[m.Infra.CodemodContextCondition],
         rule_id: str,
     ) -> p.Result[str]:
-        """Return the rule body when every context variable is captured in it.
+        """Require each context variable to be captured or declared by transform.
 
         Returns:
             The resulting ``p.Result[str]``.
@@ -832,11 +832,14 @@ class FlextInfraUtilitiesCodemodRules(
         })
         if body.failure:
             return r[str].from_failure(body)
+        transformed = parsed_rule.get("transform")
         unbound = sorted(
             variable
             for condition in context
             for variable in (condition.variable, condition.of)
-            if variable is not None and f"${variable}" not in body.value
+            if variable is not None
+            and f"${variable}" not in body.value
+            and not (isinstance(transformed, Mapping) and variable in transformed)
         )
         if unbound:
             return r[str].fail(

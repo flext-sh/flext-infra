@@ -90,6 +90,107 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
 
     @staticmethod
+    def _member_remote(
+        tmp_path: Path,
+        member: m.Infra.RepositoryRef,
+    ) -> tuple[Path, str]:
+        """Publish one governed member source as a bare provider remote.
+
+        Returns:
+            The bare repository path and its published head revision.
+
+        """
+        member_source = tmp_path / "member-source"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            member_source,
+            member.distribution,
+            beads=u.Tests.BeadsIdentity(
+                workspace=member.name,
+                database=member.name,
+                issue_prefix=member.name,
+            ),
+        )
+        member_head = tm.ok(
+            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member_source),
+        )
+        bare_repo = tmp_path / f"{member.name}.git"
+        tm.ok(
+            u.Cli.run_checked([
+                c.Infra.GIT,
+                "clone",
+                "--bare",
+                member_source.as_posix(),
+                bare_repo.as_posix(),
+            ]),
+        )
+        tm.ok(
+            u.Cli.run_checked([
+                c.Infra.GIT,
+                "--git-dir",
+                bare_repo.as_posix(),
+                "update-ref",
+                f"refs/heads/{u.Tests.provider_branch()}",
+                member_head,
+            ]),
+        )
+        return bare_repo, member_head
+
+    @staticmethod
+    def _attach_member_submodule(
+        repository_root: Path,
+        member: m.Infra.RepositoryRef,
+        remote: tuple[Path, str],
+    ) -> Path:
+        """Attach the governed member submodule and publish its remote ref.
+
+        Returns:
+            The member checkout directory.
+
+        """
+        bare_repo, member_head = remote
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    "-b",
+                    u.Tests.provider_branch(),
+                    bare_repo.as_posix(),
+                    member.name,
+                ],
+                cwd=repository_root,
+            ),
+        )
+        member_checkout = repository_root / member.name
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "remote", "set-url", "origin", member.url],
+                cwd=member_checkout,
+            ),
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "config", "remote.origin.skipDefaultUpdate", "true"],
+                cwd=member_checkout,
+            ),
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "update-ref",
+                    f"refs/remotes/origin/{u.Tests.provider_branch()}",
+                    member_head,
+                ],
+                cwd=member_checkout,
+            ),
+        )
+        return member_checkout
+
+    @staticmethod
     def test_infra_repository_identity_is_detected_from_the_checkout(
         tmp_path: Path,
     ) -> None:
@@ -465,7 +566,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test local manifest conforms without global repository rows."""
+        """Local topology renders Makefiles without a global repository registry."""
         root = self._repository(
             "acme-platform",
             path=".",
@@ -481,39 +582,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             project=u.Tests.project_spec(root.name),
             subprojects=(member,),
         )
-        member_source = tmp_path / "member-source"
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            member_source,
-            member.distribution,
-            beads=u.Tests.BeadsIdentity(
-                workspace=member.name,
-                database=member.name,
-                issue_prefix=member.name,
-            ),
-        )
-        member_head = tm.ok(
-            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member_source),
-        )
-        bare_repo = tmp_path / "acme-charts.git"
-        tm.ok(
-            u.Cli.run_checked([
-                c.Infra.GIT,
-                "clone",
-                "--bare",
-                member_source.as_posix(),
-                bare_repo.as_posix(),
-            ]),
-        )
-        tm.ok(
-            u.Cli.run_checked([
-                c.Infra.GIT,
-                "--git-dir",
-                bare_repo.as_posix(),
-                "update-ref",
-                f"refs/heads/{u.Tests.provider_branch()}",
-                member_head,
-            ]),
-        )
+        remote = self._member_remote(tmp_path, member)
 
         repository_root = tmp_path / "workspace"
         u.Tests.WorktreeFixture.initialize_governed_project(
@@ -525,46 +594,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
                 issue_prefix=root.name,
             ),
         )
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "add",
-                    "-b",
-                    u.Tests.provider_branch(),
-                    bare_repo.as_posix(),
-                    member.name,
-                ],
-                cwd=repository_root,
-            ),
-        )
-        member_checkout = repository_root / member.name
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "remote", "set-url", "origin", member.url],
-                cwd=member_checkout,
-            ),
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "config", "remote.origin.skipDefaultUpdate", "true"],
-                cwd=member_checkout,
-            ),
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "update-ref",
-                    f"refs/remotes/origin/{u.Tests.provider_branch()}",
-                    member_head,
-                ],
-                cwd=member_checkout,
-            ),
-        )
+        self._attach_member_submodule(repository_root, member, remote)
         gitmodules = u.Tests.WorktreeFixture.write_gitmodules(
             repository_root,
             (member.name,),
@@ -596,28 +626,52 @@ class TestsFlextInfraCodegenCatalogExtensions:
             ),
         )
         declared_gitmodules = gitmodules.read_bytes()
+        # Topology rendering must not require the fixture member to be installed
+        # for the unrelated Pyproject provenance surface selected by ALL.
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             u.Tests.conform_request(
                 repository_root,
-                what=c.Infra.CodegenConformSurface.ALL,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.CHECK,
             ),
         )
 
         plan = tm.ok(result)
+        tm.that(plan.issues, eq=())
+        tm.that(plan.exception, eq=None)
         tm.that(
             tuple(item.name for item in plan.repositories),
             eq=(root.name, member.name),
         )
-        root_makefile = next(
-            file
+        makefiles = {
+            file.path: file
             for file in plan.files
-            if file.path == repository_root.resolve() / c.Infra.MAKEFILE_FILENAME
+            if file.path.name == c.Infra.MAKEFILE_FILENAME
+        }
+        tm.that(
+            set(makefiles),
+            eq={
+                (
+                    repository_root / repository.path / c.Infra.MAKEFILE_FILENAME
+                ).resolve()
+                for repository in plan.repositories
+            },
+        )
+        root_makefile = makefiles[repository_root.resolve() / c.Infra.MAKEFILE_FILENAME]
+        subproject_rows = tuple(
+            tuple(value.split())
+            for line in u.Tests.codegen_file_text(root_makefile).splitlines()
+            for variable, operator, value in (line.partition(":="),)
+            if variable.strip() == "WORKSPACE_SUBPROJECTS" and operator
         )
         tm.that(
-            u.Tests.codegen_file_text(root_makefile),
-            has=f"WORKSPACE_SUBPROJECTS := {member.name}",
+            subproject_rows,
+            eq=(
+                tuple(
+                    repository.path.as_posix() for repository in workspace.subprojects
+                ),
+            ),
         )
         # .gitmodules is externally owned: conform plans no file for it and
         # leaves the declared topology bytes untouched.

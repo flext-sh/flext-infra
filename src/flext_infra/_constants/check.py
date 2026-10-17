@@ -12,6 +12,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -166,95 +167,33 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Native pytest-timeout sentinel disabling per-item deadlines."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_PROFILE_PROCESS_DIRECTORY_ENV: ClassVar[str] = (
-        "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
+        FlextInfraPytestProfileChild.PROCESS_DIRECTORY_ENV
     )
-    PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = "FLEXT_PYTEST_PROFILE_CHILD_ROOT"
+    PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = (
+        FlextInfraPytestProfileChild.CHILD_ROOT_ENV
+    )
     PYTEST_SELECTION_PROFILE_FILENAME: ClassVar[str] = "testmon-selection.pstats"
     PYTEST_INVENTORY_PROFILE_FILENAME: ClassVar[str] = "testmon-inventory.pstats"
-    PYTEST_PROFILE_CLOCK_MODULE: ClassVar[str] = "flext_infra._pytest_clock"
-    PYTEST_PROFILE_BOOTSTRAP: ClassVar[str] = (
-        "import sys\n"
-        "from pathlib import Path\n"
-        "from importlib.util import "
-        "find_spec, module_from_spec, spec_from_file_location\n"
-        f"clock_name = {PYTEST_PROFILE_CLOCK_MODULE!r}\n"
-        "clock = sys.modules.get(clock_name)\n"
-        "if clock is None:\n"
-        "    package = find_spec(clock_name.split('.', 1)[0])\n"
-        "    if package is None or package.origin is None:\n"
-        "        raise ModuleNotFoundError(clock_name)\n"
-        "    clock_path = Path(package.origin).with_name("
-        "clock_name.rsplit('.', 1)[1] + '.py')\n"
-        "    clock_spec = spec_from_file_location(clock_name, clock_path)\n"
-        "    if clock_spec is None or clock_spec.loader is None:\n"
-        "        raise ImportError(clock_name)\n"
-        "    clock = module_from_spec(clock_spec)\n"
-        "    sys.modules[clock_name] = clock\n"
-        "    clock_spec.loader.exec_module(clock)\n"
-        "profile = clock.FlextInfraPytestClock.start_profiler()\n"
+    PYTEST_PROFILE_CLOCK_MODULE: ClassVar[str] = (
+        FlextInfraPytestProfileChild.CLOCK_MODULE
     )
-    PYTEST_PROFILE_STARTUP: ClassVar[str] = (
-        PYTEST_PROFILE_BOOTSTRAP + "import atexit, os, sys\n"
-        "from pathlib import Path\n"
-        "from importlib.machinery import PathFinder\n"
-        "from importlib.util import module_from_spec\n"
-        f"output = Path(os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
-        "profile_output = output / f'{os.getpid()}.pstats'\n"
-        "entry_index = len(sys.orig_argv) - len(sys.argv)\n"
-        "native_profile = (sys.argv[:1] == ['-m'] and entry_index >= 1 "
-        "and sys.orig_argv[entry_index - 1:entry_index + 1] == "
-        "['-m', 'cProfile'])\n"
-        "if not native_profile:\n"
-        "    clock.FlextInfraPytestClock.register_signal_checkpoint("
-        "profile, profile_output)\n"
-        "    atexit.register(clock.FlextInfraPytestClock.publish_profile, "
-        "profile, profile_output)\n"
-        "startup = str(Path(__file__).parent)\n"
-        "original = PathFinder.find_spec('sitecustomize', "
-        "[path for path in sys.path if path != startup])\n"
-        "if original is not None and original.loader is not None:\n"
-        "    module = module_from_spec(original)\n"
-        "    sys.modules['sitecustomize'] = module\n"
-        "    original.loader.exec_module(module)\n"
-        "if native_profile:\n"
-        "    clock.FlextInfraPytestClock.publish_profile(profile, profile_output)\n"
-        "    profile.disable()\n"
+    PYTEST_PROFILE_BOOTSTRAP: ClassVar[str] = (
+        FlextInfraPytestProfileChild.bootstrap_stub()
     )
     PYTEST_PROFILE_LAUNCHER: ClassVar[str] = (
-        PYTEST_PROFILE_BOOTSTRAP + "import os, runpy, sys\n"
-        "from pathlib import Path\n"
-        "output = sys.argv.pop(1)\n"
-        "clock.FlextInfraPytestClock.register_signal_checkpoint(profile, "
-        "Path(output))\n"
-        "try:\n"
-        f"    directory = os.environ.get({PYTEST_PROFILE_PROCESS_DIRECTORY_ENV!r})\n"
-        "    if directory is not None:\n"
-        "        children = Path(output).resolve().parent / directory\n"
-        "        startup = children / 'startup'\n"
-        "        startup.mkdir(parents=True, exist_ok=True)\n"
-        "        (startup / 'sitecustomize.py').write_text("
-        f"{PYTEST_PROFILE_STARTUP!r}, encoding='utf-8')\n"
-        "        inherited = os.environ.get('PYTHONPATH', '')\n"
-        f"        previous = os.environ.get({PYTEST_PROFILE_CHILD_ROOT_ENV!r})\n"
-        "        if previous is not None:\n"
-        "            previous_startup = str(Path(previous) / 'startup')\n"
-        "            inherited = os.pathsep.join("
-        "path for path in inherited.split(os.pathsep) "
-        "if path != previous_startup)\n"
-        f"        os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}] = str(children)\n"
-        "        os.environ['PYTHONPATH'] = str(startup) + "
-        "(os.pathsep + inherited if inherited else '')\n"
-        "    runpy.run_module('pytest', run_name='__main__', alter_sys=True)\n"
-        "finally:\n"
-        "    clock.FlextInfraPytestClock.publish_profile(profile, Path(output))\n"
+        FlextInfraPytestProfileChild.launcher_stub()
     )
-    """``python -c`` profiled pytest child: ``<output.pstats> <pytest args...>``.
+    """Parent-free ``python -c`` payloads projected from their real owner.
 
-    The profile entry enables run-owned startup instrumentation for descendants,
-    including pytester children. Existing site customization is still executed.
-    The stdlib loader resolves the clock without importing its parent package.
-    Pytest installs assertion rewriting before any plugin package is imported;
-    its ``SystemExit`` still sets the native exit status.
+    ``FlextInfraPytestProfileChild`` owns the child transport and renders
+    these stubs from its live module, class and method identities, so the
+    embedded transport logic has exactly one authored source. The launcher
+    accepts ``<output.pstats> <pytest args...>`` and enables run-owned
+    startup instrumentation for descendants, including pytester children,
+    while still executing the existing site customization. The stdlib
+    loader resolves the clock without importing the parent package.
+    Pytest installs assertion rewriting before any plugin package is
+    imported; its ``SystemExit`` still sets the native exit status.
     """
 
     @unique

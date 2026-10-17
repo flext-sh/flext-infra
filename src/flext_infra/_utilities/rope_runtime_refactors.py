@@ -328,7 +328,30 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         """
         finder = cls.semantic_finder(module)
-        return tuple(finder.get_match_regions(pattern, arguments, start=start, end=end))
+        return tuple(
+            region
+            for match in finder.get_matches(pattern, arguments, start=start, end=end)
+            if (region := cls._match_region(match)) is not None
+        )
+
+    @staticmethod
+    def _match_region(match: object) -> t.Pair[int, int] | None:
+        """Return the matched character range, or None when Rope cannot region it.
+
+        Rope's ``SimilarFinder.get_matches`` yields matches whose AST nodes may
+        lack the ``region`` attribute (subscripts, bare names, attribute chains
+        in PEP 695 and lazy-facade patterns). The matcher contract treats an
+        unregionable match as no match rather than a crash.
+
+        Returns:
+            The resulting ``t.Pair[int, int] | None``.
+
+        """
+        getter = getattr(match, "get_region", None)
+        if getter is None:
+            return None
+        start, end = getter()
+        return (start, end)
 
     @classmethod
     def semantic_finder(

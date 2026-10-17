@@ -977,20 +977,30 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             policy,
             batches,
             operation.value,
-        ).flat_map(
-            lambda bootstrap: self._publish_lazy_batch(
+        )
+        # Each phase authenticates its own consumed inputs. An unrelated failed
+        # target is not a prerequisite of every later publication.
+        lazy = operation.flat_map(
+            lambda receipt: self._publish_lazy_batch(
                 planned.value,
                 policy,
                 batches,
-                operation.value,
-            ).map(lambda lazy: (*bootstrap, *lazy)),
+                receipt,
+            ),
         )
-        cause = published.exception
-        if cause is not None:
-            raise cause
-        if published.failure:
-            return r[m.Infra.CodegenResult].from_failure(published)
-        written = published.value
+        first_failure = next(
+            (item for item in (published, lazy) if item.failure),
+            None,
+        )
+        first_exception = next(
+            (
+                item.exception
+                for item in (published, lazy)
+                if item.exception is not None
+            ),
+            None,
+        )
+        written = tuple(path for batch in batches for path in batch.written_files)
         repaired = (
             r[bool].ok(value=True)
             if self.generation_only
@@ -998,14 +1008,40 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 lambda _: self._allow_direnv_after_apply(request, written)
             )
         )
-        return repaired.flat_map(
+        completed = repaired.flat_map(
             lambda _: self._publish_docs_batches(
                 request,
                 m.Infra.CodegenResult(plan=planned.value, written_files=written),
                 tuple(batches),
                 operation.value,
+                failure=(
+                    r[m.Infra.CodegenResult].fail(
+                        first_failure.error,
+                        error_code=first_failure.error_code,
+                        error_data=first_failure.error_data,
+                        exception=first_exception,
+                    )
+                    if first_failure is not None
+                    else None
+                ),
             ),
         )
+        # Later phases cannot replace an earlier publication's causal failure.
+        if first_failure is not None:
+            if first_exception is None:
+                first_exception = completed.exception
+            if completed.exception is not first_exception or repaired.failure:
+                u.Cli.error(f"generation continuation failed: {completed.error}")
+            completed = r[m.Infra.CodegenResult].fail(
+                first_failure.error,
+                error_code=first_failure.error_code,
+                error_data=first_failure.error_data,
+                exception=first_exception,
+            )
+        cause = completed.exception
+        if cause is not None:
+            raise cause
+        return completed
 
     def _publish_lazy_batch(
         self,
@@ -1110,17 +1146,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             repository_root=root,
             project_scope_roots=(root,),
         ).plan_files()
-        cause = analysis.exception
-        if cause is not None:
-            raise cause
         if analysis.failure:
             return m.Infra.CodegenPhaseOutcome(
                 error=analysis.error or f"lazy-init analysis failed: {root}",
                 exception=analysis.exception,
             )
-        cause = analysis.value.exception
-        if cause is not None:
-            raise cause
         return m.Infra.CodegenPhaseOutcome(analysis=analysis.value)
 
     @staticmethod
@@ -1214,8 +1244,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if planned.failure:
             return r[m.Infra.CodegenPlan].from_failure(planned)
         plan = planned.value
-        if plan.exception is not None:
-            raise plan.exception
         if not plan.files and (plan.issues or plan.exception is not None):
             return r[m.Infra.CodegenPlan].fail(
                 "\n".join(issue.formatted for issue in plan.issues)
@@ -1424,8 +1452,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[t.VariadicTuple[Path]]
-        if analysis.exception is not None:
-            raise analysis.exception
         first_failure = (
             result_type.fail(
                 "\n".join(issue.formatted for issue in analysis.issues)
@@ -1436,21 +1462,35 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             else None
         )
         written: list[Path] = []
+        first_exception = analysis.exception
+        issues = list(analysis.issues)
         for files in self._generation_batches(analysis.files):
-            published = self._publish_generation_batch(
-                request,
-                analysis.model_copy(
-                    update={"files": files, "issues": (), "exception": None},
-                ),
-                policy,
-                receipts,
-            )
-            cause = published.exception
-            if cause is not None:
-                raise cause
+            try:
+                published = self._publish_generation_batch(
+                    request,
+                    analysis.model_copy(
+                        update={"files": files, "issues": (), "exception": None},
+                    ),
+                    policy,
+                    receipts,
+                )
+            except (OSError, ValueError) as exc:
+                published = result_type.fail(str(exc), exception=exc)
             if published.failure:
                 if first_failure is None:
                     first_failure = published
+                if first_exception is None:
+                    first_exception = published.exception
+                issues.extend(
+                    m.Infra.Issue(
+                        file=str(file.path),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=published.error or "generation publication failed",
+                    )
+                    for file in files
+                )
             else:
                 written.extend(published.value)
         recorded = FlextInfraCodegenTransaction.publish_operation_receipt(
@@ -1458,19 +1498,25 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             tuple(receipts),
             scope_roots=operation.scope_roots,
             operation=operation,
+            issues=tuple(issues),
+            exception=first_exception,
         )
-        cause = recorded.exception
-        if cause is not None:
-            raise cause
         if recorded.failure:
             if first_failure is not None:
                 u.Cli.error(
                     f"generation receipt publication failed: {recorded.error}",
                 )
-                return result_type.from_failure(first_failure)
-            return result_type.from_failure(recorded)
+            else:
+                first_failure = recorded
+            if first_exception is None:
+                first_exception = recorded.exception
         if first_failure is not None:
-            return result_type.from_failure(first_failure)
+            return result_type.fail(
+                first_failure.error,
+                error_code=first_failure.error_code,
+                error_data=first_failure.error_data,
+                exception=first_exception,
+            )
         return result_type.ok(tuple(written))
 
     def _publish_generation_batch(
@@ -1548,14 +1594,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 else None
             ),
         )
-        return transaction.run_files_locked(
-            roots,
-            lambda scope_root: transaction.publish_file_phase_locked(
-                scope_root,
+        return inputs.flat_map(
+            lambda _: transaction.run_files_locked(
                 roots,
-                analysis,
-                publication,
-                publication_receipts=receipts,
+                lambda scope_root: transaction.publish_file_phase_locked(
+                    scope_root,
+                    roots,
+                    analysis,
+                    publication,
+                    publication_receipts=receipts,
+                ),
             ),
         )
 
@@ -1602,6 +1650,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         result: m.Infra.CodegenResult,
         batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         operation: m.Infra.CodegenPhaseOutcome,
+        *,
+        failure: p.Result[m.Infra.CodegenResult] | None = None,
     ) -> p.Result[m.Infra.CodegenResult]:
         """Publish only invocation-owned docs after the managed batch releases.
 
@@ -1620,6 +1670,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         written = list(result.written_files)
         receipts = list(batches)
+        first_failure = failure
+        first_exception = failure.exception if failure is not None else None
+        issues = list(result.plan.issues)
+        if failure is not None:
+            issues.append(
+                m.Infra.Issue(
+                    file=str(request.root),
+                    line=0,
+                    column=0,
+                    code=c.Infra.ToolOutcome.ERROR.value,
+                    message=failure.error or "generation publication failed",
+                ),
+            )
         if owned:
             docs_generator = self.docs_planner
             if docs_generator is None:
@@ -1629,19 +1692,33 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             for prepared in docs_generator.prepare_batches(
                 publication_receipts=receipts,
             ):
-                if prepared.failure:
-                    return r[m.Infra.CodegenResult].from_failure(prepared)
-                published = docs_generator.publish_batch(
-                    prepared.value,
-                    publication_receipts=receipts,
+                published = prepared.flat_map(
+                    lambda bundle: docs_generator.publish_batch(
+                        bundle,
+                        publication_receipts=receipts,
+                    ),
                 )
-                if published.failure:
-                    return r[m.Infra.CodegenResult].from_failure(published)
-                written.extend(
-                    Path(item.path)
-                    for report in published.value
-                    for item in report.items
-                    if item.written
+                if published.success:
+                    written.extend(
+                        Path(item.path)
+                        for report in published.value
+                        for item in report.items
+                        if item.written
+                    )
+                    continue
+                failed = r[m.Infra.CodegenResult].from_failure(published)
+                if first_failure is None:
+                    first_failure = failed
+                if first_exception is None:
+                    first_exception = failed.exception
+                issues.append(
+                    m.Infra.Issue(
+                        file=str(request.root),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=failed.error or "documentation publication failed",
+                    ),
                 )
         qualified = FlextInfraCodegenTransaction.publish_operation_receipt(
             request,
@@ -1651,8 +1728,21 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 for repository in result.plan.repositories
             ),
             operation=operation,
-            completed=True,
+            completed=first_failure is None,
+            issues=tuple(issues),
+            exception=first_exception,
         )
+        if first_failure is not None:
+            if qualified.failure:
+                u.Cli.error(
+                    f"generation receipt publication failed: {qualified.error}",
+                )
+            return r[m.Infra.CodegenResult].fail(
+                first_failure.error,
+                error_code=first_failure.error_code,
+                error_data=first_failure.error_data,
+                exception=first_exception or qualified.exception,
+            )
         if qualified.failure:
             return r[m.Infra.CodegenResult].from_failure(qualified)
         return r[m.Infra.CodegenResult].ok(

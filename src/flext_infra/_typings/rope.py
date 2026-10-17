@@ -22,7 +22,7 @@ from libcst.metadata import MetadataWrapper
 from rope.base.builtins import BuiltinModule
 from rope.base.pycore import PyCore
 from rope.base.pyobjectsdef import PyModule, PyPackage
-from rope.refactor.restructure import _ChangeComputer
+from rope.refactor.restructure import ChangeComputer
 
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
 
@@ -65,7 +65,7 @@ class FlextInfraTypesRope:
     type RopeImportStatement = FlextInfraProtocolsRopeRuntime.RopeImportStatement
     type RopeModuleImports = FlextInfraProtocolsRopeRuntime.RopeModuleImports
     type RopeChangeSet = FlextInfraProtocolsRopeRuntime.RopeChangeSet
-    type RopeChangeComputer = _ChangeComputer
+    type RopeChangeComputer = ChangeComputer
     type RopeMoveGlobal = FlextInfraProtocolsRopeRuntime.RopeMoveGlobal
     type RopeOccurrence = FlextInfraProtocolsRopeRuntime.RopeOccurrence
     type RopeOccurrenceFinder = FlextInfraProtocolsRopeRuntime.RopeOccurrenceFinder
