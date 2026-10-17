@@ -201,6 +201,30 @@ class FlextInfraMiseWorkspacePlanner:
         identity = self._exact_git_identity(scope_root)
         if identity.failure:
             return result_type.from_failure(identity)
+        return self.file_layout_from_identity(
+            identity.value,
+            roots,
+            transaction_id=transaction_id,
+        )
+
+    def file_layout_from_identity(
+        self,
+        identity: m.Infra.GitIdentityReport,
+        roots: t.MappingKV[str, Path],
+        *,
+        transaction_id: str,
+    ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
+        """Derive file topology from the original native scope observation.
+
+        The transaction owns that observation's lease; this constructor grants
+        no authority and still observes each physical participant and state root.
+
+        Returns:
+            Layout data retaining the original journal anchor.
+
+        """
+        result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
+        scope_root = identity.repo_root
         participants: list[m.Infra.CodegenFileParticipant] = []
         for selector, root in sorted(roots.items()):
             if not root.is_absolute() or ".." in root.parts or root.resolve() != root:
@@ -228,7 +252,7 @@ class FlextInfraMiseWorkspacePlanner:
             m.Infra.MiseToolchainWorkspaceLayout(
                 scope_root=scope_root,
                 state_root=state_root.value,
-                journal_path=self.journal_path(identity.value),
+                journal_path=self.journal_path(identity),
                 transaction_id=transaction_id,
                 projects=(),
                 file_participants=tuple(participants),

@@ -2327,9 +2327,13 @@ _builtin_setup_environment: $(if $(filter true,$(GITHUB_ACTIONS)),,_builtin_setu
 _upg_install_runtime:
 	@$(INSTALL_RUNTIME_RECIPE)
 
-# Provision the frozen producer before corrective projection, without runtime
-# admission. Only this elected runtime owner resolves both native views;
-# attached members delegate before bootstrap instead of writing member locks.
+# Resolve both native views before the first install, so the producer that
+# runs the corrective projection is the one the declarations resolve to: a
+# consumer whose lock still pins an older producer (one without the routes
+# this template calls), or that has no view lock yet, upgrades in one run.
+# The corrective projection is then re-locked by _upg_reconcile_locks.
+# Only this elected runtime owner resolves both native views; attached
+# members delegate before bootstrap instead of writing member locks.
 # Reparse a changed dispatcher once; a second change fails the fixed point.
 .PHONY: _upg_lifecycle _upg_converge
 
@@ -2365,13 +2369,13 @@ _upg_lifecycle: _builtin_setup_submodules
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
 	@$(SELF_MAKE) _builtin_require_upg_lock_owner
-	@$(SELF_MAKE) _upg_install_runtime
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@set -eu; \
 	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
 	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
 		$(UV) lock --project "$$resolution" --python "$$desired_python" --upgrade --refresh; \
 	done
+	@$(SELF_MAKE) _upg_install_runtime
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"

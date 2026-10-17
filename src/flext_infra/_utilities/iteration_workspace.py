@@ -318,7 +318,6 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
                     source_root,
                 )
             )
-        ignored = frozenset(config.Infra.codegen.source_scan_ignored)
         return tuple(
             file_path
             for file_path in tracked_files
@@ -326,7 +325,9 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             and any(
                 file_path.is_relative_to(source_root) for source_root in source_roots
             )
-            and not ignored.intersection(file_path.relative_to(project_root).parts)
+            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                project_root, file_path
+            )
         )
 
 

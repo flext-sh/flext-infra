@@ -571,7 +571,6 @@ runtime-evaluated-base-classes = [
   "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerCommand",
   "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerExecution",
   "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerReports",
-  "flext_tests.FlextTestsModels.Tests",
   "flext_tests.FlextTestsServiceBase",
   "flext_tests.FlextTestsUtilities.Tests",
   "pydantic.BaseModel",

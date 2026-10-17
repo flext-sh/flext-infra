@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
@@ -308,10 +309,12 @@ class FlextInfraUtilitiesProjectDiscovery(
         """
         if not scan_dir.exists():
             return
-        ignored = frozenset(config.Infra.codegen.source_scan_ignored)
         for target in scan_dir.rglob(pattern):
-            if target.is_file() and not ignored.intersection(
-                target.relative_to(scan_dir).parts,
+            if (
+                target.is_file()
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    scan_dir, target
+                )
             ):
                 targets.add(target.relative_to(resolved_root).as_posix())
 

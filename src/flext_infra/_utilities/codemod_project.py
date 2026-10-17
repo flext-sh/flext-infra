@@ -36,6 +36,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
+    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRopeAnalysisWorkspace,
@@ -56,9 +57,6 @@ from flext_infra._utilities._rope_analysis.importstate import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-
-# A sanctioned compose module name is exactly ``<package>.<leaf>``.
-_COMPOSE_MODULE_SEGMENT_COUNT = 2
 
 
 class FlextInfraUtilitiesCodemodProject(
@@ -219,29 +217,6 @@ class FlextInfraUtilitiesCodemodProject(
                 cycles.update(dict.fromkeys(members, members))
         return cycles
 
-    @staticmethod
-    def _source_scan_ignored(root: Path, file_path: Path) -> bool:
-        """Return whether ``file_path`` lies in a source-scan-ignored tree.
-
-        The names are the codegen artifact SSOT (``source_scan_ignored``),
-        the same list Rope uses when it builds the import graph. ``legado``
-        is one of those names.
-
-        Returns:
-            Whether ``file_path`` lies in a source-scan-ignored tree.
-
-        """
-        resolved = file_path.resolve()
-        root_resolved = root.resolve()
-        parts = (
-            resolved.relative_to(root_resolved).parts
-            if resolved.is_relative_to(root_resolved)
-            else resolved.parts
-        )
-        return bool(
-            frozenset(config.Infra.codegen.source_scan_ignored).intersection(parts),
-        )
-
     @classmethod
     def import_closes_cycle(
         cls,
@@ -276,7 +251,9 @@ class FlextInfraUtilitiesCodemodProject(
             if (
                 layout is not None
                 and file_path.is_relative_to(layout.src_dir)
-                and not cls._source_scan_ignored(root, file_path)
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    root.resolve(), file_path.resolve()
+                )
             ):
                 msg = (
                     f"source module is absent from the project import graph: "
@@ -1232,7 +1209,7 @@ class FlextInfraUtilitiesCodemodProject(
         """
         parts = value.split(".")
         if (
-            len(parts) != _COMPOSE_MODULE_SEGMENT_COUNT
+            len(parts) != c.Infra.FAMILY_COMPOSE_MODULE_SEGMENTS
             or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES
         ):
             return False
